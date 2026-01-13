@@ -1,11 +1,70 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+// Helper to get allowed origins
+const getAllowedOrigins = (): string[] => {
+  const origins = [
+    Deno.env.get("ALLOWED_ORIGIN") || "",
+    "http://localhost:5173",
+    "http://localhost:8080",
+  ].filter(Boolean);
+  
+  // Add production URL pattern
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  if (supabaseUrl) {
+    // Extract project ID and allow lovable.app domains
+    const projectMatch = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/);
+    if (projectMatch) {
+      origins.push(`https://${projectMatch[1]}.lovable.app`);
+    }
+  }
+  
+  return origins;
+};
+
+// Get CORS headers with origin validation
+const getCorsHeaders = (requestOrigin: string | null): Record<string, string> => {
+  const allowedOrigins = getAllowedOrigins();
+  const origin = requestOrigin && allowedOrigins.some(allowed => 
+    requestOrigin === allowed || requestOrigin.endsWith('.lovable.app')
+  ) ? requestOrigin : allowedOrigins[0] || "*";
+  
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+};
+
+// Input validation helpers
+const sanitizeString = (str: string, maxLength: number): string => {
+  return str
+    .replace(/&#10;/g, "\n")
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)))
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/<[^>]+>/g, "") // Remove any HTML tags
+    .trim()
+    .slice(0, maxLength);
+};
+
+const isValidUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+const isValidBggId = (id: string): boolean => {
+  return /^\d{1,10}$/.test(id);
 };
 
 Deno.serve(async (req) => {
+  const requestOrigin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(requestOrigin);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -62,6 +121,14 @@ Deno.serve(async (req) => {
 
     const { url } = await req.json();
     
+    // Validate input URL
+    if (!url || typeof url !== "string") {
+      return new Response(
+        JSON.stringify({ success: false, error: "URL is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Extract BGG ID from URL
     const bggIdMatch = url.match(/boardgamegeek\.com\/boardgame\/(\d+)/);
     if (!bggIdMatch) {
@@ -73,46 +140,83 @@ Deno.serve(async (req) => {
 
     const bggId = bggIdMatch[1];
     
-    // Fetch from BGG XML API
+    // Validate BGG ID format
+    if (!isValidBggId(bggId)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid BGG ID format" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Fetch from BGG XML API with timeout
     const apiUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
-    const bggResponse = await fetch(apiUrl);
-    const xmlText = await bggResponse.text();
+    
+    let bggResponse: Response;
+    try {
+      bggResponse = await fetch(apiUrl, { 
+        signal: AbortSignal.timeout(30000) // 30 second timeout
+      });
+    } catch (fetchError) {
+      console.error("BGG API fetch failed:", fetchError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to fetch from BoardGameGeek (timeout or network error)" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Parse XML (simple parsing)
-    const getName = (xml: string) => {
+    if (!bggResponse.ok) {
+      return new Response(
+        JSON.stringify({ success: false, error: "BoardGameGeek API returned an error" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const xmlText = await bggResponse.text();
+    
+    // Validate XML response size (prevent DoS from huge responses)
+    if (xmlText.length > 500000) { // 500KB max
+      return new Response(
+        JSON.stringify({ success: false, error: "Response from BoardGameGeek too large" }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Parse XML with validation
+    const getName = (xml: string): string => {
       const match = xml.match(/<name type="primary" value="([^"]+)"/);
-      return match ? match[1] : "Unknown Game";
+      const rawName = match ? match[1] : "Unknown Game";
+      return sanitizeString(rawName, 500); // Max 500 chars for title
     };
 
-    const getDescription = (xml: string) => {
+    const getDescription = (xml: string): string | null => {
       const match = xml.match(/<description>([^<]*)<\/description>/s);
       if (!match) return null;
-      // Sanitize: decode HTML entities and strip any HTML tags
-      return match[1]
-        .replace(/&#10;/g, "\n")
-        .replace(/<[^>]+>/g, "") // Remove any HTML tags
-        .trim()
-        .slice(0, 2000);
+      return sanitizeString(match[1], 2000); // Max 2000 chars for description
     };
 
-    const getImage = (xml: string) => {
+    const getImage = (xml: string): string | null => {
       const match = xml.match(/<image>([^<]+)<\/image>/);
-      return match ? match[1] : null;
+      if (!match) return null;
+      const imageUrl = match[1].trim().slice(0, 2048); // Max 2048 chars for URL
+      // Validate it's a proper URL
+      return isValidUrl(imageUrl) ? imageUrl : null;
     };
 
-    const getMinPlayers = (xml: string) => {
+    const getMinPlayers = (xml: string): number => {
       const match = xml.match(/<minplayers value="(\d+)"/);
-      return match ? parseInt(match[1]) : 1;
+      const value = match ? parseInt(match[1], 10) : 1;
+      return Math.min(Math.max(value, 1), 100); // Clamp between 1-100
     };
 
-    const getMaxPlayers = (xml: string) => {
+    const getMaxPlayers = (xml: string): number => {
       const match = xml.match(/<maxplayers value="(\d+)"/);
-      return match ? parseInt(match[1]) : 4;
+      const value = match ? parseInt(match[1], 10) : 4;
+      return Math.min(Math.max(value, 1), 1000); // Clamp between 1-1000
     };
 
-    const getPlayTime = (xml: string) => {
+    const getPlayTime = (xml: string): string => {
       const match = xml.match(/<playingtime value="(\d+)"/);
-      const time = match ? parseInt(match[1]) : 45;
+      const time = match ? parseInt(match[1], 10) : 45;
       if (time <= 15) return "0-15 Minutes";
       if (time <= 30) return "15-30 Minutes";
       if (time <= 45) return "30-45 Minutes";
@@ -122,7 +226,7 @@ Deno.serve(async (req) => {
       return "3+ Hours";
     };
 
-    const getWeight = (xml: string) => {
+    const getWeight = (xml: string): string => {
       const match = xml.match(/<averageweight value="([\d.]+)"/);
       const weight = match ? parseFloat(match[1]) : 2.5;
       if (weight < 1.5) return "1 - Light";
@@ -132,9 +236,10 @@ Deno.serve(async (req) => {
       return "5 - Heavy";
     };
 
-    const getAge = (xml: string) => {
+    const getAge = (xml: string): string => {
       const match = xml.match(/<minage value="(\d+)"/);
-      return match ? `${match[1]}+` : "10+";
+      const age = match ? Math.min(parseInt(match[1], 10), 99) : 10;
+      return `${age}+`;
     };
 
     const title = getName(xmlText);
@@ -149,8 +254,8 @@ Deno.serve(async (req) => {
       min_players: getMinPlayers(xmlText),
       max_players: getMaxPlayers(xmlText),
       suggested_age: getAge(xmlText),
-      bgg_id: bggId,
-      bgg_url: url,
+      bgg_id: bggId.slice(0, 20), // Max 20 chars for BGG ID
+      bgg_url: url.slice(0, 2048), // Max 2048 chars for URL
     };
 
     // Use admin client for database operations (bypasses RLS for this trusted operation)
@@ -164,9 +269,9 @@ Deno.serve(async (req) => {
     );
   } catch (error: unknown) {
     console.error("BGG import error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    // Return generic error message to avoid leaking internal details
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: "Import failed. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
