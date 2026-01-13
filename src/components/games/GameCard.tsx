@@ -15,7 +15,7 @@ export function GameCard({ game }: GameCardProps) {
     : `${game.min_players}-${game.max_players}`;
 
   return (
-    <Link to={`/game/${game.id}`}>
+    <Link to={`/game/${game.slug || game.id}`}>
       <Card className="group overflow-hidden card-elevated card-hover bg-card border-border">
         {/* Image */}
         <div className="aspect-square overflow-hidden bg-muted">

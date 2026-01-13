@@ -14,6 +14,7 @@ export interface Publisher {
 
 export interface Game {
   id: string;
+  slug?: string | null;
   title: string;
   description: string | null;
   image_url: string | null;

@@ -36,20 +36,26 @@ export function useGames(enabled = true) {
   });
 }
 
-export function useGame(id: string | undefined) {
+export function useGame(slugOrId: string | undefined) {
   return useQuery({
-    queryKey: ["games", id],
+    queryKey: ["games", slugOrId],
     queryFn: async (): Promise<GameWithRelations | null> => {
-      if (!id) return null;
+      if (!slugOrId) return null;
 
-      const { data: game, error: gameError } = await supabase
+      // Check if it's a UUID or a slug
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
+      
+      const query = supabase
         .from("games")
         .select(`
           *,
           publisher:publishers(id, name)
-        `)
-        .eq("id", id)
-        .single();
+        `);
+      
+      const { data: game, error: gameError } = await (isUuid 
+        ? query.eq("id", slugOrId).single()
+        : query.eq("slug", slugOrId).single()
+      );
 
       if (gameError) throw gameError;
 
@@ -58,7 +64,7 @@ export function useGame(id: string | undefined) {
         .select(`
           mechanic:mechanics(id, name)
         `)
-        .eq("game_id", id);
+        .eq("game_id", game.id);
 
       if (mechanicsError) throw mechanicsError;
 
@@ -75,7 +81,7 @@ export function useGame(id: string | undefined) {
         mechanics,
       };
     },
-    enabled: !!id,
+    enabled: !!slugOrId,
   });
 }
 
