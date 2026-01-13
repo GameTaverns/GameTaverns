@@ -12,59 +12,92 @@ export function useAuth() {
     let mounted = true;
 
     const fetchIsAdmin = async (userId: string) => {
-      try {
-        const { data, error } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .eq("role", "admin")
-          .maybeSingle();
+      // Role lookup should never block auth UI rendering.
+      const timeoutMs = 3000;
 
-        if (error) {
+      try {
+        const result = await Promise.race([
+          supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId)
+            .eq("role", "admin")
+            .maybeSingle(),
+          new Promise<{ data: null; error: null }>((resolve) => setTimeout(() => resolve({ data: null, error: null }), timeoutMs)),
+        ]);
+
+        const { data, error } = result as any;
+        if (error && import.meta.env.DEV) {
           console.error("[useAuth] role lookup error", error);
-          return false;
         }
 
         return !!data;
       } catch (e) {
-        console.error("[useAuth] role lookup exception", e);
+        if (import.meta.env.DEV) {
+          console.error("[useAuth] role lookup exception", e);
+        }
         return false;
       }
     };
 
-    const applySession = async (nextSession: Session | null) => {
+    const applySession = (nextSession: Session | null) => {
       if (!mounted) return;
 
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
+      setLoading(false);
 
-      if (nextSession?.user) {
-        const nextIsAdmin = await fetchIsAdmin(nextSession.user.id);
-        if (!mounted) return;
-        setIsAdmin(nextIsAdmin);
-        console.log("[useAuth] session user", nextSession.user.id, nextSession.user.email, { isAdmin: nextIsAdmin });
-      } else {
+      if (!nextSession?.user) {
         setIsAdmin(false);
+        return;
       }
 
-      setLoading(false);
+      // Fetch role in background; do not block rendering.
+      fetchIsAdmin(nextSession.user.id).then((nextIsAdmin) => {
+        if (!mounted) return;
+        setIsAdmin(nextIsAdmin);
+      });
     };
 
     // Set up auth state listener BEFORE checking session
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      await applySession(nextSession);
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      applySession(nextSession);
     });
 
-    // Check for existing session
-    supabase.auth
-      .getSession()
-      .then(async ({ data: { session: existingSession } }) => {
-        await applySession(existingSession);
+    // Check for existing session (guarded with a timeout to avoid storage-lock hangs)
+    const readStoredSession = () => {
+      try {
+        const baseUrl = new URL(import.meta.env.VITE_SUPABASE_URL);
+        const storageKey = `sb-${baseUrl.hostname.split(".")[0]}-auth-token`;
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed?.user ? ({ user: parsed.user } as any) : null;
+      } catch {
+        return null;
+      }
+    };
+
+    Promise.race([
+      supabase.auth.getSession(),
+      new Promise<{ data: { session: null } }>((resolve) => setTimeout(() => resolve({ data: { session: null } }), 3000)),
+    ])
+      .then(({ data: { session: existingSession } }: any) => {
+        if (existingSession) {
+          applySession(existingSession);
+          return;
+        }
+
+        // Fallback: if the SDK can't read session due to a stuck lock, use localStorage.
+        const stored = typeof window !== "undefined" ? readStoredSession() : null;
+        applySession(stored as any);
       })
       .catch((e) => {
-        console.error("[useAuth] getSession error", e);
+        if (import.meta.env.DEV) {
+          console.error("[useAuth] getSession error", e);
+        }
         setLoading(false);
       });
 
