@@ -15,7 +15,7 @@ export default {
     extend: {
       fontFamily: {
         display: ["MedievalSharp", "cursive"],
-        body: ["Crimson Text", "serif"],
+        body: ["IM Fell English", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
