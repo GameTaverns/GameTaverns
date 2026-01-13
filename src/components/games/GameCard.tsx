@@ -22,7 +22,7 @@ export function GameCard({ game }: GameCardProps) {
           {game.image_url ? (
             <>
               <img
-                src={game.image_url}
+                src={proxiedImageUrl(game.image_url)}
                 alt={game.title}
                 loading="lazy"
                 decoding="async"

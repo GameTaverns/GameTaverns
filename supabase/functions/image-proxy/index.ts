@@ -46,9 +46,12 @@ Deno.serve(async (req) => {
       return new Response("Missing url", { status: 400, headers: corsHeaders });
     }
 
+    // Normalize %28%29 -> () because Geekdo's CDN sometimes rejects encoded parentheses.
+    const normalizedTarget = target.replaceAll("%28", "(").replaceAll("%29", ")");
+
     let targetUrl: URL;
     try {
-      targetUrl = new URL(target);
+      targetUrl = new URL(normalizedTarget);
     } catch {
       return new Response("Invalid url", { status: 400, headers: corsHeaders });
     }
@@ -61,7 +64,9 @@ Deno.serve(async (req) => {
       return new Response("Host not allowed", { status: 403, headers: corsHeaders });
     }
 
-    const upstream = await fetch(targetUrl.toString(), {
+    // IMPORTANT: fetch using the normalized, *raw* string. The URL serializer
+    // can percent-encode parentheses again, and Geekdo's CDN may reject that.
+    const upstream = await fetch(normalizedTarget, {
       method: "GET",
       headers: browserLikeHeaders(),
       redirect: "follow",
@@ -69,7 +74,7 @@ Deno.serve(async (req) => {
 
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => "");
-      console.error("image-proxy upstream error", upstream.status, targetUrl.toString(), text);
+      console.error("image-proxy upstream error", upstream.status, normalizedTarget, text);
       return new Response("Upstream error", {
         status: 502,
         headers: corsHeaders,

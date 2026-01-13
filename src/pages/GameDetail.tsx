@@ -166,7 +166,7 @@ const GameDetail = () => {
               {allImages.length > 0 ? (
                 <>
                   <img
-                    src={allImages[selectedImageIndex]}
+                    src={proxiedImageUrl(allImages[selectedImageIndex])}
                     alt={game.title}
                     loading="eager"
                     decoding="async"
@@ -221,7 +221,7 @@ const GameDetail = () => {
                     }`}
                   >
                       <img
-                        src={img}
+                        src={proxiedImageUrl(img)}
                         alt={`${game.title} - Image ${idx + 1}`}
                         loading="lazy"
                         decoding="async"
@@ -399,7 +399,7 @@ const GameDetail = () => {
                       <div className="aspect-square overflow-hidden">
                         {relatedGame.image_url ? (
                           <img
-                            src={relatedGame.image_url}
+                            src={proxiedImageUrl(relatedGame.image_url)}
                             alt={relatedGame.title}
                             loading="lazy"
                             decoding="async"
