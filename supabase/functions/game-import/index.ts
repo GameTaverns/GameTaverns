@@ -550,6 +550,23 @@ ${markdown.slice(0, 18000)}`,
     // Gameplay images - sanitize, filter, ensure not duplicate of main
     const gameplayCandidates = extractedData.gameplay_images || extractedData.additional_images;
     let validGameplayImages = filterGameplayImages(gameplayCandidates);
+
+    // Fallback: if AI didn't pick gameplay images, derive them from the scraped image list.
+    if (validGameplayImages.length === 0) {
+      const fallbackGameplay = (sortedImageLinks || [])
+        .filter((img) => {
+          if (!img || typeof img !== "string") return false;
+          if (/crop100|square30|100x100|150x150|200x200|300x300|thumb/i.test(img)) return false;
+          if (/_itemrep/i.test(img)) return false; // avoid box-art reps
+          // Prefer full-size gallery photos
+          return /__imagepage\//i.test(img) || /\/pic\d+\./i.test(img);
+        })
+        .slice(0, 6)
+        .map((img) => sanitizeImageUrl(img));
+
+      validGameplayImages = [...new Set(fallbackGameplay)].slice(0, 6);
+    }
+
     if (validMainImage) validGameplayImages = validGameplayImages.filter((u) => u !== validMainImage);
 
     const gameData = {
@@ -567,11 +584,23 @@ ${markdown.slice(0, 18000)}`,
       bgg_url: extractedData.bgg_url || (url.includes("boardgamegeek.com") ? url : null),
     };
 
-    const { data: game, error: gameError } = await supabaseAdmin
-      .from("games")
-      .insert(gameData)
-      .select()
-      .single();
+    // Upsert: if we already have a game for this BGG URL, update it instead of inserting a duplicate slug.
+    let existingId: string | null = null;
+    if (gameData.bgg_url) {
+      const { data: existing, error: existingError } = await supabaseAdmin
+        .from("games")
+        .select("id")
+        .eq("bgg_url", gameData.bgg_url)
+        .maybeSingle();
+      if (existingError) throw existingError;
+      existingId = existing?.id ?? null;
+    }
+
+    const write = existingId
+      ? supabaseAdmin.from("games").update(gameData).eq("id", existingId).select().single()
+      : supabaseAdmin.from("games").insert(gameData).select().single();
+
+    const { data: game, error: gameError } = await write;
 
     if (gameError) {
       console.error("Game insert error:", gameError);

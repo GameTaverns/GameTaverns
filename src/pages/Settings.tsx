@@ -178,20 +178,35 @@ const Settings = () => {
     const trimmed = importUrl.trim();
     if (!trimmed) return;
 
-    // Use the dedicated BGG importer for BoardGameGeek boardgame pages.
-    // The general-purpose importer relies on scraping and can occasionally fetch unrelated content.
+    // Prefer the dedicated BGG importer for BGG boardgame pages, but fall back to the
+    // general-purpose importer if BGG blocks the XML API.
     const isBggBoardgame = /https?:\/\/(www\.)?boardgamegeek\.com\/boardgame\/\d+/i.test(trimmed);
-    const functionName = isBggBoardgame ? "bgg-import" : "game-import";
 
     setIsImporting(true);
     try {
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: { url: trimmed },
-      });
+      const invoke = async (fn: string) =>
+        supabase.functions.invoke(fn, {
+          body: { url: trimmed },
+        });
 
-      if (error) throw error;
+      let data: any;
 
-      if (data.success) {
+      if (isBggBoardgame) {
+        const first = await invoke("bgg-import");
+        if (first.error || !first.data?.success) {
+          const fallback = await invoke("game-import");
+          if (fallback.error) throw fallback.error;
+          data = fallback.data;
+        } else {
+          data = first.data;
+        }
+      } else {
+        const res = await invoke("game-import");
+        if (res.error) throw res.error;
+        data = res.data;
+      }
+
+      if (data?.success) {
         // Invalidate the games cache so the collection updates immediately
         queryClient.invalidateQueries({ queryKey: ["games"] });
 
@@ -201,7 +216,7 @@ const Settings = () => {
         });
         setImportUrl("");
       } else {
-        throw new Error(data.error || "Import failed");
+        throw new Error(data?.error || "Import failed");
       }
     } catch (error: any) {
       toast({

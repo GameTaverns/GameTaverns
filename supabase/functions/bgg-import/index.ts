@@ -153,16 +153,20 @@ Deno.serve(async (req) => {
     
     // Fetch from BGG XML API with timeout and retry logic
     // BGG API sometimes returns 202 (queued) and needs a retry
-    const apiUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
+    // Use api.geekdo.com (BGG's API host) to avoid web protections on boardgamegeek.com.
+    const apiUrl = `https://api.geekdo.com/xmlapi2/thing?id=${bggId}&stats=1`;
     
     const fetchWithRetry = async (url: string, maxRetries = 3): Promise<Response> => {
       for (let attempt = 0; attempt < maxRetries; attempt++) {
-        const response = await fetch(url, { 
+        const response = await fetch(url, {
           signal: AbortSignal.timeout(30000),
           headers: {
-            'Accept': 'application/xml',
-            'User-Agent': 'BoardGameCatalog/1.0'
-          }
+            Accept: "application/xml,text/xml,*/*",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+            Referer: "https://boardgamegeek.com/",
+          },
         });
         
         // BGG returns 202 when request is queued - need to retry after delay
@@ -329,13 +333,30 @@ Deno.serve(async (req) => {
       bgg_url: url.slice(0, 2048), // Max 2048 chars for URL
     };
 
-    // Use admin client for database operations (bypasses RLS for this trusted operation)
-    const { data, error } = await supabaseAdmin.from("games").insert(gameData).select().single();
+    // Upsert behavior: if this BGG game already exists, update images/metadata instead of inserting a duplicate.
+    const { data: existingGame, error: existingError } = await supabaseAdmin
+      .from("games")
+      .select("id")
+      .or(`bgg_id.eq.${bggId},bgg_url.eq.${url}`)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+
+    const write = existingGame
+      ? supabaseAdmin
+          .from("games")
+          .update(gameData)
+          .eq("id", existingGame.id)
+          .select()
+          .single()
+      : supabaseAdmin.from("games").insert(gameData).select().single();
+
+    const { data, error } = await write;
 
     if (error) throw error;
 
     return new Response(
-      JSON.stringify({ success: true, game: data }),
+      JSON.stringify({ success: true, game: data, updated: !!existingGame }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
