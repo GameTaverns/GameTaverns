@@ -75,11 +75,25 @@ export function useAuth() {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    const timeoutMs = 15000;
+
+    try {
+      const result = await Promise.race([
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        }),
+        new Promise<{ error: { message: string } }>((resolve) =>
+          setTimeout(() => resolve({ error: { message: "Sign in timed out. Please try again." } }), timeoutMs)
+        ),
+      ]);
+
+      // Normalize to the existing { error } return shape.
+      const normalized = result as any;
+      return { error: normalized?.error ?? null };
+    } catch (e: any) {
+      return { error: { message: e?.message || "Sign in failed. Please try again." } };
+    }
   };
 
   const signUp = async (email: string, password: string) => {
