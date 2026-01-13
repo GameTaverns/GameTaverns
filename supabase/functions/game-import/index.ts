@@ -162,15 +162,23 @@ Deno.serve(async (req) => {
     
     // Deduplicate and filter for quality images
     const uniqueImages = [...new Set(allImageMatches)] as string[];
+    
+    // Filter OUT tiny thumbnails - we only want quality images
     const imageLinks = uniqueImages.filter((img) => {
-      // Prefer larger images, exclude tiny thumbnails
-      const isTiny = /crop100|square30|100x100|_thumb|_t\./i.test(img);
-      // Prefer _imagepage, _itemrep, _original quality indicators
-      const isQuality = /_imagepage|_itemrep|_original|_pic\d+/i.test(img);
-      return !isTiny || isQuality;
+      // Exclude tiny thumbnails
+      const isTiny = /crop100|square30|100x100|150x150|_thumb/i.test(img);
+      return !isTiny;
+    });
+    
+    // Sort to prioritize high-quality images first
+    const sortedImageLinks = imageLinks.sort((a, b) => {
+      const aIsQuality = /_imagepage|_itemrep|_original/i.test(a) ? 0 : 1;
+      const bIsQuality = /_imagepage|_itemrep|_original/i.test(b) ? 0 : 1;
+      return aIsQuality - bIsQuality;
     });
 
-    console.log("Found image links:", imageLinks.length);
+    console.log("Found image links:", sortedImageLinks.length);
+    console.log("Sample images:", sortedImageLinks.slice(0, 5));
 
     // Guardrail: ensure the scraped content actually matches the requested BGG game page
     // (BGG sometimes serves "hotness"/generic content when blocked).
@@ -251,9 +259,13 @@ IMPORTANT RULES:
 3. For IMAGES - CRITICAL:
    - You will be given a list of IMAGE URLs extracted from the page
    - You MUST select from these exact URLs - DO NOT modify or guess URLs
-   - For main_image: Pick the best box art image (look for "_imagepage" or "_itemrep" in URL, avoid "crop" or small sizes)
-   - For gameplay_images: Pick 1-2 images showing gameplay/components (different from main image)
-   - If no suitable images in the list, leave the fields empty
+   - NEVER select URLs containing "crop100", "square30", "100x100" - these are tiny thumbnails!
+   - For main_image: Pick the box art (look for "_itemrep" in URL)
+   - For gameplay_images: Pick 1-2 DIFFERENT images showing gameplay/components
+     - Look for URLs with "_imagepage" or "_pic" (these are full-size photos)
+     - These should show the game board, cards, or components in play
+     - MUST be different from the main_image URL
+   - If you cannot find full-size gameplay images, leave gameplay_images as an empty array []
 
 4. For mechanics, extract actual game mechanics (e.g., "Worker Placement", "Set Collection", "Dice Rolling").
 
@@ -266,7 +278,7 @@ IMPORTANT RULES:
 TARGET PAGE (must match): ${url}
 
 AVAILABLE IMAGE URLs (select from these EXACTLY - do not modify):
-${imageLinks.slice(0, 40).join("\n")}
+${sortedImageLinks.slice(0, 40).join("\n")}
 
 Page content:
 ${markdown.slice(0, 18000)}`,
