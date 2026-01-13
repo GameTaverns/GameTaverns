@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url,
-        formats: ["markdown", "links"],
+        formats: ["markdown", "rawHtml"],
         // Main content only reduces the chance Firecrawl returns BGG "hotness"/front-page content
         // (which can cause importing the wrong game).
         onlyMainContent: true,
@@ -153,7 +153,24 @@ Deno.serve(async (req) => {
 
     const scrapeData = await scrapeResponse.json();
     const markdown = scrapeData.data?.markdown || scrapeData.markdown;
-    const links = scrapeData.data?.links || scrapeData.links || [];
+    const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
+
+    // Extract image URLs from the raw HTML (BGG uses cf.geekdo-images.com)
+    // This captures <img src="..."> which the links format misses
+    const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
+    const allImageMatches = rawHtml.match(imageRegex) || [];
+    
+    // Deduplicate and filter for quality images
+    const uniqueImages = [...new Set(allImageMatches)] as string[];
+    const imageLinks = uniqueImages.filter((img) => {
+      // Prefer larger images, exclude tiny thumbnails
+      const isTiny = /crop100|square30|100x100|_thumb|_t\./i.test(img);
+      // Prefer _imagepage, _itemrep, _original quality indicators
+      const isQuality = /_imagepage|_itemrep|_original|_pic\d+/i.test(img);
+      return !isTiny || isQuality;
+    });
+
+    console.log("Found image links:", imageLinks.length);
 
     // Guardrail: ensure the scraped content actually matches the requested BGG game page
     // (BGG sometimes serves "hotness"/generic content when blocked).
@@ -179,19 +196,6 @@ Deno.serve(async (req) => {
         );
       }
     }
-
-    // Extract image URLs from links (BGG uses cf.geekdo-images.com)
-    const imageLinks = links.filter((link: string) =>
-      link &&
-      (
-        link.includes("cf.geekdo-images.com") ||
-        link.includes(".jpg") ||
-        link.includes(".png") ||
-        link.includes(".webp")
-      )
-    );
-
-    console.log("Found image links:", imageLinks.length);
 
     if (!markdown) {
       return new Response(
