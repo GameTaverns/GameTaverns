@@ -126,53 +126,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract BGG ID to also scrape the images gallery
+    // Extract BGG ID for validation
     const bggIdMatch = url.match(/boardgame\/(\d+)/);
     const bggId = bggIdMatch?.[1];
-    
-    // Build the images gallery URL if this is a BGG page
-    const imagesGalleryUrl = bggId ? `https://boardgamegeek.com/boardgame/${bggId}/images` : null;
 
     console.log("Scraping with Firecrawl...");
     
-    // Scrape main page and images gallery in parallel for efficiency
-    const scrapePromises = [
-      fetch("https://api.firecrawl.dev/v1/scrape", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${firecrawlKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url,
-          formats: ["markdown", "rawHtml"],
-          onlyMainContent: true,
-        }),
+    // Only scrape the main page - no gallery to avoid pulling irrelevant images
+    const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${firecrawlKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url,
+        formats: ["markdown", "rawHtml"],
+        onlyMainContent: true,
       }),
-    ];
-    
-    // Also scrape the images gallery if available
-    if (imagesGalleryUrl) {
-      console.log("Also scraping images gallery:", imagesGalleryUrl);
-      scrapePromises.push(
-        fetch("https://api.firecrawl.dev/v1/scrape", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${firecrawlKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            url: imagesGalleryUrl,
-            formats: ["rawHtml"],
-            onlyMainContent: false, // Need full page to get all images
-          }),
-        })
-      );
-    }
-    
-    const scrapeResponses = await Promise.all(scrapePromises);
-    const scrapeResponse = scrapeResponses[0];
-    const galleryResponse = scrapeResponses[1];
+    });
 
     if (!scrapeResponse.ok) {
       const errorText = await scrapeResponse.text();
@@ -185,66 +157,37 @@ Deno.serve(async (req) => {
 
     const scrapeData = await scrapeResponse.json();
     const markdown = scrapeData.data?.markdown || scrapeData.markdown;
-    let rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
-    
-    // If we got gallery data, append its HTML to find more images
-    if (galleryResponse?.ok) {
-      try {
-        const galleryData = await galleryResponse.json();
-        const galleryHtml = galleryData.data?.rawHtml || galleryData.rawHtml || "";
-        if (galleryHtml) {
-          console.log("Gallery HTML length:", galleryHtml.length);
-          rawHtml += " " + galleryHtml;
-        }
-      } catch (e) {
-        console.log("Could not parse gallery response, continuing without it");
-      }
-    }
+    const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
 
     // Extract image URLs from the raw HTML (BGG uses cf.geekdo-images.com)
-    // This captures <img src="..."> which the links format misses
+    // Only from main page - no gallery scraping to avoid irrelevant images
     const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
     const allImageMatches = rawHtml.match(imageRegex) || [];
     
-    // Deduplicate images
+    // Deduplicate and filter - only keep box art and official game images
     const uniqueImages = [...new Set(allImageMatches)] as string[];
     
-    // Filter OUT tiny thumbnails - we only want quality images
+    // Strict filtering - only keep high quality official images
     const filteredImages = uniqueImages.filter((img) => {
       // Exclude tiny thumbnails
       const isTiny = /crop100|square30|100x100|150x150|_thumb/i.test(img);
-      return !isTiny;
+      // Only keep itemrep (box art) or imagepage (official photos)
+      const isOfficialImage = /_itemrep|_imagepage/i.test(img);
+      return !isTiny && isOfficialImage;
     });
     
-    // Transform small/medium thumbnails to full-size versions
-    // BGG uses patterns like __small, __medium -> we want __imagepage for full size
-    const upgradeToFullSize = (urlStr: string): string => {
-      // If already high quality, keep as is
-      if (/_imagepage|_itemrep|_original/i.test(urlStr)) {
-        return urlStr;
-      }
-      // Upgrade __small or __medium to __imagepage
-      if (/__small|__medium/i.test(urlStr)) {
-        return urlStr
-          .replace(/__small/g, "__imagepage")
-          .replace(/__medium/g, "__imagepage")
-          .replace(/\/fit-in\/200x150\//g, "/fit-in/900x600/")
-          .replace(/\/fit-in\/250x250\//g, "/fit-in/900x600/");
-      }
-      return urlStr;
-    };
-    
-    const upgradedImages = filteredImages.map(upgradeToFullSize);
-    
-    // Deduplicate again after upgrade and sort to prioritize high-quality first
-    const sortedImageLinks = [...new Set(upgradedImages)].sort((a, b) => {
-      const aIsQuality = /_imagepage|_itemrep|_original/i.test(a) ? 0 : 1;
-      const bIsQuality = /_imagepage|_itemrep|_original/i.test(b) ? 0 : 1;
-      return aIsQuality - bIsQuality;
+    // Prioritize box art (_itemrep) first
+    const sortedImageLinks = filteredImages.sort((a, b) => {
+      const aIsBoxArt = /_itemrep/i.test(a) ? 0 : 1;
+      const bIsBoxArt = /_itemrep/i.test(b) ? 0 : 1;
+      return aIsBoxArt - bIsBoxArt;
     });
+    
+    // Limit to max 5 images total (box art + a few official photos)
+    const limitedImages = sortedImageLinks.slice(0, 5);
 
-    console.log("Found image links:", sortedImageLinks.length);
-    console.log("Sample images:", sortedImageLinks.slice(0, 5));
+    console.log("Found image links:", limitedImages.length);
+    console.log("Images:", limitedImages);
 
     // Guardrail: ensure the scraped content actually matches the requested BGG game page
     // (BGG sometimes serves "hotness"/generic content when blocked).
@@ -321,16 +264,11 @@ IMPORTANT RULES:
    Use markdown formatting with headers (##), bold (**text**), and bullet points.
    Make it detailed and informative - aim for 300-500 words.
 
-3. For IMAGES - CRITICAL:
-   - You will be given a list of IMAGE URLs extracted from the page
-   - You MUST select from these exact URLs - DO NOT modify or guess URLs
-   - NEVER select URLs containing "crop100", "square30", "100x100" - these are tiny thumbnails!
-   - For main_image: Pick the box art (look for "_itemrep" in URL)
-   - For gameplay_images: Pick 1-2 DIFFERENT images showing gameplay/components
-     - Look for URLs with "_imagepage" or "_pic" (these are full-size photos)
-     - These should show the game board, cards, or components in play
-     - MUST be different from the main_image URL
-   - If you cannot find full-size gameplay images, leave gameplay_images as an empty array []
+3. For IMAGES - VERY SIMPLE RULES:
+   - You are given a SHORT list of official box art images
+   - For main_image: Use the FIRST image with "_itemrep" (box art) - this is the ONLY main image
+   - For gameplay_images: Leave as EMPTY ARRAY [] - we only want box art, no extra images
+   - DO NOT include any gameplay, component, or user-submitted photos
 
 4. For mechanics, extract actual game mechanics (e.g., "Worker Placement", "Set Collection", "Dice Rolling").
 
@@ -342,8 +280,8 @@ IMPORTANT RULES:
 
 TARGET PAGE (must match): ${url}
 
-AVAILABLE IMAGE URLs (select from these EXACTLY - do not modify):
-${sortedImageLinks.slice(0, 40).join("\n")}
+AVAILABLE BOX ART IMAGE (use ONLY this for main_image, leave gameplay_images empty):
+${limitedImages[0] || "No image found"}
 
 Page content:
 ${markdown.slice(0, 18000)}`,
