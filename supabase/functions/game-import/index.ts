@@ -503,25 +503,64 @@ ${markdown.slice(0, 18000)}`,
     }
 
     // Step 5: Create the game
-    // Filter gameplay images to only include valid, non-thumbnail URLs
-    const filterGameplayImages = (images: string[] | undefined): string[] => {
+    // Validate that an image URL is actually accessible
+    const validateImageUrl = async (imageUrl: string): Promise<boolean> => {
+      try {
+        const response = await fetch(imageUrl, { method: 'HEAD' });
+        return response.ok;
+      } catch {
+        return false;
+      }
+    };
+
+    // Filter and validate gameplay images
+    const filterAndValidateImages = async (images: string[] | undefined): Promise<string[]> => {
       if (!images || !Array.isArray(images)) return [];
       
-      return images
+      const filtered = images
         .filter((img: string) => {
           if (!img || typeof img !== 'string') return false;
           // Exclude small thumbnails
           const isThumbnail = /crop100|100x100|150x150|200x200|300x300|thumb/i.test(img);
           return !isThumbnail;
         })
-        .slice(0, 2); // Max 2 gameplay images
+        .slice(0, 4); // Check up to 4 to get 2 valid ones
+      
+      // Validate each image URL
+      const validatedImages: string[] = [];
+      for (const img of filtered) {
+        if (validatedImages.length >= 2) break; // Max 2 gameplay images
+        const isValid = await validateImageUrl(img);
+        if (isValid) {
+          console.log("Valid image:", img);
+          validatedImages.push(img);
+        } else {
+          console.log("Invalid image (skipping):", img);
+        }
+      }
+      
+      return validatedImages;
     };
+
+    // Validate main image
+    const mainImage = extractedData.main_image || extractedData.image_url;
+    let validMainImage = null;
+    if (mainImage) {
+      const isValid = await validateImageUrl(mainImage);
+      if (isValid) {
+        validMainImage = mainImage;
+      } else {
+        console.log("Main image invalid, will be null:", mainImage);
+      }
+    }
+
+    const validGameplayImages = await filterAndValidateImages(extractedData.gameplay_images || extractedData.additional_images);
 
     const gameData = {
       title: extractedData.title.slice(0, 500),
       description: extractedData.description?.slice(0, 10000) || null, // Increased limit for rich descriptions
-      image_url: extractedData.main_image || extractedData.image_url || null,
-      additional_images: filterGameplayImages(extractedData.gameplay_images || extractedData.additional_images),
+      image_url: validMainImage,
+      additional_images: validGameplayImages,
       difficulty: extractedData.difficulty || "3 - Medium",
       game_type: extractedData.game_type || "Board Game",
       play_time: extractedData.play_time || "45-60 Minutes",
