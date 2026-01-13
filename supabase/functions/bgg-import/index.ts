@@ -227,6 +227,48 @@ Deno.serve(async (req) => {
       return isValidUrl(imageUrl) ? imageUrl : null;
     };
 
+    // Fetch additional images from the BGG images page
+    const getAdditionalImages = async (bggId: string): Promise<string[]> => {
+      try {
+        // Fetch the images page for this game
+        const imagesPageUrl = `https://boardgamegeek.com/boardgame/${bggId}/images`;
+        const response = await fetch(imagesPageUrl, {
+          signal: AbortSignal.timeout(15000),
+          headers: {
+            'Accept': 'text/html',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        });
+        
+        if (!response.ok) {
+          console.log("Failed to fetch images page:", response.status);
+          return [];
+        }
+        
+        const html = await response.text();
+        
+        // Extract image URLs from the HTML - BGG embeds them in various formats
+        // Look for cf.geekdo-images.com URLs in the page
+        const imageUrlRegex = /https:\/\/cf\.geekdo-images\.com\/[^"'\s<>]+\.(jpg|jpeg|png|webp)/gi;
+        const matches = html.match(imageUrlRegex) || [];
+        
+        // Deduplicate and filter
+        const uniqueUrls = [...new Set(matches)]
+          // Filter out tiny thumbnails (usually contain __thumb or very small dimensions)
+          .filter(url => !url.includes('__thumb') && !url.includes('__micro'))
+          // Prefer larger image versions
+          .filter(url => url.includes('__imagepage') || url.includes('__original') || url.includes('__large'))
+          // Limit to reasonable number
+          .slice(0, 10);
+        
+        console.log(`Found ${uniqueUrls.length} additional images for BGG ID ${bggId}`);
+        return uniqueUrls;
+      } catch (error) {
+        console.error("Error fetching additional images:", error);
+        return [];
+      }
+    };
+
     const getMinPlayers = (xml: string): number => {
       const match = xml.match(/<minplayers value="(\d+)"/);
       const value = match ? parseInt(match[1], 10) : 1;
@@ -268,11 +310,15 @@ Deno.serve(async (req) => {
     };
 
     const title = getName(xmlText);
+    
+    // Fetch additional images from BGG gallery (don't block on failure)
+    const additionalImages = await getAdditionalImages(bggId);
+    
     const gameData = {
       title,
       description: getDescription(xmlText),
       image_url: getImage(xmlText),
-      additional_images: [],
+      additional_images: additionalImages,
       difficulty: getWeight(xmlText),
       game_type: "Board Game",
       play_time: getPlayTime(xmlText),
