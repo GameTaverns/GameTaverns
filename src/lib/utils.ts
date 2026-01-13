@@ -6,15 +6,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function proxiedImageUrl(url: string | null | undefined) {
-  if (!url) return url;
-  try {
-    const u = new URL(url);
-    if (u.hostname === "cf.geekdo-images.com") {
-      return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(url)}`;
-    }
-    return url;
-  } catch {
-    return url;
-  }
+  // BGG's CDN is inconsistent about allowing server-side proxies; fall back to
+  // direct loading with a strict referrer policy on <img> tags.
+  return url;
 }
 

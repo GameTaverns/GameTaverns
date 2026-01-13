@@ -7,6 +7,25 @@ const corsHeaders = {
 
 const ALLOWED_HOSTS = new Set(["cf.geekdo-images.com"]);
 
+function browserLikeHeaders() {
+  // Some CDNs block "non-browser" user agents. Mimic a modern browser as closely as we can.
+  return {
+    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    // BGG is often required as referrer to satisfy hotlink checks.
+    "Referer": "https://boardgamegeek.com/",
+    "Origin": "https://boardgamegeek.com",
+    // These are common browser fetch headers; harmless if ignored.
+    "Sec-Fetch-Dest": "image",
+    "Sec-Fetch-Mode": "no-cors",
+    "Sec-Fetch-Site": "cross-site",
+  } as Record<string, string>;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -42,21 +61,15 @@ Deno.serve(async (req) => {
       return new Response("Host not allowed", { status: 403, headers: corsHeaders });
     }
 
-    // Fetch as a simple pass-through proxy (solves hotlinking/referrer restrictions)
     const upstream = await fetch(targetUrl.toString(), {
       method: "GET",
-      headers: {
-        "Accept": "image/*,*/*;q=0.8",
-        "User-Agent": "LovableImageProxy/1.0",
-        // Some CDNs treat no referrer as suspicious; sending an upstream referrer can help.
-        "Referer": "https://boardgamegeek.com/",
-      },
+      headers: browserLikeHeaders(),
       redirect: "follow",
     });
 
     if (!upstream.ok || !upstream.body) {
       const text = await upstream.text().catch(() => "");
-      console.error("image-proxy upstream error", upstream.status, text);
+      console.error("image-proxy upstream error", upstream.status, targetUrl.toString(), text);
       return new Response("Upstream error", {
         status: 502,
         headers: corsHeaders,

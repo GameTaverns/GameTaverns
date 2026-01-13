@@ -68,11 +68,9 @@ const GameDetail = () => {
     );
   }
 
-  // Combine main image with additional images for gallery
-  const allImages = [
-    proxiedImageUrl(game.image_url),
-    ...(game.additional_images || []).map(proxiedImageUrl),
-  ].filter(Boolean) as string[];
+  // Combine main image with additional images for gallery (store originals; proxy at render-time)
+  const allImages = [game.image_url, ...(game.additional_images || [])]
+    .filter(Boolean) as string[];
 
   const playerRange =
     game.min_players === game.max_players
@@ -168,22 +166,12 @@ const GameDetail = () => {
               {allImages.length > 0 ? (
                 <>
                   <img
-                    src={proxiedImageUrl(allImages[selectedImageIndex])}
+                    src={allImages[selectedImageIndex]}
                     alt={game.title}
                     loading="eager"
                     decoding="async"
+                    referrerPolicy="no-referrer"
                     className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      const src = img.currentSrc || img.src;
-                      if (img.dataset.fallbackApplied) return;
-
-                      const m = src.match(/\/pic(\d+)\.(jpg|jpeg|png|webp)/i);
-                      if (m) {
-                        img.dataset.fallbackApplied = "1";
-                        img.src = `https://cf.geekdo-images.com/pic${m[1]}.${m[2]}`;
-                      }
-                    }}
                   />
                   {/* Navigation arrows for multiple images */}
                   {allImages.length > 1 && (
@@ -233,21 +221,12 @@ const GameDetail = () => {
                     }`}
                   >
                       <img
-                        src={proxiedImageUrl(img)}
+                        src={img}
                         alt={`${game.title} - Image ${idx + 1}`}
                         loading="lazy"
                         decoding="async"
+                        referrerPolicy="no-referrer"
                         className="h-full w-full object-contain bg-muted"
-                        onError={(e) => {
-                          const el = e.currentTarget;
-                          const src = el.currentSrc || el.src;
-                          if (el.dataset.fallbackApplied) return;
-                          const m = src.match(/\/pic(\d+)\.(jpg|jpeg|png|webp)/i);
-                          if (m) {
-                            el.dataset.fallbackApplied = "1";
-                            el.src = `https://cf.geekdo-images.com/pic${m[1]}.${m[2]}`;
-                          }
-                        }}
                       />
                   </button>
                 ))}
@@ -420,21 +399,12 @@ const GameDetail = () => {
                       <div className="aspect-square overflow-hidden">
                         {relatedGame.image_url ? (
                           <img
-                            src={proxiedImageUrl(relatedGame.image_url)}
+                            src={relatedGame.image_url}
                             alt={relatedGame.title}
                             loading="lazy"
                             decoding="async"
+                            referrerPolicy="no-referrer"
                             className="h-full w-full object-contain bg-muted group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              const el = e.currentTarget;
-                              const src = el.currentSrc || el.src;
-                              if (el.dataset.fallbackApplied) return;
-                              const m = src.match(/\/pic(\d+)\.(jpg|jpeg|png|webp)/i);
-                              if (m) {
-                                el.dataset.fallbackApplied = "1";
-                                el.src = `https://cf.geekdo-images.com/pic${m[1]}.${m[2]}`;
-                              }
-                            }}
                           />
                         ) : (
                           <div className="h-full w-full flex items-center justify-center bg-muted">

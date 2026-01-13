@@ -22,22 +22,12 @@ export function GameCard({ game }: GameCardProps) {
           {game.image_url ? (
             <>
               <img
-                src={proxiedImageUrl(game.image_url)}
+                src={game.image_url}
                 alt={game.title}
                 loading="lazy"
                 decoding="async"
+                referrerPolicy="no-referrer"
                 className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
-                onError={(e) => {
-                  const img = e.currentTarget;
-                  const src = img.currentSrc || img.src;
-                  if (img.dataset.fallbackApplied) return;
-
-                  const m = src.match(/\/pic(\d+)\.(jpg|jpeg|png|webp)/i);
-                  if (m) {
-                    img.dataset.fallbackApplied = "1";
-                    img.src = `https://cf.geekdo-images.com/pic${m[1]}.${m[2]}`;
-                  }
-                }}
               />
               <span className="sr-only">{game.title}</span>
             </>
