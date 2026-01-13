@@ -26,12 +26,12 @@ const GameDetail = () => {
   const { data: allGames } = useGames();
   const { isAdmin } = useAuth();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [coverImageError, setCoverImageError] = useState(false);
+  const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
 
   // Reset image state when game changes - must be before early returns
   useEffect(() => {
     setSelectedImageIndex(0);
-    setCoverImageError(false);
+    setBrokenImageUrls([]);
   }, [game?.id]);
 
   if (isLoading) {
@@ -75,17 +75,52 @@ const GameDetail = () => {
     );
   }
 
-  // Combine main image with additional images, filtering out invalid/broken URLs
-  const allImages = [
-    game.image_url,
-    ...(game.additional_images || [])
-  ].filter((url): url is string => {
-    if (!url || typeof url !== 'string') return false;
-    // Filter out placeholder/icon images and data URLs that are too short
-    if (url.includes('placeholder') || url.includes('icon')) return false;
-    if (url.startsWith('data:') && url.length < 100) return false;
-    return true;
-  });
+  const sanitizeImageUrl = (url: string): string | null => {
+    // Reject obviously corrupted strings from scraping (HTML entities, trailing junk)
+    if (!url || url.includes("&quot;") || url.includes(";") || url.includes(" ")) return null;
+
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return null;
+    }
+
+    // Only allow known-safe image hosts
+    const allowedHosts = new Set(["cf.geekdo-images.com", "boardgamegeek.com", "www.boardgamegeek.com"]);
+    if (!allowedHosts.has(parsed.hostname)) return null;
+
+    const path = parsed.pathname.toLowerCase();
+
+    // Exclude images that are almost always generic/irrelevant
+    const blockedPathFragments = [
+      "geeklist",
+      "geeklistimagebar",
+      "opengraph",
+      "thumb",
+      "avatar",
+      "icon",
+      "logo",
+    ];
+    if (blockedPathFragments.some((frag) => path.includes(frag))) return null;
+
+    // Must look like an actual image
+    const looksLikeImage = /\.(jpg|jpeg|png|webp)$/i.test(path) || path.includes("/pic");
+    if (!looksLikeImage) return null;
+
+    return parsed.toString();
+  };
+
+  // Images: show multiple images, but aggressively filter out broken/irrelevant ones
+  const allImages = Array.from(
+    new Set(
+      [game.image_url, ...(game.additional_images || [])]
+        .filter((u): u is string => typeof u === "string" && !!u)
+        .map((u) => sanitizeImageUrl(u))
+        .filter((u): u is string => !!u)
+        .filter((u) => !brokenImageUrls.includes(u))
+    )
+  ).slice(0, 10);
 
   const playerRange =
     game.min_players === game.max_players
@@ -178,17 +213,32 @@ const GameDetail = () => {
           <div className="space-y-4">
             {/* Main Image */}
             <div className="aspect-square overflow-hidden rounded-lg bg-muted card-elevated relative group">
-              {allImages.length > 0 && !coverImageError ? (
+              {allImages.length > 0 ? (
                 <>
-                  <img
-                    src={proxiedImageUrl(allImages[selectedImageIndex])}
-                    alt={game.title}
-                    loading="eager"
-                    decoding="async"
-                    referrerPolicy="no-referrer"
-                    onError={() => setCoverImageError(true)}
-                    className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-                  />
+                  {(() => {
+                    const safeIndex = Math.min(
+                      selectedImageIndex,
+                      Math.max(0, allImages.length - 1)
+                    );
+                    const selectedUrl = allImages[safeIndex];
+
+                    return (
+                      <img
+                        src={proxiedImageUrl(selectedUrl)}
+                        alt={game.title}
+                        loading="eager"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        onError={() => {
+                          if (!selectedUrl) return;
+                          setBrokenImageUrls((prev) =>
+                            prev.includes(selectedUrl) ? prev : [...prev, selectedUrl]
+                          );
+                        }}
+                        className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                      />
+                    );
+                  })()}
                   {/* Navigation arrows for multiple images */}
                   {allImages.length > 1 && (
                     <>
@@ -235,13 +285,18 @@ const GameDetail = () => {
                         ? "border-primary ring-2 ring-primary/20"
                         : "border-border hover:border-primary/50"
                     }`}
-                  >
+                   >
                       <img
                         src={proxiedImageUrl(img)}
                         alt={`${game.title} - Image ${idx + 1}`}
                         loading="lazy"
                         decoding="async"
                         referrerPolicy="no-referrer"
+                        onError={() => {
+                          setBrokenImageUrls((prev) =>
+                            prev.includes(img) ? prev : [...prev, img]
+                          );
+                        }}
                         className="h-full w-full object-contain bg-muted"
                       />
                   </button>
