@@ -28,6 +28,12 @@ const GameDetail = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [coverImageError, setCoverImageError] = useState(false);
 
+  // Reset image state when game changes - must be before early returns
+  useEffect(() => {
+    setSelectedImageIndex(0);
+    setCoverImageError(false);
+  }, [game?.id]);
+
   if (isLoading) {
     return (
       <Layout>
@@ -68,11 +74,6 @@ const GameDetail = () => {
       </Layout>
     );
   }
-
-  useEffect(() => {
-    setSelectedImageIndex(0);
-    setCoverImageError(false);
-  }, [game.id]);
 
   // Images: keep details page simple and reliable (only the main cover image)
   // Older imports may contain broken/irrelevant additional images.
