@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Layout } from "@/components/layout/Layout";
@@ -26,6 +26,7 @@ const GameDetail = () => {
   const { data: allGames } = useGames();
   const { isAdmin } = useAuth();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [coverImageError, setCoverImageError] = useState(false);
 
   if (isLoading) {
     return (
@@ -68,9 +69,14 @@ const GameDetail = () => {
     );
   }
 
-  // Combine main image with additional images for gallery (store originals; proxy at render-time)
-  const allImages = [game.image_url, ...(game.additional_images || [])]
-    .filter(Boolean) as string[];
+  useEffect(() => {
+    setSelectedImageIndex(0);
+    setCoverImageError(false);
+  }, [game.id]);
+
+  // Images: keep details page simple and reliable (only the main cover image)
+  // Older imports may contain broken/irrelevant additional images.
+  const allImages = [game.image_url].filter(Boolean) as string[];
 
   const playerRange =
     game.min_players === game.max_players
@@ -163,7 +169,7 @@ const GameDetail = () => {
           <div className="space-y-4">
             {/* Main Image */}
             <div className="aspect-square overflow-hidden rounded-lg bg-muted card-elevated relative group">
-              {allImages.length > 0 ? (
+              {allImages.length > 0 && !coverImageError ? (
                 <>
                   <img
                     src={proxiedImageUrl(allImages[selectedImageIndex])}
@@ -171,6 +177,7 @@ const GameDetail = () => {
                     loading="eager"
                     decoding="async"
                     referrerPolicy="no-referrer"
+                    onError={() => setCoverImageError(true)}
                     className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                   />
                   {/* Navigation arrows for multiple images */}
