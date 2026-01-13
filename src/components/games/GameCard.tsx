@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { Users, Clock, Star } from "lucide-react";
+import { Users, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { GameWithRelations } from "@/types/game";
-import { cn } from "@/lib/utils";
+import { cn, proxiedImageUrl } from "@/lib/utils";
 
 interface GameCardProps {
   game: GameWithRelations;
@@ -20,14 +20,27 @@ export function GameCard({ game }: GameCardProps) {
         {/* Image */}
         <div className="aspect-square overflow-hidden bg-muted">
           {game.image_url ? (
-            <img
-              src={game.image_url}
-              alt={game.title}
-              loading="lazy"
-              decoding="async"
-              referrerPolicy="no-referrer"
-              className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
-            />
+            <>
+              <img
+                src={proxiedImageUrl(game.image_url)}
+                alt={game.title}
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  const src = img.currentSrc || img.src;
+                  if (img.dataset.fallbackApplied) return;
+
+                  const m = src.match(/\/pic(\d+)\.(jpg|jpeg|png|webp)/i);
+                  if (m) {
+                    img.dataset.fallbackApplied = "1";
+                    img.src = `https://cf.geekdo-images.com/pic${m[1]}.${m[2]}`;
+                  }
+                }}
+              />
+              <span className="sr-only">{game.title}</span>
+            </>
           ) : (
             <div className="flex h-full items-center justify-center bg-muted">
               <span className="text-4xl text-muted-foreground/50">🎲</span>
