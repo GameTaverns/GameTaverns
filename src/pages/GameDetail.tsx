@@ -75,9 +75,17 @@ const GameDetail = () => {
     );
   }
 
-  // Images: keep details page simple and reliable (only the main cover image)
-  // Older imports may contain broken/irrelevant additional images.
-  const allImages = [game.image_url].filter(Boolean) as string[];
+  // Combine main image with additional images, filtering out invalid/broken URLs
+  const allImages = [
+    game.image_url,
+    ...(game.additional_images || [])
+  ].filter((url): url is string => {
+    if (!url || typeof url !== 'string') return false;
+    // Filter out placeholder/icon images and data URLs that are too short
+    if (url.includes('placeholder') || url.includes('icon')) return false;
+    if (url.startsWith('data:') && url.length < 100) return false;
+    return true;
+  });
 
   const playerRange =
     game.min_players === game.max_players
