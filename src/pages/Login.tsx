@@ -31,7 +31,7 @@ const Login = () => {
       });
     } else {
       toast({ title: "Welcome back!" });
-      navigate("/admin");
+      navigate("/settings");
     }
   };
 

@@ -5,12 +5,11 @@ import {
   Puzzle, 
   Clock, 
   Building2, 
-  Wrench,
   Star,
-  Shield,
   LogIn,
   LogOut,
-  User
+  User,
+  Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
@@ -211,15 +210,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 <User className="h-4 w-4" />
                 <span className="truncate">{user?.email}</span>
               </div>
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="sidebar-link justify-center bg-sidebar-accent"
-                >
-                  <Shield className="h-5 w-5" />
-                  <span>Admin Panel</span>
-                </Link>
-              )}
+              <Link
+                to="/settings"
+                className={cn(
+                  "sidebar-link justify-center",
+                  location.pathname === "/settings" && "sidebar-link-active"
+                )}
+              >
+                <Settings className="h-5 w-5" />
+                <span>Settings</span>
+              </Link>
               <Button
                 variant="ghost"
                 className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent"
