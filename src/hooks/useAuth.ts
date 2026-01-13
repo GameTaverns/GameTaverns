@@ -9,51 +9,69 @@ export function useAuth() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Set up auth state listener BEFORE checking session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Check admin role when user changes
-        if (session?.user) {
-          // Use setTimeout to avoid potential race conditions with the auth state change
-          setTimeout(async () => {
-            const { data: roleData } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", session.user.id)
-              .eq("role", "admin")
-              .maybeSingle();
-            setIsAdmin(!!roleData);
-            setLoading(false);
-          }, 0);
-        } else {
-          setIsAdmin(false);
-          setLoading(false);
-        }
-      }
-    );
+    let mounted = true;
 
-    // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      // Check admin role if user exists
-      if (session?.user) {
-        const { data: roleData } = await supabase
+    const fetchIsAdmin = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
           .from("user_roles")
           .select("role")
-          .eq("user_id", session.user.id)
+          .eq("user_id", userId)
           .eq("role", "admin")
           .maybeSingle();
-        setIsAdmin(!!roleData);
+
+        if (error) {
+          console.error("[useAuth] role lookup error", error);
+          return false;
+        }
+
+        return !!data;
+      } catch (e) {
+        console.error("[useAuth] role lookup exception", e);
+        return false;
       }
+    };
+
+    const applySession = async (nextSession: Session | null) => {
+      if (!mounted) return;
+
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (nextSession?.user) {
+        const nextIsAdmin = await fetchIsAdmin(nextSession.user.id);
+        if (!mounted) return;
+        setIsAdmin(nextIsAdmin);
+        console.log("[useAuth] session user", nextSession.user.id, nextSession.user.email, { isAdmin: nextIsAdmin });
+      } else {
+        setIsAdmin(false);
+      }
+
       setLoading(false);
+    };
+
+    // Set up auth state listener BEFORE checking session
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      await applySession(nextSession);
     });
 
-    return () => subscription.unsubscribe();
+    // Check for existing session
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session: existingSession } }) => {
+        await applySession(existingSession);
+      })
+      .catch((e) => {
+        console.error("[useAuth] getSession error", e);
+        setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
