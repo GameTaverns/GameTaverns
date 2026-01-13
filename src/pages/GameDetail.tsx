@@ -19,9 +19,9 @@ import {
 } from "@/components/ui/table";
 
 const GameDetail = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
-  const { data: game, isLoading } = useGame(id);
+  const { data: game, isLoading } = useGame(slug);
   const { data: allGames } = useGames();
   const { isAdmin } = useAuth();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -385,7 +385,7 @@ const GameDetail = () => {
               {relatedGames.map((relatedGame) => (
                 <Link
                   key={relatedGame.id}
-                  to={`/game/${relatedGame.id}`}
+                  to={`/game/${relatedGame.slug || relatedGame.id}`}
                   className="group"
                 >
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow">

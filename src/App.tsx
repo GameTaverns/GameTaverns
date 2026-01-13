@@ -20,7 +20,7 @@ const App = () => (
         <Sonner />
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/game/:id" element={<GameDetail />} />
+          <Route path="/game/:slug" element={<GameDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin/add" element={<GameForm />} />
