@@ -1,1 +1,7 @@
 project_id = "ktxxhtubcffpqqievkgc"
+
+[functions.game-import]
+verify_jwt = false
+
+[functions.bgg-import]
+verify_jwt = false

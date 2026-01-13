@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { 
   User, 
@@ -12,11 +12,13 @@ import {
   Settings as SettingsIcon,
   Mail,
   Lock,
-  Users
+  Users,
+  Tag,
+  Building
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
-import { useGames, useDeleteGame } from "@/hooks/useGames";
+import { useGames, useDeleteGame, useMechanics, usePublishers, useCreateMechanic, useCreatePublisher } from "@/hooks/useGames";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,6 +45,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+type UserWithRole = {
+  id: string;
+  email: string;
+  created_at: string;
+  role: string | null;
+};
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -52,17 +69,92 @@ const Settings = () => {
   
   // Only fetch games when admin (lazy load for performance)
   const { data: games = [], isLoading: gamesLoading } = useGames(isAdmin);
+  const { data: mechanics = [], isLoading: mechanicsLoading, refetch: refetchMechanics } = useMechanics();
+  const { data: publishers = [], isLoading: publishersLoading, refetch: refetchPublishers } = usePublishers();
+  const createMechanic = useCreateMechanic();
+  const createPublisher = useCreatePublisher();
 
-  const [bggUrl, setBggUrl] = useState("");
+  const [importUrl, setImportUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   
   // Profile form states
   const [newEmail, setNewEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  // Category management states
+  const [newMechanicName, setNewMechanicName] = useState("");
+  const [newPublisherName, setNewPublisherName] = useState("");
+  const [isCreatingMechanic, setIsCreatingMechanic] = useState(false);
+  const [isCreatingPublisher, setIsCreatingPublisher] = useState(false);
+
+  // User management states
+  const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
+
+  // Fetch users when admin
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [isAdmin]);
+
+  const fetchUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      // Get all user roles
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+
+      if (rolesError) throw rolesError;
+
+      // Get current user info
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      // Build users list from roles
+      const userMap = new Map<string, UserWithRole>();
+      
+      // Add current user
+      if (currentUser) {
+        userMap.set(currentUser.id, {
+          id: currentUser.id,
+          email: currentUser.email || "Unknown",
+          created_at: currentUser.created_at || new Date().toISOString(),
+          role: null,
+        });
+      }
+
+      // Apply roles
+      roles?.forEach((r) => {
+        const existing = userMap.get(r.user_id);
+        if (existing) {
+          existing.role = r.role;
+        } else {
+          userMap.set(r.user_id, {
+            id: r.user_id,
+            email: "Unknown",
+            created_at: new Date().toISOString(),
+            role: r.role,
+          });
+        }
+      });
+
+      setUsers(Array.from(userMap.values()));
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch users",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
 
   // Redirect if not authenticated
   if (!loading && !isAuthenticated) {
@@ -79,14 +171,14 @@ const Settings = () => {
     );
   }
 
-  const handleBGGImport = async (e: React.FormEvent) => {
+  const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bggUrl.trim()) return;
+    if (!importUrl.trim()) return;
 
     setIsImporting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("bgg-import", {
-        body: { url: bggUrl },
+      const { data, error } = await supabase.functions.invoke("game-import", {
+        body: { url: importUrl },
       });
 
       if (error) throw error;
@@ -96,14 +188,14 @@ const Settings = () => {
           title: "Game imported!",
           description: `"${data.game.title}" has been added to your collection.`,
         });
-        setBggUrl("");
+        setImportUrl("");
       } else {
         throw new Error(data.error || "Import failed");
       }
     } catch (error: any) {
       toast({
         title: "Import failed",
-        description: error.message || "Could not import game from BoardGameGeek",
+        description: error.message || "Could not import game from URL",
         variant: "destructive",
       });
     } finally {
@@ -188,7 +280,6 @@ const Settings = () => {
         title: "Password updated",
         description: "Your password has been changed successfully.",
       });
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
@@ -202,6 +293,142 @@ const Settings = () => {
     }
   };
 
+  const handleCreateMechanic = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMechanicName.trim()) return;
+
+    setIsCreatingMechanic(true);
+    try {
+      await createMechanic.mutateAsync(newMechanicName.trim());
+      toast({
+        title: "Mechanic created",
+        description: `"${newMechanicName}" has been added.`,
+      });
+      setNewMechanicName("");
+      refetchMechanics();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Could not create mechanic",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingMechanic(false);
+    }
+  };
+
+  const handleCreatePublisher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPublisherName.trim()) return;
+
+    setIsCreatingPublisher(true);
+    try {
+      await createPublisher.mutateAsync(newPublisherName.trim());
+      toast({
+        title: "Publisher created",
+        description: `"${newPublisherName}" has been added.`,
+      });
+      setNewPublisherName("");
+      refetchPublishers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Could not create publisher",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingPublisher(false);
+    }
+  };
+
+  const handleDeleteMechanic = async (id: string, name: string) => {
+    try {
+      const { error } = await supabase.from("mechanics").delete().eq("id", id);
+      if (error) throw error;
+      toast({
+        title: "Mechanic deleted",
+        description: `"${name}" has been removed.`,
+      });
+      refetchMechanics();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Could not delete mechanic",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeletePublisher = async (id: string, name: string) => {
+    try {
+      const { error } = await supabase.from("publishers").delete().eq("id", id);
+      if (error) throw error;
+      toast({
+        title: "Publisher deleted",
+        description: `"${name}" has been removed.`,
+      });
+      refetchPublishers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Could not delete publisher",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, newRole: string | null) => {
+    setUpdatingRoleUserId(userId);
+    try {
+      if (newRole === "none" || newRole === null) {
+        // Remove role
+        const { error } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", userId);
+        if (error) throw error;
+      } else {
+        // Validate role is valid enum value
+        const validRole = newRole as "admin" | "moderator" | "user";
+        
+        // Check if user already has a role
+        const { data: existingRole } = await supabase
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (existingRole) {
+          // Update existing role
+          const { error } = await supabase
+            .from("user_roles")
+            .update({ role: validRole })
+            .eq("user_id", userId);
+          if (error) throw error;
+        } else {
+          // Insert new role
+          const { error } = await supabase
+            .from("user_roles")
+            .insert([{ user_id: userId, role: validRole }]);
+          if (error) throw error;
+        }
+      }
+
+      toast({
+        title: "Role updated",
+        description: "User role has been updated successfully.",
+      });
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Could not update user role",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingRoleUserId(null);
+    }
+  };
 
   return (
     <Layout>
@@ -220,7 +447,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-3" : "grid-cols-1"}`}>
+          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-4" : "grid-cols-1"}`}>
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile
@@ -229,11 +456,15 @@ const Settings = () => {
               <>
                 <TabsTrigger value="games" className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  Game Management
+                  Games
+                </TabsTrigger>
+                <TabsTrigger value="categories" className="flex items-center gap-2">
+                  <Tag className="h-4 w-4" />
+                  Categories
                 </TabsTrigger>
                 <TabsTrigger value="users" className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  User Management
+                  Users
                 </TabsTrigger>
               </>
             )}
@@ -375,21 +606,21 @@ const Settings = () => {
                   <CardHeader>
                     <CardTitle className="font-display flex items-center gap-2">
                       <Upload className="h-5 w-5" />
-                      Import from BGG
+                      Import from Web
                     </CardTitle>
                     <CardDescription>
-                      Paste a BoardGameGeek game URL to import game data automatically
+                      Paste any board game URL to import game data automatically (BoardGameGeek, publisher sites, etc.)
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <form onSubmit={handleBGGImport} className="space-y-4">
+                    <form onSubmit={handleImport} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="bgg-url">BoardGameGeek URL</Label>
+                        <Label htmlFor="import-url">Game Page URL</Label>
                         <Input
-                          id="bgg-url"
+                          id="import-url"
                           type="url"
-                          value={bggUrl}
-                          onChange={(e) => setBggUrl(e.target.value)}
+                          value={importUrl}
+                          onChange={(e) => setImportUrl(e.target.value)}
                           placeholder="https://boardgamegeek.com/boardgame/..."
                           disabled={isImporting}
                         />
@@ -515,6 +746,173 @@ const Settings = () => {
             </TabsContent>
           )}
 
+          {/* Categories Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="categories" className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Mechanics Card */}
+                <Card className="card-elevated">
+                  <CardHeader>
+                    <CardTitle className="font-display flex items-center gap-2">
+                      <Tag className="h-5 w-5" />
+                      Game Mechanics
+                    </CardTitle>
+                    <CardDescription>
+                      Manage game mechanics like Worker Placement, Set Collection, etc.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <form onSubmit={handleCreateMechanic} className="flex gap-2">
+                      <Input
+                        value={newMechanicName}
+                        onChange={(e) => setNewMechanicName(e.target.value)}
+                        placeholder="New mechanic name"
+                        disabled={isCreatingMechanic}
+                      />
+                      <Button type="submit" disabled={isCreatingMechanic}>
+                        {isCreatingMechanic ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </form>
+
+                    {mechanicsLoading ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+                    ) : mechanics.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-4">
+                        No mechanics yet. Add one above!
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {mechanics.map((mechanic) => (
+                          <Badge 
+                            key={mechanic.id} 
+                            variant="secondary"
+                            className="flex items-center gap-1 pr-1"
+                          >
+                            {mechanic.name}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Mechanic</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{mechanic.name}"? Games using this mechanic will lose the association.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteMechanic(mechanic.id, mechanic.name)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Publishers Card */}
+                <Card className="card-elevated">
+                  <CardHeader>
+                    <CardTitle className="font-display flex items-center gap-2">
+                      <Building className="h-5 w-5" />
+                      Publishers
+                    </CardTitle>
+                    <CardDescription>
+                      Manage game publishers
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <form onSubmit={handleCreatePublisher} className="flex gap-2">
+                      <Input
+                        value={newPublisherName}
+                        onChange={(e) => setNewPublisherName(e.target.value)}
+                        placeholder="New publisher name"
+                        disabled={isCreatingPublisher}
+                      />
+                      <Button type="submit" disabled={isCreatingPublisher}>
+                        {isCreatingPublisher ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </form>
+
+                    {publishersLoading ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+                    ) : publishers.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-4">
+                        No publishers yet. Add one above!
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {publishers.map((publisher) => (
+                          <Badge 
+                            key={publisher.id} 
+                            variant="secondary"
+                            className="flex items-center gap-1 pr-1"
+                          >
+                            {publisher.name}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Publisher</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{publisher.name}"? Games using this publisher will lose the association.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeletePublisher(publisher.id, publisher.name)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
+
           {/* User Management Tab (Admin Only) */}
           {isAdmin && (
             <TabsContent value="users" className="space-y-6">
@@ -529,10 +927,65 @@ const Settings = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground text-center py-8">
-                    User management features coming soon. You'll be able to view users, 
-                    assign roles, and manage permissions here.
-                  </p>
+                  {isLoadingUsers ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  ) : users.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      No users found.
+                    </p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Member Since</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((u) => (
+                          <TableRow key={u.id}>
+                            <TableCell className="font-medium">{u.email}</TableCell>
+                            <TableCell>
+                              <Badge variant={u.role === "admin" ? "default" : "secondary"}>
+                                {u.role || "user"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(u.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {u.id !== user?.id ? (
+                                <Select
+                                  value={u.role || "none"}
+                                  onValueChange={(value) => handleUpdateUserRole(u.id, value)}
+                                  disabled={updatingRoleUserId === u.id}
+                                >
+                                  <SelectTrigger className="w-32">
+                                    {updatingRoleUserId === u.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <SelectValue />
+                                    )}
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">User</SelectItem>
+                                    <SelectItem value="moderator">Moderator</SelectItem>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">You</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
