@@ -75,14 +75,22 @@ export function useAuth() {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    // Workaround: in some environments the SDK call can appear to hang even though
-    // the underlying network request succeeds. We call the auth endpoint directly
-    // and then hydrate the SDK session via setSession.
+    // Root cause of the "hang": the auth SDK uses a storage lock. In some browser
+    // states that lock can get stuck, making signInWithPassword/setSession await forever.
+    // We:
+    // 1) call the token endpoint directly (fast, reliable)
+    // 2) clear any stale auth storage lock keys
+    // 3) try supabase.auth.setSession with a short timeout
+    // 4) if it still hangs, write the session to storage and hard-navigate.
+
     const controller = new AbortController();
     const timeoutMs = 15000;
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      const baseUrl = new URL(import.meta.env.VITE_SUPABASE_URL);
+      const storageKey = `sb-${baseUrl.hostname.split(".")[0]}-auth-token`;
+
       const url = `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/token?grant_type=password`;
       const res = await fetch(url, {
         method: "POST",
@@ -108,8 +116,52 @@ export function useAuth() {
         return { error: { message: "Sign in succeeded but session tokens were missing." } };
       }
 
-      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-      return { error };
+      // Clear potentially stuck lock keys for this storage namespace.
+      if (typeof window !== "undefined" && window.localStorage) {
+        const lockPrefix = `lock:${storageKey}`;
+        const keys: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k) keys.push(k);
+        }
+        keys
+          .filter((k) => k.startsWith(lockPrefix))
+          .forEach((k) => {
+            try {
+              localStorage.removeItem(k);
+            } catch {
+              // ignore
+            }
+          });
+      }
+
+      // Try normal SDK hydration first, but don't allow it to hang forever.
+      const setSessionResult = await Promise.race([
+        supabase.auth.setSession({ access_token, refresh_token }),
+        new Promise<{ error: { message: string } }>((resolve) =>
+          setTimeout(() => resolve({ error: { message: "Session hydration timed out." } }), 5000)
+        ),
+      ]);
+
+      const maybeError = (setSessionResult as any)?.error;
+      if (!maybeError) return { error: null };
+
+      // Fallback: manually persist the session and hard navigate.
+      if (typeof window !== "undefined" && window.localStorage) {
+        const sessionToPersist = {
+          access_token,
+          refresh_token,
+          token_type: (json as any)?.token_type,
+          expires_in: (json as any)?.expires_in,
+          expires_at: (json as any)?.expires_at,
+          user: (json as any)?.user,
+        };
+        localStorage.setItem(storageKey, JSON.stringify(sessionToPersist));
+        window.location.assign("/settings");
+        return { error: null };
+      }
+
+      return { error: { message: "Could not persist session in this environment." } };
     } catch (e: any) {
       if (e?.name === "AbortError") {
         return { error: { message: "Sign in timed out. Please try again." } };
