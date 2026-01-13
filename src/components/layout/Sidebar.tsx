@@ -26,9 +26,11 @@ interface SidebarProps {
 export function Sidebar({ isOpen }: SidebarProps) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { data: mechanics = [] } = useMechanics();
-  const { data: publishers = [] } = usePublishers();
-  const { isAuthenticated, user, signOut, isAdmin } = useAuth();
+  const isLibraryRoute = location.pathname === "/";
+
+  const { data: mechanics = [] } = useMechanics(isLibraryRoute);
+  const { data: publishers = [] } = usePublishers(isLibraryRoute);
+  const { isAuthenticated, user, signOut } = useAuth();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
