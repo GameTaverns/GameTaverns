@@ -151,14 +151,35 @@ Deno.serve(async (req) => {
       );
     }
     
-    // Fetch from BGG XML API with timeout
+    // Fetch from BGG XML API with timeout and retry logic
+    // BGG API sometimes returns 202 (queued) and needs a retry
     const apiUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
+    
+    const fetchWithRetry = async (url: string, maxRetries = 3): Promise<Response> => {
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        const response = await fetch(url, { 
+          signal: AbortSignal.timeout(30000),
+          headers: {
+            'Accept': 'application/xml',
+            'User-Agent': 'BoardGameCatalog/1.0'
+          }
+        });
+        
+        // BGG returns 202 when request is queued - need to retry after delay
+        if (response.status === 202) {
+          console.log(`BGG returned 202 (queued), retry ${attempt + 1}/${maxRetries}`);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+          continue;
+        }
+        
+        return response;
+      }
+      throw new Error("BGG API queued too many times");
+    };
     
     let bggResponse: Response;
     try {
-      bggResponse = await fetch(apiUrl, { 
-        signal: AbortSignal.timeout(30000) // 30 second timeout
-      });
+      bggResponse = await fetchWithRetry(apiUrl);
     } catch (fetchError) {
       console.error("BGG API fetch failed:", fetchError);
       return new Response(
@@ -168,8 +189,9 @@ Deno.serve(async (req) => {
     }
 
     if (!bggResponse.ok) {
+      console.error("BGG API error:", bggResponse.status, await bggResponse.text());
       return new Response(
-        JSON.stringify({ success: false, error: "BoardGameGeek API returned an error" }),
+        JSON.stringify({ success: false, error: `BoardGameGeek API returned status ${bggResponse.status}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
