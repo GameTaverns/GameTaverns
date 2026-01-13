@@ -79,29 +79,31 @@ export function useGame(id: string | undefined) {
   });
 }
 
-export function useMechanics(enabled = true) {
+export function useMechanics() {
   return useQuery({
     queryKey: ["mechanics"],
     queryFn: async (): Promise<Mechanic[]> => {
-      const { data, error } = await supabase.from("mechanics").select("*").order("name");
+      const { data, error } = await supabase
+        .from("mechanics")
+        .select("*")
+        .order("name");
       if (error) throw error;
       return data || [];
     },
-    enabled,
-    staleTime: 1000 * 60 * 30, // 30 minutes
   });
 }
 
-export function usePublishers(enabled = true) {
+export function usePublishers() {
   return useQuery({
     queryKey: ["publishers"],
     queryFn: async (): Promise<Publisher[]> => {
-      const { data, error } = await supabase.from("publishers").select("*").order("name");
+      const { data, error } = await supabase
+        .from("publishers")
+        .select("*")
+        .order("name");
       if (error) throw error;
       return data || [];
     },
-    enabled,
-    staleTime: 1000 * 60 * 30, // 30 minutes
   });
 }
 
