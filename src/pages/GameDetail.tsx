@@ -169,7 +169,7 @@ const GameDetail = () => {
                   <img
                     src={allImages[selectedImageIndex]}
                     alt={game.title}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                   />
                   {/* Navigation arrows for multiple images */}
                   {allImages.length > 1 && (
@@ -220,7 +220,7 @@ const GameDetail = () => {
                     <img
                       src={img}
                       alt={`${game.title} - Image ${idx + 1}`}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain bg-muted"
                     />
                   </button>
                 ))}
@@ -395,7 +395,7 @@ const GameDetail = () => {
                           <img
                             src={relatedGame.image_url}
                             alt={relatedGame.title}
-                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            className="h-full w-full object-contain bg-muted group-hover:scale-105 transition-transform duration-300"
                           />
                         ) : (
                           <div className="h-full w-full flex items-center justify-center bg-muted">
