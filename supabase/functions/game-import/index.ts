@@ -126,21 +126,53 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Extract BGG ID to also scrape the images gallery
+    const bggIdMatch = url.match(/boardgame\/(\d+)/);
+    const bggId = bggIdMatch?.[1];
+    
+    // Build the images gallery URL if this is a BGG page
+    const imagesGalleryUrl = bggId ? `https://boardgamegeek.com/boardgame/${bggId}/images` : null;
+
     console.log("Scraping with Firecrawl...");
-    const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${firecrawlKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url,
-        formats: ["markdown", "rawHtml"],
-        // Main content only reduces the chance Firecrawl returns BGG "hotness"/front-page content
-        // (which can cause importing the wrong game).
-        onlyMainContent: true,
+    
+    // Scrape main page and images gallery in parallel for efficiency
+    const scrapePromises = [
+      fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${firecrawlKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url,
+          formats: ["markdown", "rawHtml"],
+          onlyMainContent: true,
+        }),
       }),
-    });
+    ];
+    
+    // Also scrape the images gallery if available
+    if (imagesGalleryUrl) {
+      console.log("Also scraping images gallery:", imagesGalleryUrl);
+      scrapePromises.push(
+        fetch("https://api.firecrawl.dev/v1/scrape", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${firecrawlKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url: imagesGalleryUrl,
+            formats: ["rawHtml"],
+            onlyMainContent: false, // Need full page to get all images
+          }),
+        })
+      );
+    }
+    
+    const scrapeResponses = await Promise.all(scrapePromises);
+    const scrapeResponse = scrapeResponses[0];
+    const galleryResponse = scrapeResponses[1];
 
     if (!scrapeResponse.ok) {
       const errorText = await scrapeResponse.text();
@@ -153,7 +185,21 @@ Deno.serve(async (req) => {
 
     const scrapeData = await scrapeResponse.json();
     const markdown = scrapeData.data?.markdown || scrapeData.markdown;
-    const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
+    let rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
+    
+    // If we got gallery data, append its HTML to find more images
+    if (galleryResponse?.ok) {
+      try {
+        const galleryData = await galleryResponse.json();
+        const galleryHtml = galleryData.data?.rawHtml || galleryData.rawHtml || "";
+        if (galleryHtml) {
+          console.log("Gallery HTML length:", galleryHtml.length);
+          rawHtml += " " + galleryHtml;
+        }
+      } catch (e) {
+        console.log("Could not parse gallery response, continuing without it");
+      }
+    }
 
     // Extract image URLs from the raw HTML (BGG uses cf.geekdo-images.com)
     // This captures <img src="..."> which the links format misses
@@ -172,20 +218,20 @@ Deno.serve(async (req) => {
     
     // Transform small/medium thumbnails to full-size versions
     // BGG uses patterns like __small, __medium -> we want __imagepage for full size
-    const upgradeToFullSize = (url: string): string => {
+    const upgradeToFullSize = (urlStr: string): string => {
       // If already high quality, keep as is
-      if (/_imagepage|_itemrep|_original/i.test(url)) {
-        return url;
+      if (/_imagepage|_itemrep|_original/i.test(urlStr)) {
+        return urlStr;
       }
       // Upgrade __small or __medium to __imagepage
-      if (/__small|__medium/i.test(url)) {
-        return url
+      if (/__small|__medium/i.test(urlStr)) {
+        return urlStr
           .replace(/__small/g, "__imagepage")
           .replace(/__medium/g, "__imagepage")
           .replace(/\/fit-in\/200x150\//g, "/fit-in/900x600/")
           .replace(/\/fit-in\/250x250\//g, "/fit-in/900x600/");
       }
-      return url;
+      return urlStr;
     };
     
     const upgradedImages = filteredImages.map(upgradeToFullSize);
@@ -202,8 +248,7 @@ Deno.serve(async (req) => {
 
     // Guardrail: ensure the scraped content actually matches the requested BGG game page
     // (BGG sometimes serves "hotness"/generic content when blocked).
-    const bggIdMatch = url.match(/boardgame\/(\d+)/);
-    const requestedBggId = bggIdMatch?.[1];
+    const requestedBggId = bggId;
     if (requestedBggId) {
       const looksLikeRightPage =
         typeof markdown === "string" &&
