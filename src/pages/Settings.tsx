@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, Navigate } from "react-router-dom";
 import { 
   User, 
   Shield, 
@@ -64,14 +64,12 @@ const Settings = () => {
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
-  // Redirect if not authenticated (using useEffect to avoid render-time navigation)
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      navigate("/login");
-    }
-  }, [loading, isAuthenticated, navigate]);
+  // Redirect if not authenticated
+  if (!loading && !isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
-  if (loading || !isAuthenticated) {
+  if (loading) {
     return (
       <Layout>
         <div className="flex items-center justify-center py-16">

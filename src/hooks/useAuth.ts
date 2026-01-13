@@ -66,43 +66,54 @@ export function useAuth() {
       applySession(nextSession);
     });
 
-    // Check for existing session (guarded with a timeout to avoid storage-lock hangs)
-    const readStoredSession = () => {
+    // Check for existing session.
+    // IMPORTANT: We avoid awaiting supabase.auth.getSession() here because in some
+    // browser states the SDK's storage-lock can hang indefinitely.
+    // Instead we read from localStorage synchronously and then let
+    // onAuthStateChange keep everything up to date.
+
+    const readStoredSession = (): Session | null => {
       try {
         const baseUrl = new URL(import.meta.env.VITE_SUPABASE_URL);
         const storageKey = `sb-${baseUrl.hostname.split(".")[0]}-auth-token`;
         const raw = localStorage.getItem(storageKey);
         if (!raw) return null;
+
         const parsed = JSON.parse(raw);
-        return parsed?.user ? ({ user: parsed.user } as any) : null;
+        // When the SDK writes this, it is shaped like a Session.
+        if (parsed?.access_token && parsed?.refresh_token && parsed?.user) {
+          return parsed as Session;
+        }
+
+        // Fallback for older/manual shapes; still unlock UI.
+        if (parsed?.user) return ({ user: parsed.user } as any);
+        return null;
       } catch {
         return null;
       }
     };
 
-    Promise.race([
-      supabase.auth.getSession(),
-      new Promise<{ data: { session: null } }>((resolve) => setTimeout(() => resolve({ data: { session: null } }), 3000)),
-    ])
-      .then(({ data: { session: existingSession } }: any) => {
-        if (existingSession) {
-          applySession(existingSession);
-          return;
-        }
+    // Hydrate immediately from storage so pages don't sit on a spinner.
+    if (typeof window !== "undefined") {
+      applySession(readStoredSession());
+    } else {
+      setLoading(false);
+    }
 
-        // Fallback: if the SDK can't read session due to a stuck lock, use localStorage.
-        const stored = typeof window !== "undefined" ? readStoredSession() : null;
-        applySession(stored as any);
-      })
-      .catch((e) => {
-        if (import.meta.env.DEV) {
-          console.error("[useAuth] getSession error", e);
-        }
-        setLoading(false);
-      });
+    // Watchdog: never allow auth "loading" to hang indefinitely.
+    const watchdog = setTimeout(() => {
+      if (!mounted) return;
+      setLoading(false);
+    }, 2000);
+
 
     return () => {
       mounted = false;
+      try {
+        clearTimeout(watchdog);
+      } catch {
+        // ignore
+      }
       subscription.unsubscribe();
     };
   }, []);
