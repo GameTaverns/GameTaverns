@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Cinzel", "serif"],
-        body: ["Lora", "serif"],
+        display: ["MedievalSharp", "cursive"],
+        body: ["Crimson Text", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
