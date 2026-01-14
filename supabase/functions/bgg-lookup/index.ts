@@ -37,6 +37,36 @@ function extractPrimaryName(xml: string): string | null {
   return m?.[1] ?? null;
 }
 
+function extractMetaContent(html: string, propertyOrName: string): string | null {
+  // matches: <meta property="og:title" content="...">
+  const re = new RegExp(
+    `<meta[^>]+(?:property|name)="${propertyOrName}"[^>]+content="([^"]+)"[^>]*>`,
+    "i"
+  );
+  const m = html.match(re);
+  return m?.[1]?.trim() ?? null;
+}
+
+function pickBestGeekdoImage(html: string): string | null {
+  const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
+  const all = html.match(imageRegex) || [];
+  const unique = [...new Set(all)];
+
+  const filtered = unique.filter((img) => !/crop100|square30|100x100|150x150|_thumb|_avatar|_micro/i.test(img));
+
+  filtered.sort((a, b) => {
+    const prio = (url: string) => {
+      if (/_itemrep/i.test(url)) return 0;
+      if (/_imagepage/i.test(url)) return 1;
+      if (/_original/i.test(url)) return 2;
+      return 3;
+    };
+    return prio(a) - prio(b);
+  });
+
+  return filtered[0] ?? null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -70,23 +100,103 @@ Deno.serve(async (req) => {
       });
     }
 
-    // BGG XML API2
-    const apiUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${encodeURIComponent(bggId)}&stats=1`;
+    const endpoints = [
+      // Some hosting environments get blocked on boardgamegeek.com; api.geekdo.com often works better.
+      `https://api.geekdo.com/xmlapi2/thing?id=${encodeURIComponent(bggId)}&stats=1`,
+      `https://boardgamegeek.com/xmlapi2/thing?id=${encodeURIComponent(bggId)}&stats=1`,
+    ];
 
-    const upstream = await fetch(apiUrl, {
-      method: "GET",
-      headers: {
-        // Use a standard browser User-Agent to avoid BGG rate-limiting/blocking
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/xml,text/xml;q=0.9,*/*;q=0.8",
-      },
-      redirect: "follow",
-    });
+    let upstream: Response | null = null;
+    let lastStatus: number | null = null;
+    let lastBody = "";
 
-    if (!upstream.ok) {
-      const text = await upstream.text().catch(() => "");
+    for (const apiUrl of endpoints) {
+      upstream = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          // Use a standard browser UA to avoid being treated as a bot.
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "application/xml,text/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        redirect: "follow",
+      });
+
+      if (upstream.ok) break;
+
+      lastStatus = upstream.status;
+      lastBody = await upstream.text().catch(() => "");
+
+      // If we're getting blocked, try the next endpoint.
+      if ([401, 403, 429].includes(upstream.status)) continue;
+
+      // For other errors, no point retrying other endpoints.
+      break;
+    }
+
+    if (!upstream || !upstream.ok) {
+      const status = upstream?.status ?? lastStatus ?? 0;
+
+      // Fallback: if BGG blocks our backend IP, use Firecrawl to fetch the BGG page.
+      if ([401, 403, 429].includes(status)) {
+        const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
+        if (firecrawlKey) {
+          const pageUrl = `https://boardgamegeek.com/boardgame/${encodeURIComponent(bggId)}`;
+
+          const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${firecrawlKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              url: pageUrl,
+              formats: ["rawHtml"],
+              onlyMainContent: true,
+            }),
+          });
+
+          if (scrapeResponse.ok) {
+            const scrapeData = await scrapeResponse.json();
+            const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
+
+            const title =
+              extractMetaContent(rawHtml, "og:title") ||
+              extractMetaContent(rawHtml, "twitter:title") ||
+              null;
+
+            const imageUrl =
+              extractMetaContent(rawHtml, "og:image") ||
+              extractMetaContent(rawHtml, "twitter:image") ||
+              pickBestGeekdoImage(rawHtml);
+
+            const resp: BggLookupResponse = {
+              success: true,
+              data: {
+                bgg_id: bggId,
+                title,
+                image_url: imageUrl,
+                min_players: null,
+                max_players: null,
+                suggested_age: null,
+                playing_time_minutes: null,
+              },
+            };
+
+            return new Response(JSON.stringify(resp), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
+
       return new Response(
-        JSON.stringify({ success: false, error: `BGG request failed (${upstream.status})` } satisfies BggLookupResponse),
+        JSON.stringify({
+          success: false,
+          error: `BGG request failed (${status})`,
+        } satisfies BggLookupResponse),
         {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
