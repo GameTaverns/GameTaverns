@@ -86,6 +86,8 @@ const Settings = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [importAsComingSoon, setImportAsComingSoon] = useState(false);
   const [importAsForSale, setImportAsForSale] = useState(false);
+  const [importAsExpansion, setImportAsExpansion] = useState(false);
+  const [importParentGameId, setImportParentGameId] = useState<string | null>(null);
   
   // Profile form states
   const [newEmail, setNewEmail] = useState("");
@@ -259,7 +261,13 @@ const Settings = () => {
     try {
       const invoke = async (fn: string) =>
         supabase.functions.invoke(fn, {
-          body: { url: trimmed, is_coming_soon: importAsComingSoon, is_for_sale: importAsForSale },
+          body: { 
+            url: trimmed, 
+            is_coming_soon: importAsComingSoon, 
+            is_for_sale: importAsForSale,
+            is_expansion: importAsExpansion,
+            parent_game_id: importAsExpansion ? importParentGameId : null,
+          },
         });
 
       let data: any;
@@ -283,13 +291,22 @@ const Settings = () => {
         // Invalidate the games cache so the collection updates immediately
         queryClient.invalidateQueries({ queryKey: ["games"] });
 
+        const statusLabel = importAsExpansion 
+          ? `as an expansion${importParentGameId ? '' : ' (no parent set)'}`
+          : importAsComingSoon 
+            ? 'to "Coming Soon" list' 
+            : importAsForSale 
+              ? 'to "For Sale" section' 
+              : 'to collection';
         toast({
           title: "Game imported!",
-          description: `"${data.game.title}" has been added to your ${importAsComingSoon ? '"Coming Soon" list' : importAsForSale ? '"For Sale" section' : 'collection'}.`,
+          description: `"${data.game.title}" has been added ${statusLabel}.`,
         });
         setImportUrl("");
         setImportAsComingSoon(false);
         setImportAsForSale(false);
+        setImportAsExpansion(false);
+        setImportParentGameId(null);
       } else {
         throw new Error(data?.error || "Import failed");
       }
@@ -780,7 +797,52 @@ const Settings = () => {
                           </p>
                         </div>
                       </div>
-                      <Button type="submit" className="w-full" disabled={isImporting}>
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-3 p-3 rounded-lg border border-primary/30 bg-primary/10">
+                          <Checkbox
+                            id="import-expansion"
+                            checked={importAsExpansion}
+                            onCheckedChange={(checked) => {
+                              setImportAsExpansion(checked === true);
+                              if (!checked) setImportParentGameId(null);
+                            }}
+                            disabled={isImporting}
+                          />
+                          <div className="space-y-0.5">
+                            <label htmlFor="import-expansion" className="text-sm font-medium cursor-pointer">
+                              This is an Expansion
+                            </label>
+                            <p className="text-xs text-muted-foreground">
+                              Import as an expansion of an existing game
+                            </p>
+                          </div>
+                        </div>
+                        {importAsExpansion && (
+                          <div className="pl-6 space-y-2">
+                            <Label>Parent Game</Label>
+                            <Select 
+                              value={importParentGameId || ""} 
+                              onValueChange={setImportParentGameId}
+                              disabled={isImporting}
+                            >
+                              <SelectTrigger className="bg-background">
+                                <SelectValue placeholder="Select base game..." />
+                              </SelectTrigger>
+                              <SelectContent className="bg-popover z-50">
+                                {games
+                                  ?.filter((g) => !g.is_expansion)
+                                  .sort((a, b) => a.title.localeCompare(b.title))
+                                  .map((g) => (
+                                    <SelectItem key={g.id} value={g.id}>
+                                      {g.title}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                      <Button type="submit" className="w-full" disabled={isImporting || (importAsExpansion && !importParentGameId)}>
                         {isImporting ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -789,7 +851,7 @@ const Settings = () => {
                         ) : (
                           <>
                             <Upload className="h-4 w-4 mr-2" />
-                            Import Game
+                            {importAsExpansion ? "Import Expansion" : "Import Game"}
                           </>
                         )}
                       </Button>

@@ -92,11 +92,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Parse input
     const body = await req.json().catch(() => null);
     const url = body?.url;
     const is_coming_soon = body?.is_coming_soon;
     const is_for_sale = body?.is_for_sale;
+    const is_expansion = body?.is_expansion;
+    const parent_game_id = body?.parent_game_id;
 
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ success: false, error: "URL is required" }), {
@@ -122,7 +123,7 @@ Deno.serve(async (req) => {
         Authorization: authHeader,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url, is_coming_soon, is_for_sale }),
+      body: JSON.stringify({ url, is_coming_soon, is_for_sale, is_expansion, parent_game_id }),
     });
 
     const text = await upstream.text();
