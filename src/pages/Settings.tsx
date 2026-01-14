@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Table, 
@@ -79,6 +80,7 @@ const Settings = () => {
 
   const [importUrl, setImportUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [importAsComingSoon, setImportAsComingSoon] = useState(false);
   
   // Profile form states
   const [newEmail, setNewEmail] = useState("");
@@ -252,7 +254,7 @@ const Settings = () => {
     try {
       const invoke = async (fn: string) =>
         supabase.functions.invoke(fn, {
-          body: { url: trimmed },
+          body: { url: trimmed, is_coming_soon: importAsComingSoon },
         });
 
       let data: any;
@@ -278,9 +280,10 @@ const Settings = () => {
 
         toast({
           title: "Game imported!",
-          description: `"${data.game.title}" has been added to your collection.`,
+          description: `"${data.game.title}" has been added to your ${importAsComingSoon ? '"Coming Soon" list' : 'collection'}.`,
         });
         setImportUrl("");
+        setImportAsComingSoon(false);
       } else {
         throw new Error(data?.error || "Import failed");
       }
@@ -720,6 +723,22 @@ const Settings = () => {
                           placeholder="https://boardgamegeek.com/boardgame/..."
                           disabled={isImporting}
                         />
+                      </div>
+                      <div className="flex items-center space-x-3 p-3 rounded-lg border border-border bg-muted/50">
+                        <Checkbox
+                          id="import-coming-soon"
+                          checked={importAsComingSoon}
+                          onCheckedChange={(checked) => setImportAsComingSoon(checked === true)}
+                          disabled={isImporting}
+                        />
+                        <div className="space-y-0.5">
+                          <label htmlFor="import-coming-soon" className="text-sm font-medium cursor-pointer">
+                            Coming Soon
+                          </label>
+                          <p className="text-xs text-muted-foreground">
+                            Mark as purchased/backed but not yet received
+                          </p>
+                        </div>
                       </div>
                       <Button type="submit" className="w-full" disabled={isImporting}>
                         {isImporting ? (

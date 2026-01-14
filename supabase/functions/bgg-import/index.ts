@@ -95,6 +95,7 @@ Deno.serve(async (req) => {
     // Parse input
     const body = await req.json().catch(() => null);
     const url = body?.url;
+    const is_coming_soon = body?.is_coming_soon;
 
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ success: false, error: "URL is required" }), {
@@ -120,7 +121,7 @@ Deno.serve(async (req) => {
         Authorization: authHeader,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url, is_coming_soon }),
     });
 
     const text = await upstream.text();
