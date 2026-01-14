@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { TurnstileWidget } from "./TurnstileWidget";
 
 const contactSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
@@ -26,7 +27,17 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; email?: string; message?: string }>({});
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
   const { toast } = useToast();
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +56,16 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
       return;
     }
 
+    // Check CAPTCHA
+    if (!turnstileToken) {
+      toast({
+        title: "Please complete the CAPTCHA",
+        description: "Verify you're human before sending.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -55,6 +76,7 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
           sender_name: result.data.name,
           sender_email: result.data.email,
           message: result.data.message,
+          turnstile_token: turnstileToken,
         },
       });
 
@@ -69,10 +91,12 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
         description: "Your inquiry has been sent to the seller.",
       });
 
-      // Reset form
+      // Reset form and CAPTCHA
       setName("");
       setEmail("");
       setMessage("");
+      setTurnstileToken(null);
+      setTurnstileKey(prev => prev + 1);
     } catch (error: any) {
       toast({
         title: "Error sending message",
@@ -135,7 +159,16 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
             {errors.message && <p className="text-sm text-destructive">{errors.message}</p>}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <div className="space-y-2">
+            <Label>Verification *</Label>
+            <TurnstileWidget
+              key={turnstileKey}
+              onVerify={handleTurnstileVerify}
+              onExpire={handleTurnstileExpire}
+            />
+          </div>
+
+          <Button type="submit" className="w-full" disabled={isSubmitting || !turnstileToken}>
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />

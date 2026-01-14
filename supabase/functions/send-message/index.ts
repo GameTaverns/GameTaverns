@@ -15,6 +15,34 @@ interface MessageRequest {
   sender_name: string;
   sender_email: string;
   message: string;
+  turnstile_token: string;
+}
+
+// Verify Turnstile token with Cloudflare
+async function verifyTurnstileToken(token: string, ip: string): Promise<boolean> {
+  const secretKey = Deno.env.get("TURNSTILE_SECRET_KEY");
+  if (!secretKey) {
+    console.error("Missing TURNSTILE_SECRET_KEY");
+    return false;
+  }
+
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        secret: secretKey,
+        response: token,
+        remoteip: ip,
+      }),
+    });
+
+    const result = await response.json();
+    return result.success === true;
+  } catch (error) {
+    console.error("Turnstile verification error:", error);
+    return false;
+  }
 }
 
 // Email validation regex
@@ -34,12 +62,28 @@ serve(async (req: Request): Promise<Response> => {
 
     // Parse and validate request body
     const body: MessageRequest = await req.json();
-    const { game_id, sender_name, sender_email, message } = body;
+    const { game_id, sender_name, sender_email, message, turnstile_token } = body;
 
     // Validate required fields
     if (!game_id || !sender_name || !sender_email || !message) {
       return new Response(
         JSON.stringify({ success: false, error: "All fields are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify Turnstile CAPTCHA
+    if (!turnstile_token) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Please complete the CAPTCHA verification" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const isTurnstileValid = await verifyTurnstileToken(turnstile_token, clientIp);
+    if (!isTurnstileValid) {
+      return new Response(
+        JSON.stringify({ success: false, error: "CAPTCHA verification failed. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
