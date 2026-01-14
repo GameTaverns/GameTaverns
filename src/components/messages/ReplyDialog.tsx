@@ -27,7 +27,10 @@ const DEFAULT_TEMPLATE = `Hi {{name}},
 
 Thank you for your interest in {{game}}.
 
-`;
+
+
+Sincerely,
+Ethan Sommerfeld`;
 
 export function ReplyDialog({
   open,
