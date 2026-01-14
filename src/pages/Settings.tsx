@@ -546,7 +546,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-6" : "grid-cols-1"}`}>
+          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-5" : "grid-cols-1"}`}>
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile
@@ -568,10 +568,6 @@ const Settings = () => {
                 <TabsTrigger value="site" className="flex items-center gap-2">
                   <Globe className="h-4 w-4" />
                   Site
-                </TabsTrigger>
-                <TabsTrigger value="theme" className="flex items-center gap-2">
-                  <Palette className="h-4 w-4" />
-                  Theme
                 </TabsTrigger>
                 <Button
                   variant="outline"
@@ -1327,12 +1323,8 @@ const Settings = () => {
                   </p>
                 </CardContent>
               </Card>
-            </TabsContent>
-          )}
 
-          {/* Theme Customization Tab (Admin Only) */}
-          {isAdmin && (
-            <TabsContent value="theme" className="space-y-6">
+              {/* Theme Customization Section */}
               <ThemeCustomizer />
             </TabsContent>
           )}
