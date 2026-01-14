@@ -1,4 +1,4 @@
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { 
   Library, 
   Gamepad2, 
@@ -61,7 +61,8 @@ function FilterSection({ title, icon, children, defaultOpen = false }: FilterSec
 
 export function Sidebar({ isOpen }: SidebarProps) {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: mechanics = [] } = useMechanics();
   const { data: publishers = [] } = usePublishers();
   const { isAuthenticated, user, signOut, isAdmin } = useAuth();
@@ -86,8 +87,14 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const currentFilter = searchParams.get("filter");
   const currentValue = searchParams.get("value");
 
-  const createFilterUrl = (filter: string, value: string) => {
-    return `/?filter=${encodeURIComponent(filter)}&value=${encodeURIComponent(value)}`;
+  // Use setSearchParams for filter updates to avoid page flash
+  const handleFilterClick = (filter: string, value: string) => {
+    // If we're not on the home page, navigate there first
+    if (location.pathname !== "/") {
+      navigate(`/?filter=${encodeURIComponent(filter)}&value=${encodeURIComponent(value)}`);
+    } else {
+      setSearchParams({ filter, value });
+    }
   };
 
   const isActive = (filter: string, value: string) => {
@@ -150,96 +157,96 @@ export function Sidebar({ isOpen }: SidebarProps) {
           {/* Player Count */}
           <FilterSection title="Player Count" icon={<Users className="h-4 w-4" />} defaultOpen={currentFilter === "players"}>
             {["1 Player", "2 Players", "3-4 Players", "5-6 Players", "7+ Players"].map((option) => (
-              <Link
+              <button
                 key={option}
-                to={createFilterUrl("players", option)}
+                onClick={() => handleFilterClick("players", option)}
                 className={cn(
-                  "sidebar-link text-sm",
+                  "sidebar-link text-sm w-full text-left",
                   isActive("players", option) && "sidebar-link-active"
                 )}
               >
                 {option}
-              </Link>
+              </button>
             ))}
           </FilterSection>
 
           {/* Difficulty */}
           <FilterSection title="Difficulty" icon={<Star className="h-4 w-4" />} defaultOpen={currentFilter === "difficulty"}>
             {DIFFICULTY_OPTIONS.map((diff) => (
-              <Link
+              <button
                 key={diff}
-                to={createFilterUrl("difficulty", diff)}
+                onClick={() => handleFilterClick("difficulty", diff)}
                 className={cn(
-                  "sidebar-link text-sm",
+                  "sidebar-link text-sm w-full text-left",
                   isActive("difficulty", diff) && "sidebar-link-active"
                 )}
               >
                 {diff}
-              </Link>
+              </button>
             ))}
           </FilterSection>
 
           {/* Game Type */}
           <FilterSection title="Type" icon={<Gamepad2 className="h-4 w-4" />} defaultOpen={currentFilter === "type"}>
             {GAME_TYPE_OPTIONS.map((type) => (
-              <Link
+              <button
                 key={type}
-                to={createFilterUrl("type", type)}
+                onClick={() => handleFilterClick("type", type)}
                 className={cn(
-                  "sidebar-link text-sm",
+                  "sidebar-link text-sm w-full text-left",
                   isActive("type", type) && "sidebar-link-active"
                 )}
               >
                 {type}
-              </Link>
+              </button>
             ))}
           </FilterSection>
 
           {/* Play Time */}
           <FilterSection title="Play Time" icon={<Clock className="h-4 w-4" />} defaultOpen={currentFilter === "playtime"}>
             {PLAY_TIME_OPTIONS.map((time) => (
-              <Link
+              <button
                 key={time}
-                to={createFilterUrl("playtime", time)}
+                onClick={() => handleFilterClick("playtime", time)}
                 className={cn(
-                  "sidebar-link text-sm",
+                  "sidebar-link text-sm w-full text-left",
                   isActive("playtime", time) && "sidebar-link-active"
                 )}
               >
                 {time}
-              </Link>
+              </button>
             ))}
           </FilterSection>
 
           {/* Mechanics */}
           <FilterSection title="Mechanics" icon={<Puzzle className="h-4 w-4" />} defaultOpen={currentFilter === "mechanic"}>
             {mechanics.slice(0, 10).map((mech) => (
-              <Link
+              <button
                 key={mech.id}
-                to={createFilterUrl("mechanic", mech.name)}
+                onClick={() => handleFilterClick("mechanic", mech.name)}
                 className={cn(
-                  "sidebar-link text-sm",
+                  "sidebar-link text-sm w-full text-left",
                   isActive("mechanic", mech.name) && "sidebar-link-active"
                 )}
               >
                 {mech.name}
-              </Link>
+              </button>
             ))}
           </FilterSection>
 
           {/* Publishers */}
           <FilterSection title="Publishers" icon={<Building2 className="h-4 w-4" />} defaultOpen={currentFilter === "publisher"}>
             {publishers.slice(0, 8).map((pub) => (
-              <Link
+              <button
                 key={pub.id}
-                to={createFilterUrl("publisher", pub.name)}
+                onClick={() => handleFilterClick("publisher", pub.name)}
                 className={cn(
-                  "sidebar-link text-sm",
+                  "sidebar-link text-sm w-full text-left",
                   isActive("publisher", pub.name) && "sidebar-link-active"
                 )}
               >
                 {pub.name}
-              </Link>
+              </button>
             ))}
           </FilterSection>
 
@@ -247,9 +254,9 @@ export function Sidebar({ isOpen }: SidebarProps) {
           <FilterSection title="A-Z" icon={<ALargeSmall className="h-4 w-4" />} defaultOpen={currentFilter === "letter"}>
             <div className="grid grid-cols-6 gap-1 px-2">
               {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => (
-                <Link
+                <button
                   key={letter}
-                  to={createFilterUrl("letter", letter)}
+                  onClick={() => handleFilterClick("letter", letter)}
                   className={cn(
                     "flex items-center justify-center h-8 w-8 rounded text-sm font-medium transition-colors",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -259,7 +266,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
                   )}
                 >
                   {letter}
-                </Link>
+                </button>
               ))}
             </div>
           </FilterSection>
