@@ -36,11 +36,11 @@ const GameDetail = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
 
-  // Reset image state when game changes - must be before early returns
+  // Reset image state when slug changes - must be before early returns
   useEffect(() => {
     setSelectedImageIndex(0);
     setBrokenImageUrls([]);
-  }, [game?.id]);
+  }, [slug]);
 
   // Build demo base games + expansions grouping (matches real data shape)
   const demoBaseGames = useMemo(() => {
@@ -589,46 +589,6 @@ const GameDetail = () => {
           </div>
         )}
 
-        {/* Related Games Section */}
-        {relatedGames && relatedGames.length > 0 && (
-          <div className="mt-16">
-            <h2 className="font-display text-2xl font-semibold mb-6 text-foreground">
-              Related Games
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {relatedGames.map((relatedGame) => (
-                <Link
-                  key={relatedGame.id}
-                  to={`/game/${relatedGame.slug || relatedGame.id}`}
-                  className="group"
-                >
-                  <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <CardContent className="p-0">
-                      <div className="aspect-square overflow-hidden bg-muted">
-                        {relatedGame.image_url ? (
-                          <GameImage
-                            imageUrl={relatedGame.image_url}
-                            alt={relatedGame.title}
-                            className="h-full w-full object-contain group-hover:scale-105 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center">
-                            <span className="text-4xl">🎲</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <h3 className="font-medium text-sm text-foreground line-clamp-2 group-hover:text-primary transition-colors">
-                          {relatedGame.title}
-                        </h3>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Contact Seller Form - Only show for games that are for sale */}
         {game.is_for_sale && (
