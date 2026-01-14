@@ -245,10 +245,11 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Encrypt PII fields
+    // Encrypt PII fields and message content
     const encryptedName = await encryptData(sender_name.trim(), encryptionKey);
     const encryptedEmail = await encryptData(sender_email.trim().toLowerCase(), encryptionKey);
     const encryptedIp = await encryptData(clientIp, encryptionKey);
+    const encryptedMessage = await encryptData(message.trim(), encryptionKey);
 
     // Insert the message with encrypted data
     // We store encrypted versions in new columns and hashed IP for rate limiting
@@ -258,11 +259,12 @@ serve(async (req: Request): Promise<Response> => {
         game_id,
         sender_name: "[encrypted]",
         sender_email: "[encrypted]",
-        message: message.trim(),
+        message: "[encrypted]",
         sender_ip: hashedIp,
         sender_name_encrypted: encryptedName,
         sender_email_encrypted: encryptedEmail,
         sender_ip_encrypted: encryptedIp,
+        message_encrypted: encryptedMessage,
       })
       .select()
       .single();

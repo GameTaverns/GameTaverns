@@ -54,6 +54,7 @@ export type Database = {
           id: string
           is_read: boolean
           message: string
+          message_encrypted: string | null
           sender_email: string
           sender_email_encrypted: string | null
           sender_ip: string | null
@@ -67,6 +68,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message: string
+          message_encrypted?: string | null
           sender_email: string
           sender_email_encrypted?: string | null
           sender_ip?: string | null
@@ -80,6 +82,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message?: string
+          message_encrypted?: string | null
           sender_email?: string
           sender_email_encrypted?: string | null
           sender_ip?: string | null
