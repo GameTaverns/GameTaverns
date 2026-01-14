@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { 
   useGame, 
+  useGames,
   useMechanics, 
   usePublishers, 
   useCreateGame, 
@@ -44,6 +45,7 @@ const GameForm = () => {
   const { data: existingGame, isLoading: gameLoading } = useGame(id);
   const { data: mechanics = [] } = useMechanics();
   const { data: publishers = [] } = usePublishers();
+  const { data: allGames = [] } = useGames();
   const createGame = useCreateGame();
   const updateGame = useUpdateGame();
   const createMechanic = useCreateMechanic();
@@ -69,8 +71,13 @@ const GameForm = () => {
   const [isForSale, setIsForSale] = useState(false);
   const [salePrice, setSalePrice] = useState<string>("");
   const [saleCondition, setSaleCondition] = useState<SaleCondition | null>(null);
+  const [isExpansion, setIsExpansion] = useState(false);
+  const [parentGameId, setParentGameId] = useState<string | null>(null);
   const [newMechanic, setNewMechanic] = useState("");
   const [newPublisher, setNewPublisher] = useState("");
+
+  // Filter out current game from parent options (can't be its own parent)
+  const parentGameOptions = allGames.filter((g) => g.id !== id);
 
   // Load existing game data
   useEffect(() => {
@@ -91,6 +98,8 @@ const GameForm = () => {
       setIsForSale(existingGame.is_for_sale);
       setSalePrice(existingGame.sale_price?.toString() || "");
       setSaleCondition(existingGame.sale_condition);
+      setIsExpansion(existingGame.is_expansion);
+      setParentGameId(existingGame.parent_game_id);
     }
   }, [existingGame]);
 
@@ -158,6 +167,8 @@ const GameForm = () => {
       is_for_sale: isForSale,
       sale_price: isForSale && salePrice ? parseFloat(salePrice) : null,
       sale_condition: isForSale ? saleCondition : null,
+      is_expansion: isExpansion,
+      parent_game_id: isExpansion ? parentGameId : null,
     };
 
     try {
@@ -343,6 +354,48 @@ const GameForm = () => {
                     placeholder="https://boardgamegeek.com/boardgame/..."
                   />
                 </div>
+              </div>
+
+              {/* Expansion Toggle */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-4 rounded-lg border border-border bg-muted/50">
+                  <Checkbox
+                    id="isExpansion"
+                    checked={isExpansion}
+                    onCheckedChange={(checked) => {
+                      setIsExpansion(checked === true);
+                      if (!checked) setParentGameId(null);
+                    }}
+                  />
+                  <div className="space-y-1">
+                    <label htmlFor="isExpansion" className="text-sm font-medium cursor-pointer">
+                      This is an Expansion
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Mark this as an expansion. It will be nested under its base game in the collection.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Parent Game Selection - Only show when Expansion is checked */}
+                {isExpansion && (
+                  <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-2">
+                    <Label>Base Game</Label>
+                    <Select value={parentGameId || ""} onValueChange={setParentGameId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select the base game" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {parentGameOptions.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Select which game this is an expansion for.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Coming Soon Toggle */}

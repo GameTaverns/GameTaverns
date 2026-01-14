@@ -20,7 +20,7 @@ export function useGames(enabled = true) {
 
       if (gamesError) throw gamesError;
 
-      return (games || []).map((game) => ({
+      const allGames = (games || []).map((game) => ({
         ...game,
         difficulty: game.difficulty as DifficultyLevel,
         game_type: game.game_type as GameType,
@@ -29,7 +29,29 @@ export function useGames(enabled = true) {
         mechanics: (game.game_mechanics || [])
           .map((gm: { mechanic: Mechanic | null }) => gm.mechanic)
           .filter((m): m is Mechanic => m !== null),
+        expansions: [] as GameWithRelations[],
       }));
+
+      // Group expansions under their parent games
+      const baseGames: GameWithRelations[] = [];
+      const expansionMap = new Map<string, GameWithRelations[]>();
+
+      allGames.forEach((game) => {
+        if (game.is_expansion && game.parent_game_id) {
+          const expansions = expansionMap.get(game.parent_game_id) || [];
+          expansions.push(game);
+          expansionMap.set(game.parent_game_id, expansions);
+        } else {
+          baseGames.push(game);
+        }
+      });
+
+      // Attach expansions to their parent games
+      baseGames.forEach((game) => {
+        game.expansions = expansionMap.get(game.id) || [];
+      });
+
+      return baseGames;
     },
     enabled,
     staleTime: 1000 * 60 * 5, // 5 minutes

@@ -33,6 +33,8 @@ export interface Game {
   is_for_sale: boolean;
   sale_price: number | null;
   sale_condition: SaleCondition | null;
+  is_expansion: boolean;
+  parent_game_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +42,8 @@ export interface Game {
 export interface GameWithRelations extends Game {
   publisher: Publisher | null;
   mechanics: Mechanic[];
+  expansions?: GameWithRelations[];
+  parent_game?: { id: string; title: string; slug: string | null } | null;
 }
 
 export const DIFFICULTY_OPTIONS: DifficultyLevel[] = [

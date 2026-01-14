@@ -112,9 +112,11 @@ export type Database = {
           id: string
           image_url: string | null
           is_coming_soon: boolean
+          is_expansion: boolean
           is_for_sale: boolean
           max_players: number | null
           min_players: number | null
+          parent_game_id: string | null
           play_time: Database["public"]["Enums"]["play_time"] | null
           publisher_id: string | null
           sale_condition: Database["public"]["Enums"]["sale_condition"] | null
@@ -135,9 +137,11 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_coming_soon?: boolean
+          is_expansion?: boolean
           is_for_sale?: boolean
           max_players?: number | null
           min_players?: number | null
+          parent_game_id?: string | null
           play_time?: Database["public"]["Enums"]["play_time"] | null
           publisher_id?: string | null
           sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
@@ -158,9 +162,11 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_coming_soon?: boolean
+          is_expansion?: boolean
           is_for_sale?: boolean
           max_players?: number | null
           min_players?: number | null
+          parent_game_id?: string | null
           play_time?: Database["public"]["Enums"]["play_time"] | null
           publisher_id?: string | null
           sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
@@ -171,6 +177,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "games_parent_game_id_fkey"
+            columns: ["parent_game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "games_publisher_id_fkey"
             columns: ["publisher_id"]
