@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Navigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { 
@@ -17,7 +17,9 @@ import {
   Tag,
   Building,
   Globe,
-  Palette
+  Palette,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,7 +69,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ThemeCustomizer } from "@/components/settings/ThemeCustomizer";
-import { SALE_CONDITION_OPTIONS, type SaleCondition } from "@/types/game";
+import { SALE_CONDITION_OPTIONS, type SaleCondition, type GameWithRelations } from "@/types/game";
 
 type UserWithRole = {
   id: string;
@@ -75,6 +77,193 @@ type UserWithRole = {
   created_at: string;
   role: string | null;
 };
+
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+interface GameCollectionTableProps {
+  games: GameWithRelations[];
+  filterLetter: string | null;
+  setFilterLetter: (letter: string | null) => void;
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+  gamesPerPage: number;
+  onEdit: (id: string) => void;
+  onDelete: (id: string, title: string) => void;
+}
+
+function GameCollectionTable({
+  games,
+  filterLetter,
+  setFilterLetter,
+  currentPage,
+  setCurrentPage,
+  gamesPerPage,
+  onEdit,
+  onDelete,
+}: GameCollectionTableProps) {
+  // Filter by letter
+  const filteredGames = useMemo(() => {
+    let result = [...games].sort((a, b) => a.title.localeCompare(b.title));
+    if (filterLetter) {
+      result = result.filter(g => g.title.toUpperCase().startsWith(filterLetter));
+    }
+    return result;
+  }, [games, filterLetter]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredGames.length / gamesPerPage);
+  const paginatedGames = useMemo(() => {
+    const start = (currentPage - 1) * gamesPerPage;
+    return filteredGames.slice(start, start + gamesPerPage);
+  }, [filteredGames, currentPage, gamesPerPage]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterLetter, setCurrentPage]);
+
+  // Get letters that have games
+  const lettersWithGames = useMemo(() => {
+    const letters = new Set<string>();
+    games.forEach(g => {
+      const firstLetter = g.title.charAt(0).toUpperCase();
+      if (ALPHABET.includes(firstLetter)) {
+        letters.add(firstLetter);
+      }
+    });
+    return letters;
+  }, [games]);
+
+  return (
+    <div className="space-y-4">
+      {/* A-Z Filter Bar */}
+      <div className="flex flex-wrap gap-1 p-2 bg-muted/50 rounded-lg">
+        <Button
+          variant={filterLetter === null ? "default" : "ghost"}
+          size="sm"
+          className="h-8 px-2 text-xs font-medium"
+          onClick={() => setFilterLetter(null)}
+        >
+          All
+        </Button>
+        {ALPHABET.map(letter => {
+          const hasGames = lettersWithGames.has(letter);
+          return (
+            <Button
+              key={letter}
+              variant={filterLetter === letter ? "default" : "ghost"}
+              size="sm"
+              className="h-8 w-8 p-0 text-xs font-medium"
+              onClick={() => setFilterLetter(letter)}
+              disabled={!hasGames}
+            >
+              {letter}
+            </Button>
+          );
+        })}
+      </div>
+
+      {/* Results info */}
+      <div className="text-sm text-muted-foreground">
+        Showing {paginatedGames.length} of {filteredGames.length} games
+        {filterLetter && ` starting with "${filterLetter}"`}
+      </div>
+
+      {/* Table */}
+      {paginatedGames.length === 0 ? (
+        <p className="text-center text-muted-foreground py-8">
+          No games found{filterLetter ? ` starting with "${filterLetter}"` : ''}.
+        </p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Difficulty</TableHead>
+              <TableHead>Players</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedGames.map((game) => (
+              <TableRow key={game.id}>
+                <TableCell className="font-medium">{game.title}</TableCell>
+                <TableCell>{game.game_type}</TableCell>
+                <TableCell>{game.difficulty}</TableCell>
+                <TableCell>
+                  {game.min_players}-{game.max_players}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEdit(game.id)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Game</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{game.title}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => onDelete(game.id, game.title)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground px-4">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -90,6 +279,11 @@ const Settings = () => {
   const createMechanic = useCreateMechanic();
   const createPublisher = useCreatePublisher();
   const { data: unreadCount = 0 } = useUnreadMessageCount();
+
+  // Game collection filter/pagination states
+  const [gameFilterLetter, setGameFilterLetter] = useState<string | null>(null);
+  const [gameCurrentPage, setGameCurrentPage] = useState(1);
+  const GAMES_PER_PAGE = 20;
 
   const [importUrl, setImportUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
@@ -932,7 +1126,7 @@ const Settings = () => {
                     Manage your game library
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   {gamesLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -942,64 +1136,16 @@ const Settings = () => {
                       No games in your collection yet. Import or add one above!
                     </p>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Title</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Difficulty</TableHead>
-                          <TableHead>Players</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {games.map((game) => (
-                          <TableRow key={game.id}>
-                            <TableCell className="font-medium">{game.title}</TableCell>
-                            <TableCell>{game.game_type}</TableCell>
-                            <TableCell>{game.difficulty}</TableCell>
-                            <TableCell>
-                              {game.min_players}-{game.max_players}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => navigate(`/admin/edit/${game.id}`)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Game</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete "{game.title}"? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => handleDelete(game.id, game.title)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                    <GameCollectionTable
+                      games={games}
+                      filterLetter={gameFilterLetter}
+                      setFilterLetter={setGameFilterLetter}
+                      currentPage={gameCurrentPage}
+                      setCurrentPage={setGameCurrentPage}
+                      gamesPerPage={GAMES_PER_PAGE}
+                      onEdit={(id) => navigate(`/admin/edit/${id}`)}
+                      onDelete={handleDelete}
+                    />
                   )}
                 </CardContent>
               </Card>
