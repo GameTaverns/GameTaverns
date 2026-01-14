@@ -223,34 +223,38 @@ export function Sidebar({ isOpen }: SidebarProps) {
 
           {/* Mechanics */}
           <FilterSection title="Mechanics" icon={<Puzzle className="h-4 w-4" />} defaultOpen={currentFilter === "mechanic"}>
-            {mechanics.slice(0, 10).map((mech) => (
-              <button
-                key={mech.id}
-                onClick={() => handleFilterClick("mechanic", mech.name)}
-                className={cn(
-                  "sidebar-link text-sm w-full text-left",
-                  isActive("mechanic", mech.name) && "sidebar-link-active"
-                )}
-              >
-                {mech.name}
-              </button>
-            ))}
+            <div className="max-h-48 overflow-y-auto">
+              {mechanics.map((mech) => (
+                <button
+                  key={mech.id}
+                  onClick={() => handleFilterClick("mechanic", mech.name)}
+                  className={cn(
+                    "sidebar-link text-sm w-full text-left",
+                    isActive("mechanic", mech.name) && "sidebar-link-active"
+                  )}
+                >
+                  {mech.name}
+                </button>
+              ))}
+            </div>
           </FilterSection>
 
           {/* Publishers */}
           <FilterSection title="Publishers" icon={<Building2 className="h-4 w-4" />} defaultOpen={currentFilter === "publisher"}>
-            {publishers.slice(0, 8).map((pub) => (
-              <button
-                key={pub.id}
-                onClick={() => handleFilterClick("publisher", pub.name)}
-                className={cn(
-                  "sidebar-link text-sm w-full text-left",
-                  isActive("publisher", pub.name) && "sidebar-link-active"
-                )}
-              >
-                {pub.name}
-              </button>
-            ))}
+            <div className="max-h-48 overflow-y-auto">
+              {publishers.map((pub) => (
+                <button
+                  key={pub.id}
+                  onClick={() => handleFilterClick("publisher", pub.name)}
+                  className={cn(
+                    "sidebar-link text-sm w-full text-left",
+                    isActive("publisher", pub.name) && "sidebar-link-active"
+                  )}
+                >
+                  {pub.name}
+                </button>
+              ))}
+            </div>
           </FilterSection>
 
           {/* A-Z Filter */}
