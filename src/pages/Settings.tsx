@@ -162,15 +162,17 @@ const Settings = () => {
     e.preventDefault();
     setIsSavingSiteSettings(true);
     try {
-      // Update each setting
+      // Upsert each setting (update if exists, insert if not)
       for (const [key, value] of Object.entries(siteSettings)) {
         const { error } = await supabase
           .from("site_settings")
-          .update({ value })
-          .eq("key", key);
+          .upsert({ key, value }, { onConflict: 'key' });
         
         if (error) throw error;
       }
+
+      // Invalidate the site settings cache so changes reflect immediately
+      queryClient.invalidateQueries({ queryKey: ["site-settings"] });
 
       toast({
         title: "Settings saved",
@@ -1351,19 +1353,6 @@ const Settings = () => {
 
                       <div className="grid gap-6 md:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor="twitter_handle">Twitter/X Handle</Label>
-                          <Input
-                            id="twitter_handle"
-                            value={siteSettings.twitter_handle || ""}
-                            onChange={(e) => updateSiteSetting("twitter_handle", e.target.value)}
-                            placeholder="@YourHandle"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Your Twitter/X handle for social cards
-                          </p>
-                        </div>
-
-                        <div className="space-y-2">
                           <Label htmlFor="contact_email">Contact Email</Label>
                           <Input
                             id="contact_email"
@@ -1376,19 +1365,84 @@ const Settings = () => {
                             Public contact email for inquiries
                           </p>
                         </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="footer_text">Footer Text</Label>
+                          <Input
+                            id="footer_text"
+                            value={siteSettings.footer_text || ""}
+                            onChange={(e) => updateSiteSetting("footer_text", e.target.value)}
+                            placeholder="© 2024 Your Organization. All rights reserved."
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Custom text to display in the site footer
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="footer_text">Footer Text</Label>
-                        <Input
-                          id="footer_text"
-                          value={siteSettings.footer_text || ""}
-                          onChange={(e) => updateSiteSetting("footer_text", e.target.value)}
-                          placeholder="© 2024 Your Organization. All rights reserved."
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Custom text to display in the site footer
+                      {/* Socials Section */}
+                      <div className="border-t border-border pt-6">
+                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                          <Globe className="h-4 w-4" />
+                          Socials
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Add your social media links. These will appear as icons in the site header.
                         </p>
+                        
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="twitter_handle">Twitter/X Handle</Label>
+                            <Input
+                              id="twitter_handle"
+                              value={siteSettings.twitter_handle || ""}
+                              onChange={(e) => updateSiteSetting("twitter_handle", e.target.value)}
+                              placeholder="@YourHandle"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Your Twitter/X handle (e.g., @username)
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="instagram_url">Instagram URL</Label>
+                            <Input
+                              id="instagram_url"
+                              value={siteSettings.instagram_url || ""}
+                              onChange={(e) => updateSiteSetting("instagram_url", e.target.value)}
+                              placeholder="https://instagram.com/yourprofile"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Full URL to your Instagram profile
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="facebook_url">Facebook URL</Label>
+                            <Input
+                              id="facebook_url"
+                              value={siteSettings.facebook_url || ""}
+                              onChange={(e) => updateSiteSetting("facebook_url", e.target.value)}
+                              placeholder="https://facebook.com/yourpage"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Full URL to your Facebook page
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="discord_url">Discord Invite URL</Label>
+                            <Input
+                              id="discord_url"
+                              value={siteSettings.discord_url || ""}
+                              onChange={(e) => updateSiteSetting("discord_url", e.target.value)}
+                              placeholder="https://discord.gg/yourserver"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Invite link to your Discord server
+                            </p>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="space-y-2 border-t border-border pt-6">

@@ -6,6 +6,9 @@ export interface SiteSettings {
   site_description?: string;
   site_author?: string;
   twitter_handle?: string;
+  instagram_url?: string;
+  facebook_url?: string;
+  discord_url?: string;
   contact_email?: string;
   footer_text?: string;
   theme_primary_h?: string;

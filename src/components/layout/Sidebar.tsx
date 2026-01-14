@@ -29,6 +29,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { siteConfig } from "@/config/site";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -67,6 +68,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const { data: mechanics = [] } = useMechanics();
   const { data: publishers = [] } = usePublishers();
   const { isAuthenticated, user, signOut, isAdmin } = useAuth();
+  const { data: settings } = useSiteSettings();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
@@ -115,7 +117,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
           <Link to="/" className="flex items-center gap-3">
             <Gamepad2 className="h-8 w-8 text-sidebar-primary" />
             <span className="font-display text-xl font-semibold text-sidebar-foreground">
-              {siteConfig.name}
+              {settings?.site_name || siteConfig.name}
             </span>
           </Link>
         </div>
