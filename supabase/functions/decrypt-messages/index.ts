@@ -91,17 +91,17 @@ serve(async (req: Request): Promise<Response> => {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
     
-    if (claimsError || !claimsData?.claims) {
+    if (userError || !userData?.user) {
+      console.error("Auth error:", userError);
       return new Response(
         JSON.stringify({ success: false, error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = userData.user.id;
 
     // Create admin client to check role
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
