@@ -16,6 +16,7 @@ import { ContactSellerForm } from "@/components/games/ContactSellerForm";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { LogPlayDialog } from "@/components/games/LogPlayDialog";
 import { PlayHistory } from "@/components/games/PlayHistory";
+import { GameImage } from "@/components/games/GameImage";
 import {
   Table,
   TableBody,
@@ -598,18 +599,15 @@ const GameDetail = () => {
                 >
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                     <CardContent className="p-0">
-                      <div className="aspect-square overflow-hidden">
+                      <div className="aspect-square overflow-hidden bg-muted">
                         {relatedGame.image_url ? (
-                          <img
-                            src={proxiedImageUrl(relatedGame.image_url)}
+                          <GameImage
+                            imageUrl={relatedGame.image_url}
                             alt={relatedGame.title}
-                            loading="lazy"
-                            decoding="async"
-                            referrerPolicy="no-referrer"
-                            className="h-full w-full object-contain bg-muted group-hover:scale-105 transition-transform duration-300"
+                            className="h-full w-full object-contain group-hover:scale-105 transition-transform duration-300"
                           />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center bg-muted">
+                          <div className="h-full w-full flex items-center justify-center">
                             <span className="text-4xl">🎲</span>
                           </div>
                         )}
