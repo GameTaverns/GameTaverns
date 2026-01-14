@@ -3,7 +3,7 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { ArrowLeft, Mail, MailOpen, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
-import { useMessages, useMarkMessageRead, useDeleteMessage } from "@/hooks/useMessages";
+import { useMessages, useMarkMessageRead, useDeleteMessage, GameMessage } from "@/hooks/useMessages";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { ReplyDialog } from "@/components/messages/ReplyDialog";
 
 const Messages = () => {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ const Messages = () => {
   const deleteMessage = useDeleteMessage();
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [replyMessage, setReplyMessage] = useState<GameMessage | null>(null);
 
   // While auth/role is resolving, show loading UI (prevents redirect flicker on first load)
   if (authLoading || roleLoading) {
@@ -196,7 +198,7 @@ const Messages = () => {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          window.location.href = `mailto:${message.sender_email}?subject=Re: ${message.game?.title || "Your inquiry"}&body=Hi ${message.sender_name},%0D%0A%0D%0AThank you for your interest in ${message.game?.title || "the game"}.%0D%0A%0D%0A`;
+                          setReplyMessage(message);
                         }}
                       >
                         <Mail className="h-4 w-4 mr-2" />
@@ -235,6 +237,14 @@ const Messages = () => {
             ))}
           </div>
         )}
+
+        <ReplyDialog
+          open={!!replyMessage}
+          onOpenChange={(open) => !open && setReplyMessage(null)}
+          recipientName={replyMessage?.sender_name || ""}
+          recipientEmail={replyMessage?.sender_email || ""}
+          gameTitle={replyMessage?.game?.title}
+        />
       </div>
     </Layout>
   );
