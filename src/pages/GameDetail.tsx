@@ -136,10 +136,9 @@ const GameDetail = () => {
     game.publisher && { label: game.publisher.name, type: "publisher" },
   ].filter(Boolean) as { label: string; type: string }[];
 
-  // Get expansions for this game
-  const expansions = game.expansions || [];
-
-  // Get related games (same type or mechanics, excluding current game and its expansions)
+  // Get expansions for this game from allGames (since useGame doesn't include expansion grouping)
+  const currentGameWithExpansions = allGames?.find((g) => g.id === game.id);
+  const expansions = currentGameWithExpansions?.expansions || [];
   const relatedGames = allGames
     ?.filter((g) => g.id !== game.id && !g.is_expansion)
     .filter((g) => {
