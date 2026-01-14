@@ -131,6 +131,7 @@ serve(async (req: Request): Promise<Response> => {
         sender_name_encrypted,
         sender_email_encrypted,
         message,
+        message_encrypted,
         is_read,
         created_at,
         game:games(title, slug)
@@ -145,11 +146,12 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Decrypt PII fields for each message
+    // Decrypt PII fields and message content for each message
     const decryptedMessages: DecryptedMessage[] = await Promise.all(
       (messages || []).map(async (msg: any) => {
         let senderName = msg.sender_name;
         let senderEmail = msg.sender_email;
+        let messageContent = msg.message;
 
         // If encrypted fields exist, decrypt them
         if (msg.sender_name_encrypted) {
@@ -157,6 +159,9 @@ serve(async (req: Request): Promise<Response> => {
         }
         if (msg.sender_email_encrypted) {
           senderEmail = await decryptData(msg.sender_email_encrypted, encryptionKey);
+        }
+        if (msg.message_encrypted) {
+          messageContent = await decryptData(msg.message_encrypted, encryptionKey);
         }
 
         // Handle game relation - it comes as an array from Supabase
@@ -167,7 +172,7 @@ serve(async (req: Request): Promise<Response> => {
           game_id: msg.game_id,
           sender_name: senderName,
           sender_email: senderEmail,
-          message: msg.message,
+          message: messageContent,
           is_read: msg.is_read,
           created_at: msg.created_at,
           game: game || null,
