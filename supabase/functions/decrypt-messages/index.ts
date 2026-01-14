@@ -120,17 +120,14 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Fetch all messages with encrypted fields
+    // Fetch all messages with encrypted fields only (no plaintext columns exist)
     const { data: messages, error: messagesError } = await supabaseAdmin
       .from("game_messages")
       .select(`
         id,
         game_id,
-        sender_name,
-        sender_email,
         sender_name_encrypted,
         sender_email_encrypted,
-        message,
         message_encrypted,
         is_read,
         created_at,
@@ -149,20 +146,16 @@ serve(async (req: Request): Promise<Response> => {
     // Decrypt PII fields and message content for each message
     const decryptedMessages: DecryptedMessage[] = await Promise.all(
       (messages || []).map(async (msg: any) => {
-        let senderName = msg.sender_name;
-        let senderEmail = msg.sender_email;
-        let messageContent = msg.message;
-
-        // If encrypted fields exist, decrypt them
-        if (msg.sender_name_encrypted) {
-          senderName = await decryptData(msg.sender_name_encrypted, encryptionKey);
-        }
-        if (msg.sender_email_encrypted) {
-          senderEmail = await decryptData(msg.sender_email_encrypted, encryptionKey);
-        }
-        if (msg.message_encrypted) {
-          messageContent = await decryptData(msg.message_encrypted, encryptionKey);
-        }
+        // Decrypt encrypted fields
+        const senderName = msg.sender_name_encrypted 
+          ? await decryptData(msg.sender_name_encrypted, encryptionKey)
+          : "[unknown]";
+        const senderEmail = msg.sender_email_encrypted
+          ? await decryptData(msg.sender_email_encrypted, encryptionKey)
+          : "[unknown]";
+        const messageContent = msg.message_encrypted
+          ? await decryptData(msg.message_encrypted, encryptionKey)
+          : "[no message]";
 
         // Handle game relation - it comes as an array from Supabase
         const game = Array.isArray(msg.game) ? msg.game[0] : msg.game;
