@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { GameWithRelations } from "@/types/game";
+import { useDemoMode } from "@/contexts/DemoContext";
 import { cn, proxiedImageUrl, directImageUrl } from "@/lib/utils";
 
 interface ExpansionListProps {
@@ -54,9 +55,12 @@ function ExpansionImage({ imageUrl, title }: ExpansionImageProps) {
 }
 
 export function ExpansionList({ expansions, parentTitle }: ExpansionListProps) {
+  const { isDemoMode } = useDemoMode();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (expansions.length === 0) return null;
+
+  const basePath = isDemoMode ? "/demo/game" : "/game";
 
   return (
     <div className="mt-2">
@@ -86,7 +90,7 @@ export function ExpansionList({ expansions, parentTitle }: ExpansionListProps) {
           {expansions.map((expansion) => (
             <Link
               key={expansion.id}
-              to={`/game/${expansion.slug || expansion.id}`}
+              to={`${basePath}/${expansion.slug || expansion.id}`}
               className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group"
               onClick={(e) => e.stopPropagation()}
             >

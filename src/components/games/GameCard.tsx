@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExpansionList } from "./ExpansionList";
 import { FavoriteButton } from "./FavoriteButton";
+import { useDemoMode } from "@/contexts/DemoContext";
 import type { GameWithRelations } from "@/types/game";
 import { cn, proxiedImageUrl, directImageUrl } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ interface GameCardProps {
 }
 
 export function GameCard({ game, priority = false }: GameCardProps) {
+  const { isDemoMode } = useDemoMode();
   const [imageError, setImageError] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   
@@ -22,6 +24,8 @@ export function GameCard({ game, priority = false }: GameCardProps) {
     : `${game.min_players}-${game.max_players}`;
 
   const hasExpansions = game.expansions && game.expansions.length > 0;
+
+  const basePath = isDemoMode ? "/demo/game" : "/game";
 
   // Get the appropriate image URL - try direct first (browser with no-referrer often works), then proxy
   const getImageSrc = () => {
@@ -42,7 +46,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
 
   return (
     <div>
-      <Link to={`/game/${game.slug || game.id}`}>
+      <Link to={`${basePath}/${game.slug || game.id}`}>
         <Card className="group overflow-hidden card-elevated card-hover bg-card border-border relative">
           {/* Favorite Button */}
           <div className="absolute top-2 right-2 z-10">

@@ -40,6 +40,7 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/game/:slug" element={<GameDetail />} />
+          <Route path="/demo/game/:slug" element={<GameDetail />} />
           <Route path="/admin" element={<Login />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin/add" element={<GameForm />} />

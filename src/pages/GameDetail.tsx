@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Layout } from "@/components/layout/Layout";
 import { useGame, useGames } from "@/hooks/useGames";
 import { useAuth } from "@/hooks/useAuth";
+import { useDemoMode } from "@/contexts/DemoContext";
 import { directImageUrl, proxiedImageUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +28,10 @@ import {
 const GameDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { data: game, isLoading } = useGame(slug);
-  const { data: allGames } = useGames();
+  const { isDemoMode, demoGames } = useDemoMode();
+
+  const { data: realGame, isLoading: isRealLoading } = useGame(isDemoMode ? undefined : slug);
+  const { data: realGames } = useGames(!isDemoMode);
   const { isAdmin } = useAuth();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
@@ -39,42 +42,44 @@ const GameDetail = () => {
     setBrokenImageUrls([]);
   }, [game?.id]);
 
-  // Get related games and shuffle them for variety - must be before early returns
-  const relatedGames = useMemo(() => {
-    if (!allGames || !game) return [];
-    
-    const candidates = allGames
-      .filter((g) => g.id !== game.id && !g.is_expansion)
-      .filter((g) => {
-        const sameMechanic = g.mechanics?.some((m) =>
-          game.mechanics.some((gm) => gm.id === m.id)
-        );
-        const sameType = g.game_type === game.game_type;
-        return sameMechanic || sameType;
-      });
-    
-    // Fisher-Yates shuffle with a seed based on game.id + current date (changes daily)
-    const today = new Date().toDateString();
-    const seedString = `${game.id}-${today}`;
-    let seed = 0;
-    for (let i = 0; i < seedString.length; i++) {
-      seed = ((seed << 5) - seed) + seedString.charCodeAt(i);
-      seed = seed & seed;
-    }
-    
-    const seededRandom = () => {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      return seed / 0x7fffffff;
-    };
-    
-    const shuffled = [...candidates];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(seededRandom() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    
-    return shuffled.slice(0, 6);
-  }, [allGames, game]);
+  // Build demo base games + expansions grouping (matches real data shape)
+  const demoBaseGames = useMemo(() => {
+    if (!isDemoMode) return [];
+
+    const all = [...demoGames].map((g) => ({ ...g, expansions: [] as any[] }));
+    const base: any[] = [];
+    const expansionMap = new Map<string, any[]>();
+
+    all.forEach((g: any) => {
+      if (g.is_expansion && g.parent_game_id) {
+        const list = expansionMap.get(g.parent_game_id) || [];
+        list.push(g);
+        expansionMap.set(g.parent_game_id, list);
+      } else {
+        base.push(g);
+      }
+    });
+
+    base.forEach((g: any) => {
+      g.expansions = expansionMap.get(g.id) || [];
+    });
+
+    return base;
+  }, [demoGames, isDemoMode]);
+
+  const demoGame = useMemo(() => {
+    if (!isDemoMode || !slug) return null;
+    // Match by slug first, then id
+    return demoGames.find((g) => g.slug === slug) || demoGames.find((g) => g.id === slug) || null;
+  }, [demoGames, isDemoMode, slug]);
+
+  const game = isDemoMode ? demoGame : realGame;
+  const allGames = isDemoMode ? demoBaseGames : (realGames || []);
+  const isLoading = isDemoMode ? false : isRealLoading;
+
+  const basePath = isDemoMode ? "/demo/game" : "/game";
+  const editPath = isDemoMode ? `/demo/edit/${game?.id}` : `/admin/edit/${game?.id}`;
+
 
   if (isLoading) {
     return (
