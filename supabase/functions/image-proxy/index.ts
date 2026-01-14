@@ -55,14 +55,19 @@ Deno.serve(async (req) => {
       return new Response("Missing url", { status: 400, headers: corsHeaders });
     }
 
-    // Normalize encoded parentheses - Geekdo's CDN requires literal ()
+    // Normalize problematic encoding and ensure parentheses are URL-encoded.
+    // Geekdo/CDN URLs frequently include parentheses in "filters:" segments; unencoded parentheses
+    // can trigger 400s in server-side fetch environments.
     let normalizedTarget = target
-      .replace(/%28/gi, "(")
-      .replace(/%29/gi, ")")
-      .replace(/%2528/gi, "(")
-      .replace(/%2529/gi, ")")
+      // Fix double-encoding first
+      .replace(/%2528/gi, "%28")
+      .replace(/%2529/gi, "%29")
+      // Strip bad scraping artifacts
       .replace(/&quot;.*$/, "")
-      .replace(/;$/, "");
+      .replace(/;$/, "")
+      // Ensure any literal parentheses are encoded
+      .replace(/\(/g, "%28")
+      .replace(/\)/g, "%29");
 
     let targetUrl: URL;
     try {

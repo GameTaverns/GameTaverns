@@ -275,52 +275,96 @@ const DemoSettings = () => {
   // Filter out expansions from parent game options
   const parentGameOptions = demoGames.filter(g => !g.is_expansion);
 
-  // Simulate import - creates a demo game with random data
+  // Import (Demo): if it's a BoardGameGeek URL, fetch real metadata (title/image/etc.) from BGG.
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = importUrl.trim();
     if (!trimmed) return;
 
     setIsImporting(true);
-    
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Extract a title from the URL
-    let title = "Imported Game";
-    try {
-      const url = new URL(trimmed);
-      const pathParts = url.pathname.split("/").filter(Boolean);
-      if (pathParts.length > 0) {
-        title = pathParts[pathParts.length - 1]
-          .replace(/-/g, " ")
-          .replace(/_/g, " ")
-          .split(" ")
-          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" ");
-      }
-    } catch {
-      // Invalid URL, use default title
-    }
-
-    const selectedParent = importAsExpansion && importParentGameId 
-      ? demoGames.find(g => g.id === importParentGameId)
+    const selectedParent = importAsExpansion && importParentGameId
+      ? demoGames.find((g) => g.id === importParentGameId)
       : null;
 
-    // Use picsum with a seed based on the title for consistent images
-    const seed = title.toLowerCase().replace(/\s+/g, "");
-    const placeholderImage = `https://picsum.photos/seed/${seed}/400/400`;
+    const bggIdMatch = trimmed.match(/boardgame\/(\d+)/);
+    const bggId = bggIdMatch?.[1] ?? null;
+
+    // Default/fallback values
+    let title = "Imported Game";
+    let imageUrl: string | null = null;
+    let minPlayers: number | null = null;
+    let maxPlayers: number | null = null;
+    let suggestedAge: string | null = null;
+    let playTime: GameWithRelations["play_time"] = "45-60 Minutes";
+
+    // Try BGG lookup when possible
+    if (bggId) {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bgg-lookup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bgg_id: bggId }),
+        });
+
+        const data = await res.json().catch(() => null);
+        if (res.ok && data?.success && data?.data) {
+          title = data.data.title || title;
+          imageUrl = data.data.image_url || null;
+          minPlayers = typeof data.data.min_players === "number" ? data.data.min_players : null;
+          maxPlayers = typeof data.data.max_players === "number" ? data.data.max_players : null;
+          suggestedAge = data.data.suggested_age || null;
+
+          const minutes = typeof data.data.playing_time_minutes === "number" ? data.data.playing_time_minutes : null;
+          if (minutes != null) {
+            if (minutes <= 15) playTime = "0-15 Minutes";
+            else if (minutes <= 30) playTime = "15-30 Minutes";
+            else if (minutes <= 45) playTime = "30-45 Minutes";
+            else if (minutes <= 60) playTime = "45-60 Minutes";
+            else if (minutes <= 90) playTime = "60+ Minutes";
+            else if (minutes <= 180) playTime = "2+ Hours";
+            else playTime = "3+ Hours";
+          }
+        }
+      } catch {
+        // ignore; will fallback
+      }
+    }
+
+    // If we still don't have a title, try extracting from the URL path
+    if (title === "Imported Game") {
+      try {
+        const url = new URL(trimmed);
+        const pathParts = url.pathname.split("/").filter(Boolean);
+        if (pathParts.length > 0) {
+          title = pathParts[pathParts.length - 1]
+            .replace(/-/g, " ")
+            .replace(/_/g, " ")
+            .split(" ")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" ");
+        }
+      } catch {
+        // Invalid URL, keep default
+      }
+    }
+
+    // Last-resort placeholder (stable per title)
+    if (!imageUrl) {
+      const seed = title.toLowerCase().replace(/\s+/g, "");
+      imageUrl = `https://picsum.photos/seed/${seed}/400/400`;
+    }
 
     addDemoGame({
       title,
       description: `Imported from ${trimmed}`,
-      image_url: placeholderImage,
+      image_url: imageUrl,
       difficulty: "3 - Medium",
       game_type: "Board Game",
-      play_time: "45-60 Minutes",
-      min_players: 2,
-      max_players: 4,
-      suggested_age: "10+",
+      play_time: playTime,
+      min_players: minPlayers ?? 2,
+      max_players: maxPlayers ?? 4,
+      suggested_age: suggestedAge ?? "10+",
       is_coming_soon: importAsComingSoon,
       is_for_sale: importAsForSale,
       sale_price: importAsForSale && importSalePrice ? parseFloat(importSalePrice) : null,
@@ -328,15 +372,16 @@ const DemoSettings = () => {
       is_expansion: importAsExpansion,
       parent_game_id: importAsExpansion ? importParentGameId : null,
       bgg_url: trimmed,
+      bgg_id: bggId,
     });
 
-    const statusLabel = importAsExpansion 
-      ? `as an expansion${selectedParent ? ` of "${selectedParent.title}"` : ''}`
-      : importAsComingSoon 
-        ? 'to "Coming Soon" list' 
-        : importAsForSale 
-          ? 'to "For Sale" section' 
-          : 'to collection';
+    const statusLabel = importAsExpansion
+      ? `as an expansion${selectedParent ? ` of "${selectedParent.title}"` : ""}`
+      : importAsComingSoon
+        ? 'to "Coming Soon" list'
+        : importAsForSale
+          ? 'to "For Sale" section'
+          : "to collection";
 
     toast({
       title: "Game imported! (Demo)",
