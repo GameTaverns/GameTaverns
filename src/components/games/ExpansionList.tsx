@@ -4,11 +4,53 @@ import { ChevronDown, ChevronRight, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { GameWithRelations } from "@/types/game";
-import { cn, proxiedImageUrl } from "@/lib/utils";
+import { cn, proxiedImageUrl, directImageUrl } from "@/lib/utils";
 
 interface ExpansionListProps {
   expansions: GameWithRelations[];
   parentTitle: string;
+}
+
+interface ExpansionImageProps {
+  imageUrl: string;
+  title: string;
+}
+
+function ExpansionImage({ imageUrl, title }: ExpansionImageProps) {
+  const [useFallback, setUseFallback] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  const getImageSrc = () => {
+    if (useFallback) return proxiedImageUrl(imageUrl);
+    return directImageUrl(imageUrl);
+  };
+
+  const handleImageError = () => {
+    if (!useFallback) {
+      setUseFallback(true);
+    } else {
+      setImageError(true);
+    }
+  };
+
+  if (imageError) {
+    return (
+      <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+        <Package className="h-4 w-4 text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={getImageSrc()}
+      alt={title}
+      className="h-10 w-10 rounded object-contain bg-muted"
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={handleImageError}
+    />
+  );
 }
 
 export function ExpansionList({ expansions, parentTitle }: ExpansionListProps) {
@@ -49,12 +91,7 @@ export function ExpansionList({ expansions, parentTitle }: ExpansionListProps) {
               onClick={(e) => e.stopPropagation()}
             >
               {expansion.image_url ? (
-                <img
-                  src={proxiedImageUrl(expansion.image_url)}
-                  alt={expansion.title}
-                  className="h-10 w-10 rounded object-contain bg-muted"
-                  loading="lazy"
-                />
+                <ExpansionImage imageUrl={expansion.image_url} title={expansion.title} />
               ) : (
                 <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
                   <Package className="h-4 w-4 text-muted-foreground" />
