@@ -6,16 +6,14 @@ const corsHeaders = {
 const ALLOWED_HOSTS = new Set(["cf.geekdo-images.com"]);
 
 function browserLikeHeaders() {
+  // Keep this minimal; some CDNs reject overly-specific browser headers.
   return {
     "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "identity",
     "User-Agent":
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Referer": "https://boardgamegeek.com/",
-    "Sec-Fetch-Dest": "image",
-    "Sec-Fetch-Mode": "no-cors",
-    "Sec-Fetch-Site": "cross-site",
+    "Origin": "https://boardgamegeek.com",
   } as Record<string, string>;
 }
 
@@ -86,21 +84,15 @@ Deno.serve(async (req) => {
 
     if (!successResponse) {
       console.error("image-proxy: failed to fetch", normalizedTarget);
-      // Return a 1x1 transparent PNG instead of redirecting (which doesn't work due to CORS)
-      const transparentPng = new Uint8Array([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
-        0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-        0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00,
-        0x0a, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
-        0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49,
-        0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82
-      ]);
-      return new Response(transparentPng, {
-        status: 200,
+
+      // IMPORTANT: return a failing status so <img onError> triggers in the UI.
+      // Returning a transparent 1x1 "success" response makes the UI look blank.
+      return new Response("Failed to fetch image", {
+        status: 404,
         headers: {
           ...corsHeaders,
-          "Content-Type": "image/png",
-          "Cache-Control": "public, max-age=60",
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-store",
         },
       });
     }
