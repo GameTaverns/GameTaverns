@@ -25,6 +25,7 @@ serve(async (req: Request): Promise<Response> => {
     const smtpUser = Deno.env.get("SMTP_USER");
     const smtpPass = Deno.env.get("SMTP_PASS");
     const smtpFrom = Deno.env.get("SMTP_FROM");
+    const smtpFromName = Deno.env.get("SMTP_FROM_NAME") || "Ethan Sommerfeld";
 
     if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
       console.error("Missing SMTP configuration");
@@ -56,9 +57,10 @@ serve(async (req: Request): Promise<Response> => {
       },
     });
 
-    // Send email
+    // Send email with display name format: "Name <email>"
+    const fromAddress = `${smtpFromName} <${smtpFrom}>`;
     await client.send({
-      from: smtpFrom,
+      from: fromAddress,
       to: to,
       subject: subject,
       content: text || "",
