@@ -58,6 +58,7 @@ export type Database = {
           game_type: Database["public"]["Enums"]["game_type"] | null
           id: string
           image_url: string | null
+          is_coming_soon: boolean
           max_players: number | null
           min_players: number | null
           play_time: Database["public"]["Enums"]["play_time"] | null
@@ -77,6 +78,7 @@ export type Database = {
           game_type?: Database["public"]["Enums"]["game_type"] | null
           id?: string
           image_url?: string | null
+          is_coming_soon?: boolean
           max_players?: number | null
           min_players?: number | null
           play_time?: Database["public"]["Enums"]["play_time"] | null
@@ -96,6 +98,7 @@ export type Database = {
           game_type?: Database["public"]["Enums"]["game_type"] | null
           id?: string
           image_url?: string | null
+          is_coming_soon?: boolean
           max_players?: number | null
           min_players?: number | null
           play_time?: Database["public"]["Enums"]["play_time"] | null

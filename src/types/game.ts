@@ -28,6 +28,7 @@ export interface Game {
   publisher_id: string | null;
   bgg_id: string | null;
   bgg_url: string | null;
+  is_coming_soon: boolean;
   created_at: string;
   updated_at: string;
 }

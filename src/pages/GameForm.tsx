@@ -63,6 +63,7 @@ const GameForm = () => {
   const [publisherId, setPublisherId] = useState<string | null>(null);
   const [selectedMechanics, setSelectedMechanics] = useState<string[]>([]);
   const [bggUrl, setBggUrl] = useState("");
+  const [isComingSoon, setIsComingSoon] = useState(false);
   const [newMechanic, setNewMechanic] = useState("");
   const [newPublisher, setNewPublisher] = useState("");
 
@@ -81,6 +82,7 @@ const GameForm = () => {
       setPublisherId(existingGame.publisher_id);
       setSelectedMechanics(existingGame.mechanics.map((m) => m.id));
       setBggUrl(existingGame.bgg_url || "");
+      setIsComingSoon(existingGame.is_coming_soon);
     }
   }, [existingGame]);
 
@@ -144,6 +146,7 @@ const GameForm = () => {
       publisher_id: publisherId,
       bgg_id: null,
       bgg_url: bggUrl.trim() || null,
+      is_coming_soon: isComingSoon,
     };
 
     try {
@@ -328,6 +331,23 @@ const GameForm = () => {
                     onChange={(e) => setBggUrl(e.target.value)}
                     placeholder="https://boardgamegeek.com/boardgame/..."
                   />
+                </div>
+              </div>
+
+              {/* Coming Soon Toggle */}
+              <div className="flex items-center space-x-3 p-4 rounded-lg border border-border bg-muted/50">
+                <Checkbox
+                  id="isComingSoon"
+                  checked={isComingSoon}
+                  onCheckedChange={(checked) => setIsComingSoon(checked === true)}
+                />
+                <div className="space-y-1">
+                  <label htmlFor="isComingSoon" className="text-sm font-medium cursor-pointer">
+                    Coming Soon
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    Mark this game as purchased/backed but not yet received. It won't appear in the main catalog.
+                  </p>
                 </div>
               </div>
 

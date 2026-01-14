@@ -10,7 +10,8 @@ import {
   LogOut,
   User,
   Settings,
-  ChevronDown
+  ChevronDown,
+  PackageOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
@@ -120,6 +121,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
             >
               <Library className="h-5 w-5" />
               <span>Full Collection</span>
+            </Link>
+            <Link
+              to="/?filter=status&value=coming-soon"
+              className={cn(
+                "sidebar-link",
+                isActive("status", "coming-soon") && "sidebar-link-active"
+              )}
+            >
+              <PackageOpen className="h-5 w-5" />
+              <span>Coming Soon</span>
             </Link>
           </nav>
 

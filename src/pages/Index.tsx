@@ -40,26 +40,34 @@ const Index = () => {
   const filteredGames = useMemo(() => {
     let result = [...games];
 
-    // Category filters
-    if (filter && filterValue) {
-      switch (filter) {
-        case "difficulty":
-          result = result.filter((g) => g.difficulty === filterValue);
-          break;
-        case "type":
-          result = result.filter((g) => g.game_type === filterValue);
-          break;
-        case "playtime":
-          result = result.filter((g) => g.play_time === filterValue);
-          break;
-        case "mechanic":
-          result = result.filter((g) =>
-            g.mechanics.some((m) => m.name === filterValue)
-          );
-          break;
-        case "publisher":
-          result = result.filter((g) => g.publisher?.name === filterValue);
-          break;
+    // Special filter for coming soon
+    if (filter === "status" && filterValue === "coming-soon") {
+      result = result.filter((g) => g.is_coming_soon);
+    } else {
+      // Exclude coming soon games from main catalog
+      result = result.filter((g) => !g.is_coming_soon);
+
+      // Category filters
+      if (filter && filterValue) {
+        switch (filter) {
+          case "difficulty":
+            result = result.filter((g) => g.difficulty === filterValue);
+            break;
+          case "type":
+            result = result.filter((g) => g.game_type === filterValue);
+            break;
+          case "playtime":
+            result = result.filter((g) => g.play_time === filterValue);
+            break;
+          case "mechanic":
+            result = result.filter((g) =>
+              g.mechanics.some((m) => m.name === filterValue)
+            );
+            break;
+          case "publisher":
+            result = result.filter((g) => g.publisher?.name === filterValue);
+            break;
+        }
       }
     }
 
