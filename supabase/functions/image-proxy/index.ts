@@ -88,8 +88,8 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": contentType,
-        // Cache aggressively; images are immutable by URL
-        "Cache-Control": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
+        // Cache aggressively; images are immutable by URL (1 year)
+        "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
       },
     });
   } catch (e) {
