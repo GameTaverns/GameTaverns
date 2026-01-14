@@ -32,12 +32,13 @@ export function proxiedImageUrl(url: string | null | undefined): string | undefi
   try {
     const u = new URL(url);
     
-    // Only proxy BGG images
+    // Only proxy BGG images - other images (like Unsplash) work fine directly
     if (u.hostname === "cf.geekdo-images.com") {
       const normalized = cleanBggUrl(url);
       return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
     }
     
+    // For all other URLs (Unsplash, etc.), just return the original
     return url;
   } catch {
     return url;

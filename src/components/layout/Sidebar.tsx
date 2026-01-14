@@ -114,12 +114,19 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const currentValue = searchParams.get("value");
 
   // Use setSearchParams for filter updates to avoid page flash
+  // Preserve demo mode when navigating
   const handleFilterClick = (filter: string, value: string) => {
+    const newParams: Record<string, string> = { filter, value };
+    if (isDemoMode) {
+      newParams.demo = "true";
+    }
+    
     // If we're not on the home page, navigate there first
     if (location.pathname !== "/") {
-      navigate(`/?filter=${encodeURIComponent(filter)}&value=${encodeURIComponent(value)}`);
+      const queryString = new URLSearchParams(newParams).toString();
+      navigate(`/?${queryString}`);
     } else {
-      setSearchParams({ filter, value });
+      setSearchParams(newParams);
     }
   };
 
@@ -149,7 +156,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
           {/* Main Navigation */}
           <nav className="space-y-2">
             <Link
-              to="/"
+              to={isDemoMode ? "/?demo=true" : "/"}
               className={cn(
                 "sidebar-link",
                 location.pathname === "/" && !currentFilter && "sidebar-link-active"
@@ -158,26 +165,26 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <Library className="h-5 w-5" />
               <span>Full Collection</span>
             </Link>
-            <Link
-              to="/?filter=status&value=coming-soon"
+            <button
+              onClick={() => handleFilterClick("status", "coming-soon")}
               className={cn(
-                "sidebar-link",
+                "sidebar-link w-full text-left",
                 isActive("status", "coming-soon") && "sidebar-link-active"
               )}
             >
               <PackageOpen className="h-5 w-5" />
               <span>Coming Soon</span>
-            </Link>
-            <Link
-              to="/?filter=status&value=for-sale"
+            </button>
+            <button
+              onClick={() => handleFilterClick("status", "for-sale")}
               className={cn(
-                "sidebar-link",
+                "sidebar-link w-full text-left",
                 isActive("status", "for-sale") && "sidebar-link-active"
               )}
             >
               <ShoppingCart className="h-5 w-5" />
               <span>For Sale</span>
-            </Link>
+            </button>
           </nav>
 
           {/* Player Count */}

@@ -153,7 +153,12 @@ const Index = () => {
   };
 
   const clearFilters = () => {
-    setSearchParams({});
+    // Preserve demo mode when clearing filters
+    if (isDemoMode) {
+      setSearchParams({ demo: "true" });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const hasActiveFilters = !!filter;
