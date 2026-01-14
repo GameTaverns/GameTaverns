@@ -228,7 +228,7 @@ serve(async (req: Request): Promise<Response> => {
     const { count, error: countError } = await supabaseAdmin
       .from("game_messages")
       .select("*", { count: "exact", head: true })
-      .eq("sender_ip", hashedIp)
+      .eq("sender_ip_encrypted", hashedIp)
       .gte("created_at", windowStart.toISOString());
 
     if (countError) {
@@ -251,16 +251,11 @@ serve(async (req: Request): Promise<Response> => {
     const encryptedIp = await encryptData(clientIp, encryptionKey);
     const encryptedMessage = await encryptData(message.trim(), encryptionKey);
 
-    // Insert the message with encrypted data
-    // We store encrypted versions in new columns and hashed IP for rate limiting
+    // Insert the message with encrypted data only (no plaintext columns in table)
     const { data: insertedMessage, error: insertError } = await supabaseAdmin
       .from("game_messages")
       .insert({
         game_id,
-        sender_name: "[encrypted]",
-        sender_email: "[encrypted]",
-        message: "[encrypted]",
-        sender_ip: hashedIp,
         sender_name_encrypted: encryptedName,
         sender_email_encrypted: encryptedEmail,
         sender_ip_encrypted: encryptedIp,
