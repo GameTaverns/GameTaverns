@@ -18,9 +18,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
-import { useGames, useMechanics, usePublishers } from "@/hooks/useGames";
+import { useMechanics, usePublishers } from "@/hooks/useGames";
 import { useAuth } from "@/hooks/useAuth";
-import { useMemo } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -63,29 +62,10 @@ function FilterSection({ title, icon, children, defaultOpen = false }: FilterSec
 export function Sidebar({ isOpen }: SidebarProps) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { data: games = [] } = useGames();
   const { data: mechanics = [] } = useMechanics();
   const { data: publishers = [] } = usePublishers();
   const { isAuthenticated, user, signOut, isAdmin } = useAuth();
   const { toast } = useToast();
-
-  // Generate unique player range options from games (e.g., "1-4 Players", "2-6 Players")
-  const playerRangeOptions = useMemo(() => {
-    const ranges = new Map<string, number>(); // range string -> count of games
-    games.forEach((game) => {
-      const min = game.min_players ?? 1;
-      const max = game.max_players ?? min;
-      const rangeKey = min === max ? `${min}` : `${min}-${max}`;
-      ranges.set(rangeKey, (ranges.get(rangeKey) || 0) + 1);
-    });
-    // Sort by min players, then by max players
-    return Array.from(ranges.keys()).sort((a, b) => {
-      const [aMin, aMax] = a.split('-').map(Number);
-      const [bMin, bMax] = b.split('-').map(Number);
-      if (aMin !== bMin) return aMin - bMin;
-      return (aMax || aMin) - (bMax || bMin);
-    });
-  }, [games]);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -167,18 +147,18 @@ export function Sidebar({ isOpen }: SidebarProps) {
             </Link>
           </nav>
 
-          {/* Number of Players */}
-          <FilterSection title="Players" icon={<Users className="h-4 w-4" />} defaultOpen={currentFilter === "players"}>
-            {playerRangeOptions.map((range) => (
+          {/* Player Count */}
+          <FilterSection title="Player Count" icon={<Users className="h-4 w-4" />} defaultOpen={currentFilter === "players"}>
+            {["1 Player", "2 Players", "3-4 Players", "5-6 Players", "7+ Players"].map((option) => (
               <Link
-                key={range}
-                to={createFilterUrl("players", range)}
+                key={option}
+                to={createFilterUrl("players", option)}
                 className={cn(
                   "sidebar-link text-sm",
-                  isActive("players", range) && "sidebar-link-active"
+                  isActive("players", option) && "sidebar-link-active"
                 )}
               >
-                {range.includes('-') ? `${range} Players` : `${range} ${range === '1' ? 'Player' : 'Players'}`}
+                {option}
               </Link>
             ))}
           </FilterSection>

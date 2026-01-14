@@ -54,12 +54,23 @@ const Index = () => {
       if (filter && filterValue) {
         switch (filter) {
           case "players":
-            // Filter by exact player range match (e.g., "1-4" or "2")
             result = result.filter((g) => {
-              const min = g.min_players ?? 1;
+              const min = g.min_players ?? 0;
               const max = g.max_players ?? min;
-              const gameRange = min === max ? `${min}` : `${min}-${max}`;
-              return gameRange === filterValue;
+              switch (filterValue) {
+                case "1 Player":
+                  return min <= 1 && max >= 1;
+                case "2 Players":
+                  return min <= 2 && max >= 2;
+                case "3-4 Players":
+                  return min <= 4 && max >= 3;
+                case "5-6 Players":
+                  return min <= 6 && max >= 5;
+                case "7+ Players":
+                  return max >= 7;
+                default:
+                  return true;
+              }
             });
             break;
           case "difficulty":
