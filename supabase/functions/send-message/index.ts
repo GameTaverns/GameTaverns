@@ -18,6 +18,50 @@ interface MessageRequest {
   turnstile_token: string;
 }
 
+// AES-GCM encryption using Web Crypto API
+async function encryptData(plaintext: string, keyHex: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plaintext);
+  
+  // Convert hex key to bytes
+  const keyBytes = new Uint8Array(keyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+  
+  // Import the key
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyBytes,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"]
+  );
+  
+  // Generate random IV
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  
+  // Encrypt
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    data
+  );
+  
+  // Combine IV + ciphertext and encode as base64
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  
+  return btoa(String.fromCharCode(...combined));
+}
+
+// Hash IP for rate limiting (we can't decrypt hashed IPs, but can compare)
+async function hashIP(ip: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(ip);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 // Verify Turnstile token with Cloudflare
 async function verifyTurnstileToken(token: string, ip: string): Promise<boolean> {
   const secretKey = Deno.env.get("TURNSTILE_SECRET_KEY");
@@ -133,9 +177,18 @@ serve(async (req: Request): Promise<Response> => {
     // Create Supabase admin client
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const encryptionKey = Deno.env.get("PII_ENCRYPTION_KEY");
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("Missing Supabase environment variables");
+      return new Response(
+        JSON.stringify({ success: false, error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!encryptionKey || encryptionKey.length !== 64) {
+      console.error("Missing or invalid PII_ENCRYPTION_KEY (must be 64 hex chars for AES-256)");
       return new Response(
         JSON.stringify({ success: false, error: "Server configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -165,14 +218,17 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Rate limiting check - count messages from this IP in the last hour
+    // Hash IP for rate limiting (allows comparison without storing plaintext)
+    const hashedIp = await hashIP(clientIp);
+
+    // Rate limiting check - count messages from this hashed IP in the last hour
     const windowStart = new Date();
     windowStart.setHours(windowStart.getHours() - RATE_LIMIT_WINDOW_HOURS);
 
     const { count, error: countError } = await supabaseAdmin
       .from("game_messages")
       .select("*", { count: "exact", head: true })
-      .eq("sender_ip", clientIp)
+      .eq("sender_ip", hashedIp)
       .gte("created_at", windowStart.toISOString());
 
     if (countError) {
@@ -189,15 +245,24 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Insert the message
+    // Encrypt PII fields
+    const encryptedName = await encryptData(sender_name.trim(), encryptionKey);
+    const encryptedEmail = await encryptData(sender_email.trim().toLowerCase(), encryptionKey);
+    const encryptedIp = await encryptData(clientIp, encryptionKey);
+
+    // Insert the message with encrypted data
+    // We store encrypted versions in new columns and hashed IP for rate limiting
     const { data: insertedMessage, error: insertError } = await supabaseAdmin
       .from("game_messages")
       .insert({
         game_id,
-        sender_name: sender_name.trim(),
-        sender_email: sender_email.trim().toLowerCase(),
+        sender_name: "[encrypted]",
+        sender_email: "[encrypted]",
         message: message.trim(),
-        sender_ip: clientIp,
+        sender_ip: hashedIp,
+        sender_name_encrypted: encryptedName,
+        sender_email_encrypted: encryptedEmail,
+        sender_ip_encrypted: encryptedIp,
       })
       .select()
       .single();
@@ -210,7 +275,7 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Message sent for game "${game.title}" from ${sender_email}`);
+    console.log(`Message sent for game "${game.title}" (encrypted PII)`);
 
     return new Response(
       JSON.stringify({ success: true, message: "Message sent successfully" }),

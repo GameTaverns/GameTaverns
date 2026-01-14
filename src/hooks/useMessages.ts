@@ -12,23 +12,23 @@ export interface GameMessage {
   game?: {
     title: string;
     slug: string | null;
-  };
+  } | null;
 }
 
 export function useMessages() {
   return useQuery({
     queryKey: ["messages"],
     queryFn: async (): Promise<GameMessage[]> => {
-      const { data, error } = await supabase
-        .from("game_messages")
-        .select(`
-          *,
-          game:games(title, slug)
-        `)
-        .order("created_at", { ascending: false });
+      // Use the decrypt-messages edge function to get decrypted PII
+      const { data, error } = await supabase.functions.invoke("decrypt-messages");
 
       if (error) throw error;
-      return data || [];
+      
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to fetch messages");
+      }
+
+      return data.messages || [];
     },
   });
 }

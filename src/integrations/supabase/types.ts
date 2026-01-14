@@ -55,8 +55,11 @@ export type Database = {
           is_read: boolean
           message: string
           sender_email: string
+          sender_email_encrypted: string | null
           sender_ip: string | null
+          sender_ip_encrypted: string | null
           sender_name: string
+          sender_name_encrypted: string | null
         }
         Insert: {
           created_at?: string
@@ -65,8 +68,11 @@ export type Database = {
           is_read?: boolean
           message: string
           sender_email: string
+          sender_email_encrypted?: string | null
           sender_ip?: string | null
+          sender_ip_encrypted?: string | null
           sender_name: string
+          sender_name_encrypted?: string | null
         }
         Update: {
           created_at?: string
@@ -75,8 +81,11 @@ export type Database = {
           is_read?: boolean
           message?: string
           sender_email?: string
+          sender_email_encrypted?: string | null
           sender_ip?: string | null
+          sender_ip_encrypted?: string | null
           sender_name?: string
+          sender_name_encrypted?: string | null
         }
         Relationships: [
           {
