@@ -540,9 +540,21 @@ const Settings = () => {
           </Button>
         </div>
 
-        <div className="flex items-center gap-3 mb-8">
-          <SettingsIcon className="h-8 w-8 text-primary" />
-          <h1 className="font-display text-3xl font-bold">Settings</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <SettingsIcon className="h-8 w-8 text-primary" />
+            <h1 className="font-display text-3xl font-bold">Settings</h1>
+          </div>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              onClick={() => navigate("/admin/messages")}
+              className="flex items-center gap-2"
+            >
+              <Mail className="h-4 w-4" />
+              Messages
+            </Button>
+          )}
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
@@ -569,15 +581,6 @@ const Settings = () => {
                   <Globe className="h-4 w-4" />
                   Site
                 </TabsTrigger>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/admin/messages")}
-                  className="ml-auto flex items-center gap-2"
-                >
-                  <Mail className="h-4 w-4" />
-                  Messages
-                </Button>
               </>
             )}
           </TabsList>
