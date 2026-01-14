@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,12 @@ interface ReplyDialogProps {
   gameTitle?: string;
 }
 
+const DEFAULT_TEMPLATE = `Hi {{name}},
+
+Thank you for your interest in {{game}}.
+
+`;
+
 export function ReplyDialog({
   open,
   onOpenChange,
@@ -31,11 +37,28 @@ export function ReplyDialog({
   gameTitle,
 }: ReplyDialogProps) {
   const { toast } = useToast();
-  const [subject, setSubject] = useState(`Re: ${gameTitle || "Your inquiry"}`);
-  const [message, setMessage] = useState(
-    `Hi ${recipientName},\n\nThank you for your interest in ${gameTitle || "the game"}.\n\n`
-  );
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Process template variables
+  const processTemplate = (template: string) => {
+    return template
+      .replace(/\{\{name\}\}/g, recipientName)
+      .replace(/\{\{game\}\}/g, gameTitle || "the game")
+      .replace(/\{\{email\}\}/g, recipientEmail);
+  };
+
+  // Initialize message when dialog opens
+  useEffect(() => {
+    if (open) {
+      setMessage(processTemplate(DEFAULT_TEMPLATE));
+      setSubject(`Re: ${gameTitle || "Your inquiry"}`);
+    } else {
+      setMessage("");
+      setSubject("");
+    }
+  }, [open, recipientName, gameTitle, recipientEmail]);
 
   const handleSend = async () => {
     if (!message.trim()) {
@@ -49,14 +72,17 @@ export function ReplyDialog({
 
     setSending(true);
     try {
+      // Process any remaining variables in the message
+      const processedMessage = processTemplate(message);
+      
       const { data, error } = await supabase.functions.invoke("send-email", {
         body: {
           to: recipientEmail,
           subject: subject,
           html: `<div style="font-family: sans-serif; line-height: 1.6;">
-            ${message.replace(/\n/g, "<br>")}
+            ${processedMessage.replace(/\n/g, "<br>")}
           </div>`,
-          text: message,
+          text: processedMessage,
         },
       });
 
@@ -68,8 +94,6 @@ export function ReplyDialog({
         description: `Your reply has been sent to ${recipientName}.`,
       });
       onOpenChange(false);
-      // Reset form
-      setMessage(`Hi ${recipientName},\n\nThank you for your interest in ${gameTitle || "the game"}.\n\n`);
     } catch (error: any) {
       console.error("Send email error:", error);
       toast({
@@ -88,7 +112,7 @@ export function ReplyDialog({
         <DialogHeader>
           <DialogTitle>Reply to {recipientName}</DialogTitle>
           <DialogDescription>
-            Send an email reply to {recipientEmail}
+            Send an email reply to {recipientEmail}. Use <code className="bg-muted px-1 rounded text-xs">{`{{name}}`}</code>, <code className="bg-muted px-1 rounded text-xs">{`{{game}}`}</code>, <code className="bg-muted px-1 rounded text-xs">{`{{email}}`}</code> as variables.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
