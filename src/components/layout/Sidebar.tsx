@@ -306,6 +306,14 @@ export function Sidebar({ isOpen }: SidebarProps) {
             </Button>
           </div>
         )}
+
+        {/* Hidden demo link */}
+        <Link 
+          to="/demo/settings" 
+          className="block px-4 py-2 text-[10px] text-sidebar-foreground/20 hover:text-sidebar-foreground/50 transition-colors"
+        >
+          Try Demo
+        </Link>
       </div>
     </aside>
   );
