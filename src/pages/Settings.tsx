@@ -48,6 +48,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +67,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ThemeCustomizer } from "@/components/settings/ThemeCustomizer";
+import { SALE_CONDITION_OPTIONS, type SaleCondition } from "@/types/game";
 
 type UserWithRole = {
   id: string;
@@ -88,6 +97,9 @@ const Settings = () => {
   const [importAsForSale, setImportAsForSale] = useState(false);
   const [importAsExpansion, setImportAsExpansion] = useState(false);
   const [importParentGameId, setImportParentGameId] = useState<string | null>(null);
+  const [showSaleDialog, setShowSaleDialog] = useState(false);
+  const [importSalePrice, setImportSalePrice] = useState("");
+  const [importSaleCondition, setImportSaleCondition] = useState<SaleCondition | null>(null);
   
   // Profile form states
   const [newEmail, setNewEmail] = useState("");
@@ -265,6 +277,8 @@ const Settings = () => {
             url: trimmed, 
             is_coming_soon: importAsComingSoon, 
             is_for_sale: importAsForSale,
+            sale_price: importAsForSale && importSalePrice ? parseFloat(importSalePrice) : null,
+            sale_condition: importAsForSale ? importSaleCondition : null,
             is_expansion: importAsExpansion,
             parent_game_id: importAsExpansion ? importParentGameId : null,
           },
@@ -305,6 +319,8 @@ const Settings = () => {
         setImportUrl("");
         setImportAsComingSoon(false);
         setImportAsForSale(false);
+        setImportSalePrice("");
+        setImportSaleCondition(null);
         setImportAsExpansion(false);
         setImportParentGameId(null);
       } else {
@@ -781,21 +797,46 @@ const Settings = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3 p-3 rounded-lg border border-green-500/30 bg-green-500/10">
-                        <Checkbox
-                          id="import-for-sale"
-                          checked={importAsForSale}
-                          onCheckedChange={(checked) => setImportAsForSale(checked === true)}
-                          disabled={isImporting}
-                        />
-                        <div className="space-y-0.5">
-                          <label htmlFor="import-for-sale" className="text-sm font-medium cursor-pointer">
-                            For Sale
-                          </label>
-                          <p className="text-xs text-muted-foreground">
-                            Mark as available for sale in the marketplace
-                          </p>
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-3 p-3 rounded-lg border border-green-500/30 bg-green-500/10">
+                          <Checkbox
+                            id="import-for-sale"
+                            checked={importAsForSale}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setShowSaleDialog(true);
+                              } else {
+                                setImportAsForSale(false);
+                                setImportSalePrice("");
+                                setImportSaleCondition(null);
+                              }
+                            }}
+                            disabled={isImporting}
+                          />
+                          <div className="space-y-0.5">
+                            <label htmlFor="import-for-sale" className="text-sm font-medium cursor-pointer">
+                              For Sale
+                            </label>
+                            <p className="text-xs text-muted-foreground">
+                              Mark as available for sale in the marketplace
+                            </p>
+                          </div>
                         </div>
+                        {importAsForSale && (
+                          <div className="pl-6 space-y-1 text-sm text-muted-foreground">
+                            <p><span className="font-medium text-foreground">Price:</span> ${importSalePrice || "0"}</p>
+                            <p><span className="font-medium text-foreground">Condition:</span> {importSaleCondition || "Not set"}</p>
+                            <Button 
+                              type="button" 
+                              variant="link" 
+                              size="sm" 
+                              className="px-0 h-auto"
+                              onClick={() => setShowSaleDialog(true)}
+                            >
+                              Edit sale details
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-3">
                         <div className="flex items-center space-x-3 p-3 rounded-lg border border-primary/30 bg-primary/10">
@@ -1402,6 +1443,70 @@ const Settings = () => {
             </TabsContent>
           )}
         </Tabs>
+
+        {/* Sale Details Dialog */}
+        <Dialog open={showSaleDialog} onOpenChange={setShowSaleDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Sale Details</DialogTitle>
+              <DialogDescription>
+                Enter the price and condition for this game listing.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="sale-price">Price ($)</Label>
+                <Input
+                  id="sale-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={importSalePrice}
+                  onChange={(e) => setImportSalePrice(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Condition</Label>
+                <Select 
+                  value={importSaleCondition || ""} 
+                  onValueChange={(v) => setImportSaleCondition(v as SaleCondition)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select condition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SALE_CONDITION_OPTIONS.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowSaleDialog(false);
+                  setImportSalePrice("");
+                  setImportSaleCondition(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setImportAsForSale(true);
+                  setShowSaleDialog(false);
+                }}
+              >
+                Confirm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

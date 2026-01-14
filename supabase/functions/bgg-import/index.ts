@@ -96,6 +96,8 @@ Deno.serve(async (req) => {
     const url = body?.url;
     const is_coming_soon = body?.is_coming_soon;
     const is_for_sale = body?.is_for_sale;
+    const sale_price = body?.sale_price;
+    const sale_condition = body?.sale_condition;
     const is_expansion = body?.is_expansion;
     const parent_game_id = body?.parent_game_id;
 
@@ -123,7 +125,7 @@ Deno.serve(async (req) => {
         Authorization: authHeader,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url, is_coming_soon, is_for_sale, is_expansion, parent_game_id }),
+      body: JSON.stringify({ url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id }),
     });
 
     const text = await upstream.text();
