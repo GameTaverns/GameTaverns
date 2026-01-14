@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package } from "lucide-react";
+import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,6 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { ContactSellerForm } from "@/components/games/ContactSellerForm";
+import { FavoriteButton } from "@/components/games/FavoriteButton";
+import { LogPlayDialog } from "@/components/games/LogPlayDialog";
+import { PlayHistory } from "@/components/games/PlayHistory";
 import {
   Table,
   TableBody,
@@ -337,22 +340,24 @@ const GameDetail = () => {
 
           {/* Details Section */}
           <div>
-            {/* Title with Edit Button */}
+            {/* Title with Actions */}
             <div className="flex items-start justify-between gap-4 mb-4">
               <h1 className="font-display text-3xl lg:text-4xl font-bold text-foreground">
                 {game.title}
               </h1>
-              {isAdmin && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/admin/edit/${game.id}`)}
-                  className="flex-shrink-0"
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              )}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <FavoriteButton gameId={game.id} />
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/admin/edit/${game.id}`)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* For Sale Banner */}
@@ -413,9 +418,10 @@ const GameDetail = () => {
 
             {/* Tabs for Description and Additional Info */}
             <Tabs defaultValue="description" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
                 <TabsTrigger value="description">Description</TabsTrigger>
-                <TabsTrigger value="info">Additional Information</TabsTrigger>
+                <TabsTrigger value="info">Info</TabsTrigger>
+                <TabsTrigger value="plays">Play History</TabsTrigger>
               </TabsList>
 
               <TabsContent value="description" className="mt-0">
@@ -503,6 +509,23 @@ const GameDetail = () => {
                     )}
                   </TableBody>
                 </Table>
+              </TabsContent>
+
+              <TabsContent value="plays" className="mt-0">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold text-foreground">
+                    Play History
+                  </h2>
+                  {isAdmin && (
+                    <LogPlayDialog gameId={game.id} gameTitle={game.title}>
+                      <Button size="sm">
+                        <Play className="h-4 w-4 mr-2" />
+                        Log Play
+                      </Button>
+                    </LogPlayDialog>
+                  )}
+                </div>
+                <PlayHistory gameId={game.id} />
               </TabsContent>
             </Tabs>
           </div>

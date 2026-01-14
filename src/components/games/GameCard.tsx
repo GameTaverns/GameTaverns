@@ -4,6 +4,7 @@ import { Users, Clock, DollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExpansionList } from "./ExpansionList";
+import { FavoriteButton } from "./FavoriteButton";
 import type { GameWithRelations } from "@/types/game";
 import { cn, proxiedImageUrl, directImageUrl } from "@/lib/utils";
 
@@ -42,7 +43,12 @@ export function GameCard({ game, priority = false }: GameCardProps) {
   return (
     <div>
       <Link to={`/game/${game.slug || game.id}`}>
-        <Card className="group overflow-hidden card-elevated card-hover bg-card border-border">
+        <Card className="group overflow-hidden card-elevated card-hover bg-card border-border relative">
+          {/* Favorite Button */}
+          <div className="absolute top-2 right-2 z-10">
+            <FavoriteButton gameId={game.id} size="sm" className="bg-background/80 backdrop-blur-sm hover:bg-background" />
+          </div>
+
           {/* Image */}
           <div className="aspect-square overflow-hidden bg-muted">
             {game.image_url && !imageError ? (

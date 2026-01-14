@@ -88,6 +88,82 @@ export type Database = {
           },
         ]
       }
+      game_session_players: {
+        Row: {
+          created_at: string
+          id: string
+          is_first_play: boolean
+          is_winner: boolean
+          player_name: string
+          score: number | null
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_first_play?: boolean
+          is_winner?: boolean
+          player_name: string
+          score?: number | null
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_first_play?: boolean
+          is_winner?: boolean
+          player_name?: string
+          score?: number | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_session_players_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          game_id: string
+          id: string
+          notes: string | null
+          played_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          game_id: string
+          id?: string
+          notes?: string | null
+          played_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          game_id?: string
+          id?: string
+          notes?: string | null
+          played_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_sessions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games: {
         Row: {
           additional_images: string[] | null
