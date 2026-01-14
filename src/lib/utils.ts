@@ -10,17 +10,14 @@ export function cn(...inputs: ClassValue[]) {
  * BGG CDN often has encoded parentheses that need to be normalized.
  */
 function cleanBggUrl(url: string): string {
-  // In server-side/proxy fetches, unescaped parentheses in Geekdo image URLs can cause 400.
-  // We normalize by:
-  // - collapsing double-encoding (%2528 -> %28)
-  // - ensuring any literal parentheses are encoded
+  // For client-side/browser loading, we want literal parentheses (browsers handle them fine)
   return url
-    .replace(/%2528/g, "%28")
-    .replace(/%2529/g, "%29")
-    .replace(/\(/g, "%28")
-    .replace(/\)/g, "%29")
+    .replace(/%28/g, "(")
+    .replace(/%29/g, ")")
+    .replace(/%2528/g, "(")  // Double-encoded
+    .replace(/%2529/g, ")")
     .replace(/&quot;.*$/, "") // Remove HTML entities from bad scraping
-    .replace(/;$/, ""); // Remove trailing semicolons
+    .replace(/;$/, "");       // Remove trailing semicolons
 }
 
 /**
