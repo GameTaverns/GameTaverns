@@ -16,7 +16,8 @@ import {
   Users,
   Tag,
   Building,
-  Globe
+  Globe,
+  Palette
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +57,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ThemeCustomizer } from "@/components/settings/ThemeCustomizer";
 
 type UserWithRole = {
   id: string;
@@ -544,7 +546,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-5" : "grid-cols-1"}`}>
+          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-6" : "grid-cols-1"}`}>
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile
@@ -566,6 +568,10 @@ const Settings = () => {
                 <TabsTrigger value="site" className="flex items-center gap-2">
                   <Globe className="h-4 w-4" />
                   Site
+                </TabsTrigger>
+                <TabsTrigger value="theme" className="flex items-center gap-2">
+                  <Palette className="h-4 w-4" />
+                  Theme
                 </TabsTrigger>
                 <Button
                   variant="outline"
@@ -1275,6 +1281,19 @@ const Settings = () => {
                         </p>
                       </div>
 
+                      <div className="space-y-2 border-t border-border pt-6">
+                        <Label htmlFor="turnstile_site_key">Turnstile Site Key</Label>
+                        <Input
+                          id="turnstile_site_key"
+                          value={siteSettings.turnstile_site_key || ""}
+                          onChange={(e) => updateSiteSetting("turnstile_site_key", e.target.value)}
+                          placeholder="0x4AAAAAACMX7o8e260x6gzV"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Cloudflare Turnstile site key for CAPTCHA verification. Make sure to add both your preview and published domains in Cloudflare Turnstile dashboard.
+                        </p>
+                      </div>
+
                       <Button type="submit" disabled={isSavingSiteSettings}>
                         {isSavingSiteSettings ? (
                           <>
@@ -1308,6 +1327,13 @@ const Settings = () => {
                   </p>
                 </CardContent>
               </Card>
+            </TabsContent>
+          )}
+
+          {/* Theme Customization Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="theme" className="space-y-6">
+              <ThemeCustomizer />
             </TabsContent>
           )}
         </Tabs>

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useCallback, forwardRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const TURNSTILE_SITE_KEY = "0x4AAAAAACMX7o8e260x6gzV";
+import { useTurnstileSiteKey } from "@/hooks/useSiteSettings";
 
 interface TurnstileWidgetProps {
   onVerify: (token: string) => void;
@@ -36,6 +35,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     const widgetIdRef = useRef<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
+    const siteKey = useTurnstileSiteKey();
 
     const handleVerify = useCallback((token: string) => {
       setIsLoading(false);
@@ -49,7 +49,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     }, [onError]);
 
     const renderWidget = useCallback(() => {
-      if (!containerRef.current || !window.turnstile) return;
+      if (!containerRef.current || !window.turnstile || !siteKey) return;
       
       if (widgetIdRef.current) {
         return;
@@ -57,7 +57,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
 
       try {
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
-          sitekey: TURNSTILE_SITE_KEY,
+          sitekey: siteKey,
           callback: handleVerify,
           "expired-callback": onExpire,
           "error-callback": handleError,
@@ -71,7 +71,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
         setHasError(true);
         setIsLoading(false);
       }
-    }, [handleVerify, onExpire, handleError]);
+    }, [handleVerify, onExpire, handleError, siteKey]);
 
     useEffect(() => {
       setIsLoading(true);
