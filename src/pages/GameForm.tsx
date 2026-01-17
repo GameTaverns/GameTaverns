@@ -79,6 +79,7 @@ const GameForm = () => {
   const [purchaseDate, setPurchaseDate] = useState("");
   const [sleeved, setSleeved] = useState(false);
   const [upgradedComponents, setUpgradedComponents] = useState(false);
+  const [kickstarterEdition, setKickstarterEdition] = useState(false);
   const [newMechanic, setNewMechanic] = useState("");
   const [newPublisher, setNewPublisher] = useState("");
 
@@ -112,6 +113,7 @@ const GameForm = () => {
       setPurchaseDate(existingGame.purchase_date || "");
       setSleeved(existingGame.sleeved || false);
       setUpgradedComponents(existingGame.upgraded_components || false);
+      setKickstarterEdition(existingGame.kickstarter_edition || false);
     }
   }, [existingGame]);
 
@@ -187,6 +189,7 @@ const GameForm = () => {
       purchase_date: purchaseDate || null,
       sleeved,
       upgraded_components: upgradedComponents,
+      kickstarter_edition: kickstarterEdition,
     };
 
     try {
@@ -528,6 +531,16 @@ const GameForm = () => {
                     />
                     <label htmlFor="upgradedComponents" className="text-sm font-medium cursor-pointer">
                       Upgraded Components
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="kickstarterEdition"
+                      checked={kickstarterEdition}
+                      onCheckedChange={(checked) => setKickstarterEdition(checked === true)}
+                    />
+                    <label htmlFor="kickstarterEdition" className="text-sm font-medium cursor-pointer">
+                      Kickstarter Edition
                     </label>
                   </div>
                 </div>
