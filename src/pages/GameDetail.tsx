@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play } from "lucide-react";
+import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -422,9 +422,10 @@ const GameDetail = () => {
 
             {/* Tabs for Description and Additional Info */}
             <Tabs defaultValue="description" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsList className="grid w-full grid-cols-4 mb-4">
                 <TabsTrigger value="description">Description</TabsTrigger>
                 <TabsTrigger value="info">Info</TabsTrigger>
+                <TabsTrigger value="location">Location</TabsTrigger>
                 <TabsTrigger value="plays">Play History</TabsTrigger>
               </TabsList>
 
@@ -513,6 +514,45 @@ const GameDetail = () => {
                     )}
                   </TableBody>
                 </Table>
+              </TabsContent>
+
+              <TabsContent value="location" className="mt-0">
+                <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
+                  Storage Location
+                </h2>
+                {(game.location_room || game.location_shelf) ? (
+                  <Table>
+                    <TableBody>
+                      {game.location_room && (
+                        <TableRow>
+                          <TableCell className="font-medium text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4" />
+                              Room
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-foreground">
+                            {game.location_room}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {game.location_shelf && (
+                        <TableRow>
+                          <TableCell className="font-medium text-muted-foreground">
+                            Shelf
+                          </TableCell>
+                          <TableCell className="text-foreground">
+                            {game.location_shelf}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-muted-foreground italic">
+                    No location set for this game.
+                  </p>
+                )}
               </TabsContent>
 
               <TabsContent value="plays" className="mt-0">

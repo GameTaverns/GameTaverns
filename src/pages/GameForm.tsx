@@ -73,6 +73,8 @@ const GameForm = () => {
   const [saleCondition, setSaleCondition] = useState<SaleCondition | null>(null);
   const [isExpansion, setIsExpansion] = useState(false);
   const [parentGameId, setParentGameId] = useState<string | null>(null);
+  const [locationRoom, setLocationRoom] = useState("");
+  const [locationShelf, setLocationShelf] = useState("");
   const [newMechanic, setNewMechanic] = useState("");
   const [newPublisher, setNewPublisher] = useState("");
 
@@ -100,6 +102,8 @@ const GameForm = () => {
       setSaleCondition(existingGame.sale_condition);
       setIsExpansion(existingGame.is_expansion);
       setParentGameId(existingGame.parent_game_id);
+      setLocationRoom(existingGame.location_room || "");
+      setLocationShelf(existingGame.location_shelf || "");
     }
   }, [existingGame]);
 
@@ -169,6 +173,8 @@ const GameForm = () => {
       sale_condition: isForSale ? saleCondition : null,
       is_expansion: isExpansion,
       parent_game_id: isExpansion ? parentGameId : null,
+      location_room: locationRoom.trim() || null,
+      location_shelf: locationShelf.trim() || null,
     };
 
     try {
@@ -466,6 +472,34 @@ const GameForm = () => {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Location */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Storage Location</h3>
+                <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border border-border bg-muted/50">
+                  <div className="space-y-2">
+                    <Label htmlFor="locationRoom">Room</Label>
+                    <Input
+                      id="locationRoom"
+                      value={locationRoom}
+                      onChange={(e) => setLocationRoom(e.target.value)}
+                      placeholder="e.g., Living Room, Game Room"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="locationShelf">Shelf</Label>
+                    <Input
+                      id="locationShelf"
+                      value={locationShelf}
+                      onChange={(e) => setLocationShelf(e.target.value)}
+                      placeholder="e.g., Shelf A, Top Shelf"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Track where this game is stored for easy finding on game night.
+                </p>
               </div>
 
               {/* Mechanics */}
