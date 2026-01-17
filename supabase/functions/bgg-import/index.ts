@@ -102,6 +102,8 @@ Deno.serve(async (req) => {
     const parent_game_id = body?.parent_game_id;
     const location_room = body?.location_room;
     const location_shelf = body?.location_shelf;
+    const purchase_price = body?.purchase_price;
+    const purchase_date = body?.purchase_date;
 
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ success: false, error: "URL is required" }), {
@@ -127,7 +129,7 @@ Deno.serve(async (req) => {
         Authorization: authHeader,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf }),
+      body: JSON.stringify({ url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date }),
     });
 
     const text = await upstream.text();

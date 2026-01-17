@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf } = await req.json();
+    const { url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date } = await req.json();
 
     // Validate input URL
     if (!url || typeof url !== "string") {
@@ -527,6 +527,8 @@ ${markdown.slice(0, 18000)}`,
       parent_game_id: is_expansion === true ? parent_game_id : null,
       location_room: location_room || null,
       location_shelf: location_shelf || null,
+      purchase_price: purchase_price ? Number(purchase_price) : null,
+      purchase_date: purchase_date || null,
     };
 
     // Upsert: if we already have a game for this BGG URL, update it instead of inserting a duplicate slug.

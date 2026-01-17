@@ -75,6 +75,8 @@ const GameForm = () => {
   const [parentGameId, setParentGameId] = useState<string | null>(null);
   const [locationRoom, setLocationRoom] = useState("");
   const [locationShelf, setLocationShelf] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
   const [newMechanic, setNewMechanic] = useState("");
   const [newPublisher, setNewPublisher] = useState("");
 
@@ -104,6 +106,8 @@ const GameForm = () => {
       setParentGameId(existingGame.parent_game_id);
       setLocationRoom(existingGame.location_room || "");
       setLocationShelf(existingGame.location_shelf || "");
+      setPurchasePrice(existingGame.purchase_price?.toString() || "");
+      setPurchaseDate(existingGame.purchase_date || "");
     }
   }, [existingGame]);
 
@@ -175,6 +179,8 @@ const GameForm = () => {
       parent_game_id: isExpansion ? parentGameId : null,
       location_room: locationRoom.trim() || null,
       location_shelf: locationShelf.trim() || null,
+      purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
+      purchase_date: purchaseDate || null,
     };
 
     try {
@@ -499,6 +505,37 @@ const GameForm = () => {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Track where this game is stored for easy finding on game night.
+                </p>
+              </div>
+
+              {/* Purchase Info (Admin Only) */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Purchase Information</h3>
+                <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10">
+                  <div className="space-y-2">
+                    <Label htmlFor="purchasePrice">Purchase Price ($)</Label>
+                    <Input
+                      id="purchasePrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={purchasePrice}
+                      onChange={(e) => setPurchasePrice(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="purchaseDate">Purchase Date</Label>
+                    <Input
+                      id="purchaseDate"
+                      type="date"
+                      value={purchaseDate}
+                      onChange={(e) => setPurchaseDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Private purchase tracking - only visible to admins.
                 </p>
               </div>
 

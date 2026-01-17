@@ -185,6 +185,8 @@ export type Database = {
           parent_game_id: string | null
           play_time: Database["public"]["Enums"]["play_time"] | null
           publisher_id: string | null
+          purchase_date: string | null
+          purchase_price: number | null
           sale_condition: Database["public"]["Enums"]["sale_condition"] | null
           sale_price: number | null
           slug: string | null
@@ -212,6 +214,8 @@ export type Database = {
           parent_game_id?: string | null
           play_time?: Database["public"]["Enums"]["play_time"] | null
           publisher_id?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
           sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
           sale_price?: number | null
           slug?: string | null
@@ -239,6 +243,8 @@ export type Database = {
           parent_game_id?: string | null
           play_time?: Database["public"]["Enums"]["play_time"] | null
           publisher_id?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
           sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
           sale_price?: number | null
           slug?: string | null

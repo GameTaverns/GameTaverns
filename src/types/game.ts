@@ -37,6 +37,8 @@ export interface Game {
   parent_game_id: string | null;
   location_room: string | null;
   location_shelf: string | null;
+  purchase_price: number | null;
+  purchase_date: string | null;
   created_at: string;
   updated_at: string;
 }

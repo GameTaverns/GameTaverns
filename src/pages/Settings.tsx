@@ -20,7 +20,8 @@ import {
   Palette,
   ChevronLeft,
   ChevronRight,
-  MapPin
+  MapPin,
+  DollarSign
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -299,6 +300,8 @@ const Settings = () => {
   const [importLocationRoom, setImportLocationRoom] = useState("");
   const [importLocationShelf, setImportLocationShelf] = useState("");
   const [lastImportedGameTitle, setLastImportedGameTitle] = useState("");
+  const [importPurchasePrice, setImportPurchasePrice] = useState("");
+  const [importPurchaseDate, setImportPurchaseDate] = useState("");
   
   // Profile form states
   const [newEmail, setNewEmail] = useState("");
@@ -484,6 +487,8 @@ const Settings = () => {
             parent_game_id: importAsExpansion ? importParentGameId : null,
             location_room: importLocationRoom.trim() || null,
             location_shelf: importLocationShelf.trim() || null,
+            purchase_price: importPurchasePrice ? parseFloat(importPurchasePrice) : null,
+            purchase_date: importPurchaseDate || null,
           },
         });
 
@@ -535,6 +540,8 @@ const Settings = () => {
         setImportParentGameId(null);
         setImportLocationRoom("");
         setImportLocationShelf("");
+        setImportPurchasePrice("");
+        setImportPurchaseDate("");
       } else {
         throw new Error(data?.error || "Import failed");
       }
@@ -1135,6 +1142,47 @@ const Settings = () => {
                           </div>
                         </div>
                       )}
+                      {/* Purchase Information (Admin Only) */}
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/10">
+                          <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          <div className="space-y-0.5 flex-1">
+                            <label className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                              Purchase Info (Admin Only)
+                            </label>
+                            <p className="text-xs text-amber-600/80 dark:text-amber-400/80">
+                              Track your purchase - not publicly visible
+                            </p>
+                          </div>
+                        </div>
+                        <div className="pl-6 grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <Label htmlFor="import-purchase-price" className="text-xs">Purchase Price ($)</Label>
+                            <Input
+                              id="import-purchase-price"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={importPurchasePrice}
+                              onChange={(e) => setImportPurchasePrice(e.target.value)}
+                              placeholder="0.00"
+                              disabled={isImporting}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="import-purchase-date" className="text-xs">Purchase Date</Label>
+                            <Input
+                              id="import-purchase-date"
+                              type="date"
+                              value={importPurchaseDate}
+                              onChange={(e) => setImportPurchaseDate(e.target.value)}
+                              disabled={isImporting}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
                       <Button type="submit" className="w-full" disabled={isImporting || (importAsExpansion && !importParentGameId)}>
                         {isImporting ? (
                           <>
