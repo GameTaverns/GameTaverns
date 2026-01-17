@@ -39,6 +39,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "game_mechanics_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "game_mechanics_mechanic_id_fkey"
             columns: ["mechanic_id"]
             isOneToOne: false
@@ -84,6 +91,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_messages_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
             referencedColumns: ["id"]
           },
         ]
@@ -160,6 +174,13 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_sessions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
             referencedColumns: ["id"]
           },
         ]
@@ -270,6 +291,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "games_parent_game_id_fkey"
+            columns: ["parent_game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "games_publisher_id_fkey"
             columns: ["publisher_id"]
             isOneToOne: false
@@ -361,7 +389,121 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      games_public: {
+        Row: {
+          additional_images: string[] | null
+          bgg_id: string | null
+          bgg_url: string | null
+          created_at: string | null
+          crowdfunded: boolean | null
+          description: string | null
+          difficulty: Database["public"]["Enums"]["difficulty_level"] | null
+          game_type: Database["public"]["Enums"]["game_type"] | null
+          id: string | null
+          image_url: string | null
+          is_coming_soon: boolean | null
+          is_expansion: boolean | null
+          is_for_sale: boolean | null
+          location_room: string | null
+          location_shelf: string | null
+          max_players: number | null
+          min_players: number | null
+          parent_game_id: string | null
+          play_time: Database["public"]["Enums"]["play_time"] | null
+          publisher_id: string | null
+          sale_condition: Database["public"]["Enums"]["sale_condition"] | null
+          sale_price: number | null
+          sleeved: boolean | null
+          slug: string | null
+          suggested_age: string | null
+          title: string | null
+          updated_at: string | null
+          upgraded_components: boolean | null
+        }
+        Insert: {
+          additional_images?: string[] | null
+          bgg_id?: string | null
+          bgg_url?: string | null
+          created_at?: string | null
+          crowdfunded?: boolean | null
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
+          game_type?: Database["public"]["Enums"]["game_type"] | null
+          id?: string | null
+          image_url?: string | null
+          is_coming_soon?: boolean | null
+          is_expansion?: boolean | null
+          is_for_sale?: boolean | null
+          location_room?: string | null
+          location_shelf?: string | null
+          max_players?: number | null
+          min_players?: number | null
+          parent_game_id?: string | null
+          play_time?: Database["public"]["Enums"]["play_time"] | null
+          publisher_id?: string | null
+          sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
+          sale_price?: number | null
+          sleeved?: boolean | null
+          slug?: string | null
+          suggested_age?: string | null
+          title?: string | null
+          updated_at?: string | null
+          upgraded_components?: boolean | null
+        }
+        Update: {
+          additional_images?: string[] | null
+          bgg_id?: string | null
+          bgg_url?: string | null
+          created_at?: string | null
+          crowdfunded?: boolean | null
+          description?: string | null
+          difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
+          game_type?: Database["public"]["Enums"]["game_type"] | null
+          id?: string | null
+          image_url?: string | null
+          is_coming_soon?: boolean | null
+          is_expansion?: boolean | null
+          is_for_sale?: boolean | null
+          location_room?: string | null
+          location_shelf?: string | null
+          max_players?: number | null
+          min_players?: number | null
+          parent_game_id?: string | null
+          play_time?: Database["public"]["Enums"]["play_time"] | null
+          publisher_id?: string | null
+          sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
+          sale_price?: number | null
+          sleeved?: boolean | null
+          slug?: string | null
+          suggested_age?: string | null
+          title?: string | null
+          updated_at?: string | null
+          upgraded_components?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_parent_game_id_fkey"
+            columns: ["parent_game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_parent_game_id_fkey"
+            columns: ["parent_game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       generate_slug: { Args: { title: string }; Returns: string }
