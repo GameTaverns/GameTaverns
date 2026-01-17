@@ -245,15 +245,18 @@ GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
 GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
 EOF
 
-    # Append application migrations
+    # Append application migrations (sorted by filename to ensure correct order)
     echo -e "\n-- Application Migrations\n" >> deploy/volumes/db/init/00-init.sql
     
-    for migration in supabase/migrations/*.sql; do
+    for migration in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
         if [ -f "$migration" ]; then
             echo -e "\n-- Migration: $(basename $migration)\n" >> deploy/volumes/db/init/00-init.sql
             cat "$migration" >> deploy/volumes/db/init/00-init.sql
         fi
     done
+    
+    # Copy supabase config for self-hosted
+    cp deploy/supabase-config.toml supabase/config.toml 2>/dev/null || true
     
     # Replace placeholder with actual password
     if [ -f deploy/.env ]; then

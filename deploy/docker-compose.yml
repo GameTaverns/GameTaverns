@@ -163,7 +163,7 @@ services:
 
   # Edge Functions - Deno runtime
   functions:
-    image: supabase/edge-runtime:v1.36.1
+    image: supabase/edge-runtime:v1.58.0
     container_name: supabase-functions
     restart: unless-stopped
     environment:
@@ -174,7 +174,7 @@ services:
       SUPABASE_DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       # App-specific secrets
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY}
-      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
       LOVABLE_API_KEY: ${LOVABLE_API_KEY:-}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -188,6 +188,9 @@ services:
       - start
       - --main-service
       - /home/deno/functions/main
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - gamehaven
 

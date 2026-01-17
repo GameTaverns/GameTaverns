@@ -1,0 +1,11 @@
+# Ignore sensitive files
+.env
+
+# Ignore runtime data
+volumes/db/data/
+volumes/storage/
+
+# Keep structure files
+!volumes/db/init/.gitkeep
+!volumes/storage/.gitkeep
+!volumes/kong/kong.yml

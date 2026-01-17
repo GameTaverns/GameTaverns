@@ -1,0 +1,26 @@
+# Supabase Configuration for Self-Hosted Deployment
+# This file is used by the deploy script to configure edge functions
+# Copy this to supabase/config.toml before deploying
+
+project_id = "self-hosted"
+
+[functions.game-import]
+verify_jwt = false
+
+[functions.bgg-import]
+verify_jwt = false
+
+[functions.bgg-lookup]
+verify_jwt = false
+
+[functions.image-proxy]
+verify_jwt = false
+
+[functions.send-message]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.decrypt-messages]
+verify_jwt = false
