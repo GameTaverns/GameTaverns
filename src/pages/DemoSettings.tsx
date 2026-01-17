@@ -15,7 +15,8 @@ import {
   RotateCcw,
   Eye,
   Upload,
-  Loader2
+  Loader2,
+  MapPin
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useDemoMode } from "@/contexts/DemoContext";
@@ -254,6 +255,8 @@ const DemoSettings = () => {
   const [importParentGameId, setImportParentGameId] = useState<string | null>(null);
   const [importSalePrice, setImportSalePrice] = useState("");
   const [importSaleCondition, setImportSaleCondition] = useState<SaleCondition | null>(null);
+  const [importLocationRoom, setImportLocationRoom] = useState("");
+  const [importLocationShelf, setImportLocationShelf] = useState("");
 
   // Demo mechanics and publishers derived from games
   const mechanics = useMemo(() => {
@@ -407,6 +410,8 @@ const DemoSettings = () => {
       sale_condition: importAsForSale ? importSaleCondition : null,
       is_expansion: importAsExpansion,
       parent_game_id: importAsExpansion ? importParentGameId : null,
+      location_room: importLocationRoom.trim() || null,
+      location_shelf: importLocationShelf.trim() || null,
       bgg_url: trimmed,
       bgg_id: bggId,
       mechanics,
@@ -434,6 +439,8 @@ const DemoSettings = () => {
     setImportParentGameId(null);
     setImportSalePrice("");
     setImportSaleCondition(null);
+    setImportLocationRoom("");
+    setImportLocationShelf("");
     setIsImporting(false);
   };
 
@@ -655,6 +662,46 @@ const DemoSettings = () => {
                         </div>
                       )}
                     </div>
+                      {/* Storage Location - Only show when NOT importing as Coming Soon */}
+                      {!importAsComingSoon && (
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-3 p-3 rounded-lg border border-muted-foreground/30 bg-muted/30">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <div className="space-y-0.5 flex-1">
+                              <label className="text-sm font-medium">
+                                Storage Location (Optional)
+                              </label>
+                              <p className="text-xs text-muted-foreground">
+                                Pre-fill where this game will be stored
+                              </p>
+                            </div>
+                          </div>
+                          <div className="pl-6 grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1">
+                              <Label htmlFor="import-location-room" className="text-xs">Room</Label>
+                              <Input
+                                id="import-location-room"
+                                value={importLocationRoom}
+                                onChange={(e) => setImportLocationRoom(e.target.value)}
+                                placeholder="e.g., Living Room"
+                                disabled={isImporting}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="import-location-shelf" className="text-xs">Shelf</Label>
+                              <Input
+                                id="import-location-shelf"
+                                value={importLocationShelf}
+                                onChange={(e) => setImportLocationShelf(e.target.value)}
+                                placeholder="e.g., Top Shelf"
+                                disabled={isImporting}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     <Button type="submit" className="w-full" disabled={isImporting || !importUrl.trim()}>
                       {isImporting ? (
                         <>
