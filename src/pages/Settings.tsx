@@ -304,7 +304,7 @@ const Settings = () => {
   const [importPurchaseDate, setImportPurchaseDate] = useState("");
   const [importSleeved, setImportSleeved] = useState(false);
   const [importUpgradedComponents, setImportUpgradedComponents] = useState(false);
-  const [importKickstarterEdition, setImportKickstarterEdition] = useState(false);
+  const [importCrowdfunded, setImportCrowdfunded] = useState(false);
   
   // Profile form states
   const [newEmail, setNewEmail] = useState("");
@@ -494,7 +494,7 @@ const Settings = () => {
             purchase_date: importPurchaseDate || null,
             sleeved: importSleeved,
             upgraded_components: importUpgradedComponents,
-            kickstarter_edition: importKickstarterEdition,
+            crowdfunded: importCrowdfunded,
           },
         });
 
@@ -1173,13 +1173,13 @@ const Settings = () => {
                             </div>
                             <div className="flex items-center space-x-2">
                               <Checkbox
-                                id="import-kickstarter"
-                                checked={importKickstarterEdition}
-                                onCheckedChange={(checked) => setImportKickstarterEdition(checked === true)}
+                                id="import-crowdfunded"
+                                checked={importCrowdfunded}
+                                onCheckedChange={(checked) => setImportCrowdfunded(checked === true)}
                                 disabled={isImporting}
                               />
-                              <label htmlFor="import-kickstarter" className="text-sm cursor-pointer">
-                                Kickstarter Edition
+                              <label htmlFor="import-crowdfunded" className="text-sm cursor-pointer">
+                                Crowdfunded
                               </label>
                             </div>
                           </div>

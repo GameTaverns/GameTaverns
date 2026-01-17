@@ -170,6 +170,7 @@ export type Database = {
           bgg_id: string | null
           bgg_url: string | null
           created_at: string | null
+          crowdfunded: boolean | null
           description: string | null
           difficulty: Database["public"]["Enums"]["difficulty_level"] | null
           game_type: Database["public"]["Enums"]["game_type"] | null
@@ -178,7 +179,6 @@ export type Database = {
           is_coming_soon: boolean
           is_expansion: boolean
           is_for_sale: boolean
-          kickstarter_edition: boolean | null
           location_room: string | null
           location_shelf: string | null
           max_players: number | null
@@ -202,6 +202,7 @@ export type Database = {
           bgg_id?: string | null
           bgg_url?: string | null
           created_at?: string | null
+          crowdfunded?: boolean | null
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
           game_type?: Database["public"]["Enums"]["game_type"] | null
@@ -210,7 +211,6 @@ export type Database = {
           is_coming_soon?: boolean
           is_expansion?: boolean
           is_for_sale?: boolean
-          kickstarter_edition?: boolean | null
           location_room?: string | null
           location_shelf?: string | null
           max_players?: number | null
@@ -234,6 +234,7 @@ export type Database = {
           bgg_id?: string | null
           bgg_url?: string | null
           created_at?: string | null
+          crowdfunded?: boolean | null
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
           game_type?: Database["public"]["Enums"]["game_type"] | null
@@ -242,7 +243,6 @@ export type Database = {
           is_coming_soon?: boolean
           is_expansion?: boolean
           is_for_sale?: boolean
-          kickstarter_edition?: boolean | null
           location_room?: string | null
           location_shelf?: string | null
           max_players?: number | null

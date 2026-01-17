@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date, sleeved, upgraded_components, kickstarter_edition } = await req.json();
+    const { url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date, sleeved, upgraded_components, crowdfunded } = await req.json();
 
     // Validate input URL
     if (!url || typeof url !== "string") {
@@ -531,7 +531,7 @@ ${markdown.slice(0, 18000)}`,
       purchase_date: purchase_date || null,
       sleeved: sleeved === true,
       upgraded_components: upgraded_components === true,
-      kickstarter_edition: kickstarter_edition === true,
+      crowdfunded: crowdfunded === true,
     };
 
     // Upsert: if we already have a game for this BGG URL, update it instead of inserting a duplicate slug.

@@ -262,7 +262,7 @@ const DemoSettings = () => {
   const [importPurchaseDate, setImportPurchaseDate] = useState("");
   const [importSleeved, setImportSleeved] = useState(false);
   const [importUpgradedComponents, setImportUpgradedComponents] = useState(false);
-  const [importKickstarterEdition, setImportKickstarterEdition] = useState(false);
+  const [importCrowdfunded, setImportCrowdfunded] = useState(false);
 
   // Demo mechanics and publishers derived from games
   const mechanics = useMemo(() => {
@@ -422,7 +422,7 @@ const DemoSettings = () => {
       purchase_date: importPurchaseDate || null,
       sleeved: importSleeved,
       upgraded_components: importUpgradedComponents,
-      kickstarter_edition: importKickstarterEdition,
+      crowdfunded: importCrowdfunded,
       bgg_url: trimmed,
       bgg_id: bggId,
       mechanics,
@@ -456,7 +456,7 @@ const DemoSettings = () => {
     setImportPurchaseDate("");
     setImportSleeved(false);
     setImportUpgradedComponents(false);
-    setImportKickstarterEdition(false);
+    setImportCrowdfunded(false);
     setIsImporting(false);
   };
 
@@ -741,13 +741,13 @@ const DemoSettings = () => {
                             </div>
                             <div className="flex items-center space-x-2">
                               <Checkbox
-                                id="demo-import-kickstarter"
-                                checked={importKickstarterEdition}
-                                onCheckedChange={(checked) => setImportKickstarterEdition(checked === true)}
+                                id="demo-import-crowdfunded"
+                                checked={importCrowdfunded}
+                                onCheckedChange={(checked) => setImportCrowdfunded(checked === true)}
                                 disabled={isImporting}
                               />
-                              <label htmlFor="demo-import-kickstarter" className="text-sm cursor-pointer">
-                                Kickstarter Edition
+                              <label htmlFor="demo-import-crowdfunded" className="text-sm cursor-pointer">
+                                Crowdfunded
                               </label>
                             </div>
                           </div>

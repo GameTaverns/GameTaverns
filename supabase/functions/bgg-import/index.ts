@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     const purchase_date = body?.purchase_date;
     const sleeved = body?.sleeved;
     const upgraded_components = body?.upgraded_components;
-    const kickstarter_edition = body?.kickstarter_edition;
+    const crowdfunded = body?.crowdfunded;
 
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ success: false, error: "URL is required" }), {
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
         Authorization: authHeader,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date, sleeved, upgraded_components, kickstarter_edition }),
+      body: JSON.stringify({ url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date, sleeved, upgraded_components, crowdfunded }),
     });
 
     const text = await upstream.text();

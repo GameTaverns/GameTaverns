@@ -530,10 +530,10 @@ const GameDetail = () => {
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
-                        Kickstarter Edition
+                        Crowdfunded
                       </TableCell>
                       <TableCell className="text-foreground">
-                        {game.kickstarter_edition ? "Yes" : "No"}
+                        {game.crowdfunded ? "Yes" : "No"}
                       </TableCell>
                     </TableRow>
                     {/* Admin-only purchase info */}
