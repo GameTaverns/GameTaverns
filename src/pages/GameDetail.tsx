@@ -512,6 +512,22 @@ const GameDetail = () => {
                         </TableCell>
                       </TableRow>
                     )}
+                    <TableRow>
+                      <TableCell className="font-medium text-muted-foreground">
+                        Sleeved
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {game.sleeved ? "Yes" : "No"}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-muted-foreground">
+                        Upgraded Components
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {game.upgraded_components ? "Yes" : "No"}
+                      </TableCell>
+                    </TableRow>
                     {/* Admin-only purchase info */}
                     {isAdmin && (game.purchase_price || game.purchase_date) && (
                       <>

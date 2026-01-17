@@ -260,6 +260,8 @@ const DemoSettings = () => {
   const [importLocationShelf, setImportLocationShelf] = useState("");
   const [importPurchasePrice, setImportPurchasePrice] = useState("");
   const [importPurchaseDate, setImportPurchaseDate] = useState("");
+  const [importSleeved, setImportSleeved] = useState(false);
+  const [importUpgradedComponents, setImportUpgradedComponents] = useState(false);
 
   // Demo mechanics and publishers derived from games
   const mechanics = useMemo(() => {
@@ -417,6 +419,8 @@ const DemoSettings = () => {
       location_shelf: importLocationShelf.trim() || null,
       purchase_price: importPurchasePrice ? parseFloat(importPurchasePrice) : null,
       purchase_date: importPurchaseDate || null,
+      sleeved: importSleeved,
+      upgraded_components: importUpgradedComponents,
       bgg_url: trimmed,
       bgg_id: bggId,
       mechanics,
@@ -448,6 +452,8 @@ const DemoSettings = () => {
     setImportLocationShelf("");
     setImportPurchasePrice("");
     setImportPurchaseDate("");
+    setImportSleeved(false);
+    setImportUpgradedComponents(false);
     setIsImporting(false);
   };
 
@@ -705,6 +711,30 @@ const DemoSettings = () => {
                                 disabled={isImporting}
                                 className="h-8 text-sm"
                               />
+                            </div>
+                          </div>
+                          <div className="pl-6 grid gap-3 sm:grid-cols-2">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="demo-import-sleeved"
+                                checked={importSleeved}
+                                onCheckedChange={(checked) => setImportSleeved(checked === true)}
+                                disabled={isImporting}
+                              />
+                              <label htmlFor="demo-import-sleeved" className="text-sm cursor-pointer">
+                                Sleeved
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="demo-import-upgraded"
+                                checked={importUpgradedComponents}
+                                onCheckedChange={(checked) => setImportUpgradedComponents(checked === true)}
+                                disabled={isImporting}
+                              />
+                              <label htmlFor="demo-import-upgraded" className="text-sm cursor-pointer">
+                                Upgraded Components
+                              </label>
                             </div>
                           </div>
                         </div>

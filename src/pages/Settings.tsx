@@ -302,6 +302,8 @@ const Settings = () => {
   const [lastImportedGameTitle, setLastImportedGameTitle] = useState("");
   const [importPurchasePrice, setImportPurchasePrice] = useState("");
   const [importPurchaseDate, setImportPurchaseDate] = useState("");
+  const [importSleeved, setImportSleeved] = useState(false);
+  const [importUpgradedComponents, setImportUpgradedComponents] = useState(false);
   
   // Profile form states
   const [newEmail, setNewEmail] = useState("");
@@ -489,6 +491,8 @@ const Settings = () => {
             location_shelf: importLocationShelf.trim() || null,
             purchase_price: importPurchasePrice ? parseFloat(importPurchasePrice) : null,
             purchase_date: importPurchaseDate || null,
+            sleeved: importSleeved,
+            upgraded_components: importUpgradedComponents,
           },
         });
 
@@ -542,6 +546,8 @@ const Settings = () => {
         setImportLocationShelf("");
         setImportPurchasePrice("");
         setImportPurchaseDate("");
+        setImportSleeved(false);
+        setImportUpgradedComponents(false);
       } else {
         throw new Error(data?.error || "Import failed");
       }
@@ -1138,6 +1144,30 @@ const Settings = () => {
                                 disabled={isImporting}
                                 className="h-8 text-sm"
                               />
+                            </div>
+                          </div>
+                          <div className="pl-6 grid gap-3 sm:grid-cols-2">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="import-sleeved"
+                                checked={importSleeved}
+                                onCheckedChange={(checked) => setImportSleeved(checked === true)}
+                                disabled={isImporting}
+                              />
+                              <label htmlFor="import-sleeved" className="text-sm cursor-pointer">
+                                Sleeved
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id="import-upgraded"
+                                checked={importUpgradedComponents}
+                                onCheckedChange={(checked) => setImportUpgradedComponents(checked === true)}
+                                disabled={isImporting}
+                              />
+                              <label htmlFor="import-upgraded" className="text-sm cursor-pointer">
+                                Upgraded Components
+                              </label>
                             </div>
                           </div>
                         </div>
@@ -1843,6 +1873,26 @@ const Settings = () => {
                   placeholder="e.g., Top Shelf, Kallax #3, Cabinet A"
                 />
               </div>
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="location-sleeved"
+                  checked={importSleeved}
+                  onCheckedChange={(checked) => setImportSleeved(checked === true)}
+                />
+                <label htmlFor="location-sleeved" className="text-sm font-medium cursor-pointer">
+                  Sleeved
+                </label>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="location-upgraded"
+                  checked={importUpgradedComponents}
+                  onCheckedChange={(checked) => setImportUpgradedComponents(checked === true)}
+                />
+                <label htmlFor="location-upgraded" className="text-sm font-medium cursor-pointer">
+                  Upgraded Components
+                </label>
+              </div>
             </div>
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
@@ -1876,19 +1926,23 @@ const Settings = () => {
                         .update({
                           location_room: importLocationRoom.trim() || null,
                           location_shelf: importLocationShelf.trim() || null,
+                          sleeved: importSleeved,
+                          upgraded_components: importUpgradedComponents,
                         })
                         .eq("id", recentGames[0].id);
                       
                       queryClient.invalidateQueries({ queryKey: ["games"] });
                       toast({
-                        title: "Location saved",
-                        description: `Storage location for "${lastImportedGameTitle}" has been set.`,
+                        title: "Details saved",
+                        description: `Storage location and component status for "${lastImportedGameTitle}" has been set.`,
                       });
                     }
                   }
                   setShowLocationDialog(false);
                   setImportLocationRoom("");
                   setImportLocationShelf("");
+                  setImportSleeved(false);
+                  setImportUpgradedComponents(false);
                   setLastImportedGameTitle("");
                 }}
               >

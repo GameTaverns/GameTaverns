@@ -77,6 +77,8 @@ const GameForm = () => {
   const [locationShelf, setLocationShelf] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
+  const [sleeved, setSleeved] = useState(false);
+  const [upgradedComponents, setUpgradedComponents] = useState(false);
   const [newMechanic, setNewMechanic] = useState("");
   const [newPublisher, setNewPublisher] = useState("");
 
@@ -108,6 +110,8 @@ const GameForm = () => {
       setLocationShelf(existingGame.location_shelf || "");
       setPurchasePrice(existingGame.purchase_price?.toString() || "");
       setPurchaseDate(existingGame.purchase_date || "");
+      setSleeved(existingGame.sleeved || false);
+      setUpgradedComponents(existingGame.upgraded_components || false);
     }
   }, [existingGame]);
 
@@ -181,6 +185,8 @@ const GameForm = () => {
       location_shelf: locationShelf.trim() || null,
       purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
       purchase_date: purchaseDate || null,
+      sleeved,
+      upgraded_components: upgradedComponents,
     };
 
     try {
@@ -503,9 +509,31 @@ const GameForm = () => {
                     />
                   </div>
                 </div>
+                <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border border-border bg-muted/50">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="sleeved"
+                      checked={sleeved}
+                      onCheckedChange={(checked) => setSleeved(checked === true)}
+                    />
+                    <label htmlFor="sleeved" className="text-sm font-medium cursor-pointer">
+                      Sleeved
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="upgradedComponents"
+                      checked={upgradedComponents}
+                      onCheckedChange={(checked) => setUpgradedComponents(checked === true)}
+                    />
+                    <label htmlFor="upgradedComponents" className="text-sm font-medium cursor-pointer">
+                      Upgraded Components
+                    </label>
+                  </div>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Track where this game is stored for easy finding on game night.
-                </p>
+                  Track where this game is stored and its component status.</p>
+
               </div>
 
               {/* Purchase Info (Admin Only) */}

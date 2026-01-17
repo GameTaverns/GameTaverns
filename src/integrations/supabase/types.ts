@@ -189,10 +189,12 @@ export type Database = {
           purchase_price: number | null
           sale_condition: Database["public"]["Enums"]["sale_condition"] | null
           sale_price: number | null
+          sleeved: boolean | null
           slug: string | null
           suggested_age: string | null
           title: string
           updated_at: string | null
+          upgraded_components: boolean | null
         }
         Insert: {
           additional_images?: string[] | null
@@ -218,10 +220,12 @@ export type Database = {
           purchase_price?: number | null
           sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
           sale_price?: number | null
+          sleeved?: boolean | null
           slug?: string | null
           suggested_age?: string | null
           title: string
           updated_at?: string | null
+          upgraded_components?: boolean | null
         }
         Update: {
           additional_images?: string[] | null
@@ -247,10 +251,12 @@ export type Database = {
           purchase_price?: number | null
           sale_condition?: Database["public"]["Enums"]["sale_condition"] | null
           sale_price?: number | null
+          sleeved?: boolean | null
           slug?: string | null
           suggested_age?: string | null
           title?: string
           updated_at?: string | null
+          upgraded_components?: boolean | null
         }
         Relationships: [
           {

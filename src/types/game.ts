@@ -39,6 +39,8 @@ export interface Game {
   location_shelf: string | null;
   purchase_price: number | null;
   purchase_date: string | null;
+  sleeved: boolean;
+  upgraded_components: boolean;
   created_at: string;
   updated_at: string;
 }
