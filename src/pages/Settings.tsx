@@ -19,7 +19,8 @@ import {
   Globe,
   Palette,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  MapPin
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -294,6 +295,10 @@ const Settings = () => {
   const [showSaleDialog, setShowSaleDialog] = useState(false);
   const [importSalePrice, setImportSalePrice] = useState("");
   const [importSaleCondition, setImportSaleCondition] = useState<SaleCondition | null>(null);
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [importLocationRoom, setImportLocationRoom] = useState("");
+  const [importLocationShelf, setImportLocationShelf] = useState("");
+  const [lastImportedGameTitle, setLastImportedGameTitle] = useState("");
   
   // Profile form states
   const [newEmail, setNewEmail] = useState("");
@@ -477,6 +482,8 @@ const Settings = () => {
             sale_condition: importAsForSale ? importSaleCondition : null,
             is_expansion: importAsExpansion,
             parent_game_id: importAsExpansion ? importParentGameId : null,
+            location_room: importLocationRoom.trim() || null,
+            location_shelf: importLocationShelf.trim() || null,
           },
         });
 
@@ -512,6 +519,13 @@ const Settings = () => {
           title: "Game imported!",
           description: `"${data.game.title}" has been added ${statusLabel}.`,
         });
+        
+        // Show location dialog for non-Coming Soon imports if location wasn't already set
+        if (!importAsComingSoon && !importLocationRoom && !importLocationShelf) {
+          setLastImportedGameTitle(data.game.title);
+          setShowLocationDialog(true);
+        }
+        
         setImportUrl("");
         setImportAsComingSoon(false);
         setImportAsForSale(false);
@@ -519,6 +533,8 @@ const Settings = () => {
         setImportSaleCondition(null);
         setImportAsExpansion(false);
         setImportParentGameId(null);
+        setImportLocationRoom("");
+        setImportLocationShelf("");
       } else {
         throw new Error(data?.error || "Import failed");
       }
@@ -1079,6 +1095,46 @@ const Settings = () => {
                           </div>
                         )}
                       </div>
+                      {/* Storage Location - Only show when NOT importing as Coming Soon */}
+                      {!importAsComingSoon && (
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-3 p-3 rounded-lg border border-muted-foreground/30 bg-muted/30">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <div className="space-y-0.5 flex-1">
+                              <label className="text-sm font-medium">
+                                Storage Location (Optional)
+                              </label>
+                              <p className="text-xs text-muted-foreground">
+                                Pre-fill where this game will be stored
+                              </p>
+                            </div>
+                          </div>
+                          <div className="pl-6 grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1">
+                              <Label htmlFor="import-location-room" className="text-xs">Room</Label>
+                              <Input
+                                id="import-location-room"
+                                value={importLocationRoom}
+                                onChange={(e) => setImportLocationRoom(e.target.value)}
+                                placeholder="e.g., Living Room"
+                                disabled={isImporting}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="import-location-shelf" className="text-xs">Shelf</Label>
+                              <Input
+                                id="import-location-shelf"
+                                value={importLocationShelf}
+                                onChange={(e) => setImportLocationShelf(e.target.value)}
+                                placeholder="e.g., Top Shelf"
+                                disabled={isImporting}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <Button type="submit" className="w-full" disabled={isImporting || (importAsExpansion && !importParentGameId)}>
                         {isImporting ? (
                           <>
@@ -1703,6 +1759,92 @@ const Settings = () => {
                 }}
               >
                 Confirm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Location Dialog - shown after import for non-Coming Soon games */}
+        <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Set Storage Location
+              </DialogTitle>
+              <DialogDescription>
+                Where will you store "{lastImportedGameTitle}"? (Optional)
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="location-room">Room</Label>
+                <Input
+                  id="location-room"
+                  value={importLocationRoom}
+                  onChange={(e) => setImportLocationRoom(e.target.value)}
+                  placeholder="e.g., Living Room, Game Room, Office"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location-shelf">Shelf</Label>
+                <Input
+                  id="location-shelf"
+                  value={importLocationShelf}
+                  onChange={(e) => setImportLocationShelf(e.target.value)}
+                  placeholder="e.g., Top Shelf, Kallax #3, Cabinet A"
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowLocationDialog(false);
+                  setImportLocationRoom("");
+                  setImportLocationShelf("");
+                  setLastImportedGameTitle("");
+                }}
+              >
+                Skip
+              </Button>
+              <Button
+                type="button"
+                onClick={async () => {
+                  // Update the game with location info
+                  if (importLocationRoom || importLocationShelf) {
+                    // Find the game and update it
+                    const { data: recentGames } = await supabase
+                      .from("games")
+                      .select("id")
+                      .eq("title", lastImportedGameTitle)
+                      .order("created_at", { ascending: false })
+                      .limit(1);
+                    
+                    if (recentGames && recentGames.length > 0) {
+                      await supabase
+                        .from("games")
+                        .update({
+                          location_room: importLocationRoom.trim() || null,
+                          location_shelf: importLocationShelf.trim() || null,
+                        })
+                        .eq("id", recentGames[0].id);
+                      
+                      queryClient.invalidateQueries({ queryKey: ["games"] });
+                      toast({
+                        title: "Location saved",
+                        description: `Storage location for "${lastImportedGameTitle}" has been set.`,
+                      });
+                    }
+                  }
+                  setShowLocationDialog(false);
+                  setImportLocationRoom("");
+                  setImportLocationShelf("");
+                  setLastImportedGameTitle("");
+                }}
+              >
+                Save Location
               </Button>
             </DialogFooter>
           </DialogContent>
