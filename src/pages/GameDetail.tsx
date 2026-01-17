@@ -528,6 +528,14 @@ const GameDetail = () => {
                         {game.upgraded_components ? "Yes" : "No"}
                       </TableCell>
                     </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-muted-foreground">
+                        Kickstarter Edition
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {game.kickstarter_edition ? "Yes" : "No"}
+                      </TableCell>
+                    </TableRow>
                     {/* Admin-only purchase info */}
                     {isAdmin && (game.purchase_price || game.purchase_date) && (
                       <>

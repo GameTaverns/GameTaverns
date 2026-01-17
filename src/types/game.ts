@@ -41,6 +41,7 @@ export interface Game {
   purchase_date: string | null;
   sleeved: boolean;
   upgraded_components: boolean;
+  kickstarter_edition: boolean;
   created_at: string;
   updated_at: string;
 }
