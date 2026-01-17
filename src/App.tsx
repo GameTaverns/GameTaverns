@@ -18,6 +18,7 @@ const Messages = lazy(() => import("./pages/Messages"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const DemoSettings = lazy(() => import("./pages/DemoSettings"));
 const DemoGameForm = lazy(() => import("./pages/DemoGameForm"));
+const Docs = lazy(() => import("./pages/Docs"));
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ function AppRoutes() {
           <Route path="/demo/settings" element={<DemoSettings />} />
           <Route path="/demo/add" element={<DemoGameForm />} />
           <Route path="/demo/edit/:id" element={<DemoGameForm />} />
+          <Route path="/docs" element={<Docs />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
