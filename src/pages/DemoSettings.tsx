@@ -275,7 +275,7 @@ const DemoSettings = () => {
   // Filter out expansions from parent game options
   const parentGameOptions = demoGames.filter(g => !g.is_expansion);
 
-  // Import (Demo): if it's a BoardGameGeek URL, fetch real metadata (title/image/etc.) from BGG.
+  // Import (Demo): Uses the same AI-powered extraction as the live version
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = importUrl.trim();
@@ -292,42 +292,78 @@ const DemoSettings = () => {
 
     // Default/fallback values
     let title = "Imported Game";
+    let description: string | null = null;
     let imageUrl: string | null = null;
     let minPlayers: number | null = null;
     let maxPlayers: number | null = null;
     let suggestedAge: string | null = null;
     let playTime: GameWithRelations["play_time"] = "45-60 Minutes";
+    let difficulty: GameWithRelations["difficulty"] = "3 - Medium";
+    let gameType: GameWithRelations["game_type"] = "Board Game";
+    let mechanics: { id: string; name: string }[] = [];
+    let publisher: { id: string; name: string } | null = null;
 
-    // Try BGG lookup when possible
+    // Try BGG lookup with AI extraction (same as live version)
     if (bggId) {
       try {
         const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bgg-lookup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bgg_id: bggId }),
+          body: JSON.stringify({ bgg_id: bggId, use_ai: true }),
         });
 
         const data = await res.json().catch(() => null);
         if (res.ok && data?.success && data?.data) {
           title = data.data.title || title;
+          description = data.data.description || null;
           imageUrl = data.data.image_url || null;
           minPlayers = typeof data.data.min_players === "number" ? data.data.min_players : null;
           maxPlayers = typeof data.data.max_players === "number" ? data.data.max_players : null;
           suggestedAge = data.data.suggested_age || null;
-
-          const minutes = typeof data.data.playing_time_minutes === "number" ? data.data.playing_time_minutes : null;
-          if (minutes != null) {
-            if (minutes <= 15) playTime = "0-15 Minutes";
-            else if (minutes <= 30) playTime = "15-30 Minutes";
-            else if (minutes <= 45) playTime = "30-45 Minutes";
-            else if (minutes <= 60) playTime = "45-60 Minutes";
-            else if (minutes <= 90) playTime = "60+ Minutes";
-            else if (minutes <= 180) playTime = "2+ Hours";
-            else playTime = "3+ Hours";
+          
+          // Use play_time directly if available, otherwise map from minutes
+          if (data.data.play_time) {
+            playTime = data.data.play_time as GameWithRelations["play_time"];
+          } else {
+            const minutes = typeof data.data.playing_time_minutes === "number" ? data.data.playing_time_minutes : null;
+            if (minutes != null) {
+              if (minutes <= 15) playTime = "0-15 Minutes";
+              else if (minutes <= 30) playTime = "15-30 Minutes";
+              else if (minutes <= 45) playTime = "30-45 Minutes";
+              else if (minutes <= 60) playTime = "45-60 Minutes";
+              else if (minutes <= 90) playTime = "60+ Minutes";
+              else if (minutes <= 180) playTime = "2+ Hours";
+              else playTime = "3+ Hours";
+            }
+          }
+          
+          // Use difficulty and game_type from AI extraction
+          if (data.data.difficulty) {
+            difficulty = data.data.difficulty as GameWithRelations["difficulty"];
+          }
+          if (data.data.game_type) {
+            gameType = data.data.game_type as GameWithRelations["game_type"];
+          }
+          
+          // Convert mechanics array to the expected format
+          if (Array.isArray(data.data.mechanics)) {
+            mechanics = data.data.mechanics.map((name: string) => ({
+              id: crypto.randomUUID(),
+              name,
+            }));
+          }
+          
+          // Convert publisher to expected format
+          if (data.data.publisher) {
+            publisher = {
+              id: crypto.randomUUID(),
+              name: data.data.publisher,
+            };
           }
         }
-      } catch {
-        // ignore; will fallback
+      } catch (err) {
+        console.error("BGG lookup error:", err);
+        // Will fallback to defaults
       }
     }
 
@@ -349,7 +385,7 @@ const DemoSettings = () => {
       }
     }
 
-    // Last-resort placeholder (stable per title)
+    // Last-resort placeholder image (stable per title)
     if (!imageUrl) {
       const seed = title.toLowerCase().replace(/\s+/g, "");
       imageUrl = `https://picsum.photos/seed/${seed}/400/400`;
@@ -357,10 +393,10 @@ const DemoSettings = () => {
 
     addDemoGame({
       title,
-      description: `Imported from ${trimmed}`,
+      description: description || `Imported from ${trimmed}`,
       image_url: imageUrl,
-      difficulty: "3 - Medium",
-      game_type: "Board Game",
+      difficulty,
+      game_type: gameType,
       play_time: playTime,
       min_players: minPlayers ?? 2,
       max_players: maxPlayers ?? 4,
@@ -373,6 +409,8 @@ const DemoSettings = () => {
       parent_game_id: importAsExpansion ? importParentGameId : null,
       bgg_url: trimmed,
       bgg_id: bggId,
+      mechanics,
+      publisher,
     });
 
     const statusLabel = importAsExpansion

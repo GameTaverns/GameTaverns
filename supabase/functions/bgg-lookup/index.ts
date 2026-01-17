@@ -3,17 +3,54 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Difficulty levels from the database enum
+const DIFFICULTY_LEVELS = [
+  "1 - Light",
+  "2 - Medium Light",
+  "3 - Medium",
+  "4 - Medium Heavy",
+  "5 - Heavy",
+];
+
+// Play time options from database enum
+const PLAY_TIME_OPTIONS = [
+  "0-15 Minutes",
+  "15-30 Minutes",
+  "30-45 Minutes",
+  "45-60 Minutes",
+  "60+ Minutes",
+  "2+ Hours",
+  "3+ Hours",
+];
+
+// Game type options from database enum
+const GAME_TYPE_OPTIONS = [
+  "Board Game",
+  "Card Game",
+  "Dice Game",
+  "Party Game",
+  "War Game",
+  "Miniatures",
+  "RPG",
+  "Other",
+];
+
 type BggLookupResponse = {
   success: boolean;
   data?: {
     bgg_id: string;
     title: string | null;
+    description: string | null;
     image_url: string | null;
     min_players: number | null;
     max_players: number | null;
     suggested_age: string | null;
-    // We map to app enums loosely on the client; keep this simple.
     playing_time_minutes: number | null;
+    difficulty: string | null;
+    play_time: string | null;
+    game_type: string | null;
+    mechanics: string[];
+    publisher: string | null;
   };
   error?: string;
 };
@@ -31,14 +68,12 @@ function extractTagText(xml: string, tag: string): string | null {
 }
 
 function extractPrimaryName(xml: string): string | null {
-  // <name type="primary" value="Catan"/>
   const re = /<name[^>]*\btype="primary"[^>]*\bvalue="([^"]+)"[^>]*\/?>(?:<\/name>)?/i;
   const m = xml.match(re);
   return m?.[1] ?? null;
 }
 
 function extractMetaContent(html: string, propertyOrName: string): string | null {
-  // matches: <meta property="og:title" content="...">
   const re = new RegExp(
     `<meta[^>]+(?:property|name)="${propertyOrName}"[^>]+content="([^"]+)"[^>]*>`,
     "i"
@@ -67,77 +102,16 @@ function pickBestGeekdoImage(html: string): string | null {
   return filtered[0] ?? null;
 }
 
-// Extract game info from BGG HTML page (used when XML API is blocked)
-function extractGameInfoFromHtml(html: string): {
-  minPlayers: number | null;
-  maxPlayers: number | null;
-  playingTimeMinutes: number | null;
-  suggestedAge: string | null;
-} {
-  let minPlayers: number | null = null;
-  let maxPlayers: number | null = null;
-  let playingTimeMinutes: number | null = null;
-  let suggestedAge: string | null = null;
-
-  // Try multiple patterns for player count
-  // Pattern 1: "2-4 Players" or "2–4 Players"
-  // Pattern 2: JSON-LD structured data: "minplayers": 2
-  // Pattern 3: Data attributes or spans with player info
-  const playerPatterns = [
-    /(\d+)\s*[-–—]\s*(\d+)\s*Players?/i,
-    /"minplayers"[:\s]*(\d+)[^}]*"maxplayers"[:\s]*(\d+)/is,
-    /Players?[:\s]*(\d+)\s*[-–—]\s*(\d+)/i,
-    /(\d+)\s*to\s*(\d+)\s*Players?/i,
-  ];
-
-  for (const pattern of playerPatterns) {
-    const match = html.match(pattern);
-    if (match && match[1] && match[2]) {
-      minPlayers = parseInt(match[1], 10);
-      maxPlayers = parseInt(match[2], 10);
-      if (minPlayers > 0 && maxPlayers >= minPlayers) break;
-    }
-  }
-
-  // Try multiple patterns for playing time
-  const timePatterns = [
-    /(\d+)\s*[-–—]\s*(\d+)\s*Min(?:utes?)?/i,
-    /"playingtime"[:\s]*(\d+)/i,
-    /Playing\s*Time[:\s]*(\d+)\s*[-–—]?\s*(\d+)?\s*Min/i,
-    /(\d+)\s*Min(?:utes?)?\s*[-–—]\s*(\d+)\s*Min/i,
-  ];
-
-  for (const pattern of timePatterns) {
-    const match = html.match(pattern);
-    if (match && match[1]) {
-      const time1 = parseInt(match[1], 10);
-      const time2 = match[2] ? parseInt(match[2], 10) : null;
-      if (time1 > 0) {
-        playingTimeMinutes = time2 ? Math.round((time1 + time2) / 2) : time1;
-        break;
-      }
-    }
-  }
-
-  // Try multiple patterns for age
-  const agePatterns = [
-    /(?:Age|Min(?:imum)?\s*Age)[:\s]*(\d+)\+?/i,
-    /"minage"[:\s]*(\d+)/i,
-    /(\d+)\s*(?:and up|years?\s*(?:and\s*)?(?:up|older|\+))/i,
-  ];
-
-  for (const pattern of agePatterns) {
-    const match = html.match(pattern);
-    if (match && match[1]) {
-      const age = parseInt(match[1], 10);
-      if (age > 0 && age < 100) {
-        suggestedAge = `${age}+`;
-        break;
-      }
-    }
-  }
-
-  return { minPlayers, maxPlayers, playingTimeMinutes, suggestedAge };
+// Map playing time to enum
+function mapPlayTime(minutes: number | null): string | null {
+  if (minutes == null) return null;
+  if (minutes <= 15) return "0-15 Minutes";
+  if (minutes <= 30) return "15-30 Minutes";
+  if (minutes <= 45) return "30-45 Minutes";
+  if (minutes <= 60) return "45-60 Minutes";
+  if (minutes <= 90) return "60+ Minutes";
+  if (minutes <= 180) return "2+ Hours";
+  return "3+ Hours";
 }
 
 Deno.serve(async (req) => {
@@ -155,6 +129,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => null);
     const urlOrId = body?.url ?? body?.bgg_id;
+    const useAI = body?.use_ai !== false; // Default to using AI
 
     if (!urlOrId || typeof urlOrId !== "string") {
       return new Response(JSON.stringify({ success: false, error: "url or bgg_id is required" } satisfies BggLookupResponse), {
@@ -173,140 +148,283 @@ Deno.serve(async (req) => {
       });
     }
 
-    const endpoints = [
-      // Some hosting environments get blocked on boardgamegeek.com; api.geekdo.com often works better.
-      `https://api.geekdo.com/xmlapi2/thing?id=${encodeURIComponent(bggId)}&stats=1`,
-      `https://boardgamegeek.com/xmlapi2/thing?id=${encodeURIComponent(bggId)}&stats=1`,
-    ];
+    const pageUrl = `https://boardgamegeek.com/boardgame/${encodeURIComponent(bggId)}`;
 
-    let upstream: Response | null = null;
-    let lastStatus: number | null = null;
-    let lastBody = "";
-
-    for (const apiUrl of endpoints) {
-      upstream = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
-          // Use a standard browser UA to avoid being treated as a bot.
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "application/xml,text/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.9",
-        },
-        redirect: "follow",
-      });
-
-      if (upstream.ok) break;
-
-      lastStatus = upstream.status;
-      lastBody = await upstream.text().catch(() => "");
-
-      // If we're getting blocked, try the next endpoint.
-      if ([401, 403, 429].includes(upstream.status)) continue;
-
-      // For other errors, no point retrying other endpoints.
-      break;
-    }
-
-    if (!upstream || !upstream.ok) {
-      const status = upstream?.status ?? lastStatus ?? 0;
-
-      // Fallback: if BGG blocks our backend IP, use Firecrawl to fetch the BGG page.
-      if ([401, 403, 429].includes(status)) {
-        const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-        if (firecrawlKey) {
-          const pageUrl = `https://boardgamegeek.com/boardgame/${encodeURIComponent(bggId)}`;
-
-          const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${firecrawlKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              url: pageUrl,
-              formats: ["rawHtml"],
-              onlyMainContent: false,
-              waitFor: 3000, // Wait 3s for JS to render player/time info
-            }),
-          });
-
-          if (scrapeResponse.ok) {
-            const scrapeData = await scrapeResponse.json();
-            const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
-
-            const title =
-              extractMetaContent(rawHtml, "og:title") ||
-              extractMetaContent(rawHtml, "twitter:title") ||
-              null;
-
-            const imageUrl =
-              pickBestGeekdoImage(rawHtml) ||
-              extractMetaContent(rawHtml, "og:image") ||
-              extractMetaContent(rawHtml, "twitter:image");
-
-            // Extract additional info from HTML
-            const gameInfo = extractGameInfoFromHtml(rawHtml);
-
-            const resp: BggLookupResponse = {
-              success: true,
-              data: {
-                bgg_id: bggId,
-                title,
-                image_url: imageUrl,
-                min_players: gameInfo.minPlayers,
-                max_players: gameInfo.maxPlayers,
-                suggested_age: gameInfo.suggestedAge,
-                playing_time_minutes: gameInfo.playingTimeMinutes,
-              },
-            };
-
-            return new Response(JSON.stringify(resp), {
-              status: 200,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-        }
-      }
-
+    // Always use Firecrawl for consistent results (BGG XML API is often blocked)
+    const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
+    if (!firecrawlKey) {
+      console.error("Firecrawl API key not configured");
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: `BGG request failed (${status})`,
-        } satisfies BggLookupResponse),
-        {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ success: false, error: "Import service temporarily unavailable" } satisfies BggLookupResponse),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const xml = await upstream.text();
+    console.log("Scraping BGG page with Firecrawl:", pageUrl);
 
-    const title = extractPrimaryName(xml);
-    const imageUrl = extractTagText(xml, "image");
+    const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${firecrawlKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: pageUrl,
+        formats: ["markdown", "rawHtml"],
+        onlyMainContent: true,
+      }),
+    });
 
-    const minPlayersRaw = extractAttr(xml, "minplayers", "value");
-    const maxPlayersRaw = extractAttr(xml, "maxplayers", "value");
-    const playingTimeRaw = extractAttr(xml, "playingtime", "value");
-    const ageRaw = extractAttr(xml, "minage", "value");
+    if (!scrapeResponse.ok) {
+      const errorText = await scrapeResponse.text();
+      console.error("Firecrawl error:", scrapeResponse.status, errorText);
+      return new Response(
+        JSON.stringify({ success: false, error: `Failed to scrape page: ${scrapeResponse.status}` } satisfies BggLookupResponse),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    const minPlayers = minPlayersRaw ? Number(minPlayersRaw) : null;
-    const maxPlayers = maxPlayersRaw ? Number(maxPlayersRaw) : null;
-    const playingTimeMinutes = playingTimeRaw ? Number(playingTimeRaw) : null;
+    const scrapeData = await scrapeResponse.json();
+    const markdown = scrapeData.data?.markdown || scrapeData.markdown || "";
+    const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
 
-    const suggestedAge = ageRaw && ageRaw !== "0" ? `${ageRaw}+` : null;
+    // Get basic info from HTML
+    const title =
+      extractMetaContent(rawHtml, "og:title") ||
+      extractMetaContent(rawHtml, "twitter:title") ||
+      null;
+
+    const imageUrl =
+      pickBestGeekdoImage(rawHtml) ||
+      extractMetaContent(rawHtml, "og:image") ||
+      extractMetaContent(rawHtml, "twitter:image");
+
+    // If AI is disabled or not available, return basic data
+    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!useAI || !lovableKey) {
+      console.log("Returning basic data (AI disabled or unavailable)");
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          bgg_id: bggId,
+          title,
+          description: null,
+          image_url: imageUrl,
+          min_players: null,
+          max_players: null,
+          suggested_age: null,
+          playing_time_minutes: null,
+          difficulty: "3 - Medium",
+          play_time: "45-60 Minutes",
+          game_type: "Board Game",
+          mechanics: [],
+          publisher: null,
+        },
+      } satisfies BggLookupResponse), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Use AI to extract structured game data (same as game-import)
+    console.log("Extracting game data with AI...");
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${lovableKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          {
+            role: "system",
+            content: `You are a board game data extraction expert. Extract detailed, structured game information from the provided content.
+
+IMPORTANT RULES:
+
+1. For enum fields, you MUST use these EXACT values:
+   - difficulty: ${DIFFICULTY_LEVELS.map(d => `"${d}"`).join(", ")}
+   - play_time: ${PLAY_TIME_OPTIONS.map(p => `"${p}"`).join(", ")}
+   - game_type: ${GAME_TYPE_OPTIONS.map(t => `"${t}"`).join(", ")}
+
+2. For the DESCRIPTION field, create a COMPREHENSIVE, DETAILED description that includes:
+   - An engaging overview paragraph about the game
+   - A "## Quick Gameplay Overview" section with:
+     - **Goal:** What players are trying to achieve
+     - **On Your Turn:** The main actions players can take (use numbered lists)
+     - **Scoring:** How points are earned
+     - **End Game:** When and how the game ends
+   - A closing paragraph about the game's appeal/experience
+   
+   Use markdown formatting with headers (##), bold (**text**), and bullet points.
+   Make it detailed and informative - aim for 300-500 words.
+
+3. For mechanics, extract actual game mechanics (e.g., "Worker Placement", "Set Collection", "Dice Rolling").
+
+4. For publisher, extract the publisher company name.`,
+          },
+          {
+            role: "user",
+            content: `Extract comprehensive board game data from this BoardGameGeek page.
+
+TARGET PAGE: ${pageUrl}
+
+MAIN IMAGE URL (use this): ${imageUrl || "No image found"}
+
+Page content:
+${markdown.slice(0, 18000)}`,
+          },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "extract_game_data",
+              description: "Extract structured game data from page content",
+              parameters: {
+                type: "object",
+                properties: {
+                  title: { type: "string", description: "The game title" },
+                  description: { 
+                    type: "string", 
+                    description: "Comprehensive game description with markdown formatting. Include overview, Quick Gameplay Overview section with Goal/Turn Actions/Scoring/End Game, and closing appeal paragraph. Aim for 300-500 words." 
+                  },
+                  difficulty: { 
+                    type: "string", 
+                    enum: DIFFICULTY_LEVELS,
+                    description: "Difficulty level" 
+                  },
+                  play_time: { 
+                    type: "string", 
+                    enum: PLAY_TIME_OPTIONS,
+                    description: "Play time category" 
+                  },
+                  game_type: { 
+                    type: "string", 
+                    enum: GAME_TYPE_OPTIONS,
+                    description: "Type of game" 
+                  },
+                  min_players: { type: "number", description: "Minimum player count" },
+                  max_players: { type: "number", description: "Maximum player count" },
+                  suggested_age: { type: "string", description: "Suggested age (e.g., '10+')" },
+                  mechanics: { 
+                    type: "array", 
+                    items: { type: "string" },
+                    description: "Game mechanics like Worker Placement, Set Collection, etc." 
+                  },
+                  publisher: { type: "string", description: "Publisher name" },
+                },
+                required: ["title"],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "extract_game_data" } },
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error("AI extraction error:", aiResponse.status, errorText);
+      
+      // Handle rate limits
+      if (aiResponse.status === 429 || aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Service temporarily busy. Please try again in a moment." } satisfies BggLookupResponse),
+          { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Fall back to basic data on AI error
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          bgg_id: bggId,
+          title,
+          description: null,
+          image_url: imageUrl,
+          min_players: null,
+          max_players: null,
+          suggested_age: null,
+          playing_time_minutes: null,
+          difficulty: "3 - Medium",
+          play_time: "45-60 Minutes",
+          game_type: "Board Game",
+          mechanics: [],
+          publisher: null,
+        },
+      } satisfies BggLookupResponse), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const aiData = await aiResponse.json();
+    console.log("AI response received");
+
+    // Extract the tool call result
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall?.function?.arguments) {
+      console.error("No tool call result from AI");
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          bgg_id: bggId,
+          title,
+          description: null,
+          image_url: imageUrl,
+          min_players: null,
+          max_players: null,
+          suggested_age: null,
+          playing_time_minutes: null,
+          difficulty: "3 - Medium",
+          play_time: "45-60 Minutes",
+          game_type: "Board Game",
+          mechanics: [],
+          publisher: null,
+        },
+      } satisfies BggLookupResponse), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const extractedData = JSON.parse(toolCall.function.arguments);
+    console.log("Extracted data:", JSON.stringify(extractedData, null, 2));
+
+    // Map play_time to playing_time_minutes for compatibility
+    let playingTimeMinutes: number | null = null;
+    if (extractedData.play_time) {
+      const timeMap: Record<string, number> = {
+        "0-15 Minutes": 10,
+        "15-30 Minutes": 22,
+        "30-45 Minutes": 37,
+        "45-60 Minutes": 52,
+        "60+ Minutes": 75,
+        "2+ Hours": 150,
+        "3+ Hours": 210,
+      };
+      playingTimeMinutes = timeMap[extractedData.play_time] ?? null;
+    }
 
     const resp: BggLookupResponse = {
       success: true,
       data: {
         bgg_id: bggId,
-        title,
+        title: extractedData.title || title,
+        description: extractedData.description || null,
         image_url: imageUrl,
-        min_players: Number.isFinite(minPlayers as number) ? minPlayers : null,
-        max_players: Number.isFinite(maxPlayers as number) ? maxPlayers : null,
-        suggested_age: suggestedAge,
-        playing_time_minutes: Number.isFinite(playingTimeMinutes as number) ? playingTimeMinutes : null,
+        min_players: typeof extractedData.min_players === "number" ? extractedData.min_players : null,
+        max_players: typeof extractedData.max_players === "number" ? extractedData.max_players : null,
+        suggested_age: extractedData.suggested_age || null,
+        playing_time_minutes: playingTimeMinutes,
+        difficulty: extractedData.difficulty || "3 - Medium",
+        play_time: extractedData.play_time || "45-60 Minutes",
+        game_type: extractedData.game_type || "Board Game",
+        mechanics: Array.isArray(extractedData.mechanics) ? extractedData.mechanics : [],
+        publisher: extractedData.publisher || null,
       },
     };
 
