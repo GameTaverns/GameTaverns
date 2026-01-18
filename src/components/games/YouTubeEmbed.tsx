@@ -97,12 +97,12 @@ export const YouTubeVideoList = ({ videos, title = "Gameplay Videos" }: YouTubeV
   if (validVideos.length === 0) return null;
   
   return (
-    <div className="space-y-4">
-      <h2 className="font-display text-xl font-semibold text-foreground flex items-center gap-2">
-        <Play className="h-5 w-5 text-primary" />
+    <div className="space-y-3">
+      <h3 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
+        <Play className="h-4 w-4 text-primary" />
         {title}
-      </h2>
-      <div className="grid gap-4 sm:grid-cols-2">
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {validVideos.map((url, index) => (
           <YouTubeEmbed key={index} videoUrl={url} title={`${title} ${index + 1}`} />
         ))}
