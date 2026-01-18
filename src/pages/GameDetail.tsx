@@ -436,8 +436,6 @@ const GameDetail = () => {
                     Description
                   </h2>
                   
-                  <hr className="border-border mb-4" />
-                  
                   <DescriptionContent content={game.description} />
                   
                   <hr className="border-border my-6" />
@@ -445,8 +443,6 @@ const GameDetail = () => {
                   <h3 className="font-display text-lg font-semibold mb-3 text-foreground">
                     Quick Overview
                   </h3>
-                  
-                  <hr className="border-border mb-4" />
                   
                   <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                     <span><strong className="text-foreground">Players:</strong> {playerRange}</span>
