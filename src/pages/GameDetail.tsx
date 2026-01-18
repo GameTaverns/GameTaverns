@@ -435,21 +435,7 @@ const GameDetail = () => {
                   <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
                     Description
                   </h2>
-                  
                   <DescriptionContent content={game.description} />
-                  
-                  <hr className="border-border my-6" />
-                  
-                  <h3 className="font-display text-lg font-semibold mb-3 text-foreground">
-                    Quick Overview
-                  </h3>
-                  
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                    <span><strong className="text-foreground">Players:</strong> {playerRange}</span>
-                    <span><strong className="text-foreground">Play Time:</strong> {game.play_time}</span>
-                    {game.difficulty && <span><strong className="text-foreground">Difficulty:</strong> {game.difficulty}</span>}
-                    {game.game_type && <span><strong className="text-foreground">Type:</strong> {game.game_type}</span>}
-                  </div>
                 </div>
               </TabsContent>
 
