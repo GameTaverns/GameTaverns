@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.send-message]
 verify_jwt = false
+
+[functions.condense-descriptions]
+verify_jwt = false
