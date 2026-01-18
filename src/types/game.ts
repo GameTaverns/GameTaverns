@@ -38,8 +38,6 @@ export interface Game {
   in_base_game_box: boolean;
   location_room: string | null;
   location_shelf: string | null;
-  purchase_price: number | null;
-  purchase_date: string | null;
   sleeved: boolean;
   upgraded_components: boolean;
   crowdfunded: boolean;
@@ -48,11 +46,19 @@ export interface Game {
   updated_at: string;
 }
 
+export interface GameAdminData {
+  id: string;
+  game_id: string;
+  purchase_price: number | null;
+  purchase_date: string | null;
+}
+
 export interface GameWithRelations extends Game {
   publisher: Publisher | null;
   mechanics: Mechanic[];
   expansions?: GameWithRelations[];
   parent_game?: { id: string; title: string; slug: string | null } | null;
+  admin_data?: GameAdminData | null;
 }
 
 export const DIFFICULTY_OPTIONS: DifficultyLevel[] = [
