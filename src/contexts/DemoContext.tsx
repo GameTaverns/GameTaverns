@@ -28,8 +28,6 @@ const DEMO_GAMES: GameWithRelations[] = [
     in_base_game_box: false,
     location_room: "Living Room",
     location_shelf: "Shelf A",
-    purchase_price: 45.00,
-    purchase_date: "2023-06-15",
     sleeved: true,
     upgraded_components: false,
     crowdfunded: false,
@@ -38,6 +36,7 @@ const DEMO_GAMES: GameWithRelations[] = [
     additional_images: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    admin_data: { id: "admin-1", game_id: "demo-1", purchase_price: 45.00, purchase_date: "2023-06-15" },
   },
   {
     id: "demo-2",
@@ -64,8 +63,6 @@ const DEMO_GAMES: GameWithRelations[] = [
     in_base_game_box: false,
     location_room: "Game Room",
     location_shelf: "Shelf B",
-    purchase_price: 55.00,
-    purchase_date: "2022-12-01",
     sleeved: false,
     upgraded_components: true,
     crowdfunded: false,
@@ -74,6 +71,7 @@ const DEMO_GAMES: GameWithRelations[] = [
     additional_images: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    admin_data: { id: "admin-2", game_id: "demo-2", purchase_price: 55.00, purchase_date: "2022-12-01" },
   },
   {
     id: "demo-3",
@@ -103,8 +101,6 @@ const DEMO_GAMES: GameWithRelations[] = [
     in_base_game_box: false,
     location_room: null,
     location_shelf: null,
-    purchase_price: 60.00,
-    purchase_date: "2024-03-20",
     sleeved: true,
     upgraded_components: true,
     crowdfunded: false,
@@ -113,6 +109,7 @@ const DEMO_GAMES: GameWithRelations[] = [
     additional_images: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    admin_data: { id: "admin-3", game_id: "demo-3", purchase_price: 60.00, purchase_date: "2024-03-20" },
   },
   {
     id: "demo-4",
@@ -142,8 +139,6 @@ const DEMO_GAMES: GameWithRelations[] = [
     in_base_game_box: false,
     location_room: null,
     location_shelf: null,
-    purchase_price: 140.00,
-    purchase_date: null,
     sleeved: false,
     upgraded_components: false,
     crowdfunded: true,
@@ -152,6 +147,7 @@ const DEMO_GAMES: GameWithRelations[] = [
     additional_images: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    admin_data: { id: "admin-4", game_id: "demo-4", purchase_price: 140.00, purchase_date: null },
   },
   {
     id: "demo-5",
@@ -181,8 +177,6 @@ const DEMO_GAMES: GameWithRelations[] = [
     in_base_game_box: false,
     location_room: "Basement",
     location_shelf: "Shelf C",
-    purchase_price: 30.00,
-    purchase_date: "2023-09-10",
     sleeved: false,
     upgraded_components: false,
     crowdfunded: false,
@@ -191,6 +185,7 @@ const DEMO_GAMES: GameWithRelations[] = [
     additional_images: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    admin_data: { id: "admin-5", game_id: "demo-5", purchase_price: 30.00, purchase_date: "2023-09-10" },
   },
   {
     id: "demo-6",
@@ -220,8 +215,6 @@ const DEMO_GAMES: GameWithRelations[] = [
     in_base_game_box: false,
     location_room: null,
     location_shelf: null,
-    purchase_price: 80.00,
-    purchase_date: null,
     sleeved: false,
     upgraded_components: false,
     crowdfunded: true,
@@ -230,6 +223,7 @@ const DEMO_GAMES: GameWithRelations[] = [
     additional_images: [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    admin_data: { id: "admin-6", game_id: "demo-6", purchase_price: 80.00, purchase_date: null },
   },
 ];
 
@@ -273,8 +267,6 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
       in_base_game_box: game.in_base_game_box || false,
       location_room: game.location_room || null,
       location_shelf: game.location_shelf || null,
-      purchase_price: game.purchase_price || null,
-      purchase_date: game.purchase_date || null,
       sleeved: game.sleeved || false,
       upgraded_components: game.upgraded_components || false,
       crowdfunded: game.crowdfunded || false,
@@ -283,6 +275,7 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
       additional_images: game.additional_images || [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      admin_data: game.admin_data || null,
     };
     setDemoGames((prev) => [...prev, newGame]);
   }, []);
@@ -320,7 +313,7 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
 export function useDemoMode() {
   const context = useContext(DemoContext);
   if (!context) {
-    return { isDemoMode: false, demoGames: [], addDemoGame: () => {}, updateDemoGame: () => {}, deleteDemoGame: () => {}, resetDemoData: () => {} };
+    return { isDemoMode: false, demoGames: [], addDemoGame: () => {}, updateDemoGame: () => {}, deleteDemoGame: () => {} , resetDemoData: () => {} };
   }
   return context;
 }
