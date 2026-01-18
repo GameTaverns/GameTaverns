@@ -551,25 +551,25 @@ const GameDetail = () => {
                       </TableRow>
                     )}
                     {/* Admin-only purchase info */}
-                    {isAdmin && (game.purchase_price || game.purchase_date) && (
+                    {isAdmin && (game.admin_data?.purchase_price || game.admin_data?.purchase_date) && (
                       <>
-                        {game.purchase_price && (
+                        {game.admin_data?.purchase_price && (
                           <TableRow className="bg-amber-500/5">
                             <TableCell className="font-medium text-amber-700 dark:text-amber-400">
                               Purchase Price
                             </TableCell>
                             <TableCell className="text-amber-700 dark:text-amber-400">
-                              ${game.purchase_price.toFixed(2)}
+                              ${game.admin_data.purchase_price.toFixed(2)}
                             </TableCell>
                           </TableRow>
                         )}
-                        {game.purchase_date && (
+                        {game.admin_data?.purchase_date && (
                           <TableRow className="bg-amber-500/5">
                             <TableCell className="font-medium text-amber-700 dark:text-amber-400">
                               Purchase Date
                             </TableCell>
                             <TableCell className="text-amber-700 dark:text-amber-400">
-                              {new Date(game.purchase_date).toLocaleDateString()}
+                              {new Date(game.admin_data.purchase_date).toLocaleDateString()}
                             </TableCell>
                           </TableRow>
                         )}

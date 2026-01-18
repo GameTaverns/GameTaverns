@@ -113,8 +113,8 @@ const GameForm = () => {
       setInBaseGameBox(existingGame.in_base_game_box || false);
       setLocationRoom(existingGame.location_room || "");
       setLocationShelf(existingGame.location_shelf || "");
-      setPurchasePrice(existingGame.purchase_price?.toString() || "");
-      setPurchaseDate(existingGame.purchase_date || "");
+      setPurchasePrice(existingGame.admin_data?.purchase_price?.toString() || "");
+      setPurchaseDate(existingGame.admin_data?.purchase_date || "");
       setSleeved(existingGame.sleeved || false);
       setUpgradedComponents(existingGame.upgraded_components || false);
       setCrowdfunded(existingGame.crowdfunded || false);
