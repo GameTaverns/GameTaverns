@@ -12,6 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -296,11 +303,25 @@ https://boardgamegeek.com/boardgame/9209/ticket-to-ride`}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Default Room</Label>
-                    <Input
-                      placeholder="e.g., Living Room"
-                      value={locationRoom}
-                      onChange={(e) => setLocationRoom(e.target.value)}
-                    />
+                    <Select value={locationRoom} onValueChange={setLocationRoom}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select room" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        <SelectItem value="Living Room">Living Room</SelectItem>
+                        <SelectItem value="Family Room">Family Room</SelectItem>
+                        <SelectItem value="Game Room">Game Room</SelectItem>
+                        <SelectItem value="Den">Den</SelectItem>
+                        <SelectItem value="Basement">Basement</SelectItem>
+                        <SelectItem value="Bedroom">Bedroom</SelectItem>
+                        <SelectItem value="Office">Office</SelectItem>
+                        <SelectItem value="Closet">Closet</SelectItem>
+                        <SelectItem value="Attic">Attic</SelectItem>
+                        <SelectItem value="Garage">Garage</SelectItem>
+                        <SelectItem value="Dining Room">Dining Room</SelectItem>
+                        <SelectItem value="Storage Room">Storage Room</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Default Shelf</Label>
