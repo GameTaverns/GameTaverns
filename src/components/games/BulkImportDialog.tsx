@@ -147,13 +147,96 @@ export function BulkImportDialog({
       }
 
       if (isDemo && onDemoImport) {
-        // Demo mode - simulate import
-        toast({
-          title: "Demo Mode",
-          description: "Bulk import is simulated in demo mode. Try it in the live version!",
-        });
+        // Demo mode - simulate import with realistic delay and sample games
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        
+        let demoGames: any[] = [];
+        
+        if (mode === "csv") {
+          // Parse CSV and create demo games from it
+          const lines = csvData.trim().split("\n");
+          if (lines.length > 1) {
+            const headers = lines[0].toLowerCase().split(",").map(h => h.trim());
+            const titleIndex = headers.findIndex(h => ["title", "name", "game"].includes(h));
+            
+            for (let i = 1; i < lines.length; i++) {
+              const values = lines[i].split(",").map(v => v.trim().replace(/^"|"$/g, ""));
+              if (values[titleIndex !== -1 ? titleIndex : 0]) {
+                demoGames.push({
+                  id: `demo-import-${Date.now()}-${i}`,
+                  title: values[titleIndex !== -1 ? titleIndex : 0],
+                  game_type: "Board Game",
+                  location_room: locationRoom || "Game Room",
+                  location_shelf: locationShelf || null,
+                  location_misc: locationMisc || null,
+                });
+              }
+            }
+          }
+        } else if (mode === "bgg_collection") {
+          // Generate sample games for BGG collection import
+          const sampleGames = [
+            "Wingspan", "Catan", "Ticket to Ride", "Pandemic", "Azul",
+            "7 Wonders", "Dominion", "Carcassonne", "Splendor", "Codenames"
+          ];
+          demoGames = sampleGames.slice(0, 5).map((title, i) => ({
+            id: `demo-bgg-${Date.now()}-${i}`,
+            title,
+            game_type: "Board Game",
+            description: `A popular board game imported from BGG collection of ${bggUsername}`,
+            location_room: locationRoom || "Game Room",
+            location_shelf: locationShelf || null,
+            location_misc: locationMisc || null,
+          }));
+        } else if (mode === "bgg_links") {
+          // Extract game names from BGG URLs
+          const links = bggLinks.split("\n").filter(l => l.includes("boardgamegeek.com"));
+          demoGames = links.map((link, i) => {
+            // Try to extract game name from URL (e.g., /boardgame/266192/wingspan)
+            const match = link.match(/\/boardgame\/\d+\/([^\/\?]+)/);
+            const title = match ? match[1].split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : `Game ${i + 1}`;
+            return {
+              id: `demo-link-${Date.now()}-${i}`,
+              title,
+              bgg_url: link,
+              game_type: "Board Game",
+              description: `Imported from BoardGameGeek`,
+              location_room: locationRoom || "Game Room",
+              location_shelf: locationShelf || null,
+              location_misc: locationMisc || null,
+            };
+          });
+        }
+        
+        if (demoGames.length > 0) {
+          onDemoImport(demoGames);
+          setResult({
+            success: true,
+            imported: demoGames.length,
+            failed: 0,
+            errors: [],
+            games: demoGames.map(g => ({ title: g.title, id: g.id })),
+          });
+          toast({
+            title: "Import complete!",
+            description: `Successfully imported ${demoGames.length} game${demoGames.length !== 1 ? "s" : ""} (demo mode)`,
+          });
+        } else {
+          setResult({
+            success: false,
+            imported: 0,
+            failed: 1,
+            errors: ["No valid games found to import"],
+            games: [],
+          });
+          toast({
+            title: "Import failed",
+            description: "No valid games found to import",
+            variant: "destructive",
+          });
+        }
+        
         setIsImporting(false);
-        onOpenChange(false);
         return;
       }
 

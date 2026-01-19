@@ -1085,6 +1085,34 @@ const DemoSettings = () => {
           open={showBulkImport}
           onOpenChange={setShowBulkImport}
           isDemo={true}
+          onDemoImport={(games) => {
+            games.forEach((game) => {
+              addDemoGame({
+                title: game.title,
+                description: game.description || `Imported via bulk import`,
+                image_url: game.image_url || `https://picsum.photos/seed/${game.title.toLowerCase().replace(/\s+/g, "")}/400/400`,
+                difficulty: "3 - Medium",
+                game_type: game.game_type || "Board Game",
+                play_time: "45-60 Minutes",
+                min_players: 2,
+                max_players: 4,
+                suggested_age: "10+",
+                is_coming_soon: false,
+                is_for_sale: false,
+                sale_price: null,
+                sale_condition: null,
+                is_expansion: false,
+                parent_game_id: null,
+                location_room: game.location_room || null,
+                location_shelf: game.location_shelf || null,
+                location_misc: game.location_misc || null,
+                bgg_url: game.bgg_url || null,
+                bgg_id: game.bgg_id || null,
+                mechanics: [],
+                publisher: null,
+              });
+            });
+          }}
         />
       </div>
     </Layout>
