@@ -72,7 +72,10 @@ export function useGames(enabled = true) {
 
       const gamesWithRelations = (games || []).map((game) => ({
         ...game,
-        location_misc: (game as any).location_misc ?? null,
+        // Location fields are excluded from public view for security
+        location_room: undefined,
+        location_shelf: undefined,
+        location_misc: undefined,
         admin_data: null,
         publisher: game.publisher_id ? publisherMap.get(game.publisher_id) : null,
         difficulty: game.difficulty as DifficultyLevel,

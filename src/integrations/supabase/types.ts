@@ -453,8 +453,6 @@ export type Database = {
           is_coming_soon: boolean | null
           is_expansion: boolean | null
           is_for_sale: boolean | null
-          location_room: string | null
-          location_shelf: string | null
           max_players: number | null
           min_players: number | null
           parent_game_id: string | null
@@ -485,8 +483,6 @@ export type Database = {
           is_coming_soon?: boolean | null
           is_expansion?: boolean | null
           is_for_sale?: boolean | null
-          location_room?: string | null
-          location_shelf?: string | null
           max_players?: number | null
           min_players?: number | null
           parent_game_id?: string | null
@@ -517,8 +513,6 @@ export type Database = {
           is_coming_soon?: boolean | null
           is_expansion?: boolean | null
           is_for_sale?: boolean | null
-          location_room?: string | null
-          location_shelf?: string | null
           max_players?: number | null
           min_players?: number | null
           parent_game_id?: string | null

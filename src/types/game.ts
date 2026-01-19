@@ -36,9 +36,9 @@ export interface Game {
   is_expansion: boolean;
   parent_game_id: string | null;
   in_base_game_box: boolean;
-  location_room: string | null;
-  location_shelf: string | null;
-  location_misc: string | null;
+  location_room?: string | null;
+  location_shelf?: string | null;
+  location_misc?: string | null;
   sleeved: boolean;
   upgraded_components: boolean;
   crowdfunded: boolean;
