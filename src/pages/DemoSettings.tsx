@@ -707,14 +707,25 @@ const DemoSettings = () => {
                           <div className="pl-6 grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1">
                               <Label htmlFor="import-location-room" className="text-xs">Room</Label>
-                              <Input
-                                id="import-location-room"
-                                value={importLocationRoom}
-                                onChange={(e) => setImportLocationRoom(e.target.value)}
-                                placeholder="e.g., Living Room"
-                                disabled={isImporting}
-                                className="h-8 text-sm"
-                              />
+                              <Select value={importLocationRoom} onValueChange={setImportLocationRoom} disabled={isImporting}>
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="Select room" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-popover">
+                                  <SelectItem value="Living Room">Living Room</SelectItem>
+                                  <SelectItem value="Family Room">Family Room</SelectItem>
+                                  <SelectItem value="Game Room">Game Room</SelectItem>
+                                  <SelectItem value="Den">Den</SelectItem>
+                                  <SelectItem value="Basement">Basement</SelectItem>
+                                  <SelectItem value="Bedroom">Bedroom</SelectItem>
+                                  <SelectItem value="Office">Office</SelectItem>
+                                  <SelectItem value="Closet">Closet</SelectItem>
+                                  <SelectItem value="Attic">Attic</SelectItem>
+                                  <SelectItem value="Garage">Garage</SelectItem>
+                                  <SelectItem value="Dining Room">Dining Room</SelectItem>
+                                  <SelectItem value="Storage Room">Storage Room</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div className="space-y-1">
                               <Label htmlFor="import-location-shelf" className="text-xs">Shelf</Label>
