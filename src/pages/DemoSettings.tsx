@@ -17,13 +17,15 @@ import {
   Upload,
   Loader2,
   MapPin,
-  DollarSign
+  DollarSign,
+  FileSpreadsheet
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BulkImportDialog } from "@/components/games/BulkImportDialog";
 import { 
   Table, 
   TableBody, 
@@ -265,7 +267,7 @@ const DemoSettings = () => {
   const [importUpgradedComponents, setImportUpgradedComponents] = useState(false);
   const [importCrowdfunded, setImportCrowdfunded] = useState(false);
   const [importInserts, setImportInserts] = useState(false);
-
+  const [showBulkImport, setShowBulkImport] = useState(false);
   // Demo mechanics and publishers derived from games
   // Dedupe by name since imported games may have different IDs for the same mechanic
   const mechanics = useMemo(() => {
@@ -856,21 +858,46 @@ const DemoSettings = () => {
                 </CardContent>
               </Card>
 
-              {/* Game Collection */}
+              {/* Add Game Card */}
               <Card className="lg:col-span-2 card-elevated">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Game Collection</CardTitle>
-                    <CardDescription>
-                      {demoGames.length} games in demo collection
-                    </CardDescription>
-                  </div>
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <Plus className="h-5 w-5" />
+                    Add New Game
+                  </CardTitle>
+                  <CardDescription>
+                    Manually add a new game or bulk import multiple games
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex gap-3 flex-wrap">
                   <Button onClick={() => navigate("/demo/add")}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Game
+                    Add Game Manually
                   </Button>
-                </CardHeader>
-                <CardContent>
+                  <Button variant="outline" onClick={() => setShowBulkImport(true)}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Bulk Import
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Games Table */}
+            <Card className="card-elevated">
+              <CardHeader>
+                <CardTitle className="font-display">
+                  Game Collection ({demoGames.length})
+                </CardTitle>
+                <CardDescription>
+                  Manage your demo game library
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {demoGames.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No games in your demo collection yet. Import or add one above!
+                  </p>
+                ) : (
                   <GameCollectionTable
                     games={demoGames}
                     filterLetter={gameFilterLetter}
@@ -881,9 +908,9 @@ const DemoSettings = () => {
                     onEdit={(id) => navigate(`/demo/edit/${id}`)}
                     onDelete={handleDeleteGame}
                   />
-                </CardContent>
-              </Card>
-            </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Mechanics Tab */}
@@ -950,6 +977,13 @@ const DemoSettings = () => {
             </Link>
           </Button>
         </div>
+
+        {/* Bulk Import Dialog */}
+        <BulkImportDialog
+          open={showBulkImport}
+          onOpenChange={setShowBulkImport}
+          isDemo={true}
+        />
       </div>
     </Layout>
   );
