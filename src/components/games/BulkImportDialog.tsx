@@ -247,6 +247,7 @@ export function BulkImportDialog({
               demoGames.push({
                 id: `demo-import-${Date.now()}-${demoGames.length}`,
                 title,
+                image_url: row.image_url || null,
                 game_type: row.type || row.game_type || "Board Game",
                 difficulty: row.difficulty || row.weight || null,
                 play_time: row.play_time || row.playtime || null,
