@@ -440,6 +440,14 @@ const GameDetail = () => {
                   </h2>
                   <DescriptionContent content={game.description} />
                 </div>
+                
+                {/* Gameplay Videos Section - inside description tab */}
+                {game.youtube_videos && game.youtube_videos.length > 0 && (
+                  <>
+                    <hr className="my-8 border-border" />
+                    <YouTubeVideoList videos={game.youtube_videos} title="Gameplay Videos" />
+                  </>
+                )}
               </TabsContent>
 
               <TabsContent value="info" className="mt-0">
@@ -646,13 +654,6 @@ const GameDetail = () => {
               </TabsContent>
             </Tabs>
 
-            {/* Gameplay Videos Section */}
-            {game.youtube_videos && game.youtube_videos.length > 0 && (
-              <>
-                <hr className="my-8 border-border" />
-                <YouTubeVideoList videos={game.youtube_videos} title="Gameplay Videos" />
-              </>
-            )}
           </div>
         </div>
 
