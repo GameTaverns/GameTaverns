@@ -49,10 +49,18 @@ const DemoGameForm = () => {
   }, [demoGames]);
 
   const publishers = useMemo(() => {
+    // Dedupe by normalized name to avoid duplicate labels in demo data
     const pubMap = new Map<string, { id: string; name: string }>();
-    demoGames.forEach(g => {
-      if (g.publisher) pubMap.set(g.publisher.id, g.publisher);
+
+    demoGames.forEach((g) => {
+      const pub = g.publisher;
+      const name = pub?.name?.trim();
+      if (!pub || !name) return;
+
+      const key = name.toLowerCase();
+      if (!pubMap.has(key)) pubMap.set(key, { id: pub.id, name });
     });
+
     return Array.from(pubMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [demoGames]);
 
