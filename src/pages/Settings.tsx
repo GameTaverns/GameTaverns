@@ -22,7 +22,8 @@ import {
   ChevronRight,
   MapPin,
   DollarSign,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Download
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -801,6 +802,100 @@ const Settings = () => {
     }
   };
 
+  const handleExportCsv = () => {
+    if (games.length === 0) return;
+
+    // Define CSV headers
+    const headers = [
+      'Title',
+      'Type',
+      'Difficulty',
+      'Play Time',
+      'Min Players',
+      'Max Players',
+      'Suggested Age',
+      'Publisher',
+      'Mechanics',
+      'BGG ID',
+      'BGG URL',
+      'Is Expansion',
+      'Parent Game',
+      'Is Coming Soon',
+      'Is For Sale',
+      'Sale Price',
+      'Sale Condition',
+      'Location Room',
+      'Location Shelf',
+      'Location Misc',
+      'Sleeved',
+      'Upgraded Components',
+      'Crowdfunded',
+      'Inserts',
+      'In Base Game Box',
+      'Description'
+    ];
+
+    // Helper to escape CSV values
+    const escapeCsv = (value: string | number | boolean | null | undefined): string => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      // If contains comma, quote, or newline, wrap in quotes and escape inner quotes
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    // Convert games to CSV rows
+    const rows = games.map(game => [
+      escapeCsv(game.title),
+      escapeCsv(game.game_type),
+      escapeCsv(game.difficulty),
+      escapeCsv(game.play_time),
+      escapeCsv(game.min_players),
+      escapeCsv(game.max_players),
+      escapeCsv(game.suggested_age),
+      escapeCsv(game.publisher?.name),
+      escapeCsv(game.mechanics?.map(m => m.name).join('; ')),
+      escapeCsv(game.bgg_id),
+      escapeCsv(game.bgg_url),
+      escapeCsv(game.is_expansion),
+      escapeCsv(game.parent_game?.title),
+      escapeCsv(game.is_coming_soon),
+      escapeCsv(game.is_for_sale),
+      escapeCsv(game.sale_price),
+      escapeCsv(game.sale_condition),
+      escapeCsv(game.location_room),
+      escapeCsv(game.location_shelf),
+      escapeCsv(game.location_misc),
+      escapeCsv(game.sleeved),
+      escapeCsv(game.upgraded_components),
+      escapeCsv(game.crowdfunded),
+      escapeCsv(game.inserts),
+      escapeCsv(game.in_base_game_box),
+      escapeCsv(game.description)
+    ].join(','));
+
+    // Combine headers and rows
+    const csvContent = [headers.join(','), ...rows].join('\n');
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `game-library-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export complete",
+      description: `Exported ${games.length} games to CSV.`,
+    });
+  };
+
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
@@ -1312,13 +1407,21 @@ const Settings = () => {
 
               {/* Games Table */}
               <Card className="card-elevated">
-                <CardHeader>
-                  <CardTitle className="font-display">
-                    Game Collection ({games.length})
-                  </CardTitle>
-                  <CardDescription>
-                    Manage your game library
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="font-display">
+                      Game Collection ({games.length})
+                    </CardTitle>
+                    <CardDescription>
+                      Manage your game library
+                    </CardDescription>
+                  </div>
+                  {games.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={handleExportCsv}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {gamesLoading ? (
