@@ -308,7 +308,7 @@ export function BulkImportDialog({
                   <Label>Upload CSV/Excel File</Label>
                   <Input
                     type="file"
-                    accept=".csv,.xlsx,.xls"
+                    accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     onChange={handleFileUpload}
                   />
                   <p className="text-xs text-muted-foreground">
