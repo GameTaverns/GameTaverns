@@ -72,56 +72,77 @@ type ImportResult = {
   games: { title: string; id?: string }[];
 };
 
-// Parse CSV data
+// Parse CSV data - handles multi-line quoted fields properly
 function parseCSV(csvData: string): Record<string, string>[] {
-  const lines = csvData.split("\n").map(line => line.trim()).filter(Boolean);
-  if (lines.length < 2) return [];
-
-  // Parse header row
-  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = "";
+  let inQuotes = false;
   
-  const rows: Record<string, string>[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseCSVLine(lines[i]);
+  for (let i = 0; i < csvData.length; i++) {
+    const char = csvData[i];
+    const nextChar = csvData[i + 1];
+    
+    if (char === '"') {
+      if (!inQuotes) {
+        inQuotes = true;
+      } else if (nextChar === '"') {
+        // Escaped quote
+        currentField += '"';
+        i++;
+      } else {
+        // End of quoted field
+        inQuotes = false;
+      }
+    } else if (char === ',' && !inQuotes) {
+      currentRow.push(currentField.trim());
+      currentField = "";
+    } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+      // End of row (skip \r if followed by \n)
+      if (char === '\r') i++;
+      currentRow.push(currentField.trim());
+      if (currentRow.some(field => field !== "")) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentField = "";
+    } else if (char === '\r' && !inQuotes) {
+      // Handle standalone \r as line ending
+      currentRow.push(currentField.trim());
+      if (currentRow.some(field => field !== "")) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentField = "";
+    } else {
+      currentField += char;
+    }
+  }
+  
+  // Handle last field/row
+  if (currentField || currentRow.length > 0) {
+    currentRow.push(currentField.trim());
+    if (currentRow.some(field => field !== "")) {
+      rows.push(currentRow);
+    }
+  }
+  
+  if (rows.length < 2) return [];
+  
+  // First row is headers
+  const headers = rows[0].map(h => h.toLowerCase().trim());
+  
+  const result: Record<string, string>[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const values = rows[i];
     const row: Record<string, string> = {};
     headers.forEach((header, idx) => {
       row[header] = values[idx] || "";
     });
-    rows.push(row);
+    result.push(row);
   }
   
-  return rows;
-}
-
-// Parse a single CSV line handling quoted values
-function parseCSVLine(line: string): string[] {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-    
-    if (char === '"' && !inQuotes) {
-      inQuotes = true;
-    } else if (char === '"' && inQuotes) {
-      if (nextChar === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = false;
-      }
-    } else if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  values.push(current.trim());
-  
-  return values;
+  return result;
 }
 
 // Lookup BGG data for a game title
@@ -402,7 +423,51 @@ Deno.serve(async (req) => {
       games: [],
     };
 
-    let gamesToImport: { title: string; bgg_id?: string; bgg_url?: string }[] = [];
+    type GameToImport = {
+      title: string;
+      bgg_id?: string;
+      bgg_url?: string;
+      // Additional CSV fields
+      type?: string;
+      difficulty?: string;
+      play_time?: string;
+      min_players?: number;
+      max_players?: number;
+      suggested_age?: string;
+      publisher?: string;
+      mechanics?: string[];
+      is_expansion?: boolean;
+      parent_game?: string;
+      is_coming_soon?: boolean;
+      is_for_sale?: boolean;
+      sale_price?: number;
+      sale_condition?: string;
+      location_room?: string;
+      location_shelf?: string;
+      location_misc?: string;
+      sleeved?: boolean;
+      upgraded_components?: boolean;
+      crowdfunded?: boolean;
+      inserts?: boolean;
+      in_base_game_box?: boolean;
+      description?: string;
+    };
+    
+    let gamesToImport: GameToImport[] = [];
+
+    // Helper to parse boolean from CSV
+    const parseBool = (val: string | undefined): boolean => {
+      if (!val) return false;
+      const v = val.toLowerCase().trim();
+      return v === "true" || v === "yes" || v === "1";
+    };
+    
+    // Helper to parse number from CSV
+    const parseNum = (val: string | undefined): number | undefined => {
+      if (!val) return undefined;
+      const n = parseInt(val, 10);
+      return isNaN(n) ? undefined : n;
+    };
 
     // Determine games to import based on mode
     if (mode === "csv" && csv_data) {
@@ -412,10 +477,40 @@ Deno.serve(async (req) => {
       for (const row of rows) {
         const title = row.title || row.name || row.game || row["game name"] || row["game title"];
         if (title) {
+          // Parse mechanics from semicolon-separated string
+          const mechanicsStr = row.mechanics || row.mechanic || "";
+          const mechanics = mechanicsStr
+            .split(";")
+            .map((m: string) => m.trim())
+            .filter((m: string) => m.length > 0);
+          
           gamesToImport.push({ 
             title,
             bgg_id: row.bgg_id || row["bgg id"] || undefined,
             bgg_url: row.bgg_url || row["bgg url"] || row.url || undefined,
+            type: row.type || row["game type"] || undefined,
+            difficulty: row.difficulty || row.weight || undefined,
+            play_time: row.play_time || row["play time"] || row.playtime || undefined,
+            min_players: parseNum(row.min_players || row["min players"]),
+            max_players: parseNum(row.max_players || row["max players"]),
+            suggested_age: row.suggested_age || row["suggested age"] || row.age || undefined,
+            publisher: row.publisher || undefined,
+            mechanics: mechanics.length > 0 ? mechanics : undefined,
+            is_expansion: parseBool(row.is_expansion || row["is expansion"]),
+            parent_game: row.parent_game || row["parent game"] || undefined,
+            is_coming_soon: parseBool(row.is_coming_soon || row["is coming soon"]),
+            is_for_sale: parseBool(row.is_for_sale || row["is for sale"]),
+            sale_price: parseNum(row.sale_price || row["sale price"]),
+            sale_condition: row.sale_condition || row["sale condition"] || undefined,
+            location_room: row.location_room || row["location room"] || undefined,
+            location_shelf: row.location_shelf || row["location shelf"] || undefined,
+            location_misc: row.location_misc || row["location misc"] || undefined,
+            sleeved: parseBool(row.sleeved),
+            upgraded_components: parseBool(row.upgraded_components || row["upgraded components"]),
+            crowdfunded: parseBool(row.crowdfunded),
+            inserts: parseBool(row.inserts),
+            in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
+            description: row.description || undefined,
           });
         }
       }
@@ -468,14 +563,61 @@ Deno.serve(async (req) => {
           game_type?: string;
           mechanics?: string[];
           publisher?: string;
-        } = { title: gameInput.title };
+          is_expansion?: boolean;
+          parent_game?: string;
+          is_coming_soon?: boolean;
+          is_for_sale?: boolean;
+          sale_price?: number;
+          sale_condition?: string;
+          location_room?: string;
+          location_shelf?: string;
+          location_misc?: string;
+          sleeved?: boolean;
+          upgraded_components?: boolean;
+          crowdfunded?: boolean;
+          inserts?: boolean;
+          in_base_game_box?: boolean;
+        } = { 
+          title: gameInput.title,
+          bgg_id: gameInput.bgg_id,
+          bgg_url: gameInput.bgg_url,
+          description: gameInput.description,
+          min_players: gameInput.min_players,
+          max_players: gameInput.max_players,
+          suggested_age: gameInput.suggested_age,
+          play_time: gameInput.play_time,
+          difficulty: gameInput.difficulty,
+          game_type: gameInput.type,
+          mechanics: gameInput.mechanics,
+          publisher: gameInput.publisher,
+          is_expansion: gameInput.is_expansion,
+          parent_game: gameInput.parent_game,
+          is_coming_soon: gameInput.is_coming_soon,
+          is_for_sale: gameInput.is_for_sale,
+          sale_price: gameInput.sale_price,
+          sale_condition: gameInput.sale_condition,
+          location_room: gameInput.location_room,
+          location_shelf: gameInput.location_shelf,
+          location_misc: gameInput.location_misc,
+          sleeved: gameInput.sleeved,
+          upgraded_components: gameInput.upgraded_components,
+          crowdfunded: gameInput.crowdfunded,
+          inserts: gameInput.inserts,
+          in_base_game_box: gameInput.in_base_game_box,
+        };
 
-        // If we have a BGG ID and enhancement is enabled, fetch full data
+        // If we have a BGG ID and enhancement is enabled, fetch full data (but don't override CSV data)
         if (gameInput.bgg_id && enhance_with_bgg && firecrawlKey && lovableKey) {
           console.log(`Enhancing with BGG data: ${gameInput.bgg_id}`);
           const bggData = await fetchBGGData(gameInput.bgg_id, firecrawlKey, lovableKey);
           if (bggData) {
-            gameData = { ...gameData, ...bggData, bgg_url: gameInput.bgg_url };
+            // Only fill in missing fields, don't override CSV data
+            gameData = {
+              ...bggData,
+              ...gameData, // CSV data takes precedence
+              bgg_id: gameData.bgg_id || bggData.bgg_id,
+              image_url: gameData.image_url || bggData.image_url, // Always use BGG image if available
+            };
             // If title was empty (from bgg_links mode), we need to get it from the page
             if (!gameData.title && gameInput.bgg_url) {
               // Extract from URL as fallback
@@ -493,7 +635,12 @@ Deno.serve(async (req) => {
           console.log(`Looking up BGG by title: ${gameData.title}`);
           const bggData = await lookupBGGByTitle(gameData.title, firecrawlKey, lovableKey);
           if (bggData) {
-            gameData = { ...gameData, ...bggData };
+            // Only fill in missing fields
+            gameData = {
+              ...bggData,
+              ...gameData, // CSV data takes precedence
+              image_url: gameData.image_url || bggData.image_url,
+            };
           }
         }
 
@@ -517,7 +664,7 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Handle mechanics
+        // Handle mechanics (from CSV or BGG)
         const mechanicIds: string[] = [];
         if (gameData.mechanics?.length) {
           for (const name of gameData.mechanics) {
@@ -561,6 +708,20 @@ Deno.serve(async (req) => {
           }
         }
 
+        // Handle parent game for expansions
+        let parentGameId: string | null = null;
+        if (gameData.is_expansion && gameData.parent_game) {
+          const { data: pg } = await supabaseAdmin
+            .from("games")
+            .select("id")
+            .eq("title", gameData.parent_game)
+            .maybeSingle();
+          
+          if (pg) {
+            parentGameId = pg.id;
+          }
+        }
+
         // Create the game
         const { data: newGame, error: gameError } = await supabaseAdmin
           .from("games")
@@ -570,24 +731,27 @@ Deno.serve(async (req) => {
             image_url: gameData.image_url || null,
             bgg_id: gameData.bgg_id || null,
             bgg_url: gameData.bgg_url || null,
-            min_players: gameData.min_players || 2,
-            max_players: gameData.max_players || 4,
+            min_players: gameData.min_players ?? 2,
+            max_players: gameData.max_players ?? 4,
             suggested_age: gameData.suggested_age || null,
             play_time: gameData.play_time || "45-60 Minutes",
             difficulty: gameData.difficulty || "3 - Medium",
             game_type: gameData.game_type || "Board Game",
             publisher_id: publisherId,
-            is_coming_soon: default_options?.is_coming_soon || false,
-            is_for_sale: default_options?.is_for_sale || false,
-            sale_price: default_options?.sale_price || null,
-            sale_condition: default_options?.sale_condition || null,
-            location_room: default_options?.location_room || null,
-            location_shelf: default_options?.location_shelf || null,
-            location_misc: default_options?.location_misc || null,
-            sleeved: default_options?.sleeved || false,
-            upgraded_components: default_options?.upgraded_components || false,
-            crowdfunded: default_options?.crowdfunded || false,
-            inserts: default_options?.inserts || false,
+            is_expansion: gameData.is_expansion ?? false,
+            parent_game_id: parentGameId,
+            is_coming_soon: gameData.is_coming_soon ?? default_options?.is_coming_soon ?? false,
+            is_for_sale: gameData.is_for_sale ?? default_options?.is_for_sale ?? false,
+            sale_price: gameData.sale_price ?? default_options?.sale_price ?? null,
+            sale_condition: gameData.sale_condition ?? default_options?.sale_condition ?? null,
+            location_room: gameData.location_room ?? default_options?.location_room ?? null,
+            location_shelf: gameData.location_shelf ?? default_options?.location_shelf ?? null,
+            location_misc: gameData.location_misc ?? default_options?.location_misc ?? null,
+            sleeved: gameData.sleeved ?? default_options?.sleeved ?? false,
+            upgraded_components: gameData.upgraded_components ?? default_options?.upgraded_components ?? false,
+            crowdfunded: gameData.crowdfunded ?? default_options?.crowdfunded ?? false,
+            inserts: gameData.inserts ?? default_options?.inserts ?? false,
+            in_base_game_box: gameData.in_base_game_box ?? false,
           })
           .select("id, title")
           .single();
