@@ -75,6 +75,13 @@ const DemoGameForm = () => {
   const [saleCondition, setSaleCondition] = useState<SaleCondition | null>(null);
   const [isExpansion, setIsExpansion] = useState(false);
   const [parentGameId, setParentGameId] = useState<string | null>(null);
+  const [inBaseGameBox, setInBaseGameBox] = useState(false);
+  const [locationRoom, setLocationRoom] = useState("");
+  const [locationShelf, setLocationShelf] = useState("");
+  const [locationMisc, setLocationMisc] = useState("");
+  const [sleeved, setSleeved] = useState(false);
+  const [upgradedComponents, setUpgradedComponents] = useState(false);
+  const [crowdfunded, setCrowdfunded] = useState(false);
 
   // Filter out current game from parent options
   const parentGameOptions = demoGames.filter((g) => g.id !== id && !g.is_expansion);
@@ -100,6 +107,13 @@ const DemoGameForm = () => {
       setSaleCondition(existingGame.sale_condition);
       setIsExpansion(existingGame.is_expansion);
       setParentGameId(existingGame.parent_game_id);
+      setInBaseGameBox(existingGame.in_base_game_box || false);
+      setLocationRoom(existingGame.location_room || "");
+      setLocationShelf(existingGame.location_shelf || "");
+      setLocationMisc(existingGame.location_misc || "");
+      setSleeved(existingGame.sleeved || false);
+      setUpgradedComponents(existingGame.upgraded_components || false);
+      setCrowdfunded(existingGame.crowdfunded || false);
     }
   }, [existingGame]);
 
@@ -147,6 +161,13 @@ const DemoGameForm = () => {
       sale_condition: isForSale ? saleCondition : null,
       is_expansion: isExpansion,
       parent_game_id: isExpansion ? parentGameId : null,
+      in_base_game_box: isExpansion ? inBaseGameBox : false,
+      location_room: locationRoom.trim() || null,
+      location_shelf: locationShelf.trim() || null,
+      location_misc: locationMisc.trim() || null,
+      sleeved,
+      upgraded_components: upgradedComponents,
+      crowdfunded,
       slug: title.trim().toLowerCase().replace(/\s+/g, "-"),
     };
 
@@ -356,7 +377,10 @@ const DemoGameForm = () => {
                     checked={isExpansion}
                     onCheckedChange={(checked) => {
                       setIsExpansion(checked === true);
-                      if (!checked) setParentGameId(null);
+                      if (!checked) {
+                        setParentGameId(null);
+                        setInBaseGameBox(false);
+                      }
                     }}
                   />
                   <div className="space-y-1">
@@ -370,18 +394,30 @@ const DemoGameForm = () => {
                 </div>
 
                 {isExpansion && (
-                  <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-2">
-                    <Label>Base Game</Label>
-                    <Select value={parentGameId || ""} onValueChange={setParentGameId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select the base game" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {parentGameOptions.map((g) => (
-                          <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Base Game</Label>
+                      <Select value={parentGameId || ""} onValueChange={setParentGameId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select the base game" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {parentGameOptions.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id="inBaseGameBox"
+                        checked={inBaseGameBox}
+                        onCheckedChange={(checked) => setInBaseGameBox(checked === true)}
+                      />
+                      <label htmlFor="inBaseGameBox" className="text-sm font-medium cursor-pointer">
+                        Stored in base game box
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>
@@ -453,6 +489,72 @@ const DemoGameForm = () => {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Storage Location */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Storage Location</h3>
+                <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border border-border bg-muted/50">
+                  <div className="space-y-2">
+                    <Label htmlFor="locationRoom">Room</Label>
+                    <Input
+                      id="locationRoom"
+                      value={locationRoom}
+                      onChange={(e) => setLocationRoom(e.target.value)}
+                      placeholder="e.g., Living Room, Game Room"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="locationShelf">Shelf</Label>
+                    <Input
+                      id="locationShelf"
+                      value={locationShelf}
+                      onChange={(e) => setLocationShelf(e.target.value)}
+                      placeholder="e.g., Shelf A, Top Shelf"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-2">
+                    <Label htmlFor="locationMisc">Additional Location Notes</Label>
+                    <Input
+                      id="locationMisc"
+                      value={locationMisc}
+                      onChange={(e) => setLocationMisc(e.target.value)}
+                      placeholder="e.g., In closet, Behind couch, etc."
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3 p-4 rounded-lg border border-border bg-muted/50">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="sleeved"
+                      checked={sleeved}
+                      onCheckedChange={(checked) => setSleeved(checked === true)}
+                    />
+                    <label htmlFor="sleeved" className="text-sm font-medium cursor-pointer">
+                      Sleeved
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="upgradedComponents"
+                      checked={upgradedComponents}
+                      onCheckedChange={(checked) => setUpgradedComponents(checked === true)}
+                    />
+                    <label htmlFor="upgradedComponents" className="text-sm font-medium cursor-pointer">
+                      Upgraded Components
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="crowdfunded"
+                      checked={crowdfunded}
+                      onCheckedChange={(checked) => setCrowdfunded(checked === true)}
+                    />
+                    <label htmlFor="crowdfunded" className="text-sm font-medium cursor-pointer">
+                      Crowdfunded
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* Submit */}
