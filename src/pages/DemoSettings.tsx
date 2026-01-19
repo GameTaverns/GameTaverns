@@ -258,6 +258,7 @@ const DemoSettings = () => {
   const [importSaleCondition, setImportSaleCondition] = useState<SaleCondition | null>(null);
   const [importLocationRoom, setImportLocationRoom] = useState("");
   const [importLocationShelf, setImportLocationShelf] = useState("");
+  const [importLocationMisc, setImportLocationMisc] = useState("");
   const [importPurchasePrice, setImportPurchasePrice] = useState("");
   const [importPurchaseDate, setImportPurchaseDate] = useState("");
   const [importSleeved, setImportSleeved] = useState(false);
@@ -418,6 +419,7 @@ const DemoSettings = () => {
       parent_game_id: importAsExpansion ? importParentGameId : null,
       location_room: importLocationRoom.trim() || null,
       location_shelf: importLocationShelf.trim() || null,
+      location_misc: importLocationMisc.trim() || null,
       admin_data: (importPurchasePrice || importPurchaseDate) ? {
         id: `admin-${Date.now()}`,
         game_id: `demo-${Date.now()}`,
@@ -456,6 +458,7 @@ const DemoSettings = () => {
     setImportSaleCondition(null);
     setImportLocationRoom("");
     setImportLocationShelf("");
+    setImportLocationMisc("");
     setImportPurchasePrice("");
     setImportPurchaseDate("");
     setImportSleeved(false);
@@ -715,6 +718,17 @@ const DemoSettings = () => {
                                 value={importLocationShelf}
                                 onChange={(e) => setImportLocationShelf(e.target.value)}
                                 placeholder="e.g., Top Shelf"
+                                disabled={isImporting}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1 sm:col-span-2">
+                              <Label htmlFor="import-location-misc" className="text-xs">Additional Notes</Label>
+                              <Input
+                                id="import-location-misc"
+                                value={importLocationMisc}
+                                onChange={(e) => setImportLocationMisc(e.target.value)}
+                                placeholder="e.g., Behind the couch"
                                 disabled={isImporting}
                                 className="h-8 text-sm"
                               />
