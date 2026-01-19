@@ -500,12 +500,25 @@ const DemoGameForm = () => {
                 <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border border-border bg-muted/50">
                   <div className="space-y-2">
                     <Label htmlFor="locationRoom">Room</Label>
-                    <Input
-                      id="locationRoom"
-                      value={locationRoom}
-                      onChange={(e) => setLocationRoom(e.target.value)}
-                      placeholder="e.g., Living Room, Game Room"
-                    />
+                    <Select value={locationRoom} onValueChange={setLocationRoom}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select room" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover">
+                        <SelectItem value="Living Room">Living Room</SelectItem>
+                        <SelectItem value="Family Room">Family Room</SelectItem>
+                        <SelectItem value="Game Room">Game Room</SelectItem>
+                        <SelectItem value="Den">Den</SelectItem>
+                        <SelectItem value="Basement">Basement</SelectItem>
+                        <SelectItem value="Bedroom">Bedroom</SelectItem>
+                        <SelectItem value="Office">Office</SelectItem>
+                        <SelectItem value="Closet">Closet</SelectItem>
+                        <SelectItem value="Attic">Attic</SelectItem>
+                        <SelectItem value="Garage">Garage</SelectItem>
+                        <SelectItem value="Dining Room">Dining Room</SelectItem>
+                        <SelectItem value="Storage Room">Storage Room</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="locationShelf">Shelf</Label>
