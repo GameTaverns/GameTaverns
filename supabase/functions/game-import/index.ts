@@ -506,6 +506,7 @@ ${markdown.slice(0, 18000)}`,
 
     if (validMainImage) validGameplayImages = validGameplayImages.filter((u) => u !== validMainImage);
 
+    // Game data for games table (without admin fields like purchase_price/purchase_date)
     const gameData = {
       title: extractedData.title.slice(0, 500),
       description: extractedData.description?.slice(0, 10000) || null, // Increased limit for rich descriptions
@@ -528,8 +529,6 @@ ${markdown.slice(0, 18000)}`,
       location_room: location_room || null,
       location_shelf: location_shelf || null,
       location_misc: location_misc || null,
-      purchase_price: purchase_price ? Number(purchase_price) : null,
-      purchase_date: purchase_date || null,
       sleeved: sleeved === true,
       upgraded_components: upgraded_components === true,
       crowdfunded: crowdfunded === true,
@@ -559,7 +558,24 @@ ${markdown.slice(0, 18000)}`,
       throw gameError;
     }
 
-    // Step 6: Link mechanics to game
+    // Step 6: Handle admin data (purchase_price, purchase_date) in game_admin_data table
+    const adminData = {
+      game_id: game.id,
+      purchase_price: purchase_price ? Number(purchase_price) : null,
+      purchase_date: purchase_date || null,
+    };
+
+    // Upsert admin data
+    const { error: adminError } = await supabaseAdmin
+      .from("game_admin_data")
+      .upsert(adminData, { onConflict: "game_id" });
+
+    if (adminError) {
+      console.warn("Admin data insert warning:", adminError);
+      // Don't fail the import for admin data issues
+    }
+
+    // Step 7: Link mechanics to game
     if (mechanicIds.length > 0) {
       const mechanicLinks = mechanicIds.map((mechanicId) => ({
         game_id: game.id,
