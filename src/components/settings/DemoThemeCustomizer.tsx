@@ -78,10 +78,13 @@ export function DemoThemeCustomizer() {
     root.style.setProperty("--accent", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
     root.style.setProperty("--sienna", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
     
-    // Apply background in light mode
+    // Apply background and card colors in light mode
     if (!document.documentElement.classList.contains("dark")) {
       root.style.setProperty("--background", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness}%`);
       root.style.setProperty("--parchment", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness - 2}%`);
+      // Card is slightly lighter than background
+      root.style.setProperty("--card", `${theme.backgroundHue} ${Math.min(theme.backgroundSaturation + 5, 100)}% ${Math.min(theme.backgroundLightness + 2, 100)}%`);
+      root.style.setProperty("--popover", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${Math.min(theme.backgroundLightness + 3, 100)}%`);
     }
     
     // Load and apply fonts

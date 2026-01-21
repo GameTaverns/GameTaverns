@@ -136,10 +136,15 @@ export function ThemeCustomizer() {
     root.style.setProperty("--accent", `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`);
     root.style.setProperty("--sienna", `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`);
     
-    // Apply background color (only in light mode)
+    // Apply background and card colors (only in light mode)
     if (!document.documentElement.classList.contains("dark")) {
+      const bgL = Number(settings.theme_background_l);
+      const bgS = Number(settings.theme_background_s);
       root.style.setProperty("--background", `${settings.theme_background_h} ${settings.theme_background_s}% ${settings.theme_background_l}%`);
-      root.style.setProperty("--parchment", `${settings.theme_background_h} ${settings.theme_background_s}% ${Number(settings.theme_background_l) - 2}%`);
+      root.style.setProperty("--parchment", `${settings.theme_background_h} ${settings.theme_background_s}% ${bgL - 2}%`);
+      // Card is slightly lighter than background
+      root.style.setProperty("--card", `${settings.theme_background_h} ${Math.min(bgS + 5, 100)}% ${Math.min(bgL + 2, 100)}%`);
+      root.style.setProperty("--popover", `${settings.theme_background_h} ${settings.theme_background_s}% ${Math.min(bgL + 3, 100)}%`);
     }
   };
 

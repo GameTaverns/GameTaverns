@@ -73,11 +73,13 @@ export function DemoThemeApplicator() {
         `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`
       );
 
-      // Apply background color only in light mode
-      // In dark mode, clear custom background to use CSS defaults
+      // Apply background and card colors only in light mode
+      // In dark mode, clear custom styles to use CSS defaults
       if (isDark) {
         root.style.removeProperty("--background");
         root.style.removeProperty("--parchment");
+        root.style.removeProperty("--card");
+        root.style.removeProperty("--popover");
       } else {
         root.style.setProperty(
           "--background",
@@ -86,6 +88,15 @@ export function DemoThemeApplicator() {
         root.style.setProperty(
           "--parchment",
           `${theme.backgroundHue} ${theme.backgroundSaturation}% ${Number(theme.backgroundLightness) - 2}%`
+        );
+        // Card is slightly lighter than background
+        root.style.setProperty(
+          "--card",
+          `${theme.backgroundHue} ${Math.min(theme.backgroundSaturation + 5, 100)}% ${Math.min(theme.backgroundLightness + 2, 100)}%`
+        );
+        root.style.setProperty(
+          "--popover",
+          `${theme.backgroundHue} ${theme.backgroundSaturation}% ${Math.min(theme.backgroundLightness + 3, 100)}%`
         );
       }
 

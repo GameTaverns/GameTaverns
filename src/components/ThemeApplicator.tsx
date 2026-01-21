@@ -75,23 +75,36 @@ export function ThemeApplicator() {
         );
       }
 
-      // Apply background color only in light mode
-      // In dark mode, clear custom background to use CSS defaults
+      // Apply background and card colors only in light mode
+      // In dark mode, clear custom styles to use CSS defaults
       if (isDark) {
         root.style.removeProperty("--background");
         root.style.removeProperty("--parchment");
+        root.style.removeProperty("--card");
+        root.style.removeProperty("--popover");
       } else if (
         settings.theme_background_h &&
         settings.theme_background_s &&
         settings.theme_background_l
       ) {
+        const bgL = Number(settings.theme_background_l);
+        const bgS = Number(settings.theme_background_s);
         root.style.setProperty(
           "--background",
           `${settings.theme_background_h} ${settings.theme_background_s}% ${settings.theme_background_l}%`
         );
         root.style.setProperty(
           "--parchment",
-          `${settings.theme_background_h} ${settings.theme_background_s}% ${Number(settings.theme_background_l) - 2}%`
+          `${settings.theme_background_h} ${settings.theme_background_s}% ${bgL - 2}%`
+        );
+        // Card is slightly lighter than background
+        root.style.setProperty(
+          "--card",
+          `${settings.theme_background_h} ${Math.min(bgS + 5, 100)}% ${Math.min(bgL + 2, 100)}%`
+        );
+        root.style.setProperty(
+          "--popover",
+          `${settings.theme_background_h} ${settings.theme_background_s}% ${Math.min(bgL + 3, 100)}%`
         );
       }
 
