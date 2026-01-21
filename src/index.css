@@ -135,6 +135,7 @@
 
 @layer utilities {
   .parchment-texture {
+    background-color: hsl(var(--background));
     background-image: 
       radial-gradient(ellipse at 20% 80%, hsl(var(--gold) / 0.05) 0%, transparent 50%),
       radial-gradient(ellipse at 80% 20%, hsl(var(--sienna) / 0.03) 0%, transparent 50%),
