@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useDemoMode } from "@/contexts/DemoContext";
+import { 
+  loadDemoSiteSettings, 
+  loadDemoThemeSettings, 
+  convertDemoSettingsToSiteSettings 
+} from "./useDemoSiteSettings";
 
 export interface SiteSettings {
   site_name?: string;
@@ -32,10 +38,19 @@ export interface SiteSettings {
 }
 
 export function useSiteSettings() {
+  const { isDemoMode } = useDemoMode();
+
   return useQuery({
-    queryKey: ["site-settings"],
+    queryKey: ["site-settings", isDemoMode],
     queryFn: async (): Promise<SiteSettings> => {
-      // Try admin access first (full table), fallback to public view
+      // In demo mode, return demo settings from sessionStorage
+      if (isDemoMode) {
+        const siteSettings = loadDemoSiteSettings();
+        const themeSettings = loadDemoThemeSettings();
+        return convertDemoSettingsToSiteSettings(siteSettings, themeSettings);
+      }
+
+      // Live mode: fetch from database
       let data, error;
       
       // First try the full table (admins only)
@@ -64,7 +79,7 @@ export function useSiteSettings() {
 
       return settings;
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: isDemoMode ? 0 : 5 * 60 * 1000, // No cache in demo mode
   });
 }
 

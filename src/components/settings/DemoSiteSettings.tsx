@@ -6,51 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useToast } from "@/hooks/use-toast";
-
-const SESSION_KEY = "demo_session_site_settings";
-
-interface DemoSiteSettingsData {
-  site_name: string;
-  site_author: string;
-  site_description: string;
-  contact_email: string;
-  footer_text: string;
-  twitter_handle: string;
-  instagram_url: string;
-  facebook_url: string;
-  discord_url: string;
-}
-
-const DEFAULT_SETTINGS: DemoSiteSettingsData = {
-  site_name: "My Game Library",
-  site_author: "Demo User",
-  site_description: "Browse and discover our collection of board games...",
-  contact_email: "demo@example.com",
-  footer_text: "© 2024 Demo Organization. All rights reserved.",
-  twitter_handle: "@GameLibrary",
-  instagram_url: "",
-  facebook_url: "",
-  discord_url: "",
-};
+import { 
+  DemoSiteSettingsData, 
+  DEFAULT_DEMO_SITE_SETTINGS, 
+  loadDemoSiteSettings, 
+  saveDemoSiteSettings 
+} from "@/hooks/useDemoSiteSettings";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function DemoSiteSettings() {
   const { toast } = useToast();
   const { isDemoMode } = useDemoMode();
-  const [settings, setSettings] = useState<DemoSiteSettingsData>(DEFAULT_SETTINGS);
+  const queryClient = useQueryClient();
+  const [settings, setSettings] = useState<DemoSiteSettingsData>(DEFAULT_DEMO_SITE_SETTINGS);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Load from session storage
   useEffect(() => {
     if (isDemoMode) {
-      try {
-        const stored = sessionStorage.getItem(SESSION_KEY);
-        if (stored) {
-          setSettings(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.warn("Failed to load demo site settings:", e);
-      }
+      setSettings(loadDemoSiteSettings());
     }
   }, [isDemoMode]);
 
@@ -64,12 +39,16 @@ export function DemoSiteSettings() {
     setIsSaving(true);
     
     // Simulate save delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 300));
     
     try {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(settings));
+      saveDemoSiteSettings(settings);
+      // Trigger theme/settings refresh
+      window.dispatchEvent(new CustomEvent("demo-settings-updated"));
+      // Invalidate site settings query to refresh UI
+      queryClient.invalidateQueries({ queryKey: ["site-settings"] });
       toast({
-        title: "Settings saved (Demo)",
+        title: "Settings saved",
         description: "Site settings have been saved to your demo session.",
       });
       setHasChanges(false);
@@ -85,8 +64,10 @@ export function DemoSiteSettings() {
   };
 
   const handleReset = () => {
-    setSettings(DEFAULT_SETTINGS);
-    sessionStorage.removeItem(SESSION_KEY);
+    setSettings(DEFAULT_DEMO_SITE_SETTINGS);
+    saveDemoSiteSettings(DEFAULT_DEMO_SITE_SETTINGS);
+    window.dispatchEvent(new CustomEvent("demo-settings-updated"));
+    queryClient.invalidateQueries({ queryKey: ["site-settings"] });
     setHasChanges(false);
     toast({
       title: "Settings reset",

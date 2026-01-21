@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -13,36 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-
-const SESSION_KEY = "demo_session_theme_settings";
-
-interface ThemeSettings {
-  primaryHue: number;
-  primarySaturation: number;
-  primaryLightness: number;
-  accentHue: number;
-  accentSaturation: number;
-  accentLightness: number;
-  backgroundHue: number;
-  backgroundSaturation: number;
-  backgroundLightness: number;
-  displayFont: string;
-  bodyFont: string;
-}
-
-const DEFAULT_THEME: ThemeSettings = {
-  primaryHue: 240,
-  primarySaturation: 70,
-  primaryLightness: 50,
-  accentHue: 280,
-  accentSaturation: 65,
-  accentLightness: 55,
-  backgroundHue: 220,
-  backgroundSaturation: 15,
-  backgroundLightness: 98,
-  displayFont: "Inter",
-  bodyFont: "Inter",
-};
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  DemoThemeSettings,
+  DEFAULT_DEMO_THEME,
+  loadDemoThemeSettings,
+  saveDemoThemeSettings,
+} from "@/hooks/useDemoSiteSettings";
 
 const FONT_OPTIONS = [
   "Inter",
@@ -59,41 +35,53 @@ const FONT_OPTIONS = [
 
 export function DemoThemeCustomizer() {
   const { toast } = useToast();
-  const [theme, setTheme] = useState<ThemeSettings>(DEFAULT_THEME);
+  const queryClient = useQueryClient();
+  const [theme, setTheme] = useState<DemoThemeSettings>(DEFAULT_DEMO_THEME);
   const [isSaving, setIsSaving] = useState(false);
 
   // Load from session storage
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(SESSION_KEY);
-      if (stored) {
-        setTheme(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.warn("Failed to load demo theme settings:", e);
-    }
+    setTheme(loadDemoThemeSettings());
   }, []);
 
   // Apply theme preview in real-time
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--primary", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
+    root.style.setProperty("--ring", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
+    root.style.setProperty("--forest", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
     root.style.setProperty("--accent", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
-    // Note: Background changes can be dramatic, keeping it subtle in demo
+    root.style.setProperty("--sienna", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
+    
+    // Apply background in light mode
+    if (!document.documentElement.classList.contains("dark")) {
+      root.style.setProperty("--background", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness}%`);
+      root.style.setProperty("--parchment", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness - 2}%`);
+    }
+    
+    // Apply fonts
+    if (theme.displayFont) {
+      root.style.setProperty("--font-display", `"${theme.displayFont}", cursive`);
+    }
+    if (theme.bodyFont) {
+      root.style.setProperty("--font-body", `"${theme.bodyFont}", serif`);
+    }
   }, [theme]);
 
-  const updateTheme = (key: keyof ThemeSettings, value: number | string) => {
+  const updateTheme = (key: keyof DemoThemeSettings, value: number | string) => {
     setTheme((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 300));
     
     try {
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(theme));
+      saveDemoThemeSettings(theme);
+      window.dispatchEvent(new CustomEvent("demo-settings-updated"));
+      queryClient.invalidateQueries({ queryKey: ["site-settings"] });
       toast({
-        title: "Theme saved (Demo)",
+        title: "Theme saved",
         description: "Theme settings have been saved to your demo session.",
       });
     } catch (error) {
@@ -108,8 +96,10 @@ export function DemoThemeCustomizer() {
   };
 
   const handleReset = () => {
-    setTheme(DEFAULT_THEME);
-    sessionStorage.removeItem(SESSION_KEY);
+    setTheme(DEFAULT_DEMO_THEME);
+    saveDemoThemeSettings(DEFAULT_DEMO_THEME);
+    window.dispatchEvent(new CustomEvent("demo-settings-updated"));
+    queryClient.invalidateQueries({ queryKey: ["site-settings"] });
     toast({
       title: "Theme reset",
       description: "Theme settings have been reset to defaults.",
