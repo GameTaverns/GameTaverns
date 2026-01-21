@@ -228,25 +228,24 @@ const Index = () => {
 
   const hasActiveFilters = !!filter;
 
-  // Generate page numbers to display - always returns exactly 7 slots for consistent width
+  // Generate page numbers to display - always returns exactly 4 slots for consistent width
   const getPageNumbers = () => {
-    const pages: (number | "ellipsis-start" | "ellipsis-end" | null)[] = [];
-    if (totalPages <= 7) {
-      // Show all pages, pad with nulls to maintain 7 slots
+    const pages: (number | "ellipsis" | null)[] = [];
+    if (totalPages <= 4) {
+      // Show all pages, pad with nulls to maintain 4 slots
       for (let i = 1; i <= totalPages; i++) pages.push(i);
-      while (pages.length < 7) pages.push(null);
+      while (pages.length < 4) pages.push(null);
     } else {
-      // Always show: first, ..., middle range, ..., last = 7 slots
-      pages.push(1);
-      if (currentPage <= 3) {
-        // Near start: 1, 2, 3, 4, 5, ..., last
-        pages.push(2, 3, 4, 5, "ellipsis-end", totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        // Near end: 1, ..., last-4, last-3, last-2, last-1, last
-        pages.push("ellipsis-start", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      // Always 4 slots: first, middle area, last
+      if (currentPage <= 2) {
+        // Near start: 1, 2, ..., last
+        pages.push(1, 2, "ellipsis", totalPages);
+      } else if (currentPage >= totalPages - 1) {
+        // Near end: 1, ..., last-1, last
+        pages.push(1, "ellipsis", totalPages - 1, totalPages);
       } else {
-        // Middle: 1, ..., prev, current, next, ..., last
-        pages.push("ellipsis-start", currentPage - 1, currentPage, currentPage + 1, "ellipsis-end", totalPages);
+        // Middle: 1, ..., current, last
+        pages.push(1, "ellipsis", currentPage, totalPages);
       }
     }
     return pages;
@@ -370,7 +369,7 @@ const Index = () => {
                 <PaginationItem key={index} className="w-10 flex justify-center">
                   {page === null ? (
                     <span className="w-10" />
-                  ) : page === "ellipsis-start" || page === "ellipsis-end" ? (
+                  ) : page === "ellipsis" ? (
                     <span className="px-3 py-2">...</span>
                   ) : (
                     <PaginationLink
