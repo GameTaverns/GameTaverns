@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Palette, Loader2 } from "lucide-react";
+import { Palette, Loader2, Moon, Sun } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -58,6 +58,84 @@ function loadGoogleFont(fontName: string) {
   loadedFonts.add(fontName);
 }
 
+interface ColorSliderGroupProps {
+  label: string;
+  hue: number;
+  saturation: number;
+  lightness: number;
+  onHueChange: (v: number) => void;
+  onSaturationChange: (v: number) => void;
+  onLightnessChange: (v: number) => void;
+  description?: string;
+}
+
+function ColorSliderGroup({ 
+  label, 
+  hue, 
+  saturation, 
+  lightness, 
+  onHueChange, 
+  onSaturationChange, 
+  onLightnessChange,
+  description 
+}: ColorSliderGroupProps) {
+  return (
+    <div className="space-y-4 p-4 border rounded-lg">
+      <div className="flex items-center justify-between">
+        <Label className="text-base font-medium">{label}</Label>
+        <div 
+          className="w-10 h-10 rounded-lg border shadow-sm"
+          style={{ 
+            backgroundColor: `hsl(${hue}, ${saturation}%, ${lightness}%)`
+          }}
+        />
+      </div>
+      {description && <p className="text-xs text-muted-foreground">{description}</p>}
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Hue</span>
+            <span>{hue}°</span>
+          </div>
+          <Slider
+            value={[hue]}
+            onValueChange={([v]) => onHueChange(v)}
+            min={0}
+            max={360}
+            step={1}
+          />
+        </div>
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Saturation</span>
+            <span>{saturation}%</span>
+          </div>
+          <Slider
+            value={[saturation]}
+            onValueChange={([v]) => onSaturationChange(v)}
+            min={0}
+            max={100}
+            step={1}
+          />
+        </div>
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Lightness</span>
+            <span>{lightness}%</span>
+          </div>
+          <Slider
+            value={[lightness]}
+            onValueChange={([v]) => onLightnessChange(v)}
+            min={0}
+            max={100}
+            step={1}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DemoThemeCustomizer() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -72,19 +150,28 @@ export function DemoThemeCustomizer() {
   // Apply theme preview in real-time
   useEffect(() => {
     const root = document.documentElement;
+    const isDark = document.documentElement.classList.contains("dark");
+    
+    // Primary and accent apply to both modes
     root.style.setProperty("--primary", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
     root.style.setProperty("--ring", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
     root.style.setProperty("--forest", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
     root.style.setProperty("--accent", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
     root.style.setProperty("--sienna", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
     
-    // Apply background and card colors in light mode
-    if (!document.documentElement.classList.contains("dark")) {
+    if (isDark) {
+      // Dark mode colors
+      root.style.setProperty("--background", `${theme.darkBackgroundHue} ${theme.darkBackgroundSaturation}% ${theme.darkBackgroundLightness}%`);
+      root.style.setProperty("--card", `${theme.darkCardHue} ${theme.darkCardSaturation}% ${theme.darkCardLightness}%`);
+      root.style.setProperty("--popover", `${theme.darkCardHue} ${theme.darkCardSaturation}% ${Math.min(theme.darkCardLightness + 2, 100)}%`);
+      root.style.setProperty("--sidebar-background", `${theme.darkSidebarHue} ${theme.darkSidebarSaturation}% ${theme.darkSidebarLightness}%`);
+    } else {
+      // Light mode colors
       root.style.setProperty("--background", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness}%`);
       root.style.setProperty("--parchment", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness - 2}%`);
-      // Apply card color from dedicated settings
       root.style.setProperty("--card", `${theme.cardHue} ${theme.cardSaturation}% ${theme.cardLightness}%`);
       root.style.setProperty("--popover", `${theme.cardHue} ${theme.cardSaturation}% ${Math.min(theme.cardLightness + 1, 100)}%`);
+      root.style.setProperty("--sidebar-background", `${theme.sidebarHue} ${theme.sidebarSaturation}% ${theme.sidebarLightness}%`);
     }
     
     // Load and apply fonts
@@ -137,244 +224,129 @@ export function DemoThemeCustomizer() {
   };
 
   return (
-    <Card className="card-elevated">
-      <CardHeader>
-        <CardTitle className="font-display flex items-center gap-2">
-          <Palette className="h-5 w-5" />
-          Theme Customization
-        </CardTitle>
-        <CardDescription>
-          Customize colors and fonts for your site (demo mode - changes preview in real-time)
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-8">
-        {/* Color Customization */}
-        <div className="space-y-6">
-          <h3 className="text-lg font-semibold">Color Customization</h3>
-          
-          {/* Primary Color */}
-          <div className="space-y-4 p-4 border rounded-lg">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Primary Color</Label>
-              <div 
-                className="w-10 h-10 rounded-lg border shadow-sm"
-                style={{ 
-                  backgroundColor: `hsl(${theme.primaryHue}, ${theme.primarySaturation}%, ${theme.primaryLightness}%)`
-                }}
-              />
-            </div>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Hue</span>
-                  <span>{theme.primaryHue}°</span>
-                </div>
-                <Slider
-                  value={[theme.primaryHue]}
-                  onValueChange={([v]) => updateTheme("primaryHue", v)}
-                  min={0}
-                  max={360}
-                  step={1}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Saturation</span>
-                  <span>{theme.primarySaturation}%</span>
-                </div>
-                <Slider
-                  value={[theme.primarySaturation]}
-                  onValueChange={([v]) => updateTheme("primarySaturation", v)}
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Lightness</span>
-                  <span>{theme.primaryLightness}%</span>
-                </div>
-                <Slider
-                  value={[theme.primaryLightness]}
-                  onValueChange={([v]) => updateTheme("primaryLightness", v)}
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-              </div>
-            </div>
-          </div>
+    <div className="space-y-6">
+      {/* Light Mode Colors */}
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle className="font-display flex items-center gap-2">
+            <Sun className="h-5 w-5" />
+            Light Mode Colors
+          </CardTitle>
+          <CardDescription>
+            Customize colors for light mode (changes preview in real-time)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ColorSliderGroup
+            label="Primary Color"
+            hue={theme.primaryHue}
+            saturation={theme.primarySaturation}
+            lightness={theme.primaryLightness}
+            onHueChange={(v) => updateTheme("primaryHue", v)}
+            onSaturationChange={(v) => updateTheme("primarySaturation", v)}
+            onLightnessChange={(v) => updateTheme("primaryLightness", v)}
+          />
 
-          {/* Accent Color */}
-          <div className="space-y-4 p-4 border rounded-lg">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Accent Color</Label>
-              <div 
-                className="w-10 h-10 rounded-lg border shadow-sm"
-                style={{ 
-                  backgroundColor: `hsl(${theme.accentHue}, ${theme.accentSaturation}%, ${theme.accentLightness}%)`
-                }}
-              />
-            </div>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Hue</span>
-                  <span>{theme.accentHue}°</span>
-                </div>
-                <Slider
-                  value={[theme.accentHue]}
-                  onValueChange={([v]) => updateTheme("accentHue", v)}
-                  min={0}
-                  max={360}
-                  step={1}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Saturation</span>
-                  <span>{theme.accentSaturation}%</span>
-                </div>
-                <Slider
-                  value={[theme.accentSaturation]}
-                  onValueChange={([v]) => updateTheme("accentSaturation", v)}
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Lightness</span>
-                  <span>{theme.accentLightness}%</span>
-                </div>
-                <Slider
-                  value={[theme.accentLightness]}
-                  onValueChange={([v]) => updateTheme("accentLightness", v)}
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-              </div>
-            </div>
-          </div>
+          <ColorSliderGroup
+            label="Accent Color"
+            hue={theme.accentHue}
+            saturation={theme.accentSaturation}
+            lightness={theme.accentLightness}
+            onHueChange={(v) => updateTheme("accentHue", v)}
+            onSaturationChange={(v) => updateTheme("accentSaturation", v)}
+            onLightnessChange={(v) => updateTheme("accentLightness", v)}
+          />
 
-          {/* Background Color */}
-          <div className="space-y-4 p-4 border rounded-lg">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Background Color</Label>
-              <div 
-                className="w-10 h-10 rounded-lg border shadow-sm"
-                style={{ 
-                  backgroundColor: `hsl(${theme.backgroundHue}, ${theme.backgroundSaturation}%, ${theme.backgroundLightness}%)`
-                }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">Only applies in light mode</p>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Hue</span>
-                  <span>{theme.backgroundHue}°</span>
-                </div>
-                <Slider
-                  value={[theme.backgroundHue]}
-                  onValueChange={([v]) => updateTheme("backgroundHue", v)}
-                  min={0}
-                  max={360}
-                  step={1}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Saturation</span>
-                  <span>{theme.backgroundSaturation}%</span>
-                </div>
-                <Slider
-                  value={[theme.backgroundSaturation]}
-                  onValueChange={([v]) => updateTheme("backgroundSaturation", v)}
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Lightness</span>
-                  <span>{theme.backgroundLightness}%</span>
-                </div>
-                <Slider
-                  value={[theme.backgroundLightness]}
-                  onValueChange={([v]) => updateTheme("backgroundLightness", v)}
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-              </div>
-            </div>
-          </div>
+          <ColorSliderGroup
+            label="Background Color"
+            hue={theme.backgroundHue}
+            saturation={theme.backgroundSaturation}
+            lightness={theme.backgroundLightness}
+            onHueChange={(v) => updateTheme("backgroundHue", v)}
+            onSaturationChange={(v) => updateTheme("backgroundSaturation", v)}
+            onLightnessChange={(v) => updateTheme("backgroundLightness", v)}
+          />
 
-          {/* Card Color */}
-          <div className="space-y-4 p-4 border rounded-lg">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">Card / Panel Color</Label>
-              <div 
-                className="w-10 h-10 rounded-lg border shadow-sm"
-                style={{ 
-                  backgroundColor: `hsl(${theme.cardHue}, ${theme.cardSaturation}%, ${theme.cardLightness}%)`
-                }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">Controls cards, dialogs, and dropdown backgrounds (light mode only)</p>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Hue</span>
-                  <span>{theme.cardHue}°</span>
-                </div>
-                <Slider
-                  value={[theme.cardHue]}
-                  onValueChange={([v]) => updateTheme("cardHue", v)}
-                  min={0}
-                  max={360}
-                  step={1}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Saturation</span>
-                  <span>{theme.cardSaturation}%</span>
-                </div>
-                <Slider
-                  value={[theme.cardSaturation]}
-                  onValueChange={([v]) => updateTheme("cardSaturation", v)}
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Lightness</span>
-                  <span>{theme.cardLightness}%</span>
-                </div>
-                <Slider
-                  value={[theme.cardLightness]}
-                  onValueChange={([v]) => updateTheme("cardLightness", v)}
-                  min={0}
-                  max={100}
-                  step={1}
-                />
-              </div>
-            </div>
-          </div>
+          <ColorSliderGroup
+            label="Card / Panel Color"
+            hue={theme.cardHue}
+            saturation={theme.cardSaturation}
+            lightness={theme.cardLightness}
+            onHueChange={(v) => updateTheme("cardHue", v)}
+            onSaturationChange={(v) => updateTheme("cardSaturation", v)}
+            onLightnessChange={(v) => updateTheme("cardLightness", v)}
+            description="Controls cards, dialogs, and dropdown backgrounds"
+          />
 
-        </div>
+          <ColorSliderGroup
+            label="Sidebar Color"
+            hue={theme.sidebarHue}
+            saturation={theme.sidebarSaturation}
+            lightness={theme.sidebarLightness}
+            onHueChange={(v) => updateTheme("sidebarHue", v)}
+            onSaturationChange={(v) => updateTheme("sidebarSaturation", v)}
+            onLightnessChange={(v) => updateTheme("sidebarLightness", v)}
+            description="Controls the sidebar background"
+          />
+        </CardContent>
+      </Card>
 
-        {/* Typography */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Typography</h3>
+      {/* Dark Mode Colors */}
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle className="font-display flex items-center gap-2">
+            <Moon className="h-5 w-5" />
+            Dark Mode Colors
+          </CardTitle>
+          <CardDescription>
+            Customize colors specifically for dark mode
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ColorSliderGroup
+            label="Background Color"
+            hue={theme.darkBackgroundHue}
+            saturation={theme.darkBackgroundSaturation}
+            lightness={theme.darkBackgroundLightness}
+            onHueChange={(v) => updateTheme("darkBackgroundHue", v)}
+            onSaturationChange={(v) => updateTheme("darkBackgroundSaturation", v)}
+            onLightnessChange={(v) => updateTheme("darkBackgroundLightness", v)}
+          />
+
+          <ColorSliderGroup
+            label="Card / Panel Color"
+            hue={theme.darkCardHue}
+            saturation={theme.darkCardSaturation}
+            lightness={theme.darkCardLightness}
+            onHueChange={(v) => updateTheme("darkCardHue", v)}
+            onSaturationChange={(v) => updateTheme("darkCardSaturation", v)}
+            onLightnessChange={(v) => updateTheme("darkCardLightness", v)}
+          />
+
+          <ColorSliderGroup
+            label="Sidebar Color"
+            hue={theme.darkSidebarHue}
+            saturation={theme.darkSidebarSaturation}
+            lightness={theme.darkSidebarLightness}
+            onHueChange={(v) => updateTheme("darkSidebarHue", v)}
+            onSaturationChange={(v) => updateTheme("darkSidebarSaturation", v)}
+            onLightnessChange={(v) => updateTheme("darkSidebarLightness", v)}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Typography */}
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle className="font-display flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            Typography
+          </CardTitle>
+          <CardDescription>
+            Choose fonts for headings and body text
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Display Font</Label>
@@ -405,25 +377,25 @@ export function DemoThemeCustomizer() {
               <p className="text-xs text-muted-foreground">Used for body text and paragraphs</p>
             </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t">
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Theme"
-            )}
-          </Button>
-          <Button variant="outline" onClick={handleReset}>
-            Reset to Defaults
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Actions */}
+      <div className="flex gap-3">
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save Theme"
+          )}
+        </Button>
+        <Button variant="outline" onClick={handleReset}>
+          Reset to Defaults
+        </Button>
+      </div>
+    </div>
   );
 }

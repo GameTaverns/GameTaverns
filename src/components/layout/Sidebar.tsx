@@ -362,16 +362,6 @@ export function Sidebar({ isOpen }: SidebarProps) {
           </div>
         )}
 
-        {/* Demo mode admin link */}
-        {isDemoMode && (
-          <Link 
-            to="/demo/settings" 
-            className="flex items-center gap-2 px-4 py-3 text-sm bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors border-t border-amber-500/20"
-          >
-            <FlaskConical className="h-4 w-4" />
-            <span>Demo Admin Panel</span>
-          </Link>
-        )}
       </div>
     </aside>
   );

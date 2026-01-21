@@ -30,6 +30,19 @@ export interface DemoThemeSettings {
   cardHue: number;
   cardSaturation: number;
   cardLightness: number;
+  sidebarHue: number;
+  sidebarSaturation: number;
+  sidebarLightness: number;
+  // Dark mode colors
+  darkBackgroundHue: number;
+  darkBackgroundSaturation: number;
+  darkBackgroundLightness: number;
+  darkCardHue: number;
+  darkCardSaturation: number;
+  darkCardLightness: number;
+  darkSidebarHue: number;
+  darkSidebarSaturation: number;
+  darkSidebarLightness: number;
   displayFont: string;
   bodyFont: string;
 }
@@ -59,6 +72,19 @@ export const DEFAULT_DEMO_THEME: DemoThemeSettings = {
   cardHue: 210,
   cardSaturation: 25,
   cardLightness: 99,
+  sidebarHue: 25,
+  sidebarSaturation: 30,
+  sidebarLightness: 20,
+  // Dark mode defaults
+  darkBackgroundHue: 220,
+  darkBackgroundSaturation: 15,
+  darkBackgroundLightness: 10,
+  darkCardHue: 220,
+  darkCardSaturation: 15,
+  darkCardLightness: 15,
+  darkSidebarHue: 220,
+  darkSidebarSaturation: 20,
+  darkSidebarLightness: 8,
   displayFont: "Montserrat",
   bodyFont: "Open Sans",
 };
@@ -124,6 +150,18 @@ export function convertDemoSettingsToSiteSettings(
     theme_card_h: String(themeSettings.cardHue),
     theme_card_s: String(themeSettings.cardSaturation),
     theme_card_l: String(themeSettings.cardLightness),
+    theme_sidebar_h: String(themeSettings.sidebarHue),
+    theme_sidebar_s: String(themeSettings.sidebarSaturation),
+    theme_sidebar_l: String(themeSettings.sidebarLightness),
+    theme_dark_background_h: String(themeSettings.darkBackgroundHue),
+    theme_dark_background_s: String(themeSettings.darkBackgroundSaturation),
+    theme_dark_background_l: String(themeSettings.darkBackgroundLightness),
+    theme_dark_card_h: String(themeSettings.darkCardHue),
+    theme_dark_card_s: String(themeSettings.darkCardSaturation),
+    theme_dark_card_l: String(themeSettings.darkCardLightness),
+    theme_dark_sidebar_h: String(themeSettings.darkSidebarHue),
+    theme_dark_sidebar_s: String(themeSettings.darkSidebarSaturation),
+    theme_dark_sidebar_l: String(themeSettings.darkSidebarLightness),
     theme_font_display: themeSettings.displayFont,
     theme_font_body: themeSettings.bodyFont,
   };

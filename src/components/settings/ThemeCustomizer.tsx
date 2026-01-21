@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Palette, Type, RotateCcw } from "lucide-react";
+import { Loader2, Palette, Type, RotateCcw, Sun, Moon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ThemeSettings {
+  // Light mode
   theme_primary_h: string;
   theme_primary_s: string;
   theme_primary_l: string;
@@ -28,11 +29,26 @@ interface ThemeSettings {
   theme_card_h: string;
   theme_card_s: string;
   theme_card_l: string;
+  theme_sidebar_h: string;
+  theme_sidebar_s: string;
+  theme_sidebar_l: string;
+  // Dark mode
+  theme_dark_background_h: string;
+  theme_dark_background_s: string;
+  theme_dark_background_l: string;
+  theme_dark_card_h: string;
+  theme_dark_card_s: string;
+  theme_dark_card_l: string;
+  theme_dark_sidebar_h: string;
+  theme_dark_sidebar_s: string;
+  theme_dark_sidebar_l: string;
+  // Typography
   theme_font_display: string;
   theme_font_body: string;
 }
 
 const DEFAULT_THEME: ThemeSettings = {
+  // Light mode
   theme_primary_h: "142",
   theme_primary_s: "35",
   theme_primary_l: "30",
@@ -45,6 +61,20 @@ const DEFAULT_THEME: ThemeSettings = {
   theme_card_h: "40",
   theme_card_s: "50",
   theme_card_l: "96",
+  theme_sidebar_h: "25",
+  theme_sidebar_s: "30",
+  theme_sidebar_l: "20",
+  // Dark mode
+  theme_dark_background_h: "220",
+  theme_dark_background_s: "15",
+  theme_dark_background_l: "10",
+  theme_dark_card_h: "220",
+  theme_dark_card_s: "15",
+  theme_dark_card_l: "15",
+  theme_dark_sidebar_h: "220",
+  theme_dark_sidebar_s: "20",
+  theme_dark_sidebar_l: "8",
+  // Typography
   theme_font_display: "MedievalSharp",
   theme_font_body: "IM Fell English",
 };
@@ -132,24 +162,31 @@ export function ThemeCustomizer() {
 
   const applyThemePreview = (settings: ThemeSettings) => {
     const root = document.documentElement;
+    const isDark = document.documentElement.classList.contains("dark");
     
-    // Apply primary color
+    // Apply primary color (same for both modes)
     root.style.setProperty("--primary", `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`);
     root.style.setProperty("--ring", `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`);
     root.style.setProperty("--forest", `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`);
     
-    // Apply accent color
+    // Apply accent color (same for both modes)
     root.style.setProperty("--accent", `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`);
     root.style.setProperty("--sienna", `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`);
     
-    // Apply background and card colors (only in light mode)
-    if (!document.documentElement.classList.contains("dark")) {
+    if (isDark) {
+      // Dark mode colors
+      root.style.setProperty("--background", `${settings.theme_dark_background_h} ${settings.theme_dark_background_s}% ${settings.theme_dark_background_l}%`);
+      root.style.setProperty("--card", `${settings.theme_dark_card_h} ${settings.theme_dark_card_s}% ${settings.theme_dark_card_l}%`);
+      root.style.setProperty("--popover", `${settings.theme_dark_card_h} ${settings.theme_dark_card_s}% ${Math.min(Number(settings.theme_dark_card_l) + 2, 100)}%`);
+      root.style.setProperty("--sidebar-background", `${settings.theme_dark_sidebar_h} ${settings.theme_dark_sidebar_s}% ${settings.theme_dark_sidebar_l}%`);
+    } else {
+      // Light mode colors
       const bgL = Number(settings.theme_background_l);
       root.style.setProperty("--background", `${settings.theme_background_h} ${settings.theme_background_s}% ${settings.theme_background_l}%`);
       root.style.setProperty("--parchment", `${settings.theme_background_h} ${settings.theme_background_s}% ${bgL - 2}%`);
-      // Apply card color from dedicated settings
       root.style.setProperty("--card", `${settings.theme_card_h} ${settings.theme_card_s}% ${settings.theme_card_l}%`);
       root.style.setProperty("--popover", `${settings.theme_card_h} ${settings.theme_card_s}% ${Math.min(Number(settings.theme_card_l) + 1, 100)}%`);
+      root.style.setProperty("--sidebar-background", `${settings.theme_sidebar_h} ${settings.theme_sidebar_s}% ${settings.theme_sidebar_l}%`);
     }
   };
 
@@ -188,7 +225,7 @@ export function ThemeCustomizer() {
     });
   };
 
-  const updateColor = (prefix: "primary" | "accent" | "background" | "card", component: "h" | "s" | "l", value: number) => {
+  const updateColor = (prefix: "primary" | "accent" | "background" | "card" | "sidebar" | "dark_background" | "dark_card" | "dark_sidebar", component: "h" | "s" | "l", value: number) => {
     // Validate input to prevent CSS injection
     const validatedValue = component === "h" ? validateHue(value) : validatePercent(value);
     setTheme((prev) => ({
@@ -213,11 +250,11 @@ export function ThemeCustomizer() {
       <Card className="card-elevated">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Color Customization
+            <Sun className="h-5 w-5" />
+            Light Mode Colors
           </CardTitle>
           <CardDescription>
-            Customize your site's color palette. Changes are previewed in real-time.
+            Customize your site's light mode color palette. Changes are previewed in real-time.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
@@ -478,6 +515,285 @@ export function ThemeCustomizer() {
                   type="number"
                   value={theme.theme_card_l}
                   onChange={(e) => updateColor("card", "l", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Color */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full border-2 border-border"
+                style={{
+                  backgroundColor: `hsl(${theme.theme_sidebar_h}, ${theme.theme_sidebar_s}%, ${theme.theme_sidebar_l}%)`,
+                }}
+              />
+              <Label className="text-base font-medium">Sidebar Color</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">Controls the sidebar background (light mode)</p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
+                <Slider
+                  value={[Number(theme.theme_sidebar_h)]}
+                  onValueChange={([v]) => updateColor("sidebar", "h", v)}
+                  max={360}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_sidebar_h}
+                  onChange={(e) => updateColor("sidebar", "h", Number(e.target.value))}
+                  min={0}
+                  max={360}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_sidebar_s)]}
+                  onValueChange={([v]) => updateColor("sidebar", "s", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_sidebar_s}
+                  onChange={(e) => updateColor("sidebar", "s", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_sidebar_l)]}
+                  onValueChange={([v]) => updateColor("sidebar", "l", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_sidebar_l}
+                  onChange={(e) => updateColor("sidebar", "l", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dark Mode Colors Section */}
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle className="font-display flex items-center gap-2">
+            <Moon className="h-5 w-5" />
+            Dark Mode Colors
+          </CardTitle>
+          <CardDescription>
+            Customize colors specifically for dark mode
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-8">
+          {/* Dark Background Color */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full border-2 border-border"
+                style={{
+                  backgroundColor: `hsl(${theme.theme_dark_background_h}, ${theme.theme_dark_background_s}%, ${theme.theme_dark_background_l}%)`,
+                }}
+              />
+              <Label className="text-base font-medium">Background Color</Label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_background_h)]}
+                  onValueChange={([v]) => updateColor("dark_background", "h", v)}
+                  max={360}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_background_h}
+                  onChange={(e) => updateColor("dark_background", "h", Number(e.target.value))}
+                  min={0}
+                  max={360}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_background_s)]}
+                  onValueChange={([v]) => updateColor("dark_background", "s", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_background_s}
+                  onChange={(e) => updateColor("dark_background", "s", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_background_l)]}
+                  onValueChange={([v]) => updateColor("dark_background", "l", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_background_l}
+                  onChange={(e) => updateColor("dark_background", "l", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dark Card Color */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full border-2 border-border"
+                style={{
+                  backgroundColor: `hsl(${theme.theme_dark_card_h}, ${theme.theme_dark_card_s}%, ${theme.theme_dark_card_l}%)`,
+                }}
+              />
+              <Label className="text-base font-medium">Card / Panel Color</Label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_card_h)]}
+                  onValueChange={([v]) => updateColor("dark_card", "h", v)}
+                  max={360}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_card_h}
+                  onChange={(e) => updateColor("dark_card", "h", Number(e.target.value))}
+                  min={0}
+                  max={360}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_card_s)]}
+                  onValueChange={([v]) => updateColor("dark_card", "s", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_card_s}
+                  onChange={(e) => updateColor("dark_card", "s", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_card_l)]}
+                  onValueChange={([v]) => updateColor("dark_card", "l", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_card_l}
+                  onChange={(e) => updateColor("dark_card", "l", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dark Sidebar Color */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full border-2 border-border"
+                style={{
+                  backgroundColor: `hsl(${theme.theme_dark_sidebar_h}, ${theme.theme_dark_sidebar_s}%, ${theme.theme_dark_sidebar_l}%)`,
+                }}
+              />
+              <Label className="text-base font-medium">Sidebar Color</Label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_sidebar_h)]}
+                  onValueChange={([v]) => updateColor("dark_sidebar", "h", v)}
+                  max={360}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_sidebar_h}
+                  onChange={(e) => updateColor("dark_sidebar", "h", Number(e.target.value))}
+                  min={0}
+                  max={360}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_sidebar_s)]}
+                  onValueChange={([v]) => updateColor("dark_sidebar", "s", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_sidebar_s}
+                  onChange={(e) => updateColor("dark_sidebar", "s", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_sidebar_l)]}
+                  onValueChange={([v]) => updateColor("dark_sidebar", "l", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_sidebar_l}
+                  onChange={(e) => updateColor("dark_sidebar", "l", Number(e.target.value))}
                   min={0}
                   max={100}
                   className="h-8"

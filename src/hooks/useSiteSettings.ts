@@ -17,6 +17,7 @@ export interface SiteSettings {
   discord_url?: string;
   contact_email?: string;
   footer_text?: string;
+  // Light mode theme
   theme_primary_h?: string;
   theme_primary_s?: string;
   theme_primary_l?: string;
@@ -29,6 +30,20 @@ export interface SiteSettings {
   theme_card_h?: string;
   theme_card_s?: string;
   theme_card_l?: string;
+  theme_sidebar_h?: string;
+  theme_sidebar_s?: string;
+  theme_sidebar_l?: string;
+  // Dark mode theme
+  theme_dark_background_h?: string;
+  theme_dark_background_s?: string;
+  theme_dark_background_l?: string;
+  theme_dark_card_h?: string;
+  theme_dark_card_s?: string;
+  theme_dark_card_l?: string;
+  theme_dark_sidebar_h?: string;
+  theme_dark_sidebar_s?: string;
+  theme_dark_sidebar_l?: string;
+  // Typography
   theme_font_display?: string;
   theme_font_body?: string;
   turnstile_site_key?: string;
