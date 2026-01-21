@@ -56,12 +56,23 @@ const Index = () => {
   const filteredGames = useMemo(() => {
     let result = [...games];
 
-    // Special filter for coming soon (only if feature is enabled)
-    if (comingSoonFlag && filter === "status" && filterValue === "coming-soon") {
-      result = result.filter((g) => g.is_coming_soon);
-    } else if (forSaleFlag && filter === "status" && filterValue === "for-sale") {
-      // Special filter for for-sale games (only if feature is enabled)
-      result = result.filter((g) => g.is_for_sale);
+    // Handle status filters - must check feature flags properly
+    if (filter === "status" && filterValue === "coming-soon") {
+      // Only filter by coming-soon if the feature is enabled
+      if (comingSoonFlag) {
+        result = result.filter((g) => g.is_coming_soon);
+      } else {
+        // Feature is disabled, show no results for this filter
+        result = [];
+      }
+    } else if (filter === "status" && filterValue === "for-sale") {
+      // Only filter by for-sale if the feature is enabled
+      if (forSaleFlag) {
+        result = result.filter((g) => g.is_for_sale);
+      } else {
+        // Feature is disabled, show no results for this filter
+        result = [];
+      }
     } else {
       // Exclude coming soon games from main catalog (only if feature is enabled)
       if (comingSoonFlag) {
