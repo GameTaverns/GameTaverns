@@ -82,9 +82,9 @@ export function DemoThemeCustomizer() {
     if (!document.documentElement.classList.contains("dark")) {
       root.style.setProperty("--background", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness}%`);
       root.style.setProperty("--parchment", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness - 2}%`);
-      // Card is slightly lighter than background
-      root.style.setProperty("--card", `${theme.backgroundHue} ${Math.min(theme.backgroundSaturation + 5, 100)}% ${Math.min(theme.backgroundLightness + 2, 100)}%`);
-      root.style.setProperty("--popover", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${Math.min(theme.backgroundLightness + 3, 100)}%`);
+      // Apply card color from dedicated settings
+      root.style.setProperty("--card", `${theme.cardHue} ${theme.cardSaturation}% ${theme.cardLightness}%`);
+      root.style.setProperty("--popover", `${theme.cardHue} ${theme.cardSaturation}% ${Math.min(theme.cardLightness + 1, 100)}%`);
     }
     
     // Load and apply fonts
@@ -307,6 +307,61 @@ export function DemoThemeCustomizer() {
                 <Slider
                   value={[theme.backgroundLightness]}
                   onValueChange={([v]) => updateTheme("backgroundLightness", v)}
+                  min={0}
+                  max={100}
+                  step={1}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Card Color */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">Card / Panel Color</Label>
+              <div 
+                className="w-10 h-10 rounded-lg border shadow-sm"
+                style={{ 
+                  backgroundColor: `hsl(${theme.cardHue}, ${theme.cardSaturation}%, ${theme.cardLightness}%)`
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Controls cards, dialogs, and dropdown backgrounds (light mode only)</p>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Hue</span>
+                  <span>{theme.cardHue}°</span>
+                </div>
+                <Slider
+                  value={[theme.cardHue]}
+                  onValueChange={([v]) => updateTheme("cardHue", v)}
+                  min={0}
+                  max={360}
+                  step={1}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Saturation</span>
+                  <span>{theme.cardSaturation}%</span>
+                </div>
+                <Slider
+                  value={[theme.cardSaturation]}
+                  onValueChange={([v]) => updateTheme("cardSaturation", v)}
+                  min={0}
+                  max={100}
+                  step={1}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Lightness</span>
+                  <span>{theme.cardLightness}%</span>
+                </div>
+                <Slider
+                  value={[theme.cardLightness]}
+                  onValueChange={([v]) => updateTheme("cardLightness", v)}
                   min={0}
                   max={100}
                   step={1}

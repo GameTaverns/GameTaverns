@@ -89,14 +89,14 @@ export function DemoThemeApplicator() {
           "--parchment",
           `${theme.backgroundHue} ${theme.backgroundSaturation}% ${Number(theme.backgroundLightness) - 2}%`
         );
-        // Card is slightly lighter than background
+        // Apply card color from dedicated settings
         root.style.setProperty(
           "--card",
-          `${theme.backgroundHue} ${Math.min(theme.backgroundSaturation + 5, 100)}% ${Math.min(theme.backgroundLightness + 2, 100)}%`
+          `${theme.cardHue} ${theme.cardSaturation}% ${theme.cardLightness}%`
         );
         root.style.setProperty(
           "--popover",
-          `${theme.backgroundHue} ${theme.backgroundSaturation}% ${Math.min(theme.backgroundLightness + 3, 100)}%`
+          `${theme.cardHue} ${theme.cardSaturation}% ${Math.min(theme.cardLightness + 1, 100)}%`
         );
       }
 

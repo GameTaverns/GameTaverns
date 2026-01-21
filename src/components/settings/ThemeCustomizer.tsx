@@ -25,6 +25,9 @@ interface ThemeSettings {
   theme_background_h: string;
   theme_background_s: string;
   theme_background_l: string;
+  theme_card_h: string;
+  theme_card_s: string;
+  theme_card_l: string;
   theme_font_display: string;
   theme_font_body: string;
 }
@@ -39,6 +42,9 @@ const DEFAULT_THEME: ThemeSettings = {
   theme_background_h: "39",
   theme_background_s: "45",
   theme_background_l: "94",
+  theme_card_h: "40",
+  theme_card_s: "50",
+  theme_card_l: "96",
   theme_font_display: "MedievalSharp",
   theme_font_body: "IM Fell English",
 };
@@ -139,12 +145,11 @@ export function ThemeCustomizer() {
     // Apply background and card colors (only in light mode)
     if (!document.documentElement.classList.contains("dark")) {
       const bgL = Number(settings.theme_background_l);
-      const bgS = Number(settings.theme_background_s);
       root.style.setProperty("--background", `${settings.theme_background_h} ${settings.theme_background_s}% ${settings.theme_background_l}%`);
       root.style.setProperty("--parchment", `${settings.theme_background_h} ${settings.theme_background_s}% ${bgL - 2}%`);
-      // Card is slightly lighter than background
-      root.style.setProperty("--card", `${settings.theme_background_h} ${Math.min(bgS + 5, 100)}% ${Math.min(bgL + 2, 100)}%`);
-      root.style.setProperty("--popover", `${settings.theme_background_h} ${settings.theme_background_s}% ${Math.min(bgL + 3, 100)}%`);
+      // Apply card color from dedicated settings
+      root.style.setProperty("--card", `${settings.theme_card_h} ${settings.theme_card_s}% ${settings.theme_card_l}%`);
+      root.style.setProperty("--popover", `${settings.theme_card_h} ${settings.theme_card_s}% ${Math.min(Number(settings.theme_card_l) + 1, 100)}%`);
     }
   };
 
@@ -183,7 +188,7 @@ export function ThemeCustomizer() {
     });
   };
 
-  const updateColor = (prefix: "primary" | "accent" | "background", component: "h" | "s" | "l", value: number) => {
+  const updateColor = (prefix: "primary" | "accent" | "background" | "card", component: "h" | "s" | "l", value: number) => {
     // Validate input to prevent CSS injection
     const validatedValue = component === "h" ? validateHue(value) : validatePercent(value);
     setTheme((prev) => ({
@@ -406,6 +411,73 @@ export function ThemeCustomizer() {
                   type="number"
                   value={theme.theme_background_l}
                   onChange={(e) => updateColor("background", "l", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Card Color */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full border-2 border-border"
+                style={{
+                  backgroundColor: `hsl(${theme.theme_card_h}, ${theme.theme_card_s}%, ${theme.theme_card_l}%)`,
+                }}
+              />
+              <Label className="text-base font-medium">Card / Panel Color</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">Controls cards, dialogs, and dropdown backgrounds (light mode only)</p>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
+                <Slider
+                  value={[Number(theme.theme_card_h)]}
+                  onValueChange={([v]) => updateColor("card", "h", v)}
+                  max={360}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_card_h}
+                  onChange={(e) => updateColor("card", "h", Number(e.target.value))}
+                  min={0}
+                  max={360}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_card_s)]}
+                  onValueChange={([v]) => updateColor("card", "s", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_card_s}
+                  onChange={(e) => updateColor("card", "s", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_card_l)]}
+                  onValueChange={([v]) => updateColor("card", "l", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_card_l}
+                  onChange={(e) => updateColor("card", "l", Number(e.target.value))}
                   min={0}
                   max={100}
                   className="h-8"

@@ -27,6 +27,9 @@ export interface DemoThemeSettings {
   backgroundHue: number;
   backgroundSaturation: number;
   backgroundLightness: number;
+  cardHue: number;
+  cardSaturation: number;
+  cardLightness: number;
   displayFont: string;
   bodyFont: string;
 }
@@ -53,6 +56,9 @@ export const DEFAULT_DEMO_THEME: DemoThemeSettings = {
   backgroundHue: 210,
   backgroundSaturation: 20,
   backgroundLightness: 97,
+  cardHue: 210,
+  cardSaturation: 25,
+  cardLightness: 99,
   displayFont: "Montserrat",
   bodyFont: "Open Sans",
 };
@@ -115,6 +121,9 @@ export function convertDemoSettingsToSiteSettings(
     theme_background_h: String(themeSettings.backgroundHue),
     theme_background_s: String(themeSettings.backgroundSaturation),
     theme_background_l: String(themeSettings.backgroundLightness),
+    theme_card_h: String(themeSettings.cardHue),
+    theme_card_s: String(themeSettings.cardSaturation),
+    theme_card_l: String(themeSettings.cardLightness),
     theme_font_display: themeSettings.displayFont,
     theme_font_body: themeSettings.bodyFont,
   };

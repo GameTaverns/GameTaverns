@@ -26,6 +26,9 @@ export interface SiteSettings {
   theme_background_h?: string;
   theme_background_s?: string;
   theme_background_l?: string;
+  theme_card_h?: string;
+  theme_card_s?: string;
+  theme_card_l?: string;
   theme_font_display?: string;
   theme_font_body?: string;
   turnstile_site_key?: string;

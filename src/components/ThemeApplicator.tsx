@@ -88,7 +88,6 @@ export function ThemeApplicator() {
         settings.theme_background_l
       ) {
         const bgL = Number(settings.theme_background_l);
-        const bgS = Number(settings.theme_background_s);
         root.style.setProperty(
           "--background",
           `${settings.theme_background_h} ${settings.theme_background_s}% ${settings.theme_background_l}%`
@@ -97,15 +96,18 @@ export function ThemeApplicator() {
           "--parchment",
           `${settings.theme_background_h} ${settings.theme_background_s}% ${bgL - 2}%`
         );
-        // Card is slightly lighter than background
-        root.style.setProperty(
-          "--card",
-          `${settings.theme_background_h} ${Math.min(bgS + 5, 100)}% ${Math.min(bgL + 2, 100)}%`
-        );
-        root.style.setProperty(
-          "--popover",
-          `${settings.theme_background_h} ${settings.theme_background_s}% ${Math.min(bgL + 3, 100)}%`
-        );
+        
+        // Apply card color from dedicated settings if available, otherwise fallback
+        if (settings.theme_card_h && settings.theme_card_s && settings.theme_card_l) {
+          root.style.setProperty(
+            "--card",
+            `${settings.theme_card_h} ${settings.theme_card_s}% ${settings.theme_card_l}%`
+          );
+          root.style.setProperty(
+            "--popover",
+            `${settings.theme_card_h} ${settings.theme_card_s}% ${Math.min(Number(settings.theme_card_l) + 1, 100)}%`
+          );
+        }
       }
 
       // Load and apply fonts
