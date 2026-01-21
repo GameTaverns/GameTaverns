@@ -34,7 +34,7 @@ const GameDetail = () => {
   const { data: realGame, isLoading: isRealLoading } = useGame(isDemoMode ? undefined : slug);
   const { data: realGames } = useGames(!isDemoMode);
   const { isAdmin } = useAuth();
-  const { playLogs } = useFeatureFlags();
+  const { playLogs, messaging, forSale } = useFeatureFlags();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
 
@@ -371,7 +371,7 @@ const GameDetail = () => {
             </div>
 
             {/* For Sale Banner */}
-            {game.is_for_sale && (
+            {forSale && game.is_for_sale && (
               <Card className="mb-6 border-green-500/30 bg-green-500/10">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between flex-wrap gap-4">
@@ -704,7 +704,7 @@ const GameDetail = () => {
                             <Package className="h-8 w-8 text-muted-foreground" />
                           </div>
                         )}
-                        {expansion.is_for_sale && (
+                        {forSale && expansion.is_for_sale && (
                           <Badge className="absolute top-2 right-2 text-xs bg-green-500/90 text-white border-0">
                             ${expansion.sale_price}
                           </Badge>
@@ -724,8 +724,8 @@ const GameDetail = () => {
         )}
 
 
-        {/* Contact Seller Form - Only show for games that are for sale */}
-        {game.is_for_sale && (
+        {/* Contact Seller Form - Only show for games that are for sale when messaging is enabled */}
+        {messaging && forSale && game.is_for_sale && (
           <div className="mt-12 max-w-md">
             <ContactSellerForm gameId={game.id} gameTitle={game.title} />
           </div>
