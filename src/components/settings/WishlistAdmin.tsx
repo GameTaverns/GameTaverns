@@ -23,7 +23,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { pb } from "@/integrations/pocketbase/client";
+import { Collections, type GameWishlist, type Game } from "@/integrations/pocketbase/types";
 import { Link } from "react-router-dom";
 
 interface WishlistEntry {
@@ -55,55 +56,50 @@ export function WishlistAdmin() {
     setIsLoading(true);
     try {
       // Fetch all wishlist entries
-      const { data: wishlistData, error: wishlistError } = await supabase
-        .from("game_wishlist")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const wishlistData = await pb.collection(Collections.GAME_WISHLIST).getFullList<GameWishlist>({
+        sort: "-created",
+      });
 
-      if (wishlistError) throw wishlistError;
+      // Fetch all games to get titles
+      const gamesData = await pb.collection(Collections.GAMES).getFullList<Game>({
+        fields: "id,title,slug",
+      });
 
-      // Fetch summary view
-      const { data: summaryData, error: summaryError } = await supabase
-        .from("game_wishlist_summary")
-        .select("*");
+      const gameMap = new Map(gamesData.map(g => [g.id, { title: g.title, slug: g.slug }]));
 
-      if (summaryError) throw summaryError;
+      // Build entries with game info
+      const mappedEntries: WishlistEntry[] = wishlistData.map(e => ({
+        id: e.id,
+        game_id: e.game,
+        guest_name: e.guest_name || null,
+        guest_identifier: e.guest_identifier,
+        created_at: e.created,
+        game_title: gameMap.get(e.game)?.title || "Unknown Game",
+        game_slug: gameMap.get(e.game)?.slug,
+      }));
 
-      // Fetch game titles
-      const gameIds = [...new Set([
-        ...(wishlistData || []).map(e => e.game_id),
-        ...(summaryData || []).map(s => s.game_id).filter(Boolean)
-      ])];
+      setEntries(mappedEntries);
 
-      if (gameIds.length > 0) {
-        const { data: gamesData } = await supabase
-          .from("games")
-          .select("id, title, slug")
-          .in("id", gameIds);
+      // Build summary by aggregating votes per game
+      const votesByGame = new Map<string, { count: number; named: number }>();
+      wishlistData.forEach(e => {
+        const current = votesByGame.get(e.game) || { count: 0, named: 0 };
+        current.count++;
+        if (e.guest_name) current.named++;
+        votesByGame.set(e.game, current);
+      });
 
-        const gameMap = new Map(gamesData?.map(g => [g.id, { title: g.title, slug: g.slug }]) || []);
+      const summaryData: WishlistSummary[] = Array.from(votesByGame.entries())
+        .map(([game_id, { count, named }]) => ({
+          game_id,
+          vote_count: count,
+          named_votes: named,
+          game_title: gameMap.get(game_id)?.title || "Unknown Game",
+          game_slug: gameMap.get(game_id)?.slug,
+        }))
+        .sort((a, b) => b.vote_count - a.vote_count);
 
-        setEntries((wishlistData || []).map(e => ({
-          ...e,
-          game_title: gameMap.get(e.game_id)?.title || "Unknown Game",
-          game_slug: gameMap.get(e.game_id)?.slug
-        })));
-
-        setSummary((summaryData || [])
-          .filter(s => s.game_id)
-          .map(s => ({
-            game_id: s.game_id!,
-            vote_count: Number(s.vote_count) || 0,
-            named_votes: Number(s.named_votes) || 0,
-            game_title: gameMap.get(s.game_id!)?.title || "Unknown Game",
-            game_slug: gameMap.get(s.game_id!)?.slug
-          }))
-          .sort((a, b) => b.vote_count - a.vote_count)
-        );
-      } else {
-        setEntries([]);
-        setSummary([]);
-      }
+      setSummary(summaryData);
     } catch (error) {
       console.error("Error fetching wishlist data:", error);
       toast({
@@ -123,12 +119,9 @@ export function WishlistAdmin() {
   const handleClearAllVotes = async () => {
     setIsClearing(true);
     try {
-      const { error } = await supabase
-        .from("game_wishlist")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all rows
-
-      if (error) throw error;
+      // Get all entries and delete them one by one (PocketBase doesn't have bulk delete)
+      const allEntries = await pb.collection(Collections.GAME_WISHLIST).getFullList<GameWishlist>();
+      await Promise.all(allEntries.map(e => pb.collection(Collections.GAME_WISHLIST).delete(e.id)));
 
       toast({
         title: "Wishlist cleared",
@@ -150,12 +143,7 @@ export function WishlistAdmin() {
 
   const handleDeleteEntry = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("game_wishlist")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
+      await pb.collection(Collections.GAME_WISHLIST).delete(id);
 
       toast({
         title: "Vote removed",

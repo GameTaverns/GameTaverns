@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { pb } from "@/integrations/pocketbase/client";
+import { Collections, type SiteSetting } from "@/integrations/pocketbase/types";
 
 interface ThemeSettings {
   // Light mode
@@ -106,11 +107,6 @@ const validatePercent = (value: number): number => {
   return num;
 };
 
-// Sanitize string input - only allow alphanumeric, spaces, and basic punctuation
-const sanitizeStringValue = (value: string): string => {
-  return value.replace(/[^a-zA-Z0-9\s\-_.]/g, '').slice(0, 100);
-};
-
 const DISPLAY_FONTS = [
   { value: "MedievalSharp", label: "MedievalSharp (Medieval)" },
   { value: "Cinzel", label: "Cinzel (Elegant)" },
@@ -145,17 +141,12 @@ export function ThemeCustomizer() {
   const fetchThemeSettings = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("key, value")
-        .in("key", Object.keys(DEFAULT_THEME));
-
-      if (error) throw error;
-
+      const records = await pb.collection(Collections.SITE_SETTINGS).getFullList<SiteSetting>();
+      
       const settings: Partial<ThemeSettings> = {};
-      data?.forEach((setting) => {
-        if (setting.key in DEFAULT_THEME) {
-          settings[setting.key as keyof ThemeSettings] = setting.value || "";
+      records.forEach((record) => {
+        if (record.key in DEFAULT_THEME) {
+          settings[record.key as keyof ThemeSettings] = record.value || "";
         }
       });
 
@@ -207,12 +198,16 @@ export function ThemeCustomizer() {
     setIsSaving(true);
     try {
       for (const [key, value] of Object.entries(theme)) {
-        const { error } = await supabase
-          .from("site_settings")
-          .update({ value })
-          .eq("key", key);
+        // Find existing setting by key
+        const existing = await pb.collection(Collections.SITE_SETTINGS).getList<SiteSetting>(1, 1, {
+          filter: `key = "${key}"`,
+        });
 
-        if (error) throw error;
+        if (existing.items.length > 0) {
+          await pb.collection(Collections.SITE_SETTINGS).update(existing.items[0].id, { value });
+        } else {
+          await pb.collection(Collections.SITE_SETTINGS).create({ key, value });
+        }
       }
 
       toast({
@@ -257,9 +252,87 @@ export function ThemeCustomizer() {
     );
   }
 
+  // Color control helper component
+  const ColorControl = ({ 
+    label, 
+    prefix 
+  }: { 
+    label: string; 
+    prefix: "primary" | "accent" | "background" | "card" | "sidebar" | "dark_primary" | "dark_accent" | "dark_background" | "dark_card" | "dark_sidebar";
+  }) => {
+    const h = theme[`theme_${prefix}_h` as keyof ThemeSettings];
+    const s = theme[`theme_${prefix}_s` as keyof ThemeSettings];
+    const l = theme[`theme_${prefix}_l` as keyof ThemeSettings];
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-8 h-8 rounded-full border-2 border-border"
+            style={{ backgroundColor: `hsl(${h}, ${s}%, ${l}%)` }}
+          />
+          <Label className="text-base font-medium">{label}</Label>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
+            <Slider
+              value={[Number(h)]}
+              onValueChange={([v]) => updateColor(prefix, "h", v)}
+              max={360}
+              step={1}
+            />
+            <Input
+              type="number"
+              value={h}
+              onChange={(e) => updateColor(prefix, "h", Number(e.target.value))}
+              min={0}
+              max={360}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
+            <Slider
+              value={[Number(s)]}
+              onValueChange={([v]) => updateColor(prefix, "s", v)}
+              max={100}
+              step={1}
+            />
+            <Input
+              type="number"
+              value={s}
+              onChange={(e) => updateColor(prefix, "s", Number(e.target.value))}
+              min={0}
+              max={100}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
+            <Slider
+              value={[Number(l)]}
+              onValueChange={([v]) => updateColor(prefix, "l", v)}
+              max={100}
+              step={1}
+            />
+            <Input
+              type="number"
+              value={l}
+              onChange={(e) => updateColor(prefix, "l", Number(e.target.value))}
+              min={0}
+              max={100}
+              className="h-8"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
-      {/* Colors Section */}
+      {/* Light Mode Colors */}
       <Card className="card-elevated">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
@@ -271,341 +344,15 @@ export function ThemeCustomizer() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
-          {/* Primary Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_primary_h}, ${theme.theme_primary_s}%, ${theme.theme_primary_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Primary Color</Label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_primary_h)]}
-                  onValueChange={([v]) => updateColor("primary", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_primary_h}
-                  onChange={(e) => updateColor("primary", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_primary_s)]}
-                  onValueChange={([v]) => updateColor("primary", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_primary_s}
-                  onChange={(e) => updateColor("primary", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_primary_l)]}
-                  onValueChange={([v]) => updateColor("primary", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_primary_l}
-                  onChange={(e) => updateColor("primary", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Accent Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_accent_h}, ${theme.theme_accent_s}%, ${theme.theme_accent_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Accent Color</Label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_accent_h)]}
-                  onValueChange={([v]) => updateColor("accent", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_accent_h}
-                  onChange={(e) => updateColor("accent", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_accent_s)]}
-                  onValueChange={([v]) => updateColor("accent", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_accent_s}
-                  onChange={(e) => updateColor("accent", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_accent_l)]}
-                  onValueChange={([v]) => updateColor("accent", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_accent_l}
-                  onChange={(e) => updateColor("accent", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Background Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_background_h}, ${theme.theme_background_s}%, ${theme.theme_background_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Background Color</Label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_background_h)]}
-                  onValueChange={([v]) => updateColor("background", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_background_h}
-                  onChange={(e) => updateColor("background", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_background_s)]}
-                  onValueChange={([v]) => updateColor("background", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_background_s}
-                  onChange={(e) => updateColor("background", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_background_l)]}
-                  onValueChange={([v]) => updateColor("background", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_background_l}
-                  onChange={(e) => updateColor("background", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Card Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_card_h}, ${theme.theme_card_s}%, ${theme.theme_card_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Card / Panel Color</Label>
-            </div>
-            <p className="text-xs text-muted-foreground">Controls cards, dialogs, and dropdown backgrounds (light mode only)</p>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_card_h)]}
-                  onValueChange={([v]) => updateColor("card", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_card_h}
-                  onChange={(e) => updateColor("card", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_card_s)]}
-                  onValueChange={([v]) => updateColor("card", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_card_s}
-                  onChange={(e) => updateColor("card", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_card_l)]}
-                  onValueChange={([v]) => updateColor("card", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_card_l}
-                  onChange={(e) => updateColor("card", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Sidebar Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_sidebar_h}, ${theme.theme_sidebar_s}%, ${theme.theme_sidebar_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Sidebar Color</Label>
-            </div>
-            <p className="text-xs text-muted-foreground">Controls the sidebar background (light mode)</p>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_sidebar_h)]}
-                  onValueChange={([v]) => updateColor("sidebar", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_sidebar_h}
-                  onChange={(e) => updateColor("sidebar", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_sidebar_s)]}
-                  onValueChange={([v]) => updateColor("sidebar", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_sidebar_s}
-                  onChange={(e) => updateColor("sidebar", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_sidebar_l)]}
-                  onValueChange={([v]) => updateColor("sidebar", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_sidebar_l}
-                  onChange={(e) => updateColor("sidebar", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
+          <ColorControl label="Primary Color" prefix="primary" />
+          <ColorControl label="Accent Color" prefix="accent" />
+          <ColorControl label="Background Color" prefix="background" />
+          <ColorControl label="Card Color" prefix="card" />
+          <ColorControl label="Sidebar Color" prefix="sidebar" />
         </CardContent>
       </Card>
 
-      {/* Dark Mode Colors Section */}
+      {/* Dark Mode Colors */}
       <Card className="card-elevated">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
@@ -613,343 +360,19 @@ export function ThemeCustomizer() {
             Dark Mode Colors
           </CardTitle>
           <CardDescription>
-            Customize colors specifically for dark mode
+            Customize your site's dark mode color palette.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
-          {/* Dark Primary Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_dark_primary_h}, ${theme.theme_dark_primary_s}%, ${theme.theme_dark_primary_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Primary Color</Label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_primary_h)]}
-                  onValueChange={([v]) => updateColor("dark_primary", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_primary_h}
-                  onChange={(e) => updateColor("dark_primary", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_primary_s)]}
-                  onValueChange={([v]) => updateColor("dark_primary", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_primary_s}
-                  onChange={(e) => updateColor("dark_primary", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_primary_l)]}
-                  onValueChange={([v]) => updateColor("dark_primary", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_primary_l}
-                  onChange={(e) => updateColor("dark_primary", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Dark Accent Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_dark_accent_h}, ${theme.theme_dark_accent_s}%, ${theme.theme_dark_accent_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Accent Color</Label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_accent_h)]}
-                  onValueChange={([v]) => updateColor("dark_accent", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_accent_h}
-                  onChange={(e) => updateColor("dark_accent", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_accent_s)]}
-                  onValueChange={([v]) => updateColor("dark_accent", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_accent_s}
-                  onChange={(e) => updateColor("dark_accent", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_accent_l)]}
-                  onValueChange={([v]) => updateColor("dark_accent", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_accent_l}
-                  onChange={(e) => updateColor("dark_accent", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Dark Background Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_dark_background_h}, ${theme.theme_dark_background_s}%, ${theme.theme_dark_background_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Background Color</Label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_background_h)]}
-                  onValueChange={([v]) => updateColor("dark_background", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_background_h}
-                  onChange={(e) => updateColor("dark_background", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_background_s)]}
-                  onValueChange={([v]) => updateColor("dark_background", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_background_s}
-                  onChange={(e) => updateColor("dark_background", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_background_l)]}
-                  onValueChange={([v]) => updateColor("dark_background", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_background_l}
-                  onChange={(e) => updateColor("dark_background", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Dark Card Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_dark_card_h}, ${theme.theme_dark_card_s}%, ${theme.theme_dark_card_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Card / Panel Color</Label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_card_h)]}
-                  onValueChange={([v]) => updateColor("dark_card", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_card_h}
-                  onChange={(e) => updateColor("dark_card", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_card_s)]}
-                  onValueChange={([v]) => updateColor("dark_card", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_card_s}
-                  onChange={(e) => updateColor("dark_card", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_card_l)]}
-                  onValueChange={([v]) => updateColor("dark_card", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_card_l}
-                  onChange={(e) => updateColor("dark_card", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Dark Sidebar Color */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full border-2 border-border"
-                style={{
-                  backgroundColor: `hsl(${theme.theme_dark_sidebar_h}, ${theme.theme_dark_sidebar_s}%, ${theme.theme_dark_sidebar_l}%)`,
-                }}
-              />
-              <Label className="text-base font-medium">Sidebar Color</Label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_sidebar_h)]}
-                  onValueChange={([v]) => updateColor("dark_sidebar", "h", v)}
-                  max={360}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_sidebar_h}
-                  onChange={(e) => updateColor("dark_sidebar", "h", Number(e.target.value))}
-                  min={0}
-                  max={360}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_sidebar_s)]}
-                  onValueChange={([v]) => updateColor("dark_sidebar", "s", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_sidebar_s}
-                  onChange={(e) => updateColor("dark_sidebar", "s", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
-                <Slider
-                  value={[Number(theme.theme_dark_sidebar_l)]}
-                  onValueChange={([v]) => updateColor("dark_sidebar", "l", v)}
-                  max={100}
-                  step={1}
-                />
-                <Input
-                  type="number"
-                  value={theme.theme_dark_sidebar_l}
-                  onChange={(e) => updateColor("dark_sidebar", "l", Number(e.target.value))}
-                  min={0}
-                  max={100}
-                  className="h-8"
-                />
-              </div>
-            </div>
-          </div>
+          <ColorControl label="Primary Color" prefix="dark_primary" />
+          <ColorControl label="Accent Color" prefix="dark_accent" />
+          <ColorControl label="Background Color" prefix="dark_background" />
+          <ColorControl label="Card Color" prefix="dark_card" />
+          <ColorControl label="Sidebar Color" prefix="dark_sidebar" />
         </CardContent>
       </Card>
 
-      {/* Typography Section */}
+      {/* Typography */}
       <Card className="card-elevated">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
@@ -957,61 +380,46 @@ export function ThemeCustomizer() {
             Typography
           </CardTitle>
           <CardDescription>
-            Choose fonts for headings and body text
+            Choose fonts for headings and body text.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Display Font (Headings)</Label>
               <Select
                 value={theme.theme_font_display}
-                onValueChange={(value) =>
-                  setTheme((prev) => ({ ...prev, theme_font_display: value }))
-                }
+                onValueChange={(v) => setTheme(prev => ({ ...prev, theme_font_display: v }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DISPLAY_FONTS.map((font) => (
-                    <SelectItem key={font.value} value={font.value}>
-                      {font.label}
-                    </SelectItem>
+                  {DISPLAY_FONTS.map(f => (
+                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p
-                className="text-lg mt-2"
-                style={{ fontFamily: theme.theme_font_display }}
-              >
-                Preview: The Quick Brown Fox
+              <p className="text-sm text-muted-foreground" style={{ fontFamily: theme.theme_font_display }}>
+                Preview: The quick brown fox
               </p>
             </div>
-
             <div className="space-y-2">
               <Label>Body Font (Text)</Label>
               <Select
                 value={theme.theme_font_body}
-                onValueChange={(value) =>
-                  setTheme((prev) => ({ ...prev, theme_font_body: value }))
-                }
+                onValueChange={(v) => setTheme(prev => ({ ...prev, theme_font_body: v }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {BODY_FONTS.map((font) => (
-                    <SelectItem key={font.value} value={font.value}>
-                      {font.label}
-                    </SelectItem>
+                  {BODY_FONTS.map(f => (
+                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p
-                className="text-sm mt-2"
-                style={{ fontFamily: theme.theme_font_body }}
-              >
+              <p className="text-sm text-muted-foreground" style={{ fontFamily: theme.theme_font_body }}>
                 Preview: The quick brown fox jumps over the lazy dog.
               </p>
             </div>
@@ -1020,7 +428,11 @@ export function ThemeCustomizer() {
       </Card>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex justify-end gap-4">
+        <Button variant="outline" onClick={handleReset} disabled={isSaving}>
+          <RotateCcw className="h-4 w-4 mr-2" />
+          Reset to Defaults
+        </Button>
         <Button onClick={handleSave} disabled={isSaving}>
           {isSaving ? (
             <>
@@ -1028,18 +440,13 @@ export function ThemeCustomizer() {
               Saving...
             </>
           ) : (
-            "Save Theme"
+            <>
+              <Palette className="h-4 w-4 mr-2" />
+              Save Theme
+            </>
           )}
         </Button>
-        <Button variant="outline" onClick={handleReset}>
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Reset to Defaults
-        </Button>
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        Note: Font changes require a page refresh to fully apply. Color changes preview in real-time.
-      </p>
     </div>
   );
 }

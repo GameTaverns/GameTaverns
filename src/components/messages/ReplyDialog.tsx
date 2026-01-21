@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 
 interface ReplyDialogProps {
   open: boolean;
@@ -92,27 +91,20 @@ export function ReplyDialog({
       // Escape HTML to prevent XSS, then convert newlines to <br>
       const safeHtml = escapeHtml(processedMessage).replace(/\n/g, "<br>");
       
-      const { data, error } = await supabase.functions.invoke("send-email", {
-        body: {
-          to: recipientEmail,
-          subject: subject,
-          html: `<div style="font-family: sans-serif; line-height: 1.6;">${safeHtml}</div>`,
-          text: processedMessage,
-        },
-      });
-
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Failed to send email");
+      // For PocketBase, we'll use the mailto: protocol as a fallback
+      // since we don't have a built-in email service
+      const mailtoLink = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(processedMessage)}`;
+      window.open(mailtoLink, '_blank');
 
       toast({
-        title: "Email sent",
-        description: `Your reply has been sent to ${recipientName}.`,
+        title: "Email client opened",
+        description: `Your default email client has been opened to send to ${recipientName}.`,
       });
       onOpenChange(false);
     } catch (error: any) {
       console.error("Send email error:", error);
       toast({
-        title: "Failed to send email",
+        title: "Failed to open email",
         description: error.message || "Please try again later.",
         variant: "destructive",
       });
@@ -159,12 +151,12 @@ export function ReplyDialog({
             {sending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Sending...
+                Opening...
               </>
             ) : (
               <>
                 <Send className="h-4 w-4 mr-2" />
-                Send Email
+                Open Email Client
               </>
             )}
           </Button>

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { sendMessage } from "@/hooks/useMessagesPocketBase";
 import { TurnstileWidget } from "./TurnstileWidget";
 
 // Enhanced email regex for stricter validation
@@ -81,22 +81,13 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
     setIsSubmitting(true);
 
     try {
-      // Use edge function for rate-limited, validated message sending
-      const { data, error } = await supabase.functions.invoke("send-message", {
-        body: {
-          game_id: gameId,
-          sender_name: result.data.name,
-          sender_email: result.data.email,
-          message: result.data.message,
-          turnstile_token: turnstileToken,
-        },
+      // Send message directly to PocketBase
+      await sendMessage({
+        game_id: gameId,
+        sender_name: result.data.name,
+        sender_email: result.data.email,
+        message: result.data.message,
       });
-
-      if (error) throw error;
-      
-      if (!data?.success) {
-        throw new Error(data?.error || "Failed to send message");
-      }
 
       toast({
         title: "Message sent!",
