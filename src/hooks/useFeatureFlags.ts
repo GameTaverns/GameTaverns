@@ -21,6 +21,7 @@ export interface FeatureFlags {
   forSale: boolean;
   messaging: boolean;
   comingSoon: boolean;
+  demoMode: boolean;
 }
 
 // Default values when nothing is configured
@@ -30,6 +31,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   forSale: true,
   messaging: true,
   comingSoon: true,
+  demoMode: true,
 };
 
 // Get env var value, returns undefined if not set
@@ -58,6 +60,9 @@ function getEnvFlags(): Partial<FeatureFlags> {
   const comingSoon = getEnvFlag("VITE_FEATURE_COMING_SOON");
   if (comingSoon !== undefined) flags.comingSoon = comingSoon;
   
+  const demoMode = getEnvFlag("VITE_FEATURE_DEMO_MODE");
+  if (demoMode !== undefined) flags.demoMode = demoMode;
+  
   return flags;
 }
 
@@ -67,9 +72,12 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
   const { isDemoMode, demoFeatureFlags } = useDemoMode();
   
   const flags = useMemo(() => {
-    // In demo mode, use demo-specific feature flags
+    // In demo mode, use demo-specific feature flags (demoMode flag is always true in demo)
     if (isDemoMode && demoFeatureFlags) {
-      return demoFeatureFlags;
+      return {
+        ...demoFeatureFlags,
+        demoMode: true, // Always true when already in demo mode
+      };
     }
     
     // Start with defaults
@@ -82,12 +90,14 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
       const dbForSale = (siteSettings as Record<string, string | undefined>).feature_for_sale;
       const dbMessaging = (siteSettings as Record<string, string | undefined>).feature_messaging;
       const dbComingSoon = (siteSettings as Record<string, string | undefined>).feature_coming_soon;
+      const dbDemoMode = (siteSettings as Record<string, string | undefined>).feature_demo_mode;
       
       if (dbPlayLogs !== undefined) result.playLogs = dbPlayLogs === "true";
       if (dbWishlist !== undefined) result.wishlist = dbWishlist === "true";
       if (dbForSale !== undefined) result.forSale = dbForSale === "true";
       if (dbMessaging !== undefined) result.messaging = dbMessaging === "true";
       if (dbComingSoon !== undefined) result.comingSoon = dbComingSoon === "true";
+      if (dbDemoMode !== undefined) result.demoMode = dbDemoMode === "true";
     }
     
     // Apply ENV overrides last (they take precedence)
@@ -107,6 +117,7 @@ export const FEATURE_FLAG_LABELS: Record<keyof FeatureFlags, string> = {
   forSale: "For Sale",
   messaging: "Messaging",
   comingSoon: "Coming Soon",
+  demoMode: "Demo Mode",
 };
 
 export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
@@ -115,4 +126,5 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
   forSale: "Show games that are for sale with pricing",
   messaging: "Allow visitors to send messages about games",
   comingSoon: "Show upcoming games that aren't available yet",
+  demoMode: "Allow visitors to access the demo environment",
 };

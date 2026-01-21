@@ -30,6 +30,7 @@ const FEATURE_FLAG_ICONS: Record<keyof FeatureFlags, React.ComponentType<{ class
   forSale: DollarSign,
   messaging: MessageSquare,
   comingSoon: Clock,
+  demoMode: Settings2,
 };
 
 const FEATURE_FLAG_DB_KEYS: Record<keyof FeatureFlags, string> = {
@@ -38,6 +39,7 @@ const FEATURE_FLAG_DB_KEYS: Record<keyof FeatureFlags, string> = {
   forSale: "feature_for_sale",
   messaging: "feature_messaging",
   comingSoon: "feature_coming_soon",
+  demoMode: "feature_demo_mode",
 };
 
 // Check if env var is explicitly set
@@ -48,6 +50,7 @@ function isEnvLocked(flagKey: keyof FeatureFlags): boolean {
     forSale: "VITE_FEATURE_FOR_SALE",
     messaging: "VITE_FEATURE_MESSAGING",
     comingSoon: "VITE_FEATURE_COMING_SOON",
+    demoMode: "VITE_FEATURE_DEMO_MODE",
   };
   
   const value = import.meta.env[envKeys[flagKey]];

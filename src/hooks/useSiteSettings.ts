@@ -38,6 +38,7 @@ export interface SiteSettings {
   feature_for_sale?: string;
   feature_messaging?: string;
   feature_coming_soon?: string;
+  feature_demo_mode?: string;
 }
 
 export function useSiteSettings() {
