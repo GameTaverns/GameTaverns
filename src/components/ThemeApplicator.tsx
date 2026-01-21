@@ -1,14 +1,46 @@
 import { useEffect } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useDemoMode } from "@/contexts/DemoContext";
+
+// Track loaded Google Fonts to avoid duplicate loading
+const loadedFonts = new Set<string>();
+
+/**
+ * Dynamically load a Google Font if not already loaded
+ */
+function loadGoogleFont(fontName: string) {
+  if (!fontName || loadedFonts.has(fontName)) return;
+  
+  // Create the Google Fonts URL
+  const fontFamily = fontName.replace(/\s+/g, '+');
+  const linkId = `google-font-${fontFamily}`;
+  
+  // Check if already in DOM
+  if (document.getElementById(linkId)) {
+    loadedFonts.add(fontName);
+    return;
+  }
+  
+  const link = document.createElement('link');
+  link.id = linkId;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${fontFamily}:wght@400;500;600;700&display=swap`;
+  document.head.appendChild(link);
+  loadedFonts.add(fontName);
+}
 
 /**
  * Applies saved theme settings from the database to CSS variables on mount.
  * This component should be rendered once near the root of the app.
+ * In demo mode, this applicator is skipped to let DemoThemeApplicator take over.
  */
 export function ThemeApplicator() {
   const { data: settings, isLoading } = useSiteSettings();
+  const { isDemoMode } = useDemoMode();
 
   useEffect(() => {
+    // Skip in demo mode - DemoThemeApplicator handles theming
+    if (isDemoMode) return;
     if (isLoading || !settings) return;
 
     const applyTheme = () => {
@@ -63,11 +95,13 @@ export function ThemeApplicator() {
         );
       }
 
-      // Apply fonts via CSS variables (requires corresponding CSS setup)
+      // Load and apply fonts
       if (settings.theme_font_display) {
+        loadGoogleFont(settings.theme_font_display);
         root.style.setProperty("--font-display", `"${settings.theme_font_display}", cursive`);
       }
       if (settings.theme_font_body) {
+        loadGoogleFont(settings.theme_font_body);
         root.style.setProperty("--font-body", `"${settings.theme_font_body}", serif`);
       }
     };
@@ -93,7 +127,7 @@ export function ThemeApplicator() {
     return () => {
       observer.disconnect();
     };
-  }, [settings, isLoading]);
+  }, [settings, isLoading, isDemoMode]);
 
   return null;
 }

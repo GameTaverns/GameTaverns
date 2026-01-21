@@ -38,7 +38,8 @@ function AppRoutes() {
 
   return (
     <DemoProvider enabled={isDemoMode}>
-      {/* Demo theme applicator overrides live theme when in demo mode */}
+      {/* ThemeApplicator for live mode, DemoThemeApplicator for demo mode */}
+      <ThemeApplicator />
       <DemoThemeApplicator />
       <Suspense fallback={<PageLoader />}>
         <Routes>
@@ -65,7 +66,6 @@ const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <ThemeApplicator />
         <BrowserRouter>
           <Toaster />
           <Sonner />
