@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useDemoMode } from "@/contexts/DemoContext";
 
 // Generate a stable guest identifier for this browser session
 function getGuestIdentifier(): string {
@@ -32,8 +33,17 @@ export function useWishlist() {
   const queryClient = useQueryClient();
   const [guestIdentifier] = useState(() => getGuestIdentifier());
   const [guestName, setGuestName] = useState(() => getStoredGuestName());
+  
+  // Check for demo mode
+  const { 
+    isDemoMode, 
+    addDemoWishlistVote, 
+    removeDemoWishlistVote, 
+    getDemoWishlistVotes, 
+    hasVotedForGame 
+  } = useDemoMode();
 
-  // Fetch vote counts for all games
+  // Fetch vote counts for all games (only in non-demo mode)
   const { data: voteCounts, isLoading: isLoadingCounts } = useQuery({
     queryKey: ["wishlist-counts"],
     queryFn: async () => {
@@ -51,9 +61,10 @@ export function useWishlist() {
       return countMap;
     },
     staleTime: 30000, // 30 seconds
+    enabled: !isDemoMode, // Disable query in demo mode
   });
 
-  // Fetch this guest's votes
+  // Fetch this guest's votes (only in non-demo mode)
   const { data: myVotes, isLoading: isLoadingVotes } = useQuery({
     queryKey: ["wishlist-my-votes", guestIdentifier],
     queryFn: async () => {
@@ -65,9 +76,10 @@ export function useWishlist() {
       return new Set<string>(data?.votes || []);
     },
     staleTime: 30000,
+    enabled: !isDemoMode, // Disable query in demo mode
   });
 
-  // Add vote mutation
+  // Add vote mutation (only used in non-demo mode)
   const addVoteMutation = useMutation({
     mutationFn: async (gameId: string) => {
       const { error } = await supabase.functions.invoke("wishlist", {
@@ -86,7 +98,7 @@ export function useWishlist() {
     },
   });
 
-  // Remove vote mutation
+  // Remove vote mutation (only used in non-demo mode)
   const removeVoteMutation = useMutation({
     mutationFn: async (gameId: string) => {
       const { error } = await supabase.functions.invoke("wishlist", {
@@ -106,23 +118,43 @@ export function useWishlist() {
 
   const toggleVote = useCallback(
     (gameId: string) => {
-      if (myVotes?.has(gameId)) {
-        removeVoteMutation.mutate(gameId);
+      if (isDemoMode) {
+        // Use demo context functions
+        if (hasVotedForGame(gameId)) {
+          removeDemoWishlistVote(gameId);
+        } else {
+          addDemoWishlistVote(gameId, guestName || undefined);
+        }
       } else {
-        addVoteMutation.mutate(gameId);
+        // Use Supabase edge function
+        if (myVotes?.has(gameId)) {
+          removeVoteMutation.mutate(gameId);
+        } else {
+          addVoteMutation.mutate(gameId);
+        }
       }
     },
-    [myVotes, addVoteMutation, removeVoteMutation]
+    [isDemoMode, hasVotedForGame, removeDemoWishlistVote, addDemoWishlistVote, guestName, myVotes, addVoteMutation, removeVoteMutation]
   );
 
   const hasVoted = useCallback(
-    (gameId: string) => myVotes?.has(gameId) || false,
-    [myVotes]
+    (gameId: string) => {
+      if (isDemoMode) {
+        return hasVotedForGame(gameId);
+      }
+      return myVotes?.has(gameId) || false;
+    },
+    [isDemoMode, hasVotedForGame, myVotes]
   );
 
   const getVoteCount = useCallback(
-    (gameId: string) => voteCounts?.[gameId] || 0,
-    [voteCounts]
+    (gameId: string) => {
+      if (isDemoMode) {
+        return getDemoWishlistVotes(gameId);
+      }
+      return voteCounts?.[gameId] || 0;
+    },
+    [isDemoMode, getDemoWishlistVotes, voteCounts]
   );
 
   const updateGuestName = useCallback((name: string) => {
@@ -131,15 +163,15 @@ export function useWishlist() {
   }, []);
 
   return {
-    voteCounts,
-    myVotes,
-    isLoading: isLoadingCounts || isLoadingVotes,
+    voteCounts: isDemoMode ? {} : voteCounts,
+    myVotes: isDemoMode ? new Set<string>() : myVotes,
+    isLoading: isDemoMode ? false : (isLoadingCounts || isLoadingVotes),
     toggleVote,
     hasVoted,
     getVoteCount,
     guestName,
     updateGuestName,
-    isPending: addVoteMutation.isPending || removeVoteMutation.isPending,
+    isPending: isDemoMode ? false : (addVoteMutation.isPending || removeVoteMutation.isPending),
   };
 }
 
