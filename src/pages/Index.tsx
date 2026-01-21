@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useMemo, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowUpDown, X, AlertTriangle, Heart } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
@@ -40,9 +40,20 @@ const ITEMS_PER_PAGE = 20;
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { isDemoMode, demoGames } = useDemoMode();
-  const { forSale: forSaleFlag, comingSoon: comingSoonFlag } = useFeatureFlags();
+  const { forSale: forSaleFlag, comingSoon: comingSoonFlag, demoMode: demoModeEnabled, isLoading: flagsLoading } = useFeatureFlags();
   const { data: realGames = [], isLoading } = useGames(!isDemoMode);
+  
+  // Redirect away from demo mode if the feature is disabled
+  useEffect(() => {
+    if (!flagsLoading && !demoModeEnabled && searchParams.get("demo") === "true") {
+      // Remove the demo param and navigate to home
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("demo");
+      navigate("/?" + newParams.toString(), { replace: true });
+    }
+  }, [flagsLoading, demoModeEnabled, searchParams, navigate]);
   
   // Use demo games when in demo mode, otherwise use real games
   const games = isDemoMode ? demoGames : realGames;

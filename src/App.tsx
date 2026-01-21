@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
 import { DemoThemeApplicator } from "@/components/DemoThemeApplicator";
 import { DemoProvider } from "@/contexts/DemoContext";
+import { DemoGuard } from "@/components/system/DemoGuard";
 
 // Lazy load route components to reduce initial bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -45,15 +46,23 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/game/:slug" element={<GameDetail />} />
-          <Route path="/demo/game/:slug" element={<GameDetail />} />
+          <Route path="/demo/game/:slug" element={
+            <DemoGuard><GameDetail /></DemoGuard>
+          } />
           <Route path="/admin" element={<Login />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin/add" element={<GameForm />} />
           <Route path="/admin/edit/:id" element={<GameForm />} />
           <Route path="/admin/messages" element={<Messages />} />
-          <Route path="/demo/settings" element={<DemoSettings />} />
-          <Route path="/demo/add" element={<DemoGameForm />} />
-          <Route path="/demo/edit/:id" element={<DemoGameForm />} />
+          <Route path="/demo/settings" element={
+            <DemoGuard><DemoSettings /></DemoGuard>
+          } />
+          <Route path="/demo/add" element={
+            <DemoGuard><DemoGameForm /></DemoGuard>
+          } />
+          <Route path="/demo/edit/:id" element={
+            <DemoGuard><DemoGameForm /></DemoGuard>
+          } />
           <Route path="/docs" element={<Docs />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

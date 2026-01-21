@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 // Social media icons as inline SVGs for consistency with site styling
 const TwitterIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -37,6 +38,7 @@ interface HeaderProps {
 export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
   const { data: settings } = useSiteSettings();
   const { isDemoMode } = useDemoMode();
+  const { demoMode: demoModeEnabled } = useFeatureFlags();
   const location = useLocation();
   
   const socialLinks = [
@@ -116,9 +118,12 @@ export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
           <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
             Home
           </Link>
-          <Link to="/?demo=true" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
-            Demo
-          </Link>
+          {/* Only show Demo link if demo mode is enabled and we're not already in demo */}
+          {demoModeEnabled && !isDemoMode && (
+            <Link to="/?demo=true" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
+              Demo
+            </Link>
+          )}
         </nav>
       </div>
     </header>
