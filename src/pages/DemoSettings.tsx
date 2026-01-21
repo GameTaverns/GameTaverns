@@ -1305,15 +1305,46 @@ const DemoSettings = () => {
           onOpenChange={setShowBulkImport}
           isDemo={true}
           onDemoImport={(games) => {
-            games.forEach((game) => {
+            // Build a map of title -> id for parent resolution
+            // Include both existing games and new games being imported
+            const titleToId = new Map<string, string>();
+            
+            // Add existing demo games to the map
+            demoGames.forEach((g) => {
+              titleToId.set(g.title.toLowerCase(), g.id);
+            });
+            
+            // First pass: create IDs for all new games and add to map
+            const gamesWithIds = games.map((game) => ({
+              ...game,
+              generatedId: game.id || crypto.randomUUID(),
+            }));
+            
+            gamesWithIds.forEach((game) => {
+              titleToId.set(game.title.toLowerCase(), game.generatedId);
+            });
+            
+            // Separate base games and expansions
+            const baseGames = gamesWithIds.filter((g) => !g.is_expansion);
+            const expansions = gamesWithIds.filter((g) => g.is_expansion);
+            
+            // Helper to add a game
+            const addGame = (game: typeof gamesWithIds[0]) => {
               // Parse mechanics array if provided as string array from CSV
               const mechanicsArray = Array.isArray(game.mechanics)
                 ? game.mechanics.map((m: string | { id: string; name: string }) =>
                     typeof m === "string" ? { id: crypto.randomUUID(), name: m } : m
                   )
                 : [];
+              
+              // Resolve parent_game_id from parent_game_title if needed
+              let parentGameId = game.parent_game_id || null;
+              if (!parentGameId && game.parent_game_title) {
+                parentGameId = titleToId.get(game.parent_game_title.toLowerCase()) || null;
+              }
 
               addDemoGame({
+                id: game.generatedId,
                 title: game.title,
                 description: game.description || `Imported via bulk import`,
                 image_url: game.image_url || `https://picsum.photos/seed/${game.title.toLowerCase().replace(/\s+/g, "")}/400/400`,
@@ -1329,7 +1360,7 @@ const DemoSettings = () => {
                 sale_price: game.sale_price ?? null,
                 sale_condition: game.sale_condition || null,
                 is_expansion: game.is_expansion === true,
-                parent_game_id: game.parent_game_id || null,
+                parent_game_id: parentGameId,
                 in_base_game_box: game.in_base_game_box === true,
                 location_room: game.location_room || null,
                 location_shelf: game.location_shelf || null,
@@ -1347,7 +1378,12 @@ const DemoSettings = () => {
                     : game.publisher
                   : null,
               });
-            });
+            };
+            
+            // Add base games first so their IDs exist for expansion resolution
+            baseGames.forEach(addGame);
+            // Then add expansions
+            expansions.forEach(addGame);
           }}
         />
       </div>

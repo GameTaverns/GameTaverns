@@ -234,6 +234,8 @@ export function BulkImportDialog({
             return isNaN(n) ? undefined : n;
           };
           
+          // First pass: create all games with temporary IDs
+          const tempGames: any[] = [];
           for (const row of parsedRows) {
             const title = row.title || row.name || row.game || row.game_name || row.game_title;
             if (title) {
@@ -244,8 +246,8 @@ export function BulkImportDialog({
                 .map((m: string) => m.trim())
                 .filter((m: string) => m.length > 0);
               
-              demoGames.push({
-                id: `demo-import-${Date.now()}-${demoGames.length}`,
+              tempGames.push({
+                id: `demo-import-${Date.now()}-${tempGames.length}`,
                 title,
                 image_url: row.image_url || null,
                 game_type: row.type || row.game_type || "Board Game",
@@ -260,6 +262,7 @@ export function BulkImportDialog({
                 bgg_url: row.bgg_url || null,
                 description: row.description || null,
                 is_expansion: parseBool(row.is_expansion),
+                parent_game_title: row.parent_game || null, // Store temporarily for lookup
                 is_coming_soon: parseBool(row.is_coming_soon),
                 is_for_sale: parseBool(row.is_for_sale),
                 sale_price: parseNum(row.sale_price) || null,
@@ -274,6 +277,27 @@ export function BulkImportDialog({
                 in_base_game_box: parseBool(row.in_base_game_box),
               });
             }
+          }
+          
+          // Second pass: resolve parent_game_id for expansions
+          // Create a title-to-id map from newly imported games
+          const titleToId = new Map<string, string>();
+          tempGames.forEach(g => titleToId.set(g.title.toLowerCase(), g.id));
+          
+          // Also need to check existing demo games for parent matches
+          // The onDemoImport callback will handle merging, but we need existing games too
+          // We'll pass parent_game_title and let the context resolve it if needed
+          
+          for (const game of tempGames) {
+            if (game.is_expansion && game.parent_game_title) {
+              // Try to find parent in newly imported games first
+              const parentId = titleToId.get(game.parent_game_title.toLowerCase());
+              if (parentId) {
+                game.parent_game_id = parentId;
+              }
+              // Keep parent_game_title for fallback resolution in DemoContext
+            }
+            demoGames.push(game);
           }
         } else if (mode === "bgg_collection") {
           // Generate sample games for BGG collection import

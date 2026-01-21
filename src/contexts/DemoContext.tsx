@@ -233,46 +233,61 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
     }
   }, [demoMessages, enabled, sessionId]);
 
-  const addDemoGame = useCallback((game: Partial<GameWithRelations>) => {
-    const newGameId = createDemoId("demo");
-    const newGame: GameWithRelations = {
-      id: newGameId,
-      title: game.title || "New Game",
-      description: game.description || null,
-      image_url: game.image_url || null,
-      difficulty: game.difficulty || "3 - Medium",
-      game_type: game.game_type || "Board Game",
-      play_time: game.play_time || "45-60 Minutes",
-      min_players: game.min_players || 1,
-      max_players: game.max_players || 4,
-      suggested_age: game.suggested_age || "10+",
-      publisher_id: game.publisher_id || null,
-      publisher: game.publisher || null,
-      mechanics: game.mechanics || [],
-      bgg_url: game.bgg_url || null,
-      bgg_id: game.bgg_id || null,
-      is_coming_soon: game.is_coming_soon || false,
-      is_for_sale: game.is_for_sale || false,
-      sale_price: game.sale_price || null,
-      sale_condition: game.sale_condition || null,
-      is_expansion: game.is_expansion || false,
-      parent_game_id: game.parent_game_id || null,
-      in_base_game_box: game.in_base_game_box || false,
-      location_room: game.location_room || null,
-      location_shelf: game.location_shelf || null,
-      location_misc: game.location_misc || null,
-      sleeved: game.sleeved || false,
-      upgraded_components: game.upgraded_components || false,
-      crowdfunded: game.crowdfunded || false,
-      inserts: game.inserts || false,
-      youtube_videos: game.youtube_videos || [],
-      slug: game.slug || game.title?.toLowerCase().replace(/\s+/g, "-") || "new-game",
-      additional_images: game.additional_images || [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      admin_data: game.admin_data || null,
-    };
-    setDemoGames((prev) => [...prev, newGame]);
+  const addDemoGame = useCallback((game: Partial<GameWithRelations> & { parent_game_title?: string }) => {
+    const newGameId = game.id || createDemoId("demo");
+    
+    setDemoGames((prev) => {
+      // Resolve parent_game_id from parent_game_title if provided but parent_game_id is not set
+      let resolvedParentGameId = game.parent_game_id || null;
+      if (!resolvedParentGameId && game.parent_game_title) {
+        // Search existing games for a matching title
+        const parentGame = prev.find(
+          (g) => g.title.toLowerCase() === game.parent_game_title!.toLowerCase()
+        );
+        if (parentGame) {
+          resolvedParentGameId = parentGame.id;
+        }
+      }
+      
+      const newGame: GameWithRelations = {
+        id: newGameId,
+        title: game.title || "New Game",
+        description: game.description || null,
+        image_url: game.image_url || null,
+        difficulty: game.difficulty || "3 - Medium",
+        game_type: game.game_type || "Board Game",
+        play_time: game.play_time || "45-60 Minutes",
+        min_players: game.min_players || 1,
+        max_players: game.max_players || 4,
+        suggested_age: game.suggested_age || "10+",
+        publisher_id: game.publisher_id || null,
+        publisher: game.publisher || null,
+        mechanics: game.mechanics || [],
+        bgg_url: game.bgg_url || null,
+        bgg_id: game.bgg_id || null,
+        is_coming_soon: game.is_coming_soon || false,
+        is_for_sale: game.is_for_sale || false,
+        sale_price: game.sale_price || null,
+        sale_condition: game.sale_condition || null,
+        is_expansion: game.is_expansion || false,
+        parent_game_id: resolvedParentGameId,
+        in_base_game_box: game.in_base_game_box || false,
+        location_room: game.location_room || null,
+        location_shelf: game.location_shelf || null,
+        location_misc: game.location_misc || null,
+        sleeved: game.sleeved || false,
+        upgraded_components: game.upgraded_components || false,
+        crowdfunded: game.crowdfunded || false,
+        inserts: game.inserts || false,
+        youtube_videos: game.youtube_videos || [],
+        slug: game.slug || game.title?.toLowerCase().replace(/\s+/g, "-") || "new-game",
+        additional_images: game.additional_images || [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        admin_data: game.admin_data || null,
+      };
+      return [...prev, newGame];
+    });
   }, [createDemoId]);
 
   const updateDemoGame = useCallback((id: string, updates: Partial<GameWithRelations>) => {
