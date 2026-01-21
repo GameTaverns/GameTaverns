@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
+import { DemoThemeApplicator } from "@/components/DemoThemeApplicator";
 import { DemoProvider } from "@/contexts/DemoContext";
 
 // Lazy load route components to reduce initial bundle size
@@ -37,6 +38,8 @@ function AppRoutes() {
 
   return (
     <DemoProvider enabled={isDemoMode}>
+      {/* Demo theme applicator overrides live theme when in demo mode */}
+      <DemoThemeApplicator />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Index />} />
