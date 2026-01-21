@@ -34,6 +34,12 @@ export interface DemoThemeSettings {
   sidebarSaturation: number;
   sidebarLightness: number;
   // Dark mode colors
+  darkPrimaryHue: number;
+  darkPrimarySaturation: number;
+  darkPrimaryLightness: number;
+  darkAccentHue: number;
+  darkAccentSaturation: number;
+  darkAccentLightness: number;
   darkBackgroundHue: number;
   darkBackgroundSaturation: number;
   darkBackgroundLightness: number;
@@ -76,6 +82,12 @@ export const DEFAULT_DEMO_THEME: DemoThemeSettings = {
   sidebarSaturation: 30,
   sidebarLightness: 20,
   // Dark mode defaults
+  darkPrimaryHue: 200,
+  darkPrimarySaturation: 70,
+  darkPrimaryLightness: 55,
+  darkAccentHue: 30,
+  darkAccentSaturation: 80,
+  darkAccentLightness: 60,
   darkBackgroundHue: 220,
   darkBackgroundSaturation: 15,
   darkBackgroundLightness: 10,
@@ -153,6 +165,12 @@ export function convertDemoSettingsToSiteSettings(
     theme_sidebar_h: String(themeSettings.sidebarHue),
     theme_sidebar_s: String(themeSettings.sidebarSaturation),
     theme_sidebar_l: String(themeSettings.sidebarLightness),
+    theme_dark_primary_h: String(themeSettings.darkPrimaryHue),
+    theme_dark_primary_s: String(themeSettings.darkPrimarySaturation),
+    theme_dark_primary_l: String(themeSettings.darkPrimaryLightness),
+    theme_dark_accent_h: String(themeSettings.darkAccentHue),
+    theme_dark_accent_s: String(themeSettings.darkAccentSaturation),
+    theme_dark_accent_l: String(themeSettings.darkAccentLightness),
     theme_dark_background_h: String(themeSettings.darkBackgroundHue),
     theme_dark_background_s: String(themeSettings.darkBackgroundSaturation),
     theme_dark_background_l: String(themeSettings.darkBackgroundLightness),

@@ -152,21 +152,24 @@ export function DemoThemeCustomizer() {
     const root = document.documentElement;
     const isDark = document.documentElement.classList.contains("dark");
     
-    // Primary and accent apply to both modes
-    root.style.setProperty("--primary", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
-    root.style.setProperty("--ring", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
-    root.style.setProperty("--forest", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
-    root.style.setProperty("--accent", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
-    root.style.setProperty("--sienna", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
-    
     if (isDark) {
-      // Dark mode colors
+      // Dark mode - use dark-specific colors
+      root.style.setProperty("--primary", `${theme.darkPrimaryHue} ${theme.darkPrimarySaturation}% ${theme.darkPrimaryLightness}%`);
+      root.style.setProperty("--ring", `${theme.darkPrimaryHue} ${theme.darkPrimarySaturation}% ${theme.darkPrimaryLightness}%`);
+      root.style.setProperty("--forest", `${theme.darkPrimaryHue} ${theme.darkPrimarySaturation}% ${theme.darkPrimaryLightness}%`);
+      root.style.setProperty("--accent", `${theme.darkAccentHue} ${theme.darkAccentSaturation}% ${theme.darkAccentLightness}%`);
+      root.style.setProperty("--sienna", `${theme.darkAccentHue} ${theme.darkAccentSaturation}% ${theme.darkAccentLightness}%`);
       root.style.setProperty("--background", `${theme.darkBackgroundHue} ${theme.darkBackgroundSaturation}% ${theme.darkBackgroundLightness}%`);
       root.style.setProperty("--card", `${theme.darkCardHue} ${theme.darkCardSaturation}% ${theme.darkCardLightness}%`);
       root.style.setProperty("--popover", `${theme.darkCardHue} ${theme.darkCardSaturation}% ${Math.min(theme.darkCardLightness + 2, 100)}%`);
       root.style.setProperty("--sidebar-background", `${theme.darkSidebarHue} ${theme.darkSidebarSaturation}% ${theme.darkSidebarLightness}%`);
     } else {
       // Light mode colors
+      root.style.setProperty("--primary", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
+      root.style.setProperty("--ring", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
+      root.style.setProperty("--forest", `${theme.primaryHue} ${theme.primarySaturation}% ${theme.primaryLightness}%`);
+      root.style.setProperty("--accent", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
+      root.style.setProperty("--sienna", `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`);
       root.style.setProperty("--background", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness}%`);
       root.style.setProperty("--parchment", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness - 2}%`);
       root.style.setProperty("--card", `${theme.cardHue} ${theme.cardSaturation}% ${theme.cardLightness}%`);
@@ -303,6 +306,26 @@ export function DemoThemeCustomizer() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <ColorSliderGroup
+            label="Primary Color"
+            hue={theme.darkPrimaryHue}
+            saturation={theme.darkPrimarySaturation}
+            lightness={theme.darkPrimaryLightness}
+            onHueChange={(v) => updateTheme("darkPrimaryHue", v)}
+            onSaturationChange={(v) => updateTheme("darkPrimarySaturation", v)}
+            onLightnessChange={(v) => updateTheme("darkPrimaryLightness", v)}
+          />
+
+          <ColorSliderGroup
+            label="Accent Color"
+            hue={theme.darkAccentHue}
+            saturation={theme.darkAccentSaturation}
+            lightness={theme.darkAccentLightness}
+            onHueChange={(v) => updateTheme("darkAccentHue", v)}
+            onSaturationChange={(v) => updateTheme("darkAccentSaturation", v)}
+            onLightnessChange={(v) => updateTheme("darkAccentLightness", v)}
+          />
+
           <ColorSliderGroup
             label="Background Color"
             hue={theme.darkBackgroundHue}

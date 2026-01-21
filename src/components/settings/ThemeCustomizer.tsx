@@ -33,6 +33,12 @@ interface ThemeSettings {
   theme_sidebar_s: string;
   theme_sidebar_l: string;
   // Dark mode
+  theme_dark_primary_h: string;
+  theme_dark_primary_s: string;
+  theme_dark_primary_l: string;
+  theme_dark_accent_h: string;
+  theme_dark_accent_s: string;
+  theme_dark_accent_l: string;
   theme_dark_background_h: string;
   theme_dark_background_s: string;
   theme_dark_background_l: string;
@@ -65,6 +71,12 @@ const DEFAULT_THEME: ThemeSettings = {
   theme_sidebar_s: "30",
   theme_sidebar_l: "20",
   // Dark mode
+  theme_dark_primary_h: "142",
+  theme_dark_primary_s: "35",
+  theme_dark_primary_l: "45",
+  theme_dark_accent_h: "18",
+  theme_dark_accent_s: "55",
+  theme_dark_accent_l: "60",
   theme_dark_background_h: "220",
   theme_dark_background_s: "15",
   theme_dark_background_l: "10",
@@ -164,23 +176,24 @@ export function ThemeCustomizer() {
     const root = document.documentElement;
     const isDark = document.documentElement.classList.contains("dark");
     
-    // Apply primary color (same for both modes)
-    root.style.setProperty("--primary", `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`);
-    root.style.setProperty("--ring", `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`);
-    root.style.setProperty("--forest", `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`);
-    
-    // Apply accent color (same for both modes)
-    root.style.setProperty("--accent", `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`);
-    root.style.setProperty("--sienna", `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`);
-    
     if (isDark) {
-      // Dark mode colors
+      // Dark mode colors - use dark-specific primary/accent
+      root.style.setProperty("--primary", `${settings.theme_dark_primary_h} ${settings.theme_dark_primary_s}% ${settings.theme_dark_primary_l}%`);
+      root.style.setProperty("--ring", `${settings.theme_dark_primary_h} ${settings.theme_dark_primary_s}% ${settings.theme_dark_primary_l}%`);
+      root.style.setProperty("--forest", `${settings.theme_dark_primary_h} ${settings.theme_dark_primary_s}% ${settings.theme_dark_primary_l}%`);
+      root.style.setProperty("--accent", `${settings.theme_dark_accent_h} ${settings.theme_dark_accent_s}% ${settings.theme_dark_accent_l}%`);
+      root.style.setProperty("--sienna", `${settings.theme_dark_accent_h} ${settings.theme_dark_accent_s}% ${settings.theme_dark_accent_l}%`);
       root.style.setProperty("--background", `${settings.theme_dark_background_h} ${settings.theme_dark_background_s}% ${settings.theme_dark_background_l}%`);
       root.style.setProperty("--card", `${settings.theme_dark_card_h} ${settings.theme_dark_card_s}% ${settings.theme_dark_card_l}%`);
       root.style.setProperty("--popover", `${settings.theme_dark_card_h} ${settings.theme_dark_card_s}% ${Math.min(Number(settings.theme_dark_card_l) + 2, 100)}%`);
       root.style.setProperty("--sidebar-background", `${settings.theme_dark_sidebar_h} ${settings.theme_dark_sidebar_s}% ${settings.theme_dark_sidebar_l}%`);
     } else {
       // Light mode colors
+      root.style.setProperty("--primary", `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`);
+      root.style.setProperty("--ring", `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`);
+      root.style.setProperty("--forest", `${settings.theme_primary_h} ${settings.theme_primary_s}% ${settings.theme_primary_l}%`);
+      root.style.setProperty("--accent", `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`);
+      root.style.setProperty("--sienna", `${settings.theme_accent_h} ${settings.theme_accent_s}% ${settings.theme_accent_l}%`);
       const bgL = Number(settings.theme_background_l);
       root.style.setProperty("--background", `${settings.theme_background_h} ${settings.theme_background_s}% ${settings.theme_background_l}%`);
       root.style.setProperty("--parchment", `${settings.theme_background_h} ${settings.theme_background_s}% ${bgL - 2}%`);
@@ -225,7 +238,7 @@ export function ThemeCustomizer() {
     });
   };
 
-  const updateColor = (prefix: "primary" | "accent" | "background" | "card" | "sidebar" | "dark_background" | "dark_card" | "dark_sidebar", component: "h" | "s" | "l", value: number) => {
+  const updateColor = (prefix: "primary" | "accent" | "background" | "card" | "sidebar" | "dark_primary" | "dark_accent" | "dark_background" | "dark_card" | "dark_sidebar", component: "h" | "s" | "l", value: number) => {
     // Validate input to prevent CSS injection
     const validatedValue = component === "h" ? validateHue(value) : validatePercent(value);
     setTheme((prev) => ({
@@ -604,6 +617,138 @@ export function ThemeCustomizer() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
+          {/* Dark Primary Color */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full border-2 border-border"
+                style={{
+                  backgroundColor: `hsl(${theme.theme_dark_primary_h}, ${theme.theme_dark_primary_s}%, ${theme.theme_dark_primary_l}%)`,
+                }}
+              />
+              <Label className="text-base font-medium">Primary Color</Label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_primary_h)]}
+                  onValueChange={([v]) => updateColor("dark_primary", "h", v)}
+                  max={360}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_primary_h}
+                  onChange={(e) => updateColor("dark_primary", "h", Number(e.target.value))}
+                  min={0}
+                  max={360}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_primary_s)]}
+                  onValueChange={([v]) => updateColor("dark_primary", "s", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_primary_s}
+                  onChange={(e) => updateColor("dark_primary", "s", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_primary_l)]}
+                  onValueChange={([v]) => updateColor("dark_primary", "l", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_primary_l}
+                  onChange={(e) => updateColor("dark_primary", "l", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dark Accent Color */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full border-2 border-border"
+                style={{
+                  backgroundColor: `hsl(${theme.theme_dark_accent_h}, ${theme.theme_dark_accent_s}%, ${theme.theme_dark_accent_l}%)`,
+                }}
+              />
+              <Label className="text-base font-medium">Accent Color</Label>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_accent_h)]}
+                  onValueChange={([v]) => updateColor("dark_accent", "h", v)}
+                  max={360}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_accent_h}
+                  onChange={(e) => updateColor("dark_accent", "h", Number(e.target.value))}
+                  min={0}
+                  max={360}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Saturation (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_accent_s)]}
+                  onValueChange={([v]) => updateColor("dark_accent", "s", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_accent_s}
+                  onChange={(e) => updateColor("dark_accent", "s", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Lightness (%)</Label>
+                <Slider
+                  value={[Number(theme.theme_dark_accent_l)]}
+                  onValueChange={([v]) => updateColor("dark_accent", "l", v)}
+                  max={100}
+                  step={1}
+                />
+                <Input
+                  type="number"
+                  value={theme.theme_dark_accent_l}
+                  onChange={(e) => updateColor("dark_accent", "l", Number(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="h-8"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Dark Background Color */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">

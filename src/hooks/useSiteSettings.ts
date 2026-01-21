@@ -34,6 +34,12 @@ export interface SiteSettings {
   theme_sidebar_s?: string;
   theme_sidebar_l?: string;
   // Dark mode theme
+  theme_dark_primary_h?: string;
+  theme_dark_primary_s?: string;
+  theme_dark_primary_l?: string;
+  theme_dark_accent_h?: string;
+  theme_dark_accent_s?: string;
+  theme_dark_accent_l?: string;
   theme_dark_background_h?: string;
   theme_dark_background_s?: string;
   theme_dark_background_l?: string;
