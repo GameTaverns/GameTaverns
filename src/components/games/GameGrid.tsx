@@ -23,11 +23,7 @@ export function GameGrid({ games }: GameGridProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
       {games.map((game, index) => (
-        <div
-          key={game.id}
-          className="animate-fade-in"
-          style={{ animationDelay: `${index * 50}ms` }}
-        >
+        <div key={game.id}>
           <GameCard game={game} priority={index < 5} />
         </div>
       ))}

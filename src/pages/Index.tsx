@@ -348,8 +348,8 @@ const Index = () => {
       )}
 
       {/* Sticky Pagination - only over main content, not sidebar */}
-      {!isLoading && totalPages > 1 && (
-        <div className="fixed bottom-0 left-0 right-0 lg:left-72 z-30 bg-background/95 backdrop-blur-sm border-t border-border py-3 px-4 shadow-lg">
+      {totalPages > 1 && (
+        <div className="fixed bottom-0 left-0 right-0 lg:left-72 z-30 bg-background/95 backdrop-blur-sm border-t border-border py-3 px-4 shadow-lg min-h-[60px]">
           <Pagination>
             <PaginationContent>
               <PaginationItem>
