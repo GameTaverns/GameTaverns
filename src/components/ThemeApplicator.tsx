@@ -98,11 +98,12 @@ export function ThemeApplicator() {
       // Load and apply fonts
       if (settings.theme_font_display) {
         loadGoogleFont(settings.theme_font_display);
-        root.style.setProperty("--font-display", `"${settings.theme_font_display}", cursive`);
+        // NOTE: Tailwind maps font-display to CSS var (see tailwind.config.ts)
+        root.style.setProperty("--font-display", `"${settings.theme_font_display}"`);
       }
       if (settings.theme_font_body) {
         loadGoogleFont(settings.theme_font_body);
-        root.style.setProperty("--font-body", `"${settings.theme_font_body}", serif`);
+        root.style.setProperty("--font-body", `"${settings.theme_font_body}"`);
       }
     };
 

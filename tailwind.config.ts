@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["MedievalSharp", "cursive"],
-        body: ["IM Fell English", "serif"],
+        // Use CSS variables so live/demo can swap fonts at runtime
+        display: ["var(--font-display)", "MedievalSharp", "cursive"],
+        body: ["var(--font-body)", "IM Fell English", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",

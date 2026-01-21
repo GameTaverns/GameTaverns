@@ -98,8 +98,9 @@ export function DemoThemeApplicator() {
       loadGoogleFont(bodyFont);
       
       // Apply font CSS variables
-      root.style.setProperty("--font-display", `"${displayFont}", cursive`);
-      root.style.setProperty("--font-body", `"${bodyFont}", serif`);
+      // NOTE: Tailwind maps font-display/font-body to CSS vars (see tailwind.config.ts)
+      root.style.setProperty("--font-display", `"${displayFont}"`);
+      root.style.setProperty("--font-body", `"${bodyFont}"`);
 
       // Update document title for demo
       document.title = `${site.site_name || DEFAULT_DEMO_SITE_SETTINGS.site_name} (Demo)`;

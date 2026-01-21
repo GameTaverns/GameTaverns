@@ -87,11 +87,11 @@ export function DemoThemeCustomizer() {
     // Load and apply fonts
     if (theme.displayFont) {
       loadGoogleFont(theme.displayFont);
-      root.style.setProperty("--font-display", `"${theme.displayFont}", cursive`);
+      root.style.setProperty("--font-display", `"${theme.displayFont}"`);
     }
     if (theme.bodyFont) {
       loadGoogleFont(theme.bodyFont);
-      root.style.setProperty("--font-body", `"${theme.bodyFont}", serif`);
+      root.style.setProperty("--font-body", `"${theme.bodyFont}"`);
     }
   }, [theme]);
 
@@ -256,7 +256,6 @@ export function DemoThemeCustomizer() {
               </div>
             </div>
           </div>
-          </div>
 
           {/* Background Color */}
           <div className="space-y-4 p-4 border rounded-lg">
@@ -312,6 +311,8 @@ export function DemoThemeCustomizer() {
               </div>
             </div>
           </div>
+
+        </div>
 
         {/* Typography */}
         <div className="space-y-4">
