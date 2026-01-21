@@ -227,6 +227,45 @@ export type Database = {
           },
         ]
       }
+      game_wishlist: {
+        Row: {
+          created_at: string
+          game_id: string
+          guest_identifier: string
+          guest_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          guest_identifier: string
+          guest_name?: string | null
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          guest_identifier?: string
+          guest_name?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_wishlist_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_wishlist_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games: {
         Row: {
           additional_images: string[] | null
@@ -437,6 +476,29 @@ export type Database = {
       }
     }
     Views: {
+      game_wishlist_summary: {
+        Row: {
+          game_id: string | null
+          named_votes: number | null
+          vote_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_wishlist_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_wishlist_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games_public: {
         Row: {
           additional_images: string[] | null

@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowUpDown, X, AlertTriangle } from "lucide-react";
+import { ArrowUpDown, X, AlertTriangle, Heart } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
+import { WishlistNamePrompt } from "@/components/games/WishlistNamePrompt";
 import { useGames } from "@/hooks/useGames";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type SortOption = "title" | "difficulty" | "playtime" | "newest";
 
@@ -207,6 +214,21 @@ const Index = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Wishlist Name */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2">
+                    <Heart className="h-4 w-4 text-muted-foreground" />
+                    <WishlistNamePrompt />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Set your name to vote for games you'd like to play</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             {/* Sort */}
             <div className="flex items-center gap-2">
               <ArrowUpDown className="h-4 w-4 text-muted-foreground" />

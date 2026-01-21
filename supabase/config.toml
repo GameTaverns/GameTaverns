@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.bgg-lookup]
 verify_jwt = false
+
+[functions.wishlist]
+verify_jwt = false
