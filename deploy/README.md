@@ -1,210 +1,362 @@
-# Game Haven Self-Hosted Deployment
+# 🎲 Game Haven Deployment Guide
 
-Deploy your own Game Haven instance with Docker on any Linux server.
+Deploy Game Haven to your own server with our streamlined deployment system.
 
 ## Quick Start
 
 ```bash
-# Clone the repository
 git clone https://github.com/your-org/game-haven.git
 cd game-haven
+./deploy/deploy.sh
+```
 
-# Run the deployment script
+The interactive wizard will guide you through configuration.
+
+---
+
+## Deployment Options
+
+### Option 1: Docker (Recommended)
+
+Full control with Docker Compose. Supports both self-hosted and external Supabase.
+
+```bash
 ./deploy/deploy.sh setup
 ```
 
-The script will:
-1. Check for Docker and required tools
-2. Prompt for configuration (site name, domain, SMTP, etc.)
-3. Generate secure credentials automatically
-4. Initialize the database with all migrations
-5. Start all services
+**Requirements:**
+- Docker 20.10+
+- Docker Compose 2.0+
+- 2GB RAM (4GB+ for self-hosted Supabase)
 
-## Access Points
+### Option 2: Cloudron (One-Click)
 
-After deployment:
-
-| Service | URL | Description |
-|---------|-----|-------------|
-| Frontend | http://localhost | Main application |
-| API | http://localhost:8000 | Supabase REST/Auth API |
-| Studio | http://localhost:3000 | Admin database UI |
-
-## Commands
+Deploy to Cloudron for managed hosting with automatic updates and backups.
 
 ```bash
-./deploy/deploy.sh setup      # Full setup (first time)
-./deploy/deploy.sh configure  # Update configuration
-./deploy/deploy.sh start      # Start services
-./deploy/deploy.sh stop       # Stop services
-./deploy/deploy.sh restart    # Restart services
-./deploy/deploy.sh logs       # View logs
-./deploy/deploy.sh status     # Check service status
+cd deploy/cloudron
+cloudron build
+cloudron install
 ```
+
+See [Cloudron Deployment](#cloudron-deployment) for details.
+
+### Option 3: Static Hosting
+
+Deploy the frontend to any static host (Vercel, Netlify, Cloudflare Pages).
+Requires an external Supabase instance.
+
+```bash
+npm run build
+# Upload dist/ folder to your hosting provider
+```
+
+---
+
+## Interactive Wizard Features
+
+The `deploy.sh` wizard provides:
+
+### 🔧 Backend Selection
+- **Self-hosted Supabase**: Complete stack in Docker
+- **External Supabase**: Connect to Supabase Cloud or existing instance
+
+### 🎛️ Feature Configuration
+Toggle features on/off during setup:
+- Play Logging
+- Wishlist
+- For Sale listings
+- Messaging
+- Coming Soon section
+- Demo Mode
+
+### 🔐 Automatic Security
+- Generates secure passwords and JWT secrets
+- Creates PII encryption keys
+- Sets proper file permissions
+
+### 📧 Optional Integrations
+- SMTP email configuration
+- Cloudflare Turnstile anti-spam
+- Firecrawl API for imports
+
+---
+
+## Commands Reference
+
+| Command | Description |
+|---------|-------------|
+| `./deploy.sh setup` | Interactive setup wizard |
+| `./deploy.sh start` | Start services |
+| `./deploy.sh stop` | Stop services |
+| `./deploy.sh restart` | Restart services |
+| `./deploy.sh logs [service]` | View logs |
+| `./deploy.sh health` | Check service health |
+| `./deploy.sh status` | Show container status |
+| `./deploy.sh configure` | Re-run configuration |
+
+---
 
 ## Configuration
 
-Edit `deploy/.env` to customize:
-
-### Required Settings
-- `POSTGRES_PASSWORD` - Database password (auto-generated)
-- `JWT_SECRET` - JWT signing key (auto-generated)
-- `PII_ENCRYPTION_KEY` - Encryption key for personal data (auto-generated)
+All configuration is stored in `deploy/.env`. Key settings:
 
 ### Site Branding
-- `VITE_SITE_NAME` - Your site name
-- `VITE_SITE_DESCRIPTION` - Site description
-- `VITE_SITE_AUTHOR` - Author/owner name
-
-### Domain & URLs
-- `SITE_URL` - Your public URL (e.g., https://games.example.com)
-- `API_EXTERNAL_URL` - API URL (e.g., https://games.example.com:8000)
-
-### Email (SMTP)
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
-
-### Optional Features
-- `TURNSTILE_SECRET_KEY` - Cloudflare Turnstile for anti-spam
-- `FIRECRAWL_API_KEY` - For BoardGameGeek import feature
-- `LOVABLE_API_KEY` - For AI-enhanced data extraction
-
-## First Admin User
-
-1. Sign up through the frontend at http://localhost
-2. Connect to the database: `docker exec -it supabase-db psql -U postgres`
-3. Grant admin role:
-
-```sql
-INSERT INTO public.user_roles (user_id, role)
-SELECT id, 'admin' FROM auth.users WHERE email = 'your@email.com';
+```env
+VITE_SITE_NAME="My Game Collection"
+VITE_SITE_DESCRIPTION="Browse my board game library"
+VITE_SITE_AUTHOR="Your Name"
 ```
+
+### Feature Flags
+```env
+VITE_FEATURE_PLAY_LOGS=true
+VITE_FEATURE_WISHLIST=true
+VITE_FEATURE_FOR_SALE=true
+VITE_FEATURE_MESSAGING=true
+VITE_FEATURE_COMING_SOON=true
+VITE_FEATURE_DEMO_MODE=false
+```
+
+### External Supabase
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+```
+
+---
+
+## Cloudron Deployment
+
+### Prerequisites
+- Cloudron server (v7.0.0+)
+- Supabase account (Cloud or self-hosted separately)
+
+### Installation
+
+1. **Build the Cloudron package:**
+   ```bash
+   cd deploy/cloudron
+   cloudron build
+   ```
+
+2. **Install to your Cloudron:**
+   ```bash
+   cloudron install --image your-registry/gamehaven:latest
+   ```
+
+3. **Configure environment variables** in Cloudron dashboard:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+   - `SITE_NAME`
+   - Feature flags as needed
+
+### Cloudron Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SUPABASE_URL` | Yes | Your Supabase project URL |
+| `SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public key |
+| `SITE_NAME` | No | Custom site name |
+| `FEATURE_*` | No | Feature toggles (true/false) |
+
+---
+
+## Health Checks
+
+Game Haven includes built-in health monitoring:
+
+### Frontend Health
+```bash
+curl http://localhost/health
+# {"status":"healthy","service":"gamehaven","timestamp":"2024-01-15T10:30:00Z"}
+```
+
+### All Services (self-hosted)
+```bash
+./deploy.sh health
+```
+
+### Docker Health Status
+```bash
+docker ps --format "table {{.Names}}\t{{.Status}}"
+```
+
+---
 
 ## SSL/HTTPS Setup
 
-### Option 1: Nginx Reverse Proxy (Recommended)
+### With Nginx Reverse Proxy (Recommended)
 
-Install Nginx and Certbot on your host:
+1. Install Nginx and Certbot:
+   ```bash
+   sudo apt install nginx certbot python3-certbot-nginx
+   ```
 
-```bash
-sudo apt install nginx certbot python3-certbot-nginx
+2. Create Nginx config (`/etc/nginx/sites-available/gamehaven`):
+   ```nginx
+   server {
+       listen 80;
+       server_name games.yourdomain.com;
+       return 301 https://$server_name$request_uri;
+   }
 
-# Get SSL certificate
-sudo certbot --nginx -d games.example.com
-```
+   server {
+       listen 443 ssl http2;
+       server_name games.yourdomain.com;
 
-Example Nginx config (`/etc/nginx/sites-available/gamehaven`):
+       ssl_certificate /etc/letsencrypt/live/games.yourdomain.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/games.yourdomain.com/privkey.pem;
 
-```nginx
-server {
-    listen 80;
-    server_name games.example.com;
-    return 301 https://$server_name$request_uri;
-}
+       # Frontend
+       location / {
+           proxy_pass http://127.0.0.1:80;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
 
-server {
-    listen 443 ssl http2;
-    server_name games.example.com;
+       # API (self-hosted only)
+       location /api/ {
+           proxy_pass http://127.0.0.1:8000/;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection "upgrade";
+           proxy_set_header Host $host;
+       }
+   }
+   ```
 
-    ssl_certificate /etc/letsencrypt/live/games.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/games.example.com/privkey.pem;
+3. Enable and get certificate:
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/gamehaven /etc/nginx/sites-enabled/
+   sudo certbot --nginx -d games.yourdomain.com
+   ```
 
-    location / {
-        proxy_pass http://localhost:80;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    location /api/ {
-        proxy_pass http://localhost:8000/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-### Option 2: Traefik
-
-Add Traefik labels to docker-compose.yml for automatic SSL.
+---
 
 ## Backups
 
-### Database Backup
-
+### Database Backup (self-hosted)
 ```bash
 docker exec supabase-db pg_dump -U postgres -d postgres > backup-$(date +%Y%m%d).sql
 ```
 
+### Automated Daily Backups
+Add to crontab (`crontab -e`):
+```bash
+0 3 * * * cd /path/to/game-haven && docker exec supabase-db pg_dump -U postgres > /backups/gamehaven-$(date +\%Y\%m\%d).sql
+```
+
 ### Restore
-
 ```bash
-cat backup-20240101.sql | docker exec -i supabase-db psql -U postgres -d postgres
+cat backup.sql | docker exec -i supabase-db psql -U postgres
 ```
 
-## Updating
-
-```bash
-cd game-haven
-git pull origin main
-./deploy/deploy.sh restart
-```
+---
 
 ## Troubleshooting
 
-### View Logs
+### Services won't start
 ```bash
-./deploy/deploy.sh logs           # All services
-./deploy/deploy.sh logs frontend  # Specific service
-./deploy/deploy.sh logs db        # Database logs
+./deploy.sh logs        # View all logs
+./deploy.sh logs db     # Database specific
+docker compose ps       # Check container status
 ```
 
-### Database Connection Issues
+### Database connection issues
 ```bash
 docker exec -it supabase-db psql -U postgres -c "SELECT 1"
 ```
 
-### Reset Everything
+### Reset everything
 ```bash
-./deploy/deploy.sh stop
+./deploy.sh stop
 rm -rf deploy/volumes/db/data/*
-./deploy/deploy.sh setup
+./deploy.sh setup
 ```
 
-## Resource Requirements
+### Health check failing
+```bash
+curl -v http://localhost/health
+./deploy.sh logs frontend
+```
 
-| Level | RAM | CPU | Disk |
-|-------|-----|-----|------|
-| Minimum | 2GB | 1 core | 10GB |
-| Recommended | 4GB | 2 cores | 20GB |
-| Production | 8GB+ | 4 cores | 50GB+ |
+---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Your Server                          │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────┐                                            │
-│  │ Nginx   │ :80/:443 (optional SSL termination)       │
-│  └────┬────┘                                            │
-│       │                                                 │
-│  ┌────▼────┐     ┌──────────────────────────────────┐  │
-│  │Frontend │:80  │         Kong API Gateway :8000   │  │
-│  │ (React) │     │  ┌─────┐ ┌─────┐ ┌───────────┐   │  │
-│  └─────────┘     │  │Auth │ │REST │ │ Functions │   │  │
-│                  │  └──┬──┘ └──┬──┘ └─────┬─────┘   │  │
-│                  └─────┼───────┼──────────┼─────────┘  │
-│                        │       │          │            │
-│                  ┌─────▼───────▼──────────▼─────┐      │
-│                  │     PostgreSQL Database      │      │
-│                  │          :5432               │      │
-│                  └──────────────────────────────┘      │
-│                                                         │
-│  ┌─────────────┐                                       │
-│  │ Studio :3000│ (Admin UI)                            │
-│  └─────────────┘                                       │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                     Your Server                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────────┐        ┌─────────────────────────────┐ │
+│  │   Frontend      │        │   Supabase (self-hosted)    │ │
+│  │   (React/Nginx) │        │   ┌─────┐ ┌──────┐ ┌─────┐ │ │
+│  │   :80           │───────▶│   │Auth │ │ REST │ │ Fn  │ │ │
+│  └─────────────────┘        │   └──┬──┘ └──┬───┘ └──┬──┘ │ │
+│                              │      │       │        │     │ │
+│                              │   ┌──▼───────▼────────▼──┐ │ │
+│                              │   │     PostgreSQL       │ │ │
+│                              │   │     :5432            │ │ │
+│                              │   └──────────────────────┘ │ │
+│                              └─────────────────────────────┘ │
+│                                                              │
+│              OR with External Supabase:                      │
+│                                                              │
+│  ┌─────────────────┐        ┌─────────────────────────────┐ │
+│  │   Frontend      │        │   Supabase Cloud            │ │
+│  │   (React/Nginx) │───────▶│   (your-project.supabase.co)│ │
+│  │   :80           │        └─────────────────────────────┘ │
+│  └─────────────────┘                                        │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Resource Requirements
+
+| Configuration | RAM | CPU | Disk |
+|--------------|-----|-----|------|
+| External Supabase | 512MB | 1 core | 5GB |
+| Self-hosted (minimal) | 2GB | 1 core | 10GB |
+| Self-hosted (recommended) | 4GB | 2 cores | 20GB |
+| Production | 8GB+ | 4 cores | 50GB+ |
+
+---
+
+## File Structure
+
+```
+deploy/
+├── deploy.sh                    # Main deployment script
+├── docker-compose.yml           # Self-hosted Supabase stack
+├── docker-compose.external.yml  # External Supabase (frontend only)
+├── Dockerfile                   # Frontend container
+├── nginx.conf                   # Nginx configuration
+├── .env.example                 # Configuration template
+├── cloudron/                    # Cloudron deployment files
+│   ├── CloudronManifest.json
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── start.sh
+└── volumes/                     # Persistent data (gitignored)
+    ├── db/
+    ├── storage/
+    └── kong/
+```
+
+---
+
+## Getting Help
+
+- [GitHub Issues](https://github.com/your-org/game-haven/issues)
+- [Documentation](https://docs.gamehaven.dev)
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License - See LICENSE for details.

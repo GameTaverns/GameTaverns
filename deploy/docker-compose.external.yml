@@ -1,0 +1,40 @@
+# External Supabase Configuration
+# Use this when connecting to Supabase Cloud or existing instance
+
+version: "3.8"
+
+services:
+  # ============================================
+  # FRONTEND - Game Haven React App
+  # ============================================
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        - VITE_SITE_NAME=${VITE_SITE_NAME:-Game Haven}
+        - VITE_SITE_DESCRIPTION=${VITE_SITE_DESCRIPTION:-Browse and discover our collection of board games}
+        - VITE_SITE_AUTHOR=${VITE_SITE_AUTHOR:-Game Haven}
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+        - VITE_FEATURE_PLAY_LOGS=${VITE_FEATURE_PLAY_LOGS:-true}
+        - VITE_FEATURE_WISHLIST=${VITE_FEATURE_WISHLIST:-true}
+        - VITE_FEATURE_FOR_SALE=${VITE_FEATURE_FOR_SALE:-true}
+        - VITE_FEATURE_MESSAGING=${VITE_FEATURE_MESSAGING:-true}
+        - VITE_FEATURE_COMING_SOON=${VITE_FEATURE_COMING_SOON:-true}
+        - VITE_FEATURE_DEMO_MODE=${VITE_FEATURE_DEMO_MODE:-false}
+    container_name: gamehaven-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_SSL_PORT:-443}:443"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  default:
+    name: gamehaven
