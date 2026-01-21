@@ -1,6 +1,6 @@
-# Game Haven - Cloudron Deployment
+# Game Haven - Cloudron Deployment with PocketBase
 
-One-click deployment to Cloudron.
+Self-contained deployment with frontend + PocketBase backend in a single container.
 
 ## Quick Start
 
@@ -11,14 +11,25 @@ docker push your-registry/gamehaven:latest
 cloudron install
 ```
 
-## Environment Variables
+## What's Included
 
-Set these in Cloudron dashboard after installation:
+- **Frontend**: React app served by Nginx
+- **Backend**: PocketBase (SQLite database, auth, admin UI)
+- **All-in-one**: No external database needed
+
+## First-Time Setup
+
+After installation:
+
+1. **Open PocketBase Admin**: Go to `https://your-app/_/`
+2. **Create admin account**: First visitor creates the super admin
+3. **Import schema**: Collections are created automatically on first use
+4. **Create your Game Haven admin**: Sign up in the app, then assign admin role in PocketBase
+
+## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `SUPABASE_URL` | ✅ | Your Supabase project URL |
-| `SUPABASE_ANON_KEY` | ✅ | Supabase anonymous/public key |
 | `SITE_NAME` | ❌ | Site title (default: "Game Haven") |
 | `SITE_DESCRIPTION` | ❌ | Site description |
 | `FEATURE_PLAY_LOGS` | ❌ | Enable play logging (default: true) |
@@ -26,32 +37,73 @@ Set these in Cloudron dashboard after installation:
 | `FEATURE_FOR_SALE` | ❌ | Enable for-sale listings (default: true) |
 | `FEATURE_MESSAGING` | ❌ | Enable messaging (default: true) |
 | `FEATURE_DEMO_MODE` | ❌ | Enable demo mode (default: false) |
+| `PB_ENCRYPTION_KEY` | ❌ | Optional encryption key for PocketBase |
 
-## Getting Supabase Credentials
+## Data Storage
 
-1. Go to [supabase.com](https://supabase.com) and create a free project
-2. Navigate to Settings → API
-3. Copy the **Project URL** → `SUPABASE_URL`
-4. Copy the **anon/public key** → `SUPABASE_ANON_KEY`
+PocketBase stores all data in `/app/data/pb_data/`:
+- `data.db` - SQLite database
+- `storage/` - Uploaded files
 
-## Database Setup
+Cloudron automatically backs up `/app/data/`.
 
-Run the SQL migrations from `supabase/migrations/` in your Supabase SQL editor.
+## Architecture
 
-## Health Check
-
-```bash
-curl https://your-app.cloudron.domain/health
-# {"status":"healthy"}
 ```
+┌─────────────────────────────────────────┐
+│            Cloudron Container           │
+├─────────────────────────────────────────┤
+│                                         │
+│  ┌─────────────┐     ┌──────────────┐  │
+│  │   Nginx     │────▶│  PocketBase  │  │
+│  │   (port 80) │     │  (port 8090) │  │
+│  └─────┬───────┘     └──────┬───────┘  │
+│        │                    │          │
+│        ▼                    ▼          │
+│  ┌─────────────┐     ┌──────────────┐  │
+│  │ React App   │     │   SQLite DB  │  │
+│  │ /app/dist   │     │ /app/data/   │  │
+│  └─────────────┘     └──────────────┘  │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+## URLs
+
+| Path | Description |
+|------|-------------|
+| `/` | Game Haven app |
+| `/_/` | PocketBase admin UI |
+| `/api/` | PocketBase REST API |
+| `/health` | Health check endpoint |
+
+## Backup & Restore
+
+**Export database:**
+```bash
+cloudron exec -- cat /app/data/pb_data/data.db > backup.db
+```
+
+**Restore database:**
+```bash
+cloudron exec -- bash -c 'cat > /app/data/pb_data/data.db' < backup.db
+cloudron restart
+```
+
+## Migrating from Supabase
+
+1. Export your Supabase data as JSON/CSV
+2. Install Game Haven on Cloudron
+3. Access PocketBase admin at `/_/`
+4. Import data via PocketBase's import feature
 
 ## Files
 
 ```
 deploy/cloudron/
-├── Dockerfile           # Build image
-├── CloudronManifest.json # Cloudron app config
-├── nginx.conf           # Web server config
-├── start.sh             # Runtime config injection
-└── logo.png             # App icon (add your own)
+├── Dockerfile              # Build image with PocketBase
+├── CloudronManifest.json   # Cloudron app config
+├── nginx.conf              # Routes frontend + API
+├── start.sh                # Starts PocketBase + Nginx
+└── logo.png                # App icon (add your own)
 ```

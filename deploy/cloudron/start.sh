@@ -1,16 +1,33 @@
 #!/bin/bash
 set -e
 
-echo "==> Starting Game Haven"
+echo "==> Starting Game Haven with PocketBase"
 
-# Inject runtime config into the built app
-# This replaces placeholder values in index.html with actual environment variables
-CONFIG_FILE="/app/dist/runtime-config.js"
+# PocketBase data directory (Cloudron persists /app/data)
+PB_DATA="/app/data/pb_data"
+mkdir -p "$PB_DATA"
 
-cat > "$CONFIG_FILE" << EOF
+# Start PocketBase in background
+echo "==> Starting PocketBase..."
+/usr/local/bin/pocketbase serve \
+    --dir="$PB_DATA" \
+    --http="127.0.0.1:8090" \
+    --encryptionEnv="PB_ENCRYPTION_KEY" &
+
+# Wait for PocketBase to be ready
+sleep 2
+for i in {1..30}; do
+    if curl -s http://127.0.0.1:8090/api/health > /dev/null 2>&1; then
+        echo "==> PocketBase is ready"
+        break
+    fi
+    sleep 1
+done
+
+# Create runtime config
+cat > /app/dist/runtime-config.js << EOF
 window.__RUNTIME_CONFIG__ = {
-  SUPABASE_URL: "${SUPABASE_URL:-}",
-  SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY:-}",
+  POCKETBASE_URL: "/api",
   SITE_NAME: "${SITE_NAME:-Game Haven}",
   SITE_DESCRIPTION: "${SITE_DESCRIPTION:-Browse and discover our collection of board games}",
   SITE_AUTHOR: "${SITE_AUTHOR:-Game Haven}",
@@ -25,16 +42,10 @@ window.__RUNTIME_CONFIG__ = {
 };
 EOF
 
-# Inject the runtime config script into index.html
+# Inject runtime config into index.html
 sed -i 's|</head>|<script src="/runtime-config.js"></script></head>|' /app/dist/index.html
 
-# Validate required config
-if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-    echo "==> WARNING: Supabase not configured!"
-    echo "    Set SUPABASE_URL and SUPABASE_ANON_KEY in Cloudron environment variables."
-    echo "    Get these from https://supabase.com or your Lovable Cloud project."
-fi
-
 echo "==> Config: $SITE_NAME"
+echo "==> PocketBase Admin: http://your-domain/_/"
 echo "==> Starting nginx..."
 exec nginx -g "daemon off;"
