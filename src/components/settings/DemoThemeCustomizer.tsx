@@ -33,6 +33,31 @@ const FONT_OPTIONS = [
   "Nunito",
 ];
 
+// Track loaded Google Fonts to avoid duplicate loading
+const loadedFonts = new Set<string>();
+
+/**
+ * Dynamically load a Google Font if not already loaded
+ */
+function loadGoogleFont(fontName: string) {
+  if (!fontName || loadedFonts.has(fontName)) return;
+  
+  const fontFamily = fontName.replace(/\s+/g, '+');
+  const linkId = `google-font-${fontFamily}`;
+  
+  if (document.getElementById(linkId)) {
+    loadedFonts.add(fontName);
+    return;
+  }
+  
+  const link = document.createElement('link');
+  link.id = linkId;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${fontFamily}:wght@400;500;600;700&display=swap`;
+  document.head.appendChild(link);
+  loadedFonts.add(fontName);
+}
+
 export function DemoThemeCustomizer() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -59,11 +84,13 @@ export function DemoThemeCustomizer() {
       root.style.setProperty("--parchment", `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness - 2}%`);
     }
     
-    // Apply fonts
+    // Load and apply fonts
     if (theme.displayFont) {
+      loadGoogleFont(theme.displayFont);
       root.style.setProperty("--font-display", `"${theme.displayFont}", cursive`);
     }
     if (theme.bodyFont) {
+      loadGoogleFont(theme.bodyFont);
       root.style.setProperty("--font-body", `"${theme.bodyFont}", serif`);
     }
   }, [theme]);
@@ -229,7 +256,62 @@ export function DemoThemeCustomizer() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
+
+          {/* Background Color */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">Background Color</Label>
+              <div 
+                className="w-10 h-10 rounded-lg border shadow-sm"
+                style={{ 
+                  backgroundColor: `hsl(${theme.backgroundHue}, ${theme.backgroundSaturation}%, ${theme.backgroundLightness}%)`
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Only applies in light mode</p>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Hue</span>
+                  <span>{theme.backgroundHue}°</span>
+                </div>
+                <Slider
+                  value={[theme.backgroundHue]}
+                  onValueChange={([v]) => updateTheme("backgroundHue", v)}
+                  min={0}
+                  max={360}
+                  step={1}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Saturation</span>
+                  <span>{theme.backgroundSaturation}%</span>
+                </div>
+                <Slider
+                  value={[theme.backgroundSaturation]}
+                  onValueChange={([v]) => updateTheme("backgroundSaturation", v)}
+                  min={0}
+                  max={100}
+                  step={1}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Lightness</span>
+                  <span>{theme.backgroundLightness}%</span>
+                </div>
+                <Slider
+                  value={[theme.backgroundLightness]}
+                  onValueChange={([v]) => updateTheme("backgroundLightness", v)}
+                  min={0}
+                  max={100}
+                  step={1}
+                />
+              </div>
+            </div>
+          </div>
 
         {/* Typography */}
         <div className="space-y-4">
