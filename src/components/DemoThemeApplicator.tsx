@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useDemoMode } from "@/contexts/DemoContext";
-import { loadDemoThemeSettings, loadDemoSiteSettings, DEFAULT_DEMO_THEME, DEFAULT_DEMO_SITE_SETTINGS } from "@/hooks/useDemoSiteSettings";
+import { loadDemoThemeSettings, loadDemoSiteSettings, DEFAULT_DEMO_SITE_SETTINGS } from "@/hooks/useDemoSiteSettings";
 
 /**
  * Applies demo theme settings to CSS variables when in demo mode.
@@ -16,6 +16,7 @@ export function DemoThemeApplicator() {
       const theme = loadDemoThemeSettings();
       const site = loadDemoSiteSettings();
       const root = document.documentElement;
+      const isDark = root.classList.contains("dark");
 
       // Apply primary color
       root.style.setProperty(
@@ -41,8 +42,12 @@ export function DemoThemeApplicator() {
         `${theme.accentHue} ${theme.accentSaturation}% ${theme.accentLightness}%`
       );
 
-      // Apply background color (only in light mode)
-      if (!document.documentElement.classList.contains("dark")) {
+      // Apply background color only in light mode
+      // In dark mode, clear custom background to use CSS defaults
+      if (isDark) {
+        root.style.removeProperty("--background");
+        root.style.removeProperty("--parchment");
+      } else {
         root.style.setProperty(
           "--background",
           `${theme.backgroundHue} ${theme.backgroundSaturation}% ${theme.backgroundLightness}%`
@@ -72,8 +77,24 @@ export function DemoThemeApplicator() {
     const handleSettingsUpdate = () => applyDemoTheme();
     window.addEventListener("demo-settings-updated", handleSettingsUpdate);
 
+    // Watch for dark mode class changes on documentElement
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.attributeName === "class") {
+          applyDemoTheme();
+          break;
+        }
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
     return () => {
       window.removeEventListener("demo-settings-updated", handleSettingsUpdate);
+      observer.disconnect();
     };
   }, [isDemoMode]);
 
