@@ -6,6 +6,7 @@ import { GameGrid } from "@/components/games/GameGrid";
 import { WishlistNamePrompt } from "@/components/games/WishlistNamePrompt";
 import { useGames } from "@/hooks/useGames";
 import { useDemoMode } from "@/contexts/DemoContext";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
@@ -40,6 +41,7 @@ const ITEMS_PER_PAGE = 20;
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isDemoMode, demoGames } = useDemoMode();
+  const { forSale: forSaleFlag, comingSoon: comingSoonFlag } = useFeatureFlags();
   const { data: realGames = [], isLoading } = useGames(!isDemoMode);
   
   // Use demo games when in demo mode, otherwise use real games
@@ -54,15 +56,17 @@ const Index = () => {
   const filteredGames = useMemo(() => {
     let result = [...games];
 
-    // Special filter for coming soon
-    if (filter === "status" && filterValue === "coming-soon") {
+    // Special filter for coming soon (only if feature is enabled)
+    if (comingSoonFlag && filter === "status" && filterValue === "coming-soon") {
       result = result.filter((g) => g.is_coming_soon);
-    } else if (filter === "status" && filterValue === "for-sale") {
-      // Special filter for for-sale games
+    } else if (forSaleFlag && filter === "status" && filterValue === "for-sale") {
+      // Special filter for for-sale games (only if feature is enabled)
       result = result.filter((g) => g.is_for_sale);
     } else {
-      // Exclude coming soon games from main catalog
-      result = result.filter((g) => !g.is_coming_soon);
+      // Exclude coming soon games from main catalog (only if feature is enabled)
+      if (comingSoonFlag) {
+        result = result.filter((g) => !g.is_coming_soon);
+      }
 
       // Category filters
       if (filter && filterValue) {
@@ -128,7 +132,7 @@ const Index = () => {
     });
 
     return result;
-  }, [games, filter, filterValue, sortBy]);
+  }, [games, filter, filterValue, sortBy, forSaleFlag, comingSoonFlag]);
 
   // Pagination
   const totalPages = Math.ceil(filteredGames.length / ITEMS_PER_PAGE);

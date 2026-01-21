@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/collapsible";
 import { siteConfig } from "@/config/site";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -73,6 +74,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const { isDemoMode, demoGames } = useDemoMode();
   const { isAuthenticated, user, signOut, isAdmin } = useAuth();
   const { data: settings } = useSiteSettings();
+  const { forSale, comingSoon } = useFeatureFlags();
   const { toast } = useToast();
 
   // Use demo data for mechanics/publishers when in demo mode
@@ -167,26 +169,30 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <Library className="h-5 w-5" />
               <span>Full Collection</span>
             </Link>
-            <button
-              onClick={() => handleFilterClick("status", "coming-soon")}
-              className={cn(
-                "sidebar-link w-full text-left",
-                isActive("status", "coming-soon") && "sidebar-link-active"
-              )}
-            >
-              <PackageOpen className="h-5 w-5" />
-              <span>Coming Soon</span>
-            </button>
-            <button
-              onClick={() => handleFilterClick("status", "for-sale")}
-              className={cn(
-                "sidebar-link w-full text-left",
-                isActive("status", "for-sale") && "sidebar-link-active"
-              )}
-            >
-              <ShoppingCart className="h-5 w-5" />
-              <span>For Sale</span>
-            </button>
+            {comingSoon && (
+              <button
+                onClick={() => handleFilterClick("status", "coming-soon")}
+                className={cn(
+                  "sidebar-link w-full text-left",
+                  isActive("status", "coming-soon") && "sidebar-link-active"
+                )}
+              >
+                <PackageOpen className="h-5 w-5" />
+                <span>Coming Soon</span>
+              </button>
+            )}
+            {forSale && (
+              <button
+                onClick={() => handleFilterClick("status", "for-sale")}
+                className={cn(
+                  "sidebar-link w-full text-left",
+                  isActive("status", "for-sale") && "sidebar-link-active"
+                )}
+              >
+                <ShoppingCart className="h-5 w-5" />
+                <span>For Sale</span>
+              </button>
+            )}
           </nav>
 
           {/* Player Count */}

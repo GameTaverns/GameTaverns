@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ExpansionList } from "./ExpansionList";
 import { WishlistButton } from "./WishlistButton";
 import { useDemoMode } from "@/contexts/DemoContext";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import type { GameWithRelations } from "@/types/game";
 import { cn, proxiedImageUrl, directImageUrl } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ interface GameCardProps {
 
 export function GameCard({ game, priority = false }: GameCardProps) {
   const { isDemoMode } = useDemoMode();
+  const { wishlist, forSale, comingSoon } = useFeatureFlags();
   const [imageError, setImageError] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   
@@ -70,9 +72,11 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               </div>
             )}
             {/* Wishlist Button */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <WishlistButton gameId={game.id} className="bg-background/80 backdrop-blur-sm hover:bg-background" />
-            </div>
+            {wishlist && (
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <WishlistButton gameId={game.id} className="bg-background/80 backdrop-blur-sm hover:bg-background" />
+              </div>
+            )}
           </div>
 
           <CardContent className="p-4">
@@ -99,13 +103,13 @@ export function GameCard({ game, priority = false }: GameCardProps) {
 
             {/* Tags */}
             <div className="flex flex-wrap gap-1.5">
-              {game.is_for_sale && (
+              {forSale && game.is_for_sale && (
                 <Badge className="text-xs bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                   <DollarSign className="h-3 w-3 mr-0.5" />
                   {game.sale_price ? `$${game.sale_price}` : 'For Sale'}
                 </Badge>
               )}
-              {game.is_coming_soon && (
+              {comingSoon && game.is_coming_soon && (
                 <Badge className="text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
                   Coming Soon
                 </Badge>
