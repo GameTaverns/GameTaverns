@@ -128,6 +128,13 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
   const [demoMessages, setDemoMessages] = useState<DemoMessage[]>([]);
   const [guestIdentifier] = useState(() => `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
 
+  // Generate unique IDs for demo entities. Using Date.now() alone can collide during bulk operations.
+  const createDemoId = useCallback((prefix: string) => {
+    // crypto.randomUUID is available in modern browsers.
+    const uuid = (globalThis as any)?.crypto?.randomUUID?.() as string | undefined;
+    return uuid ? `${prefix}-${uuid}` : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }, []);
+
   // Initialize session on mount
   useEffect(() => {
     if (enabled) {
@@ -135,13 +142,61 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
       setSessionId(id);
       
       // Load persisted data from sessionStorage
-      setDemoGames(loadFromSession(GAMES_KEY, []));
+      const loadedGames = loadFromSession<GameWithRelations[]>(GAMES_KEY, []);
+
+      // Normalize demo game IDs to avoid collisions (older demo sessions used Date.now() based IDs)
+      // Colliding IDs can cause Select dropdowns to behave as if multiple items are selected,
+      // and can also make expansions appear under multiple parents.
+      const idCounts = new Map<string, number>();
+      for (const g of loadedGames) {
+        if (!g?.id) continue;
+        idCounts.set(g.id, (idCounts.get(g.id) || 0) + 1);
+      }
+
+      const idRemap = new Map<string, string[]>();
+      const normalizeId = (oldId: string) => {
+        const list = idRemap.get(oldId) || [];
+        if (list.length === 0) {
+          // first instance keeps its id
+          list.push(oldId);
+          idRemap.set(oldId, list);
+          return oldId;
+        }
+        // subsequent duplicates get new unique ids
+        const newId = createDemoId("demo");
+        list.push(newId);
+        idRemap.set(oldId, list);
+        return newId;
+      };
+
+      // First pass: assign unique ids, tracking which original ids were duplicated.
+      const normalizedGames = loadedGames.map((g) => {
+        if (!g?.id) {
+          return { ...g, id: createDemoId("demo") };
+        }
+        if ((idCounts.get(g.id) || 0) <= 1) return g;
+        return { ...g, id: normalizeId(g.id) };
+      });
+
+      // Second pass: fix parent_game_id references when the referenced parent had duplicates.
+      // We choose the first instance (the original id) as the canonical parent.
+      const duplicateParents = new Set(
+        [...idCounts.entries()].filter(([, c]) => c > 1).map(([id]) => id)
+      );
+      const finalGames = normalizedGames.map((g) => {
+        if (!g?.parent_game_id) return g;
+        if (!duplicateParents.has(g.parent_game_id)) return g;
+        // keep pointing at the canonical parent (original id)
+        return { ...g, parent_game_id: g.parent_game_id };
+      });
+
+      setDemoGames(finalGames);
       setDemoFeatureFlagsState(loadFromSession(FEATURE_FLAGS_KEY, DEFAULT_DEMO_FEATURE_FLAGS));
       setDemoWishlist(loadFromSession(SESSION_KEY_PREFIX + "wishlist", []));
       setDemoPlaySessions(loadFromSession(SESSION_KEY_PREFIX + "play_sessions", []));
       setDemoMessages(loadFromSession(SESSION_KEY_PREFIX + "messages", []));
     }
-  }, [enabled]);
+  }, [enabled, createDemoId]);
 
   // Persist games to sessionStorage
   useEffect(() => {
@@ -179,8 +234,9 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
   }, [demoMessages, enabled, sessionId]);
 
   const addDemoGame = useCallback((game: Partial<GameWithRelations>) => {
+    const newGameId = createDemoId("demo");
     const newGame: GameWithRelations = {
-      id: `demo-${Date.now()}`,
+      id: newGameId,
       title: game.title || "New Game",
       description: game.description || null,
       image_url: game.image_url || null,
@@ -208,6 +264,7 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
       sleeved: game.sleeved || false,
       upgraded_components: game.upgraded_components || false,
       crowdfunded: game.crowdfunded || false,
+      inserts: game.inserts || false,
       youtube_videos: game.youtube_videos || [],
       slug: game.slug || game.title?.toLowerCase().replace(/\s+/g, "-") || "new-game",
       additional_images: game.additional_images || [],
@@ -216,7 +273,7 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
       admin_data: game.admin_data || null,
     };
     setDemoGames((prev) => [...prev, newGame]);
-  }, []);
+  }, [createDemoId]);
 
   const updateDemoGame = useCallback((id: string, updates: Partial<GameWithRelations>) => {
     setDemoGames((prev) =>

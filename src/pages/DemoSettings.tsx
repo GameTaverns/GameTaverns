@@ -903,7 +903,7 @@ const DemoSettings = () => {
                             <SelectTrigger className="mt-1 h-8">
                               <SelectValue placeholder="Select base game..." />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-popover z-50">
                               {parentGameOptions.map((g) => (
                                 <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>
                               ))}
