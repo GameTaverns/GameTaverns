@@ -98,9 +98,11 @@ export function FeatureFlagsAdmin({ currentFlags }: FeatureFlagsAdminProps) {
     setIsSaving(true);
     
     try {
-      // Update each flag in the database
-      const updates = Object.entries(localFlags).map(([key, value]) => {
-        const dbKey = FEATURE_FLAG_DB_KEYS[key as keyof FeatureFlags];
+      // Update each flag in the database - use known keys only
+      const flagKeys = Object.keys(FEATURE_FLAG_DB_KEYS) as Array<keyof FeatureFlags>;
+      const updates = flagKeys.map((flagKey) => {
+        const dbKey = FEATURE_FLAG_DB_KEYS[flagKey];
+        const value = localFlags[flagKey];
         return supabase
           .from("site_settings")
           .upsert({ key: dbKey, value: String(value) }, { onConflict: "key" });
