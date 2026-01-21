@@ -841,6 +841,26 @@ const Settings = () => {
   const handleExportCsv = () => {
     if (games.length === 0) return;
 
+    // Flatten games array to include expansions (which are nested under parent games)
+    const flattenGames = (gameList: typeof games): typeof games => {
+      const result: typeof games = [];
+      gameList.forEach(game => {
+        result.push(game);
+        if (game.expansions && game.expansions.length > 0) {
+          game.expansions.forEach(expansion => {
+            // Add parent_game reference for the expansion
+            result.push({
+              ...expansion,
+              parent_game: { id: game.id, title: game.title } as any,
+            });
+          });
+        }
+      });
+      return result;
+    };
+
+    const allGames = flattenGames(games);
+
     // Define CSV headers
     const headers = [
       'Title',
@@ -883,7 +903,7 @@ const Settings = () => {
     };
 
     // Convert games to CSV rows
-    const rows = games.map(game => [
+    const rows = allGames.map(game => [
       escapeCsv(game.title),
       escapeCsv(game.game_type),
       escapeCsv(game.difficulty),
@@ -928,7 +948,7 @@ const Settings = () => {
 
     toast({
       title: "Export complete",
-      description: `Exported ${games.length} games to CSV.`,
+      description: `Exported ${allGames.length} games to CSV.`,
     });
   };
 

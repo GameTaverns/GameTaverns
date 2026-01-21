@@ -522,6 +522,9 @@ const DemoSettings = () => {
   const handleExportCsv = () => {
     if (demoGames.length === 0) return;
 
+    // Create a lookup map for parent game titles
+    const gameIdToTitle = new Map(demoGames.map(g => [g.id, g.title]));
+
     // Define CSV headers
     const headers = [
       'Title',
@@ -563,34 +566,38 @@ const DemoSettings = () => {
     };
 
     // Convert games to CSV rows
-    const rows = demoGames.map(game => [
-      escapeCsv(game.title),
-      escapeCsv(game.game_type),
-      escapeCsv(game.difficulty),
-      escapeCsv(game.play_time),
-      escapeCsv(game.min_players),
-      escapeCsv(game.max_players),
-      escapeCsv(game.suggested_age),
-      escapeCsv(game.publisher?.name),
-      escapeCsv(game.mechanics?.map(m => m.name).join('; ')),
-      escapeCsv(game.bgg_id),
-      escapeCsv(game.bgg_url),
-      escapeCsv(game.is_expansion),
-      escapeCsv(game.parent_game?.title),
-      escapeCsv(game.is_coming_soon),
-      escapeCsv(game.is_for_sale),
-      escapeCsv(game.sale_price),
-      escapeCsv(game.sale_condition),
-      escapeCsv(game.location_room),
-      escapeCsv(game.location_shelf),
-      escapeCsv(game.location_misc),
-      escapeCsv(game.sleeved),
-      escapeCsv(game.upgraded_components),
-      escapeCsv(game.crowdfunded),
-      escapeCsv(game.inserts),
-      escapeCsv(game.in_base_game_box),
-      escapeCsv(game.description)
-    ].join(','));
+    const rows = demoGames.map(game => {
+      // Get parent game title from ID
+      const parentGameTitle = game.parent_game_id ? gameIdToTitle.get(game.parent_game_id) : null;
+      return [
+        escapeCsv(game.title),
+        escapeCsv(game.game_type),
+        escapeCsv(game.difficulty),
+        escapeCsv(game.play_time),
+        escapeCsv(game.min_players),
+        escapeCsv(game.max_players),
+        escapeCsv(game.suggested_age),
+        escapeCsv(game.publisher?.name),
+        escapeCsv(game.mechanics?.map(m => m.name).join('; ')),
+        escapeCsv(game.bgg_id),
+        escapeCsv(game.bgg_url),
+        escapeCsv(game.is_expansion),
+        escapeCsv(parentGameTitle),
+        escapeCsv(game.is_coming_soon),
+        escapeCsv(game.is_for_sale),
+        escapeCsv(game.sale_price),
+        escapeCsv(game.sale_condition),
+        escapeCsv(game.location_room),
+        escapeCsv(game.location_shelf),
+        escapeCsv(game.location_misc),
+        escapeCsv(game.sleeved),
+        escapeCsv(game.upgraded_components),
+        escapeCsv(game.crowdfunded),
+        escapeCsv(game.inserts),
+        escapeCsv(game.in_base_game_box),
+        escapeCsv(game.description)
+      ].join(',');
+    });
 
     // Combine headers and rows
     const csvContent = [headers.join(','), ...rows].join('\n');
