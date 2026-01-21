@@ -16,7 +16,8 @@ import {
   ShoppingCart,
   ALargeSmall,
   Users,
-  FlaskConical
+  FlaskConical,
+  Baby
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
@@ -255,6 +256,22 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 )}
               >
                 {time}
+              </button>
+            ))}
+          </FilterSection>
+
+          {/* Age */}
+          <FilterSection title="Age" icon={<Baby className="h-4 w-4" />} defaultOpen={currentFilter === "age"}>
+            {["3+", "6+", "8+", "10+", "12+", "14+", "18+"].map((age) => (
+              <button
+                key={age}
+                onClick={() => handleFilterClick("age", age)}
+                className={cn(
+                  "sidebar-link text-sm w-full text-left",
+                  isActive("age", age) && "sidebar-link-active"
+                )}
+              >
+                {age}
               </button>
             ))}
           </FilterSection>

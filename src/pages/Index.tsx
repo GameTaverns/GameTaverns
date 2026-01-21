@@ -158,6 +158,15 @@ const Index = () => {
               g.title.toUpperCase().startsWith(filterValue.toUpperCase())
             );
             break;
+          case "age":
+            // Filter games where suggested_age matches or is less restrictive
+            result = result.filter((g) => {
+              if (!g.suggested_age) return false;
+              const gameAge = parseInt(g.suggested_age.replace("+", ""), 10);
+              const filterAge = parseInt(filterValue.replace("+", ""), 10);
+              return !isNaN(gameAge) && gameAge <= filterAge;
+            });
+            break;
         }
       }
     }
@@ -338,9 +347,9 @@ const Index = () => {
         </>
       )}
 
-      {/* Sticky Pagination */}
+      {/* Sticky Pagination - only over main content, not sidebar */}
       {!isLoading && totalPages > 1 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border py-3 px-4 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 lg:left-72 z-30 bg-background/95 backdrop-blur-sm border-t border-border py-3 px-4 shadow-lg">
           <Pagination>
             <PaginationContent>
               <PaginationItem>
