@@ -228,19 +228,26 @@ const Index = () => {
 
   const hasActiveFilters = !!filter;
 
-  // Generate page numbers to display
+  // Generate page numbers to display - always returns exactly 7 slots for consistent width
   const getPageNumbers = () => {
-    const pages: (number | "ellipsis")[] = [];
-    if (totalPages <= 5) {
+    const pages: (number | "ellipsis-start" | "ellipsis-end" | null)[] = [];
+    if (totalPages <= 7) {
+      // Show all pages, pad with nulls to maintain 7 slots
       for (let i = 1; i <= totalPages; i++) pages.push(i);
+      while (pages.length < 7) pages.push(null);
     } else {
+      // Always show: first, ..., middle range, ..., last = 7 slots
       pages.push(1);
-      if (currentPage > 3) pages.push("ellipsis");
-      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
-        pages.push(i);
+      if (currentPage <= 3) {
+        // Near start: 1, 2, 3, 4, 5, ..., last
+        pages.push(2, 3, 4, 5, "ellipsis-end", totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        // Near end: 1, ..., last-4, last-3, last-2, last-1, last
+        pages.push("ellipsis-start", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        // Middle: 1, ..., prev, current, next, ..., last
+        pages.push("ellipsis-start", currentPage - 1, currentPage, currentPage + 1, "ellipsis-end", totalPages);
       }
-      if (currentPage < totalPages - 2) pages.push("ellipsis");
-      pages.push(totalPages);
     }
     return pages;
   };
@@ -360,12 +367,14 @@ const Index = () => {
               </PaginationItem>
               
               {getPageNumbers().map((page, index) => (
-                <PaginationItem key={index}>
-                  {page === "ellipsis" ? (
+                <PaginationItem key={index} className="w-10 flex justify-center">
+                  {page === null ? (
+                    <span className="w-10" />
+                  ) : page === "ellipsis-start" || page === "ellipsis-end" ? (
                     <span className="px-3 py-2">...</span>
                   ) : (
                     <PaginationLink
-                      onClick={() => handlePageChange(page)}
+                      onClick={() => handlePageChange(page as number)}
                       isActive={currentPage === page}
                       className="cursor-pointer"
                     >
