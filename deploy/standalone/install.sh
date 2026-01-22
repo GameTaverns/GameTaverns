@@ -67,9 +67,9 @@ prompt_yn() {
     fi
 }
 
-# Generate secure random string
+# Generate secure random string (strip newlines from openssl output)
 generate_secret() {
-    openssl rand -base64 ${1:-32} | tr -d '/+=' | head -c ${1:-32}
+    openssl rand -base64 ${1:-32} | tr -d '/+=\n' | head -c ${1:-32}
 }
 
 # Generate JWT (proper HMAC-SHA256 signing)
