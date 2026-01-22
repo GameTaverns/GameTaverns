@@ -18,8 +18,10 @@ The installer will:
 1. Prompt for site configuration and admin credentials
 2. Generate secure secrets
 3. Start all Docker services
-4. Run database migrations
-5. Create your admin user
+4. Configure database passwords
+5. Run database migrations
+6. Create your admin user
+7. **(Optional)** Setup Nginx reverse proxy with Let's Encrypt SSL
 
 **That's it!** Your Game Haven is ready at `http://your-server-ip:3000`
 
@@ -145,35 +147,29 @@ Backups are saved to `./backups/` and compressed automatically.
 
 ## Production Deployment
 
-### With SSL (Recommended)
+### Automatic SSL Setup (Recommended)
 
-1. Point your domain to your server
-2. Use a reverse proxy (Nginx, Traefik, Caddy) with SSL
-3. Update `.env` with your domain:
-   ```
-   SITE_URL=https://yourdomain.com
-   API_EXTERNAL_URL=https://api.yourdomain.com
-   ```
+If you specified a domain during installation, you'll be prompted to set up Nginx with Let's Encrypt SSL automatically:
 
-### Example Nginx Config
+```bash
+? Setup Nginx reverse proxy with SSL for yourdomain.com? [Y/n]: y
+```
 
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name yourdomain.com;
-    
-    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
-    
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+This will:
+1. Install Nginx
+2. Configure it as a reverse proxy to the app
+3. Obtain a Let's Encrypt SSL certificate
+4. Set up automatic certificate renewal
+
+### Manual Nginx Setup
+
+You can also run the nginx setup script separately:
+
+```bash
+./scripts/setup-nginx.sh
+```
+
+### Custom Nginx Config
 
 server {
     listen 443 ssl http2;

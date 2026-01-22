@@ -553,24 +553,50 @@ docker compose up -d
 echo ""
 echo -e "${CYAN}Waiting for database to be ready...${NC}"
 
-for i in {1..60}; do
-    # Note: pg_isready doesn't require a password inside the container, and
-    # using supabase_admin avoids noisy FATAL logs because the supabase/postgres
-    # image does not include a 'postgres' role.
+for i in {1..90}; do
     if docker exec gamehaven-db pg_isready -U supabase_admin -d postgres >/dev/null 2>&1; then
         echo -e "${GREEN}✓${NC} Database is ready"
         break
     fi
     
-    if [ $i -eq 60 ]; then
+    if [ $i -eq 90 ]; then
         echo -e "${RED}Error: Database failed to start${NC}"
         echo -e "Run: ${YELLOW}docker logs gamehaven-db${NC}"
         exit 1
     fi
     
-    echo "  Waiting for database... ($i/60)"
+    echo "  Waiting for database... ($i/90)"
     sleep 2
 done
+
+# ==========================================
+# SETUP DATABASE PASSWORDS
+# ==========================================
+
+echo ""
+echo -e "${CYAN}Configuring database passwords...${NC}"
+
+# Set passwords for internal Supabase roles
+docker exec -i gamehaven-db psql -U supabase_admin -d postgres << EOSQL
+-- Set passwords for internal roles (must match .env POSTGRES_PASSWORD)
+ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+
+-- Ensure supabase_auth_admin has SUPERUSER for migrations
+ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
+
+-- Ensure schema permissions
+GRANT ALL ON SCHEMA public TO supabase_auth_admin;
+GRANT ALL ON SCHEMA public TO supabase_storage_admin;
+
+-- Ensure role grants for PostgREST
+GRANT anon TO authenticator;
+GRANT authenticated TO authenticator;
+GRANT service_role TO authenticator;
+EOSQL
+
+echo -e "${GREEN}✓${NC} Database passwords configured"
 
 # ==========================================
 # WAIT FOR AUTH SERVICE
@@ -579,44 +605,27 @@ done
 echo ""
 echo -e "${CYAN}Waiting for auth service to be ready...${NC}"
 
-# This endpoint is routed by Kong and intentionally left unauthenticated.
+# Restart auth to pick up the new password
+docker compose restart auth
+
 AUTH_HEALTH_URL="http://localhost:${KONG_PORT}/auth/v1/health"
 
-# If auth doesn't come up, the most common cause on redeploy is that the DB volume
-# contains old role passwords. We'll attempt a one-time password sync + restart.
-ATTEMPTED_DB_PASSWORD_SYNC=false
-
-for i in {1..90}; do
+for i in {1..60}; do
     if curl -fsS --max-time 2 "$AUTH_HEALTH_URL" >/dev/null 2>&1; then
         echo -e "${GREEN}✓${NC} Auth service is ready"
         break
     fi
-
-    # One-time recovery attempt after ~20 seconds.
-    if [ $i -eq 10 ] && [ "$ATTEMPTED_DB_PASSWORD_SYNC" = false ]; then
-        echo -e "${YELLOW}Auth not ready yet — attempting database password sync recovery...${NC}"
-        ATTEMPTED_DB_PASSWORD_SYNC=true
-        # This script runs psql inside the DB container (no password needed) and resets
-        # internal role passwords to match POSTGRES_PASSWORD from .env, then restarts services.
-        ./scripts/fix-db-passwords.sh >/dev/null 2>&1 || true
-    fi
     
-    if [ $i -eq 90 ]; then
+    if [ $i -eq 60 ]; then
         echo -e "${RED}Error: Auth service failed to start${NC}"
         echo -e "\n${YELLOW}Auth container status:${NC}"
         docker compose ps auth || true
-        echo -e "\n${YELLOW}Last 120 lines of auth logs:${NC}"
-        docker logs gamehaven-auth --tail=120 || true
-        echo -e "\n${YELLOW}Last 80 lines of db logs (often shows auth DB login failures):${NC}"
-        docker logs gamehaven-db --tail=80 || true
-        echo ""
-        echo -e "${YELLOW}If you see SQLSTATE 28P01 (password authentication failed) for supabase_auth_admin/authenticator:${NC}"
-        echo -e "- You likely generated NEW secrets while keeping an existing database volume."
-        echo -e "- Fix by re-running install and choosing to reuse secrets, or wipe the DB volume and start fresh."
+        echo -e "\n${YELLOW}Last 50 lines of auth logs:${NC}"
+        docker logs gamehaven-auth --tail=50 || true
         exit 1
     fi
     
-    echo "  Waiting for auth... ($i/90)"
+    echo "  Waiting for auth... ($i/60)"
     sleep 2
 done
 
@@ -686,6 +695,20 @@ EOF
 echo -e "${GREEN}✓${NC} Admin role assigned"
 
 # ==========================================
+# NGINX REVERSE PROXY SETUP (OPTIONAL)
+# ==========================================
+
+if [ "$DOMAIN" != "localhost" ]; then
+    echo ""
+    prompt_yn SETUP_NGINX "Setup Nginx reverse proxy with SSL for $DOMAIN?" "y"
+    
+    if [ "$SETUP_NGINX" = true ]; then
+        chmod +x ./scripts/setup-nginx.sh
+        ./scripts/setup-nginx.sh
+    fi
+fi
+
+# ==========================================
 # COMPLETE
 # ==========================================
 
@@ -710,6 +733,9 @@ echo -e "  View logs:      ${YELLOW}docker compose logs -f${NC}"
 echo -e "  Stop services:  ${YELLOW}docker compose down${NC}"
 echo -e "  Restart:        ${YELLOW}docker compose restart${NC}"
 echo -e "  Backup DB:      ${YELLOW}./scripts/backup.sh${NC}"
+if [ "$DOMAIN" != "localhost" ] && [ "$SETUP_NGINX" != true ]; then
+echo -e "  Setup nginx:    ${YELLOW}./scripts/setup-nginx.sh${NC}"
+fi
 echo ""
 echo -e "${YELLOW}⚠ Credentials saved to .credentials - keep this file secure!${NC}"
 echo ""

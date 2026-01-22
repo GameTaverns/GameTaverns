@@ -1,50 +1,9 @@
 -- Initialize Supabase internal users with correct passwords and permissions
 -- This runs during postgres container init (before other services connect)
-
--- Set password for auth admin (used by GoTrue)
--- SUPERUSER is required so GoTrue can create its auth schema and tables
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-    CREATE ROLE supabase_auth_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE;
-  ELSE
-    ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
-  END IF;
-  EXECUTE format('ALTER ROLE supabase_auth_admin WITH PASSWORD %L', current_setting('app.settings.postgres_password', true));
-END
-$$;
-
--- Set password for authenticator (used by PostgREST)
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticator') THEN
-    CREATE ROLE authenticator WITH LOGIN;
-  END IF;
-  EXECUTE format('ALTER ROLE authenticator WITH PASSWORD %L', current_setting('app.settings.postgres_password', true));
-END
-$$;
-
--- Set password for supabase_admin (used by Realtime and Studio)
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_admin') THEN
-    CREATE ROLE supabase_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS;
-  END IF;
-  EXECUTE format('ALTER ROLE supabase_admin WITH PASSWORD %L', current_setting('app.settings.postgres_password', true));
-END
-$$;
-
--- Set password for storage admin (used by Storage, if enabled)
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
-    CREATE ROLE supabase_storage_admin WITH LOGIN CREATEDB CREATEROLE;
-  ELSE
-    ALTER ROLE supabase_storage_admin WITH CREATEDB CREATEROLE;
-  END IF;
-  EXECUTE format('ALTER ROLE supabase_storage_admin WITH PASSWORD %L', current_setting('app.settings.postgres_password', true));
-END
-$$;
+--
+-- NOTE: The supabase/postgres image already creates most of these roles.
+-- This script ensures they exist and have correct permissions.
+-- Passwords are set via environment variables and the start.sh script.
 
 -- Ensure core API roles exist (used by PostgREST/JWT roles + grants in app schema)
 DO $$
@@ -61,15 +20,51 @@ BEGIN
 END
 $$;
 
+-- Ensure authenticator role exists (used by PostgREST)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticator') THEN
+    CREATE ROLE authenticator WITH LOGIN NOINHERIT;
+  END IF;
+END
+$$;
+
+-- Ensure supabase_auth_admin role exists (used by GoTrue)
+-- SUPERUSER is required so GoTrue can create its auth schema and tables
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+    CREATE ROLE supabase_auth_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE;
+  ELSE
+    ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
+  END IF;
+END
+$$;
+
+-- Ensure supabase_storage_admin role exists
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+    CREATE ROLE supabase_storage_admin WITH LOGIN CREATEDB CREATEROLE;
+  END IF;
+END
+$$;
+
 -- Grant authenticator the ability to switch to API roles
 GRANT anon TO authenticator;
 GRANT authenticated TO authenticator;
 GRANT service_role TO authenticator;
 
--- Grant supabase_admin the same
-GRANT anon TO supabase_admin;
-GRANT authenticated TO supabase_admin;
-GRANT service_role TO supabase_admin;
+-- Grant supabase_admin the same (already exists in supabase/postgres image)
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+    EXECUTE 'GRANT anon TO supabase_admin';
+    EXECUTE 'GRANT authenticated TO supabase_admin';
+    EXECUTE 'GRANT service_role TO supabase_admin';
+  END IF;
+END
+$$;
 
 -- Grant public schema usage
 GRANT ALL ON SCHEMA public TO supabase_auth_admin;

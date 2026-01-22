@@ -50,26 +50,24 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
+      POSTGRES_USER: supabase_admin
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: 3600
-      # Pass password to init scripts via postgres config
-      POSTGRES_INITDB_ARGS: "-c app.settings.postgres_password=${POSTGRES_PASSWORD}"
     volumes:
       - gamehaven-db:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
     command:
       - postgres
       - -c
-      - app.settings.postgres_password=${POSTGRES_PASSWORD}
-      - -c
       - listen_addresses=*
+      - -c
+      - wal_level=logical
     healthcheck:
-      # The supabase/postgres image uses supabase_admin as the primary superuser.
-      # Using postgres here causes noisy FATAL logs and unreliable readiness checks.
       test: ["CMD-SHELL", "pg_isready -U supabase_admin -d postgres"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 10s
     networks:
       - gamehaven-network
 
