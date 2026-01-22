@@ -108,9 +108,15 @@ if docker volume inspect gamehaven-db >/dev/null 2>&1; then
 fi
 
 echo ""
-echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║${NC}           ${BOLD}Game Haven - Self-Hosted Installation${NC}             ${CYAN}║${NC}"
-echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
+TITLE="Game Haven - Self-Hosted Installation"
+INNER_WIDTH=62
+BORDER=$(printf '%*s' "$INNER_WIDTH" '' | tr ' ' '═')
+PAD_LEFT=$(( (INNER_WIDTH - ${#TITLE}) / 2 ))
+PAD_RIGHT=$(( INNER_WIDTH - ${#TITLE} - PAD_LEFT ))
+
+echo -e "${CYAN}╔${BORDER}╗${NC}"
+echo -e "${CYAN}║${NC}$(printf '%*s' "$PAD_LEFT" '')${BOLD}${TITLE}${NC}$(printf '%*s' "$PAD_RIGHT" '')${CYAN}║${NC}"
+echo -e "${CYAN}╚${BORDER}╝${NC}"
 echo ""
 
 # If we detect an existing install, default to reusing secrets.
