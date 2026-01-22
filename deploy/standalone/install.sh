@@ -536,15 +536,17 @@ KONGEOF
 echo -e "${GREEN}✓${NC} Generated kong.yml with API keys"
 
 # ==========================================
-# START DOCKER STACK
+# START DATABASE FIRST (Two-Stage Startup)
 # ==========================================
+# We must start the DB alone, configure passwords, then start other services.
+# This prevents the "dependency is unhealthy" race condition.
 
 echo ""
-echo -e "${BOLD}━━━ Starting Services ━━━${NC}"
+echo -e "${BOLD}━━━ Starting Database ━━━${NC}"
 echo ""
 
-echo -e "${CYAN}Starting Docker containers...${NC}"
-docker compose up -d
+echo -e "${CYAN}Starting PostgreSQL...${NC}"
+docker compose up -d db
 
 # ==========================================
 # WAIT FOR DATABASE
@@ -569,34 +571,80 @@ for i in {1..90}; do
     sleep 2
 done
 
+# Give postgres a moment to finish init scripts
+sleep 3
+
 # ==========================================
 # SETUP DATABASE PASSWORDS
 # ==========================================
 
 echo ""
-echo -e "${CYAN}Configuring database passwords...${NC}"
+echo -e "${CYAN}Configuring database roles and passwords...${NC}"
 
-# Set passwords for internal Supabase roles
+# Escape single quotes in password for SQL
+ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
+
+# Set passwords for internal Supabase roles BEFORE starting auth/rest
 docker exec -i gamehaven-db psql -U supabase_admin -d postgres << EOSQL
+-- Ensure internal roles exist (in case 00-init-users.sql didn't create them)
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+    CREATE ROLE supabase_auth_admin WITH LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
+    CREATE ROLE authenticator WITH LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+    CREATE ROLE supabase_storage_admin WITH LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    CREATE ROLE anon NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN BYPASSRLS;
+  END IF;
+END
+\$\$;
+
 -- Set passwords for internal roles (must match .env POSTGRES_PASSWORD)
-ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_auth_admin WITH PASSWORD '${ESCAPED_PW}';
+ALTER ROLE authenticator WITH PASSWORD '${ESCAPED_PW}';
+ALTER ROLE supabase_storage_admin WITH PASSWORD '${ESCAPED_PW}';
 
 -- Ensure supabase_auth_admin has SUPERUSER for migrations
 ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
+ALTER ROLE supabase_storage_admin WITH CREATEDB CREATEROLE;
 
 -- Ensure schema permissions
 GRANT ALL ON SCHEMA public TO supabase_auth_admin;
 GRANT ALL ON SCHEMA public TO supabase_storage_admin;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 -- Ensure role grants for PostgREST
 GRANT anon TO authenticator;
 GRANT authenticated TO authenticator;
 GRANT service_role TO authenticator;
+GRANT anon TO supabase_admin;
+GRANT authenticated TO supabase_admin;
+GRANT service_role TO supabase_admin;
 EOSQL
 
-echo -e "${GREEN}✓${NC} Database passwords configured"
+echo -e "${GREEN}✓${NC} Database roles and passwords configured"
+
+# ==========================================
+# START REMAINING SERVICES
+# ==========================================
+
+echo ""
+echo -e "${BOLD}━━━ Starting Application Services ━━━${NC}"
+echo ""
+
+echo -e "${CYAN}Starting auth, rest, realtime, kong, app...${NC}"
+docker compose up -d
 
 # ==========================================
 # WAIT FOR AUTH SERVICE
@@ -604,9 +652,6 @@ echo -e "${GREEN}✓${NC} Database passwords configured"
 
 echo ""
 echo -e "${CYAN}Waiting for auth service to be ready...${NC}"
-
-# Restart auth to pick up the new password
-docker compose restart auth
 
 AUTH_HEALTH_URL="http://localhost:${KONG_PORT}/auth/v1/health"
 
@@ -622,6 +667,7 @@ for i in {1..60}; do
         docker compose ps auth || true
         echo -e "\n${YELLOW}Last 50 lines of auth logs:${NC}"
         docker logs gamehaven-auth --tail=50 || true
+        echo -e "\n${YELLOW}Tip: Run ./scripts/fix-db-passwords.sh if password mismatch is suspected${NC}"
         exit 1
     fi
     
