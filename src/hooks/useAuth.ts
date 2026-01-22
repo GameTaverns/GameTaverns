@@ -199,7 +199,12 @@ export function useAuth() {
     // Set up auth state listener BEFORE checking session
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      // If the SDK says SIGNED_OUT, clear our hydrated state immediately
+      // This prevents the race where we hydrated a stale session
+      if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED" && !nextSession) {
+        clearAuthStorage();
+      }
       applySession(nextSession);
     });
 

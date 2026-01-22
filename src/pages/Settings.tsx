@@ -440,11 +440,8 @@ const Settings = () => {
     }
   };
 
-  // Redirect if not authenticated
-  if (!loading && !isAuthenticated) {
-    return <Navigate to="/admin" replace />;
-  }
-
+  // Show loading state while auth is being determined
+  // This prevents the flash redirect that causes loops
   if (loading) {
     return (
       <Layout>
@@ -453,6 +450,12 @@ const Settings = () => {
         </div>
       </Layout>
     );
+  }
+
+  // Only redirect AFTER loading is complete and we're certain there's no session
+  // The key fix: we wait for loading=false before making the redirect decision
+  if (!isAuthenticated) {
+    return <Navigate to="/admin" replace />;
   }
 
   const handleImport = async (e: React.FormEvent) => {

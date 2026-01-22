@@ -24,19 +24,51 @@ const Login = () => {
     // invalid session, causing /admin -> /settings -> /admin flicker.
     // We debounce AND verify the session is still valid before navigating.
     if (!loading && isAuthenticated) {
+      let cancelled = false;
       const timer = window.setTimeout(async () => {
-        // Re-check: if the user was cleared during the debounce window, abort.
+        if (cancelled) return;
+        
+        // Re-check: verify with the SDK that the session is actually valid.
+        // This catches cases where hydration succeeded but the token is invalid.
         try {
           const { supabase } = await import("@/integrations/backend/client");
-          const { data } = await supabase.auth.getSession();
-          if (data?.session?.user) {
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (cancelled) return;
+          
+          // If there's an error or no valid session, clear storage and stay on login
+          if (error || !data?.session?.user) {
+            // Clear any stale tokens that caused the false positive
+            const keys = Object.keys(localStorage).filter(
+              k => k.startsWith("sb-") && k.endsWith("-auth-token")
+            );
+            keys.forEach(k => {
+              try { localStorage.removeItem(k); } catch { /* ignore */ }
+            });
+            return;
+          }
+          
+          // Double-check: make a simple API call to verify the token works
+          const { error: testError } = await supabase
+            .from("site_settings_public")
+            .select("key")
+            .limit(1);
+          
+          if (cancelled) return;
+          
+          // Only navigate if the token is actually working
+          if (!testError) {
             navigate("/settings", { replace: true });
           }
         } catch {
           // Session check failed; stay on login page.
         }
-      }, 300);
-      return () => window.clearTimeout(timer);
+      }, 500); // Increased debounce to allow auth state to settle
+      
+      return () => {
+        cancelled = true;
+        window.clearTimeout(timer);
+      };
     }
   }, [isAuthenticated, loading, navigate]);
 
