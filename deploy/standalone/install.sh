@@ -80,11 +80,12 @@ generate_jwt_key() {
     echo "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6IiR7cm9sZX0iLCJpYXQiOjE2NDExNjk1MjAsImV4cCI6MTc5ODkzNTkyMH0.$(echo -n "demo-$role-key" | base64)"
 }
 
-# Escape value for safe use in .env file (handles quotes and special chars)
+# Escape value for safe use in double-quoted .env strings
+# Works with both docker compose (dotenv) AND bash source
 escape_env_value() {
     local val="$1"
-    # Replace single quotes with escaped version for single-quoted strings
-    echo "$val" | sed "s/'/'\\\\''/g"
+    # Escape: backslash, double-quote, dollar sign, backtick
+    printf '%s' "$val" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\$/\\$/g' -e 's/`/\\`/g'
 }
 
 echo -e "${BOLD}━━━ Site Configuration ━━━${NC}"
@@ -199,11 +200,11 @@ ESC_SMTP_PASS=$(escape_env_value "$SMTP_PASS")
     echo "# ==================="
     echo "# Site Settings"
     echo "# ==================="
-    echo "SITE_NAME='${ESC_SITE_NAME}'"
-    echo "SITE_DESCRIPTION='${ESC_SITE_DESCRIPTION}'"
-    echo "SITE_AUTHOR='${ESC_SITE_AUTHOR}'"
-    echo "SITE_URL='${SITE_URL}'"
-    echo "API_EXTERNAL_URL='${API_URL}'"
+    echo "SITE_NAME=\"${ESC_SITE_NAME}\""
+    echo "SITE_DESCRIPTION=\"${ESC_SITE_DESCRIPTION}\""
+    echo "SITE_AUTHOR=\"${ESC_SITE_AUTHOR}\""
+    echo "SITE_URL=\"${SITE_URL}\""
+    echo "API_EXTERNAL_URL=\"${API_URL}\""
     echo ""
     echo "# ==================="
     echo "# Ports"
@@ -226,26 +227,26 @@ ESC_SMTP_PASS=$(escape_env_value "$SMTP_PASS")
     echo "# ==================="
     echo "# Database"
     echo "# ==================="
-    echo "POSTGRES_PASSWORD='${POSTGRES_PASSWORD}'"
+    echo "POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD}\""
     echo ""
     echo "# ==================="
     echo "# Authentication"
     echo "# ==================="
-    echo "JWT_SECRET='${JWT_SECRET}'"
-    echo "ANON_KEY='${ANON_KEY}'"
-    echo "SERVICE_ROLE_KEY='${SERVICE_ROLE_KEY}'"
-    echo "SECRET_KEY_BASE='${SECRET_KEY_BASE}'"
+    echo "JWT_SECRET=\"${JWT_SECRET}\""
+    echo "ANON_KEY=\"${ANON_KEY}\""
+    echo "SERVICE_ROLE_KEY=\"${SERVICE_ROLE_KEY}\""
+    echo "SECRET_KEY_BASE=\"${SECRET_KEY_BASE}\""
     echo "MAILER_AUTOCONFIRM=${MAILER_AUTOCONFIRM}"
     echo "DISABLE_SIGNUP=false"
     echo ""
     echo "# ==================="
     echo "# Email (SMTP)"
     echo "# ==================="
-    echo "SMTP_HOST='${SMTP_HOST}'"
-    echo "SMTP_PORT='${SMTP_PORT}'"
-    echo "SMTP_USER='${SMTP_USER}'"
-    echo "SMTP_PASS='${ESC_SMTP_PASS}'"
-    echo "SMTP_ADMIN_EMAIL='${SMTP_FROM}'"
+    echo "SMTP_HOST=\"${SMTP_HOST}\""
+    echo "SMTP_PORT=\"${SMTP_PORT}\""
+    echo "SMTP_USER=\"${SMTP_USER}\""
+    echo "SMTP_PASS=\"${ESC_SMTP_PASS}\""
+    echo "SMTP_ADMIN_EMAIL=\"${SMTP_FROM}\""
     echo ""
     echo "# ==================="
     echo "# Additional"
