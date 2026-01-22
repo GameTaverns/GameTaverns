@@ -248,8 +248,11 @@ ESC_SMTP_PASS=$(escape_env_value "$SMTP_PASS")
     echo "# Authentication"
     echo "# ==================="
     echo "JWT_SECRET=\"${JWT_SECRET}\""
-    echo "ANON_KEY=\"${ANON_KEY}\""
-    echo "SERVICE_ROLE_KEY=\"${SERVICE_ROLE_KEY}\""
+    # NOTE: docker compose .env parsing does NOT reliably strip quotes.
+    # Keep JWTs unquoted so Kong key-auth sees the exact same value that
+    # scripts (which `source .env`) will send in the `apikey` header.
+    echo "ANON_KEY=${ANON_KEY}"
+    echo "SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
     echo "SECRET_KEY_BASE=\"${SECRET_KEY_BASE}\""
     echo "MAILER_AUTOCONFIRM=${MAILER_AUTOCONFIRM}"
     echo "DISABLE_SIGNUP=false"
