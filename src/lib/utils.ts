@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { getSupabaseConfig } from "@/config/runtime";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -36,7 +37,8 @@ export function proxiedImageUrl(url: string | null | undefined): string | undefi
     // Only proxy BGG images - other images (like Unsplash) work fine directly
     if (u.hostname === "cf.geekdo-images.com") {
       const normalized = cleanBggUrl(url);
-      return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
+      const { url: apiUrl } = getSupabaseConfig();
+      return `${apiUrl}/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
     }
     
     // For all other URLs (Unsplash, etc.), just return the original

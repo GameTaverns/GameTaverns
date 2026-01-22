@@ -335,7 +335,8 @@ const DemoSettings = () => {
     // Try BGG lookup with AI extraction (same as live version)
     if (bggId) {
       try {
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bgg-lookup`, {
+        const { url: apiUrl } = (await import("@/config/runtime")).getSupabaseConfig();
+        const res = await fetch(`${apiUrl}/functions/v1/bgg-lookup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ bgg_id: bggId, use_ai: true }),

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/backend/client";
+import { getSupabaseConfig } from "@/config/runtime";
 import type { User, Session } from "@supabase/supabase-js";
 
 export function useAuth() {
@@ -8,6 +9,19 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleLoading, setRoleLoading] = useState(true);
+
+  const { url: apiUrl, anonKey } = getSupabaseConfig();
+  const authStorageKey = (() => {
+    try {
+      const baseUrl = new URL(apiUrl);
+      // Supabase SDK uses `sb-<projectRef>-auth-token` but in self-hosted we
+      // don't have a stable project ref. Use host-based namespace.
+      const ns = baseUrl.host.replace(/[^a-z0-9]/gi, "_");
+      return `sb-${ns}-auth-token`;
+    } catch {
+      return "sb-local-auth-token";
+    }
+  })();
 
   useEffect(() => {
     let mounted = true;
@@ -23,7 +37,7 @@ export function useAuth() {
         const controller = new AbortController();
         const t = setTimeout(() => controller.abort(), timeoutMs);
         try {
-          const url = new URL(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_roles`);
+          const url = new URL(`${apiUrl}/rest/v1/user_roles`);
           url.searchParams.set("select", "role");
           url.searchParams.set("user_id", `eq.${userId}`);
           url.searchParams.set("role", "eq.admin");
@@ -31,7 +45,7 @@ export function useAuth() {
 
           const res = await fetch(url.toString(), {
             headers: {
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              apikey: anonKey,
               Authorization: `Bearer ${accessToken}`,
             },
             signal: controller.signal,
@@ -114,9 +128,7 @@ export function useAuth() {
 
     const readStoredSession = (): Session | null => {
       try {
-        const baseUrl = new URL(import.meta.env.VITE_SUPABASE_URL);
-        const storageKey = `sb-${baseUrl.hostname.split(".")[0]}-auth-token`;
-        const raw = localStorage.getItem(storageKey);
+        const raw = localStorage.getItem(authStorageKey);
         if (!raw) return null;
 
         const parsed = JSON.parse(raw);
@@ -174,15 +186,12 @@ export function useAuth() {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const baseUrl = new URL(import.meta.env.VITE_SUPABASE_URL);
-      const storageKey = `sb-${baseUrl.hostname.split(".")[0]}-auth-token`;
-
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/auth/v1/token?grant_type=password`;
+      const url = `${apiUrl}/auth/v1/token?grant_type=password`;
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: anonKey,
         },
         body: JSON.stringify({ email, password }),
         signal: controller.signal,
@@ -204,7 +213,7 @@ export function useAuth() {
 
       // Clear potentially stuck lock keys for this storage namespace.
       if (typeof window !== "undefined" && window.localStorage) {
-        const lockPrefix = `lock:${storageKey}`;
+        const lockPrefix = `lock:${authStorageKey}`;
         const keys: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
@@ -242,7 +251,7 @@ export function useAuth() {
           expires_at: (json as any)?.expires_at,
           user: (json as any)?.user,
         };
-        localStorage.setItem(storageKey, JSON.stringify(sessionToPersist));
+        localStorage.setItem(authStorageKey, JSON.stringify(sessionToPersist));
         window.location.assign("/settings");
         return { error: null };
       }
