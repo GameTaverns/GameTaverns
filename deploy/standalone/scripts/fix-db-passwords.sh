@@ -32,6 +32,12 @@ docker exec -i gamehaven-db psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgre
 -- Create roles if they don't exist
 DO \$\$
 BEGIN
+  -- GoTrue migrations expect a role literally named "postgres" to exist.
+  -- When the cluster is initialized with POSTGRES_USER=supabase_admin,
+  -- the default "postgres" role may not be created.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+    CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE;
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
     CREATE ROLE supabase_auth_admin WITH LOGIN;
   END IF;
@@ -45,6 +51,7 @@ END
 \$\$;
 
 -- Reset passwords
+ALTER ROLE postgres WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_auth_admin WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE authenticator WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_admin WITH PASSWORD '${ESCAPED_PW}';

@@ -590,6 +590,12 @@ docker exec -i gamehaven-db psql -U supabase_admin -d postgres << EOSQL
 -- Ensure internal roles exist (in case 00-init-users.sql didn't create them)
 DO \$\$
 BEGIN
+  -- GoTrue migrations expect a role literally named "postgres" to exist.
+  -- When the cluster is initialized with POSTGRES_USER=supabase_admin,
+  -- the default "postgres" role may not be created.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+    CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE;
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
     CREATE ROLE supabase_auth_admin WITH LOGIN;
   END IF;
@@ -612,6 +618,7 @@ END
 \$\$;
 
 -- Set passwords for internal roles (must match .env POSTGRES_PASSWORD)
+ALTER ROLE postgres WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_auth_admin WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE authenticator WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_storage_admin WITH PASSWORD '${ESCAPED_PW}';
