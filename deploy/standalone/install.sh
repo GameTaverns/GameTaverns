@@ -542,6 +542,25 @@ KONGEOF
 echo -e "${GREEN}✓${NC} Generated kong.yml with API keys"
 
 # ==========================================
+# COPY EDGE FUNCTIONS
+# ==========================================
+# The edge-runtime container mounts ./functions. Copy from repo.
+
+echo ""
+echo -e "${CYAN}Copying edge functions...${NC}"
+
+# Create functions directory if it doesn't exist
+mkdir -p ./functions
+
+# Copy all edge functions from repo
+if [ -d "../../supabase/functions" ]; then
+    cp -r ../../supabase/functions/* ./functions/
+    echo -e "${GREEN}✓${NC} Copied edge functions to ./functions/"
+else
+    echo -e "${YELLOW}Warning: supabase/functions not found. Edge functions may not work.${NC}"
+fi
+
+# ==========================================
 # START DATABASE FIRST (Two-Stage Startup)
 # ==========================================
 # We must start the DB alone, configure passwords, then start other services.
