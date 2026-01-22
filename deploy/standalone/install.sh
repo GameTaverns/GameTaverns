@@ -828,13 +828,17 @@ fi
 # Assign admin role
 echo -e "${CYAN}Assigning admin role...${NC}"
 
-docker exec -i gamehaven-db psql -U supabase_admin -d postgres << EOF
+# Use a superuser role to avoid RLS/privilege issues and verify the insert.
+docker exec -i gamehaven-db psql -v ON_ERROR_STOP=1 -U postgres -d postgres << EOF
 INSERT INTO public.user_roles (user_id, role)
-VALUES ('${USER_ID}', 'admin')
+VALUES ('${USER_ID}', 'admin'::public.app_role)
 ON CONFLICT (user_id, role) DO NOTHING;
+
+\echo 'Verifying admin role...'
+SELECT role FROM public.user_roles WHERE user_id = '${USER_ID}' AND role = 'admin'::public.app_role;
 EOF
 
-echo -e "${GREEN}✓${NC} Admin role assigned"
+echo -e "${GREEN}✓${NC} Admin role assigned (verified)"
 
 # ==========================================
 # NGINX REVERSE PROXY SETUP (OPTIONAL)

@@ -143,6 +143,21 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
+
+    # Studio (optional): served at https://<domain>/studio/
+    # This avoids needing to expose a separate port over HTTPS.
+    location /studio/ {
+        rewrite ^/studio/(.*)\$ /\$1 break;
+        proxy_pass http://127.0.0.1:${STUDIO_PORT:-3001};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 86400;
+    }
 }
 NGINXCONF
 
@@ -220,7 +235,7 @@ if [[ "$SETUP_SSL" =~ ^[Yy] ]] && [ -n "$LE_EMAIL" ]; then
     echo ""
     echo -e "${CYAN}Updating configuration with HTTPS URLs...${NC}"
     
-    # Update SITE_URL and API_EXTERNAL_URL in .env
+        # Update SITE_URL and API_EXTERNAL_URL in .env
     if [ -f .env ]; then
         sed -i "s|^SITE_URL=.*|SITE_URL=\"https://${DOMAIN}\"|" .env
         sed -i "s|^API_EXTERNAL_URL=.*|API_EXTERNAL_URL=\"https://${DOMAIN}/api\"|" .env

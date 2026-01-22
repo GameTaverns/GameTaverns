@@ -19,8 +19,16 @@ const Login = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    // In some self-hosted environments, a stale session can be briefly hydrated from
+    // storage and then cleared by the auth listener, causing a redirect loop
+    // (/admin -> /settings -> /admin ...). Debounce the redirect to avoid acting
+    // on transient auth state.
     if (!loading && isAuthenticated) {
-      navigate("/settings");
+      const t = window.setTimeout(() => {
+        // Re-check after a short delay; if auth state was transient it will have cleared.
+        if (isAuthenticated) navigate("/settings", { replace: true });
+      }, 250);
+      return () => window.clearTimeout(t);
     }
   }, [isAuthenticated, loading, navigate]);
 
