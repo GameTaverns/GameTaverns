@@ -57,6 +57,16 @@ wait_for_auth() {
     return 1
 }
 
+print_auth_failure_diagnostics() {
+    echo -e "\n${YELLOW}Auth container status:${NC}"
+    docker compose ps auth 2>/dev/null || docker ps --filter name=gamehaven-auth || true
+    echo -e "\n${YELLOW}Last 120 lines of auth logs:${NC}"
+    docker logs gamehaven-auth --tail=120 || true
+    echo -e "\n${YELLOW}Last 80 lines of db logs:${NC}"
+    docker logs gamehaven-db --tail=80 || true
+    echo ""
+}
+
 sync_db_passwords() {
     echo -e "${YELLOW}Synchronizing database passwords...${NC}"
     
@@ -116,16 +126,15 @@ else
     sync_db_passwords
     
     echo -e "${YELLOW}Restarting services...${NC}"
-    docker restart gamehaven-auth gamehaven-rest gamehaven-realtime >/dev/null 2>&1 || true
+    # Restart kong too since the health check is routed through it.
+    docker restart gamehaven-auth gamehaven-rest gamehaven-realtime gamehaven-kong >/dev/null 2>&1 || true
     
     echo -e "${YELLOW}Waiting for services to initialize...${NC}"
     if ! wait_for_auth 120; then
         echo -e "${RED}Error: Auth service failed to start${NC}"
-        echo ""
-        echo -e "${YELLOW}Troubleshooting:${NC}"
-        echo -e "  1. Check auth logs: ${YELLOW}docker logs gamehaven-auth --tail=50${NC}"
-        echo -e "  2. Check Kong logs: ${YELLOW}docker logs gamehaven-kong --tail=50${NC}"
-        echo -e "  3. Check all services: ${YELLOW}docker compose ps${NC}"
+        print_auth_failure_diagnostics
+        echo -e "${YELLOW}Also check Kong logs:${NC} ${YELLOW}docker logs gamehaven-kong --tail=80${NC}"
+        echo -e "${YELLOW}And service list:${NC} ${YELLOW}docker compose ps${NC}"
         exit 1
     fi
     

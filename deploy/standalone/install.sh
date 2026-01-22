@@ -22,11 +22,43 @@ DEFAULT_STUDIO_PORT="3001"
 DEFAULT_POSTGRES_PORT="5432"
 DEFAULT_KONG_PORT="8000"
 
+# ==========================================
+# EXISTING INSTALL DETECTION
+# ==========================================
+
+EXISTING_ENV=false
+if [ -f .env ]; then
+    EXISTING_ENV=true
+fi
+
+EXISTING_DB_VOLUME=false
+if docker volume inspect gamehaven-db >/dev/null 2>&1; then
+    EXISTING_DB_VOLUME=true
+fi
+
 echo ""
 echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║${NC}          ${BOLD}Game Haven - Self-Hosted Installation${NC}            ${CYAN}║${NC}"
 echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
+
+# If we detect an existing install, default to reusing secrets.
+# Changing POSTGRES_PASSWORD/JWT_SECRET while keeping the existing DB volume
+# will break auth/rest connectivity.
+REUSE_EXISTING_SECRETS=false
+if [ "$EXISTING_ENV" = true ] || [ "$EXISTING_DB_VOLUME" = true ]; then
+    echo -e "${YELLOW}${BOLD}Existing installation detected.${NC}"
+    if [ "$EXISTING_DB_VOLUME" = true ]; then
+        echo -e "${YELLOW}- Found docker volume: gamehaven-db${NC}"
+    fi
+    if [ "$EXISTING_ENV" = true ]; then
+        echo -e "${YELLOW}- Found .env in this directory${NC}"
+    fi
+    echo -e "${YELLOW}Re-running install with NEW secrets while keeping the existing DB volume will prevent the auth service from starting.${NC}"
+    echo ""
+    prompt_yn REUSE_EXISTING_SECRETS "Reuse existing secrets (.env) and keep the current database?" "y"
+    echo ""
+fi
 
 # Function to prompt with default
 prompt() {
@@ -102,9 +134,20 @@ escape_env_value() {
 echo -e "${BOLD}━━━ Site Configuration ━━━${NC}"
 echo ""
 
+# If reusing secrets, also reuse the previous site config as defaults.
+if [ "$REUSE_EXISTING_SECRETS" = true ] && [ -f .env ]; then
+    # shellcheck disable=SC1091
+    source .env
+    DEFAULT_SITE_NAME="${SITE_NAME:-$DEFAULT_SITE_NAME}"
+    DEFAULT_APP_PORT="${APP_PORT:-$DEFAULT_APP_PORT}"
+    DEFAULT_STUDIO_PORT="${STUDIO_PORT:-$DEFAULT_STUDIO_PORT}"
+    DEFAULT_POSTGRES_PORT="${POSTGRES_PORT:-$DEFAULT_POSTGRES_PORT}"
+    DEFAULT_KONG_PORT="${KONG_HTTP_PORT:-$DEFAULT_KONG_PORT}"
+fi
+
 prompt SITE_NAME "Site name" "$DEFAULT_SITE_NAME"
-prompt SITE_DESCRIPTION "Site description" "Browse and discover our collection of board games"
-prompt SITE_AUTHOR "Site author/owner name" "$SITE_NAME"
+prompt SITE_DESCRIPTION "Site description" "${SITE_DESCRIPTION:-Browse and discover our collection of board games}"
+prompt SITE_AUTHOR "Site author/owner name" "${SITE_AUTHOR:-$SITE_NAME}"
 
 echo ""
 echo -e "${BOLD}━━━ Domain & Ports ━━━${NC}"
@@ -200,19 +243,33 @@ echo ""
 echo -e "${BOLD}━━━ Generating Secrets ━━━${NC}"
 echo ""
 
-echo -e "${CYAN}Generating secure credentials...${NC}"
+echo -e "${CYAN}Preparing secure credentials...${NC}"
 
-POSTGRES_PASSWORD=$(generate_secret 32)
-JWT_SECRET=$(generate_secret 64)
-SECRET_KEY_BASE=$(generate_secret 64)
+if [ "$REUSE_EXISTING_SECRETS" = true ] && [ -f .env ]; then
+    # shellcheck disable=SC1091
+    source .env
+    # These MUST exist if we're reusing. If any are missing, regenerate safely.
+    if [ -z "${POSTGRES_PASSWORD:-}" ] || [ -z "${JWT_SECRET:-}" ] || [ -z "${ANON_KEY:-}" ] || [ -z "${SERVICE_ROLE_KEY:-}" ] || [ -z "${SECRET_KEY_BASE:-}" ]; then
+        echo -e "${YELLOW}Existing .env is missing one or more required secrets; regenerating all secrets.${NC}"
+        REUSE_EXISTING_SECRETS=false
+    else
+        echo -e "${GREEN}✓${NC} Reusing existing secrets from .env"
+    fi
+fi
 
-# Generate proper JWT tokens for API access
-ANON_KEY=$(generate_jwt "anon" "$JWT_SECRET")
-SERVICE_ROLE_KEY=$(generate_jwt "service_role" "$JWT_SECRET")
+if [ "$REUSE_EXISTING_SECRETS" != true ]; then
+    POSTGRES_PASSWORD=$(generate_secret 32)
+    JWT_SECRET=$(generate_secret 64)
+    SECRET_KEY_BASE=$(generate_secret 64)
 
-echo -e "${GREEN}✓${NC} Postgres password generated"
-echo -e "${GREEN}✓${NC} JWT secret generated"
-echo -e "${GREEN}✓${NC} API keys generated"
+    # Generate proper JWT tokens for API access
+    ANON_KEY=$(generate_jwt "anon" "$JWT_SECRET")
+    SERVICE_ROLE_KEY=$(generate_jwt "service_role" "$JWT_SECRET")
+
+    echo -e "${GREEN}✓${NC} Postgres password generated"
+    echo -e "${GREEN}✓${NC} JWT secret generated"
+    echo -e "${GREEN}✓${NC} API keys generated"
+fi
 
 # ==========================================
 # CREATE .ENV FILE
@@ -344,7 +401,10 @@ echo ""
 echo -e "${CYAN}Waiting for database to be ready...${NC}"
 
 for i in {1..60}; do
-    if docker exec gamehaven-db pg_isready -U supabase_admin >/dev/null 2>&1; then
+    # Note: pg_isready doesn't require a password inside the container, and
+    # using the postgres superuser here avoids false negatives if supabase_admin
+    # hasn't been created yet.
+    if docker exec gamehaven-db pg_isready -U postgres >/dev/null 2>&1; then
         echo -e "${GREEN}✓${NC} Database is ready"
         break
     fi
@@ -396,7 +456,12 @@ for i in {1..90}; do
     
     if [ $i -eq 90 ]; then
         echo -e "${RED}Error: Auth service failed to start${NC}"
-        echo -e "Run: ${YELLOW}docker logs gamehaven-auth${NC}"
+        echo -e "\n${YELLOW}Auth container status:${NC}"
+        docker compose ps auth || true
+        echo -e "\n${YELLOW}Last 120 lines of auth logs:${NC}"
+        docker logs gamehaven-auth --tail=120 || true
+        echo -e "\n${YELLOW}Last 80 lines of db logs (often shows auth DB login failures):${NC}"
+        docker logs gamehaven-db --tail=80 || true
         exit 1
     fi
     
