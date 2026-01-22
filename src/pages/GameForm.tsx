@@ -128,7 +128,7 @@ const GameForm = () => {
 
   // Redirect if not authenticated
   if (!authLoading && !isAuthenticated) {
-    navigate("/login");
+    navigate("/admin");
     return null;
   }
 
