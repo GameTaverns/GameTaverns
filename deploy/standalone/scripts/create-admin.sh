@@ -135,10 +135,25 @@ fi
 echo ""
 echo -e "${YELLOW}Creating admin user...${NC}"
 
+# Kong key-auth expects the key that was configured in kong.yml.
+# The install wizard typically writes SERVICE_ROLE_KEY, while kong.yml may reference SUPABASE_SERVICE_KEY.
+ADMIN_API_KEY="${SUPABASE_SERVICE_KEY:-${SERVICE_ROLE_KEY}}"
+
+if [ -z "$ADMIN_API_KEY" ]; then
+    echo -e "${RED}Error: No service key found in environment.${NC}"
+    echo -e "Expected one of: ${YELLOW}SUPABASE_SERVICE_KEY${NC} or ${YELLOW}SERVICE_ROLE_KEY${NC}"
+    exit 1
+fi
+
+# Helpful sanity check (service keys are usually JWTs)
+if ! echo "$ADMIN_API_KEY" | grep -q '\.'; then
+    echo -e "${YELLOW}Warning:${NC} Service key doesn't look like a JWT; /auth/v1/admin endpoints may return Unauthorized."
+fi
+
 RESPONSE=$(curl -s -X POST "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
     -H "Content-Type: application/json" \
-    -H "apikey: ${SERVICE_ROLE_KEY}" \
-    -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+    -H "apikey: ${ADMIN_API_KEY}" \
+    -H "Authorization: Bearer ${ADMIN_API_KEY}" \
     -d "{
         \"email\": \"${ADMIN_EMAIL}\",
         \"password\": \"${ADMIN_PASSWORD}\",
