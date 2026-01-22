@@ -14,8 +14,16 @@ export function useAuth() {
   const authStorageKey = (() => {
     try {
       const baseUrl = new URL(apiUrl);
-      // Supabase SDK uses `sb-<projectRef>-auth-token` but in self-hosted we
-      // don't have a stable project ref. Use host-based namespace.
+      // Prefer the canonical key format when the backend is a hosted project:
+      // `sb-<projectRef>-auth-token` where <projectRef> is the subdomain.
+      // This avoids an initial "unauthenticated" render, which can cause
+      // /admin <-> /settings redirect loops.
+      const hostedMatch = baseUrl.host.match(/^([a-z0-9-]+)\.supabase\.co$/i);
+      if (hostedMatch?.[1]) {
+        return `sb-${hostedMatch[1]}-auth-token`;
+      }
+
+      // In self-hosted we don't have a stable project ref. Use host-based namespace.
       const ns = baseUrl.host.replace(/[^a-z0-9]/gi, "_");
       return `sb-${ns}-auth-token`;
     } catch {
