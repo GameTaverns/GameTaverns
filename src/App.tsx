@@ -50,6 +50,7 @@ function AppRoutes() {
             <DemoGuard><GameDetail /></DemoGuard>
           } />
           <Route path="/admin" element={<Login />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin/add" element={<GameForm />} />
           <Route path="/admin/edit/:id" element={<GameForm />} />
