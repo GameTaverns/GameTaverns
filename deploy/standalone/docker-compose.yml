@@ -189,7 +189,7 @@ services:
 
   # Supabase Studio (Admin UI) - Optional
   studio:
-    image: supabase/studio:20250113-6c94a0c
+    image: supabase/studio:latest
     container_name: gamehaven-studio
     restart: unless-stopped
     ports:
