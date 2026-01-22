@@ -53,8 +53,8 @@ su - gamehaven
 
 ```bash
 # Clone the repository
-git clone https://github.com/ThaneWinters/tzolakgamehaven.git
-cd tzolakgamehaven/deploy/standalone
+git clone https://github.com/ThaneWinters/GameHaven.git
+cd GameHaven/deploy/standalone
 
 # Make scripts executable
 chmod +x install.sh
@@ -102,8 +102,8 @@ For an even faster setup on a fresh server:
 
 ```bash
 curl -fsSL https://get.docker.com | sh && \
-git clone https://github.com/ThaneWinters/tzolakgamehaven.git && \
-cd tzolakgamehaven/deploy/standalone && \
+git clone https://github.com/ThaneWinters/GameHaven.git && \
+cd GameHaven/deploy/standalone && \
 chmod +x install.sh scripts/*.sh && \
 ./install.sh
 ```
@@ -279,6 +279,20 @@ The script will:
 ```bash
 ./scripts/fix-db-passwords.sh
 ```
+
+### Roles missing ("role does not exist")
+
+If you see errors like `role "supabase_auth_admin" does not exist`, the DB volume likely wasnt initialized correctly (or an old volume is being reused).
+
+The latest scripts will attempt to create the missing internal roles automatically, but if services still loop/restart, do a clean reset:
+
+```bash
+docker compose down -v
+docker compose up -d
+./scripts/create-admin.sh
+```
+
+Also note: changing `POSTGRES_PASSWORD`, `JWT_SECRET`, `ANON_KEY`, or `SERVICE_ROLE_KEY` after the first boot can break auth/API until you either re-run the installer and/or recreate volumes.
 
 ### Check service health
 

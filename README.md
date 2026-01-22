@@ -3,7 +3,7 @@
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
-**GitHub**: https://github.com/ThaneWinters/tzolakgamehaven
+**GitHub**: https://github.com/ThaneWinters/GameHaven
 
 ## How can I edit this code?
 

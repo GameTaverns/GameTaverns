@@ -49,9 +49,26 @@ if [ "$AUTH_STATUS" != "healthy" ]; then
         sleep 1
     done
     
-    # Reset passwords for internal users
-    docker exec -i gamehaven-db psql -U supabase_admin -d postgres << EOF
--- Reset passwords for internal Supabase users
+    # Reset passwords for internal users.
+    # NOTE: On some installs/volumes these roles may not exist yet; create them if missing.
+    docker exec -i gamehaven-db psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres << EOF
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+    CREATE ROLE supabase_auth_admin WITH LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
+    CREATE ROLE authenticator WITH LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+    CREATE ROLE supabase_admin WITH LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+    CREATE ROLE supabase_storage_admin WITH LOGIN;
+  END IF;
+END
+$$;
+
 ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE supabase_admin WITH PASSWORD '${POSTGRES_PASSWORD}';

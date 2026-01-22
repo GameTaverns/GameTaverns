@@ -25,7 +25,24 @@ fi
 echo -e "${YELLOW}Resetting Supabase internal user passwords...${NC}"
 
 # Reset passwords for all internal users
-docker exec -i gamehaven-db psql -U postgres -d postgres << EOF
+docker exec -i gamehaven-db psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres << EOF
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+    CREATE ROLE supabase_auth_admin WITH LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
+    CREATE ROLE authenticator WITH LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+    CREATE ROLE supabase_admin WITH LOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+    CREATE ROLE supabase_storage_admin WITH LOGIN;
+  END IF;
+END
+$$;
+
 -- Reset passwords for internal users to match POSTGRES_PASSWORD
 ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
