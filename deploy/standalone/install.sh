@@ -80,8 +80,12 @@ generate_jwt() {
     # Header: {"alg":"HS256","typ":"JWT"}
     local header=$(echo -n '{"alg":"HS256","typ":"JWT"}' | openssl base64 -e | tr -d '=' | tr '/+' '_-' | tr -d '\n')
     
-    # Payload with role, issuer, and long expiry (year 2050)
-    local payload=$(echo -n "{\"role\":\"$role\",\"iss\":\"supabase\",\"iat\":$(date +%s),\"exp\":2524608000}" | openssl base64 -e | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+    # Payload with required claims for GoTrue admin endpoints.
+    # - aud: must match GOTRUE_JWT_AUD (docker-compose sets 'authenticated')
+    # - sub: a UUID string (commonly all zeros for service tokens)
+    # - role: 'anon' or 'service_role'
+    # - iss/iat/exp: standard JWT claims
+    local payload=$(echo -n "{\"role\":\"$role\",\"iss\":\"supabase\",\"aud\":\"authenticated\",\"sub\":\"00000000-0000-0000-0000-000000000000\",\"iat\":$(date +%s),\"exp\":2524608000}" | openssl base64 -e | tr -d '=' | tr '/+' '_-' | tr -d '\n')
     
     # Signature
     local signature=$(echo -n "${header}.${payload}" | openssl dgst -sha256 -hmac "$secret" -binary | openssl base64 -e | tr -d '=' | tr '/+' '_-' | tr -d '\n')
