@@ -585,6 +585,7 @@ echo -e "${CYAN}Configuring database roles and passwords...${NC}"
 ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 
 # Set passwords for internal Supabase roles BEFORE starting auth/rest
+# Also create auth and storage schemas that GoTrue and Storage expect
 docker exec -i gamehaven-db psql -U supabase_admin -d postgres << EOSQL
 -- Ensure internal roles exist (in case 00-init-users.sql didn't create them)
 DO \$\$
@@ -619,10 +620,25 @@ ALTER ROLE supabase_storage_admin WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
 ALTER ROLE supabase_storage_admin WITH CREATEDB CREATEROLE;
 
--- Ensure schema permissions
+-- =====================================================
+-- CREATE AUTH AND STORAGE SCHEMAS (required by GoTrue/Storage)
+-- These must exist BEFORE the services start their migrations
+-- =====================================================
+CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
+CREATE SCHEMA IF NOT EXISTS storage AUTHORIZATION supabase_storage_admin;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
+-- Grant schema permissions
+GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON SCHEMA public TO supabase_auth_admin;
 GRANT ALL ON SCHEMA public TO supabase_storage_admin;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+
+-- Allow auth_admin to grant to API roles
+GRANT anon TO supabase_auth_admin;
+GRANT authenticated TO supabase_auth_admin;
+GRANT service_role TO supabase_auth_admin;
 
 -- Ensure role grants for PostgREST
 GRANT anon TO authenticator;
