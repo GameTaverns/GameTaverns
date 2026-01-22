@@ -640,6 +640,10 @@ GRANT anon TO supabase_auth_admin;
 GRANT authenticated TO supabase_auth_admin;
 GRANT service_role TO supabase_auth_admin;
 
+-- CRITICAL: Set search_path for supabase_auth_admin so GoTrue can find auth tables
+-- GoTrue queries tables without schema prefix (e.g. "identities" not "auth.identities")
+ALTER ROLE supabase_auth_admin SET search_path TO auth, public, extensions;
+
 -- Ensure role grants for PostgREST
 GRANT anon TO authenticator;
 GRANT authenticated TO authenticator;
