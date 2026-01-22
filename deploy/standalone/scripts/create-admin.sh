@@ -207,11 +207,23 @@ fi
 # If kong.yml exists, ensure the API key we're about to use matches what Kong was configured with.
 # (Kong key-auth compares the literal apikey header value against the baked key in kong.yml.)
 if [ -f "$KONG_YML_PATH" ]; then
-    if ! grep -Fq "$ADMIN_API_KEY" "$KONG_YML_PATH"; then
-        echo -e "${RED}Error:${NC} Service key mismatch between .env and kong.yml. Kong will return Unauthorized."
+    # NOTE: It's not enough for the key to exist *somewhere* in kong.yml — it must be the key
+    # for the `service_role` consumer specifically.
+    SERVICE_ROLE_BLOCK=$(awk '
+      /^consumers:/ {in_consumers=1}
+      in_consumers && /^services:/ {exit}
+      {print}
+    ' "$KONG_YML_PATH" | awk '
+      /- username: service_role/ {in_block=1}
+      in_block {print}
+      in_block && /- username:/ && $0 !~ /- username: service_role/ {exit}
+    ')
+
+    if ! echo "$SERVICE_ROLE_BLOCK" | grep -Fq "$ADMIN_API_KEY"; then
+        echo -e "${RED}Error:${NC} Service key mismatch between .env and kong.yml (service_role consumer). Kong will return Unauthorized."
         echo ""
         echo -e "Loaded from .env: ${YELLOW}SERVICE_ROLE_KEY${NC} (starts with: ${ADMIN_API_KEY:0:16}...)"
-        echo -e "But kong.yml does not contain that key."
+        echo -e "But kong.yml's service_role consumer does not contain that key."
         echo ""
         echo -e "Fix options:"
         echo -e "  1) If you want to KEEP the current DB volume, re-run installer and choose reuse existing secrets:"
@@ -244,6 +256,33 @@ USER_ID=$(echo $RESPONSE | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 
 if [ -z "$USER_ID" ]; then
     # Check for common errors
+    if echo "$RESPONSE" | grep -q '"message"\s*:\s*"Unauthorized"'; then
+        echo -e "${RED}Unauthorized:${NC} The request was rejected before a user id was returned."
+        echo -e "This almost always means Kong's key-auth did not accept the apikey you sent."
+        echo ""
+        echo -e "${YELLOW}Debug info:${NC}"
+        echo -e "- Using KONG_HTTP_PORT: ${KONG_HTTP_PORT:-8000}"
+        echo -e "- SERVICE_ROLE_KEY starts with: ${ADMIN_API_KEY:0:16}..."
+        if [ -f "$KONG_YML_PATH" ]; then
+            echo -e "- kong.yml path: $KONG_YML_PATH"
+            echo -e "- service_role consumer snippet (keys hidden):"
+            echo "$SERVICE_ROLE_BLOCK" | sed -E 's/(key:\s*).+$/\1<redacted>/' | sed -n '1,12p'
+        else
+            echo -e "- kong.yml not found at: $KONG_YML_PATH"
+        fi
+        echo ""
+        echo -e "${YELLOW}Quick isolation test (bypass Kong, hit auth container directly):${NC}"
+        echo -e "Run this (it will NOT print your key):"
+        echo -e "  ${YELLOW}docker exec -i gamehaven-kong sh -lc 'curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer <SERVICE_ROLE_KEY>" -H "Content-Type: application/json" http://auth:9999/admin/users'${NC}"
+        echo -e "If that returns 401/403 too, then auth itself is rejecting the token (JWT_SECRET mismatch)."
+        echo -e "If that returns 200/405/etc but Kong route returns 401, it's definitely a Kong key-auth / kong.yml key mismatch."
+        echo ""
+        echo -e "${YELLOW}Kong logs (last 80 lines):${NC}"
+        docker logs gamehaven-kong --tail=80 || true
+        echo ""
+        exit 1
+    fi
+
     if echo "$RESPONSE" | grep -q "already registered"; then
         echo -e "${YELLOW}User already exists. Attempting to find user ID...${NC}"
         
