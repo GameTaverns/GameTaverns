@@ -52,6 +52,7 @@ function AppRoutes() {
           <Route path="/admin" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/admin/settings" element={<Settings />} />
           <Route path="/admin/add" element={<GameForm />} />
           <Route path="/admin/edit/:id" element={<GameForm />} />
           <Route path="/admin/messages" element={<Messages />} />

@@ -31,6 +31,50 @@ export function useAuth() {
     }
   })();
 
+  const getAllAuthTokenKeys = (): string[] => {
+    if (typeof window === "undefined" || !window.localStorage) return [authStorageKey];
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k === authStorageKey) continue;
+      if (k.startsWith("sb-") && k.endsWith("-auth-token")) keys.push(k);
+    }
+    return [authStorageKey, ...keys];
+  };
+
+  const clearAuthStorage = (keys?: string[]) => {
+    if (typeof window === "undefined" || !window.localStorage) return;
+    const targetKeys = keys ?? getAllAuthTokenKeys();
+    for (const k of targetKeys) {
+      try {
+        localStorage.removeItem(k);
+      } catch {
+        // ignore
+      }
+    }
+
+    // Also clear any stuck lock keys (Supabase SDK storage lock).
+    try {
+      const allKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k) allKeys.push(k);
+      }
+      allKeys
+        .filter((k) => k.startsWith("lock:sb-") && k.endsWith("-auth-token"))
+        .forEach((k) => {
+          try {
+            localStorage.removeItem(k);
+          } catch {
+            // ignore
+          }
+        });
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -166,34 +210,35 @@ export function useAuth() {
     // onAuthStateChange keep everything up to date.
 
     const readStoredSession = (): Session | null => {
-      try {
-        const raw = localStorage.getItem(authStorageKey);
-        if (!raw) return null;
+      const tokenKeys = getAllAuthTokenKeys();
 
-        const parsed = JSON.parse(raw);
-        // When the SDK writes this, it is shaped like a Session.
-        if (parsed?.access_token && parsed?.refresh_token && parsed?.user) {
-          const expired = isTokenExpired(parsed.access_token, parsed?.expires_at ?? null);
-          if (expired) {
-            // Critical: stale sessions in storage cause redirect loops (/admin <-> /settings)
-            // because we "hydrate" first and then the auth listener clears it.
-            try {
-              localStorage.removeItem(authStorageKey);
-            } catch {
-              // ignore
+      for (const key of tokenKeys) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+
+          const parsed = JSON.parse(raw);
+          // When the SDK writes this, it is shaped like a Session.
+          if (parsed?.access_token && parsed?.refresh_token && parsed?.user) {
+            const expired = isTokenExpired(parsed.access_token, parsed?.expires_at ?? null);
+            if (expired) {
+              // Stale sessions in storage cause redirect loops (/admin <-> /settings).
+              // Clear all possible auth token keys so a leftover key can't re-trigger the loop.
+              clearAuthStorage(tokenKeys);
+              return null;
             }
-            return null;
+
+            return parsed as Session;
           }
 
-          return parsed as Session;
+          // Fallback for older/manual shapes; still unlock UI.
+          if (parsed?.user) return ({ user: parsed.user } as any);
+        } catch {
+          // ignore this key and keep searching
         }
-
-        // Fallback for older/manual shapes; still unlock UI.
-        if (parsed?.user) return ({ user: parsed.user } as any);
-        return null;
-      } catch {
-        return null;
       }
+
+      return null;
     };
 
     // Hydrate immediately from storage so pages don't sit on a spinner.
