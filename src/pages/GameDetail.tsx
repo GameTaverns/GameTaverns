@@ -652,14 +652,12 @@ const GameDetail = () => {
                     <h2 className="font-display text-xl font-semibold text-foreground">
                       Play History
                     </h2>
-                    {isAdmin && (
-                      <LogPlayDialog gameId={game.id} gameTitle={game.title}>
-                        <Button size="sm">
-                          <Play className="h-4 w-4 mr-2" />
-                          Log Play
-                        </Button>
-                      </LogPlayDialog>
-                    )}
+                    <LogPlayDialog gameId={game.id} gameTitle={game.title}>
+                      <Button size="sm">
+                        <Play className="h-4 w-4 mr-2" />
+                        Log Play
+                      </Button>
+                    </LogPlayDialog>
                   </div>
                   <PlayHistory gameId={game.id} />
                 </TabsContent>
