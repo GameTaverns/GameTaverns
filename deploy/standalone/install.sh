@@ -640,9 +640,26 @@ ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
 ALTER ROLE supabase_storage_admin WITH CREATEDB CREATEROLE;
 
 -- CREATE AUTH AND STORAGE SCHEMAS (required by GoTrue/Storage)
-CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
-CREATE SCHEMA IF NOT EXISTS storage AUTHORIZATION supabase_storage_admin;
-CREATE SCHEMA IF NOT EXISTS extensions;
+-- Use DO block to handle cases where schema exists with different owner
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'auth') THEN
+    CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin;
+  ELSE
+    ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'storage') THEN
+    CREATE SCHEMA storage AUTHORIZATION supabase_storage_admin;
+  ELSE
+    ALTER SCHEMA storage OWNER TO supabase_storage_admin;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'extensions') THEN
+    CREATE SCHEMA extensions;
+  END IF;
+END
+$$;
 
 -- Grant schema permissions
 GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
@@ -651,22 +668,34 @@ GRANT ALL ON SCHEMA public TO supabase_auth_admin;
 GRANT ALL ON SCHEMA public TO supabase_storage_admin;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
--- Allow auth_admin to grant to API roles
-GRANT anon TO supabase_auth_admin;
-GRANT authenticated TO supabase_auth_admin;
-GRANT service_role TO supabase_auth_admin;
+-- Allow auth_admin to grant to API roles (use DO block to avoid errors if already granted)
+DO $$
+BEGIN
+  EXECUTE 'GRANT anon TO supabase_auth_admin';
+  EXECUTE 'GRANT authenticated TO supabase_auth_admin';
+  EXECUTE 'GRANT service_role TO supabase_auth_admin';
+EXCEPTION WHEN duplicate_object THEN
+  NULL; -- ignore "role is already a member" errors
+END
+$$;
 
 -- CRITICAL: Set search_path for supabase_auth_admin so GoTrue can find auth tables
 -- GoTrue queries tables without schema prefix (e.g. "identities" not "auth.identities")
 ALTER ROLE supabase_auth_admin SET search_path TO auth, public, extensions;
 
--- Ensure role grants for PostgREST
-GRANT anon TO authenticator;
-GRANT authenticated TO authenticator;
-GRANT service_role TO authenticator;
-GRANT anon TO supabase_admin;
-GRANT authenticated TO supabase_admin;
-GRANT service_role TO supabase_admin;
+-- Ensure role grants for PostgREST (use DO block to avoid errors if already granted)
+DO $$
+BEGIN
+  EXECUTE 'GRANT anon TO authenticator';
+  EXECUTE 'GRANT authenticated TO authenticator';
+  EXECUTE 'GRANT service_role TO authenticator';
+  EXECUTE 'GRANT anon TO supabase_admin';
+  EXECUTE 'GRANT authenticated TO supabase_admin';
+  EXECUTE 'GRANT service_role TO supabase_admin';
+EXCEPTION WHEN duplicate_object THEN
+  NULL; -- ignore "role is already a member" errors
+END
+$$;
 EOSQL
 
 # Replace placeholder with actual password commands (avoids escaping issues in heredoc)
@@ -674,14 +703,22 @@ sed -i "s|-- PLACEHOLDER_PASSWORD_COMMANDS|ALTER ROLE postgres WITH PASSWORD '${
 
 # Copy SQL file into container and execute
 docker cp /tmp/init-roles.sql gamehaven-db:/tmp/init-roles.sql
-docker exec gamehaven-db psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres -f /tmp/init-roles.sql
 
-if [ $? -ne 0 ]; then
+# Run SQL and capture output/errors
+SQL_OUTPUT=$(docker exec gamehaven-db psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres -f /tmp/init-roles.sql 2>&1)
+SQL_EXIT_CODE=$?
+
+if [ $SQL_EXIT_CODE -ne 0 ]; then
     echo -e "${RED}Error: Failed to configure database roles${NC}"
+    echo -e "${YELLOW}SQL Output:${NC}"
+    echo "$SQL_OUTPUT"
+    echo ""
     echo -e "Check database logs: ${YELLOW}docker logs gamehaven-db${NC}"
     rm -f /tmp/init-roles.sql
     exit 1
 fi
+
+echo "$SQL_OUTPUT"
 
 rm -f /tmp/init-roles.sql
 
