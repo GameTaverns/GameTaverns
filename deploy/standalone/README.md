@@ -53,8 +53,8 @@ su - gamehaven
 
 ```bash
 # Clone the repository
-git clone https://github.com/ThaneWinters/GameHaven.git
-cd GameHaven/deploy/standalone
+git clone https://github.com/ThaneWinters/GameTavern.git
+cd GameTavern/deploy/standalone
 
 # Make scripts executable
 chmod +x install.sh
@@ -102,8 +102,8 @@ For an even faster setup on a fresh server:
 
 ```bash
 curl -fsSL https://get.docker.com | sh && \
-git clone https://github.com/ThaneWinters/GameHaven.git && \
-cd GameHaven/deploy/standalone && \
+git clone https://github.com/ThaneWinters/GameTavern.git && \
+cd GameTavern/deploy/standalone && \
 chmod +x install.sh scripts/*.sh && \
 ./install.sh
 ```

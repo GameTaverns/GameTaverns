@@ -16,8 +16,8 @@ One-click deployment of Game Haven to your Cloudron server.
    On your local machine or CI server:
    ```bash
    # Clone the repository
-   git clone https://github.com/ThaneWinters/tzolakgamehaven.git
-   cd tzolakgamehaven
+   git clone https://github.com/ThaneWinters/GameTavern.git
+   cd GameTavern
    
    # Build and push to a container registry
    docker build -f deploy/cloudron/Dockerfile -t your-registry/gamehaven:latest .
@@ -46,8 +46,8 @@ One-click deployment of Game Haven to your Cloudron server.
 
 ```bash
 # Clone the repository
-git clone https://github.com/ThaneWinters/tzolakgamehaven.git
-cd tzolakgamehaven/deploy/cloudron
+git clone https://github.com/ThaneWinters/GameTavern.git
+cd GameTavern/deploy/cloudron
 
 # Build the Cloudron package
 cloudron build
@@ -244,6 +244,6 @@ Or via Cloudron Dashboard → App → **Uninstall**
 
 ## Support
 
-- [GitHub Issues](https://github.com/ThaneWinters/tzolakgamehaven/issues)
+- [GitHub Issues](https://github.com/ThaneWinters/GameTavern/issues)
 - [Cloudron Forum](https://forum.cloudron.io)
 - [Supabase Discord](https://discord.supabase.com)

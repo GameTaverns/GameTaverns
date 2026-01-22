@@ -98,8 +98,8 @@ VALUES ('your-user-uuid-here', 'admin');
 
 ```bash
 # Clone the repo
-git clone https://github.com/ThaneWinters/tzolakgamehaven.git
-cd tzolakgamehaven
+git clone https://github.com/ThaneWinters/GameTavern.git
+cd GameTavern
 
 # Build for your registry
 docker build -t registry.yourdomain.com/gamehaven:1.0.0 -f deploy/cloudron/Dockerfile .
