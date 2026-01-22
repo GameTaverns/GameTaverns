@@ -45,6 +45,14 @@ fi
 echo ""
 echo -e "${YELLOW}Creating admin user...${NC}"
 
+# Debug: Show first/last 10 chars of key being used
+KEY_PREVIEW="${SERVICE_ROLE_KEY:0:20}...${SERVICE_ROLE_KEY: -10}"
+echo -e "${BLUE}Using key: ${KEY_PREVIEW}${NC}"
+
+# Verify Kong is using the same key
+KONG_KEY=$(docker exec gamehaven-kong printenv SUPABASE_SERVICE_KEY 2>/dev/null | head -c 30)
+echo -e "${BLUE}Kong sees: ${KONG_KEY}...${NC}"
+
 # Create user via GoTrue API
 RESPONSE=$(curl -s -X POST "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
     -H "Content-Type: application/json" \
