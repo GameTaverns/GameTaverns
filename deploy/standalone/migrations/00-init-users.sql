@@ -3,7 +3,20 @@
 --
 -- NOTE: The supabase/postgres image already creates most of these roles.
 -- This script ensures they exist and have correct permissions.
--- Passwords are set via environment variables and the start.sh script.
+-- Passwords are set via environment variables and the install.sh script.
+
+-- =====================================================
+-- CRITICAL: GoTrue migrations require a "postgres" role to exist.
+-- When POSTGRES_USER=supabase_admin, the default "postgres" role
+-- is NOT created, so we must create it here.
+-- =====================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'postgres') THEN
+    CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS;
+  END IF;
+END
+$$;
 
 -- Ensure core API roles exist (used by PostgREST/JWT roles + grants in app schema)
 DO $$
