@@ -446,6 +446,7 @@ echo -e "${GREEN}✓${NC} Application schema ready"
 echo ""
 echo -e "${CYAN}Waiting for auth service to be ready...${NC}"
 
+# This endpoint is routed by Kong and intentionally left unauthenticated.
 AUTH_HEALTH_URL="http://localhost:${KONG_PORT}/auth/v1/health"
 
 for i in {1..90}; do
