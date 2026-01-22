@@ -39,8 +39,10 @@ if [ "$AUTH_STATUS" != "healthy" ]; then
     echo -e "${YELLOW}Auth service not healthy. Fixing database passwords...${NC}"
     
     # Wait for postgres to be ready
+    # NOTE: supabase/postgres images typically use `supabase_admin` as the DB superuser.
+    # Using `postgres` can fail (role may not exist) in some setups.
     for i in {1..30}; do
-        if docker exec gamehaven-db pg_isready -U postgres >/dev/null 2>&1; then
+        if docker exec gamehaven-db pg_isready -U supabase_admin >/dev/null 2>&1; then
             break
         fi
         echo "  Waiting for database... ($i/30)"
@@ -48,7 +50,7 @@ if [ "$AUTH_STATUS" != "healthy" ]; then
     done
     
     # Reset passwords for internal users
-    docker exec -i gamehaven-db psql -U postgres -d postgres << EOF
+    docker exec -i gamehaven-db psql -U supabase_admin -d postgres << EOF
 -- Reset passwords for internal Supabase users
 ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
@@ -139,7 +141,7 @@ echo -e "${GREEN}✓${NC} User created: $USER_ID"
 # ==========================================
 echo -e "${YELLOW}Assigning admin role...${NC}"
 
-docker exec -i gamehaven-db psql -U postgres -d postgres << EOF
+docker exec -i gamehaven-db psql -U supabase_admin -d postgres << EOF
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('${USER_ID}', 'admin')
 ON CONFLICT (user_id, role) DO NOTHING;
