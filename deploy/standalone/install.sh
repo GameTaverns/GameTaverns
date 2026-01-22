@@ -23,70 +23,8 @@ DEFAULT_POSTGRES_PORT="5432"
 DEFAULT_KONG_PORT="8000"
 
 # ==========================================
-# EXISTING INSTALL DETECTION
+# HELPER FUNCTIONS (must be defined early)
 # ==========================================
-
-EXISTING_ENV=false
-if [ -f .env ]; then
-    EXISTING_ENV=true
-fi
-
-EXISTING_DB_VOLUME=false
-if docker volume inspect gamehaven-db >/dev/null 2>&1; then
-    EXISTING_DB_VOLUME=true
-fi
-
-echo ""
-echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║${NC}          ${BOLD}Game Haven - Self-Hosted Installation${NC}            ${CYAN}║${NC}"
-echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-
-# If we detect an existing install, default to reusing secrets.
-# Changing POSTGRES_PASSWORD/JWT_SECRET while keeping the existing DB volume
-# will break auth/rest connectivity.
-REUSE_EXISTING_SECRETS=false
-if [ "$EXISTING_ENV" = true ] || [ "$EXISTING_DB_VOLUME" = true ]; then
-    echo -e "${YELLOW}${BOLD}Existing installation detected.${NC}"
-    if [ "$EXISTING_DB_VOLUME" = true ]; then
-        echo -e "${YELLOW}- Found docker volume: gamehaven-db${NC}"
-    fi
-    if [ "$EXISTING_ENV" = true ]; then
-        echo -e "${YELLOW}- Found .env in this directory${NC}"
-    fi
-    echo -e "${YELLOW}Re-running install with NEW secrets while keeping the existing DB volume will prevent the auth service from starting.${NC}"
-    echo ""
-    prompt_yn REUSE_EXISTING_SECRETS "Reuse existing secrets (.env) and keep the current database?" "y"
-    echo ""
-fi
-
-# If the DB volume exists and the user wants new secrets, we must wipe the DB.
-# Otherwise internal service roles (supabase_auth_admin/authenticator/etc.) will
-# keep their old passwords and auth/rest will fail with SQLSTATE 28P01.
-WIPE_EXISTING_DB=false
-if [ "$EXISTING_DB_VOLUME" = true ] && [ "$REUSE_EXISTING_SECRETS" != true ]; then
-    echo -e "${RED}${BOLD}Cannot proceed with NEW secrets while keeping the existing database volume.${NC}"
-    echo -e "${YELLOW}Reason:${NC} internal database roles keep the old password, causing auth/rest to fail to connect."
-    echo ""
-    prompt_yn WIPE_EXISTING_DB "Delete the existing database volume (gamehaven-db) and start fresh?" "n"
-    echo ""
-
-    if [ "$WIPE_EXISTING_DB" = true ]; then
-        echo -e "${YELLOW}Stopping stack and removing database volume...${NC}"
-        docker compose down -v >/dev/null 2>&1 || true
-        # Explicitly remove the named volume to avoid accidental reuse.
-        docker volume rm gamehaven-db >/dev/null 2>&1 || true
-        EXISTING_DB_VOLUME=false
-        echo -e "${GREEN}✓${NC} Database volume removed"
-        echo ""
-    else
-        echo -e "${YELLOW}Aborting to prevent a broken install.${NC}"
-        echo -e "Choose one of:${NC}"
-        echo -e "  1) Re-run and answer ${GREEN}Yes${NC} to reuse existing secrets (.env)"
-        echo -e "  2) Re-run and answer ${GREEN}Yes${NC} to wipe the database volume"
-        exit 1
-    fi
-fi
 
 # Function to prompt with default
 prompt() {
@@ -154,6 +92,44 @@ escape_env_value() {
     local val="$1"
     printf '%s' "$val" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\$/\\$/g' -e 's/`/\\`/g'
 }
+
+# ==========================================
+# EXISTING INSTALL DETECTION
+# ==========================================
+
+EXISTING_ENV=false
+if [ -f .env ]; then
+    EXISTING_ENV=true
+fi
+
+EXISTING_DB_VOLUME=false
+if docker volume inspect gamehaven-db >/dev/null 2>&1; then
+    EXISTING_DB_VOLUME=true
+fi
+
+echo ""
+echo -e "${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║${NC}          ${BOLD}Game Haven - Self-Hosted Installation${NC}            ${CYAN}║${NC}"
+echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+# If we detect an existing install, default to reusing secrets.
+# Changing POSTGRES_PASSWORD/JWT_SECRET while keeping the existing DB volume
+# will break auth/rest connectivity.
+REUSE_EXISTING_SECRETS=false
+if [ "$EXISTING_ENV" = true ] || [ "$EXISTING_DB_VOLUME" = true ]; then
+    echo -e "${YELLOW}${BOLD}Existing installation detected.${NC}"
+    if [ "$EXISTING_DB_VOLUME" = true ]; then
+        echo -e "${YELLOW}- Found docker volume: gamehaven-db${NC}"
+    fi
+    if [ "$EXISTING_ENV" = true ]; then
+        echo -e "${YELLOW}- Found .env in this directory${NC}"
+    fi
+    echo -e "${YELLOW}Re-running install with NEW secrets while keeping the existing DB volume will prevent the auth service from starting.${NC}"
+    echo ""
+    prompt_yn REUSE_EXISTING_SECRETS "Reuse existing secrets (.env) and keep the current database?" "y"
+    echo ""
+fi
 
 # ==========================================
 # COLLECT CONFIGURATION
@@ -383,7 +359,6 @@ echo -e "${GREEN}✓${NC} Created .env file"
 if [ "$ENABLE_STUDIO" = true ]; then
     cat > docker-compose.override.yml << EOF
 # Enable Supabase Studio
-version: "3.8"
 services:
   studio:
     profiles: []
@@ -409,6 +384,156 @@ fi
 chmod 600 .credentials
 
 echo -e "${GREEN}✓${NC} Saved credentials to .credentials"
+
+# ==========================================
+# GENERATE KONG CONFIG
+# ==========================================
+# Kong declarative config does NOT support environment variable substitution.
+# We must generate kong.yml with actual API keys baked in.
+
+echo -e "${CYAN}Generating API gateway configuration...${NC}"
+
+cat > kong.yml << KONGEOF
+# Kong API Gateway Configuration for Game Haven
+# Generated by install.sh - DO NOT EDIT MANUALLY
+# Routes requests to Supabase services
+
+_format_version: "3.0"
+_transform: true
+
+consumers:
+  - username: anon
+    keyauth_credentials:
+      - key: ${ANON_KEY}
+  - username: service_role
+    keyauth_credentials:
+      - key: ${SERVICE_ROLE_KEY}
+
+acls:
+  - consumer: anon
+    group: anon
+  - consumer: service_role
+    group: admin
+
+services:
+  # Auth Service - Health endpoint MUST be open for readiness checks
+  - name: auth-v1-open-health
+    url: http://auth:9999/health
+    routes:
+      - name: auth-v1-open-health
+        strip_path: true
+        paths:
+          - /auth/v1/health
+    plugins:
+      - name: cors
+
+  - name: auth-v1-open
+    url: http://auth:9999/verify
+    routes:
+      - name: auth-v1-open
+        strip_path: true
+        paths:
+          - /auth/v1/verify
+    plugins:
+      - name: cors
+
+  - name: auth-v1-open-callback
+    url: http://auth:9999/callback
+    routes:
+      - name: auth-v1-open-callback
+        strip_path: true
+        paths:
+          - /auth/v1/callback
+    plugins:
+      - name: cors
+
+  - name: auth-v1-open-authorize
+    url: http://auth:9999/authorize
+    routes:
+      - name: auth-v1-open-authorize
+        strip_path: true
+        paths:
+          - /auth/v1/authorize
+    plugins:
+      - name: cors
+
+  # Main auth endpoint (requires API key)
+  - name: auth-v1
+    url: http://auth:9999
+    routes:
+      - name: auth-v1
+        strip_path: true
+        paths:
+          - /auth/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+          key_names:
+            - apikey
+
+  # REST API (PostgREST)
+  - name: rest-v1
+    url: http://rest:3000
+    routes:
+      - name: rest-v1
+        strip_path: true
+        paths:
+          - /rest/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+          key_names:
+            - apikey
+
+  # Realtime
+  - name: realtime-v1
+    url: http://realtime:4000/socket
+    routes:
+      - name: realtime-v1
+        strip_path: true
+        paths:
+          - /realtime/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+          key_names:
+            - apikey
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Accept-Version
+        - Authorization
+        - Content-Length
+        - Content-Type
+        - Date
+        - X-Auth-Token
+        - apikey
+        - Prefer
+      exposed_headers:
+        - Content-Range
+      credentials: true
+      max_age: 3600
+KONGEOF
+
+echo -e "${GREEN}✓${NC} Generated kong.yml with API keys"
 
 # ==========================================
 # START DOCKER STACK
