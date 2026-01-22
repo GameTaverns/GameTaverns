@@ -41,11 +41,44 @@ export function ThemeApplicator() {
   useEffect(() => {
     // Skip in demo mode - DemoThemeApplicator handles theming
     if (isDemoMode) return;
-    if (isLoading || !settings) return;
+    
+    // Check for runtime theme config (standalone deployments)
+    const runtimeConfig = (window as any).__RUNTIME_CONFIG__;
+    const runtimeTheme = runtimeConfig?.THEME;
 
     const applyTheme = () => {
       const root = document.documentElement;
       const isDark = root.classList.contains("dark");
+
+      // Apply runtime theme for standalone deployments (neutral white/grey)
+      if (runtimeTheme) {
+        const themeMode = isDark ? runtimeTheme.DARK : runtimeTheme.LIGHT;
+        if (themeMode) {
+          if (themeMode.background) root.style.setProperty("--background", themeMode.background);
+          if (themeMode.foreground) root.style.setProperty("--foreground", themeMode.foreground);
+          if (themeMode.card) root.style.setProperty("--card", themeMode.card);
+          if (themeMode.cardForeground) root.style.setProperty("--card-foreground", themeMode.cardForeground);
+          if (themeMode.primary) root.style.setProperty("--primary", themeMode.primary);
+          if (themeMode.primaryForeground) root.style.setProperty("--primary-foreground", themeMode.primaryForeground);
+          if (themeMode.secondary) root.style.setProperty("--secondary", themeMode.secondary);
+          if (themeMode.secondaryForeground) root.style.setProperty("--secondary-foreground", themeMode.secondaryForeground);
+          if (themeMode.muted) root.style.setProperty("--muted", themeMode.muted);
+          if (themeMode.mutedForeground) root.style.setProperty("--muted-foreground", themeMode.mutedForeground);
+          if (themeMode.accent) root.style.setProperty("--accent", themeMode.accent);
+          if (themeMode.accentForeground) root.style.setProperty("--accent-foreground", themeMode.accentForeground);
+          if (themeMode.border) root.style.setProperty("--border", themeMode.border);
+          if (themeMode.sidebarBackground) root.style.setProperty("--sidebar-background", themeMode.sidebarBackground);
+          if (themeMode.sidebarForeground) root.style.setProperty("--sidebar-foreground", themeMode.sidebarForeground);
+          if (themeMode.sidebarBorder) root.style.setProperty("--sidebar-border", themeMode.sidebarBorder);
+          // Set neutral fonts for standalone
+          root.style.setProperty("--font-display", '"Inter"');
+          root.style.setProperty("--font-body", '"Inter"');
+          return; // Don't apply DB settings if runtime theme is present
+        }
+      }
+
+      // Wait for DB settings before applying
+      if (isLoading || !settings) return;
 
       // Apply primary color
       if (settings.theme_primary_h && settings.theme_primary_s && settings.theme_primary_l) {

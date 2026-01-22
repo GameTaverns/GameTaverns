@@ -62,9 +62,13 @@ chmod +x install.sh scripts/*.sh
 ### 3. Access Your Site
 
 - **Application**: `http://your-server-ip:3000`
-- **Admin Studio** (if enabled): `http://your-server-ip:3001`
+- **Admin Studio**: `http://your-server-ip:3001` (or via `https://yourdomain.com/studio/` with Nginx)
 
 Log in with the admin email and password you provided during installation.
+
+### Default Theme
+
+Standalone deployments start with a **neutral white/grey theme** (not the warm parchment style from Lovable Cloud). Customize via the Settings > Site tab after logging in as admin.
 
 ---
 
@@ -129,7 +133,21 @@ ADMIN_EMAIL="user@example.com" ADMIN_PASSWORD="securepass" ./scripts/create-admi
 
 ### Access Supabase Studio
 
-If enabled during install, access at `http://localhost:3001`
+Studio is enabled by default and accessible at:
+- **Direct**: `http://your-server-ip:3001`
+- **Via Nginx proxy**: `https://yourdomain.com/studio/` (after running `setup-nginx.sh`)
+
+If Studio isn't accessible, check that the containers are running:
+
+```bash
+docker compose ps | grep -E "(studio|meta)"
+```
+
+If not listed, restart with:
+
+```bash
+docker compose up -d
+```
 
 ### Backup Database
 

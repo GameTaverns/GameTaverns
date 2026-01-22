@@ -212,8 +212,7 @@ services:
         condition: service_healthy
     networks:
       - gamehaven-network
-    profiles:
-      - studio
+    # Studio is now enabled by default (no profiles restriction)
 
   # Postgres Meta (for Studio)
   meta:
@@ -232,8 +231,7 @@ services:
         condition: service_healthy
     networks:
       - gamehaven-network
-    profiles:
-      - studio
+    # Meta is now enabled by default (no profiles restriction)
 
 networks:
   gamehaven-network:
