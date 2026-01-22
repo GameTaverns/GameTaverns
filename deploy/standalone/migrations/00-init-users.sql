@@ -152,3 +152,28 @@ $$;
 GRANT SELECT ON public.user_roles TO anon, authenticated, service_role;
 GRANT ALL ON public.user_roles TO supabase_admin;
 GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO anon, authenticated, service_role;
+
+-- =====================================================
+-- COMPATIBILITY FIX: Newer Supabase Studio versions expect
+-- auth.users to have an is_anonymous column. GoTrue v2.132.3
+-- does not create this column, so we add it here if missing.
+-- This runs AFTER GoTrue has bootstrapped the auth schema.
+-- =====================================================
+-- Note: This block is safe to re-run; it only adds the column if
+-- the auth.users table exists and lacks the column.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'auth' AND table_name = 'users'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'is_anonymous'
+  ) THEN
+    ALTER TABLE auth.users ADD COLUMN is_anonymous boolean NOT NULL DEFAULT false;
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  -- If auth.users doesn't exist yet (GoTrue hasn't run), silently skip.
+  NULL;
+END
+$$;

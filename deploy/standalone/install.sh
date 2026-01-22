@@ -847,6 +847,31 @@ for i in {1..60}; do
 done
 
 # ==========================================
+# FIX FOR STUDIO/GOTRUE VERSION MISMATCH
+# ==========================================
+# Newer Supabase Studio expects auth.users.is_anonymous, but GoTrue v2.132.3
+# does not create this column. Add it now if missing.
+
+echo ""
+echo -e "${CYAN}Checking auth schema compatibility...${NC}"
+
+NEED_IS_ANONYMOUS=$(docker exec -i gamehaven-db psql -U supabase_admin -d postgres -tAc "
+  SELECT CASE WHEN EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'is_anonymous'
+  ) THEN 'no' ELSE 'yes' END;
+" 2>/dev/null | tr -d '[:space:]')
+
+if [ "$NEED_IS_ANONYMOUS" = "yes" ]; then
+    echo -e "  Adding missing ${YELLOW}is_anonymous${NC} column to auth.users..."
+    docker exec -i gamehaven-db psql -U supabase_admin -d postgres -c \
+      "ALTER TABLE auth.users ADD COLUMN is_anonymous boolean NOT NULL DEFAULT false;" 2>/dev/null || true
+    echo -e "${GREEN}✓${NC} Added is_anonymous column"
+else
+    echo -e "${GREEN}✓${NC} Auth schema is compatible"
+fi
+
+# ==========================================
 # RUN APPLICATION MIGRATIONS
 # ==========================================
 
