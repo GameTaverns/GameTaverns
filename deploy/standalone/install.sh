@@ -610,98 +610,140 @@ ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 # Also create auth and storage schemas that GoTrue and Storage expect
 # Write SQL to a temp file to avoid heredoc/escaping issues with docker exec
 cat > /tmp/init-roles.sql << 'EOSQL'
--- Ensure internal roles exist (in case 00-init-users.sql didn't create them)
+-- =====================================================
+-- Game Haven Standalone: Database Role Initialization
+-- =====================================================
+
+-- Step 1: Create all required roles if they don't exist
 DO $$
 BEGIN
+  RAISE NOTICE 'Step 1: Creating roles...';
+  
   -- GoTrue migrations expect a role literally named 'postgres' to exist.
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
     CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE;
+    RAISE NOTICE 'Created role: postgres';
   END IF;
+  
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-    CREATE ROLE supabase_auth_admin WITH LOGIN;
+    CREATE ROLE supabase_auth_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE;
+    RAISE NOTICE 'Created role: supabase_auth_admin';
   END IF;
+  
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
-    CREATE ROLE authenticator WITH LOGIN;
+    CREATE ROLE authenticator WITH LOGIN NOINHERIT;
+    RAISE NOTICE 'Created role: authenticator';
   END IF;
+  
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
-    CREATE ROLE supabase_storage_admin WITH LOGIN;
+    CREATE ROLE supabase_storage_admin WITH LOGIN CREATEDB CREATEROLE;
+    RAISE NOTICE 'Created role: supabase_storage_admin';
   END IF;
+  
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
     CREATE ROLE anon NOLOGIN;
+    RAISE NOTICE 'Created role: anon';
   END IF;
+  
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
     CREATE ROLE authenticated NOLOGIN;
+    RAISE NOTICE 'Created role: authenticated';
   END IF;
+  
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
     CREATE ROLE service_role NOLOGIN BYPASSRLS;
+    RAISE NOTICE 'Created role: service_role';
   END IF;
+  
+  RAISE NOTICE 'Step 1 complete.';
 END
 $$;
 
--- Passwords will be set via sed replacement below
+-- Step 2: Set passwords (placeholder replaced by sed)
 -- PLACEHOLDER_PASSWORD_COMMANDS
 
--- Ensure supabase_auth_admin has SUPERUSER for migrations
-ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
-ALTER ROLE supabase_storage_admin WITH CREATEDB CREATEROLE;
-
--- CREATE AUTH AND STORAGE SCHEMAS (required by GoTrue/Storage)
--- Use DO block to handle cases where schema exists with different owner
+-- Step 3: Ensure role attributes are correct
 DO $$
 BEGIN
+  RAISE NOTICE 'Step 3: Configuring role attributes...';
+  ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
+  ALTER ROLE supabase_storage_admin WITH CREATEDB CREATEROLE;
+  RAISE NOTICE 'Step 3 complete.';
+END
+$$;
+
+-- Step 4: Create schemas
+DO $$
+BEGIN
+  RAISE NOTICE 'Step 4: Creating schemas...';
+  
   IF NOT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'auth') THEN
     CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin;
+    RAISE NOTICE 'Created schema: auth';
   ELSE
     ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+    RAISE NOTICE 'Schema auth already exists, set owner to supabase_auth_admin';
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'storage') THEN
     CREATE SCHEMA storage AUTHORIZATION supabase_storage_admin;
+    RAISE NOTICE 'Created schema: storage';
   ELSE
     ALTER SCHEMA storage OWNER TO supabase_storage_admin;
+    RAISE NOTICE 'Schema storage already exists, set owner to supabase_storage_admin';
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'extensions') THEN
     CREATE SCHEMA extensions;
+    RAISE NOTICE 'Created schema: extensions';
   END IF;
+  
+  RAISE NOTICE 'Step 4 complete.';
 END
 $$;
 
--- Grant schema permissions
-GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
-GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
-GRANT ALL ON SCHEMA public TO supabase_auth_admin;
-GRANT ALL ON SCHEMA public TO supabase_storage_admin;
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-
--- Allow auth_admin to grant to API roles (use DO block to avoid errors if already granted)
+-- Step 5: Grant schema permissions
 DO $$
 BEGIN
-  EXECUTE 'GRANT anon TO supabase_auth_admin';
-  EXECUTE 'GRANT authenticated TO supabase_auth_admin';
-  EXECUTE 'GRANT service_role TO supabase_auth_admin';
-EXCEPTION WHEN duplicate_object THEN
-  NULL; -- ignore "role is already a member" errors
+  RAISE NOTICE 'Step 5: Granting schema permissions...';
+  GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
+  GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
+  GRANT ALL ON SCHEMA public TO supabase_auth_admin;
+  GRANT ALL ON SCHEMA public TO supabase_storage_admin;
+  GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+  RAISE NOTICE 'Step 5 complete.';
 END
 $$;
 
--- CRITICAL: Set search_path for supabase_auth_admin so GoTrue can find auth tables
--- GoTrue queries tables without schema prefix (e.g. "identities" not "auth.identities")
-ALTER ROLE supabase_auth_admin SET search_path TO auth, public, extensions;
-
--- Ensure role grants for PostgREST (use DO block to avoid errors if already granted)
+-- Step 6: Grant role memberships (with error handling for duplicates)
 DO $$
 BEGIN
-  EXECUTE 'GRANT anon TO authenticator';
-  EXECUTE 'GRANT authenticated TO authenticator';
-  EXECUTE 'GRANT service_role TO authenticator';
-  EXECUTE 'GRANT anon TO supabase_admin';
-  EXECUTE 'GRANT authenticated TO supabase_admin';
-  EXECUTE 'GRANT service_role TO supabase_admin';
-EXCEPTION WHEN duplicate_object THEN
-  NULL; -- ignore "role is already a member" errors
+  RAISE NOTICE 'Step 6: Granting role memberships...';
+  
+  BEGIN EXECUTE 'GRANT anon TO supabase_auth_admin'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT authenticated TO supabase_auth_admin'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT service_role TO supabase_auth_admin'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT anon TO authenticator'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT authenticated TO authenticator'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT service_role TO authenticator'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT anon TO supabase_admin'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT authenticated TO supabase_admin'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN EXECUTE 'GRANT service_role TO supabase_admin'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  
+  RAISE NOTICE 'Step 6 complete.';
 END
 $$;
+
+-- Step 7: Set search_path for GoTrue
+DO $$
+BEGIN
+  RAISE NOTICE 'Step 7: Setting search_path for supabase_auth_admin...';
+  ALTER ROLE supabase_auth_admin SET search_path TO auth, public, extensions;
+  RAISE NOTICE 'Step 7 complete.';
+END
+$$;
+
+DO $$ BEGIN RAISE NOTICE 'All role initialization steps completed successfully.'; END $$;
 EOSQL
 
 # Replace placeholder with actual password commands (avoids escaping issues in heredoc)
