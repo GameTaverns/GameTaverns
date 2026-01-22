@@ -72,8 +72,10 @@ services:
       - gamehaven-network
 
   # Supabase Auth
+  # Note: v2.132.3 is more stable for fresh installs than newer versions
+  # which have complex migration dependencies
   auth:
-    image: supabase/gotrue:v2.164.0
+    image: supabase/gotrue:v2.132.3
     container_name: gamehaven-auth
     restart: unless-stopped
     environment:

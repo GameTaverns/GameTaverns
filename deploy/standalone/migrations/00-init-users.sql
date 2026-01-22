@@ -18,6 +18,14 @@ BEGIN
 END
 $$;
 
+-- =====================================================
+-- Pre-create the auth schema so GoTrue doesn't have issues
+-- GoTrue will create its tables/types within this schema
+-- =====================================================
+CREATE SCHEMA IF NOT EXISTS auth;
+GRANT ALL ON SCHEMA auth TO postgres;
+GRANT ALL ON SCHEMA auth TO supabase_admin;
+
 -- Ensure core API roles exist (used by PostgREST/JWT roles + grants in app schema)
 DO $$
 BEGIN
@@ -83,3 +91,6 @@ $$;
 GRANT ALL ON SCHEMA public TO supabase_auth_admin;
 GRANT ALL ON SCHEMA public TO supabase_storage_admin;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+
+-- Grant auth schema to supabase_auth_admin (GoTrue needs this)
+GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
