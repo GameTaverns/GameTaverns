@@ -72,12 +72,21 @@ generate_secret() {
     openssl rand -base64 ${1:-32} | tr -d '/+=' | head -c ${1:-32}
 }
 
-# Generate JWT (simplified - uses a secret, real JWT would need proper signing)
-generate_jwt_key() {
+# Generate JWT (proper HMAC-SHA256 signing)
+generate_jwt() {
     local role=$1
     local secret=$2
-    # This is a simplified approach - in production, use proper JWT signing
-    echo "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6IiR7cm9sZX0iLCJpYXQiOjE2NDExNjk1MjAsImV4cCI6MTc5ODkzNTkyMH0.$(echo -n "demo-$role-key" | base64)"
+    
+    # Header: {"alg":"HS256","typ":"JWT"}
+    local header=$(echo -n '{"alg":"HS256","typ":"JWT"}' | openssl base64 -e | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+    
+    # Payload with role, issuer, and long expiry (year 2050)
+    local payload=$(echo -n "{\"role\":\"$role\",\"iss\":\"supabase\",\"iat\":$(date +%s),\"exp\":2524608000}" | openssl base64 -e | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+    
+    # Signature
+    local signature=$(echo -n "${header}.${payload}" | openssl dgst -sha256 -hmac "$secret" -binary | openssl base64 -e | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+    
+    echo "${header}.${payload}.${signature}"
 }
 
 # Escape value for safe use in double-quoted .env strings
@@ -172,8 +181,10 @@ echo -e "${CYAN}Generating secure credentials...${NC}"
 POSTGRES_PASSWORD=$(generate_secret 32)
 JWT_SECRET=$(generate_secret 64)
 SECRET_KEY_BASE=$(generate_secret 64)
-ANON_KEY=$(generate_secret 32)
-SERVICE_ROLE_KEY=$(generate_secret 32)
+
+# Generate proper JWT tokens for API access
+ANON_KEY=$(generate_jwt "anon" "$JWT_SECRET")
+SERVICE_ROLE_KEY=$(generate_jwt "service_role" "$JWT_SECRET")
 
 echo -e "${GREEN}✓${NC} Postgres password generated"
 echo -e "${GREEN}✓${NC} JWT secret generated"
