@@ -442,7 +442,7 @@ const Settings = () => {
 
   // Redirect if not authenticated
   if (!loading && !isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/admin" replace />;
   }
 
   if (loading) {
