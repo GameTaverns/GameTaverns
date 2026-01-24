@@ -92,7 +92,7 @@ export function useGameRatingsSummary() {
   });
 }
 
-// Hook to get user's own ratings
+// Hook to get user's own ratings (via edge function to avoid RLS)
 export function useUserRatings() {
   const { isDemoMode, demoUserRatings } = useDemoMode();
   const guestId = getGuestIdentifier();
@@ -104,17 +104,20 @@ export function useUserRatings() {
         return demoUserRatings || [];
       }
 
-      const { data, error } = await supabase
-        .from("game_ratings")
-        .select("game_id, rating")
-        .eq("guest_identifier", guestId);
+      // Use edge function to fetch ratings securely (bypasses RLS)
+      const { data, error } = await supabase.functions.invoke(
+        `rate-game?guestIdentifier=${encodeURIComponent(guestId)}`,
+        {
+          method: "GET",
+        }
+      );
 
       if (error) {
         console.error("Error fetching user ratings:", error);
         throw error;
       }
 
-      return data || [];
+      return data?.ratings || [];
     },
   });
 }

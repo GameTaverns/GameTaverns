@@ -62,6 +62,38 @@ Deno.serve(async (req) => {
     const clientIP = getClientIP(req);
     const hashedIP = await hashValue(clientIP);
 
+    // GET: Fetch user's own ratings by guestIdentifier
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      const guestIdentifier = url.searchParams.get("guestIdentifier");
+      
+      if (!guestIdentifier) {
+        return new Response(
+          JSON.stringify({ error: "Missing guestIdentifier" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Only return game_id and rating - never expose IP/fingerprint
+      const { data, error } = await supabase
+        .from("game_ratings")
+        .select("game_id, rating")
+        .eq("guest_identifier", guestIdentifier);
+      
+      if (error) {
+        console.error("Error fetching user ratings:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch ratings" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ ratings: data || [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (req.method === "POST") {
       const body: RateGameRequest = await req.json();
       const { gameId, rating, guestIdentifier, deviceFingerprint } = body;
