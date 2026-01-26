@@ -2,6 +2,10 @@
 #
 # Create admin user for Game Haven v2
 #
+# Usage:
+#   ./scripts/create-admin-v2.sh                    # Interactive mode
+#   ./scripts/create-admin-v2.sh --non-interactive  # Uses ADMIN_EMAIL/ADMIN_PASSWORD env vars
+#
 
 set -e
 
@@ -18,12 +22,25 @@ if [ -f .env ]; then
     source .env
 fi
 
+NON_INTERACTIVE=false
+if [ "$1" = "--non-interactive" ]; then
+    NON_INTERACTIVE=true
+fi
+
 # Get credentials
 if [ -z "$ADMIN_EMAIL" ]; then
+    if [ "$NON_INTERACTIVE" = true ]; then
+        echo -e "${RED}Error: ADMIN_EMAIL environment variable required in non-interactive mode${NC}"
+        exit 1
+    fi
     read -p "Admin email: " ADMIN_EMAIL
 fi
 
 if [ -z "$ADMIN_PASSWORD" ]; then
+    if [ "$NON_INTERACTIVE" = true ]; then
+        echo -e "${RED}Error: ADMIN_PASSWORD environment variable required in non-interactive mode${NC}"
+        exit 1
+    fi
     read -sp "Admin password: " ADMIN_PASSWORD
     echo
 fi
@@ -42,11 +59,19 @@ fi
 echo -e "${YELLOW}Creating admin user...${NC}"
 
 # Hash password using the API container
+# Escape single quotes in password for JavaScript
+ESCAPED_PASSWORD=$(echo "$ADMIN_PASSWORD" | sed "s/'/\\\\'/g")
+
 PASSWORD_HASH=$(docker exec gamehaven-api-v2 node -e "
 const bcrypt = require('bcryptjs');
-const hash = bcrypt.hashSync('$ADMIN_PASSWORD', 12);
+const hash = bcrypt.hashSync('$ESCAPED_PASSWORD', 12);
 console.log(hash);
 ")
+
+if [ -z "$PASSWORD_HASH" ]; then
+    echo -e "${RED}Error: Failed to generate password hash${NC}"
+    exit 1
+fi
 
 # Insert user into database
 docker exec -i gamehaven-db-v2 psql -U postgres -d gamehaven << EOSQL

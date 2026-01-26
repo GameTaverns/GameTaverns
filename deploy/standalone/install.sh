@@ -3,8 +3,26 @@
 # Game Haven - One-Click Installer
 # Sets up config, starts the stack, runs migrations, and creates admin user
 #
+# Usage:
+#   ./install.sh        - Install v1 (full Supabase stack)
+#   ./install.sh --v2   - Install v2 (simplified Express/Node.js stack)
+#
 
 set -e
+
+# ==========================================
+# CHECK FOR V2 FLAG
+# ==========================================
+
+if [ "$1" = "--v2" ] || [ "$1" = "-v2" ]; then
+    chmod +x ./install-v2.sh
+    exec ./install-v2.sh
+    exit 0
+fi
+
+# ==========================================
+# V1 INSTALLATION (SUPABASE STACK)
+# ==========================================
 
 # Colors
 RED='\033[0;31m'
