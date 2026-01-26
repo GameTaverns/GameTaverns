@@ -25,12 +25,30 @@ Self-host Game Haven on your own server with Docker.
 
 ---
 
+## Prerequisites (Ubuntu 24.04)
+
+Before running either installer, ensure you have all required packages:
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install all prerequisites
+sudo apt install -y curl git nginx certbot python3-certbot-nginx
+
+# Install Docker
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+---
+
 ## Quick Start
 
 ### v2 (Recommended)
 
 ```bash
-curl -fsSL https://get.docker.com | sh && \
 git clone https://github.com/ThaneWinters/GameTavern.git && \
 cd GameTavern/deploy/standalone && \
 chmod +x install.sh scripts/*.sh && \
@@ -40,12 +58,18 @@ chmod +x install.sh scripts/*.sh && \
 ### v1 (Legacy)
 
 ```bash
-curl -fsSL https://get.docker.com | sh && \
 git clone https://github.com/ThaneWinters/GameTavern.git && \
 cd GameTavern/deploy/standalone && \
 chmod +x install.sh scripts/*.sh && \
 ./install.sh
 ```
+
+Both installers will:
+- Prompt for site name and admin credentials
+- Generate secure secrets
+- Start all services
+- Create your admin user
+- **Offer to configure Nginx + SSL** (if not localhost)
 
 ---
 

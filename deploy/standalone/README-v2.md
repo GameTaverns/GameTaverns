@@ -20,6 +20,8 @@ Complete self-hosting guide using the streamlined Node.js/Express backend. **One
 Run this single command on a fresh Ubuntu server:
 
 ```bash
+sudo apt update && sudo apt upgrade -y && \
+sudo apt install -y curl git nginx certbot python3-certbot-nginx && \
 curl -fsSL https://get.docker.com | sh && \
 sudo usermod -aG docker $USER && \
 newgrp docker && \
@@ -35,8 +37,9 @@ chmod +x install.sh scripts/*.sh && \
 - Starts all services (3 containers)
 - Creates database and runs migrations automatically
 - Creates your admin user
+- **Offers to configure Nginx with SSL** (if not localhost)
 
-Access your site at `http://your-server-ip:3000`
+Access your site at `http://your-server-ip:3000` or `https://yourdomain.com`
 
 ---
 
@@ -48,7 +51,20 @@ Access your site at `http://your-server-ip:3000`
 sudo apt update && sudo apt upgrade -y
 ```
 
-### 2. Install Docker
+### 2. Install All Prerequisites
+
+Install all required packages in one command:
+
+```bash
+sudo apt install -y \
+  curl \
+  git \
+  nginx \
+  certbot \
+  python3-certbot-nginx
+```
+
+### 3. Install Docker
 
 ```bash
 # Install Docker
@@ -65,33 +81,36 @@ docker --version
 docker compose version
 ```
 
-### 3. Clone Repository
+### 4. Clone Repository
 
 ```bash
 git clone https://github.com/ThaneWinters/GameTavern.git
 cd GameTavern/deploy/standalone
 ```
 
-### 4. Make Scripts Executable
+### 5. Make Scripts Executable
 
 ```bash
 chmod +x install.sh scripts/*.sh
 ```
 
-### 5. Run Installer
+### 6. Run Installer
 
 ```bash
 ./install.sh --v2
 ```
 
-You'll be prompted for:
-- **Site Name** - Your game collection name
-- **Admin Email** - Your login email
-- **Admin Password** - Secure password (min 6 chars)
+The installer will:
+1. Prompt for site name and admin credentials
+2. Generate secure secrets automatically
+3. Start all services (3 containers)
+4. Initialize database with schema
+5. Create your admin user
+6. **Offer to configure Nginx with SSL** (if not localhost)
 
-### 6. Access Your Site
+### 7. Access Your Site
 
-- **Frontend:** `http://your-server-ip:3000`
+- **Frontend:** `http://your-server-ip:3000` (or `https://yourdomain.com` with SSL)
 - **API Health:** `http://your-server-ip:3001/health`
 
 ---
@@ -115,71 +134,6 @@ Only **3 containers** vs 7+ in v1:
 | App | Nginx + React frontend | 3000 |
 | API | Node.js/Express backend | 3001 |
 | DB | PostgreSQL 16 | 5432 |
-
----
-
-## Production Setup with SSL
-
-### Automatic (Recommended)
-
-```bash
-./scripts/setup-nginx.sh
-```
-
-This will:
-1. Install Nginx and Certbot
-2. Prompt for your domain name
-3. Configure reverse proxy
-4. Obtain SSL certificate from Let's Encrypt
-5. Set up auto-renewal
-
-### Manual Nginx Configuration
-
-```bash
-sudo apt install nginx certbot python3-certbot-nginx -y
-sudo nano /etc/nginx/sites-available/gamehaven
-```
-
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name yourdomain.com;
-    
-    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
-    
-    # Frontend
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    
-    # API
-    location /api/ {
-        proxy_pass http://127.0.0.1:3001/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-```bash
-sudo ln -s /etc/nginx/sites-available/gamehaven /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo certbot --nginx -d yourdomain.com
-sudo systemctl reload nginx
-```
 
 ---
 
