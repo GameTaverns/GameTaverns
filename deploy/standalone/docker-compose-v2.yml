@@ -1,0 +1,71 @@
+# Game Haven - Simplified Self-Hosted Stack (v2)
+# Only 3 containers: App + API + PostgreSQL
+
+services:
+  # Frontend (Nginx serving static React build)
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/standalone/Dockerfile
+    container_name: gamehaven-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:80"
+    environment:
+      - API_URL=http://api:3001
+      - SITE_NAME=${SITE_NAME:-Game Haven}
+    depends_on:
+      - api
+
+  # Express API Server
+  api:
+    build:
+      context: ../../server
+      dockerfile: ../deploy/standalone/Dockerfile.api
+    container_name: gamehaven-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/gamehaven
+      - JWT_SECRET=${JWT_SECRET}
+      - SITE_NAME=${SITE_NAME:-Game Haven}
+      - SITE_URL=${SITE_URL:-http://localhost:3000}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - AI_PROVIDER=${AI_PROVIDER:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY:-}
+      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: gamehaven-db
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=gamehaven
+    volumes:
+      - gamehaven-db:/var/lib/postgresql/data
+      - ./migrations-v2:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gamehaven"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  gamehaven-db:
