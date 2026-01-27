@@ -885,63 +885,79 @@ docker exec -i gamehaven-db psql -h localhost -v ON_ERROR_STOP=1 -U supabase_adm
 echo -e "${GREEN}✓${NC} Application schema ready"
 
 # ==========================================
-# CREATE ADMIN USER
+# CREATE ADMIN USER (skip if exists)
 # ==========================================
 
 echo ""
 echo -e "${BOLD}━━━ Creating Admin User ━━━${NC}"
 echo ""
 
-echo -e "${CYAN}Creating admin account...${NC}"
+# Check if admin user already exists
+EXISTING_USER=$(docker exec -i gamehaven-db psql -h localhost -U supabase_admin -d postgres -tAc \
+    "SELECT id FROM auth.users WHERE email = '${ADMIN_EMAIL}' LIMIT 1;" 2>/dev/null || echo "")
 
-# Create user via GoTrue API (retry once after fixing auth permissions)
-create_admin_user() {
-  curl -s -X POST "http://localhost:${GATEWAY_PORT}/auth/v1/admin/users" \
-      -H "Content-Type: application/json" \
-      -H "apikey: ${SERVICE_ROLE_KEY}" \
-      -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
-      -d "{
-          \"email\": \"${ADMIN_EMAIL}\",
-          \"password\": \"${ADMIN_PASSWORD}\",
-          \"email_confirm\": true
-      }"
-}
+if [ -n "$EXISTING_USER" ]; then
+    echo -e "${GREEN}✓${NC} Admin user already exists (${ADMIN_EMAIL}), skipping creation"
+    USER_ID="$EXISTING_USER"
+else
+    echo -e "${CYAN}Creating admin account...${NC}"
 
-RESPONSE=$(create_admin_user)
+    # Create user via GoTrue API (retry once after fixing auth permissions)
+    create_admin_user() {
+      curl -s -X POST "http://localhost:${GATEWAY_PORT}/auth/v1/admin/users" \
+          -H "Content-Type: application/json" \
+          -H "apikey: ${SERVICE_ROLE_KEY}" \
+          -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+          -d "{
+              \"email\": \"${ADMIN_EMAIL}\",
+              \"password\": \"${ADMIN_PASSWORD}\",
+              \"email_confirm\": true
+          }"
+    }
 
-# Extract user ID
-USER_ID=$(echo $RESPONSE | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+    RESPONSE=$(create_admin_user)
 
-if [ -z "$USER_ID" ]; then
-    # If GoTrue is up but can't query the DB yet, try the permissions fix once.
-    if echo "$RESPONSE" | grep -q '"msg":"Database error checking email"'; then
-        echo -e "${YELLOW}Auth returned 'Database error checking email'. Attempting permission repair + retry...${NC}"
-        if [ -f ./scripts/fix-auth-permissions.sh ]; then
-            chmod +x ./scripts/fix-auth-permissions.sh 2>/dev/null || true
-            ./scripts/fix-auth-permissions.sh || true
+    # Extract user ID
+    USER_ID=$(echo $RESPONSE | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+    if [ -z "$USER_ID" ]; then
+        # Check if user already exists (created via another method)
+        if echo "$RESPONSE" | grep -qi "already been registered\|duplicate\|already exists"; then
+            echo -e "${GREEN}✓${NC} Admin user already exists"
+            USER_ID=$(docker exec -i gamehaven-db psql -h localhost -U supabase_admin -d postgres -tAc \
+                "SELECT id FROM auth.users WHERE email = '${ADMIN_EMAIL}' LIMIT 1;" 2>/dev/null || echo "")
+        # If GoTrue is up but can't query the DB yet, try the permissions fix once.
+        elif echo "$RESPONSE" | grep -q '"msg":"Database error checking email"'; then
+            echo -e "${YELLOW}Auth returned 'Database error checking email'. Attempting permission repair + retry...${NC}"
+            if [ -f ./scripts/fix-auth-permissions.sh ]; then
+                chmod +x ./scripts/fix-auth-permissions.sh 2>/dev/null || true
+                ./scripts/fix-auth-permissions.sh || true
+            fi
+            RESPONSE=$(create_admin_user)
+            USER_ID=$(echo $RESPONSE | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
         fi
-        RESPONSE=$(create_admin_user)
-        USER_ID=$(echo $RESPONSE | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-    fi
 
-    if [ -n "$USER_ID" ]; then
-        echo -e "${GREEN}✓${NC} User created: $USER_ID"
+        if [ -n "$USER_ID" ]; then
+            echo -e "${GREEN}✓${NC} User created: $USER_ID"
+        else
+            echo -e "${RED}Error creating admin user. Response:${NC}"
+            echo "$RESPONSE"
+
+            echo ""
+            echo -e "${YELLOW}Auth logs (last 200 lines):${NC}"
+            docker logs gamehaven-auth --tail=200 || true
+
+            echo ""
+            echo -e "${YELLOW}DB logs (last 120 lines):${NC}"
+            docker logs gamehaven-db --tail=120 || true
+
+            echo ""
+            echo -e "${YELLOW}You can try manually later with:${NC}"
+            echo -e "  ${YELLOW}./scripts/create-admin.sh${NC}"
+            exit 1
+        fi
     else
-        echo -e "${RED}Error creating admin user. Response:${NC}"
-        echo "$RESPONSE"
-
-        echo ""
-        echo -e "${YELLOW}Auth logs (last 200 lines):${NC}"
-        docker logs gamehaven-auth --tail=200 || true
-
-        echo ""
-        echo -e "${YELLOW}DB logs (last 120 lines):${NC}"
-        docker logs gamehaven-db --tail=120 || true
-
-        echo ""
-        echo -e "${YELLOW}You can try manually later with:${NC}"
-        echo -e "  ${YELLOW}./scripts/create-admin.sh${NC}"
-        exit 1
+        echo -e "${GREEN}✓${NC} User created: $USER_ID"
     fi
 fi
 
