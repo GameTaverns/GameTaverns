@@ -473,7 +473,7 @@ services:
     volumes:
       - ./kong.yml:/home/kong/kong.yml:ro
       - ./scripts/kong-render-config.sh:/home/kong/kong-render-config.sh:ro
-    command: ["sh", "-lc", "chmod +x /home/kong/kong-render-config.sh && /home/kong/kong-render-config.sh && exec /docker-entrypoint.sh kong docker-start"]
+    command: ["sh", "-lc", "/home/kong/kong-render-config.sh && exec /docker-entrypoint.sh kong docker-start"]
 EOF
 
 # If Studio is enabled, also enable the Studio services via profiles.
