@@ -2,6 +2,9 @@
 -- Game Haven Application Schema
 -- Creates all tables, views, functions, and RLS policies
 -- ============================================
+-- Create extensions schema if it doesn't exist (standalone deployments)
+CREATE SCHEMA IF NOT EXISTS extensions;
+GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "unaccent" WITH SCHEMA extensions;
