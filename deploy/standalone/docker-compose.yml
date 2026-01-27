@@ -225,7 +225,10 @@ services:
     healthcheck:
       # nginx:alpine does not include curl/wget/nc by default.
       # Use nginx's own config test as a lightweight liveness signal.
-      test: ["CMD", "nginx", "-t"]
+      # Note: we run through sh -lc because some Docker/Compose setups have
+      # shown inconsistent results with direct exec-form healthchecks.
+      # This mirrors: docker exec ... sh -lc 'nginx -t'
+      test: ["CMD", "sh", "-lc", "nginx -t"]
       interval: 5s
       timeout: 5s
       retries: 10
