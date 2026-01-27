@@ -199,7 +199,9 @@ services:
     command:
       - start
       - --main-service
-      - main
+      # Edge Runtime expects a filesystem path here (not a service name)
+      # Use the functions root so the runtime can discover/serve all functions.
+      - /home/deno/functions
       - --port
       - "9000"
     depends_on:
