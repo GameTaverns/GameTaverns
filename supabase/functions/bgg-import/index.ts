@@ -37,7 +37,8 @@ const getCorsHeaders = (requestOrigin: string | null): Record<string, string> =>
   };
 };
 
-Deno.serve(async (req) => {
+// Export handler for self-hosted router
+export default async function handler(req: Request): Promise<Response> {
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -160,4 +161,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}
+
+// For Lovable Cloud deployment (direct function invocation)
+Deno.serve(handler);

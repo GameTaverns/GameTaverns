@@ -347,7 +347,8 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
   throw new Error("BGG collection request timed out");
 }
 
-Deno.serve(async (req) => {
+// Export handler for self-hosted router
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -784,4 +785,7 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+}
+
+// For Lovable Cloud deployment (direct function invocation)
+Deno.serve(handler);

@@ -46,7 +46,8 @@ async function hashValue(value: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-Deno.serve(async (req) => {
+// Export handler for self-hosted router
+export default async function handler(req: Request): Promise<Response> {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -250,4 +251,7 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+}
+
+// For Lovable Cloud deployment (direct function invocation)
+Deno.serve(handler);

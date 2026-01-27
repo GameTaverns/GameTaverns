@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+// Note: We keep serve import for compatibility but export handler for self-hosted router
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
@@ -14,7 +14,8 @@ interface EmailRequest {
   text?: string;
 }
 
-serve(async (req: Request): Promise<Response> => {
+// Export handler for self-hosted router
+export default async function handler(req: Request): Promise<Response> {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -136,4 +137,7 @@ serve(async (req: Request): Promise<Response> => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+}
+
+// For Lovable Cloud deployment (direct function invocation)
+Deno.serve(handler);

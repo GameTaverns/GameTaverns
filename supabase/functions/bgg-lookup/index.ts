@@ -152,7 +152,8 @@ function mapPlayTime(minutes: number | null): string | null {
   return "3+ Hours";
 }
 
-Deno.serve(async (req) => {
+// Export handler for self-hosted router
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -490,4 +491,7 @@ ${markdown.slice(0, 18000)}`,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}
+
+// For Lovable Cloud deployment (direct function invocation)
+Deno.serve(handler);
