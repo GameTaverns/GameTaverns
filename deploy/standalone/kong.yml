@@ -109,6 +109,8 @@ services:
             - apikey
 
   # Edge Functions
+  # The edge-runtime expects x-deno-subhost header to route requests.
+  # We set it to "main" so all requests go to our main-router entrypoint.
   - name: functions-v1
     url: http://functions:9000
     routes:
@@ -124,6 +126,11 @@ services:
           hide_credentials: true
           key_names:
             - apikey
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - "x-deno-subhost:main"
 
 plugins:
   - name: cors
