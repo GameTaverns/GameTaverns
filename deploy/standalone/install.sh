@@ -195,7 +195,9 @@ else
     prompt_yn USE_HTTPS "Use HTTPS?" "y"
     if [ "$USE_HTTPS" = true ]; then
         SITE_URL="https://$DOMAIN"
-        API_URL="https://api.$DOMAIN"
+        # IMPORTANT: Our Nginx setup proxies the API gateway at /api on the same domain.
+        # Using https://api.<domain> requires separate DNS + separate vhost config.
+        API_URL="https://$DOMAIN/api"
     else
         SITE_URL="http://$DOMAIN:$APP_PORT"
         API_URL="http://$DOMAIN:$KONG_PORT"

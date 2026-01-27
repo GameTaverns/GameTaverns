@@ -151,6 +151,12 @@ nano .env
 SITE_NAME=Game Haven
 SITE_DESCRIPTION=Browse and discover our collection of board games
 SITE_URL=http://localhost:3000
+
+# IMPORTANT:
+# - For local/dev (no Nginx): use the Kong port directly (e.g. http://localhost:8000)
+# - For production with Nginx + SSL on a single domain: use the /api proxy path
+#   (e.g. https://games.example.com/api)
+# - Using https://api.example.com requires separate DNS + a separate Nginx vhost
 API_EXTERNAL_URL=http://localhost:8000
 
 # Ports
