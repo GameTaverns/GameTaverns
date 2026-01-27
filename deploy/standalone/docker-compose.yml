@@ -162,6 +162,8 @@ services:
     image: supabase/edge-runtime:v1.66.4
     container_name: gamehaven-functions
     restart: unless-stopped
+    ports:
+      - "9000:9000"
     environment:
       JWT_SECRET: ${JWT_SECRET}
       SUPABASE_URL: http://kong:8000
@@ -192,6 +194,8 @@ services:
       - start
       - --main-service
       - /home/deno/functions/main
+      - --port
+      - "9000"
     depends_on:
       db:
         condition: service_healthy
