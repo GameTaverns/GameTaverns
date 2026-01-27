@@ -126,10 +126,18 @@ Deno.serve(async (req) => {
     }
 
     const target = `${base}/functions/v1/game-import`;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!anonKey) {
+      return new Response(JSON.stringify({ success: false, error: "Backend not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const upstream = await fetch(target, {
       method: "POST",
       headers: {
         Authorization: authHeader,
+        apikey: anonKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date, sleeved, upgraded_components, crowdfunded }),
