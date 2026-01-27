@@ -256,9 +256,11 @@ echo -e "${CYAN}╚════════════════════�
 echo ""
 
 if [[ "$SETUP_SSL" =~ ^[Yy] ]] && [ -n "$LE_EMAIL" ]; then
-    echo -e "  ${BOLD}Your site is available at:${NC}  ${GREEN}https://${DOMAIN}${NC}"
+    echo -e "  ${BOLD}Your site is available at:${NC}      ${GREEN}https://${DOMAIN}${NC}"
+    echo -e "  ${BOLD}Supabase Studio:${NC}                ${GREEN}https://${DOMAIN}/studio/${NC}"
 else
-    echo -e "  ${BOLD}Your site is available at:${NC}  ${GREEN}http://${DOMAIN}${NC}"
+    echo -e "  ${BOLD}Your site is available at:${NC}      ${GREEN}http://${DOMAIN}${NC}"
+    echo -e "  ${BOLD}Supabase Studio:${NC}                ${GREEN}http://${DOMAIN}/studio/${NC}"
 fi
 
 echo ""
