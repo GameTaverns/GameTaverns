@@ -146,17 +146,26 @@ Edit `.env` to customize:
 nano .env
 ```
 
+### API_EXTERNAL_URL Configuration (Critical!)
+
+This setting controls how the frontend communicates with the Supabase API gateway (Kong). **Misconfiguring this is the #1 cause of "non-2xx" edge function errors.**
+
+| Setup | API_EXTERNAL_URL Value |
+|-------|------------------------|
+| Local dev (no Nginx) | `http://localhost:8000` |
+| Production with Nginx + SSL (single domain) | `https://yourdomain.com/api` |
+| Production with separate API subdomain | `https://api.yourdomain.com` (requires extra DNS + Nginx vhost) |
+
+**Recommended for production:** Use the `/api` proxy path on your main domain. The installer and `setup-nginx.sh` configure this automatically.
+
 ```bash
 # Site Settings
 SITE_NAME=Game Haven
 SITE_DESCRIPTION=Browse and discover our collection of board games
 SITE_URL=http://localhost:3000
 
-# IMPORTANT:
-# - For local/dev (no Nginx): use the Kong port directly (e.g. http://localhost:8000)
-# - For production with Nginx + SSL on a single domain: use the /api proxy path
-#   (e.g. https://games.example.com/api)
-# - Using https://api.example.com requires separate DNS + a separate Nginx vhost
+# API Gateway URL - MUST match your Nginx proxy setup!
+# See table above for correct value based on your setup.
 API_EXTERNAL_URL=http://localhost:8000
 
 # Ports
