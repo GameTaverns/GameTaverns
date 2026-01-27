@@ -177,6 +177,7 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      # CRITICAL: Disable JWT verification at runtime level
       VERIFY_JWT: "false"
       # Edge function secrets
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-}
@@ -204,6 +205,8 @@ services:
       - /home/deno/functions/main
       - --port
       - "9000"
+      # Disable JWT verification at command level
+      - --no-verify-jwt
     depends_on:
       db:
         condition: service_healthy
