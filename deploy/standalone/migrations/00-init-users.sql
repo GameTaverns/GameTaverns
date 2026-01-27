@@ -26,6 +26,28 @@ CREATE SCHEMA IF NOT EXISTS auth;
 GRANT ALL ON SCHEMA auth TO postgres;
 GRANT ALL ON SCHEMA auth TO supabase_admin;
 
+-- =====================================================
+-- Create auth.uid() stub function for RLS policies
+-- GoTrue will replace this with its actual implementation,
+-- but we need a stub so the app schema can reference it
+-- before GoTrue has fully initialized.
+-- =====================================================
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(
+    COALESCE(
+      current_setting('request.jwt.claim.sub', true),
+      current_setting('request.jwt.claims', true)::json->>'sub'
+    ),
+    ''
+  )::uuid
+$$;
+
+GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role, supabase_admin, postgres;
+
 -- Ensure core API roles exist (used by PostgREST/JWT roles + grants in app schema)
 DO $$
 BEGIN
