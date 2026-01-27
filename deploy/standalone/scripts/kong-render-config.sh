@@ -8,7 +8,7 @@ set -eu
 # literal string "${SUPABASE_ANON_KEY}", and every request gets 401.
 
 SRC="/home/kong/kong.yml"
-OUT="/tmp/kong.generated.yml"
+OUT="/home/kong/kong.generated.yml"
 
 if [ ! -f "$SRC" ]; then
   echo "[kong-render] Missing source config: $SRC" >&2
