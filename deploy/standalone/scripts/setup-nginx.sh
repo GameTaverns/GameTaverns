@@ -228,10 +228,13 @@ if [[ "$SETUP_SSL" =~ ^[Yy] ]]; then
         
         echo -e "${GREEN}✓${NC} SSL certificate obtained and configured"
         
-        # Patch SSL server block to include /api and /studio location blocks
+        # Patch SSL server block(s) to include /api and /studio location blocks.
+        # IMPORTANT: Certbot may create/modify a separate *-le-ssl.conf file.
+        # We patch ALL matching SSL vhost files for the domain to avoid the common
+        # "return 404; # managed by Certbot" taking precedence.
         echo -e "${CYAN}Patching SSL configuration with proxy locations...${NC}"
-        
-        # Create a temporary file with the location blocks to inject
+
+        # Create a temporary string with the location blocks to inject
         INJECT_BLOCKS=$(cat << 'LOCATIONS'
 
     # API Gateway (Kong) - added by setup-nginx.sh
@@ -270,55 +273,80 @@ LOCATIONS
         # Replace placeholder with actual port
         INJECT_BLOCKS="${INJECT_BLOCKS//STUDIO_PORT_PLACEHOLDER/${STUDIO_PORT:-3001}}"
 
-        # Find the SSL server block and inject the locations before the closing brace
-        # First, remove any stray "return 404" lines that Certbot might add
-        sudo sed -i '/return 404; # managed by Certbot/d' "$CONF_PATH"
-        
-        # Check if locations already exist (avoid duplicate injection)
-        if ! grep -q "# API Gateway (Kong) - added by setup-nginx.sh" "$CONF_PATH"; then
-            # Find the line with "listen 443 ssl" and inject after the location / block
-            # We'll use a Python script for reliable multi-line injection
+        patch_ssl_vhost_file() {
+            local FILE="$1"
+            if [ ! -f "$FILE" ]; then
+                return 0
+            fi
+
+            # Remove Certbot's common catch-all 404 inside the SSL server block
+            sudo sed -i '/return 404; # managed by Certbot/d' "$FILE"
+
+            # Avoid duplicate injection
+            if grep -q "# API Gateway (Kong) - added by setup-nginx.sh" "$FILE"; then
+                echo -e "${GREEN}✓${NC} Proxy locations already present in: ${YELLOW}${FILE}${NC}"
+                return 0
+            fi
+
             sudo python3 << PYSCRIPT
 import re
 
-with open("$CONF_PATH", "r") as f:
+path = r"$FILE"
+
+with open(path, "r", encoding="utf-8") as f:
     content = f.read()
 
-# Check if this is the SSL block (has listen 443)
-if "listen 443 ssl" in content or "listen [::]:443 ssl" in content:
-    # Find the last closing brace of the server block and inject before it
-    # We need to find the location / { ... } block and add after it
-    
-    inject_text = '''$INJECT_BLOCKS'''
-    
-    # Find position after "location / {" block - look for the pattern and insert after
-    # Strategy: find "proxy_read_timeout 86400;" in the main location block and add after closing }
-    pattern = r'(location / \{[^}]+proxy_read_timeout 86400;\s*\})'
-    
-    if re.search(pattern, content):
-        content = re.sub(pattern, r'\1' + inject_text, content)
+# Only patch files that contain an SSL server block for the domain
+if ("listen 443 ssl" not in content and "listen [::]:443 ssl" not in content):
+    print(f"Skipping (no listen 443 ssl): {path}")
+    raise SystemExit(0)
+
+inject_text = '''$INJECT_BLOCKS'''
+
+# Prefer inserting right after the main location / block if we can find it.
+pattern = r'(location / \{[^}]+proxy_read_timeout 86400;\s*\})'
+if re.search(pattern, content, flags=re.DOTALL):
+    content = re.sub(pattern, r'\1' + inject_text, content, flags=re.DOTALL)
+else:
+    # Fallback: inject before the end of the first SSL server block
+    # Find the first "server {" that has listen 443 and inject before its closing brace.
+    m = re.search(r'(server\s*\{)(.*?)(\n\})', content, flags=re.DOTALL)
+    if m and ("listen 443 ssl" in m.group(2) or "listen [::]:443 ssl" in m.group(2)):
+        content = content[:m.end(2)] + inject_text + content[m.end(2):]
     else:
-        # Fallback: insert before the final closing brace
-        # Find the last } in the file
+        # Last resort: inject before the final brace in the file
         last_brace = content.rfind('}')
         if last_brace > 0:
             content = content[:last_brace] + inject_text + "\n" + content[last_brace:]
-    
-    with open("$CONF_PATH", "w") as f:
-        f.write(content)
-    print("Injected proxy locations into SSL config")
-else:
-    print("No SSL block found, skipping injection")
+
+with open(path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print(f"Injected proxy locations into: {path}")
 PYSCRIPT
-            echo -e "${GREEN}✓${NC} SSL configuration patched with /api and /studio proxies"
-        else
-            echo -e "${GREEN}✓${NC} Proxy locations already present in config"
-        fi
-        
+
+            echo -e "${GREEN}✓${NC} Patched: ${YELLOW}${FILE}${NC}"
+        }
+
+        # Patch the primary config path we created
+        patch_ssl_vhost_file "$CONF_PATH" || true
+
+        # Patch any Certbot-generated SSL vhost files for this domain
+        # (commonly: /etc/nginx/sites-enabled/<name>-le-ssl.conf)
+        SSL_CANDIDATES=$(sudo grep -RIl "server_name\s\+${DOMAIN};" /etc/nginx 2>/dev/null | head -n 50 || true)
+        while IFS= read -r f; do
+            # Only patch candidates that look like vhost config files
+            case "$f" in
+                *.conf|*/sites-available/*|*/sites-enabled/*)
+                    patch_ssl_vhost_file "$f" || true
+                    ;;
+            esac
+        done <<< "$SSL_CANDIDATES"
+
         # Test and reload nginx
         if sudo nginx -t; then
             sudo systemctl reload nginx
-            echo -e "${GREEN}✓${NC} Nginx reloaded with updated configuration"
+            echo -e "${GREEN}✓${NC} Nginx reloaded with updated SSL configuration"
         else
             echo -e "${RED}Warning: Nginx config test failed after patching. Please check manually.${NC}"
         fi
