@@ -205,8 +205,6 @@ services:
       - /home/deno/functions/main
       - --port
       - "9000"
-      # Disable JWT verification at command level
-      - --no-verify-jwt
     depends_on:
       db:
         condition: service_healthy
