@@ -223,10 +223,12 @@ services:
     volumes:
       - ./gateway.conf:/etc/nginx/conf.d/default.conf:ro
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/health"]
+      # Use /bin/sh + echo to test TCP connectivity since alpine has no curl/wget
+      test: ["CMD-SHELL", "/bin/sh -c 'echo -e \"GET /health HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n\" | nc localhost 8000 | grep -q healthy'"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 5s
     depends_on:
       auth:
         condition: service_started
