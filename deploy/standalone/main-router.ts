@@ -44,7 +44,14 @@ export default async function handler(req: Request): Promise<Response> {
 
   const url = new URL(req.url);
   const pathParts = url.pathname.split("/").filter(Boolean);
+  
+  // Debug: Log incoming request details
+  console.log(`[main-router] Request URL: ${req.url}`);
+  console.log(`[main-router] Pathname: ${url.pathname}`);
+  console.log(`[main-router] Path parts: ${JSON.stringify(pathParts)}`);
+  
   const functionName = pathParts[0];
+  console.log(`[main-router] Resolved function: ${functionName}`);
 
   if (!functionName) {
     return new Response(
