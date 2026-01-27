@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { aiComplete, isAIConfigured, getAIProviderName } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,13 +86,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableKey) {
+    if (!isAIConfigured()) {
       return new Response(
-        JSON.stringify({ success: false, error: "AI service not configured" }),
+        JSON.stringify({ success: false, error: "AI service not configured. Set PERPLEXITY_API_KEY or OPENAI_API_KEY." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`Using AI provider: ${getAIProviderName()}`);
 
     let updated = 0;
     const errors: string[] = [];
@@ -106,18 +108,11 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${lovableKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              {
-                role: "system",
-                content: `You are a board game description editor. Your task is to CONDENSE existing game descriptions into a CONCISE format.
+        const aiResult = await aiComplete({
+          messages: [
+            {
+              role: "system",
+              content: `You are a board game description editor. Your task is to CONDENSE existing game descriptions into a CONCISE format.
 
 OUTPUT FORMAT (follow this EXACTLY):
 1. Opening paragraph: 2-3 sentences max about the game theme and what makes it special
@@ -136,20 +131,18 @@ CRITICAL RULES:
 - Keep only essential gameplay info
 - Use em-dashes for sub-bullets if needed`
               },
-              {
-                role: "user",
-                content: `Condense this game description for "${game.title}":\n\n${game.description}`
-              }
-            ],
-            max_tokens: 500,
-          }),
+            {
+              role: "user",
+              content: `Condense this game description for "${game.title}":\n\n${game.description}`
+            }
+          ],
+          max_tokens: 500,
         });
 
-        if (!aiResponse.ok) {
-          const errText = await aiResponse.text();
-          console.error(`AI error for ${game.title}:`, aiResponse.status, errText);
+        if (!aiResult.success) {
+          console.error(`AI error for ${game.title}:`, aiResult.error);
           
-          if (aiResponse.status === 429 || aiResponse.status === 402) {
+          if (aiResult.rateLimited) {
             errors.push(`Rate limited at ${game.title}`);
             break; // Stop processing on rate limit
           }
@@ -157,8 +150,7 @@ CRITICAL RULES:
           continue;
         }
 
-        const aiData = await aiResponse.json();
-        const newDescription = aiData.choices?.[0]?.message?.content;
+        const newDescription = aiResult.content;
 
         if (!newDescription) {
           errors.push(`No content returned for ${game.title}`);

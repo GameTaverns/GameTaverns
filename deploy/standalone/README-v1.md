@@ -172,6 +172,13 @@ FEATURE_FOR_SALE=true
 FEATURE_MESSAGING=true
 FEATURE_COMING_SOON=true
 FEATURE_DEMO_MODE=false
+
+# AI - Bring Your Own Key (optional)
+# For BGG data extraction and description condensing
+# Supports: Perplexity (recommended), OpenAI
+PERPLEXITY_API_KEY=pplx-...
+# OR
+OPENAI_API_KEY=sk-...
 ```
 
 After editing, restart:

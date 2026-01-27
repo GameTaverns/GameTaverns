@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+import { aiComplete, isAIConfigured, getAIProviderName } from "../_shared/ai-client.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -148,8 +148,7 @@ function parseCSV(csvData: string): Record<string, string>[] {
 // Lookup BGG data for a game title
 async function lookupBGGByTitle(
   title: string,
-  firecrawlKey: string,
-  lovableKey: string
+  firecrawlKey: string
 ): Promise<{
   bgg_id?: string;
   description?: string;
@@ -179,14 +178,14 @@ async function lookupBGGByTitle(
       if (!idMatch) return null;
       
       // Use bgg-lookup function to get full data
-      return await fetchBGGData(idMatch[1], firecrawlKey, lovableKey);
+      return await fetchBGGData(idMatch[1], firecrawlKey);
     }
     
     const xml = await searchRes.text();
     const idMatch = xml.match(/<item[^>]*id="(\d+)"/);
     if (!idMatch) return null;
     
-    return await fetchBGGData(idMatch[1], firecrawlKey, lovableKey);
+    return await fetchBGGData(idMatch[1], firecrawlKey);
   } catch (e) {
     console.error("BGG lookup error:", e);
     return null;
@@ -196,8 +195,7 @@ async function lookupBGGByTitle(
 // Fetch full BGG data using Firecrawl + AI
 async function fetchBGGData(
   bggId: string,
-  firecrawlKey: string,
-  lovableKey: string
+  firecrawlKey: string
 ): Promise<{
   bgg_id: string;
   description?: string;
@@ -251,69 +249,61 @@ async function fetchBGGData(
     });
     const mainImage: string | null = filtered[0] || null;
     
+    // Check if AI is configured
+    if (!isAIConfigured()) {
+      return { bgg_id: bggId, image_url: mainImage ?? undefined };
+    }
+    
     // Use AI to extract
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `Extract board game data. Use EXACT enum values:
+    console.log(`Using AI provider for extraction: ${getAIProviderName()}`);
+    const aiResult = await aiComplete({
+      messages: [
+        {
+          role: "system",
+          content: `Extract board game data. Use EXACT enum values:
 - difficulty: ${DIFFICULTY_LEVELS.join(", ")}
 - play_time: ${PLAY_TIME_OPTIONS.join(", ")}
 - game_type: ${GAME_TYPE_OPTIONS.join(", ")}
 
 Keep description CONCISE (100-150 words). Include brief overview and Quick Gameplay bullet points.`,
-          },
-          {
-            role: "user",
-            content: `Extract game data from: ${markdown.slice(0, 12000)}`,
-          },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "extract_game",
-            parameters: {
-              type: "object",
-              properties: {
-                description: { type: "string" },
-                difficulty: { type: "string", enum: DIFFICULTY_LEVELS },
-                play_time: { type: "string", enum: PLAY_TIME_OPTIONS },
-                game_type: { type: "string", enum: GAME_TYPE_OPTIONS },
-                min_players: { type: "number" },
-                max_players: { type: "number" },
-                suggested_age: { type: "string" },
-                mechanics: { type: "array", items: { type: "string" } },
-                publisher: { type: "string" },
-              },
+        },
+        {
+          role: "user",
+          content: `Extract game data from: ${markdown.slice(0, 12000)}`,
+        },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "extract_game",
+          description: "Extract structured board game data",
+          parameters: {
+            type: "object",
+            properties: {
+              description: { type: "string" },
+              difficulty: { type: "string", enum: DIFFICULTY_LEVELS },
+              play_time: { type: "string", enum: PLAY_TIME_OPTIONS },
+              game_type: { type: "string", enum: GAME_TYPE_OPTIONS },
+              min_players: { type: "number" },
+              max_players: { type: "number" },
+              suggested_age: { type: "string" },
+              mechanics: { type: "array", items: { type: "string" } },
+              publisher: { type: "string" },
             },
           },
-        }],
-        tool_choice: { type: "function", function: { name: "extract_game" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "extract_game" } },
     });
     
-    if (!aiRes.ok) {
+    if (!aiResult.success || !aiResult.toolCallArguments) {
       return { bgg_id: bggId, image_url: mainImage ?? undefined };
     }
     
-    const aiData = await aiRes.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
-      return { bgg_id: bggId, image_url: mainImage ?? undefined };
-    }
-    
-    const extracted = JSON.parse(toolCall.function.arguments);
     return {
       bgg_id: bggId,
       image_url: mainImage || undefined,
-      ...extracted,
+      ...aiResult.toolCallArguments,
     };
   } catch (e) {
     console.error("fetchBGGData error:", e);
@@ -607,9 +597,9 @@ Deno.serve(async (req) => {
         };
 
         // If we have a BGG ID and enhancement is enabled, fetch full data (but don't override CSV data)
-        if (gameInput.bgg_id && enhance_with_bgg && firecrawlKey && lovableKey) {
+        if (gameInput.bgg_id && enhance_with_bgg && firecrawlKey) {
           console.log(`Enhancing with BGG data: ${gameInput.bgg_id}`);
-          const bggData = await fetchBGGData(gameInput.bgg_id, firecrawlKey, lovableKey);
+          const bggData = await fetchBGGData(gameInput.bgg_id, firecrawlKey);
           if (bggData) {
             // Only fill in missing fields, don't override CSV data
             gameData = {
@@ -630,10 +620,10 @@ Deno.serve(async (req) => {
               }
             }
           }
-        } else if (enhance_with_bgg && firecrawlKey && lovableKey && gameData.title) {
+        } else if (enhance_with_bgg && firecrawlKey && gameData.title) {
           // Try to lookup by title if no BGG ID
           console.log(`Looking up BGG by title: ${gameData.title}`);
-          const bggData = await lookupBGGByTitle(gameData.title, firecrawlKey, lovableKey);
+          const bggData = await lookupBGGByTitle(gameData.title, firecrawlKey);
           if (bggData) {
             // Only fill in missing fields
             gameData = {

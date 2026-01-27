@@ -1,3 +1,5 @@
+import { aiComplete, isAIConfigured, getAIProviderName } from "../_shared/ai-client.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -249,8 +251,7 @@ Deno.serve(async (req) => {
       extractMetaContent(rawHtml, "twitter:image");
 
     // If AI is disabled or not available, return basic data
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!useAI || !lovableKey) {
+    if (!useAI || !isAIConfigured()) {
       console.log("Returning basic data (AI disabled or unavailable)");
       return new Response(JSON.stringify({
         success: true,
@@ -275,17 +276,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Use AI to extract structured game data (same as game-import)
-    console.log("Extracting game data with AI...");
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
+    // Use AI to extract structured game data
+    console.log(`Extracting game data with AI (${getAIProviderName()})...`);
+    const aiResult = await aiComplete({
+      messages: [
           {
             role: "system",
             content: `You are a board game data extraction expert. Extract detailed, structured game information from the provided content.
@@ -324,62 +318,60 @@ MAIN IMAGE URL (use this): ${imageUrl || "No image found"}
 Page content:
 ${markdown.slice(0, 18000)}`,
           },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_game_data",
-              description: "Extract structured game data from page content",
-              parameters: {
-                type: "object",
-                properties: {
-                  title: { type: "string", description: "The game title" },
-                  description: { 
-                    type: "string", 
-                    description: "Comprehensive game description with markdown formatting. Include overview, Quick Gameplay Overview section with Goal/Turn Actions/Scoring/End Game, and closing appeal paragraph. Aim for 300-500 words." 
-                  },
-                  difficulty: { 
-                    type: "string", 
-                    enum: DIFFICULTY_LEVELS,
-                    description: "Difficulty level" 
-                  },
-                  play_time: { 
-                    type: "string", 
-                    enum: PLAY_TIME_OPTIONS,
-                    description: "Play time category" 
-                  },
-                  game_type: { 
-                    type: "string", 
-                    enum: GAME_TYPE_OPTIONS,
-                    description: "Type of game" 
-                  },
-                  min_players: { type: "number", description: "Minimum player count" },
-                  max_players: { type: "number", description: "Maximum player count" },
-                  suggested_age: { type: "string", description: "Suggested age (e.g., '10+')" },
-                  mechanics: { 
-                    type: "array", 
-                    items: { type: "string" },
-                    description: "Game mechanics like Worker Placement, Set Collection, etc." 
-                  },
-                  publisher: { type: "string", description: "Publisher name" },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "extract_game_data",
+            description: "Extract structured game data from page content",
+            parameters: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "The game title" },
+                description: { 
+                  type: "string", 
+                  description: "Comprehensive game description with markdown formatting. Include overview, Quick Gameplay Overview section with Goal/Turn Actions/Scoring/End Game, and closing appeal paragraph. Aim for 300-500 words." 
                 },
-                required: ["title"],
-                additionalProperties: false,
+                difficulty: { 
+                  type: "string", 
+                  enum: DIFFICULTY_LEVELS,
+                  description: "Difficulty level" 
+                },
+                play_time: { 
+                  type: "string", 
+                  enum: PLAY_TIME_OPTIONS,
+                  description: "Play time category" 
+                },
+                game_type: { 
+                  type: "string", 
+                  enum: GAME_TYPE_OPTIONS,
+                  description: "Type of game" 
+                },
+                min_players: { type: "number", description: "Minimum player count" },
+                max_players: { type: "number", description: "Maximum player count" },
+                suggested_age: { type: "string", description: "Suggested age (e.g., '10+')" },
+                mechanics: { 
+                  type: "array", 
+                  items: { type: "string" },
+                  description: "Game mechanics like Worker Placement, Set Collection, etc." 
+                },
+                publisher: { type: "string", description: "Publisher name" },
               },
+              required: ["title"],
+              additionalProperties: false,
             },
           },
-        ],
-        tool_choice: { type: "function", function: { name: "extract_game_data" } },
-      }),
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "extract_game_data" } },
     });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("AI extraction error:", aiResponse.status, errorText);
+    if (!aiResult.success) {
+      console.error("AI extraction error:", aiResult.error);
       
       // Handle rate limits
-      if (aiResponse.status === 429 || aiResponse.status === 402) {
+      if (aiResult.rateLimited) {
         return new Response(
           JSON.stringify({ success: false, error: "Service temporarily busy. Please try again in a moment." } satisfies BggLookupResponse),
           { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -410,12 +402,9 @@ ${markdown.slice(0, 18000)}`,
       });
     }
 
-    const aiData = await aiResponse.json();
-    console.log("AI response received");
-
     // Extract the tool call result
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
+    const extractedData = aiResult.toolCallArguments;
+    if (!extractedData) {
       console.error("No tool call result from AI");
       return new Response(JSON.stringify({
         success: true,
@@ -440,12 +429,25 @@ ${markdown.slice(0, 18000)}`,
       });
     }
 
-    const extractedData = JSON.parse(toolCall.function.arguments);
     console.log("Extracted data:", JSON.stringify(extractedData, null, 2));
+
+    // Type assertion for extracted data
+    const data = extractedData as {
+      title?: string;
+      description?: string;
+      difficulty?: string;
+      play_time?: string;
+      game_type?: string;
+      min_players?: number;
+      max_players?: number;
+      suggested_age?: string;
+      mechanics?: string[];
+      publisher?: string;
+    };
 
     // Map play_time to playing_time_minutes for compatibility
     let playingTimeMinutes: number | null = null;
-    if (extractedData.play_time) {
+    if (data.play_time) {
       const timeMap: Record<string, number> = {
         "0-15 Minutes": 10,
         "15-30 Minutes": 22,
@@ -455,25 +457,25 @@ ${markdown.slice(0, 18000)}`,
         "2+ Hours": 150,
         "3+ Hours": 210,
       };
-      playingTimeMinutes = timeMap[extractedData.play_time] ?? null;
+      playingTimeMinutes = timeMap[data.play_time] ?? null;
     }
 
     const resp: BggLookupResponse = {
       success: true,
       data: {
         bgg_id: bggId,
-        title: extractedData.title || title,
-        description: extractedData.description || null,
+        title: data.title || title,
+        description: data.description || null,
         image_url: imageUrl,
-        min_players: typeof extractedData.min_players === "number" ? extractedData.min_players : null,
-        max_players: typeof extractedData.max_players === "number" ? extractedData.max_players : null,
-        suggested_age: extractedData.suggested_age || null,
+        min_players: typeof data.min_players === "number" ? data.min_players : null,
+        max_players: typeof data.max_players === "number" ? data.max_players : null,
+        suggested_age: data.suggested_age || null,
         playing_time_minutes: playingTimeMinutes,
-        difficulty: extractedData.difficulty || "3 - Medium",
-        play_time: extractedData.play_time || "45-60 Minutes",
-        game_type: extractedData.game_type || "Board Game",
-        mechanics: Array.isArray(extractedData.mechanics) ? extractedData.mechanics : [],
-        publisher: extractedData.publisher || null,
+        difficulty: data.difficulty || "3 - Medium",
+        play_time: data.play_time || "45-60 Minutes",
+        game_type: data.game_type || "Board Game",
+        mechanics: Array.isArray(data.mechanics) ? data.mechanics : [],
+        publisher: data.publisher || null,
       },
     };
 

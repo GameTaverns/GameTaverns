@@ -241,6 +241,27 @@ else
 fi
 
 echo ""
+echo -e "${BOLD}━━━ AI Configuration (Optional, BYOK) ━━━${NC}"
+echo ""
+echo -e "${CYAN}Configure AI for BGG data extraction and description condensing.${NC}"
+echo -e "${CYAN}Supports Perplexity or OpenAI. Leave blank to skip AI features.${NC}"
+echo ""
+
+prompt PERPLEXITY_API_KEY "Perplexity API key (pplx-...)" "" true
+
+if [ -z "$PERPLEXITY_API_KEY" ]; then
+    prompt OPENAI_API_KEY "OpenAI API key (sk-...)" "" true
+else
+    OPENAI_API_KEY=""
+fi
+
+if [ -n "$PERPLEXITY_API_KEY" ] || [ -n "$OPENAI_API_KEY" ]; then
+    echo -e "${GREEN}✓${NC} AI features will be enabled"
+else
+    echo -e "${YELLOW}Skipping AI - BGG imports will have basic data only.${NC}"
+fi
+
+echo ""
 echo -e "${BOLD}━━━ Admin Studio ━━━${NC}"
 echo ""
 
@@ -372,6 +393,12 @@ ESC_SMTP_PASS=$(escape_env_value "$SMTP_PASS")
     echo "SMTP_USER=\"${SMTP_USER}\""
     echo "SMTP_PASS=\"${ESC_SMTP_PASS}\""
     echo "SMTP_ADMIN_EMAIL=\"${SMTP_FROM}\""
+    echo ""
+    echo "# ==================="
+    echo "# AI (BYOK - Bring Your Own Key)"
+    echo "# ==================="
+    echo "PERPLEXITY_API_KEY=\"${PERPLEXITY_API_KEY}\""
+    echo "OPENAI_API_KEY=\"${OPENAI_API_KEY}\""
     echo ""
     echo "# ==================="
     echo "# Additional"
