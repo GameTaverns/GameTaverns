@@ -21,6 +21,7 @@ import { PlayHistory } from "@/components/games/PlayHistory";
 import { GameImage } from "@/components/games/GameImage";
 import { YouTubeVideoList } from "@/components/games/YouTubeEmbed";
 import { StarRating } from "@/components/games/StarRating";
+import { FavoriteButton } from "@/components/games/FavoriteButton";
 import {
   Table,
   TableBody,
@@ -363,6 +364,8 @@ const GameDetail = () => {
                 {game.title}
               </h1>
               <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Favorite Button - visible to library owners */}
+                <FavoriteButton gameId={game.id} />
                 {isAdmin && (
                   <Button
                     variant="outline"

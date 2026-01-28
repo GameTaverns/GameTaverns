@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExpansionList } from "./ExpansionList";
 import { WishlistButton } from "./WishlistButton";
+import { FavoriteButton } from "./FavoriteButton";
 import { StarRating } from "./StarRating";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
@@ -127,15 +128,22 @@ export function GameCard({ game, priority = false }: GameCardProps) {
           </Card>
         </Link>
 
-        {/* Wishlist Button - Outside Link to prevent click conflicts */}
-        {wishlist && (
-          <div className="absolute top-2 right-2 z-10">
+        {/* Action Buttons - Outside Link to prevent click conflicts */}
+        <div className="absolute top-2 right-2 z-10 flex gap-1">
+          {/* Favorite Button - only visible to library owners */}
+          <FavoriteButton 
+            gameId={game.id} 
+            size="sm"
+            className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-8 w-8" 
+          />
+          {/* Wishlist Button */}
+          {wishlist && (
             <WishlistButton 
               gameId={game.id} 
               className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm" 
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Expansions nested under the card */}

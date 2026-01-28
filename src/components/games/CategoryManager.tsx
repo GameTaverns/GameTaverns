@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Plus, Trash2, Tag, Building, Gamepad2, Gauge, Clock, Star, Heart } from "lucide-react";
+import { Loader2, Plus, Trash2, Tag, Building, Gamepad2, Gauge, Clock, Star, Heart, Stars } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +91,40 @@ export function CategoryManager() {
       
       if (error) throw error;
       return data || [];
+    },
+    enabled: !!library?.id
+  });
+
+  // Fetch games with ratings for this library
+  const { data: ratedGames = [], isLoading: ratingsLoading } = useQuery({
+    queryKey: ["rated-games", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return [];
+      
+      // Get games for this library
+      const { data: games } = await supabase
+        .from("games")
+        .select("id, title, slug")
+        .eq("library_id", library.id);
+      
+      if (!games || games.length === 0) return [];
+      
+      const gameIds = games.map(g => g.id);
+      
+      // Get rating summaries
+      const { data: ratings } = await supabase
+        .from("game_ratings_summary")
+        .select("*")
+        .in("game_id", gameIds)
+        .gt("rating_count", 0)
+        .order("average_rating", { ascending: false })
+        .limit(10);
+      
+      // Map game info to ratings
+      return (ratings || []).map(r => ({
+        ...r,
+        game: games.find(g => g.id === r.game_id)
+      }));
     },
     enabled: !!library?.id
   });
@@ -540,6 +574,57 @@ export function CategoryManager() {
                     <Badge variant="secondary" className="text-xs">
                       {item.vote_count} vote{item.vote_count !== 1 ? "s" : ""}
                     </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Top Rated Games */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Stars className="h-5 w-5 text-primary" />
+              Top Rated
+            </CardTitle>
+            <CardDescription>
+              Games with the highest star ratings. Top 10 rated games.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {ratingsLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : ratedGames.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No ratings yet. Enable the ratings feature to let guests rate games.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {ratedGames.map((item, index) => (
+                  <div
+                    key={item.game_id}
+                    className="flex items-center justify-between py-1.5 px-2 rounded-md bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-muted-foreground w-5">
+                        #{index + 1}
+                      </span>
+                      <span className="text-sm font-medium truncate">
+                        {item.game?.title || "Unknown Game"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+                      <span className="text-sm font-medium">
+                        {Number(item.average_rating).toFixed(1)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({item.rating_count})
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
