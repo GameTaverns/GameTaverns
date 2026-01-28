@@ -57,9 +57,9 @@ export function RatingsAdmin() {
   const fetchRatingsData = async () => {
     setIsLoading(true);
     try {
-      // Fetch all rating entries
+      // Fetch rating entries from privacy-safe view (excludes IP/fingerprint)
       const { data: ratingsData, error: ratingsError } = await supabase
-        .from("game_ratings")
+        .from("game_ratings_library_view")
         .select("*")
         .order("created_at", { ascending: false });
 
