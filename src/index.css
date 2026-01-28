@@ -32,16 +32,16 @@
     --primary: 142 35% 30%;
     --primary-foreground: 40 50% 96%;
 
-    /* Secondary - warm antique gold */
-    --secondary: 38 65% 55%;
+    /* Secondary - warm brown gold */
+    --secondary: 28 50% 48%;
     --secondary-foreground: 25 30% 15%;
 
     /* Muted - dusty parchment */
-    --muted: 35 25% 88%;
+    --muted: 30 20% 88%;
     --muted-foreground: 25 15% 45%;
 
-    /* Accent - burnt sienna / terracotta */
-    --accent: 18 55% 50%;
+    /* Accent - warm brown */
+    --accent: 25 45% 42%;
     --accent-foreground: 40 50% 96%;
 
     /* Destructive - muted red */
@@ -66,12 +66,12 @@
     --sidebar-ring: 38 65% 55%;
 
     /* Custom tokens */
-    --parchment: 39 45% 92%;
+    --parchment: 35 40% 92%;
     --wood-dark: 25 30% 18%;
     --wood-medium: 25 25% 28%;
-    --gold: 38 65% 55%;
+    --gold: 28 50% 48%;
     --forest: 142 35% 30%;
-    --sienna: 18 55% 50%;
+    --sienna: 25 45% 42%;
     --cream: 40 50% 96%;
   }
 
@@ -91,13 +91,13 @@
     --primary: 142 35% 45%;
     --primary-foreground: 25 30% 10%;
 
-    --secondary: 38 55% 45%;
+    --secondary: 28 45% 40%;
     --secondary-foreground: 40 40% 90%;
 
     --muted: 25 20% 20%;
-    --muted-foreground: 35 20% 60%;
+    --muted-foreground: 30 18% 60%;
 
-    --accent: 18 45% 45%;
+    --accent: 25 40% 38%;
     --accent-foreground: 40 40% 90%;
 
     --destructive: 0 50% 40%;
@@ -114,15 +114,15 @@
     --sidebar-accent: 25 25% 15%;
     --sidebar-accent-foreground: 40 40% 90%;
     --sidebar-border: 25 20% 18%;
-    --sidebar-ring: 38 55% 50%;
+    --sidebar-ring: 28 45% 45%;
 
     --parchment: 25 30% 12%;
     --wood-dark: 25 35% 8%;
     --wood-medium: 25 25% 18%;
-    --gold: 38 55% 50%;
+    --gold: 28 45% 45%;
     --forest: 142 35% 45%;
-    --sienna: 18 45% 45%;
-    --cream: 40 30% 85%;
+    --sienna: 25 40% 38%;
+    --cream: 35 28% 85%;
   }
 }
 
