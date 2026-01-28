@@ -1,9 +1,9 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
 import { DemoThemeApplicator } from "@/components/DemoThemeApplicator";
@@ -70,15 +70,25 @@ function AppRoutes() {
 // Handle routing based on tenant state
 function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; tenantSlug: string | null }) {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const pathParam = searchParams.get("path");
+  const tabParam = searchParams.get("tab");
+  
+  // Handle path parameter navigation within tenant context
+  useEffect(() => {
+    if (tenantSlug && pathParam) {
+      // Build the new URL with tenant param and optionally tab param
+      let newUrl = `${pathParam}?tenant=${tenantSlug}`;
+      if (tabParam) {
+        newUrl += `&tab=${tabParam}`;
+      }
+      navigate(newUrl, { replace: true });
+    }
+  }, [tenantSlug, pathParam, tabParam, navigate]);
   
   // If tenant slug is in URL, show library routes
   if (tenantSlug) {
-    // Handle path parameter for navigation within tenant
-    if (pathParam) {
-      // Navigate to the path within the tenant context
-      window.history.replaceState(null, "", `${pathParam}?tenant=${tenantSlug}`);
-    }
     return <LibraryRoutes isDemoMode={isDemoMode} />;
   }
   
