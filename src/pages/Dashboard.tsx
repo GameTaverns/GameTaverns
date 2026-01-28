@@ -18,8 +18,10 @@ import {
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
+import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +32,7 @@ export default function Dashboard() {
   const { user, signOut, isAuthenticated } = useAuth();
   const { data: library, isLoading: libraryLoading } = useMyLibrary();
   const { data: profile } = useUserProfile();
+  const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -285,6 +288,11 @@ export default function Dashboard() {
                 <CardTitle className="flex items-center gap-2">
                   <Mail className="h-5 w-5 text-secondary" />
                   Messages
+                  {unreadCount > 0 && (
+                    <Badge variant="destructive" className="ml-auto">
+                      {unreadCount} new
+                    </Badge>
+                  )}
                 </CardTitle>
                 <CardDescription className="text-cream/70">
                   View inquiries about games for sale
@@ -295,6 +303,11 @@ export default function Dashboard() {
                   <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                     <Mail className="h-4 w-4 mr-2" />
                     View Messages
+                    {unreadCount > 0 && (
+                      <Badge variant="outline" className="ml-2 bg-cream/20">
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </Button>
                 </a>
               </CardContent>
