@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Palette, Settings, ToggleRight, Users, Image, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,12 +9,37 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout/Layout";
 import { LibrarySettingsGeneral } from "@/components/settings/LibrarySettingsGeneral";
 import { LibraryThemeCustomizer } from "@/components/settings/LibraryThemeCustomizer";
+import { RatingsAdmin } from "@/components/settings/RatingsAdmin";
+import { WishlistAdmin } from "@/components/settings/WishlistAdmin";
 
 export default function LibrarySettings() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { library, settings, isLoading, isOwner, tenantSlug } = useTenant();
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("general");
+  
+  // Get initial tab from URL param
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "general");
+
+  // Update tab when URL changes
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  // Update URL when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const newParams = new URLSearchParams(searchParams);
+    if (value === "general") {
+      newParams.delete("tab");
+    } else {
+      newParams.set("tab", value);
+    }
+    setSearchParams(newParams, { replace: true });
+  };
 
   // Redirect if not authenticated or not owner
   if (!authLoading && !isAuthenticated) {
@@ -76,23 +101,31 @@ export default function LibrarySettings() {
           Back to Library
         </Button>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
             <TabsTrigger value="general" className="gap-2">
               <Settings className="h-4 w-4" />
-              General
+              <span className="hidden sm:inline">General</span>
             </TabsTrigger>
             <TabsTrigger value="theme" className="gap-2">
               <Palette className="h-4 w-4" />
-              Theme
+              <span className="hidden sm:inline">Theme</span>
             </TabsTrigger>
             <TabsTrigger value="branding" className="gap-2">
               <Image className="h-4 w-4" />
-              Branding
+              <span className="hidden sm:inline">Branding</span>
+            </TabsTrigger>
+            <TabsTrigger value="ratings" className="gap-2">
+              <Star className="h-4 w-4" />
+              <span className="hidden sm:inline">Ratings</span>
+            </TabsTrigger>
+            <TabsTrigger value="wishlist" className="gap-2">
+              <Heart className="h-4 w-4" />
+              <span className="hidden sm:inline">Wishlist</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="gap-2">
               <ToggleRight className="h-4 w-4" />
-              Advanced
+              <span className="hidden sm:inline">Advanced</span>
             </TabsTrigger>
           </TabsList>
 
@@ -124,6 +157,14 @@ export default function LibrarySettings() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="ratings">
+            <RatingsAdmin />
+          </TabsContent>
+
+          <TabsContent value="wishlist">
+            <WishlistAdmin />
           </TabsContent>
 
           <TabsContent value="advanced">
