@@ -854,6 +854,36 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_feedback: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          sender_email: string
+          sender_name: string
+          type: Database["public"]["Enums"]["feedback_type"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          sender_email: string
+          sender_name: string
+          type: Database["public"]["Enums"]["feedback_type"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          sender_email?: string
+          sender_name?: string
+          type?: Database["public"]["Enums"]["feedback_type"]
+        }
+        Relationships: []
+      }
       publishers: {
         Row: {
           created_at: string | null
@@ -1292,6 +1322,7 @@ export type Database = {
         | "3 - Medium"
         | "4 - Medium Heavy"
         | "5 - Heavy"
+      feedback_type: "feedback" | "bug" | "feature_request"
       game_type:
         | "Board Game"
         | "Card Game"
@@ -1451,6 +1482,7 @@ export const Constants = {
         "4 - Medium Heavy",
         "5 - Heavy",
       ],
+      feedback_type: ["feedback", "bug", "feature_request"],
       game_type: [
         "Board Game",
         "Card Game",
