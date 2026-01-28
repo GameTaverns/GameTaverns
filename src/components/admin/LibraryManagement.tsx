@@ -1,12 +1,17 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, ExternalLink, Crown, Library } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Loader2, ExternalLink, Crown, Library, Ban, CheckCircle, History, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LibraryWithOwner {
   id: string;
@@ -19,8 +24,23 @@ interface LibraryWithOwner {
   owner_display_name: string | null;
 }
 
+interface SuspensionRecord {
+  id: string;
+  library_id: string;
+  action: "suspended" | "unsuspended";
+  reason: string | null;
+  performed_by: string;
+  created_at: string;
+  performer_name?: string;
+}
+
 export function LibraryManagement() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedLibrary, setSelectedLibrary] = useState<LibraryWithOwner | null>(null);
+  const [suspensionReason, setSuspensionReason] = useState("");
 
   // Fetch all libraries with owner info
   const { data: libraries, isLoading } = useQuery({
@@ -60,21 +80,101 @@ export function LibraryManagement() {
     },
   });
 
-  // Toggle library active status
-  const toggleActiveMutation = useMutation({
-    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { error } = await supabase
-        .from("libraries")
-        .update({ is_active })
-        .eq("id", id);
+  // Fetch suspension history for selected library
+  const { data: suspensionHistory, isLoading: historyLoading } = useQuery({
+    queryKey: ["library-suspensions", selectedLibrary?.id],
+    queryFn: async () => {
+      if (!selectedLibrary) return [];
+
+      const { data, error } = await supabase
+        .from("library_suspensions")
+        .select("*")
+        .eq("library_id", selectedLibrary.id)
+        .order("created_at", { ascending: false });
+
       if (error) throw error;
+
+      // Get performer names
+      const performerIds = [...new Set(data?.map((s) => s.performed_by) || [])];
+      const { data: profiles } = await supabase
+        .from("user_profiles")
+        .select("user_id, display_name")
+        .in("user_id", performerIds);
+
+      return (data || []).map((record) => ({
+        ...record,
+        performer_name: profiles?.find((p) => p.user_id === record.performed_by)?.display_name || "Unknown",
+      })) as SuspensionRecord[];
+    },
+    enabled: !!selectedLibrary && historyDialogOpen,
+  });
+
+  // Suspend library mutation
+  const suspendMutation = useMutation({
+    mutationFn: async ({ libraryId, reason }: { libraryId: string; reason: string }) => {
+      // Update library status
+      const { error: updateError } = await supabase
+        .from("libraries")
+        .update({ is_active: false })
+        .eq("id", libraryId);
+
+      if (updateError) throw updateError;
+
+      // Create suspension record
+      const { error: recordError } = await supabase
+        .from("library_suspensions")
+        .insert({
+          library_id: libraryId,
+          action: "suspended",
+          reason,
+          performed_by: user?.id,
+        });
+
+      if (recordError) throw recordError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-libraries"] });
-      toast.success("Library status updated");
+      queryClient.invalidateQueries({ queryKey: ["library-suspensions"] });
+      toast.success("Library suspended");
+      setSuspendDialogOpen(false);
+      setSuspensionReason("");
+      setSelectedLibrary(null);
     },
     onError: () => {
-      toast.error("Failed to update library status");
+      toast.error("Failed to suspend library");
+    },
+  });
+
+  // Unsuspend library mutation
+  const unsuspendMutation = useMutation({
+    mutationFn: async (libraryId: string) => {
+      // Update library status
+      const { error: updateError } = await supabase
+        .from("libraries")
+        .update({ is_active: true })
+        .eq("id", libraryId);
+
+      if (updateError) throw updateError;
+
+      // Create unsuspension record
+      const { error: recordError } = await supabase
+        .from("library_suspensions")
+        .insert({
+          library_id: libraryId,
+          action: "unsuspended",
+          reason: null,
+          performed_by: user?.id,
+        });
+
+      if (recordError) throw recordError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-libraries"] });
+      queryClient.invalidateQueries({ queryKey: ["library-suspensions"] });
+      toast.success("Library unsuspended");
+    },
+    onError: () => {
+      toast.error("Failed to unsuspend library");
     },
   });
 
@@ -95,6 +195,24 @@ export function LibraryManagement() {
       toast.error("Failed to update premium status");
     },
   });
+
+  const handleSuspendClick = (library: LibraryWithOwner) => {
+    setSelectedLibrary(library);
+    setSuspendDialogOpen(true);
+  };
+
+  const handleHistoryClick = (library: LibraryWithOwner) => {
+    setSelectedLibrary(library);
+    setHistoryDialogOpen(true);
+  };
+
+  const handleSuspendConfirm = () => {
+    if (!selectedLibrary || !suspensionReason.trim()) {
+      toast.error("Please provide a reason for suspension");
+      return;
+    }
+    suspendMutation.mutate({ libraryId: selectedLibrary.id, reason: suspensionReason });
+  };
 
   if (isLoading) {
     return (
@@ -142,15 +260,40 @@ export function LibraryManagement() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Switch
-                      checked={library.is_active}
-                      onCheckedChange={(checked) =>
-                        toggleActiveMutation.mutate({ id: library.id, is_active: checked })
-                      }
-                    />
-                    <Badge variant={library.is_active ? "default" : "secondary"} className={library.is_active ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}>
-                      {library.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                    {library.is_active ? (
+                      <>
+                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Active
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          onClick={() => handleSuspendClick(library)}
+                        >
+                          <Ban className="w-4 h-4 mr-1" />
+                          Suspend
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                          Suspended
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                          onClick={() => unsuspendMutation.mutate(library.id)}
+                          disabled={unsuspendMutation.isPending}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Unsuspend
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -170,17 +313,28 @@ export function LibraryManagement() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-cream/70 hover:text-cream"
-                    asChild
-                  >
-                    <a href={`/?tenant=${library.slug}`} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-4 h-4 mr-1" />
-                      View
-                    </a>
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-cream/70 hover:text-cream"
+                      onClick={() => handleHistoryClick(library)}
+                    >
+                      <History className="w-4 h-4 mr-1" />
+                      History
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-cream/70 hover:text-cream"
+                      asChild
+                    >
+                      <a href={`/?tenant=${library.slug}`} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        View
+                      </a>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -194,6 +348,135 @@ export function LibraryManagement() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Suspend Dialog */}
+      <Dialog open={suspendDialogOpen} onOpenChange={setSuspendDialogOpen}>
+        <DialogContent className="bg-wood-dark border-wood-medium">
+          <DialogHeader>
+            <DialogTitle className="text-cream flex items-center gap-2">
+              <Ban className="w-5 h-5 text-red-400" />
+              Suspend Library
+            </DialogTitle>
+            <DialogDescription className="text-cream/70">
+              Suspending "{selectedLibrary?.name}" will make it inaccessible to visitors.
+              This action will be recorded in the audit trail.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reason" className="text-cream">Reason for Suspension *</Label>
+              <Textarea
+                id="reason"
+                placeholder="Describe why this library is being suspended..."
+                value={suspensionReason}
+                onChange={(e) => setSuspensionReason(e.target.value)}
+                className="bg-wood-medium/30 border-wood-medium text-cream placeholder:text-cream/50"
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSuspendDialogOpen(false);
+                setSuspensionReason("");
+              }}
+              className="text-cream"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleSuspendConfirm}
+              disabled={suspendMutation.isPending || !suspensionReason.trim()}
+            >
+              {suspendMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Ban className="w-4 h-4 mr-2" />
+              )}
+              Suspend Library
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="bg-wood-dark border-wood-medium max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-cream flex items-center gap-2">
+              <History className="w-5 h-5 text-secondary" />
+              Suspension History - {selectedLibrary?.name}
+            </DialogTitle>
+            <DialogDescription className="text-cream/70">
+              Complete audit trail of suspension and unsuspension actions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 max-h-96 overflow-y-auto">
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-secondary" />
+              </div>
+            ) : suspensionHistory && suspensionHistory.length > 0 ? (
+              <div className="space-y-3">
+                {suspensionHistory.map((record) => (
+                  <div
+                    key={record.id}
+                    className={`p-3 rounded-lg border ${
+                      record.action === "suspended"
+                        ? "bg-red-500/10 border-red-500/30"
+                        : "bg-green-500/10 border-green-500/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge
+                        className={
+                          record.action === "suspended"
+                            ? "bg-red-500/20 text-red-400"
+                            : "bg-green-500/20 text-green-400"
+                        }
+                      >
+                        {record.action === "suspended" ? (
+                          <Ban className="w-3 h-3 mr-1" />
+                        ) : (
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                        )}
+                        {record.action === "suspended" ? "Suspended" : "Unsuspended"}
+                      </Badge>
+                      <span className="text-cream/50 text-sm">
+                        {format(new Date(record.created_at), "MMM d, yyyy 'at' h:mm a")}
+                      </span>
+                    </div>
+                    <div className="text-cream/70 text-sm">
+                      <span className="text-cream/50">By:</span> {record.performer_name}
+                    </div>
+                    {record.reason && (
+                      <div className="mt-2 text-cream/80 text-sm">
+                        <span className="text-cream/50">Reason:</span> {record.reason}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-cream/50 py-8">
+                No suspension history for this library
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setHistoryDialogOpen(false)}
+              className="text-cream"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

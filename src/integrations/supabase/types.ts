@@ -663,6 +663,41 @@ export type Database = {
           },
         ]
       }
+      library_suspensions: {
+        Row: {
+          action: Database["public"]["Enums"]["suspension_action"]
+          created_at: string
+          id: string
+          library_id: string
+          performed_by: string
+          reason: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["suspension_action"]
+          created_at?: string
+          id?: string
+          library_id: string
+          performed_by: string
+          reason?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["suspension_action"]
+          created_at?: string
+          id?: string
+          library_id?: string
+          performed_by?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_suspensions_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mechanics: {
         Row: {
           created_at: string | null
@@ -1028,6 +1063,7 @@ export type Database = {
         | "Very Good"
         | "Good"
         | "Acceptable"
+      suspension_action: "suspended" | "unsuspended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1189,6 +1225,7 @@ export const Constants = {
         "Good",
         "Acceptable",
       ],
+      suspension_action: ["suspended", "unsuspended"],
     },
   },
 } as const
