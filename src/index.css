@@ -58,12 +58,12 @@
     /* Sidebar - darker wood tones */
     --sidebar-background: 25 30% 18%;
     --sidebar-foreground: 40 40% 90%;
-    --sidebar-primary: 38 65% 55%;
+    --sidebar-primary: 28 50% 48%;
     --sidebar-primary-foreground: 25 30% 15%;
     --sidebar-accent: 25 25% 25%;
     --sidebar-accent-foreground: 40 40% 90%;
     --sidebar-border: 25 20% 28%;
-    --sidebar-ring: 38 65% 55%;
+    --sidebar-ring: 28 50% 48%;
 
     /* Custom tokens */
     --parchment: 35 40% 92%;
