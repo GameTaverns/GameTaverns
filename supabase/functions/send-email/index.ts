@@ -12,6 +12,7 @@ interface EmailRequest {
   subject: string;
   html: string;
   text?: string;
+  replyTo?: string;
 }
 
 // Export handler for self-hosted router
@@ -103,7 +104,7 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const { to, subject, html, text }: EmailRequest = await req.json();
+    const { to, subject, html, text, replyTo }: EmailRequest = await req.json();
 
     if (!to || !subject || !html) {
       return new Response(
@@ -127,13 +128,21 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Send email with display name format: "Name <email>"
     const fromAddress = `${smtpFromName} <${smtpFrom}>`;
-    await client.send({
+    
+    // Build email options with optional Reply-To header
+    const emailOptions: any = {
       from: fromAddress,
       to: to,
       subject: subject,
       content: text || "",
       html: html,
-    });
+    };
+    
+    if (replyTo) {
+      emailOptions.replyTo = replyTo;
+    }
+    
+    await client.send(emailOptions);
 
     await client.close();
 
