@@ -2,16 +2,24 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import type { Game, GameWithRelations, Mechanic, Publisher, DifficultyLevel, GameType, PlayTime } from "@/types/game";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 
 export function useGames(enabled = true) {
   const { isAdmin } = useAuth();
+  const { library } = useTenant();
+  const libraryId = library?.id;
 
   return useQuery({
-    queryKey: ["games", isAdmin],
+    queryKey: ["games", libraryId, isAdmin],
     queryFn: async (): Promise<GameWithRelations[]> => {
-      // Admins can access full games table
-      // Public users access games_public view
-      if (isAdmin) {
+      if (!libraryId) return [];
+
+      // Library owners can access full games table for their library
+      // Check if current user is the library owner
+      const { data: { user } } = await supabase.auth.getUser();
+      const isLibraryOwner = user && library?.owner_id === user.id;
+
+      if (isAdmin || isLibraryOwner) {
         const { data: games, error: gamesError } = await supabase
           .from("games")
           .select(
@@ -24,6 +32,7 @@ export function useGames(enabled = true) {
             )
           `
           )
+          .eq("library_id", libraryId)
           .order("title");
 
         if (gamesError) throw gamesError;
@@ -35,6 +44,7 @@ export function useGames(enabled = true) {
       const { data: games, error: gamesError } = await supabase
         .from("games_public")
         .select("*")
+        .eq("library_id", libraryId)
         .order("title");
 
       if (gamesError) throw gamesError;
@@ -92,7 +102,7 @@ export function useGames(enabled = true) {
 
       return groupExpansions(gamesWithRelations);
     },
-    enabled,
+    enabled: enabled && !!libraryId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
@@ -100,15 +110,24 @@ export function useGames(enabled = true) {
 // Hook for getting all games as a flat list (for parent game selection dropdowns)
 export function useAllGamesFlat(enabled = true) {
   const { isAdmin } = useAuth();
+  const { library } = useTenant();
+  const libraryId = library?.id;
 
   return useQuery({
-    queryKey: ["games-flat", isAdmin],
+    queryKey: ["games-flat", libraryId, isAdmin],
     queryFn: async (): Promise<{ id: string; title: string; is_expansion: boolean }[]> => {
+      if (!libraryId) return [];
+
+      // Check if current user is the library owner
+      const { data: { user } } = await supabase.auth.getUser();
+      const isLibraryOwner = user && library?.owner_id === user.id;
+
       // For parent game selection, we only need id and title of non-expansion games
-      if (isAdmin) {
+      if (isAdmin || isLibraryOwner) {
         const { data: games, error } = await supabase
           .from("games")
           .select("id, title, is_expansion")
+          .eq("library_id", libraryId)
           .eq("is_expansion", false)
           .order("title");
 
@@ -127,6 +146,7 @@ export function useAllGamesFlat(enabled = true) {
       const { data: games, error } = await supabase
         .from("games_public")
         .select("id, title, is_expansion")
+        .eq("library_id", libraryId)
         .eq("is_expansion", false)
         .order("title");
 
@@ -139,7 +159,7 @@ export function useAllGamesFlat(enabled = true) {
           is_expansion: g.is_expansion === true,
         }));
     },
-    enabled,
+    enabled: enabled && !!libraryId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
@@ -321,17 +341,26 @@ export function usePublishers() {
 
 export function useCreateGame() {
   const queryClient = useQueryClient();
+  const { library } = useTenant();
 
   return useMutation({
     mutationFn: async (gameData: {
       game: Omit<Game, "id" | "created_at" | "updated_at">;
       mechanicIds: string[];
     }) => {
+      if (!library?.id) throw new Error("No library context");
+
       const { cleanedGame, admin } = splitAdminFields(gameData.game as any);
+
+      // Add library_id to the game data
+      const gameWithLibrary = {
+        ...cleanedGame,
+        library_id: library.id,
+      };
 
       const { data: game, error: gameError } = await supabase
         .from("games")
-        .insert(cleanedGame as any)
+        .insert(gameWithLibrary as any)
         .select()
         .single();
 

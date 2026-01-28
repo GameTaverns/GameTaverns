@@ -100,7 +100,21 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const { url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, location_misc, purchase_price, purchase_date, sleeved, upgraded_components, crowdfunded, inserts } = await req.json();
+    const { url, library_id, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, location_misc, purchase_price, purchase_date, sleeved, upgraded_components, crowdfunded, inserts } = await req.json();
+
+    // Determine which library to add the game to
+    // If library_id is provided, use it; otherwise use the user's own library
+    let targetLibraryId = library_id;
+    if (!targetLibraryId && libraryData) {
+      targetLibraryId = libraryData.id;
+    }
+    
+    if (!targetLibraryId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No library specified and user has no library" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Validate input URL
     if (!url || typeof url !== "string") {
@@ -541,15 +555,17 @@ ${markdown.slice(0, 18000)}`,
       upgraded_components: upgraded_components === true,
       crowdfunded: crowdfunded === true,
       inserts: inserts === true,
+      library_id: targetLibraryId,
     };
 
-    // Upsert: if we already have a game for this BGG URL, update it instead of inserting a duplicate slug.
+    // Upsert: if we already have a game for this BGG URL in this library, update it instead of inserting a duplicate.
     let existingId: string | null = null;
     if (gameData.bgg_url) {
       const { data: existing, error: existingError } = await supabaseAdmin
         .from("games")
         .select("id")
         .eq("bgg_url", gameData.bgg_url)
+        .eq("library_id", targetLibraryId)
         .maybeSingle();
       if (existingError) throw existingError;
       existingId = existing?.id ?? null;

@@ -25,6 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
+import { useTenant } from "@/contexts/TenantContext";
 
 type ImportMode = "csv" | "bgg_collection" | "bgg_links";
 
@@ -52,6 +53,7 @@ export function BulkImportDialog({
   onDemoImport,
 }: BulkImportDialogProps) {
   const { toast } = useToast();
+  const { library } = useTenant();
   const [mode, setMode] = useState<ImportMode>("csv");
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -99,6 +101,7 @@ export function BulkImportDialog({
     try {
       const payload: any = {
         mode,
+        library_id: library?.id,
         enhance_with_bgg: enhanceWithBgg,
         default_options: {
           location_room: locationRoom.trim() || null,
