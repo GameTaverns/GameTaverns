@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Library, Users, Palette, Shield, Zap, Import } from "lucide-react";
+import { Library, Users, Palette, Shield, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
@@ -155,11 +155,6 @@ export default function Platform() {
             icon={<Shield className="h-8 w-8" />}
             title="Private by Default"
             description="Control what's public and what's private. Admin data stays hidden from visitors."
-          />
-          <FeatureCard 
-            icon={<Import className="h-8 w-8" />}
-            title="BGG Import"
-            description="Import your collection from BoardGameGeek with one click. Get box art and descriptions automatically."
           />
         </div>
       </section>
