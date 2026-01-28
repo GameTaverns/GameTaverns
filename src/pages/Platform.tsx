@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Library, Users, Palette, Shield, Zap } from "lucide-react";
+import { Library, Users, Palette, Shield, Zap, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
@@ -155,6 +155,11 @@ export default function Platform() {
             icon={<Shield className="h-8 w-8" />}
             title="Private by Default"
             description="Control what's public and what's private. Admin data stays hidden from visitors."
+          />
+          <FeatureCard 
+            icon={<Upload className="h-8 w-8" />}
+            title="Easy Import"
+            description="Import your collection via CSV or add games individually with automatic box art and details."
           />
         </div>
       </section>
