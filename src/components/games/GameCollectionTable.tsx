@@ -1,8 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Edit, Trash2, Download, Search, Star, ChevronUp, ChevronDown } from "lucide-react";
+import { Edit, Trash2, Download, Star, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -38,7 +37,7 @@ export function GameCollectionTable() {
   const deleteGame = useDeleteGame();
   const { buildUrl } = useTenantUrl();
   
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeLetter, setActiveLetter] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("title");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -63,19 +62,36 @@ export function GameCollectionTable() {
     return rating?.average_rating ?? null;
   };
 
+  // Generate alphabet for the alpha bar
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+  // Get letters that have games
+  const lettersWithGames = useMemo(() => {
+    const letters = new Set<string>();
+    allGames.forEach((game) => {
+      const firstChar = game.title.charAt(0).toUpperCase();
+      if (/[A-Z]/.test(firstChar)) {
+        letters.add(firstChar);
+      } else {
+        letters.add("#"); // For games starting with numbers or special chars
+      }
+    });
+    return letters;
+  }, [allGames]);
+
   // Filter and sort games
   const filteredAndSortedGames = useMemo(() => {
     let result = allGames;
 
-    // Filter by search
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (game) =>
-          game.title.toLowerCase().includes(query) ||
-          game.game_type?.toLowerCase().includes(query) ||
-          game.difficulty?.toLowerCase().includes(query)
-      );
+    // Filter by letter
+    if (activeLetter) {
+      if (activeLetter === "#") {
+        result = result.filter((game) => !/^[A-Za-z]/.test(game.title));
+      } else {
+        result = result.filter((game) =>
+          game.title.toUpperCase().startsWith(activeLetter)
+        );
+      }
     }
 
     // Sort
@@ -104,7 +120,7 @@ export function GameCollectionTable() {
     });
 
     return result;
-  }, [allGames, searchQuery, sortField, sortDirection, ratingsData]);
+  }, [allGames, activeLetter, sortField, sortDirection, ratingsData]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -198,26 +214,52 @@ export function GameCollectionTable() {
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search games..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+      {/* Toolbar with Alpha Bar */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredAndSortedGames.length} of {allGames.length} games
+            {activeLetter && ` starting with "${activeLetter}"`}
+          </div>
+          <Button variant="outline" onClick={exportToCsv}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
         </div>
-        <Button variant="outline" onClick={exportToCsv}>
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
-        </Button>
-      </div>
 
-      {/* Stats */}
-      <div className="text-sm text-muted-foreground">
-        Showing {filteredAndSortedGames.length} of {allGames.length} games
+        {/* Alpha Bar */}
+        <div className="flex flex-wrap gap-1">
+          <Button
+            variant={activeLetter === null ? "default" : "outline"}
+            size="sm"
+            className="h-8 w-8 p-0 text-xs"
+            onClick={() => setActiveLetter(null)}
+          >
+            All
+          </Button>
+          {lettersWithGames.has("#") && (
+            <Button
+              variant={activeLetter === "#" ? "default" : "outline"}
+              size="sm"
+              className="h-8 w-8 p-0 text-xs"
+              onClick={() => setActiveLetter("#")}
+            >
+              #
+            </Button>
+          )}
+          {alphabet.map((letter) => (
+            <Button
+              key={letter}
+              variant={activeLetter === letter ? "default" : "outline"}
+              size="sm"
+              className="h-8 w-8 p-0 text-xs"
+              onClick={() => setActiveLetter(letter)}
+              disabled={!lettersWithGames.has(letter)}
+            >
+              {letter}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Table */}
@@ -262,7 +304,7 @@ export function GameCollectionTable() {
             {filteredAndSortedGames.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  {searchQuery ? "No games match your search." : "No games in your library yet."}
+                  {activeLetter ? `No games starting with "${activeLetter}".` : "No games in your library yet."}
                 </TableCell>
               </TableRow>
             ) : (
