@@ -478,13 +478,48 @@ export default async function handler(req: Request): Promise<Response> {
       return isNaN(n) ? undefined : n;
     };
 
+    // Helper to convert BGG weight (1-5 decimal) to difficulty enum
+    const mapWeightToDifficulty = (weight: string | undefined): string | undefined => {
+      if (!weight) return undefined;
+      const w = parseFloat(weight);
+      if (isNaN(w)) return undefined;
+      if (w < 1.5) return "1 - Light";
+      if (w < 2.25) return "2 - Medium Light";
+      if (w < 3.0) return "3 - Medium";
+      if (w < 3.75) return "4 - Medium Heavy";
+      return "5 - Heavy";
+    };
+    
+    // Helper to convert play time in minutes to enum
+    const mapPlayTimeToEnum = (minutes: number | undefined): string | undefined => {
+      if (!minutes) return undefined;
+      if (minutes <= 15) return "0-15 Minutes";
+      if (minutes <= 30) return "15-30 Minutes";
+      if (minutes <= 45) return "30-45 Minutes";
+      if (minutes <= 60) return "45-60 Minutes";
+      if (minutes <= 120) return "60+ Minutes";
+      if (minutes <= 180) return "2+ Hours";
+      return "3+ Hours";
+    };
+
     // Determine games to import based on mode
     if (mode === "csv" && csv_data) {
       const rows = parseCSV(csv_data);
       console.log(`Parsed ${rows.length} rows from CSV`);
       
+      // Detect BGG export format by checking for 'objectname' column
+      const isBGGExport = rows.length > 0 && rows[0].objectname !== undefined;
+      console.log(`CSV format detected: ${isBGGExport ? 'BGG Export' : 'Standard'}`);
+      
       for (const row of rows) {
-        const title = row.title || row.name || row.game || row["game name"] || row["game title"];
+        // Support both standard CSV columns and BGG export columns
+        const title = row.title || row.name || row.game || row["game name"] || row["game title"] || row.objectname;
+        
+        // For BGG export, skip if not owned (own=0)
+        if (isBGGExport && row.own === "0") {
+          continue;
+        }
+        
         if (title) {
           // Parse mechanics from semicolon-separated string
           const mechanicsStr = row.mechanics || row.mechanic || "";
@@ -493,26 +528,57 @@ export default async function handler(req: Request): Promise<Response> {
             .map((m: string) => m.trim())
             .filter((m: string) => m.length > 0);
           
-          gamesToImport.push({ 
+          // Map BGG export columns to standard fields
+          const bggId = row.bgg_id || row["bgg id"] || row.objectid || undefined;
+          const minPlayersRaw = row.min_players || row["min players"] || row.minplayers;
+          const maxPlayersRaw = row.max_players || row["max players"] || row.maxplayers;
+          const playTimeRaw = row.play_time || row["play time"] || row.playtime || row.playingtime;
+          
+          // Determine if it's an expansion based on itemtype column (BGG export)
+          const isExpansion = parseBool(row.is_expansion || row["is expansion"]) || 
+                             row.itemtype === "expansion" || 
+                             row.objecttype === "expansion";
+          
+          // Get difficulty from avgweight (BGG) or direct difficulty column
+          let difficulty: string | undefined = row.difficulty || row.weight;
+          if (!difficulty && row.avgweight) {
+            difficulty = mapWeightToDifficulty(row.avgweight);
+          }
+          
+          // Get play time - use the enum converter for BGG numeric values
+          let playTime: string | undefined = row.play_time || row["play time"];
+          if (!playTime && playTimeRaw) {
+            const playTimeNum = parseNum(playTimeRaw);
+            playTime = mapPlayTimeToEnum(playTimeNum);
+          }
+          
+          // Get suggested age from BGG export format
+          const suggestedAge = row.suggested_age || row["suggested age"] || row.age || row.bggrecagerange || undefined;
+          
+          // Map for_sale from BGG 'fortrade' column
+          const isForSale = parseBool(row.is_for_sale || row["is for sale"] || row.fortrade);
+          
+          // Build the game object
+          const gameData: GameToImport = { 
             title,
-            bgg_id: row.bgg_id || row["bgg id"] || undefined,
-            bgg_url: row.bgg_url || row["bgg url"] || row.url || undefined,
+            bgg_id: bggId,
+            bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || row["bgg url"] || row.url || undefined),
             type: row.type || row["game type"] || undefined,
-            difficulty: row.difficulty || row.weight || undefined,
-            play_time: row.play_time || row["play time"] || row.playtime || undefined,
-            min_players: parseNum(row.min_players || row["min players"]),
-            max_players: parseNum(row.max_players || row["max players"]),
-            suggested_age: row.suggested_age || row["suggested age"] || row.age || undefined,
+            difficulty,
+            play_time: playTime,
+            min_players: parseNum(minPlayersRaw),
+            max_players: parseNum(maxPlayersRaw),
+            suggested_age: suggestedAge,
             publisher: row.publisher || undefined,
             mechanics: mechanics.length > 0 ? mechanics : undefined,
-            is_expansion: parseBool(row.is_expansion || row["is expansion"]),
+            is_expansion: isExpansion,
             parent_game: row.parent_game || row["parent game"] || undefined,
             is_coming_soon: parseBool(row.is_coming_soon || row["is coming soon"]),
-            is_for_sale: parseBool(row.is_for_sale || row["is for sale"]),
+            is_for_sale: isForSale,
             sale_price: parseNum(row.sale_price || row["sale price"]),
             sale_condition: row.sale_condition || row["sale condition"] || undefined,
             location_room: row.location_room || row["location room"] || undefined,
-            location_shelf: row.location_shelf || row["location shelf"] || undefined,
+            location_shelf: row.location_shelf || row["location shelf"] || row.invlocation || undefined,
             location_misc: row.location_misc || row["location misc"] || undefined,
             sleeved: parseBool(row.sleeved),
             upgraded_components: parseBool(row.upgraded_components || row["upgraded components"]),
@@ -520,7 +586,16 @@ export default async function handler(req: Request): Promise<Response> {
             inserts: parseBool(row.inserts),
             in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
             description: row.description || undefined,
-          });
+          };
+          
+          // Store purchase info for later (will be added to game_admin_data)
+          if (row.pricepaid || row.acquisitiondate) {
+            (gameData as any).purchase_price_raw = row.pricepaid;
+            (gameData as any).purchase_date_raw = row.acquisitiondate;
+            (gameData as any).acquired_from = row.acquiredfrom;
+          }
+          
+          gamesToImport.push(gameData);
         }
       }
     } else if (mode === "bgg_collection" && bgg_username) {

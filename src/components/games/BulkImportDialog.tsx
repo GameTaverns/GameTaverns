@@ -237,10 +237,44 @@ export function BulkImportDialog({
             return isNaN(n) ? undefined : n;
           };
           
+          // Helper to convert BGG weight (1-5 decimal) to difficulty enum
+          const mapWeightToDifficulty = (weight: string | undefined): string | null => {
+            if (!weight) return null;
+            const w = parseFloat(weight);
+            if (isNaN(w)) return null;
+            if (w < 1.5) return "1 - Light";
+            if (w < 2.25) return "2 - Medium Light";
+            if (w < 3.0) return "3 - Medium";
+            if (w < 3.75) return "4 - Medium Heavy";
+            return "5 - Heavy";
+          };
+          
+          // Helper to convert play time in minutes to enum
+          const mapPlayTimeToEnum = (minutes: number | undefined): string | null => {
+            if (!minutes) return null;
+            if (minutes <= 15) return "0-15 Minutes";
+            if (minutes <= 30) return "15-30 Minutes";
+            if (minutes <= 45) return "30-45 Minutes";
+            if (minutes <= 60) return "45-60 Minutes";
+            if (minutes <= 120) return "60+ Minutes";
+            if (minutes <= 180) return "2+ Hours";
+            return "3+ Hours";
+          };
+          
+          // Detect BGG export format by checking for 'objectname' column
+          const isBGGExport = parsedRows.length > 0 && parsedRows[0].objectname !== undefined;
+          
           // First pass: create all games with temporary IDs
           const tempGames: any[] = [];
           for (const row of parsedRows) {
-            const title = row.title || row.name || row.game || row.game_name || row.game_title;
+            // Support both standard CSV columns and BGG export columns
+            const title = row.title || row.name || row.game || row.game_name || row.game_title || row.objectname;
+            
+            // For BGG export, skip if not owned (own=0)
+            if (isBGGExport && row.own === "0") {
+              continue;
+            }
+            
             if (title) {
               // Parse mechanics from semicolon-separated string
               const mechanicsStr = row.mechanics || row.mechanic || "";
@@ -249,29 +283,59 @@ export function BulkImportDialog({
                 .map((m: string) => m.trim())
                 .filter((m: string) => m.length > 0);
               
+              // Map BGG export columns to standard fields
+              const bggId = row.bgg_id || row.objectid || null;
+              const minPlayersRaw = row.min_players || row.minplayers;
+              const maxPlayersRaw = row.max_players || row.maxplayers;
+              const playTimeRaw = row.play_time || row.playtime || row.playingtime;
+              
+              // Determine if it's an expansion based on itemtype column (BGG export)
+              const isExpansion = parseBool(row.is_expansion) || 
+                                 row.itemtype === "expansion" || 
+                                 row.objecttype === "expansion";
+              
+              // Get difficulty from avgweight (BGG) or direct difficulty column
+              let difficulty = row.difficulty || row.weight || null;
+              if (!difficulty && row.avgweight) {
+                difficulty = mapWeightToDifficulty(row.avgweight);
+              }
+              
+              // Get play time - use the enum converter for BGG numeric values
+              let playTime = row.play_time || null;
+              if (!playTime && playTimeRaw) {
+                const playTimeNum = parseNum(playTimeRaw);
+                playTime = mapPlayTimeToEnum(playTimeNum);
+              }
+              
+              // Get suggested age from BGG export format
+              const suggestedAge = row.suggested_age || row.age || row.bggrecagerange || null;
+              
+              // Map for_sale from BGG 'fortrade' column
+              const isForSale = parseBool(row.is_for_sale) || parseBool(row.fortrade);
+              
               tempGames.push({
                 id: `demo-import-${Date.now()}-${tempGames.length}`,
                 title,
                 image_url: row.image_url || null,
                 game_type: row.type || row.game_type || "Board Game",
-                difficulty: row.difficulty || row.weight || null,
-                play_time: row.play_time || row.playtime || null,
-                min_players: parseNum(row.min_players),
-                max_players: parseNum(row.max_players),
-                suggested_age: row.suggested_age || row.age || null,
+                difficulty,
+                play_time: playTime,
+                min_players: parseNum(minPlayersRaw),
+                max_players: parseNum(maxPlayersRaw),
+                suggested_age: suggestedAge,
                 publisher: row.publisher || null,
                 mechanics: mechanics.length > 0 ? mechanics : undefined,
-                bgg_id: row.bgg_id || null,
-                bgg_url: row.bgg_url || null,
+                bgg_id: bggId,
+                bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || null),
                 description: row.description || null,
-                is_expansion: parseBool(row.is_expansion),
+                is_expansion: isExpansion,
                 parent_game_title: row.parent_game || null, // Store temporarily for lookup
                 is_coming_soon: parseBool(row.is_coming_soon),
-                is_for_sale: parseBool(row.is_for_sale),
+                is_for_sale: isForSale,
                 sale_price: parseNum(row.sale_price) || null,
                 sale_condition: row.sale_condition || null,
                 location_room: row.location_room || locationRoom || null,
-                location_shelf: row.location_shelf || locationShelf || null,
+                location_shelf: row.location_shelf || row.invlocation || locationShelf || null,
                 location_misc: row.location_misc || locationMisc || null,
                 sleeved: parseBool(row.sleeved),
                 upgraded_components: parseBool(row.upgraded_components),
@@ -441,7 +505,7 @@ export function BulkImportDialog({
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Supports CSV files. File should have columns: title (or name/game), optionally bgg_id, bgg_url
+                    Supports CSV files including BGG collection exports. File should have columns: title/name/objectname, optionally bgg_id/objectid
                   </p>
                 </div>
 
