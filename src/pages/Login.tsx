@@ -14,53 +14,18 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      let cancelled = false;
-      const timer = window.setTimeout(async () => {
-        if (cancelled) return;
-        
-        try {
-          const { supabase } = await import("@/integrations/backend/client");
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (cancelled) return;
-          
-          if (error || !data?.session?.user) {
-            const keys = Object.keys(localStorage).filter(
-              k => k.startsWith("sb-") && k.endsWith("-auth-token")
-            );
-            keys.forEach(k => {
-              try { localStorage.removeItem(k); } catch { /* ignore */ }
-            });
-            return;
-          }
-          
-          const { error: testError } = await supabase
-            .from("site_settings_public")
-            .select("key")
-            .limit(1);
-          
-          if (cancelled) return;
-          
-          if (!testError) {
-            navigate("/dashboard", { replace: true });
-          }
-        } catch {
-          // Session check failed; stay on login page.
-        }
-      }, 500);
-      
-      return () => {
-        cancelled = true;
-        window.clearTimeout(timer);
-      };
+    // Only redirect once auth loading is complete and user is authenticated
+    if (!loading && isAuthenticated && !hasCheckedAuth) {
+      setHasCheckedAuth(true);
+      navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, hasCheckedAuth]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +44,7 @@ const Login = () => {
       }
 
       toast({ title: "Welcome back!" });
+      navigate("/dashboard", { replace: true });
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +75,19 @@ const Login = () => {
     }
   };
 
-  if (!loading && isAuthenticated) return null;
+  // Show nothing while checking auth to prevent flash
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center">
+        <div className="animate-pulse text-cream">Loading...</div>
+      </div>
+    );
+  }
+
+  // Already authenticated, will redirect
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center p-4">

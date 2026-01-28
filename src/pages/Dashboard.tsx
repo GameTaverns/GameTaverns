@@ -135,17 +135,17 @@ export default function Dashboard() {
                     {library.slug}.gametaverns.com
                   </div>
                   <div className="flex gap-2">
-                    <Link to={libraryUrl!} className="flex-1">
+                    <a href={libraryUrl!} className="flex-1">
                       <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                         <ExternalLink className="h-4 w-4 mr-2" />
                         View Library
                       </Button>
-                    </Link>
-                    <Link to={settingsUrl!}>
+                    </a>
+                    <a href={settingsUrl!}>
                       <Button variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50">
                         <Settings className="h-4 w-4" />
                       </Button>
-                    </Link>
+                    </a>
                   </div>
                 </div>
               ) : (
@@ -191,21 +191,21 @@ export default function Dashboard() {
             <CardContent className="space-y-2">
               {library && (
                 <>
-                  <Link to={libraryUrl!} className="block">
+                  <a href={libraryUrl!} className="block">
                     <Button variant="ghost" className="w-full justify-start text-cream hover:text-white hover:bg-wood-medium/50">
                       Browse Collection
                     </Button>
-                  </Link>
-                  <Link to={gamesUrl!} className="block">
+                  </a>
+                  <a href={gamesUrl!} className="block">
                     <Button variant="ghost" className="w-full justify-start text-cream hover:text-white hover:bg-wood-medium/50">
                       Manage Games
                     </Button>
-                  </Link>
-                  <Link to={settingsUrl!} className="block">
+                  </a>
+                  <a href={settingsUrl!} className="block">
                     <Button variant="ghost" className="w-full justify-start text-cream hover:text-white hover:bg-wood-medium/50">
                       Library Settings
                     </Button>
-                  </Link>
+                  </a>
                 </>
               )}
               <Link to="/docs" className="block">
