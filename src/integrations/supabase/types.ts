@@ -360,6 +360,7 @@ export type Database = {
           inserts: boolean | null
           is_coming_soon: boolean
           is_expansion: boolean
+          is_favorite: boolean
           is_for_sale: boolean
           library_id: string | null
           location_misc: string | null
@@ -395,6 +396,7 @@ export type Database = {
           inserts?: boolean | null
           is_coming_soon?: boolean
           is_expansion?: boolean
+          is_favorite?: boolean
           is_for_sale?: boolean
           library_id?: string | null
           location_misc?: string | null
@@ -430,6 +432,7 @@ export type Database = {
           inserts?: boolean | null
           is_coming_soon?: boolean
           is_expansion?: boolean
+          is_favorite?: boolean
           is_for_sale?: boolean
           library_id?: string | null
           location_misc?: string | null
