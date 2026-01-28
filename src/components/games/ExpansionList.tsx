@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { GameWithRelations } from "@/types/game";
 import { useDemoMode } from "@/contexts/DemoContext";
+import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { cn, proxiedImageUrl, directImageUrl } from "@/lib/utils";
 
 interface ExpansionListProps {
@@ -56,6 +57,7 @@ function ExpansionImage({ imageUrl, title }: ExpansionImageProps) {
 
 export function ExpansionList({ expansions, parentTitle }: ExpansionListProps) {
   const { isDemoMode } = useDemoMode();
+  const { buildUrl } = useTenantUrl();
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (expansions.length === 0) return null;
@@ -90,7 +92,7 @@ export function ExpansionList({ expansions, parentTitle }: ExpansionListProps) {
           {expansions.map((expansion) => (
             <Link
               key={expansion.id}
-              to={`${basePath}/${expansion.slug || expansion.id}`}
+              to={buildUrl(`${basePath}/${expansion.slug || expansion.id}`)}
               className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors group"
               onClick={(e) => e.stopPropagation()}
             >
