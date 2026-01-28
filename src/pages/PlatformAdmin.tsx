@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 
 export default function PlatformAdmin() {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   
   // Check if user is a site owner (has admin role)
   const { data: isSiteOwner, isLoading: roleLoading } = useQuery({
@@ -29,16 +29,18 @@ export default function PlatformAdmin() {
   });
   
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Wait for auth to load before redirecting
+    if (!authLoading && !isAuthenticated) {
       navigate("/login");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
   
   useEffect(() => {
-    if (!roleLoading && !isSiteOwner && isAuthenticated) {
+    // Wait for both auth and role to load before redirecting non-admins
+    if (!authLoading && !roleLoading && !isSiteOwner && isAuthenticated) {
       navigate("/dashboard");
     }
-  }, [isSiteOwner, roleLoading, isAuthenticated, navigate]);
+  }, [isSiteOwner, roleLoading, authLoading, isAuthenticated, navigate]);
   
   if (roleLoading) {
     return (
