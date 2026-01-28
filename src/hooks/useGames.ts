@@ -235,19 +235,26 @@ function splitAdminFields<T extends Record<string, any>>(game: T): {
 
 export function useGame(slugOrId: string | undefined) {
   const { isAdmin } = useAuth();
+  const { library } = useTenant();
 
   return useQuery({
-    queryKey: ["games", slugOrId, isAdmin],
+    queryKey: ["games", slugOrId, isAdmin, library?.id],
     queryFn: async (): Promise<GameWithRelations | null> => {
       if (!slugOrId) return null;
 
       // Check if it's a UUID or a slug
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
 
+      // Check if current user is the library owner
+      const { data: { user } } = await supabase.auth.getUser();
+      const isLibraryOwner = user && library?.owner_id === user.id;
+      const canAccessAdminData = isAdmin || isLibraryOwner;
+
       let game: any = null;
       let gameError: any = null;
 
-      if (isAdmin) {
+      if (canAccessAdminData) {
+        // Library owners and admins can access full games table with admin_data
         const query = supabase
           .from("games")
           .select(
@@ -262,6 +269,7 @@ export function useGame(slugOrId: string | undefined) {
         game = result.data;
         gameError = result.error;
       } else {
+        // Public users use the public view
         const query = supabase.from("games_public").select("*");
 
         const result = await (isUuid ? query.eq("id", slugOrId).maybeSingle() : query.eq("slug", slugOrId).maybeSingle());
@@ -299,7 +307,7 @@ export function useGame(slugOrId: string | undefined) {
 
       return {
         ...game,
-        admin_data: isAdmin ? normalizeAdminData((game as any).admin_data) : null,
+        admin_data: canAccessAdminData ? normalizeAdminData((game as any).admin_data) : null,
         difficulty: game.difficulty as DifficultyLevel,
         game_type: game.game_type as GameType,
         play_time: game.play_time as PlayTime,
