@@ -206,9 +206,9 @@ const GameForm = () => {
     };
 
     try {
-      if (isEditing && id) {
+      if (isEditing && existingGame?.id) {
         await updateGame.mutateAsync({
-          id,
+          id: existingGame.id,
           game: gameData,
           mechanicIds: selectedMechanics,
         });
