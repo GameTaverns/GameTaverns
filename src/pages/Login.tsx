@@ -150,6 +150,14 @@ const Login = () => {
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
+                <div className="text-center">
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-sm text-secondary hover:text-secondary/80 underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
               </form>
             </TabsContent>
             <TabsContent value="signup">
