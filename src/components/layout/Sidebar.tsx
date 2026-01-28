@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { 
   Library, 
-  Gamepad2, 
+  Gamepad2,
   Puzzle, 
   Clock, 
   Building2, 
@@ -19,6 +19,7 @@ import {
   FlaskConical,
   Baby
 } from "lucide-react";
+import logoImage from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
 import { useMechanics, usePublishers } from "@/hooks/useGames";
@@ -161,7 +162,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
             to={libraryBaseUrl} 
             className="flex items-center gap-2 text-center hover:opacity-80 transition-opacity"
           >
-            {!isTenantMode && <Gamepad2 className="h-6 w-6 text-sidebar-primary" />}
+            {!isTenantMode && <img src={logoImage} alt="GameTaverns" className="h-8 w-auto" />}
             <span className="font-display text-lg font-semibold text-sidebar-foreground">
               {isTenantMode && library ? library.name : (settings?.site_name || siteConfig.name)}
             </span>

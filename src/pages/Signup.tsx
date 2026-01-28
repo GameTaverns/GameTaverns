@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Dices, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logoImage from "@/assets/logo.png";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,9 +78,7 @@ export default function Signup() {
       <Card className="w-full max-w-md bg-sidebar/80 border-border/50 backdrop-blur-sm">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-2 bg-secondary/20 rounded-lg">
-              <Dices className="h-8 w-8 text-secondary" />
-            </div>
+            <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
             <span className="font-display text-2xl font-bold text-cream">GameTaverns</span>
           </Link>
           <CardTitle className="font-display text-2xl text-cream">Create Account</CardTitle>

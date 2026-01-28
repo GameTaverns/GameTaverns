@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
-  Dices, 
   ExternalLink, 
   Settings, 
   LogOut, 
@@ -14,6 +13,7 @@ import {
   Gamepad2,
   Palette
 } from "lucide-react";
+import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -90,7 +90,7 @@ export default function Dashboard() {
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <Dices className="h-8 w-8 text-secondary" />
+            <img src={logoImage} alt="GameTaverns" className="h-10 w-auto" />
             <span className="font-display text-2xl font-bold text-cream">
               GameTaverns
             </span>

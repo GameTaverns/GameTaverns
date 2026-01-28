@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Dices, Library, Users, Palette, Shield, Zap } from "lucide-react";
+import { Library, Users, Palette, Shield, Zap, Import } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
+import logoImage from "@/assets/logo.png";
 
 export default function Platform() {
   const { isAuthenticated } = useAuth();
@@ -27,9 +28,7 @@ export default function Platform() {
       <header className="border-b border-border/30 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <div className="p-1.5 bg-secondary/20 rounded-lg">
-              <Dices className="h-7 w-7 text-secondary" />
-            </div>
+            <img src={logoImage} alt="GameTaverns" className="h-10 w-auto" />
             <span className="font-display text-2xl font-bold text-cream">
               GameTaverns
             </span>
@@ -149,7 +148,7 @@ export default function Platform() {
             description="Control what's public and what's private. Admin data stays hidden from visitors."
           />
           <FeatureCard 
-            icon={<Dices className="h-8 w-8" />}
+            icon={<Import className="h-8 w-8" />}
             title="BGG Import"
             description="Import your collection from BoardGameGeek with one click. Get box art and descriptions automatically."
           />
