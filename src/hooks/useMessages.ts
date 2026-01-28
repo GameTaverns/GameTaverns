@@ -37,18 +37,33 @@ export function useMessages(libraryId?: string) {
   });
 }
 
-export function useUnreadMessageCount() {
+export function useUnreadMessageCount(libraryId?: string) {
   return useQuery({
-    queryKey: ["messages", "unread-count"],
+    queryKey: ["messages", "unread-count", libraryId],
     queryFn: async (): Promise<number> => {
+      if (!libraryId) return 0;
+      
+      // Get game IDs for this library first
+      const { data: games, error: gamesError } = await supabase
+        .from("games")
+        .select("id")
+        .eq("library_id", libraryId);
+      
+      if (gamesError) throw gamesError;
+      if (!games || games.length === 0) return 0;
+      
+      const gameIds = games.map(g => g.id);
+      
       const { count, error } = await supabase
         .from("game_messages")
         .select("*", { count: "exact", head: true })
+        .in("game_id", gameIds)
         .eq("is_read", false);
 
       if (error) throw error;
       return count || 0;
     },
+    enabled: !!libraryId,
   });
 }
 

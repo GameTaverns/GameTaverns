@@ -130,6 +130,7 @@ export default async function handler(req: Request): Promise<Response> {
     const fromAddress = `${smtpFromName} <${smtpFrom}>`;
     
     // Build email options with optional Reply-To header
+    // denomailer uses 'headers' object for custom headers like Reply-To
     const emailOptions: any = {
       from: fromAddress,
       to: to,
@@ -139,7 +140,9 @@ export default async function handler(req: Request): Promise<Response> {
     };
     
     if (replyTo) {
-      emailOptions.replyTo = replyTo;
+      emailOptions.headers = {
+        "Reply-To": replyTo,
+      };
     }
     
     await client.send(emailOptions);
