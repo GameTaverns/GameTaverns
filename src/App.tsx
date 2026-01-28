@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useSearchParams, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
 import { DemoThemeApplicator } from "@/components/DemoThemeApplicator";
@@ -39,7 +39,7 @@ const queryClient = new QueryClient();
 
 // Simple loading fallback
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center">
+  <div className="min-h-screen parchment-texture flex items-center justify-center animate-fade-in">
     <div className="animate-pulse text-muted-foreground">Loading...</div>
   </div>
 );
@@ -69,8 +69,9 @@ function AppRoutes() {
 
 // Handle routing based on tenant state
 function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; tenantSlug: string | null }) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const pathParam = searchParams.get("path");
   const tabParam = searchParams.get("tab");
   
@@ -84,15 +85,15 @@ function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; t
       if (tabParam) {
         newParams.set("tab", tabParam);
       }
-      // Navigate to the actual path
-      window.location.href = `${pathParam}?${newParams.toString()}`;
+      // Navigate to the actual path (client-side) to avoid white flicker
+      navigate(`${pathParam}?${newParams.toString()}`, { replace: true });
     }
-  }, [tenantSlug, pathParam, tabParam, location.pathname]);
+  }, [tenantSlug, pathParam, tabParam, location.pathname, navigate]);
   
   // Show loading while redirect is in progress
   if (tenantSlug && pathParam && location.pathname === "/") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen parchment-texture flex items-center justify-center animate-fade-in">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
