@@ -688,6 +688,8 @@ export default async function handler(req: Request): Promise<Response> {
               type: "progress", 
               current: i + 1, 
               total: totalGames,
+              imported,
+              failed,
               currentGame: gameData.title || `BGG ID: ${gameInput.bgg_id}`,
               phase: enhance_with_bgg && firecrawlKey ? "enhancing" : "importing"
             });
