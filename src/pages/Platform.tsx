@@ -20,7 +20,7 @@ export default function Platform() {
         navigate("/create-library");
       }
     } else {
-      navigate("/login");
+      navigate("/signup");
     }
   };
   
