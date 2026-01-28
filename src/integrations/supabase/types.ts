@@ -429,6 +429,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "games_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "games_parent_game_id_fkey"
             columns: ["parent_game_id"]
             isOneToOne: false
@@ -494,6 +501,13 @@ export type Database = {
             columns: ["library_id"]
             isOneToOne: false
             referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_jobs_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
             referencedColumns: ["id"]
           },
         ]
@@ -708,6 +722,13 @@ export type Database = {
             referencedRelation: "libraries"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "library_settings_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: true
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       library_suspensions: {
@@ -741,6 +762,13 @@ export type Database = {
             columns: ["library_id"]
             isOneToOne: false
             referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_suspensions_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1019,6 +1047,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "games_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "games_parent_game_id_fkey"
             columns: ["parent_game_id"]
             isOneToOne: false
@@ -1040,6 +1075,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      libraries_public: {
+        Row: {
+          created_at: string | null
+          custom_domain: string | null
+          description: string | null
+          id: string | null
+          is_active: boolean | null
+          is_premium: boolean | null
+          name: string | null
+          slug: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          custom_domain?: string | null
+          description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_premium?: boolean | null
+          name?: string | null
+          slug?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          custom_domain?: string | null
+          description?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_premium?: boolean | null
+          name?: string | null
+          slug?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       site_settings_public: {
         Row: {
