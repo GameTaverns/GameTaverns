@@ -46,11 +46,11 @@ const Index = () => {
   const navigate = useNavigate();
   const { isDemoMode, demoGames } = useDemoMode();
   const { forSale: forSaleFlag, comingSoon: comingSoonFlag, wishlist: wishlistFlag, demoMode: demoModeEnabled, isLoading: flagsLoading } = useFeatureFlags();
-  const { data: realGames = [], isLoading } = useGames(!isDemoMode);
-  const { myVotes } = useWishlist();
+  const { data: realGames = [], isLoading: gamesLoading } = useGames(!isDemoMode);
+  const { myVotes, isLoading: wishlistLoading } = useWishlist();
   
   // Fetch ratings summary for top-rated filter
-  const { data: ratingsData } = useQuery({
+  const { data: ratingsData, isLoading: ratingsLoading } = useQuery({
     queryKey: ["game-ratings-summary"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -102,6 +102,11 @@ const Index = () => {
   const filterValue = searchParams.get("value");
   const sortBy = (searchParams.get("sort") as SortOption) || "title";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
+  
+  // Combine loading states - show skeleton when relevant data is loading
+  const isLoading = gamesLoading || 
+    (filter === "status" && filterValue === "wishlist" && wishlistLoading) ||
+    (filter === "status" && filterValue === "top-rated" && ratingsLoading);
 
   // Filter and sort games
   const filteredGames = useMemo(() => {
