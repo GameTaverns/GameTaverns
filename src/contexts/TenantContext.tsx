@@ -83,6 +83,11 @@ interface TenantContextType {
   isLoading: boolean;
   error: string | null;
   
+  // Suspension state
+  isSuspended: boolean;
+  suspendedLibraryName: string | null;
+  suspensionReason: string | null;
+  
   // Mode detection
   isTenantMode: boolean;  // Are we viewing a library?
   isAdminMode: boolean;   // Is this /admin path (owner controls)?
@@ -154,6 +159,11 @@ export function TenantProvider({ children }: TenantProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Suspension state
+  const [isSuspended, setIsSuspended] = useState(false);
+  const [suspendedLibraryName, setSuspendedLibraryName] = useState<string | null>(null);
+  const [suspensionReason, setSuspensionReason] = useState<string | null>(null);
+  
   // Resolve tenant slug
   const tenantSlug = useMemo(() => resolveTenantSlug(), [location.search]);
   
@@ -175,24 +185,50 @@ export function TenantProvider({ children }: TenantProviderProps) {
     if (!tenantSlug) {
       setLibrary(null);
       setSettings(null);
+      setIsSuspended(false);
+      setSuspendedLibraryName(null);
+      setSuspensionReason(null);
       setIsLoading(false);
       return;
     }
     
     setIsLoading(true);
     setError(null);
+    setIsSuspended(false);
+    setSuspendedLibraryName(null);
+    setSuspensionReason(null);
     
     try {
-      // Fetch library by slug
+      // First, try to fetch library by slug (including inactive ones to check suspension)
       const { data: libraryData, error: libraryError } = await supabase
         .from("libraries")
         .select("*")
         .eq("slug", tenantSlug)
-        .eq("is_active", true)
         .single();
       
       if (libraryError || !libraryData) {
         setError("Library not found");
+        setLibrary(null);
+        setSettings(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check if library is suspended (inactive)
+      if (!libraryData.is_active) {
+        // Fetch the latest suspension reason
+        const { data: suspensionData } = await supabase
+          .from("library_suspensions")
+          .select("reason")
+          .eq("library_id", libraryData.id)
+          .eq("action", "suspended")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        
+        setIsSuspended(true);
+        setSuspendedLibraryName(libraryData.name);
+        setSuspensionReason(suspensionData?.reason || null);
         setLibrary(null);
         setSettings(null);
         setIsLoading(false);
@@ -229,6 +265,9 @@ export function TenantProvider({ children }: TenantProviderProps) {
     settings,
     isLoading,
     error,
+    isSuspended,
+    suspendedLibraryName,
+    suspensionReason,
     isTenantMode,
     isAdminMode,
     isOwner,
