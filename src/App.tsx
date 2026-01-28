@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useSearchParams, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useSearchParams, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
 import { DemoThemeApplicator } from "@/components/DemoThemeApplicator";
@@ -69,23 +69,34 @@ function AppRoutes() {
 
 // Handle routing based on tenant state
 function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; tenantSlug: string | null }) {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const pathParam = searchParams.get("path");
   const tabParam = searchParams.get("tab");
   
   // Handle path parameter navigation within tenant context
+  // Do this synchronously before rendering to avoid flash
   useEffect(() => {
-    if (tenantSlug && pathParam) {
-      // Build the new URL with tenant param and optionally tab param
-      let newUrl = `${pathParam}?tenant=${tenantSlug}`;
+    if (tenantSlug && pathParam && location.pathname === "/") {
+      // Build the new URL params without the path parameter
+      const newParams = new URLSearchParams();
+      newParams.set("tenant", tenantSlug);
       if (tabParam) {
-        newUrl += `&tab=${tabParam}`;
+        newParams.set("tab", tabParam);
       }
-      navigate(newUrl, { replace: true });
+      // Navigate to the actual path
+      window.location.href = `${pathParam}?${newParams.toString()}`;
     }
-  }, [tenantSlug, pathParam, tabParam, navigate]);
+  }, [tenantSlug, pathParam, tabParam, location.pathname]);
+  
+  // Show loading while redirect is in progress
+  if (tenantSlug && pathParam && location.pathname === "/") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
   
   // If tenant slug is in URL, show library routes
   if (tenantSlug) {
