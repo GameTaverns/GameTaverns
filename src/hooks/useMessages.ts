@@ -15,12 +15,16 @@ export interface GameMessage {
   } | null;
 }
 
-export function useMessages() {
+export function useMessages(libraryId?: string) {
   return useQuery({
-    queryKey: ["messages"],
+    queryKey: ["messages", libraryId],
     queryFn: async (): Promise<GameMessage[]> => {
       // Use the decrypt-messages edge function to get decrypted PII
-      const { data, error } = await supabase.functions.invoke("decrypt-messages");
+      // Pass library_id as query param if provided
+      const params = libraryId ? { library_id: libraryId } : {};
+      const { data, error } = await supabase.functions.invoke("decrypt-messages", {
+        body: params,
+      });
 
       if (error) throw error;
       

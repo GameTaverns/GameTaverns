@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Mail, MailOpen, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,19 +22,26 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { ReplyDialog } from "@/components/messages/ReplyDialog";
+import { useTenant } from "@/contexts/TenantContext";
+import { useTenantUrl } from "@/hooks/useTenantUrl";
 
 const Messages = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, isAdmin, roleLoading, loading: authLoading } = useAuth();
-  const { data: messages = [], isLoading } = useMessages();
+  const [searchParams] = useSearchParams();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { library, isOwner, isLoading: tenantLoading } = useTenant();
+  const { buildUrl } = useTenantUrl();
+  
+  // Fetch messages for the current library
+  const { data: messages = [], isLoading } = useMessages(library?.id);
   const markRead = useMarkMessageRead();
   const deleteMessage = useDeleteMessage();
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState<GameMessage | null>(null);
 
-  // While auth/role is resolving, show loading UI (prevents redirect flicker on first load)
-  if (authLoading || roleLoading) {
+  // While auth/tenant is resolving, show loading UI
+  if (authLoading || tenantLoading) {
     return (
       <Layout>
         <div className="max-w-4xl mx-auto">
@@ -49,9 +56,9 @@ const Messages = () => {
     );
   }
 
-  // Redirect if not authenticated or not admin
-  if (!isAuthenticated || !isAdmin) {
-    return <Navigate to="/admin" replace />;
+  // Redirect if not authenticated or not library owner
+  if (!isAuthenticated || !isOwner) {
+    return <Navigate to={buildUrl("/login")} replace />;
   }
 
   const handleMarkRead = async (id: string) => {
@@ -86,7 +93,7 @@ const Messages = () => {
     }
   };
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <Layout>
         <div className="max-w-4xl mx-auto">
@@ -106,7 +113,7 @@ const Messages = () => {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
-        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate("/settings")}>
+        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate(buildUrl("/settings"))}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Settings
         </Button>
@@ -178,7 +185,7 @@ const Messages = () => {
                         className="h-6 px-2 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/game/${message.game?.slug || message.game_id}`);
+                          navigate(buildUrl(`/game/${message.game?.slug || message.game_id}`));
                         }}
                       >
                         <ExternalLink className="h-3 w-3 mr-1" />
