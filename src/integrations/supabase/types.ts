@@ -451,6 +451,53 @@ export type Database = {
           },
         ]
       }
+      import_jobs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          failed_items: number
+          id: string
+          library_id: string
+          processed_items: number
+          status: string
+          successful_items: number
+          total_items: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          failed_items?: number
+          id?: string
+          library_id: string
+          processed_items?: number
+          status?: string
+          successful_items?: number
+          total_items?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          failed_items?: number
+          id?: string
+          library_id?: string
+          processed_items?: number
+          status?: string
+          successful_items?: number
+          total_items?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_jobs_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       libraries: {
         Row: {
           created_at: string
