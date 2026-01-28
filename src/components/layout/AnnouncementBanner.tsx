@@ -1,12 +1,30 @@
-import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AnnouncementBanner() {
-  const { data: settings } = useSiteSettings();
   const [dismissed, setDismissed] = useState(false);
   
-  const announcement = settings?.announcement_banner;
+  // Fetch announcement directly from the public view to ensure it works for all users
+  const { data: announcement } = useQuery({
+    queryKey: ["announcement-banner"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings_public")
+        .select("value")
+        .eq("key", "announcement_banner")
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Failed to fetch announcement:", error);
+        return null;
+      }
+      
+      return data?.value || null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
   
   // Reset dismissed state when announcement changes
   useEffect(() => {
