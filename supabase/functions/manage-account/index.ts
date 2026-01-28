@@ -12,14 +12,18 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('manage-account: Starting request');
+    
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      console.log('manage-account: No auth header found');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    console.log('manage-account: Creating Supabase client');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -27,16 +31,21 @@ Deno.serve(async (req) => {
     );
 
     // Verify user
+    console.log('manage-account: Verifying user');
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
+      console.error('manage-account: User verification failed', userError);
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    console.log('manage-account: User verified', user.id);
 
     const userId = user.id;
-    const { action, libraryId, confirmationText } = await req.json();
+    const body = await req.json();
+    const { action, libraryId, confirmationText } = body;
+    console.log('manage-account: Received action', action, 'for library', libraryId);
 
     // Get user's library to verify ownership
     const { data: library, error: libraryError } = await supabase
@@ -44,6 +53,8 @@ Deno.serve(async (req) => {
       .select('id, name, slug, owner_id')
       .eq('id', libraryId)
       .single();
+    
+    console.log('manage-account: Library query result', library, libraryError);
 
     if (libraryError && action !== 'delete_account') {
       return new Response(JSON.stringify({ error: 'Library not found' }), {
@@ -68,8 +79,10 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case 'clear_library': {
+        console.log('manage-account: clear_library action started');
         // Library must exist for this action
         if (!library) {
+          console.log('manage-account: Library not found');
           return new Response(JSON.stringify({ error: 'Library not found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -77,7 +90,9 @@ Deno.serve(async (req) => {
         }
 
         // Verify confirmation text matches library name
+        console.log('manage-account: Checking confirmation text', confirmationText, 'vs', library.name);
         if (confirmationText?.toLowerCase() !== library.name.toLowerCase()) {
+          console.log('manage-account: Confirmation text mismatch');
           return new Response(JSON.stringify({ error: 'Confirmation text does not match library name' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -85,10 +100,13 @@ Deno.serve(async (req) => {
         }
 
         // Delete all games for this library (cascades to related tables)
-        const { error: gamesError } = await adminClient
+        console.log('manage-account: Deleting games for library', libraryId);
+        const { error: gamesError, count } = await adminClient
           .from('games')
           .delete()
           .eq('library_id', libraryId);
+
+        console.log('manage-account: Games deletion result', gamesError, 'deleted count:', count);
 
         if (gamesError) {
           console.error('Error clearing games:', gamesError);
