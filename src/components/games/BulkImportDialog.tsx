@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, Upload, Link, Users, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -35,6 +36,20 @@ type ImportResult = {
   failed: number;
   errors: string[];
   games: { title: string; id?: string }[];
+};
+
+type ProgressData = {
+  type: "start" | "progress" | "complete";
+  jobId?: string;
+  current?: number;
+  total?: number;
+  imported?: number;
+  failed?: number;
+  currentGame?: string;
+  phase?: string;
+  success?: boolean;
+  errors?: string[];
+  games?: { title: string; id?: string }[];
 };
 
 interface BulkImportDialogProps {
@@ -57,6 +72,17 @@ export function BulkImportDialog({
   const [mode, setMode] = useState<ImportMode>("csv");
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Progress state
+  const [progress, setProgress] = useState<{
+    current: number;
+    total: number;
+    imported: number;
+    failed: number;
+    currentGame: string;
+    phase: string;
+  } | null>(null);
 
   // CSV mode
   const [csvData, setCsvData] = useState("");
@@ -73,6 +99,15 @@ export function BulkImportDialog({
   const [locationRoom, setLocationRoom] = useState("");
   const [locationShelf, setLocationShelf] = useState("");
   const [locationMisc, setLocationMisc] = useState("");
+
+  // Cleanup on unmount or dialog close
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,11 +127,13 @@ export function BulkImportDialog({
     setLocationShelf("");
     setLocationMisc("");
     setResult(null);
+    setProgress(null);
   };
 
   const handleImport = async () => {
     setIsImporting(true);
     setResult(null);
+    setProgress(null);
 
     try {
       const payload: any = {
@@ -150,323 +187,424 @@ export function BulkImportDialog({
       }
 
       if (isDemo && onDemoImport) {
-        // Demo mode - simulate import with realistic delay and sample games
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        
-        let demoGames: any[] = [];
-        
-        if (mode === "csv") {
-          // Parse CSV properly handling multi-line quoted fields
-          const parseCSV = (data: string): Record<string, string>[] => {
-            const rows: string[][] = [];
-            let currentRow: string[] = [];
-            let currentField = "";
-            let inQuotes = false;
-            
-            for (let i = 0; i < data.length; i++) {
-              const char = data[i];
-              const nextChar = data[i + 1];
-              
-              if (char === '"') {
-                if (!inQuotes) {
-                  inQuotes = true;
-                } else if (nextChar === '"') {
-                  currentField += '"';
-                  i++;
-                } else {
-                  inQuotes = false;
-                }
-              } else if (char === ',' && !inQuotes) {
-                currentRow.push(currentField.trim());
-                currentField = "";
-              } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
-                if (char === '\r') i++;
-                currentRow.push(currentField.trim());
-                if (currentRow.some(field => field !== "")) {
-                  rows.push(currentRow);
-                }
-                currentRow = [];
-                currentField = "";
-              } else if (char === '\r' && !inQuotes) {
-                currentRow.push(currentField.trim());
-                if (currentRow.some(field => field !== "")) {
-                  rows.push(currentRow);
-                }
-                currentRow = [];
-                currentField = "";
-              } else {
-                currentField += char;
-              }
-            }
-            
-            if (currentField || currentRow.length > 0) {
-              currentRow.push(currentField.trim());
-              if (currentRow.some(field => field !== "")) {
-                rows.push(currentRow);
-              }
-            }
-            
-            if (rows.length < 2) return [];
-            
-            const headers = rows[0].map(h => h.toLowerCase().trim().replace(/\s+/g, '_'));
-            const result: Record<string, string>[] = [];
-            
-            for (let i = 1; i < rows.length; i++) {
-              const values = rows[i];
-              const row: Record<string, string> = {};
-              headers.forEach((header, idx) => {
-                row[header] = values[idx] || "";
-              });
-              result.push(row);
-            }
-            
-            return result;
-          };
-          
-          const parsedRows = parseCSV(csvData);
-          
-          const parseBool = (val: string | undefined): boolean => {
-            if (!val) return false;
-            const v = val.toLowerCase().trim();
-            return v === "true" || v === "yes" || v === "1";
-          };
-          
-          const parseNum = (val: string | undefined): number | undefined => {
-            if (!val) return undefined;
-            const n = parseInt(val, 10);
-            return isNaN(n) ? undefined : n;
-          };
-          
-          // Helper to convert BGG weight (1-5 decimal) to difficulty enum
-          const mapWeightToDifficulty = (weight: string | undefined): string | null => {
-            if (!weight) return null;
-            const w = parseFloat(weight);
-            if (isNaN(w)) return null;
-            if (w < 1.5) return "1 - Light";
-            if (w < 2.25) return "2 - Medium Light";
-            if (w < 3.0) return "3 - Medium";
-            if (w < 3.75) return "4 - Medium Heavy";
-            return "5 - Heavy";
-          };
-          
-          // Helper to convert play time in minutes to enum
-          const mapPlayTimeToEnum = (minutes: number | undefined): string | null => {
-            if (!minutes) return null;
-            if (minutes <= 15) return "0-15 Minutes";
-            if (minutes <= 30) return "15-30 Minutes";
-            if (minutes <= 45) return "30-45 Minutes";
-            if (minutes <= 60) return "45-60 Minutes";
-            if (minutes <= 120) return "60+ Minutes";
-            if (minutes <= 180) return "2+ Hours";
-            return "3+ Hours";
-          };
-          
-          // Detect BGG export format by checking for 'objectname' column
-          const isBGGExport = parsedRows.length > 0 && parsedRows[0].objectname !== undefined;
-          
-          // First pass: create all games with temporary IDs
-          const tempGames: any[] = [];
-          for (const row of parsedRows) {
-            // Support both standard CSV columns and BGG export columns
-            const title = row.title || row.name || row.game || row.game_name || row.game_title || row.objectname;
-            
-            // For BGG export, skip if not owned (own=0)
-            if (isBGGExport && row.own === "0") {
-              continue;
-            }
-            
-            if (title) {
-              // Parse mechanics from semicolon-separated string
-              const mechanicsStr = row.mechanics || row.mechanic || "";
-              const mechanics = mechanicsStr
-                .split(";")
-                .map((m: string) => m.trim())
-                .filter((m: string) => m.length > 0);
-              
-              // Map BGG export columns to standard fields
-              const bggId = row.bgg_id || row.objectid || null;
-              const minPlayersRaw = row.min_players || row.minplayers;
-              const maxPlayersRaw = row.max_players || row.maxplayers;
-              const playTimeRaw = row.play_time || row.playtime || row.playingtime;
-              
-              // Determine if it's an expansion based on itemtype column (BGG export)
-              const isExpansion = parseBool(row.is_expansion) || 
-                                 row.itemtype === "expansion" || 
-                                 row.objecttype === "expansion";
-              
-              // Get difficulty from avgweight (BGG) or direct difficulty column
-              let difficulty = row.difficulty || row.weight || null;
-              if (!difficulty && row.avgweight) {
-                difficulty = mapWeightToDifficulty(row.avgweight);
-              }
-              
-              // Get play time - use the enum converter for BGG numeric values
-              let playTime = row.play_time || null;
-              if (!playTime && playTimeRaw) {
-                const playTimeNum = parseNum(playTimeRaw);
-                playTime = mapPlayTimeToEnum(playTimeNum);
-              }
-              
-              // Get suggested age from BGG export format
-              const suggestedAge = row.suggested_age || row.age || row.bggrecagerange || null;
-              
-              // Map for_sale from BGG 'fortrade' column
-              const isForSale = parseBool(row.is_for_sale) || parseBool(row.fortrade);
-              
-              tempGames.push({
-                id: `demo-import-${Date.now()}-${tempGames.length}`,
-                title,
-                image_url: row.image_url || null,
-                game_type: row.type || row.game_type || "Board Game",
-                difficulty,
-                play_time: playTime,
-                min_players: parseNum(minPlayersRaw),
-                max_players: parseNum(maxPlayersRaw),
-                suggested_age: suggestedAge,
-                publisher: row.publisher || null,
-                mechanics: mechanics.length > 0 ? mechanics : undefined,
-                bgg_id: bggId,
-                bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || null),
-                description: row.description || null,
-                is_expansion: isExpansion,
-                parent_game_title: row.parent_game || null, // Store temporarily for lookup
-                is_coming_soon: parseBool(row.is_coming_soon),
-                is_for_sale: isForSale,
-                sale_price: parseNum(row.sale_price) || null,
-                sale_condition: row.sale_condition || null,
-                location_room: row.location_room || locationRoom || null,
-                location_shelf: row.location_shelf || row.invlocation || locationShelf || null,
-                location_misc: row.location_misc || locationMisc || null,
-                sleeved: parseBool(row.sleeved),
-                upgraded_components: parseBool(row.upgraded_components),
-                crowdfunded: parseBool(row.crowdfunded),
-                inserts: parseBool(row.inserts),
-                in_base_game_box: parseBool(row.in_base_game_box),
-              });
-            }
-          }
-          
-          // Second pass: resolve parent_game_id for expansions
-          // Create a title-to-id map from newly imported games
-          const titleToId = new Map<string, string>();
-          tempGames.forEach(g => titleToId.set(g.title.toLowerCase(), g.id));
-          
-          // Also need to check existing demo games for parent matches
-          // The onDemoImport callback will handle merging, but we need existing games too
-          // We'll pass parent_game_title and let the context resolve it if needed
-          
-          for (const game of tempGames) {
-            if (game.is_expansion && game.parent_game_title) {
-              // Try to find parent in newly imported games first
-              const parentId = titleToId.get(game.parent_game_title.toLowerCase());
-              if (parentId) {
-                game.parent_game_id = parentId;
-              }
-              // Keep parent_game_title for fallback resolution in DemoContext
-            }
-            demoGames.push(game);
-          }
-        } else if (mode === "bgg_collection") {
-          // Generate sample games for BGG collection import
-          const sampleGames = [
-            "Wingspan", "Catan", "Ticket to Ride", "Pandemic", "Azul",
-            "7 Wonders", "Dominion", "Carcassonne", "Splendor", "Codenames"
-          ];
-          demoGames = sampleGames.slice(0, 5).map((title, i) => ({
-            id: `demo-bgg-${Date.now()}-${i}`,
-            title,
-            game_type: "Board Game",
-            description: `A popular board game imported from BGG collection of ${bggUsername}`,
-            location_room: locationRoom || "Game Room",
-            location_shelf: locationShelf || null,
-            location_misc: locationMisc || null,
-          }));
-        } else if (mode === "bgg_links") {
-          // Extract game names from BGG URLs
-          const links = bggLinks.split("\n").filter(l => l.includes("boardgamegeek.com"));
-          demoGames = links.map((link, i) => {
-            // Try to extract game name from URL (e.g., /boardgame/266192/wingspan)
-            const match = link.match(/\/boardgame\/\d+\/([^\/\?]+)/);
-            const title = match ? match[1].split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : `Game ${i + 1}`;
-            return {
-              id: `demo-link-${Date.now()}-${i}`,
-              title,
-              bgg_url: link,
-              game_type: "Board Game",
-              description: `Imported from BoardGameGeek`,
-              location_room: locationRoom || "Game Room",
-              location_shelf: locationShelf || null,
-              location_misc: locationMisc || null,
-            };
-          });
-        }
-        
-        if (demoGames.length > 0) {
-          onDemoImport(demoGames);
-          setResult({
-            success: true,
-            imported: demoGames.length,
-            failed: 0,
-            errors: [],
-            games: demoGames.map(g => ({ title: g.title, id: g.id })),
-          });
-          toast({
-            title: "Import complete!",
-            description: `Successfully imported ${demoGames.length} game${demoGames.length !== 1 ? "s" : ""} (demo mode)`,
-          });
-        } else {
-          setResult({
-            success: false,
-            imported: 0,
-            failed: 1,
-            errors: ["No valid games found to import"],
-            games: [],
-          });
-          toast({
-            title: "Import failed",
-            description: "No valid games found to import",
-            variant: "destructive",
-          });
-        }
-        
+        // Demo mode - simulate import (existing demo logic)
+        await handleDemoImport(payload);
+        return;
+      }
+
+      // Get auth token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      if (!token) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to import games",
+          variant: "destructive",
+        });
         setIsImporting(false);
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke("bulk-import", {
-        body: payload,
-      });
+      // Create abort controller for cancellation
+      abortControllerRef.current = new AbortController();
 
-      if (error) {
-        throw error;
+      // Use streaming fetch
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify(payload),
+          signal: abortControllerRef.current.signal,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Import failed");
       }
 
-      setResult(data as ImportResult);
+      // Check if it's a streaming response
+      const contentType = response.headers.get("Content-Type");
+      if (contentType?.includes("text/event-stream")) {
+        // Handle SSE stream
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No response body");
 
-      if (data.imported > 0) {
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data: ProgressData = JSON.parse(line.slice(6));
+                
+                if (data.type === "start") {
+                  setProgress({
+                    current: 0,
+                    total: data.total || 0,
+                    imported: 0,
+                    failed: 0,
+                    currentGame: "Starting...",
+                    phase: "starting",
+                  });
+                } else if (data.type === "progress") {
+                  setProgress({
+                    current: data.current || 0,
+                    total: data.total || 0,
+                    imported: data.imported || 0,
+                    failed: data.failed || 0,
+                    currentGame: data.currentGame || "",
+                    phase: data.phase || "importing",
+                  });
+                } else if (data.type === "complete") {
+                  setResult({
+                    success: data.success || false,
+                    imported: data.imported || 0,
+                    failed: data.failed || 0,
+                    errors: data.errors || [],
+                    games: data.games || [],
+                  });
+
+                  if ((data.imported || 0) > 0) {
+                    toast({
+                      title: "Import complete!",
+                      description: `Successfully imported ${data.imported} game${data.imported !== 1 ? "s" : ""}${(data.failed || 0) > 0 ? `. ${data.failed} failed.` : ""}`,
+                    });
+                    onImportComplete?.();
+                  } else if ((data.failed || 0) > 0) {
+                    toast({
+                      title: "Import failed",
+                      description: `All ${data.failed} games failed to import. Check the errors below.`,
+                      variant: "destructive",
+                    });
+                  }
+                }
+              } catch (parseError) {
+                console.error("Error parsing SSE data:", parseError);
+              }
+            }
+          }
+        }
+      } else {
+        // Handle regular JSON response (fallback)
+        const data = await response.json();
+        setResult(data as ImportResult);
+
+        if (data.imported > 0) {
+          toast({
+            title: "Import complete!",
+            description: `Successfully imported ${data.imported} game${data.imported !== 1 ? "s" : ""}${data.failed > 0 ? `. ${data.failed} failed.` : ""}`,
+          });
+          onImportComplete?.();
+        } else if (data.failed > 0) {
+          toast({
+            title: "Import failed",
+            description: `All ${data.failed} games failed to import. Check the errors below.`,
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      if ((error as Error).name === "AbortError") {
         toast({
-          title: "Import complete!",
-          description: `Successfully imported ${data.imported} game${data.imported !== 1 ? "s" : ""}${data.failed > 0 ? `. ${data.failed} failed.` : ""}`,
+          title: "Import cancelled",
+          description: "The import was cancelled",
         });
-        onImportComplete?.();
-      } else if (data.failed > 0) {
+      } else {
+        console.error("Bulk import error:", error);
         toast({
           title: "Import failed",
-          description: `All ${data.failed} games failed to import. Check the errors below.`,
+          description: error instanceof Error ? error.message : "An error occurred during import",
           variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Bulk import error:", error);
-      toast({
-        title: "Import failed",
-        description: error instanceof Error ? error.message : "An error occurred during import",
-        variant: "destructive",
-      });
     } finally {
       setIsImporting(false);
+      setProgress(null);
+      abortControllerRef.current = null;
     }
   };
+
+  // Demo import handler (extracted for clarity)
+  const handleDemoImport = async (payload: any) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    let demoGames: any[] = [];
+    
+    if (mode === "csv") {
+      // Parse CSV (existing demo logic)
+      const parseCSV = (data: string): Record<string, string>[] => {
+        const rows: string[][] = [];
+        let currentRow: string[] = [];
+        let currentField = "";
+        let inQuotes = false;
+        
+        for (let i = 0; i < data.length; i++) {
+          const char = data[i];
+          const nextChar = data[i + 1];
+          
+          if (char === '"') {
+            if (!inQuotes) {
+              inQuotes = true;
+            } else if (nextChar === '"') {
+              currentField += '"';
+              i++;
+            } else {
+              inQuotes = false;
+            }
+          } else if (char === ',' && !inQuotes) {
+            currentRow.push(currentField.trim());
+            currentField = "";
+          } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+            if (char === '\r') i++;
+            currentRow.push(currentField.trim());
+            if (currentRow.some(field => field !== "")) {
+              rows.push(currentRow);
+            }
+            currentRow = [];
+            currentField = "";
+          } else if (char === '\r' && !inQuotes) {
+            currentRow.push(currentField.trim());
+            if (currentRow.some(field => field !== "")) {
+              rows.push(currentRow);
+            }
+            currentRow = [];
+            currentField = "";
+          } else {
+            currentField += char;
+          }
+        }
+        
+        if (currentField || currentRow.length > 0) {
+          currentRow.push(currentField.trim());
+          if (currentRow.some(field => field !== "")) {
+            rows.push(currentRow);
+          }
+        }
+        
+        if (rows.length < 2) return [];
+        
+        const headers = rows[0].map(h => h.toLowerCase().trim().replace(/\s+/g, '_'));
+        const result: Record<string, string>[] = [];
+        
+        for (let i = 1; i < rows.length; i++) {
+          const values = rows[i];
+          const row: Record<string, string> = {};
+          headers.forEach((header, idx) => {
+            row[header] = values[idx] || "";
+          });
+          result.push(row);
+        }
+        
+        return result;
+      };
+      
+      const parsedRows = parseCSV(csvData);
+      
+      const parseBool = (val: string | undefined): boolean => {
+        if (!val) return false;
+        const v = val.toLowerCase().trim();
+        return v === "true" || v === "yes" || v === "1";
+      };
+      
+      const parseNum = (val: string | undefined): number | undefined => {
+        if (!val) return undefined;
+        const n = parseInt(val, 10);
+        return isNaN(n) ? undefined : n;
+      };
+      
+      const mapWeightToDifficulty = (weight: string | undefined): string | null => {
+        if (!weight) return null;
+        const w = parseFloat(weight);
+        if (isNaN(w)) return null;
+        if (w < 1.5) return "1 - Light";
+        if (w < 2.25) return "2 - Medium Light";
+        if (w < 3.0) return "3 - Medium";
+        if (w < 3.75) return "4 - Medium Heavy";
+        return "5 - Heavy";
+      };
+      
+      const mapPlayTimeToEnum = (minutes: number | undefined): string | null => {
+        if (!minutes) return null;
+        if (minutes <= 15) return "0-15 Minutes";
+        if (minutes <= 30) return "15-30 Minutes";
+        if (minutes <= 45) return "30-45 Minutes";
+        if (minutes <= 60) return "45-60 Minutes";
+        if (minutes <= 120) return "60+ Minutes";
+        if (minutes <= 180) return "2+ Hours";
+        return "3+ Hours";
+      };
+      
+      const isBGGExport = parsedRows.length > 0 && parsedRows[0].objectname !== undefined;
+      
+      const tempGames: any[] = [];
+      for (const row of parsedRows) {
+        const title = row.title || row.name || row.game || row.game_name || row.game_title || row.objectname;
+        
+        if (isBGGExport && row.own !== "1") {
+          continue;
+        }
+        
+        if (title) {
+          const mechanicsStr = row.mechanics || row.mechanic || "";
+          const mechanics = mechanicsStr
+            .split(";")
+            .map((m: string) => m.trim())
+            .filter((m: string) => m.length > 0);
+          
+          const bggId = row.bgg_id || row.objectid || null;
+          const minPlayersRaw = row.min_players || row.minplayers;
+          const maxPlayersRaw = row.max_players || row.maxplayers;
+          const playTimeRaw = row.play_time || row.playtime || row.playingtime;
+          
+          const isExpansion = parseBool(row.is_expansion) || 
+                             row.itemtype === "expansion" || 
+                             row.objecttype === "expansion";
+          
+          let difficulty = row.difficulty || row.weight || null;
+          if (!difficulty && row.avgweight) {
+            difficulty = mapWeightToDifficulty(row.avgweight);
+          }
+          
+          let playTime = row.play_time || null;
+          if (!playTime && playTimeRaw) {
+            const playTimeNum = parseNum(playTimeRaw);
+            playTime = mapPlayTimeToEnum(playTimeNum);
+          }
+          
+          const suggestedAge = row.suggested_age || row.age || row.bggrecagerange || null;
+          const isForSale = parseBool(row.is_for_sale) || parseBool(row.fortrade);
+          
+          tempGames.push({
+            id: `demo-import-${Date.now()}-${tempGames.length}`,
+            title,
+            image_url: row.image_url || null,
+            game_type: row.type || row.game_type || "Board Game",
+            difficulty,
+            play_time: playTime,
+            min_players: parseNum(minPlayersRaw),
+            max_players: parseNum(maxPlayersRaw),
+            suggested_age: suggestedAge,
+            publisher: row.publisher || null,
+            mechanics: mechanics.length > 0 ? mechanics : undefined,
+            bgg_id: bggId,
+            bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || null),
+            description: row.description || null,
+            is_expansion: isExpansion,
+            parent_game_title: row.parent_game || null,
+            is_coming_soon: parseBool(row.is_coming_soon),
+            is_for_sale: isForSale,
+            sale_price: parseNum(row.sale_price) || null,
+            sale_condition: row.sale_condition || null,
+            location_room: row.location_room || locationRoom || null,
+            location_shelf: row.location_shelf || row.invlocation || locationShelf || null,
+            location_misc: row.location_misc || locationMisc || null,
+            sleeved: parseBool(row.sleeved),
+            upgraded_components: parseBool(row.upgraded_components),
+            crowdfunded: parseBool(row.crowdfunded),
+            inserts: parseBool(row.inserts),
+            in_base_game_box: parseBool(row.in_base_game_box),
+          });
+        }
+      }
+      
+      const titleToId = new Map<string, string>();
+      tempGames.forEach(g => titleToId.set(g.title.toLowerCase(), g.id));
+      
+      for (const game of tempGames) {
+        if (game.is_expansion && game.parent_game_title) {
+          const parentId = titleToId.get(game.parent_game_title.toLowerCase());
+          if (parentId) {
+            game.parent_game_id = parentId;
+          }
+        }
+        demoGames.push(game);
+      }
+    } else if (mode === "bgg_collection") {
+      const sampleGames = [
+        "Wingspan", "Catan", "Ticket to Ride", "Pandemic", "Azul",
+        "7 Wonders", "Dominion", "Carcassonne", "Splendor", "Codenames"
+      ];
+      demoGames = sampleGames.slice(0, 5).map((title, i) => ({
+        id: `demo-bgg-${Date.now()}-${i}`,
+        title,
+        game_type: "Board Game",
+        description: `A popular board game imported from BGG collection of ${bggUsername}`,
+        location_room: locationRoom || "Game Room",
+        location_shelf: locationShelf || null,
+        location_misc: locationMisc || null,
+      }));
+    } else if (mode === "bgg_links") {
+      const links = bggLinks.split("\n").filter(l => l.includes("boardgamegeek.com"));
+      demoGames = links.map((link, i) => {
+        const match = link.match(/\/boardgame\/\d+\/([^\/\?]+)/);
+        const title = match ? match[1].split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : `Game ${i + 1}`;
+        return {
+          id: `demo-link-${Date.now()}-${i}`,
+          title,
+          bgg_url: link,
+          game_type: "Board Game",
+          description: `Imported from BoardGameGeek`,
+          location_room: locationRoom || "Game Room",
+          location_shelf: locationShelf || null,
+          location_misc: locationMisc || null,
+        };
+      });
+    }
+    
+    if (demoGames.length > 0 && onDemoImport) {
+      onDemoImport(demoGames);
+      setResult({
+        success: true,
+        imported: demoGames.length,
+        failed: 0,
+        errors: [],
+        games: demoGames.map(g => ({ title: g.title, id: g.id })),
+      });
+      toast({
+        title: "Import complete!",
+        description: `Successfully imported ${demoGames.length} game${demoGames.length !== 1 ? "s" : ""} (demo mode)`,
+      });
+    } else {
+      setResult({
+        success: false,
+        imported: 0,
+        failed: 1,
+        errors: ["No valid games found to import"],
+        games: [],
+      });
+      toast({
+        title: "Import failed",
+        description: "No valid games found to import",
+        variant: "destructive",
+      });
+    }
+    
+    setIsImporting(false);
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    onOpenChange(false);
+  };
+
+  const progressPercent = progress ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -481,27 +619,62 @@ export function BulkImportDialog({
         <div className="flex-1 overflow-hidden">
           <Tabs value={mode} onValueChange={(v) => setMode(v as ImportMode)} className="h-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="csv" className="gap-2">
+              <TabsTrigger value="csv" className="gap-2" disabled={isImporting}>
                 <FileText className="h-4 w-4" />
                 CSV/Excel
               </TabsTrigger>
-              <TabsTrigger value="bgg_collection" className="gap-2">
+              <TabsTrigger value="bgg_collection" className="gap-2" disabled={isImporting}>
                 <Users className="h-4 w-4" />
                 BGG Collection
               </TabsTrigger>
-              <TabsTrigger value="bgg_links" className="gap-2">
+              <TabsTrigger value="bgg_links" className="gap-2" disabled={isImporting}>
                 <Link className="h-4 w-4" />
                 BGG Links
               </TabsTrigger>
             </TabsList>
 
             <ScrollArea className="h-[400px] mt-4 pr-4">
+              {/* Progress indicator */}
+              {progress && (
+                <div className="mb-6 p-4 bg-muted rounded-lg space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">Importing games...</span>
+                    <span className="text-muted-foreground">
+                      {progress.current} / {progress.total}
+                    </span>
+                  </div>
+                  <Progress value={progressPercent} className="h-2" />
+                  <div className="flex items-center gap-2 text-sm">
+                    {progress.phase === "enhancing" ? (
+                      <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                    ) : progress.phase === "imported" ? (
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                    ) : progress.phase === "error" ? (
+                      <AlertCircle className="h-3 w-3 text-destructive" />
+                    ) : (
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    )}
+                    <span className="truncate text-muted-foreground">
+                      {progress.currentGame}
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    <span className="text-green-600">✓ {progress.imported} imported</span>
+                    {progress.failed > 0 && (
+                      <span className="text-destructive">✕ {progress.failed} failed</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <TabsContent value="csv" className="mt-0 space-y-4">
                 <div className="space-y-2">
                   <Label>Upload CSV/Excel File</Label>
                   <input
                     type="file"
+                    accept=".csv,.xlsx,.xls"
                     onChange={handleFileUpload}
+                    disabled={isImporting}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -519,6 +692,7 @@ Ticket to Ride,9209`}
                     value={csvData}
                     onChange={(e) => setCsvData(e.target.value)}
                     rows={6}
+                    disabled={isImporting}
                     className="font-mono text-sm"
                   />
                 </div>
@@ -531,6 +705,7 @@ Ticket to Ride,9209`}
                     placeholder="Enter BGG username"
                     value={bggUsername}
                     onChange={(e) => setBggUsername(e.target.value)}
+                    disabled={isImporting}
                   />
                   <p className="text-xs text-muted-foreground">
                     Import all games marked as "Owned" in your BGG collection
@@ -557,66 +732,72 @@ https://boardgamegeek.com/boardgame/9209/ticket-to-ride`}
                     value={bggLinks}
                     onChange={(e) => setBggLinks(e.target.value)}
                     rows={6}
+                    disabled={isImporting}
                   />
                 </div>
               </TabsContent>
 
               {/* Common options */}
-              <div className="space-y-4 mt-6 pt-4 border-t">
-                <h4 className="font-medium">Import Options</h4>
+              {!progress && (
+                <div className="space-y-4 mt-6 pt-4 border-t">
+                  <h4 className="font-medium">Import Options</h4>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enhance-bgg"
-                    checked={enhanceWithBgg}
-                    onCheckedChange={(checked) => setEnhanceWithBgg(!!checked)}
-                  />
-                  <Label htmlFor="enhance-bgg" className="cursor-pointer">
-                    Enhance with BGG data (descriptions, images, player counts, etc.)
-                  </Label>
-                </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="enhance-bgg"
+                      checked={enhanceWithBgg}
+                      onCheckedChange={(checked) => setEnhanceWithBgg(!!checked)}
+                      disabled={isImporting}
+                    />
+                    <Label htmlFor="enhance-bgg" className="cursor-pointer">
+                      Enhance with BGG data (descriptions, images, player counts, etc.)
+                    </Label>
+                  </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Default Room</Label>
-                    <Select value={locationRoom} onValueChange={setLocationRoom}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select room" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover">
-                        <SelectItem value="Living Room">Living Room</SelectItem>
-                        <SelectItem value="Family Room">Family Room</SelectItem>
-                        <SelectItem value="Game Room">Game Room</SelectItem>
-                        <SelectItem value="Den">Den</SelectItem>
-                        <SelectItem value="Basement">Basement</SelectItem>
-                        <SelectItem value="Bedroom">Bedroom</SelectItem>
-                        <SelectItem value="Office">Office</SelectItem>
-                        <SelectItem value="Closet">Closet</SelectItem>
-                        <SelectItem value="Attic">Attic</SelectItem>
-                        <SelectItem value="Garage">Garage</SelectItem>
-                        <SelectItem value="Dining Room">Dining Room</SelectItem>
-                        <SelectItem value="Storage Room">Storage Room</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Default Shelf</Label>
-                    <Input
-                      placeholder="e.g., Shelf A"
-                      value={locationShelf}
-                      onChange={(e) => setLocationShelf(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Default Misc</Label>
-                    <Input
-                      placeholder="e.g., Box 1"
-                      value={locationMisc}
-                      onChange={(e) => setLocationMisc(e.target.value)}
-                    />
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Default Room</Label>
+                      <Select value={locationRoom} onValueChange={setLocationRoom} disabled={isImporting}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select room" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover">
+                          <SelectItem value="Living Room">Living Room</SelectItem>
+                          <SelectItem value="Family Room">Family Room</SelectItem>
+                          <SelectItem value="Game Room">Game Room</SelectItem>
+                          <SelectItem value="Den">Den</SelectItem>
+                          <SelectItem value="Basement">Basement</SelectItem>
+                          <SelectItem value="Bedroom">Bedroom</SelectItem>
+                          <SelectItem value="Office">Office</SelectItem>
+                          <SelectItem value="Closet">Closet</SelectItem>
+                          <SelectItem value="Attic">Attic</SelectItem>
+                          <SelectItem value="Garage">Garage</SelectItem>
+                          <SelectItem value="Dining Room">Dining Room</SelectItem>
+                          <SelectItem value="Storage Room">Storage Room</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Default Shelf</Label>
+                      <Input
+                        placeholder="e.g., Shelf A"
+                        value={locationShelf}
+                        onChange={(e) => setLocationShelf(e.target.value)}
+                        disabled={isImporting}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Default Misc</Label>
+                      <Input
+                        placeholder="e.g., Box 1"
+                        value={locationMisc}
+                        onChange={(e) => setLocationMisc(e.target.value)}
+                        disabled={isImporting}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Results */}
               {result && (
@@ -680,14 +861,14 @@ https://boardgamegeek.com/boardgame/9209/ticket-to-ride`}
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button variant="outline" onClick={handleCancel}>
                 Cancel
               </Button>
               <Button onClick={handleImport} disabled={isImporting}>
                 {isImporting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Importing...
+                    {progress ? `${progressPercent}%` : "Starting..."}
                   </>
                 ) : (
                   <>
