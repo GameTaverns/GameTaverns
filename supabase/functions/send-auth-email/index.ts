@@ -187,6 +187,140 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
+    if (type === 'email_confirmation') {
+      // Generate secure token
+      const token = generateSecureToken();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+
+      // Get user ID from email (user was just created)
+      const { data: userData } = await supabase.auth.admin.listUsers();
+      const user = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+
+      if (!user) {
+        console.error(`Email confirmation requested but user not found: ${email}`);
+        return new Response(
+          JSON.stringify({ error: "User not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Invalidate any existing tokens for this email
+      await supabase
+        .from('email_confirmation_tokens')
+        .delete()
+        .eq('email', email.toLowerCase());
+
+      // Store new token
+      const { error: insertError } = await supabase
+        .from('email_confirmation_tokens')
+        .insert({
+          user_id: user.id,
+          email: email.toLowerCase(),
+          token: token,
+          expires_at: expiresAt.toISOString(),
+        });
+
+      if (insertError) {
+        console.error("Failed to store confirmation token:", insertError);
+        return new Response(
+          JSON.stringify({ error: "Failed to process request" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Build confirmation URL
+      const baseUrl = redirectUrl || 'https://gametaverns.com';
+      const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
+
+      // Create SMTP client
+      const client = new SMTPClient({
+        connection: {
+          hostname: smtpHost,
+          port: smtpPort,
+          tls: smtpPort === 465,
+          auth: {
+            username: smtpUser,
+            password: smtpPass,
+          },
+        },
+      });
+
+      // Send email
+      const fromAddress = `GameTaverns <${smtpFrom}>`;
+      await client.send({
+        from: fromAddress,
+        to: email,
+        subject: "Confirm Your GameTaverns Account",
+        content: `Confirm your email by visiting: ${confirmUrl}`,
+        html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #1a1510; font-family: Georgia, serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #1a1510; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #2a2015; border-radius: 8px; overflow: hidden;">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #8B4513 0%, #654321 100%); padding: 30px; text-align: center;">
+              <img src="https://ddfslywzgddlpmkhohfu.supabase.co/storage/v1/object/public/library-logos/platform-logo.png" alt="GameTaverns" style="max-height: 60px; width: auto; margin-bottom: 10px;" />
+              <h1 style="color: #f5f0e6; margin: 0; font-size: 28px; font-weight: bold;">GameTaverns</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #f5f0e6; margin: 0 0 20px 0; font-size: 24px;">Welcome to GameTaverns!</h2>
+              <p style="color: #c9bfb0; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                Thanks for signing up! Please confirm your email address to activate your account and start building your board game library.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                <tr>
+                  <td style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); border-radius: 6px;">
+                    <a href="${confirmUrl}" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px;">
+                      Confirm Email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="color: #8b7355; font-size: 14px; line-height: 1.5; margin: 0 0 10px 0;">
+                This link will expire in 24 hours.
+              </p>
+              <p style="color: #8b7355; font-size: 14px; line-height: 1.5; margin: 0;">
+                If you didn't create this account, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #1a1510; padding: 20px 30px; text-align: center; border-top: 1px solid #3d3425;">
+              <p style="color: #6b5b4a; font-size: 12px; margin: 0;">
+                © ${new Date().getFullYear()} GameTaverns. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+        `,
+      });
+
+      await client.close();
+      console.log(`Email confirmation sent to ${email}`);
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Confirmation email sent" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Invalid email type" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_confirmation_tokens: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       game_admin_data: {
         Row: {
           created_at: string
@@ -1168,6 +1198,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_expired_email_tokens: { Args: never; Returns: undefined }
       cleanup_expired_tokens: { Args: never; Returns: undefined }
       generate_slug: { Args: { title: string }; Returns: string }
       has_role: {
