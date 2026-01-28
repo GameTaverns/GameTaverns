@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { CheckCircle } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { CheckCircle, Loader2 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -15,19 +15,44 @@ export default function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
+  const [tokenEmail, setTokenEmail] = useState<string>("");
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const token = searchParams.get('token');
+
   useEffect(() => {
-    // Check if we have a valid recovery session
-    const checkSession = async () => {
+    const verifyToken = async () => {
+      // Check for custom token first
+      if (token) {
+        try {
+          const { data, error } = await supabase.functions.invoke('verify-reset-token', {
+            body: { token, action: 'verify' },
+          });
+
+          if (error || !data?.valid) {
+            setIsValidToken(false);
+            return;
+          }
+
+          setIsValidToken(true);
+          setTokenEmail(data.email || '');
+        } catch (err) {
+          console.error('Token verification error:', err);
+          setIsValidToken(false);
+        }
+        return;
+      }
+
+      // Fall back to Supabase recovery flow (for backwards compatibility)
       const { data: { session } } = await supabase.auth.getSession();
-      // The recovery flow sets up a session automatically
       setIsValidToken(!!session);
     };
-    checkSession();
 
-    // Listen for auth state changes (recovery link clicked)
+    verifyToken();
+
+    // Listen for auth state changes (recovery link clicked - legacy flow)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsValidToken(true);
@@ -35,7 +60,7 @@ export default function ResetPassword() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,9 +86,19 @@ export default function ResetPassword() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      // Use custom token flow
+      if (token) {
+        const { data, error } = await supabase.functions.invoke('verify-reset-token', {
+          body: { token, action: 'reset', newPassword: password },
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || 'Failed to reset password');
+      } else {
+        // Legacy Supabase flow
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+      }
 
       setIsSuccess(true);
       toast({
@@ -90,7 +125,10 @@ export default function ResetPassword() {
   if (isValidToken === null) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center">
-        <div className="animate-pulse text-cream">Verifying...</div>
+        <div className="flex items-center gap-2 text-cream">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Verifying...</span>
+        </div>
       </div>
     );
   }
@@ -150,7 +188,9 @@ export default function ResetPassword() {
           <CardDescription className="text-muted-foreground">
             {isSuccess 
               ? "You can now sign in with your new password" 
-              : "Enter your new password below"
+              : tokenEmail 
+                ? `Enter a new password for ${tokenEmail}`
+                : "Enter your new password below"
             }
           </CardDescription>
         </CardHeader>
@@ -199,7 +239,14 @@ export default function ResetPassword() {
                 className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
                 disabled={isLoading}
               >
-                {isLoading ? "Updating..." : "Update Password"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Password"
+                )}
               </Button>
             </form>
           )}
