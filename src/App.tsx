@@ -9,7 +9,7 @@ import { ThemeApplicator } from "@/components/ThemeApplicator";
 import { DemoThemeApplicator } from "@/components/DemoThemeApplicator";
 import { TenantThemeApplicator } from "@/components/TenantThemeApplicator";
 import { DemoProvider } from "@/contexts/DemoContext";
-import { TenantProvider } from "@/contexts/TenantContext";
+import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { DemoGuard } from "@/components/system/DemoGuard";
 
 // Lazy load route components to reduce initial bundle size
@@ -23,6 +23,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const DemoSettings = lazy(() => import("./pages/DemoSettings"));
 const DemoGameForm = lazy(() => import("./pages/DemoGameForm"));
 const Docs = lazy(() => import("./pages/Docs"));
+const LibrarySuspended = lazy(() => import("./pages/LibrarySuspended"));
 
 // Platform pages (multi-tenant)
 const Platform = lazy(() => import("./pages/Platform"));
@@ -74,6 +75,7 @@ function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; t
   const navigate = useNavigate();
   const pathParam = searchParams.get("path");
   const tabParam = searchParams.get("tab");
+  const { isLoading, isSuspended, suspendedLibraryName, suspensionReason } = useTenant();
   
   // Handle path parameter navigation within tenant context
   // Do this synchronously before rendering to avoid flash
@@ -90,13 +92,18 @@ function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; t
     }
   }, [tenantSlug, pathParam, tabParam, location.pathname, navigate]);
   
-  // Show loading while redirect is in progress
-  if (tenantSlug && pathParam && location.pathname === "/") {
+  // Show loading while redirect is in progress or tenant is loading
+  if ((tenantSlug && pathParam && location.pathname === "/") || (tenantSlug && isLoading)) {
     return (
       <div className="min-h-screen parchment-texture flex items-center justify-center animate-fade-in">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
+  }
+  
+  // If library is suspended, show the suspended page
+  if (tenantSlug && isSuspended) {
+    return <LibrarySuspended libraryName={suspendedLibraryName || undefined} suspensionReason={suspensionReason} />;
   }
   
   // If tenant slug is in URL, show library routes
