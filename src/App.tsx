@@ -22,6 +22,12 @@ const DemoSettings = lazy(() => import("./pages/DemoSettings"));
 const DemoGameForm = lazy(() => import("./pages/DemoGameForm"));
 const Docs = lazy(() => import("./pages/Docs"));
 
+// Platform pages (multi-tenant)
+const Platform = lazy(() => import("./pages/Platform"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CreateLibrary = lazy(() => import("./pages/CreateLibrary"));
+const Signup = lazy(() => import("./pages/Signup"));
+
 const queryClient = new QueryClient();
 
 // Simple loading fallback
@@ -31,45 +37,88 @@ const PageLoader = () => (
   </div>
 );
 
-// Wrapper component to check for demo mode
+// Wrapper component to check for demo mode and tenant mode
 function AppRoutes() {
   const [searchParams] = useSearchParams();
   const isDemoMode = searchParams.get("demo") === "true" || 
     window.location.pathname.startsWith("/demo");
+  const tenantSlug = searchParams.get("tenant");
 
   return (
     <DemoProvider enabled={isDemoMode}>
-      {/* ThemeApplicator for live mode, DemoThemeApplicator for demo mode */}
+      {/* Theme applicators */}
       <ThemeApplicator />
       <DemoThemeApplicator />
+      
       <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/game/:slug" element={<GameDetail />} />
-          <Route path="/demo/game/:slug" element={
-            <DemoGuard><GameDetail /></DemoGuard>
-          } />
-          <Route path="/admin" element={<Login />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/admin/settings" element={<Settings />} />
-          <Route path="/admin/add" element={<GameForm />} />
-          <Route path="/admin/edit/:id" element={<GameForm />} />
-          <Route path="/admin/messages" element={<Messages />} />
-          <Route path="/demo/settings" element={
-            <DemoGuard><DemoSettings /></DemoGuard>
-          } />
-          <Route path="/demo/add" element={
-            <DemoGuard><DemoGameForm /></DemoGuard>
-          } />
-          <Route path="/demo/edit/:id" element={
-            <DemoGuard><DemoGameForm /></DemoGuard>
-          } />
-          <Route path="/docs" element={<Docs />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <TenantRouteHandler isDemoMode={isDemoMode} tenantSlug={tenantSlug} />
       </Suspense>
     </DemoProvider>
+  );
+}
+
+// Handle routing based on tenant state
+function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; tenantSlug: string | null }) {
+  // If tenant slug is in URL, show library routes
+  if (tenantSlug) {
+    return <LibraryRoutes isDemoMode={isDemoMode} />;
+  }
+  
+  // Platform mode - show marketing/dashboard routes
+  return <PlatformRoutes />;
+}
+
+// Routes for the platform (gametaverns.com)
+function PlatformRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Platform />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/create-library" element={<CreateLibrary />} />
+      <Route path="/docs" element={<Docs />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+// Routes for individual libraries (library.gametaverns.com or ?tenant=slug)
+function LibraryRoutes({ isDemoMode }: { isDemoMode: boolean }) {
+  return (
+    <Routes>
+      {/* Public library views */}
+      <Route path="/" element={<Index />} />
+      <Route path="/game/:slug" element={<GameDetail />} />
+      
+      {/* Demo mode routes */}
+      <Route path="/demo/game/:slug" element={
+        <DemoGuard><GameDetail /></DemoGuard>
+      } />
+      <Route path="/demo/settings" element={
+        <DemoGuard><DemoSettings /></DemoGuard>
+      } />
+      <Route path="/demo/add" element={
+        <DemoGuard><DemoGameForm /></DemoGuard>
+      } />
+      <Route path="/demo/edit/:id" element={
+        <DemoGuard><DemoGameForm /></DemoGuard>
+      } />
+      
+      {/* Admin routes (library owner only) */}
+      <Route path="/admin" element={<Login />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="/admin/settings" element={<Settings />} />
+      <Route path="/admin/add" element={<GameForm />} />
+      <Route path="/admin/edit/:id" element={<GameForm />} />
+      <Route path="/admin/messages" element={<Messages />} />
+      
+      {/* Docs accessible from library too */}
+      <Route path="/docs" element={<Docs />} />
+      
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 
