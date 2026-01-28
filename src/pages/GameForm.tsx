@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +43,7 @@ import { YouTubeVideoEditor } from "@/components/games/YouTubeEmbed";
 const GameForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { buildUrl } = useTenantUrl();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: existingGame, isLoading: gameLoading } = useGame(id);
   const { data: mechanics = [] } = useMechanics();
@@ -220,7 +222,7 @@ const GameForm = () => {
         });
         toast({ title: "Game created!" });
       }
-      navigate("/admin");
+      navigate(buildUrl("/games"));
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -242,9 +244,9 @@ const GameForm = () => {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto">
-        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate("/admin")}>
+        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate(buildUrl("/games"))}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Admin
+          Back to Games
         </Button>
 
         <Card className="card-elevated">
