@@ -98,13 +98,12 @@ export function getCorePool(): mysql.Pool {
 
 /**
  * Resolve tenant from subdomain
+ * 
+ * Supports two domain structures:
+ * 1. gametaverns.com (production): library.gametaverns.com → 'library'
+ * 2. tavern.tzolak.com (staging): library.tavern.tzolak.com → 'library'
  */
 export async function resolveTenant(hostname: string): Promise<TenantContext | null> {
-  // Extract subdomain from hostname
-  // e.g., "tzolak.gametaverns.com" → "tzolak"
-  // e.g., "gametaverns.com" → null (main site)
-  // e.g., "localhost" → use query param
-  
   const parts = hostname.split('.');
   
   // For local development, check for tenant query param instead
@@ -112,17 +111,35 @@ export async function resolveTenant(hostname: string): Promise<TenantContext | n
     return null;
   }
   
-  // Check if it's a subdomain (has more than 2 parts)
-  // gametaverns.com = 2 parts
-  // tzolak.gametaverns.com = 3 parts
-  if (parts.length <= 2) {
-    return null; // Main site, no tenant
+  let slug: string | null = null;
+  
+  // Check for staging domain: tavern.tzolak.com
+  // library.tavern.tzolak.com = 4 parts → slug = 'library'
+  // tavern.tzolak.com = 3 parts → main site
+  if (hostname.endsWith('.tavern.tzolak.com')) {
+    if (parts.length === 4) {
+      slug = parts[0];
+    } else {
+      return null; // Main site (tavern.tzolak.com)
+    }
+  }
+  // Check for production domain: gametaverns.com  
+  // library.gametaverns.com = 3 parts → slug = 'library'
+  // gametaverns.com = 2 parts → main site
+  else if (hostname.endsWith('.gametaverns.com') || hostname.endsWith('gametaverns.com')) {
+    if (parts.length === 3) {
+      slug = parts[0];
+    } else {
+      return null; // Main site
+    }
+  }
+  // Unknown domain structure
+  else {
+    return null;
   }
   
-  const slug = parts[0];
-  
   // Skip common non-tenant subdomains
-  if (['www', 'api', 'mail', 'admin'].includes(slug)) {
+  if (!slug || ['www', 'api', 'mail', 'admin', 'tavern'].includes(slug)) {
     return null;
   }
   
