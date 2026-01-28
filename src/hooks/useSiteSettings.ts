@@ -17,6 +17,7 @@ export interface SiteSettings {
   discord_url?: string;
   contact_email?: string;
   footer_text?: string;
+  announcement_banner?: string;
   // Light mode theme
   theme_primary_h?: string;
   theme_primary_s?: string;

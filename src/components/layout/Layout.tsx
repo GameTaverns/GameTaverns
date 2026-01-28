@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { AnnouncementBanner } from "./AnnouncementBanner";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
@@ -23,6 +24,7 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       <div className="lg:ml-72">
+        <AnnouncementBanner />
         <Header
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           isSidebarOpen={sidebarOpen}
