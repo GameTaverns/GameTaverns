@@ -1,5 +1,6 @@
 import { useMemo, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowUpDown, X, AlertTriangle, Heart } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
@@ -7,6 +8,8 @@ import { WishlistNamePrompt } from "@/components/games/WishlistNamePrompt";
 import { useGames } from "@/hooks/useGames";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useWishlist } from "@/hooks/useWishlist";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
@@ -42,8 +45,22 @@ const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isDemoMode, demoGames } = useDemoMode();
-  const { forSale: forSaleFlag, comingSoon: comingSoonFlag, demoMode: demoModeEnabled, isLoading: flagsLoading } = useFeatureFlags();
+  const { forSale: forSaleFlag, comingSoon: comingSoonFlag, wishlist: wishlistFlag, demoMode: demoModeEnabled, isLoading: flagsLoading } = useFeatureFlags();
   const { data: realGames = [], isLoading } = useGames(!isDemoMode);
+  const { myVotes } = useWishlist();
+  
+  // Fetch ratings summary for top-rated filter
+  const { data: ratingsData } = useQuery({
+    queryKey: ["game-ratings-summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("game_ratings_summary")
+        .select("game_id, average_rating, rating_count");
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 60000, // 1 minute
+  });
   
   // Redirect away from demo mode if the feature is disabled
   useEffect(() => {
@@ -105,6 +122,28 @@ const Index = () => {
         result = result.filter((g) => g.is_for_sale);
       } else {
         // Feature is disabled, show no results for this filter
+        result = [];
+      }
+    } else if (filter === "status" && filterValue === "favorites") {
+      // Show only favorited games (is_favorite = true)
+      result = result.filter((g) => (g as any).is_favorite === true);
+    } else if (filter === "status" && filterValue === "top-rated") {
+      // Show games with average rating >= 4 and at least 1 rating
+      if (ratingsData) {
+        const highRatedGameIds = new Set(
+          ratingsData
+            .filter((r) => r.average_rating !== null && r.average_rating >= 4 && r.rating_count && r.rating_count > 0)
+            .map((r) => r.game_id)
+        );
+        result = result.filter((g) => highRatedGameIds.has(g.id));
+      } else {
+        result = [];
+      }
+    } else if (filter === "status" && filterValue === "wishlist") {
+      // Show games that the current user has voted for (most wanted)
+      if (wishlistFlag && myVotes && myVotes.size > 0) {
+        result = result.filter((g) => myVotes.has(g.id));
+      } else {
         result = [];
       }
     } else {
@@ -186,7 +225,7 @@ const Index = () => {
     });
 
     return result;
-  }, [games, filter, filterValue, sortBy, forSaleFlag, comingSoonFlag]);
+  }, [games, filter, filterValue, sortBy, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes]);
 
   // Pagination
   const totalPages = Math.ceil(filteredGames.length / ITEMS_PER_PAGE);
