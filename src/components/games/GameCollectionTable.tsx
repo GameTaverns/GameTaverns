@@ -228,31 +228,21 @@ export function GameCollectionTable() {
         </div>
 
         {/* Alpha Bar */}
-        <div className="flex flex-wrap gap-0.5">
+        <div className="flex w-full">
           <Button
             variant={activeLetter === null ? "default" : "outline"}
             size="sm"
-            className="h-7 w-7 p-0 text-xs"
+            className="h-7 flex-1 p-0 text-xs rounded-r-none border-r-0"
             onClick={() => setActiveLetter(null)}
           >
             All
           </Button>
-          {lettersWithGames.has("#") && (
-            <Button
-              variant={activeLetter === "#" ? "default" : "outline"}
-              size="sm"
-              className="h-7 w-7 p-0 text-xs"
-              onClick={() => setActiveLetter("#")}
-            >
-              #
-            </Button>
-          )}
-          {alphabet.map((letter) => (
+          {alphabet.map((letter, index) => (
             <Button
               key={letter}
               variant={activeLetter === letter ? "default" : "outline"}
               size="sm"
-              className="h-7 w-7 p-0 text-xs"
+              className={`h-7 flex-1 p-0 text-xs rounded-none ${index < alphabet.length - 1 ? 'border-r-0' : 'rounded-r-md'}`}
               onClick={() => setActiveLetter(letter)}
               disabled={!lettersWithGames.has(letter)}
             >
