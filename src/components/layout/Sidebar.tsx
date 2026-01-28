@@ -17,7 +17,9 @@ import {
   ALargeSmall,
   Users,
   FlaskConical,
-  Baby
+  Baby,
+  Heart,
+  TrendingUp
 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
@@ -77,7 +79,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const { isDemoMode, demoGames } = useDemoMode();
   const { isAuthenticated, user, signOut, isAdmin } = useAuth();
   const { data: settings } = useSiteSettings();
-  const { forSale, comingSoon } = useFeatureFlags();
+  const { forSale, comingSoon, wishlist } = useFeatureFlags();
   const { toast } = useToast();
   const { tenantSlug, library, isTenantMode } = useTenant();
   const tenantSettings = useTenantSettings();
@@ -193,6 +195,38 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <Library className="h-5 w-5" />
               <span>Full Collection</span>
             </Link>
+            <button
+              onClick={() => handleFilterClick("status", "favorites")}
+              className={cn(
+                "sidebar-link w-full text-left",
+                isActive("status", "favorites") && "sidebar-link-active"
+              )}
+            >
+              <Star className="h-5 w-5" />
+              <span>Favorites</span>
+            </button>
+            <button
+              onClick={() => handleFilterClick("status", "top-rated")}
+              className={cn(
+                "sidebar-link w-full text-left",
+                isActive("status", "top-rated") && "sidebar-link-active"
+              )}
+            >
+              <TrendingUp className="h-5 w-5" />
+              <span>Top Rated</span>
+            </button>
+            {wishlist && (
+              <button
+                onClick={() => handleFilterClick("status", "wishlist")}
+                className={cn(
+                  "sidebar-link w-full text-left",
+                  isActive("status", "wishlist") && "sidebar-link-active"
+                )}
+              >
+                <Heart className="h-5 w-5" />
+                <span>Most Wanted</span>
+              </button>
+            )}
             {comingSoon && (
               <button
                 onClick={() => handleFilterClick("status", "coming-soon")}
