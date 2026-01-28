@@ -1,0 +1,210 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+interface SignupRequest {
+  email: string;
+  password: string;
+  displayName?: string;
+  redirectUrl?: string;
+}
+
+function generateSecureToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function getSmtpClient() {
+  const smtpHost = Deno.env.get("SMTP_HOST");
+  const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587", 10);
+  const smtpUser = Deno.env.get("SMTP_USER");
+  const smtpPass = Deno.env.get("SMTP_PASS");
+  const smtpFrom = Deno.env.get("SMTP_FROM");
+
+  if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
+    throw new Error("Email service not configured");
+  }
+
+  const client = new SMTPClient({
+    connection: {
+      hostname: smtpHost,
+      port: smtpPort,
+      tls: smtpPort === 465,
+      auth: {
+        username: smtpUser,
+        password: smtpPass,
+      },
+    },
+  });
+
+  return { client, smtpFrom };
+}
+
+async function sendConfirmationEmail(params: { email: string; confirmUrl: string }) {
+  const { client, smtpFrom } = getSmtpClient();
+  const fromAddress = `GameTaverns <${smtpFrom}>`;
+
+  await client.send({
+    from: fromAddress,
+    to: params.email,
+    subject: "Confirm Your GameTaverns Account",
+    content: `Confirm your email by visiting: ${params.confirmUrl}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #1a1510; font-family: Georgia, serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #1a1510; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #2a2015; border-radius: 8px; overflow: hidden;">
+          <tr>
+            <td style="background: linear-gradient(135deg, #8B4513 0%, #654321 100%); padding: 30px; text-align: center;">
+              <img src="https://ddfslywzgddlpmkhohfu.supabase.co/storage/v1/object/public/library-logos/platform-logo.png" alt="GameTaverns" style="max-height: 60px; width: auto; margin-bottom: 10px;" />
+              <h1 style="color: #f5f0e6; margin: 0; font-size: 28px; font-weight: bold;">GameTaverns</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #f5f0e6; margin: 0 0 20px 0; font-size: 24px;">Welcome to GameTaverns!</h2>
+              <p style="color: #c9bfb0; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                Thanks for signing up! Please confirm your email address to activate your account.
+              </p>
+              <table cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                <tr>
+                  <td style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); border-radius: 6px;">
+                    <a href="${params.confirmUrl}" style="display: inline-block; padding: 14px 32px; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px;">
+                      Confirm Email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="color: #8b7355; font-size: 14px; line-height: 1.5; margin: 0;">
+                This link will expire in 24 hours.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #1a1510; padding: 20px 30px; text-align: center; border-top: 1px solid #3d3425;">
+              <p style="color: #6b5b4a; font-size: 12px; margin: 0;">
+                © ${new Date().getFullYear()} GameTaverns. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+  });
+
+  await client.close();
+}
+
+async function handler(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { email, password, displayName, redirectUrl }: SignupRequest = await req.json();
+    if (!email || !password) {
+      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // IMPORTANT: We intentionally do NOT use client-side auth.signUp here, because that
+    // triggers the default provider confirmation email. Admin createUser avoids that.
+    const { data: created, error: createError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: false,
+      user_metadata: {
+        display_name: displayName || email.split("@")[0],
+      },
+    });
+
+    if (createError) {
+      // Normalize common cases
+      const msg = String(createError.message || createError);
+      const status = msg.toLowerCase().includes("already") ? 409 : 400;
+      return new Response(JSON.stringify({ error: msg }), {
+        status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = created.user?.id;
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Failed to create user" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Best-effort profile row (non-fatal if it already exists)
+    await supabase.from("user_profiles").upsert({
+      user_id: userId,
+      display_name: displayName || email.split("@")[0],
+    }, { onConflict: "user_id" });
+
+    // Store token and send email
+    const token = generateSecureToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await supabase
+      .from("email_confirmation_tokens")
+      .delete()
+      .eq("email", email.toLowerCase());
+
+    const { error: tokenError } = await supabase
+      .from("email_confirmation_tokens")
+      .insert({
+        user_id: userId,
+        email: email.toLowerCase(),
+        token,
+        expires_at: expiresAt.toISOString(),
+      });
+
+    if (tokenError) {
+      return new Response(JSON.stringify({ error: "Failed to create confirmation token" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const baseUrl = redirectUrl || "https://gametaverns.com";
+    const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
+    await sendConfirmationEmail({ email, confirmUrl });
+
+    return new Response(
+      JSON.stringify({ success: true, message: "Confirmation email sent" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (error: any) {
+    const msg = String(error?.message || error);
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+}
+
+Deno.serve(handler);
