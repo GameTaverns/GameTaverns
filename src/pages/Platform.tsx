@@ -3,12 +3,14 @@ import { Library, Users, Palette, Shield, Zap, Import } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
+import { usePlatformStats, formatStatNumber } from "@/hooks/usePlatformStats";
 import logoImage from "@/assets/logo.png";
 
 
 export default function Platform() {
   const { isAuthenticated } = useAuth();
   const { data: myLibrary } = useMyLibrary();
+  const { data: stats, isLoading: statsLoading } = usePlatformStats();
   const navigate = useNavigate();
   
   const handleGetStarted = () => {
@@ -102,15 +104,21 @@ export default function Platform() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto mt-16">
           <div>
-            <div className="text-3xl font-bold text-secondary">500+</div>
+            <div className="text-3xl font-bold text-secondary">
+              {statsLoading ? "..." : formatStatNumber(stats?.librariesCount || 0)}
+            </div>
             <div className="text-cream/50 text-sm">Libraries Created</div>
           </div>
           <div>
-            <div className="text-3xl font-bold text-secondary">10k+</div>
+            <div className="text-3xl font-bold text-secondary">
+              {statsLoading ? "..." : formatStatNumber(stats?.gamesCount || 0)}
+            </div>
             <div className="text-cream/50 text-sm">Games Cataloged</div>
           </div>
           <div>
-            <div className="text-3xl font-bold text-secondary">25k+</div>
+            <div className="text-3xl font-bold text-secondary">
+              {statsLoading ? "..." : formatStatNumber(stats?.playsCount || 0)}
+            </div>
             <div className="text-cream/50 text-sm">Plays Logged</div>
           </div>
         </div>
