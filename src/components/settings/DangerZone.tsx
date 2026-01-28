@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, Trash2, Database, UserX } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export function DangerZone() {
   const { user, signOut } = useAuth();
   const { data: library } = useMyLibrary();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const [currentAction, setCurrentAction] = useState<ActionType>(null);
   const [confirmStep, setConfirmStep] = useState<1 | 2>(1);
@@ -120,8 +122,9 @@ export function DangerZone() {
         navigate("/dashboard");
         window.location.reload();
       } else {
-        // Clear library - just refresh
-        window.location.reload();
+        // Clear library - invalidate queries for a smooth refresh
+        await queryClient.invalidateQueries({ queryKey: ["games"] });
+        await queryClient.invalidateQueries({ queryKey: ["library"] });
       }
     } catch (error) {
       console.error("Action error:", error);
