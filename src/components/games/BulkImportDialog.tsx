@@ -58,6 +58,7 @@ interface BulkImportDialogProps {
   onImportComplete?: () => void;
   isDemo?: boolean;
   onDemoImport?: (games: any[]) => void;
+  defaultMode?: ImportMode;
 }
 
 export function BulkImportDialog({
@@ -66,13 +67,21 @@ export function BulkImportDialog({
   onImportComplete,
   isDemo = false,
   onDemoImport,
+  defaultMode = "csv",
 }: BulkImportDialogProps) {
   const { toast } = useToast();
   const { library } = useTenant();
-  const [mode, setMode] = useState<ImportMode>("csv");
+  const [mode, setMode] = useState<ImportMode>(defaultMode);
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Update mode when defaultMode changes (e.g., when dialog opens with different mode)
+  useEffect(() => {
+    if (open) {
+      setMode(defaultMode);
+    }
+  }, [open, defaultMode]);
 
   // Progress state
   const [progress, setProgress] = useState<{

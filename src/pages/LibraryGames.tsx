@@ -13,6 +13,8 @@ import { CategoryManager } from "@/components/games/CategoryManager";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+type ImportMode = "csv" | "bgg_collection" | "bgg_links";
+
 export default function LibraryGames() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -20,7 +22,13 @@ export default function LibraryGames() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("add");
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkImportMode, setBulkImportMode] = useState<ImportMode>("csv");
   const [isRefreshingImages, setIsRefreshingImages] = useState(false);
+
+  const openBulkImport = (mode: ImportMode) => {
+    setBulkImportMode(mode);
+    setShowBulkImport(true);
+  };
 
   const handleRefreshImages = async () => {
     if (!library?.id) return;
@@ -195,7 +203,7 @@ export default function LibraryGames() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-3 gap-4">
-                  <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => setShowBulkImport(true)}>
+                  <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => openBulkImport("csv")}>
                     <CardContent className="pt-6 text-center">
                       <Upload className="h-8 w-8 mx-auto mb-3 text-primary" />
                       <h3 className="font-medium mb-1">CSV / Excel</h3>
@@ -204,16 +212,16 @@ export default function LibraryGames() {
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => setShowBulkImport(true)}>
+                  <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => openBulkImport("bgg_collection")}>
                     <CardContent className="pt-6 text-center">
                       <Tag className="h-8 w-8 mx-auto mb-3 text-primary" />
                       <h3 className="font-medium mb-1">BGG Collection</h3>
                       <p className="text-sm text-muted-foreground">
-                        Import from your BoardGameGeek account
+                        Import your full BoardGameGeek collection
                       </p>
                     </CardContent>
                   </Card>
-                  <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => setShowBulkImport(true)}>
+                  <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => openBulkImport("bgg_links")}>
                     <CardContent className="pt-6 text-center">
                       <Building className="h-8 w-8 mx-auto mb-3 text-primary" />
                       <h3 className="font-medium mb-1">BGG Links</h3>
@@ -264,6 +272,7 @@ export default function LibraryGames() {
         <BulkImportDialog
           open={showBulkImport}
           onOpenChange={setShowBulkImport}
+          defaultMode={bulkImportMode}
           onImportComplete={() => {
             setShowBulkImport(false);
           }}
