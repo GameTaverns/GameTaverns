@@ -87,128 +87,118 @@ export default function CreateLibrary() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900">
-      {/* Header */}
-      <header className="border-b border-amber-700/50 bg-amber-950/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <Gamepad2 className="h-8 w-8 text-amber-400" />
-            <span className="font-display text-2xl font-bold text-amber-100">
-              GameTaverns
-            </span>
+    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-sidebar/80 border-border/50 backdrop-blur-sm">
+        <CardHeader className="text-center">
+          <Link to="/" className="flex items-center justify-center gap-3 mb-4">
+            <div className="p-2 bg-secondary/20 rounded-lg">
+              <Gamepad2 className="h-8 w-8 text-secondary" />
+            </div>
+            <span className="font-display text-2xl font-bold text-cream">GameTaverns</span>
           </Link>
-          
-          <Link to="/dashboard">
-            <Button variant="ghost" className="text-amber-200 hover:text-amber-100 hover:bg-amber-800/50">
-              Back to Dashboard
-            </Button>
-          </Link>
-        </div>
-      </header>
-      
-      <main className="container mx-auto px-4 py-12 max-w-xl">
-        <Card className="bg-amber-800/30 border-amber-700/50">
-          <CardHeader className="text-center">
-            <CardTitle className="font-display text-3xl text-amber-100">
-              Create Your Library
-            </CardTitle>
-            <CardDescription className="text-amber-200/70">
-              Set up your personal board game collection
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Library Name */}
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-amber-200">
-                  Library Name
-                </Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="My Board Game Collection"
-                  className="bg-amber-900/50 border-amber-700/50 text-amber-100 placeholder:text-amber-200/40"
-                  required
-                />
-              </div>
-              
-              {/* Slug / URL */}
-              <div className="space-y-2">
-                <Label htmlFor="slug" className="text-amber-200">
-                  Library URL
-                </Label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 relative">
-                    <Input
-                      id="slug"
-                      value={slug}
-                      onChange={(e) => handleSlugChange(e.target.value)}
-                      placeholder="my-collection"
-                      className="bg-amber-900/50 border-amber-700/50 text-amber-100 placeholder:text-amber-200/40 pr-10"
-                      required
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {checkingSlug ? (
-                        <Loader2 className="h-4 w-4 text-amber-400 animate-spin" />
-                      ) : slugCheck?.available ? (
-                        <Check className="h-4 w-4 text-green-400" />
-                      ) : slug.length >= 3 ? (
-                        <X className="h-4 w-4 text-red-400" />
-                      ) : null}
-                    </div>
+          <CardTitle className="font-display text-2xl text-cream">Create Your Library</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Set up your personal board game collection
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Library Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-cream/80">
+                Library Name
+              </Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="My Board Game Collection"
+                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                required
+              />
+            </div>
+            
+            {/* Slug / URL */}
+            <div className="space-y-2">
+              <Label htmlFor="slug" className="text-cream/80">
+                Library URL
+              </Label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    id="slug"
+                    value={slug}
+                    onChange={(e) => handleSlugChange(e.target.value)}
+                    placeholder="my-collection"
+                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground pr-10"
+                    required
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {checkingSlug ? (
+                      <Loader2 className="h-4 w-4 text-secondary animate-spin" />
+                    ) : slugCheck?.available ? (
+                      <Check className="h-4 w-4 text-green-400" />
+                    ) : slug.length >= 3 ? (
+                      <X className="h-4 w-4 text-red-400" />
+                    ) : null}
                   </div>
-                  <span className="text-amber-200/60 text-sm whitespace-nowrap">
-                    .gametaverns.com
-                  </span>
                 </div>
-                {slug.length >= 3 && !checkingSlug && slugCheck && !slugCheck.available && (
-                  <p className="text-red-400 text-sm">{slugCheck.reason}</p>
-                )}
+                <span className="text-muted-foreground text-sm whitespace-nowrap">
+                  .gametaverns.com
+                </span>
               </div>
-              
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-amber-200">
-                  Description <span className="text-amber-200/40">(optional)</span>
-                </Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="A collection of my favorite board games..."
-                  className="bg-amber-900/50 border-amber-700/50 text-amber-100 placeholder:text-amber-200/40 resize-none"
-                  rows={3}
-                />
+              {slug.length >= 3 && !checkingSlug && slugCheck && !slugCheck.available && (
+                <p className="text-red-400 text-sm">{slugCheck.reason}</p>
+              )}
+            </div>
+            
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-cream/80">
+                Description <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="A collection of my favorite board games..."
+                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground resize-none"
+                rows={3}
+              />
+            </div>
+            
+            {/* Preview */}
+            <div className="p-4 bg-wood-medium/30 rounded-lg border border-border/30">
+              <div className="text-sm text-muted-foreground mb-1">Your library will be at:</div>
+              <div className="font-mono text-secondary">
+                https://{slug || "your-library"}.gametaverns.com
               </div>
-              
-              {/* Preview */}
-              <div className="p-4 bg-amber-900/30 rounded-lg border border-amber-700/30">
-                <div className="text-sm text-amber-200/60 mb-1">Your library will be at:</div>
-                <div className="font-mono text-amber-400">
-                  https://{slug || "your-library"}.gametaverns.com
-                </div>
-              </div>
-              
-              {/* Submit */}
-              <Button
-                type="submit"
-                className="w-full bg-amber-500 text-amber-950 hover:bg-amber-400"
-                disabled={createLibrary.isPending || !slugCheck?.available}
-              >
-                {createLibrary.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create Library"
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </main>
+            </div>
+            
+            {/* Submit */}
+            <Button
+              type="submit"
+              className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
+              disabled={createLibrary.isPending || !slugCheck?.available}
+            >
+              {createLibrary.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Library"
+              )}
+            </Button>
+          </form>
+          
+          <div className="mt-6 text-center">
+            <Link to="/dashboard" className="text-secondary hover:text-secondary/80 underline text-sm">
+              Back to Dashboard
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
