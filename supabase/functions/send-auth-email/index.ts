@@ -193,6 +193,19 @@ export default async function handler(req: Request): Promise<Response> {
 
   } catch (error: any) {
     console.error("Auth email error:", error);
+
+    // Helpful hint for the common SMTP TLS error we’re seeing
+    const msg = String(error?.message || error);
+    if (msg.includes("NotValidForName")) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "SMTP TLS certificate name mismatch (NotValidForName). Update SMTP_HOST to the exact hostname on the SMTP server's TLS certificate (CN/SAN), not an IP/alias. If you can't change that, switch to an email API provider.",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: error.message || "Failed to send email" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
