@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Gamepad2, Loader2 } from "lucide-react";
+import { Dices, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,77 +73,77 @@ export default function Signup() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-amber-800/30 border-amber-700/50">
+    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-sidebar/80 border-border/50 backdrop-blur-sm">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-3 mb-4">
-            <Gamepad2 className="h-10 w-10 text-amber-400" />
-            <span className="font-display text-3xl font-bold text-amber-100">
-              GameTaverns
-            </span>
+            <div className="p-2 bg-secondary/20 rounded-lg">
+              <Dices className="h-8 w-8 text-secondary" />
+            </div>
+            <span className="font-display text-2xl font-bold text-cream">GameTaverns</span>
           </Link>
-          <CardTitle className="text-2xl text-amber-100">Create Account</CardTitle>
-          <CardDescription className="text-amber-200/70">
+          <CardTitle className="font-display text-2xl text-cream">Create Account</CardTitle>
+          <CardDescription className="text-muted-foreground">
             Start building your board game library
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="displayName" className="text-amber-200">
-                Display Name <span className="text-amber-200/40">(optional)</span>
+              <Label htmlFor="displayName" className="text-cream/80">
+                Display Name <span className="text-muted-foreground">(optional)</span>
               </Label>
               <Input
                 id="displayName"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
-                className="bg-amber-900/50 border-amber-700/50 text-amber-100 placeholder:text-amber-200/40"
+                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-amber-200">Email</Label>
+              <Label htmlFor="email" className="text-cream/80">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="bg-amber-900/50 border-amber-700/50 text-amber-100 placeholder:text-amber-200/40"
+                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-amber-200">Password</Label>
+              <Label htmlFor="password" className="text-cream/80">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="bg-amber-900/50 border-amber-700/50 text-amber-100 placeholder:text-amber-200/40"
+                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-amber-200">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-cream/80">Confirm Password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="bg-amber-900/50 border-amber-700/50 text-amber-100 placeholder:text-amber-200/40"
+                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                 required
               />
             </div>
             
             <Button
               type="submit"
-              className="w-full bg-amber-500 text-amber-950 hover:bg-amber-400"
+              className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -158,9 +158,9 @@ export default function Signup() {
           </form>
           
           <div className="mt-6 text-center">
-            <p className="text-amber-200/70">
+            <p className="text-muted-foreground">
               Already have an account?{" "}
-              <Link to="/login" className="text-amber-400 hover:text-amber-300 underline">
+              <Link to="/login" className="text-secondary hover:text-secondary/80 underline">
                 Sign in
               </Link>
             </p>
