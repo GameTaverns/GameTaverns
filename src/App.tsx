@@ -11,6 +11,7 @@ import { TenantThemeApplicator } from "@/components/TenantThemeApplicator";
 import { DemoProvider } from "@/contexts/DemoContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { DemoGuard } from "@/components/system/DemoGuard";
+import { MaintenanceGuard } from "@/components/system/MaintenanceGuard";
 
 // Lazy load route components to reduce initial bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -62,9 +63,11 @@ function AppRoutes() {
         <DemoThemeApplicator />
         <TenantThemeApplicator />
         
-        <Suspense fallback={<PageLoader />}>
-          <TenantRouteHandler isDemoMode={isDemoMode} tenantSlug={tenantSlug} />
-        </Suspense>
+        <MaintenanceGuard>
+          <Suspense fallback={<PageLoader />}>
+            <TenantRouteHandler isDemoMode={isDemoMode} tenantSlug={tenantSlug} />
+          </Suspense>
+        </MaintenanceGuard>
       </DemoProvider>
     </TenantProvider>
   );
