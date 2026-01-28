@@ -49,6 +49,45 @@ export default function Dashboard() {
     enabled: !!user?.id,
   });
   
+  // Fetch library stats
+  const { data: gameCount } = useQuery({
+    queryKey: ["library-game-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return 0;
+      const { count, error } = await supabase
+        .from("games")
+        .select("*", { count: "exact", head: true })
+        .eq("library_id", library.id);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!library?.id,
+  });
+  
+  const { data: playCount } = useQuery({
+    queryKey: ["library-play-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return 0;
+      // Get all game IDs for this library first
+      const { data: games } = await supabase
+        .from("games")
+        .select("id")
+        .eq("library_id", library.id);
+      
+      if (!games || games.length === 0) return 0;
+      
+      const gameIds = games.map(g => g.id);
+      const { count, error } = await supabase
+        .from("game_sessions")
+        .select("*", { count: "exact", head: true })
+        .in("game_id", gameIds);
+      
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!library?.id,
+  });
+  
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (error) {
@@ -303,11 +342,15 @@ export default function Dashboard() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
-                    <div className="text-2xl font-bold text-secondary">--</div>
+                    <div className="text-2xl font-bold text-secondary">
+                      {gameCount ?? "--"}
+                    </div>
                     <div className="text-xs text-cream/60">Games</div>
                   </div>
                   <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
-                    <div className="text-2xl font-bold text-secondary">--</div>
+                    <div className="text-2xl font-bold text-secondary">
+                      {playCount ?? "--"}
+                    </div>
                     <div className="text-xs text-cream/60">Plays</div>
                   </div>
                 </div>
