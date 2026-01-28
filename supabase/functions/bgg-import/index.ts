@@ -103,6 +103,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     const body = await req.json().catch(() => null);
     const url = body?.url;
+    const library_id = body?.library_id || libraryData?.id;
     const is_coming_soon = body?.is_coming_soon;
     const is_for_sale = body?.is_for_sale;
     const sale_price = body?.sale_price;
@@ -149,7 +150,7 @@ export default async function handler(req: Request): Promise<Response> {
         apikey: anonKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date, sleeved, upgraded_components, crowdfunded }),
+      body: JSON.stringify({ url, library_id, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date, sleeved, upgraded_components, crowdfunded }),
     });
 
     const text = await upstream.text();

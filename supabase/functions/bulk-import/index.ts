@@ -41,6 +41,8 @@ type ImportMode = "csv" | "bgg_collection" | "bgg_links";
 
 type BulkImportRequest = {
   mode: ImportMode;
+  // Library to import to (if not provided, uses user's own library)
+  library_id?: string;
   // CSV mode
   csv_data?: string;
   // BGG collection mode
@@ -385,23 +387,39 @@ export default async function handler(req: Request): Promise<Response> {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check admin role
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    // Check if user is either a global admin OR owns a library
+    const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle();
 
-    if (roleError || !roleData) {
+    const { data: libraryData } = await supabaseAdmin
+      .from("libraries")
+      .select("id")
+      .eq("owner_id", userId)
+      .maybeSingle();
+
+    // Allow access if user is admin OR owns a library
+    if (!roleData && !libraryData) {
       return new Response(
-        JSON.stringify({ success: false, error: "Admin access required" }),
+        JSON.stringify({ success: false, error: "You must own a library to import games" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const body: BulkImportRequest = await req.json();
-    const { mode, csv_data, bgg_username, bgg_links, enhance_with_bgg, default_options } = body;
+    const { mode, library_id, csv_data, bgg_username, bgg_links, enhance_with_bgg, default_options } = body;
+
+    // Determine which library to add games to
+    const targetLibraryId = library_id || libraryData?.id;
+    if (!targetLibraryId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "No library specified and user has no library" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     const lovableKey = Deno.env.get("LOVABLE_API_KEY");
@@ -642,11 +660,12 @@ export default async function handler(req: Request): Promise<Response> {
           continue;
         }
 
-        // Check if game already exists
+        // Check if game already exists in this library
         const { data: existing } = await supabaseAdmin
           .from("games")
           .select("id, title")
           .eq("title", gameData.title)
+          .eq("library_id", targetLibraryId)
           .maybeSingle();
 
         if (existing) {
@@ -699,13 +718,14 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
 
-        // Handle parent game for expansions
+        // Handle parent game for expansions (within same library)
         let parentGameId: string | null = null;
         if (gameData.is_expansion && gameData.parent_game) {
           const { data: pg } = await supabaseAdmin
             .from("games")
             .select("id")
             .eq("title", gameData.parent_game)
+            .eq("library_id", targetLibraryId)
             .maybeSingle();
           
           if (pg) {
@@ -717,6 +737,7 @@ export default async function handler(req: Request): Promise<Response> {
         const { data: newGame, error: gameError } = await supabaseAdmin
           .from("games")
           .insert({
+            library_id: targetLibraryId,
             title: gameData.title,
             description: gameData.description || null,
             image_url: gameData.image_url || null,

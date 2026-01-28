@@ -331,6 +331,7 @@ export type Database = {
           is_coming_soon: boolean
           is_expansion: boolean
           is_for_sale: boolean
+          library_id: string | null
           location_misc: string | null
           location_room: string | null
           location_shelf: string | null
@@ -365,6 +366,7 @@ export type Database = {
           is_coming_soon?: boolean
           is_expansion?: boolean
           is_for_sale?: boolean
+          library_id?: string | null
           location_misc?: string | null
           location_room?: string | null
           location_shelf?: string | null
@@ -399,6 +401,7 @@ export type Database = {
           is_coming_soon?: boolean
           is_expansion?: boolean
           is_for_sale?: boolean
+          library_id?: string | null
           location_misc?: string | null
           location_room?: string | null
           location_shelf?: string | null
@@ -418,6 +421,13 @@ export type Database = {
           youtube_videos?: string[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "games_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "games_parent_game_id_fkey"
             columns: ["parent_game_id"]
@@ -829,6 +839,7 @@ export type Database = {
           is_coming_soon: boolean | null
           is_expansion: boolean | null
           is_for_sale: boolean | null
+          library_id: string | null
           location_misc: string | null
           location_room: string | null
           location_shelf: string | null
@@ -863,6 +874,7 @@ export type Database = {
           is_coming_soon?: boolean | null
           is_expansion?: boolean | null
           is_for_sale?: boolean | null
+          library_id?: string | null
           location_misc?: string | null
           location_room?: string | null
           location_shelf?: string | null
@@ -897,6 +909,7 @@ export type Database = {
           is_coming_soon?: boolean | null
           is_expansion?: boolean | null
           is_for_sale?: boolean | null
+          library_id?: string | null
           location_misc?: string | null
           location_room?: string | null
           location_shelf?: string | null
@@ -916,6 +929,13 @@ export type Database = {
           youtube_videos?: string[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "games_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "games_parent_game_id_fkey"
             columns: ["parent_game_id"]
