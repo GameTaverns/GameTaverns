@@ -369,14 +369,30 @@ export function useAuth() {
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    return { error };
+    try {
+      const res = await fetch(`${apiUrl}/functions/v1/signup`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          apikey: anonKey,
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          redirectUrl: window.location.origin,
+          displayName: email.split("@")[0],
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        return { error: { message: (json as any)?.error || "Signup failed" } };
+      }
+
+      return { error: null };
+    } catch (e: any) {
+      return { error: { message: e?.message || "Signup failed" } };
+    }
   };
 
   const signOut = async () => {
