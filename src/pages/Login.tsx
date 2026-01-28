@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logoImage from "@/assets/logo.png";
@@ -9,15 +9,31 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { TurnstileWidget } from "@/components/games/TurnstileWidget";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
+
+  const resetTurnstile = useCallback(() => {
+    setTurnstileToken(null);
+    setTurnstileKey(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     // Only redirect once auth loading is complete and user is authenticated
@@ -29,6 +45,16 @@ const Login = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!turnstileToken) {
+      toast({
+        title: "Verification required",
+        description: "Please complete the verification challenge",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -40,6 +66,7 @@ const Login = () => {
           description: error.message,
           variant: "destructive",
         });
+        resetTurnstile();
         return;
       }
 
@@ -52,6 +79,16 @@ const Login = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!turnstileToken) {
+      toast({
+        title: "Verification required",
+        description: "Please complete the verification challenge",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -63,6 +100,7 @@ const Login = () => {
           description: error.message,
           variant: "destructive",
         });
+        resetTurnstile();
         return;
       }
 
@@ -103,7 +141,7 @@ const Login = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs defaultValue="signin" className="w-full" onValueChange={resetTurnstile}>
             <TabsList className="grid w-full grid-cols-2 bg-wood-medium/50">
               <TabsTrigger 
                 value="signin" 
@@ -143,10 +181,18 @@ const Login = () => {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-cream/80">Verification</Label>
+                  <TurnstileWidget
+                    key={`signin-${turnstileKey}`}
+                    onVerify={handleTurnstileVerify}
+                    onExpire={handleTurnstileExpire}
+                  />
+                </div>
                 <Button 
                   type="submit" 
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
-                  disabled={isLoading}
+                  disabled={isLoading || !turnstileToken}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -186,10 +232,18 @@ const Login = () => {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-cream/80">Verification</Label>
+                  <TurnstileWidget
+                    key={`signup-${turnstileKey}`}
+                    onVerify={handleTurnstileVerify}
+                    onExpire={handleTurnstileExpire}
+                  />
+                </div>
                 <Button 
                   type="submit" 
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
-                  disabled={isLoading}
+                  disabled={isLoading || !turnstileToken}
                 >
                   {isLoading ? "Creating account..." : "Create Account"}
                 </Button>
