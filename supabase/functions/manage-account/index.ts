@@ -219,15 +219,7 @@ Deno.serve(async (req) => {
       }
 
       case 'delete_account': {
-        // Get user email for confirmation
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) {
-          return new Response(JSON.stringify({ error: 'Failed to verify user' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
+        // User is already verified from earlier in the function
         // Verify confirmation text matches email
         if (confirmationText?.toLowerCase() !== user.email?.toLowerCase()) {
           return new Response(JSON.stringify({ error: 'Confirmation text does not match email address' }), {
