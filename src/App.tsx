@@ -7,7 +7,9 @@ import { BrowserRouter, Routes, Route, useSearchParams } from "react-router-dom"
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
 import { DemoThemeApplicator } from "@/components/DemoThemeApplicator";
+import { TenantThemeApplicator } from "@/components/TenantThemeApplicator";
 import { DemoProvider } from "@/contexts/DemoContext";
+import { TenantProvider } from "@/contexts/TenantContext";
 import { DemoGuard } from "@/components/system/DemoGuard";
 
 // Lazy load route components to reduce initial bundle size
@@ -28,6 +30,10 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CreateLibrary = lazy(() => import("./pages/CreateLibrary"));
 const Signup = lazy(() => import("./pages/Signup"));
 
+// Library admin pages
+const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
+const LibraryGames = lazy(() => import("./pages/LibraryGames"));
+
 const queryClient = new QueryClient();
 
 // Simple loading fallback
@@ -45,22 +51,33 @@ function AppRoutes() {
   const tenantSlug = searchParams.get("tenant");
 
   return (
-    <DemoProvider enabled={isDemoMode}>
-      {/* Theme applicators */}
-      <ThemeApplicator />
-      <DemoThemeApplicator />
-      
-      <Suspense fallback={<PageLoader />}>
-        <TenantRouteHandler isDemoMode={isDemoMode} tenantSlug={tenantSlug} />
-      </Suspense>
-    </DemoProvider>
+    <TenantProvider>
+      <DemoProvider enabled={isDemoMode}>
+        {/* Theme applicators */}
+        <ThemeApplicator />
+        <DemoThemeApplicator />
+        <TenantThemeApplicator />
+        
+        <Suspense fallback={<PageLoader />}>
+          <TenantRouteHandler isDemoMode={isDemoMode} tenantSlug={tenantSlug} />
+        </Suspense>
+      </DemoProvider>
+    </TenantProvider>
   );
 }
 
 // Handle routing based on tenant state
 function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; tenantSlug: string | null }) {
+  const [searchParams] = useSearchParams();
+  const pathParam = searchParams.get("path");
+  
   // If tenant slug is in URL, show library routes
   if (tenantSlug) {
+    // Handle path parameter for navigation within tenant
+    if (pathParam) {
+      // Navigate to the path within the tenant context
+      window.history.replaceState(null, "", `${pathParam}?tenant=${tenantSlug}`);
+    }
     return <LibraryRoutes isDemoMode={isDemoMode} />;
   }
   
@@ -108,8 +125,9 @@ function LibraryRoutes({ isDemoMode }: { isDemoMode: boolean }) {
       {/* Admin routes (library owner only) */}
       <Route path="/admin" element={<Login />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/admin/settings" element={<Settings />} />
+      <Route path="/settings" element={<LibrarySettings />} />
+      <Route path="/admin/settings" element={<LibrarySettings />} />
+      <Route path="/admin/games" element={<LibraryGames />} />
       <Route path="/admin/add" element={<GameForm />} />
       <Route path="/admin/edit/:id" element={<GameForm />} />
       <Route path="/admin/messages" element={<Messages />} />
