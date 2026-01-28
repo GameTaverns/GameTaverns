@@ -11,7 +11,9 @@ import {
   Star, 
   Heart,
   Gamepad2,
-  Palette
+  Palette,
+  Mail,
+  ArrowRight
 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -100,7 +102,18 @@ export default function Dashboard() {
           </Link>
           
           <div className="flex items-center gap-4">
-            <span className="text-cream/80">{profile?.display_name || user?.email}</span>
+            {/* Quick link to library */}
+            {library && (
+              <a 
+                href={libraryUrl!}
+                className="flex items-center gap-2 px-3 py-1.5 bg-secondary/20 hover:bg-secondary/30 rounded-lg text-cream transition-colors"
+              >
+                <Library className="h-4 w-4" />
+                <span className="hidden sm:inline">My Library</span>
+                <ArrowRight className="h-4 w-4" />
+              </a>
+            )}
+            <span className="text-cream/80 hidden sm:inline">{profile?.display_name || user?.email}</span>
             <Button 
               variant="ghost" 
               size="icon"
@@ -220,6 +233,29 @@ export default function Dashboard() {
                   <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                     <Settings className="h-4 w-4 mr-2" />
                     Customize Library
+                  </Button>
+                </a>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Messages Card */}
+          {library && (
+            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-secondary" />
+                  Messages
+                </CardTitle>
+                <CardDescription className="text-cream/70">
+                  View inquiries about games for sale
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <a href={`/?tenant=${library.slug}&path=/messages`}>
+                  <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                    <Mail className="h-4 w-4 mr-2" />
+                    View Messages
                   </Button>
                 </a>
               </CardContent>

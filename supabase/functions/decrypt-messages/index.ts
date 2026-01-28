@@ -65,7 +65,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    // Authentication check - admin only
+    // Authentication check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
@@ -74,7 +74,11 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Verify the user is admin
+    // Get library_id from query params (optional - for library owners)
+    const url = new URL(req.url);
+    const libraryId = url.searchParams.get("library_id");
+
+    // Verify the user
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -104,25 +108,69 @@ export default async function handler(req: Request): Promise<Response> {
 
     const userId = userData.user.id;
 
-    // Create admin client to check role
+    // Create admin client for database operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    // Check if user is a site admin
+    const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle();
 
-    if (roleError || !roleData) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Admin access required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const isSiteAdmin = !!roleData;
+
+    // If a library_id is provided, verify user is the owner (or is admin)
+    let targetLibraryId: string | null = null;
+    
+    if (libraryId) {
+      // Verify library ownership
+      const { data: library, error: libError } = await supabaseAdmin
+        .from("libraries")
+        .select("id, owner_id")
+        .eq("id", libraryId)
+        .single();
+
+      if (libError || !library) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Library not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (library.owner_id !== userId && !isSiteAdmin) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Access denied" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      targetLibraryId = library.id;
+    } else {
+      // No library_id provided - check if user owns a library or is admin
+      if (!isSiteAdmin) {
+        // Check if user owns a library
+        const { data: ownedLibrary } = await supabaseAdmin
+          .from("libraries")
+          .select("id")
+          .eq("owner_id", userId)
+          .single();
+
+        if (!ownedLibrary) {
+          return new Response(
+            JSON.stringify({ success: false, error: "No library access" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        targetLibraryId = ownedLibrary.id;
+      }
+      // If site admin and no library_id, they get all messages (for platform admin view)
     }
 
-    // Fetch all messages with encrypted fields only (no plaintext columns exist)
-    const { data: messages, error: messagesError } = await supabaseAdmin
+    // Build query for messages
+    let query = supabaseAdmin
       .from("game_messages")
       .select(`
         id,
@@ -132,9 +180,33 @@ export default async function handler(req: Request): Promise<Response> {
         message_encrypted,
         is_read,
         created_at,
-        game:games(title, slug)
+        game:games(title, slug, library_id)
       `)
       .order("created_at", { ascending: false });
+
+    // If we have a target library, filter by games in that library
+    if (targetLibraryId) {
+      // We need to filter by library_id through the games table
+      // First get the game IDs for this library
+      const { data: libraryGames } = await supabaseAdmin
+        .from("games")
+        .select("id")
+        .eq("library_id", targetLibraryId);
+
+      const gameIds = (libraryGames || []).map(g => g.id);
+      
+      if (gameIds.length === 0) {
+        // No games, no messages
+        return new Response(
+          JSON.stringify({ success: true, messages: [] }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      query = query.in("game_id", gameIds);
+    }
+
+    const { data: messages, error: messagesError } = await query;
 
     if (messagesError) {
       console.error("Fetch messages error:", messagesError);
@@ -169,7 +241,7 @@ export default async function handler(req: Request): Promise<Response> {
           message: messageContent,
           is_read: msg.is_read,
           created_at: msg.created_at,
-          game: game || null,
+          game: game ? { title: game.title, slug: game.slug } : null,
         };
       })
     );
