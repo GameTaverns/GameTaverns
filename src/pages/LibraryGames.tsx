@@ -72,10 +72,10 @@ export default function LibraryGames() {
         <Button
           variant="ghost"
           className="mb-6 -ml-2"
-          onClick={() => navigate(`/?tenant=${tenantSlug}`)}
+          onClick={() => navigate("/dashboard")}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Library
+          Back to Dashboard
         </Button>
 
         <div className="flex items-center justify-between mb-6">
