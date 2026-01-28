@@ -346,7 +346,8 @@ const parseNum = (val: string | undefined): number | undefined => {
 const mapWeightToDifficulty = (weight: string | undefined): string | undefined => {
   if (!weight) return undefined;
   const w = parseFloat(weight);
-  if (isNaN(w)) return undefined;
+  // BGG weight of 0 means unrated - don't map it
+  if (isNaN(w) || w === 0) return undefined;
   if (w < 1.5) return "1 - Light";
   if (w < 2.25) return "2 - Medium Light";
   if (w < 3.0) return "3 - Medium";
@@ -499,9 +500,11 @@ export default async function handler(req: Request): Promise<Response> {
                              row.itemtype === "expansion" || 
                              row.objecttype === "expansion";
           
-          let difficulty: string | undefined = row.difficulty || row.weight;
-          if (!difficulty && row.avgweight) {
-            difficulty = mapWeightToDifficulty(row.avgweight);
+          // Use avgweight (community rating) for difficulty mapping, NOT row.weight (user's personal rating)
+          // row.weight in BGG exports is often "0" which is invalid for the enum
+          let difficulty: string | undefined = row.difficulty;
+          if (!difficulty) {
+            difficulty = mapWeightToDifficulty(row.avgweight || row.weight);
           }
           
           let playTime: string | undefined = row.play_time || row["play time"];
