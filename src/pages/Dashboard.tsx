@@ -21,6 +21,7 @@ import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { DangerZone } from "@/components/settings/DangerZone";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated } = useAuth();
@@ -275,6 +276,11 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           )}
+        </div>
+        
+        {/* Danger Zone Section */}
+        <div className="mt-12">
+          <DangerZone />
         </div>
       </main>
     </div>
