@@ -731,6 +731,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_timezone: { Args: never; Returns: undefined }
       slugify: { Args: { input: string }; Returns: string }
     }
     Enums: {
