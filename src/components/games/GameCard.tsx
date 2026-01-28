@@ -8,6 +8,7 @@ import { WishlistButton } from "./WishlistButton";
 import { StarRating } from "./StarRating";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useTenantUrl } from "@/hooks/useTenantUrl";
 import type { GameWithRelations } from "@/types/game";
 import { cn, proxiedImageUrl, directImageUrl } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ interface GameCardProps {
 export function GameCard({ game, priority = false }: GameCardProps) {
   const { isDemoMode } = useDemoMode();
   const { wishlist, forSale, comingSoon } = useFeatureFlags();
+  const { buildUrl } = useTenantUrl();
   const [imageError, setImageError] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
   
@@ -29,6 +31,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
   const hasExpansions = game.expansions && game.expansions.length > 0;
 
   const basePath = isDemoMode ? "/demo/game" : "/game";
+  const gameUrl = buildUrl(`${basePath}/${game.slug || game.id}`);
 
   // Get the appropriate image URL - try direct first (browser with no-referrer often works), then proxy
   const getImageSrc = () => {
@@ -50,7 +53,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
   return (
     <div>
       <div className="relative">
-        <Link to={`${basePath}/${game.slug || game.id}`}>
+        <Link to={gameUrl}>
           <Card className="group overflow-hidden card-elevated card-hover bg-card border-border">
             {/* Image */}
             <div className="relative aspect-square overflow-hidden bg-muted">
