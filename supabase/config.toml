@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.verify-reset-token]
 verify_jwt = false
+
+[functions.verify-email]
+verify_jwt = false

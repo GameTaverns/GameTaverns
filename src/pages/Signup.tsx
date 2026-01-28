@@ -43,6 +43,7 @@ export default function Signup() {
     setIsLoading(true);
     
     try {
+      // First, create the user account (without auto-confirm)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -56,12 +57,43 @@ export default function Signup() {
       
       if (error) throw error;
       
-      toast({
-        title: "Account created!",
-        description: "Welcome to GameTaverns. Let's set up your library.",
-      });
+      // Now send custom confirmation email via our SMTP system
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-auth-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'email_confirmation',
+            email: email,
+            redirectUrl: window.location.origin,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Failed to send confirmation email:", errorData);
+        // Don't throw - account was created, just warn about email
+        toast({
+          title: "Account created",
+          description: "Please check your email to confirm your account. If you don't receive it, try logging in.",
+        });
+      } else {
+        toast({
+          title: "Check your email!",
+          description: "We've sent you a confirmation link. Please verify your email to continue.",
+        });
+      }
       
-      navigate("/create-library");
+      // Sign out the user since they need to confirm their email first
+      await supabase.auth.signOut();
+      
+      navigate("/login", { 
+        state: { message: "Please check your email and click the confirmation link to activate your account." } 
+      });
     } catch (error: any) {
       toast({
         title: "Signup failed",
