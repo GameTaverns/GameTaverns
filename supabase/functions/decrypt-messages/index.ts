@@ -96,17 +96,19 @@ export default async function handler(req: Request): Promise<Response> {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+    // Use getClaims for proper JWT validation
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
     
-    if (userError || !userData?.user) {
-      console.error("Auth error:", userError);
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error("Auth error:", claimsError);
       return new Response(
         JSON.stringify({ success: false, error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = userData.user.id;
+    const userId = claimsData.claims.sub as string;
 
     // Create admin client for database operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
