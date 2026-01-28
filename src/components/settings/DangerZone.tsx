@@ -227,71 +227,82 @@ export function DangerZone() {
         </CardContent>
       </Card>
 
-      {/* Step 1: Initial Warning */}
-      <AlertDialog open={currentAction !== null && confirmStep === 1} onOpenChange={(open) => !open && handleClose()}>
+      {/* Confirmation Dialog (single dialog; content switches by step) */}
+      <AlertDialog open={currentAction !== null} onOpenChange={(open) => !open && handleClose()}>
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              {actionDetails?.icon && <actionDetails.icon className="h-5 w-5" />}
-              {actionDetails?.title}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>{actionDetails?.description}</p>
-              <p className="font-medium text-destructive">{actionDetails?.warning}</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleClose}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => setConfirmStep(2)}
-            >
-              I understand, continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Step 2: Type to Confirm */}
-      <AlertDialog open={currentAction !== null && confirmStep === 2} onOpenChange={(open) => !open && handleClose()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Confirm {actionDetails?.title}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              To confirm this action, please type your {actionDetails?.confirmLabel} below:
-              <span className="block mt-2 font-mono text-foreground bg-muted px-2 py-1 rounded">
-                {getRequiredText()}
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <Label htmlFor="confirmation" className="sr-only">
-              Confirmation
-            </Label>
-            <Input
-              id="confirmation"
-              value={confirmationText}
-              onChange={(e) => setConfirmationText(e.target.value)}
-              placeholder={`Type "${getRequiredText()}" to confirm`}
-              className="font-mono"
-              disabled={isProcessing}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleClose} disabled={isProcessing}>
-              Cancel
-            </AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={handleAction}
-              disabled={isProcessing || confirmationText.toLowerCase() !== getRequiredText().toLowerCase()}
-            >
-              {isProcessing ? "Processing..." : `Confirm ${actionDetails?.title}`}
-            </Button>
-          </AlertDialogFooter>
+          {confirmStep === 1 ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                  {actionDetails?.icon && <actionDetails.icon className="h-5 w-5" />}
+                  {actionDetails?.title}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-3">
+                  <p>{actionDetails?.description}</p>
+                  <p className="font-medium text-destructive">{actionDetails?.warning}</p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={handleClose}>Cancel</AlertDialogCancel>
+                <Button
+                  variant="destructive"
+                  onClick={() => setConfirmStep(2)}
+                >
+                  I understand, continue
+                </Button>
+              </AlertDialogFooter>
+            </>
+          ) : (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Confirm {actionDetails?.title}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  To confirm this action, please type your {actionDetails?.confirmLabel} below:
+                  <span className="block mt-2 font-mono text-foreground bg-muted px-2 py-1 rounded">
+                    {getRequiredText()}
+                  </span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="py-4">
+                <Label htmlFor="confirmation" className="sr-only">
+                  Confirmation
+                </Label>
+                <Input
+                  id="confirmation"
+                  value={confirmationText}
+                  onChange={(e) => setConfirmationText(e.target.value)}
+                  placeholder={`Type "${getRequiredText()}" to confirm`}
+                  className="font-mono"
+                  disabled={isProcessing}
+                />
+              </div>
+              <AlertDialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setConfirmStep(1);
+                    setConfirmationText("");
+                  }}
+                  disabled={isProcessing}
+                >
+                  Back
+                </Button>
+                <AlertDialogCancel onClick={handleClose} disabled={isProcessing}>
+                  Cancel
+                </AlertDialogCancel>
+                <Button
+                  variant="destructive"
+                  onClick={handleAction}
+                  disabled={isProcessing || confirmationText.toLowerCase() !== getRequiredText().toLowerCase()}
+                >
+                  {isProcessing ? "Processing..." : `Confirm ${actionDetails?.title}`}
+                </Button>
+              </AlertDialogFooter>
+            </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
     </>
