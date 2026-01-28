@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Upload, Tag, Building, Loader2, RefreshCw, Library } from "lucide-react";
+import { ArrowLeft, Plus, Upload, Tag, Building, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,7 +21,7 @@ export default function LibraryGames() {
   const { toast } = useToast();
   const { library, settings, isLoading, isOwner, tenantSlug } = useTenant();
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("collection");
+  const [activeTab, setActiveTab] = useState("add");
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [bulkImportMode, setBulkImportMode] = useState<ImportMode>("csv");
   const [isRefreshingImages, setIsRefreshingImages] = useState(false);
@@ -175,11 +175,7 @@ export default function LibraryGames() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="collection" className="gap-2">
-              <Library className="h-4 w-4" />
-              Collection
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="add" className="gap-2">
               <Plus className="h-4 w-4" />
               Quick Add
@@ -193,20 +189,6 @@ export default function LibraryGames() {
               Categories
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="collection">
-            <Card>
-              <CardHeader>
-                <CardTitle>Full Collection</CardTitle>
-                <CardDescription>
-                  View, edit, and manage all games in your library
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GameCollectionTable />
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="add">
             <GameUrlImport />
@@ -287,6 +269,19 @@ export default function LibraryGames() {
             <CategoryManager />
           </TabsContent>
         </Tabs>
+
+        {/* Collection Table - Always visible below tabs */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Full Collection</CardTitle>
+            <CardDescription>
+              View, edit, and manage all games in your library
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <GameCollectionTable />
+          </CardContent>
+        </Card>
 
         <BulkImportDialog
           open={showBulkImport}
