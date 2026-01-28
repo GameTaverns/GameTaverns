@@ -1,0 +1,263 @@
+import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+export interface Library {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  owner_id: string;
+  is_active: boolean;
+  is_premium: boolean;
+  custom_domain: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LibrarySettings {
+  id: string;
+  library_id: string;
+  // Theme - light mode
+  theme_primary_h: string;
+  theme_primary_s: string;
+  theme_primary_l: string;
+  theme_accent_h: string;
+  theme_accent_s: string;
+  theme_accent_l: string;
+  theme_background_h: string;
+  theme_background_s: string;
+  theme_background_l: string;
+  theme_card_h: string;
+  theme_card_s: string;
+  theme_card_l: string;
+  theme_sidebar_h: string;
+  theme_sidebar_s: string;
+  theme_sidebar_l: string;
+  // Theme - dark mode
+  theme_dark_primary_h: string;
+  theme_dark_primary_s: string;
+  theme_dark_primary_l: string;
+  theme_dark_accent_h: string;
+  theme_dark_accent_s: string;
+  theme_dark_accent_l: string;
+  theme_dark_background_h: string;
+  theme_dark_background_s: string;
+  theme_dark_background_l: string;
+  theme_dark_card_h: string;
+  theme_dark_card_s: string;
+  theme_dark_card_l: string;
+  theme_dark_sidebar_h: string;
+  theme_dark_sidebar_s: string;
+  theme_dark_sidebar_l: string;
+  // Typography
+  theme_font_display: string;
+  theme_font_body: string;
+  // Background
+  background_image_url: string | null;
+  background_overlay_opacity: string;
+  // Logo
+  logo_url: string | null;
+  // Features
+  feature_play_logs: boolean;
+  feature_wishlist: boolean;
+  feature_for_sale: boolean;
+  feature_messaging: boolean;
+  feature_coming_soon: boolean;
+  feature_ratings: boolean;
+  // Content
+  turnstile_site_key: string | null;
+  footer_text: string | null;
+  twitter_handle: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  discord_url: string | null;
+  contact_email: string | null;
+}
+
+interface TenantContextType {
+  // Current tenant state
+  library: Library | null;
+  settings: LibrarySettings | null;
+  isLoading: boolean;
+  error: string | null;
+  
+  // Mode detection
+  isTenantMode: boolean;  // Are we viewing a library?
+  isAdminMode: boolean;   // Is this /admin path (owner controls)?
+  isOwner: boolean;       // Is the logged-in user the library owner?
+  
+  // Platform mode (no tenant)
+  isPlatformMode: boolean; // Are we on the main gametaverns.com?
+  
+  // Testing
+  tenantSlug: string | null; // Current tenant slug (for debugging)
+  
+  // Actions
+  refreshLibrary: () => Promise<void>;
+}
+
+const TenantContext = createContext<TenantContextType | undefined>(undefined);
+
+interface TenantProviderProps {
+  children: React.ReactNode;
+}
+
+/**
+ * Resolves tenant from:
+ * 1. ?tenant=slug query param (for Lovable preview testing)
+ * 2. Subdomain (e.g., tzolak.gametaverns.com)
+ * 3. Custom domain (future)
+ */
+function resolveTenantSlug(): string | null {
+  // Check query param first (for testing in Lovable preview)
+  const params = new URLSearchParams(window.location.search);
+  const tenantParam = params.get("tenant");
+  if (tenantParam) {
+    return tenantParam.toLowerCase();
+  }
+  
+  // Check subdomain
+  const hostname = window.location.hostname;
+  
+  // Skip for localhost and preview domains
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".lovable.app") ||
+    hostname.endsWith(".lovableproject.com") ||
+    hostname === "gametaverns.com" ||
+    hostname === "www.gametaverns.com"
+  ) {
+    return null;
+  }
+  
+  // Extract subdomain from gametaverns.com
+  if (hostname.endsWith(".gametaverns.com")) {
+    const subdomain = hostname.replace(".gametaverns.com", "");
+    if (subdomain && subdomain !== "www") {
+      return subdomain.toLowerCase();
+    }
+  }
+  
+  // Could be a custom domain - would need to look up
+  // For now, return null (not implemented)
+  return null;
+}
+
+export function TenantProvider({ children }: TenantProviderProps) {
+  const location = useLocation();
+  const { user, isAuthenticated } = useAuth();
+  
+  const [library, setLibrary] = useState<Library | null>(null);
+  const [settings, setSettings] = useState<LibrarySettings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Resolve tenant slug
+  const tenantSlug = useMemo(() => resolveTenantSlug(), [location.search]);
+  
+  // Check if we're on an admin path
+  const isAdminMode = location.pathname.includes("/admin");
+  
+  // Determine modes
+  const isTenantMode = !!tenantSlug || !!library;
+  const isPlatformMode = !isTenantMode;
+  
+  // Check if current user is owner
+  const isOwner = useMemo(() => {
+    if (!library || !user) return false;
+    return library.owner_id === user.id;
+  }, [library, user]);
+  
+  // Fetch library data
+  const fetchLibrary = async () => {
+    if (!tenantSlug) {
+      setLibrary(null);
+      setSettings(null);
+      setIsLoading(false);
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch library by slug
+      const { data: libraryData, error: libraryError } = await supabase
+        .from("libraries")
+        .select("*")
+        .eq("slug", tenantSlug)
+        .eq("is_active", true)
+        .single();
+      
+      if (libraryError || !libraryData) {
+        setError("Library not found");
+        setLibrary(null);
+        setSettings(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      setLibrary(libraryData as Library);
+      
+      // Fetch library settings
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("library_settings")
+        .select("*")
+        .eq("library_id", libraryData.id)
+        .single();
+      
+      if (!settingsError && settingsData) {
+        setSettings(settingsData as LibrarySettings);
+      }
+    } catch (err) {
+      console.error("Error fetching library:", err);
+      setError("Failed to load library");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Load library on mount and when slug changes
+  useEffect(() => {
+    fetchLibrary();
+  }, [tenantSlug]);
+  
+  const value: TenantContextType = {
+    library,
+    settings,
+    isLoading,
+    error,
+    isTenantMode,
+    isAdminMode,
+    isOwner,
+    isPlatformMode,
+    tenantSlug,
+    refreshLibrary: fetchLibrary,
+  };
+  
+  return (
+    <TenantContext.Provider value={value}>
+      {children}
+    </TenantContext.Provider>
+  );
+}
+
+export function useTenant() {
+  const context = useContext(TenantContext);
+  if (context === undefined) {
+    throw new Error("useTenant must be used within a TenantProvider");
+  }
+  return context;
+}
+
+export function useTenantSettings() {
+  const { settings } = useTenant();
+  return settings;
+}
+
+export function useIsLibraryOwner() {
+  const { isOwner } = useTenant();
+  return isOwner;
+}

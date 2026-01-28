@@ -441,6 +441,218 @@ export type Database = {
           },
         ]
       }
+      libraries: {
+        Row: {
+          created_at: string
+          custom_domain: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          is_premium: boolean
+          name: string
+          owner_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_domain?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_premium?: boolean
+          name: string
+          owner_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_domain?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_premium?: boolean
+          name?: string
+          owner_id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      library_settings: {
+        Row: {
+          background_image_url: string | null
+          background_overlay_opacity: string | null
+          contact_email: string | null
+          created_at: string
+          discord_url: string | null
+          facebook_url: string | null
+          feature_coming_soon: boolean | null
+          feature_for_sale: boolean | null
+          feature_messaging: boolean | null
+          feature_play_logs: boolean | null
+          feature_ratings: boolean | null
+          feature_wishlist: boolean | null
+          footer_text: string | null
+          id: string
+          instagram_url: string | null
+          library_id: string
+          logo_url: string | null
+          theme_accent_h: string | null
+          theme_accent_l: string | null
+          theme_accent_s: string | null
+          theme_background_h: string | null
+          theme_background_l: string | null
+          theme_background_s: string | null
+          theme_card_h: string | null
+          theme_card_l: string | null
+          theme_card_s: string | null
+          theme_dark_accent_h: string | null
+          theme_dark_accent_l: string | null
+          theme_dark_accent_s: string | null
+          theme_dark_background_h: string | null
+          theme_dark_background_l: string | null
+          theme_dark_background_s: string | null
+          theme_dark_card_h: string | null
+          theme_dark_card_l: string | null
+          theme_dark_card_s: string | null
+          theme_dark_primary_h: string | null
+          theme_dark_primary_l: string | null
+          theme_dark_primary_s: string | null
+          theme_dark_sidebar_h: string | null
+          theme_dark_sidebar_l: string | null
+          theme_dark_sidebar_s: string | null
+          theme_font_body: string | null
+          theme_font_display: string | null
+          theme_primary_h: string | null
+          theme_primary_l: string | null
+          theme_primary_s: string | null
+          theme_sidebar_h: string | null
+          theme_sidebar_l: string | null
+          theme_sidebar_s: string | null
+          turnstile_site_key: string | null
+          twitter_handle: string | null
+          updated_at: string
+        }
+        Insert: {
+          background_image_url?: string | null
+          background_overlay_opacity?: string | null
+          contact_email?: string | null
+          created_at?: string
+          discord_url?: string | null
+          facebook_url?: string | null
+          feature_coming_soon?: boolean | null
+          feature_for_sale?: boolean | null
+          feature_messaging?: boolean | null
+          feature_play_logs?: boolean | null
+          feature_ratings?: boolean | null
+          feature_wishlist?: boolean | null
+          footer_text?: string | null
+          id?: string
+          instagram_url?: string | null
+          library_id: string
+          logo_url?: string | null
+          theme_accent_h?: string | null
+          theme_accent_l?: string | null
+          theme_accent_s?: string | null
+          theme_background_h?: string | null
+          theme_background_l?: string | null
+          theme_background_s?: string | null
+          theme_card_h?: string | null
+          theme_card_l?: string | null
+          theme_card_s?: string | null
+          theme_dark_accent_h?: string | null
+          theme_dark_accent_l?: string | null
+          theme_dark_accent_s?: string | null
+          theme_dark_background_h?: string | null
+          theme_dark_background_l?: string | null
+          theme_dark_background_s?: string | null
+          theme_dark_card_h?: string | null
+          theme_dark_card_l?: string | null
+          theme_dark_card_s?: string | null
+          theme_dark_primary_h?: string | null
+          theme_dark_primary_l?: string | null
+          theme_dark_primary_s?: string | null
+          theme_dark_sidebar_h?: string | null
+          theme_dark_sidebar_l?: string | null
+          theme_dark_sidebar_s?: string | null
+          theme_font_body?: string | null
+          theme_font_display?: string | null
+          theme_primary_h?: string | null
+          theme_primary_l?: string | null
+          theme_primary_s?: string | null
+          theme_sidebar_h?: string | null
+          theme_sidebar_l?: string | null
+          theme_sidebar_s?: string | null
+          turnstile_site_key?: string | null
+          twitter_handle?: string | null
+          updated_at?: string
+        }
+        Update: {
+          background_image_url?: string | null
+          background_overlay_opacity?: string | null
+          contact_email?: string | null
+          created_at?: string
+          discord_url?: string | null
+          facebook_url?: string | null
+          feature_coming_soon?: boolean | null
+          feature_for_sale?: boolean | null
+          feature_messaging?: boolean | null
+          feature_play_logs?: boolean | null
+          feature_ratings?: boolean | null
+          feature_wishlist?: boolean | null
+          footer_text?: string | null
+          id?: string
+          instagram_url?: string | null
+          library_id?: string
+          logo_url?: string | null
+          theme_accent_h?: string | null
+          theme_accent_l?: string | null
+          theme_accent_s?: string | null
+          theme_background_h?: string | null
+          theme_background_l?: string | null
+          theme_background_s?: string | null
+          theme_card_h?: string | null
+          theme_card_l?: string | null
+          theme_card_s?: string | null
+          theme_dark_accent_h?: string | null
+          theme_dark_accent_l?: string | null
+          theme_dark_accent_s?: string | null
+          theme_dark_background_h?: string | null
+          theme_dark_background_l?: string | null
+          theme_dark_background_s?: string | null
+          theme_dark_card_h?: string | null
+          theme_dark_card_l?: string | null
+          theme_dark_card_s?: string | null
+          theme_dark_primary_h?: string | null
+          theme_dark_primary_l?: string | null
+          theme_dark_primary_s?: string | null
+          theme_dark_sidebar_h?: string | null
+          theme_dark_sidebar_l?: string | null
+          theme_dark_sidebar_s?: string | null
+          theme_font_body?: string | null
+          theme_font_display?: string | null
+          theme_primary_h?: string | null
+          theme_primary_l?: string | null
+          theme_primary_s?: string | null
+          theme_sidebar_h?: string | null
+          theme_sidebar_l?: string | null
+          theme_sidebar_s?: string | null
+          turnstile_site_key?: string | null
+          twitter_handle?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_settings_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: true
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mechanics: {
         Row: {
           created_at: string | null
@@ -498,6 +710,36 @@ export type Database = {
           key?: string
           updated_at?: string
           value?: string | null
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -731,6 +973,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_slug_available: { Args: { check_slug: string }; Returns: boolean }
       set_timezone: { Args: never; Returns: undefined }
       slugify: { Args: { input: string }; Returns: string }
     }
