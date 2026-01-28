@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Loader2 } from "lucide-react";
+import { Star, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,7 +79,7 @@ export function FavoriteButton({ gameId, className, size = "default" }: Favorite
       size={size === "sm" ? "icon" : "sm"}
       className={cn(
         "transition-colors",
-        isFavorite && "text-destructive hover:text-destructive",
+        isFavorite && "text-primary hover:text-primary",
         className
       )}
       onClick={handleToggle}
@@ -89,7 +89,7 @@ export function FavoriteButton({ gameId, className, size = "default" }: Favorite
       {isUpdating ? (
         <Loader2 className={cn(iconSize, "animate-spin")} />
       ) : (
-        <Heart className={cn(iconSize, isFavorite && "fill-current")} />
+        <Star className={cn(iconSize, isFavorite && "fill-current")} />
       )}
     </Button>
   );
