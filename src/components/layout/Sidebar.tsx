@@ -173,7 +173,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <img 
                 src={tenantSettings.logo_url} 
                 alt={`${library?.name || 'Library'} logo`}
-                className="w-20 h-20 object-contain rounded-lg bg-sidebar-accent/20"
+                className="w-28 h-28 object-contain rounded-xl bg-sidebar-accent/20"
               />
             </Link>
           )}
