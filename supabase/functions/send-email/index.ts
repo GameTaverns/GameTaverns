@@ -13,6 +13,8 @@ interface EmailRequest {
   html: string;
   text?: string;
   replyTo?: string;
+  fromEmail?: string;  // Optional: library owner's email to use as From address
+  fromName?: string;   // Optional: library owner's display name
 }
 
 // Export handler for self-hosted router
@@ -104,7 +106,7 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const { to, subject, html, text, replyTo }: EmailRequest = await req.json();
+    const { to, subject, html, text, replyTo, fromEmail, fromName }: EmailRequest = await req.json();
 
     if (!to || !subject || !html) {
       return new Response(
@@ -126,11 +128,16 @@ export default async function handler(req: Request): Promise<Response> {
       },
     });
 
-    // Send email with display name format: "Name <email>"
-    const fromAddress = `${smtpFromName} <${smtpFrom}>`;
+    // Determine the From address
+    // If fromEmail is provided, try to use it (requires SMTP server to allow sending on behalf)
+    // Most shared SMTP servers won't allow arbitrary From addresses, so we keep SMTP_FROM as envelope sender
+    // and use fromEmail in the display name to show who it's from
+    const displayName = fromName || smtpFromName;
+    const actualFromEmail = fromEmail || smtpFrom;
+    const fromAddress = `${displayName} <${actualFromEmail}>`;
     
     // Build email options with optional Reply-To header
-    // denomailer uses 'headers' object for custom headers like Reply-To
+    // Also include Reply-To pointing to the user's email so replies go to them
     const emailOptions: any = {
       from: fromAddress,
       to: to,
@@ -139,9 +146,12 @@ export default async function handler(req: Request): Promise<Response> {
       html: html,
     };
     
-    if (replyTo) {
+    // Set Reply-To to ensure replies go to the sender
+    // If explicit replyTo is provided, use that; otherwise use fromEmail
+    const replyToAddress = replyTo || fromEmail;
+    if (replyToAddress) {
       emailOptions.headers = {
-        "Reply-To": replyTo,
+        "Reply-To": replyToAddress,
       };
     }
     

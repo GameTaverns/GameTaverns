@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ReplyDialogProps {
   open: boolean;
@@ -41,7 +42,8 @@ export function ReplyDialog({
   gameTitle,
 }: ReplyDialogProps) {
   const { toast } = useToast();
-  const { settings } = useTenant();
+  const { settings, library } = useTenant();
+  const { user } = useAuth();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -94,8 +96,10 @@ export function ReplyDialog({
       // Escape HTML to prevent XSS, then convert newlines to <br>
       const safeHtml = escapeHtml(processedMessage).replace(/\n/g, "<br>");
       
-      // Use library contact email as Reply-To so recipients can respond directly
-      const replyToEmail = settings?.contact_email || undefined;
+      // Use library contact email as the From address, fallback to user's email
+      const fromEmail = settings?.contact_email || user?.email || undefined;
+      // Use library name as the display name
+      const fromName = library?.name || undefined;
       
       const { data, error } = await supabase.functions.invoke("send-email", {
         body: {
@@ -103,7 +107,8 @@ export function ReplyDialog({
           subject: subject,
           html: `<div style="font-family: sans-serif; line-height: 1.6;">${safeHtml}</div>`,
           text: processedMessage,
-          replyTo: replyToEmail,
+          fromEmail: fromEmail,
+          fromName: fromName,
         },
       });
 
