@@ -55,19 +55,32 @@ export default async function handler(req: Request): Promise<Response> {
 
     const userId = claimsData.user.id;
 
-    // Check admin role using service role key
+    // Check authorization: must be site admin OR library owner
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    
+    // Check if site admin
+    const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle();
+    
+    const isSiteAdmin = !!roleData;
+    
+    // Check if library owner
+    const { data: ownedLibrary } = await supabaseAdmin
+      .from("libraries")
+      .select("id")
+      .eq("owner_id", userId)
+      .maybeSingle();
+    
+    const isLibraryOwner = !!ownedLibrary;
 
-    if (roleError || !roleData) {
-      console.error("Role check failed:", roleError);
+    if (!isSiteAdmin && !isLibraryOwner) {
+      console.error("Access denied: user is neither admin nor library owner");
       return new Response(
-        JSON.stringify({ success: false, error: "Admin access required" }),
+        JSON.stringify({ success: false, error: "Access denied" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
