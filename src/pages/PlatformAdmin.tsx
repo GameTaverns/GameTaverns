@@ -10,6 +10,7 @@ import { UserManagement } from "@/components/admin/UserManagement";
 import { LibraryManagement } from "@/components/admin/LibraryManagement";
 import { PlatformSettings } from "@/components/admin/PlatformSettings";
 import { PlatformAnalytics } from "@/components/admin/PlatformAnalytics";
+import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 
 export default function PlatformAdmin() {
   const navigate = useNavigate();
@@ -61,6 +62,7 @@ export default function PlatformAdmin() {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium">
+      <AnnouncementBanner />
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
