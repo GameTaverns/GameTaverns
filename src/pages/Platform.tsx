@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
 import { usePlatformStats, formatStatNumber } from "@/hooks/usePlatformStats";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import logoImage from "@/assets/logo.png";
 
 
@@ -38,6 +39,7 @@ export default function Platform() {
           </Link>
           
           <nav className="flex items-center gap-4">
+            <FeedbackDialog />
             {isAuthenticated ? (
               <>
                 <Link to="/dashboard">

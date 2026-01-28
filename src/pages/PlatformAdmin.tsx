@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Users, Database, Settings, Activity } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,12 +10,16 @@ import { UserManagement } from "@/components/admin/UserManagement";
 import { LibraryManagement } from "@/components/admin/LibraryManagement";
 import { PlatformSettings } from "@/components/admin/PlatformSettings";
 import { PlatformAnalytics } from "@/components/admin/PlatformAnalytics";
+import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+import { Badge } from "@/components/ui/badge";
+import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 
 export default function PlatformAdmin() {
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("analytics");
+  const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
   
   // Check if user is a site owner (has admin role)
   const { data: isSiteOwner, isLoading: roleLoading } = useQuery({
@@ -121,6 +125,18 @@ export default function PlatformAdmin() {
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </TabsTrigger>
+            <TabsTrigger 
+              value="feedback"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative"
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Feedback
+              {unreadFeedbackCount && unreadFeedbackCount > 0 && (
+                <Badge className="ml-2 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground">
+                  {unreadFeedbackCount}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="analytics" className="mt-6">
@@ -137,6 +153,10 @@ export default function PlatformAdmin() {
           
           <TabsContent value="settings" className="mt-6">
             <PlatformSettings />
+          </TabsContent>
+          
+          <TabsContent value="feedback" className="mt-6">
+            <FeedbackManagement />
           </TabsContent>
         </Tabs>
       </main>
