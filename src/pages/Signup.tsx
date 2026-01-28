@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+// IMPORTANT: we do NOT call supabase.auth.signUp() here because it triggers the default
+// provider confirmation email. We use a backend function that creates the user and
+// sends our branded SMTP confirmation email.
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -43,53 +45,31 @@ export default function Signup() {
     setIsLoading(true);
     
     try {
-      // First, create the user account (without auto-confirm)
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin,
-          data: {
-            display_name: displayName || email.split("@")[0],
-          },
-        },
-      });
-      
-      if (error) throw error;
-      
-      // Now send custom confirmation email via our SMTP system
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-auth-email`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/signup`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            type: 'email_confirmation',
-            email: email,
+            email,
+            password,
+            displayName: displayName || email.split("@")[0],
             redirectUrl: window.location.origin,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Failed to send confirmation email:", errorData);
-        // Don't throw - account was created, just warn about email
-        toast({
-          title: "Account created",
-          description: "Please check your email to confirm your account. If you don't receive it, try logging in.",
-        });
-      } else {
-        toast({
-          title: "Check your email!",
-          description: "We've sent you a confirmation link. Please verify your email to continue.",
-        });
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error || "Signup failed");
       }
-      
-      // Sign out the user since they need to confirm their email first
-      await supabase.auth.signOut();
+
+      toast({
+        title: "Check your email!",
+        description: "We've sent you a confirmation link. Please verify your email to continue.",
+      });
       
       navigate("/login", { 
         state: { message: "Please check your email and click the confirmation link to activate your account." } 
