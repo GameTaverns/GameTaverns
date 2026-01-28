@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Upload, Tag, Building, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Upload, Tag, Building, Loader2, ImageIcon, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,13 +10,87 @@ import { Layout } from "@/components/layout/Layout";
 import { GameUrlImport } from "@/components/games/GameUrlImport";
 import { BulkImportDialog } from "@/components/games/BulkImportDialog";
 import { CategoryManager } from "@/components/games/CategoryManager";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function LibraryGames() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { library, settings, isLoading, isOwner, tenantSlug } = useTenant();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("add");
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [isRefreshingImages, setIsRefreshingImages] = useState(false);
+
+  const handleRefreshImages = async () => {
+    if (!library?.id) return;
+    
+    setIsRefreshingImages(true);
+    let totalUpdated = 0;
+    let remaining = 999;
+    
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      if (!token) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to refresh images",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Process in batches until no more remaining
+      while (remaining > 0) {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refresh-images`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json",
+              "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({ library_id: library.id, limit: 30 }),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to refresh images");
+        }
+
+        const data = await response.json();
+        totalUpdated += data.updated || 0;
+        remaining = data.remaining || 0;
+
+        if (data.processed === 0) break; // No more to process
+      }
+
+      if (totalUpdated > 0) {
+        toast({
+          title: "Images refreshed!",
+          description: `Updated ${totalUpdated} game image${totalUpdated !== 1 ? 's' : ''}`,
+        });
+      } else {
+        toast({
+          title: "No updates needed",
+          description: "All games already have images",
+        });
+      }
+    } catch (error) {
+      console.error("Refresh images error:", error);
+      toast({
+        title: "Refresh failed",
+        description: error instanceof Error ? error.message : "Failed to refresh images",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshingImages(false);
+    }
+  };
 
   // Redirect if not authenticated or not owner
   if (!authLoading && !isAuthenticated) {
@@ -148,6 +222,35 @@ export default function LibraryGames() {
                       </p>
                     </CardContent>
                   </Card>
+                </div>
+
+                {/* Refresh Images Section */}
+                <div className="border-t pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium mb-1">Refresh Missing Images</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Re-fetch images from BoardGameGeek for games that are missing images
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleRefreshImages}
+                      disabled={isRefreshingImages}
+                    >
+                      {isRefreshingImages ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Refreshing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Refresh Images
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
