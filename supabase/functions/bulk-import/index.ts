@@ -470,6 +470,16 @@ export default async function handler(req: Request): Promise<Response> {
       const v = val.toLowerCase().trim();
       return v === "true" || v === "yes" || v === "1";
     };
+
+    // Helper to build description with optional notes from BGG privatecomment
+    const buildDescription = (description: string | undefined, privateComment: string | undefined): string | undefined => {
+      const desc = description?.trim();
+      const notes = privateComment?.trim();
+      if (!desc && !notes) return undefined;
+      if (!notes) return desc;
+      if (!desc) return `**Notes:** ${notes}`;
+      return `${desc}\n\n**Notes:** ${notes}`;
+    };
     
     // Helper to parse number from CSV
     const parseNum = (val: string | undefined): number | undefined => {
@@ -515,8 +525,8 @@ export default async function handler(req: Request): Promise<Response> {
         // Support both standard CSV columns and BGG export columns
         const title = row.title || row.name || row.game || row["game name"] || row["game title"] || row.objectname;
         
-        // For BGG export, skip if not owned (own=0)
-        if (isBGGExport && row.own === "0") {
+        // For BGG export, only import owned items (own=1)
+        if (isBGGExport && row.own !== "1") {
           continue;
         }
         
@@ -585,7 +595,7 @@ export default async function handler(req: Request): Promise<Response> {
             crowdfunded: parseBool(row.crowdfunded),
             inserts: parseBool(row.inserts),
             in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
-            description: row.description || undefined,
+            description: buildDescription(row.description, row.privatecomment),
           };
           
           // Store purchase info for later (will be added to game_admin_data)
