@@ -12,6 +12,7 @@ import { DemoProvider } from "@/contexts/DemoContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { DemoGuard } from "@/components/system/DemoGuard";
 import { MaintenanceGuard } from "@/components/system/MaintenanceGuard";
+import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironmentBanner";
 
 // Lazy load route components to reduce initial bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -69,6 +70,9 @@ function AppRoutes() {
             <TenantRouteHandler isDemoMode={isDemoMode} tenantSlug={tenantSlug} />
           </Suspense>
         </MaintenanceGuard>
+        
+        {/* Testing environment watermark */}
+        <TestingEnvironmentBanner />
       </DemoProvider>
     </TenantProvider>
   );
