@@ -124,11 +124,13 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const currentValue = searchParams.get("value");
 
   // Use setSearchParams for filter updates to avoid page flash
-  // Preserve demo mode when navigating
+  // Preserve demo mode and tenant when navigating
   const handleFilterClick = (filter: string, value: string) => {
     const newParams: Record<string, string> = { filter, value };
     if (isDemoMode) {
       newParams.demo = "true";
+    } else if (tenantSlug) {
+      newParams.tenant = tenantSlug;
     }
     
     // If we're not on the home page, navigate there first
