@@ -949,6 +949,48 @@ export type Database = {
       }
     }
     Views: {
+      game_ratings_library_view: {
+        Row: {
+          created_at: string | null
+          game_id: string | null
+          guest_identifier: string | null
+          id: string | null
+          rating: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          game_id?: string | null
+          guest_identifier?: string | null
+          id?: string | null
+          rating?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          game_id?: string | null
+          guest_identifier?: string | null
+          id?: string | null
+          rating?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_ratings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_ratings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_ratings_summary: {
         Row: {
           average_rating: number | null
