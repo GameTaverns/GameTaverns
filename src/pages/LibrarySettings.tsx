@@ -11,6 +11,7 @@ import { LibrarySettingsGeneral } from "@/components/settings/LibrarySettingsGen
 import { LibraryThemeCustomizer } from "@/components/settings/LibraryThemeCustomizer";
 import { RatingsAdmin } from "@/components/settings/RatingsAdmin";
 import { WishlistAdmin } from "@/components/settings/WishlistAdmin";
+import { LibraryBranding } from "@/components/settings/LibraryBranding";
 
 export default function LibrarySettings() {
   const navigate = useNavigate();
@@ -138,25 +139,7 @@ export default function LibrarySettings() {
           </TabsContent>
 
           <TabsContent value="branding">
-            <Card>
-              <CardHeader>
-                <CardTitle>Branding</CardTitle>
-                <CardDescription>
-                  Customize your library's logo and background
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg text-center">
-                  <Image className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground">
-                    Logo and background image upload coming soon
-                  </p>
-                  <p className="text-sm text-muted-foreground/70 mt-2">
-                    You'll be able to upload custom logos and background images
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <LibraryBranding />
           </TabsContent>
 
           <TabsContent value="ratings">

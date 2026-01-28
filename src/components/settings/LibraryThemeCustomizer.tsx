@@ -382,18 +382,6 @@ export function LibraryThemeCustomizer() {
                   Controls how much of the background is visible through the content overlay.
                 </p>
               </div>
-              
-              <div className="space-y-2">
-                <Label>Logo URL</Label>
-                <Input
-                  value={ls.logo_url || ''}
-                  onChange={(e) => updateLocal('logo_url', e.target.value)}
-                  placeholder="https://example.com/logo.png"
-                />
-                <p className="text-sm text-muted-foreground">
-                  A custom logo to display in the sidebar header.
-                </p>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
