@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { TurnstileWidget } from "@/components/games/TurnstileWidget";
 // IMPORTANT: we do NOT call supabase.auth.signUp() here because it triggers the default
 // provider confirmation email. We use a backend function that creates the user and
 // sends our branded SMTP confirmation email.
@@ -20,9 +21,28 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+  }, []);
+
+  const handleTurnstileExpire = useCallback(() => {
+    setTurnstileToken(null);
+  }, []);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!turnstileToken) {
+      toast({
+        title: "Verification required",
+        description: "Please complete the verification challenge",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (password !== confirmPassword) {
       toast({
@@ -57,6 +77,7 @@ export default function Signup() {
             password,
             displayName: displayName || email.split("@")[0],
             redirectUrl: window.location.origin,
+            turnstile_token: turnstileToken,
           }),
         },
       );
@@ -80,6 +101,9 @@ export default function Signup() {
         description: error.message,
         variant: "destructive",
       });
+      // Reset turnstile on failure
+      setTurnstileToken(null);
+      setTurnstileKey(prev => prev + 1);
     } finally {
       setIsLoading(false);
     }
@@ -151,11 +175,20 @@ export default function Signup() {
                 required
               />
             </div>
+
+            <div className="space-y-2">
+              <Label className="text-cream/80">Verification</Label>
+              <TurnstileWidget
+                key={turnstileKey}
+                onVerify={handleTurnstileVerify}
+                onExpire={handleTurnstileExpire}
+              />
+            </div>
             
             <Button
               type="submit"
               className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
-              disabled={isLoading}
+              disabled={isLoading || !turnstileToken}
             >
               {isLoading ? (
                 <>
