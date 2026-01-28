@@ -33,7 +33,7 @@ export default function Dashboard() {
   
   const libraryUrl = library ? `/?tenant=${library.slug}` : null;
   const settingsUrl = library ? `/?tenant=${library.slug}&path=/settings` : null;
-  const gamesUrl = library ? `/?tenant=${library.slug}&path=/admin/games` : null;
+  const gamesUrl = library ? `/?tenant=${library.slug}&path=/games` : null;
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900">

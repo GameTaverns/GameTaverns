@@ -29,6 +29,7 @@ const Platform = lazy(() => import("./pages/Platform"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CreateLibrary = lazy(() => import("./pages/CreateLibrary"));
 const Signup = lazy(() => import("./pages/Signup"));
+const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
 
 // Library admin pages
 const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
@@ -94,6 +95,7 @@ function PlatformRoutes() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/create-library" element={<CreateLibrary />} />
+      <Route path="/admin" element={<PlatformAdmin />} />
       <Route path="/docs" element={<Docs />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -122,15 +124,13 @@ function LibraryRoutes({ isDemoMode }: { isDemoMode: boolean }) {
         <DemoGuard><DemoGameForm /></DemoGuard>
       } />
       
-      {/* Admin routes (library owner only) */}
-      <Route path="/admin" element={<Login />} />
+      {/* Library owner routes - accessed via /settings, /games, etc. */}
       <Route path="/login" element={<Login />} />
       <Route path="/settings" element={<LibrarySettings />} />
-      <Route path="/admin/settings" element={<LibrarySettings />} />
-      <Route path="/admin/games" element={<LibraryGames />} />
-      <Route path="/admin/add" element={<GameForm />} />
-      <Route path="/admin/edit/:id" element={<GameForm />} />
-      <Route path="/admin/messages" element={<Messages />} />
+      <Route path="/games" element={<LibraryGames />} />
+      <Route path="/add" element={<GameForm />} />
+      <Route path="/edit/:id" element={<GameForm />} />
+      <Route path="/messages" element={<Messages />} />
       
       {/* Docs accessible from library too */}
       <Route path="/docs" element={<Docs />} />
