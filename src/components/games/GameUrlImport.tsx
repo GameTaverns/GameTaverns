@@ -52,9 +52,12 @@ export function GameUrlImport() {
   const [importLocationShelf, setImportLocationShelf] = useState("");
   const [importLocationMisc, setImportLocationMisc] = useState("");
   
-  // Extra options
+  // Purchase details dialog (private to library owner)
+  const [showPurchaseDialog, setShowPurchaseDialog] = useState(false);
   const [importPurchasePrice, setImportPurchasePrice] = useState("");
   const [importPurchaseDate, setImportPurchaseDate] = useState("");
+  
+  // Extra options
   const [importSleeved, setImportSleeved] = useState(false);
   const [importUpgradedComponents, setImportUpgradedComponents] = useState(false);
   const [importCrowdfunded, setImportCrowdfunded] = useState(false);
@@ -296,6 +299,14 @@ export function GameUrlImport() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowPurchaseDialog(true)}
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                Purchase Details
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowSaleDialog(true)}
                 disabled={!importAsForSale}
               >
@@ -408,6 +419,47 @@ export function GameUrlImport() {
               Cancel
             </Button>
             <Button onClick={() => setShowLocationDialog(false)}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Purchase Details Dialog (private to library owner) */}
+      <Dialog open={showPurchaseDialog} onOpenChange={setShowPurchaseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Purchase Details</DialogTitle>
+            <DialogDescription>
+              Private purchase information (only visible to you)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Purchase Price ($)</Label>
+              <Input
+                type="number"
+                value={importPurchasePrice}
+                onChange={(e) => setImportPurchasePrice(e.target.value)}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Purchase Date</Label>
+              <Input
+                type="date"
+                value={importPurchaseDate}
+                onChange={(e) => setImportPurchaseDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPurchaseDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => setShowPurchaseDialog(false)}>
               Save
             </Button>
           </DialogFooter>
