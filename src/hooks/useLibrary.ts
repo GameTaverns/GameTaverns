@@ -111,7 +111,10 @@ export function useCreateLibrary() {
       if (error) throw error;
       return data as Library;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Set the data directly in the cache for immediate availability
+      queryClient.setQueryData(["my-library", data.owner_id], data);
+      // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["my-library"] });
     },
   });

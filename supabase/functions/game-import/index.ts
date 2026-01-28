@@ -78,17 +78,24 @@ export default async function handler(req: Request): Promise<Response> {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check if user has admin role
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    // Check if user is either a global admin OR owns a library
+    const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle();
 
-    if (roleError || !roleData) {
+    const { data: libraryData } = await supabaseAdmin
+      .from("libraries")
+      .select("id")
+      .eq("owner_id", userId)
+      .maybeSingle();
+
+    // Allow access if user is admin OR owns a library
+    if (!roleData && !libraryData) {
       return new Response(
-        JSON.stringify({ success: false, error: "Admin access required" }),
+        JSON.stringify({ success: false, error: "You must own a library to import games" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
