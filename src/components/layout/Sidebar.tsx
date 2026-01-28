@@ -342,14 +342,14 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <span className="truncate">{user?.email}</span>
             </div>
             <Link
-              to="/settings"
+              to="/dashboard"
               className={cn(
                 "sidebar-link justify-center",
-                location.pathname === "/settings" && "sidebar-link-active"
+                location.pathname === "/dashboard" && "sidebar-link-active"
               )}
             >
-              <Settings className="h-5 w-5" />
-              <span>Settings</span>
+              <Library className="h-5 w-5" />
+              <span>Dashboard</span>
             </Link>
             <Button
               variant="ghost"

@@ -1,6 +1,19 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Dices, ExternalLink, Settings, LogOut, Plus, Library, Shield } from "lucide-react";
+import { 
+  Dices, 
+  ExternalLink, 
+  Settings, 
+  LogOut, 
+  Plus, 
+  Library, 
+  Shield, 
+  Upload, 
+  Star, 
+  Heart,
+  Gamepad2,
+  Palette
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,9 +80,9 @@ export default function Dashboard() {
     return null;
   }
   
-  const libraryUrl = library ? `/?tenant=${library.slug}` : null;
-  const settingsUrl = library ? `/?tenant=${library.slug}&path=/settings` : null;
   const gamesUrl = library ? `/?tenant=${library.slug}&path=/games` : null;
+  const settingsUrl = library ? `/?tenant=${library.slug}&path=/settings` : null;
+  const libraryUrl = library ? `/?tenant=${library.slug}` : null;
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium">
@@ -146,19 +159,12 @@ export default function Dashboard() {
                     <span className="font-medium text-cream">URL:</span>{" "}
                     {library.slug}.gametaverns.com
                   </div>
-                  <div className="flex gap-2">
-                    <a href={libraryUrl!} className="flex-1">
-                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Library
-                      </Button>
-                    </a>
-                    <a href={settingsUrl!}>
-                      <Button variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50">
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </a>
-                  </div>
+                  <a href={libraryUrl!} className="block">
+                    <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Library
+                    </Button>
+                  </a>
                 </div>
               ) : (
                 <Link to="/create-library">
@@ -170,6 +176,81 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+          
+          {/* Manage Games Card */}
+          {library && (
+            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Gamepad2 className="h-5 w-5 text-secondary" />
+                  Manage Games
+                </CardTitle>
+                <CardDescription className="text-cream/70">
+                  Import, add, and organize your collection
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <a href={gamesUrl!}>
+                  <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import & Manage
+                  </Button>
+                </a>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Library Settings Card */}
+          {library && (
+            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-secondary" />
+                  Library Settings
+                </CardTitle>
+                <CardDescription className="text-cream/70">
+                  Theme, branding, and site configuration
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <a href={settingsUrl!}>
+                  <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Customize Library
+                  </Button>
+                </a>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Ratings & Wishlist Card */}
+          {library && (
+            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-secondary" />
+                  Ratings & Wishlist
+                </CardTitle>
+                <CardDescription className="text-cream/70">
+                  View user ratings and wishlist requests
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <a href={`/?tenant=${library.slug}&path=/settings&tab=ratings`}>
+                  <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
+                    <Star className="h-4 w-4 mr-2" />
+                    View Ratings
+                  </Button>
+                </a>
+                <a href={`/?tenant=${library.slug}&path=/settings&tab=wishlist`}>
+                  <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
+                    <Heart className="h-4 w-4 mr-2" />
+                    View Wishlist
+                  </Button>
+                </a>
+              </CardContent>
+            </Card>
+          )}
           
           {/* Stats Card */}
           {library && (
@@ -194,39 +275,6 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           )}
-          
-          {/* Quick Actions */}
-          <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {library && (
-                <>
-                  <a href={libraryUrl!} className="block">
-                    <Button variant="ghost" className="w-full justify-start text-cream hover:text-white hover:bg-wood-medium/50">
-                      Browse Collection
-                    </Button>
-                  </a>
-                  <a href={gamesUrl!} className="block">
-                    <Button variant="ghost" className="w-full justify-start text-cream hover:text-white hover:bg-wood-medium/50">
-                      Manage Games
-                    </Button>
-                  </a>
-                  <a href={settingsUrl!} className="block">
-                    <Button variant="ghost" className="w-full justify-start text-cream hover:text-white hover:bg-wood-medium/50">
-                      Library Settings
-                    </Button>
-                  </a>
-                </>
-              )}
-              <Link to="/docs" className="block">
-                <Button variant="ghost" className="w-full justify-start text-cream hover:text-white hover:bg-wood-medium/50">
-                  Documentation
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>
