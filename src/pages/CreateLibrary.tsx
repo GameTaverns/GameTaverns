@@ -68,7 +68,7 @@ export default function CreateLibrary() {
       await createLibrary.mutateAsync({ slug, name, description });
       toast({
         title: "Library created!",
-        description: `Your library is now live at ${slug}.gametaverns.com`,
+        description: `Your library is now live at ${slug}.tavern.tzolak.com`,
       });
       // Redirect to dashboard where they can access their library
       navigate("/dashboard");
@@ -144,7 +144,7 @@ export default function CreateLibrary() {
                   </div>
                 </div>
                 <span className="text-muted-foreground text-sm whitespace-nowrap">
-                  .gametaverns.com
+                  .tavern.tzolak.com
                 </span>
               </div>
               {slug.length >= 3 && !checkingSlug && slugCheck && !slugCheck.available && (
@@ -171,7 +171,7 @@ export default function CreateLibrary() {
             <div className="p-4 bg-wood-medium/30 rounded-lg border border-border/30">
               <div className="text-sm text-muted-foreground mb-1">Your library will be at:</div>
               <div className="font-mono text-secondary">
-                https://{slug || "your-library"}.gametaverns.com
+                https://{slug || "your-library"}.tavern.tzolak.com
               </div>
             </div>
             
