@@ -98,19 +98,12 @@ export default async function handler(req: Request): Promise<Response> {
       const baseUrl = redirectUrl || 'https://gametaverns.com';
       const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-      // Create SMTP client with proper TLS configuration
+      // Create SMTP client - use TLS for port 465
       const client = new SMTPClient({
         connection: {
           hostname: smtpHost,
           port: smtpPort,
           tls: smtpPort === 465,
-          // For STARTTLS (port 587), we need to handle the upgrade
-          ...(smtpPort !== 465 && { 
-            tlsOptions: { 
-              // Some mail servers have certificate name mismatches
-              rejectUnauthorized: false 
-            } 
-          }),
           auth: {
             username: smtpUser,
             password: smtpPass,
