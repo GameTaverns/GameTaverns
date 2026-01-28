@@ -5,18 +5,20 @@ import { useAuth } from "@/hooks/useAuth";
 export function useMaintenanceMode() {
   const { isAdmin, loading: authLoading, roleLoading } = useAuth();
 
-  // Fetch maintenance mode setting
+  // Fetch maintenance mode setting from public view (accessible to all users)
   const { data: isMaintenanceMode, isLoading: settingLoading } = useQuery({
     queryKey: ["maintenance-mode"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("site_settings")
+        .from("site_settings_public")
         .select("value")
         .eq("key", "maintenance_mode")
         .maybeSingle();
 
       if (error) {
         console.error("Error fetching maintenance mode:", error);
+        // If we can't fetch the setting, assume NOT in maintenance mode
+        // to avoid locking everyone out
         return false;
       }
 
