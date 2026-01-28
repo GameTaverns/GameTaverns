@@ -33,11 +33,13 @@ const GameDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { isDemoMode, demoGames } = useDemoMode();
-  const { tenantSlug } = useTenant();
-
+  const { tenantSlug, library } = useTenant();
+  const { user } = useAuth();
   const { data: realGame, isLoading: isRealLoading } = useGame(isDemoMode ? undefined : slug);
   const { data: realGames } = useGames(!isDemoMode);
   const { isAdmin } = useAuth();
+  const isLibraryOwner = user && library?.owner_id === user.id;
+  const canViewAdminData = isAdmin || isLibraryOwner;
   const { playLogs, messaging, forSale, ratings } = useFeatureFlags();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
@@ -366,11 +368,11 @@ const GameDetail = () => {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Favorite Button - visible to library owners */}
                 <FavoriteButton gameId={game.id} />
-                {isAdmin && (
+                {canViewAdminData && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/admin/edit/${game.id}`)}
+                    onClick={() => navigate(`/edit/${game.slug || game.id}${tenantSlug ? `?tenant=${tenantSlug}` : ''}`)}
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
@@ -589,8 +591,8 @@ const GameDetail = () => {
                         </TableCell>
                       </TableRow>
                     )}
-                    {/* Admin-only purchase info */}
-                    {isAdmin && (game.admin_data?.purchase_price || game.admin_data?.purchase_date) && (
+                    {/* Admin/Owner-only purchase info */}
+                    {canViewAdminData && (game.admin_data?.purchase_price || game.admin_data?.purchase_date) && (
                       <>
                         {game.admin_data?.purchase_price && (
                           <TableRow className="bg-amber-500/5">
