@@ -113,9 +113,9 @@ const Messages = () => {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
-        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate(buildUrl("/settings"))}>
+        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate(buildUrl("/dashboard"))}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Settings
+          Back to Dashboard
         </Button>
 
         <div className="flex items-center justify-between mb-6">
