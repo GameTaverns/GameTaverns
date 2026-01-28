@@ -42,8 +42,8 @@ export default function PlatformAdmin() {
   
   if (roleLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900 flex items-center justify-center">
-        <div className="animate-pulse text-amber-200">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center">
+        <div className="animate-pulse text-cream">Loading...</div>
       </div>
     );
   }
@@ -53,18 +53,18 @@ export default function PlatformAdmin() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900">
-      <header className="border-b border-amber-700/50 bg-amber-950/50 backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium">
+      <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Shield className="h-8 w-8 text-amber-400" />
-            <span className="font-display text-2xl font-bold text-amber-100">
+            <Shield className="h-8 w-8 text-secondary" />
+            <span className="font-display text-2xl font-bold text-cream">
               Platform Admin
             </span>
           </div>
           <Button 
             variant="ghost" 
-            className="text-amber-200 hover:text-amber-100 hover:bg-amber-800/50"
+            className="text-cream hover:text-white hover:bg-wood-medium/50"
             onClick={() => navigate("/dashboard")}
           >
             Back to Dashboard
@@ -74,78 +74,78 @@ export default function PlatformAdmin() {
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-amber-100 mb-2">
+          <h1 className="text-3xl font-display font-bold text-cream mb-2">
             Site Administration
           </h1>
-          <p className="text-amber-200/70">
+          <p className="text-cream/70">
             Manage the GameTaverns platform, users, and global settings.
           </p>
         </div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="bg-amber-800/30 border-amber-700/50">
+          <Card className="bg-wood-medium/30 border-wood-medium/50">
             <CardHeader>
-              <CardTitle className="text-amber-100 flex items-center gap-2">
-                <Users className="h-5 w-5 text-amber-400" />
+              <CardTitle className="text-cream flex items-center gap-2">
+                <Users className="h-5 w-5 text-secondary" />
                 User Management
               </CardTitle>
-              <CardDescription className="text-amber-200/70">
+              <CardDescription className="text-cream/70">
                 View and manage all platform users
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full bg-amber-500 text-amber-950 hover:bg-amber-400">
+              <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                 Manage Users
               </Button>
             </CardContent>
           </Card>
           
-          <Card className="bg-amber-800/30 border-amber-700/50">
+          <Card className="bg-wood-medium/30 border-wood-medium/50">
             <CardHeader>
-              <CardTitle className="text-amber-100 flex items-center gap-2">
-                <Database className="h-5 w-5 text-amber-400" />
+              <CardTitle className="text-cream flex items-center gap-2">
+                <Database className="h-5 w-5 text-secondary" />
                 Libraries
               </CardTitle>
-              <CardDescription className="text-amber-200/70">
+              <CardDescription className="text-cream/70">
                 View and moderate all libraries
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full bg-amber-500 text-amber-950 hover:bg-amber-400">
+              <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                 View Libraries
               </Button>
             </CardContent>
           </Card>
           
-          <Card className="bg-amber-800/30 border-amber-700/50">
+          <Card className="bg-wood-medium/30 border-wood-medium/50">
             <CardHeader>
-              <CardTitle className="text-amber-100 flex items-center gap-2">
-                <Settings className="h-5 w-5 text-amber-400" />
+              <CardTitle className="text-cream flex items-center gap-2">
+                <Settings className="h-5 w-5 text-secondary" />
                 Platform Settings
               </CardTitle>
-              <CardDescription className="text-amber-200/70">
+              <CardDescription className="text-cream/70">
                 Configure global platform settings
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full bg-amber-500 text-amber-950 hover:bg-amber-400">
+              <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                 Settings
               </Button>
             </CardContent>
           </Card>
           
-          <Card className="bg-amber-800/30 border-amber-700/50">
+          <Card className="bg-wood-medium/30 border-wood-medium/50">
             <CardHeader>
-              <CardTitle className="text-amber-100 flex items-center gap-2">
-                <Activity className="h-5 w-5 text-amber-400" />
+              <CardTitle className="text-cream flex items-center gap-2">
+                <Activity className="h-5 w-5 text-secondary" />
                 Analytics
               </CardTitle>
-              <CardDescription className="text-amber-200/70">
+              <CardDescription className="text-cream/70">
                 Platform usage and statistics
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full bg-amber-500 text-amber-950 hover:bg-amber-400">
+              <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                 View Analytics
               </Button>
             </CardContent>
