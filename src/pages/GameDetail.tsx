@@ -8,6 +8,7 @@ import { useGame, useGames } from "@/hooks/useGames";
 import { useAuth } from "@/hooks/useAuth";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useTenant } from "@/contexts/TenantContext";
 import { directImageUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ const GameDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { isDemoMode, demoGames } = useDemoMode();
+  const { tenantSlug } = useTenant();
 
   const { data: realGame, isLoading: isRealLoading } = useGame(isDemoMode ? undefined : slug);
   const { data: realGames } = useGames(!isDemoMode);
@@ -38,6 +40,9 @@ const GameDetail = () => {
   const { playLogs, messaging, forSale, ratings } = useFeatureFlags();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
+  
+  // Build tenant-aware base URL for links
+  const baseFilterUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
 
   // Reset image state when slug changes - must be before early returns
   useEffect(() => {
@@ -119,7 +124,7 @@ const GameDetail = () => {
           <p className="text-muted-foreground mb-4">
             The game you're looking for doesn't exist.
           </p>
-          <Button onClick={() => navigate("/")}>Back to Collection</Button>
+          <Button onClick={() => navigate(baseFilterUrl)}>Back to Collection</Button>
         </div>
       </Layout>
     );
@@ -406,19 +411,24 @@ const GameDetail = () => {
 
             {/* Categories as clickable badges */}
             <div className="flex flex-wrap gap-2 mb-6">
-              {allCategories.map((cat, idx) => (
-                <Link
-                  key={idx}
-                  to={`/?filter=${cat.type}&value=${encodeURIComponent(cat.label)}`}
-                >
-                  <Badge
-                    variant="secondary"
-                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-sm"
-                  >
-                    {cat.label}
-                  </Badge>
-                </Link>
-              ))}
+              {allCategories.map((cat, idx) => {
+                const filterParams = new URLSearchParams();
+                filterParams.set("filter", cat.type);
+                filterParams.set("value", cat.label);
+                if (isDemoMode) filterParams.set("demo", "true");
+                else if (tenantSlug) filterParams.set("tenant", tenantSlug);
+                
+                return (
+                  <Link key={idx} to={`/?${filterParams.toString()}`}>
+                    <Badge
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-sm"
+                    >
+                      {cat.label}
+                    </Badge>
+                  </Link>
+                );
+              })}
             </div>
 
             {/* BGG Link */}

@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useTenant } from "@/contexts/TenantContext";
 // Social media icons as inline SVGs for consistency with site styling
 const TwitterIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -39,7 +40,11 @@ export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
   const { data: settings } = useSiteSettings();
   const { isDemoMode } = useDemoMode();
   const { demoMode: demoModeEnabled } = useFeatureFlags();
+  const { tenantSlug } = useTenant();
   const location = useLocation();
+  
+  // Build tenant-aware home URL
+  const homeUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
   
   const socialLinks = [
     { url: settings?.twitter_handle, icon: TwitterIcon, label: "Twitter/X", isHandle: true },
@@ -115,7 +120,7 @@ export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
             </Link>
           )}
           
-          <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
+          <Link to={homeUrl} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
             Home
           </Link>
           {/* Only show Demo link if demo mode is enabled and we're not already in demo */}
