@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config.js';
 import { apiLimiter } from './middleware/rateLimit.js';
+import { tenantMiddleware } from './middleware/tenant.js';
 
 // Routes
 import authRoutes from './routes/auth.js';
@@ -13,6 +14,8 @@ import wishlistRoutes from './routes/wishlist.js';
 import messagesRoutes from './routes/messages.js';
 import adminRoutes from './routes/admin.js';
 import imageProxyRoutes from './routes/imageProxy.js';
+import tenantRoutes from './routes/tenant.js';
+import platformRoutes from './routes/platform.js';
 
 export const app = express();
 
@@ -22,9 +25,28 @@ app.use(helmet({
   contentSecurityPolicy: false, // Let frontend handle CSP
 }));
 
-// CORS
+// CORS - support wildcard subdomains
 app.use(cors({
-  origin: config.corsOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check against configured origins
+    const allowed = config.corsOrigins.some(pattern => {
+      if (pattern.includes('*')) {
+        // Wildcard pattern like https://*.gametaverns.com
+        const regex = new RegExp('^' + pattern.replace('*', '[^.]+') + '$');
+        return regex.test(origin);
+      }
+      return pattern === origin;
+    });
+    
+    if (allowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
@@ -32,12 +54,21 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Tenant resolution middleware (for multi-tenant mode)
+if (config.isMariaDb) {
+  app.use(tenantMiddleware);
+}
+
 // Rate limiting for all API routes
 app.use('/api', apiLimiter);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    tenant: (req as any).tenant?.slug || null,
+  });
 });
 
 // API info
@@ -46,10 +77,18 @@ app.get('/api', (req, res) => {
     name: config.siteName,
     version: '2.0.0',
     features: config.features,
+    multiTenant: config.isMariaDb,
+    tenant: (req as any).tenant?.slug || null,
   });
 });
 
-// Routes
+// Platform routes (signup, login, etc.) - for main domain
+app.use('/api/platform', platformRoutes);
+
+// Tenant routes (settings, stats) - for subdomains
+app.use('/api/tenant', tenantRoutes);
+
+// Standard routes (work on both main domain and tenant subdomains)
 app.use('/api/auth', authRoutes);
 app.use('/api/games', gamesRoutes);
 app.use('/api/bgg', bggRoutes);

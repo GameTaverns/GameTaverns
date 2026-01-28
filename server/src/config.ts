@@ -7,16 +7,23 @@ export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   
-  // Database
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/gamehaven',
+  // Database - PostgreSQL (Supabase/legacy)
+  databaseUrl: process.env.DATABASE_URL,
+  
+  // Database - MariaDB (standalone multi-tenant)
+  dbHost: process.env.DB_HOST || 'localhost',
+  dbPort: parseInt(process.env.DB_PORT || '3306', 10),
+  dbUser: process.env.DB_USER || 'gametaverns_app',
+  dbPassword: process.env.DB_PASSWORD || '',
+  dbName: process.env.DB_NAME || 'gametaverns_core',
   
   // Security
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   sessionSecret: process.env.SESSION_SECRET || 'session-secret-change-in-production',
   
   // Site
-  siteName: process.env.SITE_NAME || 'Game Haven',
+  siteName: process.env.SITE_NAME || 'GameTaverns',
   siteUrl: process.env.SITE_URL || 'http://localhost:3000',
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:5173').split(','),
   
@@ -26,16 +33,23 @@ export const config = {
   
   // Email
   smtp: {
-    host: process.env.SMTP_HOST,
+    host: process.env.SMTP_HOST || '',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-    from: process.env.SMTP_FROM,
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || 'noreply@gametaverns.com',
   },
   
   // Security
-  turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY,
-  piiEncryptionKey: process.env.PII_ENCRYPTION_KEY,
+  turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY || '',
+  piiEncryptionKey: process.env.PII_ENCRYPTION_KEY || '',
+  
+  // Rate limiting
+  rateLimit: {
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
+    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
+  },
   
   // Features
   features: {
@@ -46,6 +60,19 @@ export const config = {
     ratings: process.env.FEATURE_RATINGS !== 'false',
     ai: !!process.env.AI_API_KEY,
   },
+  
+  // Platform (multi-tenant)
+  platformAdmins: process.env.PLATFORM_ADMINS?.split(',') || [],
+  reservedSlugs: [
+    'www', 'api', 'admin', 'mail', 'app', 'help', 'support', 'blog',
+    ...(process.env.RESERVED_SLUGS?.split(',') || []),
+  ],
+  
+  // External services
+  bggApiUrl: process.env.BGG_API_URL || 'https://boardgamegeek.com/xmlapi2',
+  
+  // Feature detection
+  isMariaDb: !!process.env.DB_HOST || process.env.DATABASE_URL?.includes('mysql'),
 };
 
 // Validate required config in production
