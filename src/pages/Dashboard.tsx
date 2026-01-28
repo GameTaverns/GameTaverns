@@ -45,11 +45,23 @@ export default function Dashboard() {
     }
   };
   
+  const { loading } = useAuth();
+  
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Only redirect after loading completes
+    if (!loading && !isAuthenticated) {
       navigate("/login");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, loading, navigate]);
+  
+  // Show loader while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center">
+        <div className="animate-pulse text-cream">Loading...</div>
+      </div>
+    );
+  }
   
   if (!isAuthenticated) {
     return null;
