@@ -71,7 +71,7 @@ export function FavoriteButton({ gameId, className, size = "default" }: Favorite
     }
   };
 
-  const iconSize = size === "sm" ? "h-4 w-4" : "h-5 w-5";
+  const iconSize = "h-5 w-5";
 
   return (
     <Button
