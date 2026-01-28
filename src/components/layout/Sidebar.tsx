@@ -35,6 +35,7 @@ import {
 import { siteConfig } from "@/config/site";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useTenant } from "@/contexts/TenantContext";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -77,6 +78,10 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const { data: settings } = useSiteSettings();
   const { forSale, comingSoon } = useFeatureFlags();
   const { toast } = useToast();
+  const { tenantSlug } = useTenant();
+
+  // Build the base library URL based on mode
+  const libraryBaseUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
 
   // Use demo data for mechanics/publishers when in demo mode
   // Dedupe by name since imported games may have different IDs for the same mechanic
@@ -161,7 +166,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
           {/* Main Navigation */}
           <nav className="space-y-2">
             <Link
-              to={isDemoMode ? "/?demo=true" : "/"}
+              to={libraryBaseUrl}
               className={cn(
                 "sidebar-link",
                 location.pathname === "/" && !currentFilter && "sidebar-link-active"
