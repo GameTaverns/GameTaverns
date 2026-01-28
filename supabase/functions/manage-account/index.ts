@@ -23,6 +23,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    const token = authHeader.slice('Bearer '.length).trim();
+    if (!token) {
+      console.log('manage-account: Empty bearer token');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log('manage-account: Creating Supabase client');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -32,7 +41,8 @@ Deno.serve(async (req) => {
 
     // Verify user
     console.log('manage-account: Verifying user');
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // In edge runtime we should validate using the JWT directly (no session persistence).
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
       console.error('manage-account: User verification failed', userError);
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
