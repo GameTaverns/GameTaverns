@@ -32,7 +32,8 @@ export default function Dashboard() {
   }
   
   const libraryUrl = library ? `/?tenant=${library.slug}` : null;
-  const adminUrl = library ? `/?tenant=${library.slug}&admin=true` : null;
+  const settingsUrl = library ? `/?tenant=${library.slug}&path=/settings` : null;
+  const gamesUrl = library ? `/?tenant=${library.slug}&path=/admin/games` : null;
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-900 via-amber-800 to-orange-900">
@@ -93,7 +94,7 @@ export default function Dashboard() {
                         View Library
                       </Button>
                     </Link>
-                    <Link to={adminUrl!}>
+                    <Link to={settingsUrl!}>
                       <Button variant="outline" className="border-amber-500/50 text-amber-200 hover:bg-amber-800/50">
                         <Settings className="h-4 w-4" />
                       </Button>
@@ -143,17 +144,17 @@ export default function Dashboard() {
             <CardContent className="space-y-2">
               {library && (
                 <>
-                  <Link to={`/?tenant=${library.slug}`} className="block">
+                  <Link to={libraryUrl!} className="block">
                     <Button variant="ghost" className="w-full justify-start text-amber-200 hover:text-amber-100 hover:bg-amber-800/50">
                       Browse Collection
                     </Button>
                   </Link>
-                  <Link to={`/?tenant=${library.slug}&path=/admin/add`} className="block">
+                  <Link to={gamesUrl!} className="block">
                     <Button variant="ghost" className="w-full justify-start text-amber-200 hover:text-amber-100 hover:bg-amber-800/50">
-                      Add New Game
+                      Manage Games
                     </Button>
                   </Link>
-                  <Link to={`/?tenant=${library.slug}&path=/settings`} className="block">
+                  <Link to={settingsUrl!} className="block">
                     <Button variant="ghost" className="w-full justify-start text-amber-200 hover:text-amber-100 hover:bg-amber-800/50">
                       Library Settings
                     </Button>

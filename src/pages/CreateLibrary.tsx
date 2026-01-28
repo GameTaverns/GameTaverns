@@ -65,12 +65,13 @@ export default function CreateLibrary() {
     }
     
     try {
-      const library = await createLibrary.mutateAsync({ slug, name, description });
+      await createLibrary.mutateAsync({ slug, name, description });
       toast({
         title: "Library created!",
         description: `Your library is now live at ${slug}.gametaverns.com`,
       });
-      navigate(`/?tenant=${library.slug}`);
+      // Redirect to dashboard where they can access their library
+      navigate("/dashboard");
     } catch (error: any) {
       toast({
         title: "Failed to create library",
