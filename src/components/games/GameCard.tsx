@@ -140,7 +140,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
           {wishlist && (
             <WishlistButton 
               gameId={game.id} 
-              className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm" 
+              className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-8 w-8" 
             />
           )}
         </div>
