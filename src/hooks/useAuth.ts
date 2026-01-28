@@ -246,9 +246,42 @@ export function useAuth() {
       return null;
     };
 
+    // Verify the stored session user still exists in auth.users.
+    // If the user was deleted, we need to clear the stale session.
+    const verifyUserExists = async (storedSession: Session | null) => {
+      if (!storedSession?.access_token || !storedSession?.user?.id) return;
+
+      try {
+        const res = await fetch(`${apiUrl}/auth/v1/user`, {
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${storedSession.access_token}`,
+          },
+        });
+
+        // If 403 or user not found, the user was deleted - clear session
+        if (!res.ok) {
+          console.warn("[useAuth] Stored session user no longer exists, clearing auth");
+          clearAuthStorage();
+          if (mounted) {
+            setSession(null);
+            setUser(null);
+            setIsAdmin(false);
+            setLoading(false);
+            setRoleLoading(false);
+          }
+        }
+      } catch {
+        // Network error - don't clear session, just continue
+      }
+    };
+
     // Hydrate immediately from storage so pages don't sit on a spinner.
     if (typeof window !== "undefined") {
-      applySession(readStoredSession());
+      const storedSession = readStoredSession();
+      applySession(storedSession);
+      // Background check: verify user still exists
+      verifyUserExists(storedSession);
     } else {
       setLoading(false);
     }
