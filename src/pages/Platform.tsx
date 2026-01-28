@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
 import logoImage from "@/assets/logo.png";
-import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+
 
 export default function Platform() {
   const { isAuthenticated } = useAuth();
@@ -25,7 +25,6 @@ export default function Platform() {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium">
-      <AnnouncementBanner />
       {/* Header */}
       <header className="border-b border-border/30 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
