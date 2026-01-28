@@ -35,7 +35,7 @@ import {
 import { siteConfig } from "@/config/site";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
-import { useTenant } from "@/contexts/TenantContext";
+import { useTenant, useTenantSettings } from "@/contexts/TenantContext";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -78,7 +78,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const { data: settings } = useSiteSettings();
   const { forSale, comingSoon } = useFeatureFlags();
   const { toast } = useToast();
-  const { tenantSlug } = useTenant();
+  const { tenantSlug, library, isTenantMode } = useTenant();
+  const tenantSettings = useTenantSettings();
 
   // Build the base library URL based on mode
   const libraryBaseUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
@@ -154,14 +155,28 @@ export function Sidebar({ isOpen }: SidebarProps) {
       )}
     >
       <div className="flex h-full flex-col">
-        {/* Logo */}
-        <div className="flex h-20 items-center justify-center border-b border-sidebar-border px-6">
-          <Link to="/" className="flex items-center gap-3">
-            <Gamepad2 className="h-8 w-8 text-sidebar-primary" />
-            <span className="font-display text-xl font-semibold text-sidebar-foreground">
-              {settings?.site_name || siteConfig.name}
+        {/* Library Header */}
+        <div className="flex flex-col items-center border-b border-sidebar-border px-6 py-4">
+          <Link 
+            to={libraryBaseUrl} 
+            className="flex items-center gap-2 text-center hover:opacity-80 transition-opacity"
+          >
+            {!isTenantMode && <Gamepad2 className="h-6 w-6 text-sidebar-primary" />}
+            <span className="font-display text-lg font-semibold text-sidebar-foreground">
+              {isTenantMode && library ? library.name : (settings?.site_name || siteConfig.name)}
             </span>
           </Link>
+          
+          {/* Library Logo */}
+          {isTenantMode && tenantSettings?.logo_url && (
+            <Link to={libraryBaseUrl} className="mt-3">
+              <img 
+                src={tenantSettings.logo_url} 
+                alt={`${library?.name || 'Library'} logo`}
+                className="w-20 h-20 object-contain rounded-lg bg-sidebar-accent/20"
+              />
+            </Link>
+          )}
         </div>
 
         <ScrollArea className="flex-1 px-4 py-6">
