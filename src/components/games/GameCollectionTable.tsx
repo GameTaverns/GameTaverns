@@ -338,7 +338,7 @@ export function GameCollectionTable() {
                           size="icon"
                           asChild
                         >
-                          <Link to={buildUrl(`/admin/edit/${game.slug || game.id}`)}>
+                          <Link to={buildUrl(`/edit/${game.slug || game.id}`)}>
                             <Edit className="h-4 w-4" />
                             <span className="sr-only">Edit {game.title}</span>
                           </Link>
