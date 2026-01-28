@@ -791,6 +791,36 @@ export type Database = {
         }
         Relationships: []
       }
+      password_reset_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          token: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       publishers: {
         Row: {
           created_at: string | null
@@ -1138,6 +1168,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_expired_tokens: { Args: never; Returns: undefined }
       generate_slug: { Args: { title: string }; Returns: string }
       has_role: {
         Args: {

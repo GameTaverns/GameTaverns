@@ -20,8 +20,13 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      // Use custom email flow via edge function
+      const { data, error } = await supabase.functions.invoke('send-auth-email', {
+        body: {
+          type: 'password_reset',
+          email: email,
+          redirectUrl: window.location.origin,
+        },
       });
 
       if (error) throw error;
@@ -29,7 +34,7 @@ export default function ForgotPassword() {
       setEmailSent(true);
       toast({
         title: "Check your email",
-        description: "We've sent you a password reset link.",
+        description: "We've sent you a password reset link from GameTaverns.",
       });
     } catch (error: any) {
       toast({
