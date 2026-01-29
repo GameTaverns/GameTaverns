@@ -22,6 +22,7 @@ import sessionsRoutes from './routes/sessions.js';
 import eventsRoutes from './routes/events.js';
 import profilesRoutes from './routes/profiles.js';
 import uploadsRoutes from './routes/uploads.js';
+import aiRoutes from './routes/ai.js';
 
 export const app = express();
 
@@ -116,6 +117,7 @@ app.use('/api/sessions', sessionsRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/profiles', profilesRoutes);
 app.use('/api/uploads', uploadsRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Catch-all for unknown API routes
 app.use('/api/*', (req, res) => {
