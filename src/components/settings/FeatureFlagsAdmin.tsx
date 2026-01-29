@@ -22,7 +22,8 @@ import {
   Save,
   RefreshCw,
   Lock,
-  Star
+  Star,
+  Calendar
 } from "lucide-react";
 
 const FEATURE_FLAG_ICONS: Record<keyof FeatureFlags, React.ComponentType<{ className?: string }>> = {
@@ -33,6 +34,7 @@ const FEATURE_FLAG_ICONS: Record<keyof FeatureFlags, React.ComponentType<{ class
   comingSoon: Clock,
   demoMode: Settings2,
   ratings: Star,
+  events: Calendar,
 };
 
 const FEATURE_FLAG_DB_KEYS: Record<keyof FeatureFlags, string> = {
@@ -43,6 +45,7 @@ const FEATURE_FLAG_DB_KEYS: Record<keyof FeatureFlags, string> = {
   comingSoon: "feature_coming_soon",
   demoMode: "feature_demo_mode",
   ratings: "feature_ratings",
+  events: "feature_events",
 };
 
 // Check if env var is explicitly set
@@ -55,6 +58,7 @@ function isEnvLocked(flagKey: keyof FeatureFlags): boolean {
     comingSoon: "VITE_FEATURE_COMING_SOON",
     demoMode: "VITE_FEATURE_DEMO_MODE",
     ratings: "VITE_FEATURE_RATINGS",
+    events: "VITE_FEATURE_EVENTS",
   };
   
   const value = import.meta.env[envKeys[flagKey]];

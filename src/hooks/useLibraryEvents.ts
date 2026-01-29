@@ -111,8 +111,9 @@ export function useCreateEvent() {
       queryClient.invalidateQueries({ queryKey: ["library-events", variables.library_id] });
       queryClient.invalidateQueries({ queryKey: ["library-all-events", variables.library_id] });
       
-      // Send Discord notification and forum post
+      // Send Discord notification and forum post with event ID so thread can be saved
       discord.notifyEventCreated(variables.library_id, {
+        id: data.id,
         title: variables.title,
         description: variables.description,
         event_date: variables.event_date,
@@ -182,20 +183,37 @@ export function useUpdateEvent() {
 export function useDeleteEvent() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const discord = useDiscordNotify();
 
   return useMutation({
     mutationFn: async ({ eventId, libraryId }: { eventId: string; libraryId: string }) => {
+      // First fetch the event to get the discord_thread_id
+      const { data: event, error: fetchError } = await supabase
+        .from("library_events")
+        .select("discord_thread_id")
+        .eq("id", eventId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      // Delete the event
       const { error } = await supabase
         .from("library_events")
         .delete()
         .eq("id", eventId);
 
       if (error) throw error;
-      return { eventId, libraryId };
+      return { eventId, libraryId, discordThreadId: event?.discord_thread_id };
     },
-    onSuccess: ({ libraryId }) => {
+    onSuccess: ({ libraryId, discordThreadId }) => {
       queryClient.invalidateQueries({ queryKey: ["library-events", libraryId] });
       queryClient.invalidateQueries({ queryKey: ["library-all-events", libraryId] });
+      
+      // Delete the Discord thread if one was created
+      if (discordThreadId) {
+        discord.deleteEventThread(libraryId, discordThreadId);
+      }
+      
       toast({
         title: "Event deleted",
         description: "The event has been removed from your calendar.",

@@ -14,6 +14,7 @@ interface ForumPostPayload {
   event_location?: string;
   poll_url?: string;
   event_type: "poll" | "standalone";
+  event_id?: string; // For standalone events, to save thread_id back
 }
 
 const DISCORD_API = "https://discord.com/api/v10";
@@ -128,7 +129,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const payload: ForumPostPayload = await req.json();
-    const { library_id, title, description, event_date, event_location, poll_url, event_type } = payload;
+    const { library_id, title, description, event_date, event_location, poll_url, event_type, event_id } = payload;
 
     if (!library_id || !title) {
       return new Response(
@@ -188,10 +189,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // If this is a standalone event, save the thread_id back to the event
+    if (event_type === "standalone" && event_id && result.thread_id) {
+      const { error: updateError } = await supabase
+        .from("library_events")
+        .update({ discord_thread_id: result.thread_id })
+        .eq("id", event_id);
+      
+      if (updateError) {
+        console.error("Failed to save thread ID to event:", updateError);
+        // Don't fail the request, thread was created successfully
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
-        thread_id: result.thread_id 
+        thread_id: result.thread_id,
+        event_id: payload.event_id || null
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

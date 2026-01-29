@@ -76,6 +76,7 @@ export async function postToDiscordForum(
     event_location?: string | null;
     poll_url?: string;
     event_type: "poll" | "standalone";
+    event_id?: string; // For standalone events to save thread_id
   }
 ): Promise<void> {
   try {
@@ -88,10 +89,31 @@ export async function postToDiscordForum(
         event_location: event.event_location,
         poll_url: event.poll_url,
         event_type: event.event_type,
+        event_id: event.event_id,
       },
     });
   } catch (error) {
     console.error("Discord forum post failed:", error);
+  }
+}
+
+/**
+ * Delete a Discord thread when an event is deleted.
+ * This is a fire-and-forget operation - errors are logged but don't block the main flow.
+ */
+export async function deleteDiscordThread(
+  libraryId: string,
+  threadId: string
+): Promise<void> {
+  try {
+    await supabase.functions.invoke("discord-delete-thread", {
+      body: {
+        library_id: libraryId,
+        thread_id: threadId,
+      },
+    });
+  } catch (error) {
+    console.error("Discord thread deletion failed:", error);
   }
 }
 
@@ -200,6 +222,7 @@ export function useDiscordNotify() {
     },
     
     notifyEventCreated: (libraryId: string, event: {
+      id: string; // Event ID to save thread_id back
       title: string;
       description?: string | null;
       event_date: string;
@@ -216,14 +239,19 @@ export function useDiscordNotify() {
         },
       });
       
-      // Post to forum channel
+      // Post to forum channel with event_id so thread_id is saved
       postToDiscordForum(libraryId, {
         title: event.title,
         description: event.description,
         event_date: event.event_date,
         event_location: event.event_location,
         event_type: "standalone",
+        event_id: event.id,
       });
+    },
+    
+    deleteEventThread: (libraryId: string, threadId: string) => {
+      return deleteDiscordThread(libraryId, threadId);
     },
     
     notifyPollClosed: (libraryId: string, data: {
