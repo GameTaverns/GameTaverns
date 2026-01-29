@@ -64,6 +64,38 @@ export async function createDiscordScheduledEvent(
 }
 
 /**
+ * Post an event to a Discord forum channel.
+ * This is a fire-and-forget operation - errors are logged but don't block the main flow.
+ */
+export async function postToDiscordForum(
+  libraryId: string,
+  event: {
+    title: string;
+    description?: string | null;
+    event_date?: string | null;
+    event_location?: string | null;
+    poll_url?: string;
+    event_type: "poll" | "standalone";
+  }
+): Promise<void> {
+  try {
+    await supabase.functions.invoke("discord-forum-post", {
+      body: {
+        library_id: libraryId,
+        title: event.title,
+        description: event.description,
+        event_date: event.event_date,
+        event_location: event.event_location,
+        poll_url: event.poll_url,
+        event_type: event.event_type,
+      },
+    });
+  } catch (error) {
+    console.error("Discord forum post failed:", error);
+  }
+}
+
+/**
  * Hook-friendly wrapper that can be called from mutation onSuccess handlers
  */
 export function useDiscordNotify() {
@@ -143,9 +175,20 @@ export function useDiscordNotify() {
         },
       });
 
-      // If it's a game night with an event date, also create a Discord scheduled event
+      // If it's a game night with an event date, also post to forum channel
       if (poll.poll_type === "game_night" && poll.event_date) {
-        return createDiscordScheduledEvent(libraryId, {
+        // Post to forum channel (preferred method)
+        postToDiscordForum(libraryId, {
+          title: poll.title,
+          description: poll.description,
+          event_date: poll.event_date,
+          event_location: poll.event_location,
+          poll_url: poll.poll_url,
+          event_type: "poll",
+        });
+        
+        // Also create Discord scheduled event (optional backup)
+        createDiscordScheduledEvent(libraryId, {
           title: poll.title,
           event_date: poll.event_date,
           event_location: poll.event_location,
@@ -154,6 +197,33 @@ export function useDiscordNotify() {
           share_token: poll.share_token,
         });
       }
+    },
+    
+    notifyEventCreated: (libraryId: string, event: {
+      title: string;
+      description?: string | null;
+      event_date: string;
+      event_location?: string | null;
+    }) => {
+      // Send regular notification
+      sendDiscordNotification({
+        library_id: libraryId,
+        event_type: "event_created",
+        data: {
+          title: event.title,
+          event_date: event.event_date,
+          event_location: event.event_location,
+        },
+      });
+      
+      // Post to forum channel
+      postToDiscordForum(libraryId, {
+        title: event.title,
+        description: event.description,
+        event_date: event.event_date,
+        event_location: event.event_location,
+        event_type: "standalone",
+      });
     },
     
     notifyPollClosed: (libraryId: string, data: {

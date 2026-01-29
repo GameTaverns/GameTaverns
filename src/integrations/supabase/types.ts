@@ -748,6 +748,7 @@ export type Database = {
           background_overlay_opacity: string | null
           contact_email: string | null
           created_at: string
+          discord_events_channel_id: string | null
           discord_notifications: Json | null
           discord_url: string | null
           discord_webhook_url: string | null
@@ -804,6 +805,7 @@ export type Database = {
           background_overlay_opacity?: string | null
           contact_email?: string | null
           created_at?: string
+          discord_events_channel_id?: string | null
           discord_notifications?: Json | null
           discord_url?: string | null
           discord_webhook_url?: string | null
@@ -860,6 +862,7 @@ export type Database = {
           background_overlay_opacity?: string | null
           contact_email?: string | null
           created_at?: string
+          discord_events_channel_id?: string | null
           discord_notifications?: Json | null
           discord_url?: string | null
           discord_webhook_url?: string | null

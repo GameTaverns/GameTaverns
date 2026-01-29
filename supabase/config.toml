@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.discord-create-event]
 verify_jwt = false
+
+[functions.discord-forum-post]
+verify_jwt = false

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Save, Loader2, MessageSquare, TestTube, ExternalLink } from "lucide-react";
+import { Save, Loader2, MessageSquare, TestTube, ExternalLink, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,9 @@ export function LibraryDiscordSettings() {
   const [webhookUrl, setWebhookUrl] = useState(
     (settingsAny?.discord_webhook_url as string) || ""
   );
+  const [eventsChannelId, setEventsChannelId] = useState(
+    (settingsAny?.discord_events_channel_id as string) || ""
+  );
   const [notifications, setNotifications] = useState<DiscordNotifications>(() => {
     const saved = settingsAny?.discord_notifications as DiscordNotifications | null;
     return saved ? { ...DEFAULT_NOTIFICATIONS, ...saved } : DEFAULT_NOTIFICATIONS;
@@ -75,6 +78,7 @@ export function LibraryDiscordSettings() {
         libraryId: library.id,
         updates: {
           discord_webhook_url: webhookUrl || null,
+          discord_events_channel_id: eventsChannelId || null,
           discord_notifications: notifications,
         } as Record<string, unknown>,
       });
@@ -221,6 +225,44 @@ export function LibraryDiscordSettings() {
               )}
               Send Test Notification
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Events Forum Channel */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Events Forum Channel
+            </CardTitle>
+            <CardDescription>
+              Post calendar events (game nights, polls) to a Discord forum channel
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Forum Channel ID</Label>
+              <Input
+                type="text"
+                value={eventsChannelId}
+                onChange={(e) => setEventsChannelId(e.target.value)}
+                placeholder="e.g., 1234567890123456789"
+              />
+              <p className="text-sm text-muted-foreground">
+                The bot will create forum threads for game night polls and calendar events
+              </p>
+            </div>
+
+            <Alert>
+              <AlertDescription className="text-sm">
+                <strong>How to get a forum channel ID:</strong>
+                <ol className="list-decimal ml-4 mt-2 space-y-1">
+                  <li>Enable Developer Mode in Discord (User Settings → App Settings → Advanced)</li>
+                  <li>Right-click your forum channel and select "Copy Channel ID"</li>
+                  <li>Make sure the bot has "Send Messages" and "Create Public Threads" permissions in that channel</li>
+                </ol>
+              </AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
 
