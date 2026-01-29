@@ -45,7 +45,7 @@ import { LendingDashboard } from "@/components/lending/LendingDashboard";
 import { AchievementsDisplay } from "@/components/achievements/AchievementsDisplay";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 import { useLending } from "@/hooks/useLending";
-import { useMyMemberships } from "@/hooks/useLibraryMembership";
+import { useMyMemberships, useLibraryMembership } from "@/hooks/useLibraryMembership";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated } = useAuth();
@@ -54,6 +54,7 @@ export default function Dashboard() {
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const { myLentLoans, myBorrowedLoans } = useLending();
   const { data: myMemberships = [] } = useMyMemberships();
+  const { memberCount } = useLibraryMembership(library?.id);
   const pendingLoanRequests = myLentLoans.filter((l) => l.status === "requested").length;
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -531,7 +532,7 @@ export default function Dashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-end">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-3">
                       <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
                         <div className="text-2xl font-bold text-secondary">
                           {gameCount ?? "--"}
@@ -543,6 +544,12 @@ export default function Dashboard() {
                           {playCount ?? "--"}
                         </div>
                         <div className="text-xs text-cream/60">Plays</div>
+                      </div>
+                      <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
+                        <div className="text-2xl font-bold text-secondary">
+                          {memberCount ?? 0}
+                        </div>
+                        <div className="text-xs text-cream/60">Members</div>
                       </div>
                     </div>
                   </CardContent>

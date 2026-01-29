@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare } from "lucide-react";
+import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/contexts/TenantContext";
@@ -13,6 +13,7 @@ import { WishlistAdmin } from "@/components/settings/WishlistAdmin";
 import { LibraryBranding } from "@/components/settings/LibraryBranding";
 import { LibraryDiscordSettings } from "@/components/settings/LibraryDiscordSettings";
 import { LibraryFeatureFlagsAdmin } from "@/components/settings/LibraryFeatureFlagsAdmin";
+import { LibraryMemberManagement } from "@/components/settings/LibraryMemberManagement";
 
 export default function LibrarySettings() {
   const navigate = useNavigate();
@@ -104,10 +105,14 @@ export default function LibrarySettings() {
         </Button>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
             <TabsTrigger value="general" className="gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">General</span>
+            </TabsTrigger>
+            <TabsTrigger value="members" className="gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Members</span>
             </TabsTrigger>
             <TabsTrigger value="theme" className="gap-2">
               <Palette className="h-4 w-4" />
@@ -137,6 +142,10 @@ export default function LibrarySettings() {
 
           <TabsContent value="general">
             <LibrarySettingsGeneral />
+          </TabsContent>
+
+          <TabsContent value="members">
+            <LibraryMemberManagement />
           </TabsContent>
 
           <TabsContent value="theme">
