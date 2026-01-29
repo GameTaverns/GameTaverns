@@ -13,6 +13,7 @@ import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { DemoGuard } from "@/components/system/DemoGuard";
 import { MaintenanceGuard } from "@/components/system/MaintenanceGuard";
 import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironmentBanner";
+import { MobileAppShell } from "@/components/mobile/MobileAppShell";
 
 // Lazy load route components to reduce initial bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -73,14 +74,16 @@ function AppRoutes() {
         <DemoThemeApplicator />
         <TenantThemeApplicator />
         
-        <MaintenanceGuard>
-          <Suspense fallback={<PageLoader />}>
-            <TenantRouteHandler isDemoMode={isDemoMode} tenantSlug={tenantSlug} />
-          </Suspense>
-        </MaintenanceGuard>
-        
-        {/* Testing environment watermark */}
-        <TestingEnvironmentBanner />
+        <MobileAppShell>
+          <MaintenanceGuard>
+            <Suspense fallback={<PageLoader />}>
+              <TenantRouteHandler isDemoMode={isDemoMode} tenantSlug={tenantSlug} />
+            </Suspense>
+          </MaintenanceGuard>
+          
+          {/* Testing environment watermark */}
+          <TestingEnvironmentBanner />
+        </MobileAppShell>
       </DemoProvider>
     </TenantProvider>
   );

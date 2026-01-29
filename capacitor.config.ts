@@ -1,19 +1,20 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.f815476ffb8a47e284c3f13e942dc4b6',
-  appName: 'tzolakgamehaven',
+  appId: 'app.lovable.e6868cccab20485baaa3d3345575c037',
+  appName: 'GameTaverns',
   webDir: 'dist',
   server: {
     // For development: connects to live preview for hot-reload
     // Comment this out for production builds
-    url: 'https://f815476f-fb8a-47e2-84c3-f13e942dc4b6.lovableproject.com?forceHideBadge=true',
+    url: 'https://e6868ccc-ab20-485b-aaa3-d3345575c037.lovableproject.com?forceHideBadge=true',
     cleartext: true
   },
   // iOS-specific configuration
   ios: {
     contentInset: 'automatic',
     preferredContentMode: 'mobile',
+    scheme: 'GameTaverns',
   },
   // Android-specific configuration
   android: {
@@ -21,9 +22,24 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchAutoHide: true,
-      backgroundColor: '#000000',
-      showSpinner: false,
+      launchAutoHide: false,
+      backgroundColor: '#1a1510',
+      showSpinner: true,
+      spinnerColor: '#e67e22',
+      androidScaleType: 'CENTER_CROP',
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
+    StatusBar: {
+      style: 'Dark',
+      backgroundColor: '#1a1510',
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
+    Keyboard: {
+      resize: 'body',
+      resizeOnFullScreen: true,
     },
   },
 };
