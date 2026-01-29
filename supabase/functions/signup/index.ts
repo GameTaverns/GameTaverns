@@ -10,6 +10,7 @@ const corsHeaders = {
 interface SignupRequest {
   email: string;
   password: string;
+  username?: string;
   displayName?: string;
   redirectUrl?: string;
 }
@@ -122,12 +123,42 @@ async function handler(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { email, password, displayName, redirectUrl }: SignupRequest = await req.json();
+    const { email, password, username, displayName, redirectUrl }: SignupRequest = await req.json();
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Validate username format if provided
+    if (username) {
+      if (username.length < 3 || username.length > 30) {
+        return new Response(JSON.stringify({ error: "Username must be between 3 and 30 characters" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        return new Response(JSON.stringify({ error: "Username can only contain letters, numbers, and underscores" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Check if username is already taken
+      const { data: existingUsername } = await supabase
+        .from("user_profiles")
+        .select("id")
+        .eq("username", username.toLowerCase())
+        .maybeSingle();
+
+      if (existingUsername) {
+        return new Response(JSON.stringify({ error: "Username is already taken" }), {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // IMPORTANT: We intentionally do NOT use client-side auth.signUp here, because that
@@ -138,6 +169,7 @@ async function handler(req: Request): Promise<Response> {
       email_confirm: false,
       user_metadata: {
         display_name: displayName || email.split("@")[0],
+        username: username?.toLowerCase(),
       },
     });
 
@@ -163,6 +195,7 @@ async function handler(req: Request): Promise<Response> {
     await supabase.from("user_profiles").upsert({
       user_id: userId,
       display_name: displayName || email.split("@")[0],
+      username: username?.toLowerCase() || null,
     }, { onConflict: "user_id" });
 
     // Store token and send email

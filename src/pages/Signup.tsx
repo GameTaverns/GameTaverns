@@ -19,6 +19,7 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -62,6 +63,25 @@ export default function Signup() {
       return;
     }
     
+    // Validate username
+    if (username && (username.length < 3 || username.length > 30)) {
+      toast({
+        title: "Invalid username",
+        description: "Username must be between 3 and 30 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (username && !/^[a-zA-Z0-9_]+$/.test(username)) {
+      toast({
+        title: "Invalid username",
+        description: "Username can only contain letters, numbers, and underscores",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -75,6 +95,7 @@ export default function Signup() {
           body: JSON.stringify({
             email,
             password,
+            username: username.toLowerCase() || undefined,
             displayName: displayName || email.split("@")[0],
             redirectUrl: window.location.origin,
             turnstile_token: turnstileToken,
@@ -124,6 +145,21 @@ export default function Signup() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-cream/80">
+                Username <span className="text-muted-foreground">(optional, for login)</span>
+              </Label>
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                placeholder="your_username"
+                maxLength={30}
+                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+              />
+              <p className="text-xs text-muted-foreground">3-30 characters, letters, numbers, underscores only</p>
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="displayName" className="text-cream/80">
                 Display Name <span className="text-muted-foreground">(optional)</span>

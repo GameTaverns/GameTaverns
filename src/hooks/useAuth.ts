@@ -306,20 +306,50 @@ export function useAuth() {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (emailOrUsername: string, password: string) => {
     // Root cause of the "hang": the auth SDK uses a storage lock. In some browser
     // states that lock can get stuck, making signInWithPassword/setSession await forever.
     // We:
-    // 1) call the token endpoint directly (fast, reliable)
-    // 2) clear any stale auth storage lock keys
-    // 3) try supabase.auth.setSession with a short timeout
-    // 4) if it still hangs, write the session to storage and hard-navigate.
+    // 1) resolve username to email if needed via edge function
+    // 2) call the token endpoint directly (fast, reliable)
+    // 3) clear any stale auth storage lock keys
+    // 4) try supabase.auth.setSession with a short timeout
+    // 5) if it still hangs, write the session to storage and hard-navigate.
 
     const controller = new AbortController();
     const timeoutMs = 15000;
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      let email = emailOrUsername;
+      
+      // If it doesn't look like an email, try to resolve username to email
+      if (!emailOrUsername.includes("@")) {
+        try {
+          const resolveRes = await fetch(`${apiUrl}/functions/v1/resolve-username`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              apikey: anonKey,
+            },
+            body: JSON.stringify({ username: emailOrUsername }),
+          });
+          
+          if (resolveRes.ok) {
+            const data = await resolveRes.json();
+            if (data.email) {
+              email = data.email;
+            } else {
+              return { error: { message: "Invalid username or password" } };
+            }
+          } else {
+            return { error: { message: "Invalid username or password" } };
+          }
+        } catch {
+          return { error: { message: "Unable to verify username. Please try again." } };
+        }
+      }
+
       const url = `${apiUrl}/auth/v1/token?grant_type=password`;
       const res = await fetch(url, {
         method: "POST",
