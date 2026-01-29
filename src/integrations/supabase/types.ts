@@ -691,6 +691,57 @@ export type Database = {
         }
         Relationships: []
       }
+      library_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string
+          event_location: string | null
+          id: string
+          library_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date: string
+          event_location?: string | null
+          id?: string
+          library_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string
+          event_location?: string | null
+          id?: string
+          library_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_events_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_events_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       library_settings: {
         Row: {
           background_image_url: string | null
@@ -1458,6 +1509,21 @@ export type Database = {
           name?: string | null
           slug?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      library_calendar_events: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          event_date: string | null
+          event_location: string | null
+          event_type: string | null
+          id: string | null
+          library_id: string | null
+          poll_status: string | null
+          share_token: string | null
+          title: string | null
         }
         Relationships: []
       }

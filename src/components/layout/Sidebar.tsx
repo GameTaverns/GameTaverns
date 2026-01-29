@@ -19,8 +19,11 @@ import {
   FlaskConical,
   Baby,
   Heart,
-  TrendingUp
+  TrendingUp,
+  Calendar,
+  MapPin
 } from "lucide-react";
+import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
@@ -39,6 +42,8 @@ import { siteConfig } from "@/config/site";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenant, useTenantSettings } from "@/contexts/TenantContext";
+import { useUpcomingEvents } from "@/hooks/useLibraryEvents";
+import { Badge } from "@/components/ui/badge";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -67,6 +72,71 @@ function FilterSection({ title, icon, children, defaultOpen = false }: FilterSec
         </nav>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+// Compact upcoming events display for sidebar
+function SidebarUpcomingEvents({ libraryId }: { libraryId: string }) {
+  const { data: events = [], isLoading } = useUpcomingEvents(libraryId, 3);
+  
+  if (isLoading || events.length === 0) return null;
+  
+  return (
+    <div className="mt-6 px-4">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 mb-2">
+        <Calendar className="h-4 w-4" />
+        Upcoming Events
+      </div>
+      <div className="space-y-2">
+        {events.map((event) => {
+          const eventDate = new Date(event.event_date);
+          const eventIsToday = isToday(eventDate);
+          
+          return (
+            <div 
+              key={event.id} 
+              className="p-2 rounded-lg bg-sidebar-accent/30 hover:bg-sidebar-accent/50 transition-colors"
+            >
+              <div className="flex items-start gap-2">
+                <div className={cn(
+                  "flex flex-col items-center justify-center min-w-[36px] h-9 rounded text-center text-xs",
+                  eventIsToday 
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "bg-sidebar-accent/50 text-sidebar-foreground"
+                )}>
+                  <span className="font-medium uppercase leading-tight">
+                    {format(eventDate, "MMM")}
+                  </span>
+                  <span className="font-bold leading-none">
+                    {format(eventDate, "d")}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-sidebar-foreground truncate">
+                    {event.title}
+                  </p>
+                  <div className="flex items-center gap-1 text-[10px] text-sidebar-foreground/60">
+                    <Clock className="h-3 w-3" />
+                    {format(eventDate, "h:mm a")}
+                    {eventIsToday && (
+                      <Badge variant="secondary" className="ml-1 h-4 text-[9px] px-1">
+                        Today
+                      </Badge>
+                    )}
+                  </div>
+                  {event.event_location && (
+                    <div className="flex items-center gap-1 text-[10px] text-sidebar-foreground/60 mt-0.5">
+                      <MapPin className="h-3 w-3" />
+                      <span className="truncate">{event.event_location}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -252,6 +322,9 @@ export function Sidebar({ isOpen }: SidebarProps) {
               </button>
             )}
           </nav>
+
+          {/* Upcoming Events - Only in tenant mode when library exists */}
+          {isTenantMode && library && <SidebarUpcomingEvents libraryId={library.id} />}
 
           {/* Player Count */}
           <FilterSection title="Player Count" icon={<Users className="h-4 w-4" />} defaultOpen={currentFilter === "players"}>

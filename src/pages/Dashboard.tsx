@@ -16,7 +16,8 @@ import {
   ArrowRight,
   BarChart3,
   Vote,
-  User
+  User,
+  Calendar
 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyti
 import { PollsManager } from "@/components/polls/PollsManager";
 import { AccountSettings } from "@/components/settings/AccountSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UpcomingEventsWidget } from "@/components/events/UpcomingEventsWidget";
+import { CreateEventDialog } from "@/components/events/CreateEventDialog";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated } = useAuth();
@@ -42,6 +45,7 @@ export default function Dashboard() {
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
   
   // Check if user is a site owner (has admin role)
   const { data: isSiteOwner } = useQuery({
@@ -375,7 +379,23 @@ export default function Dashboard() {
                     </div>
                   </CardContent>
                 </Card>
+                
+                {/* Upcoming Events Widget */}
+                <div className="col-span-full lg:col-span-2">
+                  <UpcomingEventsWidget 
+                    libraryId={library.id} 
+                    isOwner={true}
+                    onCreateEvent={() => setShowCreateEvent(true)}
+                  />
+                </div>
               </div>
+              
+              {/* Create Event Dialog */}
+              <CreateEventDialog
+                open={showCreateEvent}
+                onOpenChange={setShowCreateEvent}
+                libraryId={library.id}
+              />
             </TabsContent>
 
             <TabsContent value="analytics">
