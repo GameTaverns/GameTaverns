@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/backend/client";
 import type { Game, GameWithRelations, Mechanic, Publisher, DifficultyLevel, GameType, PlayTime } from "@/types/game";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
+import { useDiscordNotify } from "@/hooks/useDiscordNotify";
 
 export function useGames(enabled = true) {
   const { isAdmin } = useAuth();
@@ -350,6 +351,7 @@ export function usePublishers() {
 export function useCreateGame() {
   const queryClient = useQueryClient();
   const { library } = useTenant();
+  const { notifyGameAdded } = useDiscordNotify();
 
   return useMutation({
     mutationFn: async (gameData: {
@@ -402,9 +404,21 @@ export function useCreateGame() {
 
       return game;
     },
-    onSuccess: () => {
+    onSuccess: (game) => {
       queryClient.invalidateQueries({ queryKey: ["games"] });
       queryClient.invalidateQueries({ queryKey: ["games-flat"] });
+      
+      // Fire Discord notification (fire-and-forget)
+      if (library?.id) {
+        notifyGameAdded(library.id, {
+          title: game.title,
+          image_url: game.image_url,
+          min_players: game.min_players,
+          max_players: game.max_players,
+          play_time: game.play_time,
+          slug: game.slug,
+        });
+      }
     },
   });
 }

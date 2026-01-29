@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useDiscordNotify } from "@/hooks/useDiscordNotify";
 
 export interface Poll {
   id: string;
@@ -214,6 +215,7 @@ export function useGameNightRSVPs(pollId: string | null) {
 // Create a new poll
 export function useCreatePoll() {
   const queryClient = useQueryClient();
+  const { notifyPollCreated } = useDiscordNotify();
 
   return useMutation({
     mutationFn: async ({
@@ -272,11 +274,19 @@ export function useCreatePoll() {
 
       if (optionsError) throw optionsError;
 
-      return poll as Poll;
+      return { poll: poll as Poll, gameCount: gameIds.length };
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["library-polls", data.library_id] });
+    onSuccess: ({ poll, gameCount }) => {
+      queryClient.invalidateQueries({ queryKey: ["library-polls", poll.library_id] });
       toast.success("Poll created successfully!");
+      
+      // Fire Discord notification
+      notifyPollCreated(poll.library_id, {
+        title: poll.title,
+        poll_type: poll.poll_type,
+        game_count: gameCount,
+        share_token: poll.share_token,
+      });
     },
     onError: (error) => {
       toast.error("Failed to create poll: " + error.message);
@@ -399,6 +409,7 @@ export function useUpdateRSVP() {
 // Close a poll
 export function useClosePoll() {
   const queryClient = useQueryClient();
+  const { notifyPollClosed } = useDiscordNotify();
 
   return useMutation({
     mutationFn: async (pollId: string) => {
@@ -410,12 +421,38 @@ export function useClosePoll() {
         .single();
 
       if (error) throw error;
-      return data as Poll;
+      
+      // Fetch results to include winner in notification
+      const { data: results } = await supabase
+        .from("poll_results")
+        .select("*")
+        .eq("poll_id", pollId)
+        .order("vote_count", { ascending: false })
+        .limit(1);
+      
+      const winner = results?.[0];
+      const { count: totalVotes } = await supabase
+        .from("poll_votes")
+        .select("*", { count: "exact", head: true })
+        .eq("poll_id", pollId);
+
+      return { 
+        poll: data as Poll, 
+        winner_title: winner?.game_title,
+        total_votes: totalVotes || 0,
+      };
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["poll", data.id] });
-      queryClient.invalidateQueries({ queryKey: ["library-polls", data.library_id] });
+    onSuccess: ({ poll, winner_title, total_votes }) => {
+      queryClient.invalidateQueries({ queryKey: ["poll", poll.id] });
+      queryClient.invalidateQueries({ queryKey: ["library-polls", poll.library_id] });
       toast.success("Poll closed");
+      
+      // Fire Discord notification
+      notifyPollClosed(poll.library_id, {
+        poll_title: poll.title,
+        winner_title,
+        total_votes,
+      });
     },
   });
 }

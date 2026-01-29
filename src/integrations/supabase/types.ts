@@ -697,7 +697,9 @@ export type Database = {
           background_overlay_opacity: string | null
           contact_email: string | null
           created_at: string
+          discord_notifications: Json | null
           discord_url: string | null
+          discord_webhook_url: string | null
           facebook_url: string | null
           feature_coming_soon: boolean | null
           feature_for_sale: boolean | null
@@ -751,7 +753,9 @@ export type Database = {
           background_overlay_opacity?: string | null
           contact_email?: string | null
           created_at?: string
+          discord_notifications?: Json | null
           discord_url?: string | null
+          discord_webhook_url?: string | null
           facebook_url?: string | null
           feature_coming_soon?: boolean | null
           feature_for_sale?: boolean | null
@@ -805,7 +809,9 @@ export type Database = {
           background_overlay_opacity?: string | null
           contact_email?: string | null
           created_at?: string
+          discord_notifications?: Json | null
           discord_url?: string | null
+          discord_webhook_url?: string | null
           facebook_url?: string | null
           feature_coming_soon?: boolean | null
           feature_for_sale?: boolean | null

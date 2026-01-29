@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart } from "lucide-react";
+import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,7 @@ import { LibraryThemeCustomizer } from "@/components/settings/LibraryThemeCustom
 import { RatingsAdmin } from "@/components/settings/RatingsAdmin";
 import { WishlistAdmin } from "@/components/settings/WishlistAdmin";
 import { LibraryBranding } from "@/components/settings/LibraryBranding";
+import { LibraryDiscordSettings } from "@/components/settings/LibraryDiscordSettings";
 
 export default function LibrarySettings() {
   const navigate = useNavigate();
@@ -103,7 +104,7 @@ export default function LibrarySettings() {
         </Button>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7">
             <TabsTrigger value="general" className="gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">General</span>
@@ -123,6 +124,10 @@ export default function LibrarySettings() {
             <TabsTrigger value="wishlist" className="gap-2">
               <Heart className="h-4 w-4" />
               <span className="hidden sm:inline">Wishlist</span>
+            </TabsTrigger>
+            <TabsTrigger value="discord" className="gap-2">
+              <MessageSquare className="h-4 w-4" />
+              <span className="hidden sm:inline">Discord</span>
             </TabsTrigger>
             <TabsTrigger value="advanced" className="gap-2">
               <ToggleRight className="h-4 w-4" />
@@ -148,6 +153,10 @@ export default function LibrarySettings() {
 
           <TabsContent value="wishlist">
             <WishlistAdmin />
+          </TabsContent>
+
+          <TabsContent value="discord">
+            <LibraryDiscordSettings />
           </TabsContent>
 
           <TabsContent value="advanced">

@@ -63,6 +63,45 @@ export default async function handler(req: Request): Promise<Response> {
 
       if (error) throw error;
 
+      // Fetch game info and send Discord notification
+      try {
+        const { data: game } = await supabase
+          .from("games")
+          .select("title, image_url, library_id")
+          .eq("id", game_id)
+          .single();
+
+        if (game?.library_id) {
+          // Get current vote count
+          const { count } = await supabase
+            .from("game_wishlist")
+            .select("*", { count: "exact", head: true })
+            .eq("game_id", game_id);
+
+          // Fire Discord notification (fire-and-forget)
+          fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              library_id: game.library_id,
+              event_type: "wishlist_vote",
+              data: {
+                game_title: game.title,
+                image_url: game.image_url,
+                vote_count: count || 1,
+                voter_name: sanitizedName,
+              },
+            }),
+          }).catch(err => console.error("Discord notify failed:", err));
+        }
+      } catch (notifyError) {
+        console.error("Failed to send Discord notification:", notifyError);
+        // Don't fail the request if notification fails
+      }
+
       return new Response(
         JSON.stringify({ success: true, message: "Vote added" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
