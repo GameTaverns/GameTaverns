@@ -129,3 +129,35 @@ export function useLibraryMembers(libraryId: string | undefined) {
     enabled: !!libraryId,
   });
 }
+
+// Hook to get all libraries/communities the current user is a member of
+export function useMyMemberships() {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ["my-memberships", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("library_members")
+        .select(`
+          id,
+          role,
+          joined_at,
+          library:library_id (
+            id,
+            name,
+            slug,
+            description
+          )
+        `)
+        .eq("user_id", user.id)
+        .order("joined_at", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+}

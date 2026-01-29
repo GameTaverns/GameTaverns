@@ -320,18 +320,18 @@ export function useLending() {
     return useQuery({
       queryKey: ["borrower-reputation", userId],
       queryFn: async () => {
-        if (!userId) return null;
+        if (!userId || userId.trim() === "") return null;
 
         const { data, error } = await supabase
           .from("borrower_reputation")
           .select("*")
           .eq("user_id", userId)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code !== "PGRST116") throw error;
+        if (error) throw error;
         return data as BorrowerReputation | null;
       },
-      enabled: !!userId,
+      enabled: !!userId && userId.trim() !== "",
     });
   };
 

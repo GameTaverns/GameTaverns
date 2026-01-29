@@ -43,13 +43,16 @@ import { LendingDashboard } from "@/components/lending/LendingDashboard";
 import { AchievementsDisplay } from "@/components/achievements/AchievementsDisplay";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 import { useLending } from "@/hooks/useLending";
+import { useMyMemberships } from "@/hooks/useLibraryMembership";
+import { Users } from "lucide-react";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated } = useAuth();
   const { data: library, isLoading: libraryLoading } = useMyLibrary();
   const { data: profile } = useUserProfile();
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
-  const { myLentLoans } = useLending();
+  const { myLentLoans, myBorrowedLoans } = useLending();
+  const { data: myMemberships = [] } = useMyMemberships();
   const pendingLoanRequests = myLentLoans.filter((l) => l.status === "requested").length;
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -403,6 +406,42 @@ export default function Dashboard() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* My Communities Card - shows other communities user is member of */}
+                {myMemberships.length > 0 && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-secondary" />
+                        My Communities
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        Other communities you've joined
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {myMemberships.slice(0, 3).map((membership) => (
+                          <a 
+                            key={membership.id}
+                            href={`/?tenant=${membership.library?.slug}`}
+                            className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
+                          >
+                            <span className="text-sm font-medium truncate">
+                              {membership.library?.name}
+                            </span>
+                            <ArrowRight className="h-4 w-4 text-cream/60 flex-shrink-0" />
+                          </a>
+                        ))}
+                        {myMemberships.length > 3 && (
+                          <p className="text-xs text-cream/60 text-center pt-2">
+                            +{myMemberships.length - 3} more
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
                 
                 {/* Upcoming Events Widget */}
                 <div className="col-span-full lg:col-span-2">
@@ -564,6 +603,87 @@ export default function Dashboard() {
                     </Link>
                   </CardContent>
                 </Card>
+
+                {/* My Communities Card */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-secondary" />
+                      My Communities
+                    </CardTitle>
+                    <CardDescription className="text-cream/70">
+                      {myMemberships.length > 0 
+                        ? `You're a member of ${myMemberships.length} ${myMemberships.length === 1 ? 'community' : 'communities'}`
+                        : "Join communities to borrow games and participate in events"
+                      }
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {myMemberships.length > 0 ? (
+                      <div className="space-y-2">
+                        {myMemberships.slice(0, 3).map((membership) => (
+                          <a 
+                            key={membership.id}
+                            href={`/?tenant=${membership.library?.slug}`}
+                            className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
+                          >
+                            <span className="text-sm font-medium truncate">
+                              {membership.library?.name}
+                            </span>
+                            <ArrowRight className="h-4 w-4 text-cream/60 flex-shrink-0" />
+                          </a>
+                        ))}
+                        {myMemberships.length > 3 && (
+                          <p className="text-xs text-cream/60 text-center pt-2">
+                            +{myMemberships.length - 3} more
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <Link to="/directory">
+                        <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                          <Users className="h-4 w-4 mr-2" />
+                          Browse Communities
+                        </Button>
+                      </Link>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Active Loans Card - if user has borrowed games */}
+                {myBorrowedLoans.length > 0 && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-secondary" />
+                        My Borrowed Games
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        {myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status)).length} active loans
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {myBorrowedLoans
+                          .filter(l => ['requested', 'approved', 'active'].includes(l.status))
+                          .slice(0, 3)
+                          .map((loan) => (
+                            <div 
+                              key={loan.id}
+                              className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20"
+                            >
+                              <span className="text-sm font-medium truncate">
+                                {loan.game?.title || "Unknown Game"}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {loan.status}
+                              </Badge>
+                            </div>
+                          ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </TabsContent>
 
