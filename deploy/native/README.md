@@ -1,311 +1,174 @@
 # GameTaverns Native Deployment
 
-Complete guide for deploying GameTaverns on a fresh **Ubuntu 24.04 LTS** server.
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        CLOUDFLARE                               │
-│   DNS + Proxy + SSL Termination + DDoS Protection              │
-│   *.gametaverns.com → Your Server IP                           │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │ HTTPS (443)
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         NGINX                                   │
-│   Reverse Proxy + Static Files + Rate Limiting                 │
-│   Port 80/443 → localhost:3000 (frontend)                      │
-│                → localhost:3001 (API)                           │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-          ┌────────────────────┼────────────────────┐
-          ▼                    ▼                    ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│   FRONTEND      │  │   API SERVER    │  │   MAIL SERVER   │
-│   (Static)      │  │   (Express)     │  │   (Postfix)     │
-│   Vite build    │  │   Node.js 22    │  │   + Dovecot     │
-│   served by     │  │   PM2 managed   │  │                 │
-│   Nginx         │  │   Port 3001     │  │   SMTP/IMAP     │
-└─────────────────┘  └────────┬────────┘  └─────────────────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │   POSTGRESQL    │
-                    │   Version 16    │
-                    │   Port 5432     │
-                    └─────────────────┘
-```
+One-command installation for Ubuntu 24.04 LTS.
 
 ## Quick Start
 
 ```bash
-# 1. Clone the repository
+# On your fresh Ubuntu 24.04 server:
+
 git clone https://github.com/GameTaverns/GameTaverns.git /opt/gametaverns
 cd /opt/gametaverns/deploy/native
-
-# 2. Run the installer
 sudo ./install.sh
-
-# 3. Configure your domain in Cloudflare
-# 4. Create the first admin user
-./create-admin.sh
 ```
 
-## Prerequisites
+That's it! The installer will:
+1. Install all dependencies
+2. Set up the database
+3. Configure your domain
+4. Create your admin account
+5. Start everything
 
-- **Ubuntu 24.04 LTS** (fresh install recommended)
-- **Root or sudo access**
-- **Domain name** pointed to your server (e.g., `gametaverns.com`)
-- **Cloudflare account** (free tier works)
-- Minimum **2 CPU cores, 4GB RAM, 20GB SSD**
+**Time**: ~15 minutes
 
-## Components Installed
+## Before You Start
 
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| PostgreSQL | 16 | Database |
-| Node.js | 22 LTS | JavaScript runtime |
-| PM2 | Latest | Process manager |
-| Nginx | Latest | Reverse proxy |
-| Postfix | Latest | Outgoing email (SMTP) |
-| Dovecot | Latest | Incoming email (IMAP) |
-| Roundcube | Latest | Webmail interface |
-| **Cockpit** | Latest | **Web-based server management GUI** |
-| Certbot | Latest | SSL certificates (optional) |
+Make sure you have:
+- [ ] A fresh Ubuntu 24.04 server (VPS from DigitalOcean, Linode, Hetzner, etc.)
+- [ ] Root/sudo access
+- [ ] A domain name (e.g., `gametaverns.com`)
 
-## Management Interfaces
-
-After installation, you'll have access to these web interfaces:
-
-| Interface | URL | Purpose |
-|-----------|-----|---------|
-| **Cockpit** | `https://<server-ip>:9090` | Server management GUI (logs, services, terminal, storage) |
-| **Roundcube** | `http://mail.yourdomain.com` | Webmail for admin/legal/support accounts |
-| **App** | `https://yourdomain.com` | Your GameTaverns application |
-
-### Cockpit Features
-
-Cockpit provides a modern web-based GUI for server administration:
-
-- **System Overview**: CPU, RAM, disk usage in real-time
-- **Logs**: Browse systemd journal logs (filter by service, time, severity)
-- **Services**: Start/stop/restart PM2, Nginx, PostgreSQL, Postfix, Dovecot
-- **Terminal**: Full browser-based SSH terminal
-- **Storage**: Manage disks, partitions, and mounts
-- **Networking**: Configure interfaces, firewall rules
-- **Updates**: View and install system package updates
-
-Login with your server's root or sudo user credentials.
-
-## Directory Structure
-
-```
-/opt/gametaverns/
-├── app/                    # Frontend build (served by Nginx)
-├── server/                 # Express API server
-├── uploads/                # User uploads (logos, images)
-├── backups/                # Database backups
-├── logs/                   # Application logs
-└── deploy/native/          # Deployment scripts
-    ├── install.sh          # Main installer
-    ├── config.env.example  # Environment template
-    ├── nginx/              # Nginx configurations
-    ├── systemd/            # Service files
-    └── scripts/            # Maintenance scripts
-```
-
-## Configuration
-
-### Environment Variables
-
-Copy and edit the environment file:
+### Optional Pre-Check
 
 ```bash
-cp /opt/gametaverns/deploy/native/config.env.example /opt/gametaverns/.env
-nano /opt/gametaverns/.env
+# Verify your server meets requirements:
+sudo ./scripts/preflight-check.sh
 ```
 
-### Required Variables
+## After Installation
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://gametaverns:password@localhost:5432/gametaverns` |
-| `JWT_SECRET` | 32+ character secret for auth | `openssl rand -base64 32` |
-| `SITE_URL` | Your domain with https | `https://gametaverns.com` |
-| `SMTP_HOST` | Mail server hostname | `localhost` or `mail.gametaverns.com` |
+### 1. Set Up DNS
 
-### Optional AI Features
+Point these records to your server's IP address:
 
-| Variable | Description |
-|----------|-------------|
-| `PERPLEXITY_API_KEY` | Perplexity AI for game enrichment |
-| `FIRECRAWL_API_KEY` | Web scraping for BGG imports |
-| `OPENAI_API_KEY` | Alternative AI provider |
+| Type | Name | Value |
+|------|------|-------|
+| A | @ | `YOUR_SERVER_IP` |
+| A | * | `YOUR_SERVER_IP` |
+| A | mail | `YOUR_SERVER_IP` |
+| MX | @ | `mail.yourdomain.com` |
 
-## Cloudflare Setup
-
-### DNS Records
-
-Create these DNS records pointing to your server IP:
-
-| Type | Name | Content | Proxy |
-|------|------|---------|-------|
-| A | @ | `YOUR_SERVER_IP` | ✅ Proxied |
-| A | * | `YOUR_SERVER_IP` | ✅ Proxied |
-| A | mail | `YOUR_SERVER_IP` | ❌ DNS only |
-| MX | @ | `mail.gametaverns.com` | N/A |
-| TXT | @ | `v=spf1 mx a ~all` | N/A |
-
-### SSL/TLS Settings
-
-1. Go to **SSL/TLS** → **Overview**
-2. Set mode to **Full (strict)**
-3. Enable **Always Use HTTPS**
-4. Enable **Automatic HTTPS Rewrites**
-
-### Firewall Rules (Recommended)
-
-1. **Allow only Cloudflare IPs** to ports 80/443
-2. Allow port **25** (SMTP) for email
-3. Allow port **22** (SSH) for management
-
-## Email Configuration
-
-### Self-Hosted Mail (Postfix + Dovecot)
-
-The installer sets up Postfix for sending and optionally Dovecot for receiving.
-
-**Sending emails works out of the box** for:
-- Email verification
-- Password reset
-- Contact form responses
-
-### DNS for Email Deliverability
-
-Add these records for best deliverability:
-
-```
-Type: TXT
-Name: @
-Value: v=spf1 mx a ip4:YOUR_SERVER_IP ~all
-
-Type: TXT
-Name: _dmarc
-Value: v=DMARC1; p=quarantine; rua=mailto:admin@gametaverns.com
-
-Type: TXT
-Name: mail._domainkey
-Value: [DKIM key - generated by installer]
-```
-
-## Maintenance
-
-### View Logs
+### 2. Enable HTTPS
 
 ```bash
-# API server logs
-pm2 logs gametaverns-api
-
-# Nginx access logs
-tail -f /var/log/nginx/gametaverns-access.log
-
-# Nginx error logs
-tail -f /var/log/nginx/gametaverns-error.log
-
-# Mail logs
-tail -f /var/log/mail.log
+sudo certbot --nginx -d yourdomain.com -d "*.yourdomain.com" -d mail.yourdomain.com
 ```
 
-### Database Backup
+### 3. Done!
+
+Visit `https://yourdomain.com` and log in with your admin account.
+
+## Daily Management
+
+### Check Status
 
 ```bash
-# Manual backup
-/opt/gametaverns/deploy/native/scripts/backup.sh
-
-# Backups are stored in /opt/gametaverns/backups/
-ls -la /opt/gametaverns/backups/
-```
-
-### Update Application
-
-```bash
-cd /opt/gametaverns
-git pull origin main
-./deploy/native/scripts/update.sh
+pm2 status                  # Is the API running?
+pm2 logs gametaverns-api    # View recent logs
 ```
 
 ### Restart Services
 
 ```bash
-# Restart API
-pm2 restart gametaverns-api
-
-# Restart Nginx
-sudo systemctl restart nginx
-
-# Restart all
-/opt/gametaverns/deploy/native/scripts/restart-all.sh
+pm2 restart gametaverns-api  # Restart API
+sudo systemctl reload nginx  # Reload web server
 ```
+
+### Backup & Restore
+
+```bash
+./scripts/backup.sh              # Backup database
+./scripts/backup.sh --full       # Backup database + uploads
+./scripts/restore.sh <file.gz>   # Restore from backup
+```
+
+### Update to Latest Version
+
+```bash
+./scripts/update.sh
+```
+
+### Add a Mail Account
+
+```bash
+./scripts/add-mail-user.sh user@yourdomain.com
+```
+
+## Management Interfaces
+
+| Interface | URL |
+|-----------|-----|
+| **Cockpit** (Server GUI) | `https://YOUR_IP:9090` |
+| **Roundcube** (Webmail) | `http://mail.yourdomain.com` |
+| **App** | `https://yourdomain.com` |
 
 ## Troubleshooting
 
-### Common Issues
+### API won't start
 
-**API not starting:**
 ```bash
-# Check PM2 status
-pm2 status
-
-# Check logs
-pm2 logs gametaverns-api --lines 50
-
-# Verify environment
-cat /opt/gametaverns/.env
+pm2 logs gametaverns-api --lines 50  # Check error logs
+cat /opt/gametaverns/.env            # Verify config
 ```
 
-**Database connection failed:**
-```bash
-# Test connection
-sudo -u postgres psql -d gametaverns -c "SELECT 1"
+### Database connection issues
 
-# Check PostgreSQL status
-sudo systemctl status postgresql
+```bash
+sudo -u postgres psql -d gametaverns -c "SELECT 1"  # Test connection
+sudo systemctl status postgresql                     # Check service
 ```
 
-**Emails not sending:**
+### Emails not sending
+
 ```bash
-# Test mail
-echo "Test" | mail -s "Test" your@email.com
-
-# Check mail queue
-mailq
-
-# Check logs
-tail -f /var/log/mail.log
+echo "Test" | mail -s "Test" you@example.com  # Send test
+mailq                                          # Check queue
+tail -f /var/log/mail.log                      # Watch logs
 ```
 
-**502 Bad Gateway:**
-```bash
-# Check if API is running
-curl http://localhost:3001/health
+### 502 Bad Gateway
 
-# Check Nginx config
-sudo nginx -t
+```bash
+curl http://localhost:3001/health   # API responding?
+sudo nginx -t                       # Config valid?
+pm2 restart gametaverns-api         # Restart API
 ```
+
+## File Locations
+
+| What | Where |
+|------|-------|
+| Application | `/opt/gametaverns` |
+| Uploads | `/opt/gametaverns/uploads` |
+| Logs | `/opt/gametaverns/logs` |
+| Backups | `/opt/gametaverns/backups` |
+| Config | `/opt/gametaverns/.env` |
+| Credentials | `/root/gametaverns-credentials.txt` |
+| Install log | `/var/log/gametaverns-install.log` |
+
+## AI Features (Optional)
+
+To enable AI-powered game enrichment, add these to `/opt/gametaverns/.env`:
+
+```bash
+# Get key at: https://www.perplexity.ai/settings/api
+PERPLEXITY_API_KEY=your_key_here
+
+# Get key at: https://firecrawl.dev/
+FIRECRAWL_API_KEY=your_key_here
+```
+
+Then restart: `pm2 restart gametaverns-api`
 
 ## Security Checklist
 
-- [ ] Change default database password
-- [ ] Generate strong JWT_SECRET (32+ chars)
-- [ ] Enable Cloudflare proxy for all records
-- [ ] Set up fail2ban for SSH
-- [ ] Configure automatic backups
-- [ ] Enable automatic security updates
-- [ ] Set up monitoring (optional)
+- [ ] Changed default passwords (auto-generated, check credentials file)
+- [ ] SSL enabled (`certbot --nginx`)
+- [ ] Firewall active (`sudo ufw status`)
+- [ ] Regular backups (`./scripts/backup.sh` in cron)
+- [ ] Server updates (`apt update && apt upgrade`)
 
 ## Support
 
-- **Documentation**: https://docs.gametaverns.com
 - **GitHub Issues**: https://github.com/GameTaverns/GameTaverns/issues
 - **Email**: admin@gametaverns.com

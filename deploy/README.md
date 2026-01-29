@@ -1,101 +1,53 @@
-# Game Haven - Deployment
+# GameTaverns Deployment
 
-This directory contains deployment configurations for different hosting options.
+Deploy your own GameTaverns instance in minutes.
 
-## Deployment Options
-
-| Option | Best For | Includes Database? |
-|--------|----------|-------------------|
-| **[Standalone](./standalone/)** | Full self-hosting on any Linux server | ✅ Yes - complete stack |
-| **[Cloudron](./cloudron/)** | Cloudron platform users | ❌ No - connect external |
-| **[Self-Hosting Guide](./SELF-HOSTING.md)** | Manual setup with external Supabase | ❌ No - connect external |
-
----
-
-## Quick Start - Standalone (Recommended)
-
-The standalone deployment includes everything: the app, PostgreSQL, authentication, and API gateway.
+## Quick Start (Recommended)
 
 ```bash
-cd deploy/standalone
+# 1. Get a fresh Ubuntu 24.04 server (any VPS provider)
 
-# Run interactive installer
-chmod +x install.sh
-./install.sh
+# 2. Clone and install
+git clone https://github.com/GameTaverns/GameTaverns.git /opt/gametaverns
+cd /opt/gametaverns/deploy/native
+sudo ./install.sh
 
-# Start the stack
-docker compose up -d
-
-# Create admin user
-./scripts/create-admin.sh
+# 3. Follow the prompts. Done!
 ```
 
-The installer lets you customize:
-- **Site name, description, author**
-- **Domain and ports**
-- **Feature flags** (Play Logs, Wishlist, For Sale, Messaging, etc.)
-- **Email/SMTP settings**
-- **Admin Studio** (optional database UI)
-
-See [standalone/README.md](./standalone/README.md) for full documentation.
-
----
-
-## Quick Start - Cloudron
-
-For Cloudron users who want to connect to an external Supabase instance:
-
-```bash
-# Build and push to your registry
-docker build -t registry.yourdomain.com/gamehaven:1.0.0 -f deploy/cloudron/Dockerfile ../..
-docker push registry.yourdomain.com/gamehaven:1.0.0
-
-# Install on Cloudron
-cd deploy/cloudron
-cloudron install --image registry.yourdomain.com/gamehaven:1.0.0
-```
-
-Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Cloudron environment variables.
-
-See [cloudron/README.md](./cloudron/README.md) for details.
-
----
-
-## Architecture
-
-### Standalone (All-in-One)
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Your Linux Server                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ Game Haven  │  │    Kong     │  │      PostgreSQL     │  │
-│  │  Frontend   │──│  API Gateway│──│   + Auth + REST     │  │
-│  │   :3000     │  │    :8000    │  │   + Realtime        │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Cloudron + External Database
-
-```
-┌─────────────────────┐      ┌─────────────────────┐
-│   Cloudron Server   │      │  Supabase Cloud or  │
-│   (Game Haven UI)   │─────▶│  Self-hosted Supa.  │
-│   games.domain.com  │      │   db.domain.com     │
-└─────────────────────┘      └─────────────────────┘
-```
-
----
+The installer handles everything automatically:
+- Database (PostgreSQL 16)
+- Web server (Nginx)
+- Email (Postfix + Dovecot)  
+- SSL certificates (Certbot)
+- Security (Firewall + Fail2ban)
 
 ## Requirements
 
-### Standalone
-- Docker 20.10+
-- Docker Compose 2.0+
-- 4GB RAM minimum (8GB recommended)
-- 20GB disk space
+| Requirement | Minimum |
+|-------------|---------|
+| OS | Ubuntu 24.04 LTS |
+| RAM | 4 GB |
+| Disk | 20 GB |
+| CPU | 2 cores |
 
-### Cloudron
-- Cloudron server
-- External Supabase project (cloud or self-hosted)
+## After Installation
+
+1. **Point your domain** to your server's IP address
+2. **Set up SSL**: `sudo certbot --nginx -d yourdomain.com`
+3. **Log in** at `https://yourdomain.com` with the admin account you created
+
+## Management
+
+| Task | Command |
+|------|---------|
+| View logs | `pm2 logs gametaverns-api` |
+| Restart | `pm2 restart gametaverns-api` |
+| Backup | `./deploy/native/scripts/backup.sh` |
+| Update | `./deploy/native/scripts/update.sh` |
+| Server GUI | `https://your-server-ip:9090` (Cockpit) |
+
+## Support
+
+- **Issues**: https://github.com/GameTaverns/GameTaverns/issues
+- **Email**: admin@gametaverns.com
