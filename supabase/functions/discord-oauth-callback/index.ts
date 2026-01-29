@@ -35,11 +35,11 @@ Deno.serve(async (req) => {
 
     if (error) {
       console.error("Discord OAuth error:", error);
-      return redirectWithError("Discord authorization was denied");
+      return redirectWithError("Discord authorization was denied", undefined);
     }
 
     if (!code || !state) {
-      return redirectWithError("Missing authorization code or state");
+      return redirectWithError("Missing authorization code or state", undefined);
     }
 
     const clientId = Deno.env.get("DISCORD_CLIENT_ID")!;
@@ -50,16 +50,18 @@ Deno.serve(async (req) => {
     // Parse state to get user_id (state is base64 encoded JSON with user_id)
     let userId: string;
     let returnUrl: string;
+    let appOrigin: string;
     try {
       const stateData = JSON.parse(atob(state));
       userId = stateData.user_id;
       returnUrl = stateData.return_url || "/settings";
+      appOrigin = stateData.app_origin;
     } catch {
-      return redirectWithError("Invalid state parameter");
+      return redirectWithError("Invalid state parameter", undefined);
     }
 
-    if (!userId) {
-      return redirectWithError("Missing user ID in state");
+    if (!userId || !appOrigin) {
+      return redirectWithError("Missing user ID or app origin in state", appOrigin);
     }
 
     // Exchange code for access token
@@ -80,7 +82,7 @@ Deno.serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error("Discord token error:", errorText);
-      return redirectWithError("Failed to exchange authorization code");
+      return redirectWithError("Failed to exchange authorization code", appOrigin);
     }
 
     const tokens: DiscordTokenResponse = await tokenResponse.json();
@@ -94,7 +96,7 @@ Deno.serve(async (req) => {
 
     if (!userResponse.ok) {
       console.error("Discord user fetch error:", await userResponse.text());
-      return redirectWithError("Failed to fetch Discord user info");
+      return redirectWithError("Failed to fetch Discord user info", appOrigin);
     }
 
     const discordUser: DiscordUser = await userResponse.json();
@@ -109,30 +111,39 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       console.error("Profile update error:", updateError);
-      return redirectWithError("Failed to link Discord account");
+      return redirectWithError("Failed to link Discord account", appOrigin);
     }
 
     console.log(`Discord account ${discordUser.id} linked to user ${userId}`);
 
     // Redirect back to the app with success
+    const fullReturnUrl = returnUrl.startsWith("http") ? returnUrl : `${appOrigin}${returnUrl}`;
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `${returnUrl}?discord_linked=true`,
+        Location: `${fullReturnUrl}${fullReturnUrl.includes("?") ? "&" : "?"}discord_linked=true`,
       },
     });
   } catch (error: unknown) {
     console.error("Discord OAuth callback error:", error);
-    return redirectWithError((error as Error).message);
+    return redirectWithError((error as Error).message, undefined);
   }
 });
 
-function redirectWithError(message: string): Response {
+function redirectWithError(message: string, appOrigin: string | undefined): Response {
   const encodedMessage = encodeURIComponent(message);
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: `/settings?discord_error=${encodedMessage}`,
-    },
+  // If we have the app origin, redirect back to the app; otherwise show a simple error page
+  if (appOrigin) {
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `${appOrigin}/settings?discord_error=${encodedMessage}`,
+      },
+    });
+  }
+  // Fallback: display error directly (can't redirect without knowing the app origin)
+  return new Response(`Discord connection failed: ${message}. Please close this tab and try again.`, {
+    status: 400,
+    headers: { "Content-Type": "text/plain" },
   });
 }

@@ -76,10 +76,11 @@ export function DiscordLinkCard() {
         throw new Error(error?.message || "Discord integration is not configured");
       }
 
-      // Build state with user info
+      // Build state with user info and app origin for proper redirect
       const state = btoa(JSON.stringify({
         user_id: user.id,
         return_url: window.location.pathname + window.location.search,
+        app_origin: window.location.origin,
       }));
 
       // Build OAuth URL
