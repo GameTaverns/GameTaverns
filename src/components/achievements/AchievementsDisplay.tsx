@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useAchievements, type Achievement, type AchievementCategory } from "@/hooks/useAchievements";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -18,9 +20,13 @@ import {
   BookOpen,
   Lock,
   Star,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 const CATEGORY_CONFIG: Record<AchievementCategory, { label: string; icon: React.ReactNode; color: string }> = {
   collector: { label: "Collector", icon: <Gamepad2 className="h-5 w-5" />, color: "text-blue-500" },
@@ -114,6 +120,9 @@ function AchievementCard({ achievement, isEarned, earnedAt, progress = 0, tierNa
 }
 
 export function AchievementsDisplay() {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const queryClient = useQueryClient();
+  
   const {
     allAchievements,
     userAchievements,
@@ -126,6 +135,41 @@ export function AchievementsDisplay() {
     TIER_NAMES,
     TIER_COLORS,
   } = useAchievements();
+
+  const handleSyncAchievements = async () => {
+    setIsSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Please sign in to sync achievements");
+        return;
+      }
+
+      const response = await supabase.functions.invoke("sync-achievements");
+      
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const result = response.data;
+      
+      if (result.newAchievements > 0) {
+        toast.success(`🎉 Unlocked ${result.newAchievements} achievement${result.newAchievements > 1 ? 's' : ''}!`, {
+          description: result.awarded.join(", "),
+        });
+        // Refresh achievements data
+        queryClient.invalidateQueries({ queryKey: ["achievements"] });
+        queryClient.invalidateQueries({ queryKey: ["user-achievements"] });
+      } else {
+        toast.info("Achievements synced - no new unlocks yet!");
+      }
+    } catch (error) {
+      console.error("Failed to sync achievements:", error);
+      toast.error("Failed to sync achievements");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -162,9 +206,20 @@ export function AchievementsDisplay() {
             {earnedCount} of {totalCount} unlocked
           </p>
         </div>
-        <div className="text-right">
-          <div className="text-3xl font-bold text-primary">{totalPoints}</div>
-          <p className="text-sm text-muted-foreground">Total Points</p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncAchievements}
+            disabled={isSyncing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "Syncing..." : "Sync Progress"}
+          </Button>
+          <div className="text-right">
+            <div className="text-3xl font-bold text-primary">{totalPoints}</div>
+            <p className="text-sm text-muted-foreground">Total Points</p>
+          </div>
         </div>
       </div>
 
