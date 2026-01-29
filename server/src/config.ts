@@ -21,6 +21,7 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   sessionSecret: process.env.SESSION_SECRET || 'session-secret-change-in-production',
+  piiEncryptionKey: process.env.PII_ENCRYPTION_KEY || '',
   
   // Site
   siteName: process.env.SITE_NAME || 'GameTaverns',
@@ -31,7 +32,7 @@ export const config = {
   aiProvider: process.env.AI_PROVIDER as 'openai' | 'gemini' | undefined,
   aiApiKey: process.env.AI_API_KEY,
   
-  // Email
+  // Email (SMTP)
   smtp: {
     host: process.env.SMTP_HOST || '',
     port: parseInt(process.env.SMTP_PORT || '587', 10),
@@ -43,7 +44,6 @@ export const config = {
   
   // Security
   turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY || '',
-  piiEncryptionKey: process.env.PII_ENCRYPTION_KEY || '',
   
   // Rate limiting
   rateLimit: {
@@ -67,6 +67,11 @@ export const config = {
     'www', 'api', 'admin', 'mail', 'app', 'help', 'support', 'blog',
     ...(process.env.RESERVED_SLUGS?.split(',') || []),
   ],
+  
+  // Discord Integration
+  discordBotToken: process.env.DISCORD_BOT_TOKEN || '',
+  discordClientId: process.env.DISCORD_CLIENT_ID || '',
+  discordClientSecret: process.env.DISCORD_CLIENT_SECRET || '',
   
   // External services
   bggApiUrl: process.env.BGG_API_URL || 'https://boardgamegeek.com/xmlapi2',
