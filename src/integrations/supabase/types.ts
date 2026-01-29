@@ -989,6 +989,52 @@ export type Database = {
           },
         ]
       }
+      library_members: {
+        Row: {
+          id: string
+          joined_at: string
+          library_id: string
+          role: Database["public"]["Enums"]["library_member_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          library_id: string
+          role?: Database["public"]["Enums"]["library_member_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          library_id?: string
+          role?: Database["public"]["Enums"]["library_member_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_members_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_members_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_members_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       library_settings: {
         Row: {
           allow_lending: boolean
@@ -1966,10 +2012,40 @@ export type Database = {
           id: string | null
           is_discoverable: boolean | null
           logo_url: string | null
+          member_count: number | null
           name: string | null
           slug: string | null
         }
         Relationships: []
+      }
+      library_members_public: {
+        Row: {
+          library_id: string | null
+          member_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_members_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_members_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_members_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       library_settings_public: {
         Row: {
@@ -2260,6 +2336,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_library_member: {
+        Args: { _library_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_library_moderator: {
+        Args: { _library_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_slug_available: { Args: { check_slug: string }; Returns: boolean }
       set_timezone: { Args: never; Returns: undefined }
       slugify: { Args: { input: string }; Returns: string }
@@ -2289,6 +2373,7 @@ export type Database = {
         | "Miniatures"
         | "RPG"
         | "Other"
+      library_member_role: "member" | "moderator"
       loan_status:
         | "requested"
         | "approved"
@@ -2465,6 +2550,7 @@ export const Constants = {
         "RPG",
         "Other",
       ],
+      library_member_role: ["member", "moderator"],
       loan_status: [
         "requested",
         "approved",

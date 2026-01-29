@@ -6,6 +6,8 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/hooks/useAuth";
+import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
 // Social media icons as inline SVGs for consistency with site styling
 const TwitterIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -41,8 +43,9 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
   const { data: settings } = useSiteSettings();
   const { isDemoMode } = useDemoMode();
   const { demoMode: demoModeEnabled } = useFeatureFlags();
-  const { tenantSlug } = useTenant();
+  const { tenantSlug, library, isOwner } = useTenant();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   
   // Build tenant-aware home URL
   const homeUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
@@ -108,6 +111,20 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           
           {socialLinks.length > 0 && (
             <div className="w-px h-4 bg-border mx-1" />
+          )}
+          
+          {/* Join Community button - show for authenticated non-owners viewing a library */}
+          {library && isAuthenticated && !isOwner && !isDemoMode && (
+            <>
+              <JoinLibraryButton
+                libraryId={library.id}
+                libraryName={library.name}
+                showMemberCount={false}
+                variant="outline"
+                size="sm"
+              />
+              <div className="w-px h-4 bg-border mx-1" />
+            </>
           )}
           
           <ThemeToggle />
