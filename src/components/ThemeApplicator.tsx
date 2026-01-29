@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
+import { useTenant } from "@/contexts/TenantContext";
 
 // Track loaded Google Fonts to avoid duplicate loading
 const loadedFonts = new Set<string>();
@@ -37,10 +38,15 @@ function loadGoogleFont(fontName: string) {
 export function ThemeApplicator() {
   const { data: settings, isLoading } = useSiteSettings();
   const { isDemoMode } = useDemoMode();
+  const { isTenantMode } = useTenant();
 
   useEffect(() => {
     // Skip in demo mode - DemoThemeApplicator handles theming
     if (isDemoMode) return;
+
+    // Skip in tenant mode - TenantThemeApplicator must fully control branding
+    // for individual libraries (including public/anonymous views).
+    if (isTenantMode) return;
     
     // Check for runtime theme config (standalone deployments)
     const runtimeConfig = (window as any).__RUNTIME_CONFIG__;
@@ -176,7 +182,7 @@ export function ThemeApplicator() {
     return () => {
       observer.disconnect();
     };
-  }, [settings, isLoading, isDemoMode]);
+  }, [settings, isLoading, isDemoMode, isTenantMode]);
 
   return null;
 }

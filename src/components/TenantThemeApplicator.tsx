@@ -29,12 +29,23 @@ export function TenantThemeApplicator() {
     console.log('[TenantTheme] Applying theme:', { isDark, isTenantMode, hasSettings: !!settings });
     
     // Helper to format HSL values properly - handles both "50%" and "50" formats
-    const formatHSL = (h: string | null | undefined, s: string | null | undefined, l: string | null | undefined): string | null => {
+    const formatHSL = (
+      h: string | null | undefined,
+      s: string | null | undefined,
+      l: string | null | undefined
+    ): string | null => {
       if (!h || !s || !l) return null;
       const hVal = h.replace('%', ''); // Hue shouldn't have %
       const sVal = s.includes('%') ? s : `${s}%`;
       const lVal = l.includes('%') ? l : `${l}%`;
       return `${hVal} ${sVal} ${lVal}`;
+    };
+
+    const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+    const toNum = (v: string | null | undefined, fallback: number) => {
+      if (!v) return fallback;
+      const parsed = Number(String(v).replace('%', ''));
+      return Number.isFinite(parsed) ? parsed : fallback;
     };
     
     // Calculate foreground color based on background lightness
@@ -58,10 +69,20 @@ export function TenantThemeApplicator() {
       if (primary) {
         root.style.setProperty('--primary', primary);
         root.style.setProperty('--primary-foreground', getForeground(settings.theme_dark_primary_l));
+        // Tokens used by our "parchment" theme utilities
+        root.style.setProperty('--forest', primary);
+        root.style.setProperty('--ring', primary);
       }
       if (accent) {
         root.style.setProperty('--accent', accent);
         root.style.setProperty('--accent-foreground', getForeground(settings.theme_dark_accent_l));
+        root.style.setProperty('--sienna', accent);
+
+        // Gold is a brighter accent used in gradients/badges.
+        const h = settings.theme_dark_accent_h;
+        const s = toNum(settings.theme_dark_accent_s, 50);
+        const l = toNum(settings.theme_dark_accent_l, 45);
+        root.style.setProperty('--gold', `${String(h || '28').replace('%', '')} ${clamp(s, 0, 100)}% ${clamp(l + 10, 0, 100)}%`);
       }
       if (background) {
         root.style.setProperty('--background', background);
@@ -71,6 +92,10 @@ export function TenantThemeApplicator() {
         const mutedL = Math.min(bgL + 5, 100);
         root.style.setProperty('--muted', `${settings.theme_dark_background_h} ${settings.theme_dark_background_s} ${mutedL}%`);
         root.style.setProperty('--muted-foreground', `${settings.theme_dark_background_h} ${settings.theme_dark_background_s} 60%`);
+
+        // Parchment is used by .parchment-texture gradient
+        const parchmentL = clamp(bgL + 2, 0, 100);
+        root.style.setProperty('--parchment', `${settings.theme_dark_background_h} ${settings.theme_dark_background_s} ${parchmentL}%`);
       }
       if (card) {
         root.style.setProperty('--card', card);
@@ -95,10 +120,18 @@ export function TenantThemeApplicator() {
       if (primary) {
         root.style.setProperty('--primary', primary);
         root.style.setProperty('--primary-foreground', getForeground(settings.theme_primary_l));
+        root.style.setProperty('--forest', primary);
+        root.style.setProperty('--ring', primary);
       }
       if (accent) {
         root.style.setProperty('--accent', accent);
         root.style.setProperty('--accent-foreground', getForeground(settings.theme_accent_l));
+        root.style.setProperty('--sienna', accent);
+
+        const h = settings.theme_accent_h;
+        const s = toNum(settings.theme_accent_s, 50);
+        const l = toNum(settings.theme_accent_l, 48);
+        root.style.setProperty('--gold', `${String(h || '28').replace('%', '')} ${clamp(s, 0, 100)}% ${clamp(l + 15, 0, 100)}%`);
       }
       if (background) {
         root.style.setProperty('--background', background);
@@ -108,6 +141,10 @@ export function TenantThemeApplicator() {
         const mutedL = Math.max(bgL - 5, 0);
         root.style.setProperty('--muted', `${settings.theme_background_h} ${settings.theme_background_s} ${mutedL}%`);
         root.style.setProperty('--muted-foreground', `${settings.theme_background_h} ${settings.theme_background_s} 40%`);
+
+        // Parchment is used by .parchment-texture gradient
+        const parchmentL = clamp(bgL - 2, 0, 100);
+        root.style.setProperty('--parchment', `${settings.theme_background_h} ${settings.theme_background_s} ${parchmentL}%`);
       }
       if (card) {
         root.style.setProperty('--card', card);
@@ -175,6 +212,7 @@ export function TenantThemeApplicator() {
           '--card', '--card-foreground',
           '--popover', '--popover-foreground',
           '--sidebar-background', '--sidebar-foreground',
+          '--parchment', '--gold', '--forest', '--sienna', '--ring',
           '--font-display', '--font-body'
         ];
         cssVars.forEach((key) => {
