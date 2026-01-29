@@ -66,6 +66,9 @@ export interface LibrarySettings {
   feature_messaging: boolean;
   feature_coming_soon: boolean;
   feature_ratings: boolean;
+  feature_events: boolean;
+  feature_achievements: boolean;
+  feature_lending: boolean;
   // Content
   turnstile_site_key: string | null;
   footer_text: string | null;
