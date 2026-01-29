@@ -1,6 +1,15 @@
 import { config as dotenvConfig } from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenvConfig();
+// Get directory paths for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Try multiple .env locations (production installs to /opt/gametaverns/.env)
+dotenvConfig({ path: path.resolve(__dirname, '../../.env') }); // server/.env (dev)
+dotenvConfig({ path: path.resolve(__dirname, '../../../.env') }); // /opt/gametaverns/.env (prod)
+dotenvConfig(); // CWD fallback
 
 export const config = {
   // Server
