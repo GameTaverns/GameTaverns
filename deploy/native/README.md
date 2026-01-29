@@ -13,11 +13,11 @@ sudo ./install.sh
 ```
 
 That's it! The installer will:
-1. Install all dependencies
-2. Set up the database
-3. Configure your domain
+1. Install all dependencies (PostgreSQL 16, Node.js 22, Nginx)
+2. Set up the database with full schema
+3. Configure your domain and mail server
 4. Create your admin account
-5. Start everything
+5. Start everything with PM2
 
 **Time**: ~15 minutes
 
@@ -35,6 +35,46 @@ Make sure you have:
 sudo ./scripts/preflight-check.sh
 ```
 
+## What Gets Installed
+
+| Component | Version | Purpose |
+|-----------|---------|---------|
+| PostgreSQL | 16 | Database |
+| Node.js | 22 LTS | Runtime |
+| PM2 | Latest | Process manager |
+| Nginx | Latest | Reverse proxy |
+| Postfix | Latest | Outgoing mail (SMTP) |
+| Dovecot | Latest | Incoming mail (IMAP/POP3) |
+| Roundcube | Latest | Webmail interface |
+| Cockpit | Latest | Server management GUI |
+
+## Database Schema (v2.0.0)
+
+The migration creates all tables needed for the full-featured platform:
+
+### Core Tables
+- `users`, `user_profiles`, `user_roles`
+- `libraries`, `library_settings`, `library_suspensions`
+- `games`, `game_mechanics`, `game_admin_data`
+
+### Community Features
+- `library_members` - Community membership with roles
+- `library_followers` - Follow libraries for updates
+- `game_loans` - Lending system with full workflow
+- `borrower_ratings` - Reputation system for borrowers
+
+### Engagement Features
+- `game_sessions`, `game_session_players` - Play logging
+- `game_polls`, `poll_options`, `poll_votes` - Game night voting
+- `game_night_rsvps` - Event attendance tracking
+- `library_events` - Calendar events
+- `achievements`, `user_achievements` - Gamification system
+
+### Communication
+- `game_messages` - Encrypted contact form messages
+- `game_wishlist`, `game_ratings` - Guest interactions
+- `notification_preferences`, `notification_log` - Notification system
+
 ## After Installation
 
 ### 1. Set Up DNS
@@ -46,7 +86,8 @@ Point these records to your server's IP address:
 | A | @ | `YOUR_SERVER_IP` |
 | A | * | `YOUR_SERVER_IP` |
 | A | mail | `YOUR_SERVER_IP` |
-| MX | @ | `mail.yourdomain.com` |
+| MX | @ | `mail.yourdomain.com` (priority: 10) |
+| TXT | @ | `v=spf1 ip4:YOUR_SERVER_IP -all` |
 
 ### 2. Enable HTTPS
 
@@ -60,13 +101,20 @@ Visit `https://yourdomain.com` and log in with your admin account.
 
 ## Daily Management
 
-### Check Status
+### Health Dashboard
 
 ```bash
 ./scripts/health-check.sh          # Full health dashboard
 ./scripts/health-check.sh --quiet  # Only show failures (for cron)
 ./scripts/health-check.sh --json   # JSON output for monitoring
 ```
+
+The health check monitors:
+- PostgreSQL, Nginx, PM2, API status
+- Database connections and size
+- Disk and memory usage
+- SSL certificate expiry
+- Backup status and age
 
 ### View Logs
 
@@ -75,6 +123,7 @@ Visit `https://yourdomain.com` and log in with your admin account.
 ./scripts/view-logs.sh api -f      # Follow API logs
 ./scripts/view-logs.sh nginx -e    # Nginx errors only
 ./scripts/view-logs.sh -s "error"  # Search all logs
+pm2 logs gametaverns-api           # PM2 API logs directly
 ```
 
 ### Restart Services
@@ -93,11 +142,22 @@ sudo systemctl reload nginx        # Reload web server
 ./scripts/restore.sh <file.gz>   # Restore from backup
 ```
 
+Backup retention: 7 days (database), 30 days (full).
+
 ### Update to Latest Version
 
 ```bash
 ./scripts/update.sh
 ```
+
+The update script:
+1. Creates a backup before updating
+2. Stashes any local changes
+3. Pulls latest code from GitHub
+4. Rebuilds frontend and backend
+5. Applies database migrations (idempotent)
+6. Verifies critical tables exist
+7. Restarts services
 
 ### Mail Account Management
 
@@ -123,6 +183,14 @@ This configures:
 - **Token cleanup** daily
 - **SSL renewal** twice daily
 
+## Management Interfaces
+
+| Interface | URL | Purpose |
+|-----------|-----|---------|
+| **Cockpit** | `https://YOUR_IP:9090` | Server management GUI |
+| **Roundcube** | `http://mail.yourdomain.com` | Webmail |
+| **App** | `https://yourdomain.com` | Main application |
+
 ## Security
 
 ### Run Security Audit
@@ -140,14 +208,16 @@ Checks firewall, SSH config, SSL, file permissions, and more.
 - [ ] Fail2ban running (`systemctl status fail2ban`)
 - [ ] Strong passwords (check `/root/gametaverns-credentials.txt`)
 - [ ] Regular backups (`./scripts/setup-cron.sh`)
+- [ ] Database access restricted to localhost
 
-## Management Interfaces
+### Fail2ban Jails
 
-| Interface | URL |
-|-----------|-----|
-| **Cockpit** (Server GUI) | `https://YOUR_IP:9090` |
-| **Roundcube** (Webmail) | `http://mail.yourdomain.com` |
-| **App** | `https://yourdomain.com` |
+The installer configures these jails:
+- `sshd` - SSH brute force protection
+- `nginx-http-auth` - HTTP auth failures
+- `nginx-botsearch` - Bot scanning
+- `postfix` - SMTP abuse
+- `dovecot` - IMAP/POP3 abuse
 
 ## Troubleshooting
 
@@ -189,11 +259,20 @@ sudo nginx -t                       # Config valid?
 pm2 restart gametaverns-api         # Restart API
 ```
 
+### Missing tables after update
+
+```bash
+# Re-run migrations
+sudo -u postgres psql -d gametaverns -f /opt/gametaverns/deploy/native/migrations/01-schema.sql
+```
+
 ## File Locations
 
 | What | Where |
 |------|-------|
 | Application | `/opt/gametaverns` |
+| Frontend build | `/opt/gametaverns/app` |
+| Backend build | `/opt/gametaverns/server/dist` |
 | Uploads | `/opt/gametaverns/uploads` |
 | Logs | `/opt/gametaverns/logs` |
 | Backups | `/opt/gametaverns/backups` |
@@ -201,13 +280,56 @@ pm2 restart gametaverns-api         # Restart API
 | Credentials | `/root/gametaverns-credentials.txt` |
 | Install log | `/var/log/gametaverns-install.log` |
 
+## Environment Variables
+
+Key configuration in `/opt/gametaverns/.env`:
+
+```bash
+# Database
+DATABASE_URL=postgresql://gametaverns:PASSWORD@localhost:5432/gametaverns
+
+# Security (auto-generated)
+JWT_SECRET=...
+PII_ENCRYPTION_KEY=...
+
+# Site
+SITE_URL=https://yourdomain.com
+SITE_NAME=GameTaverns
+
+# Features (all enabled by default)
+FEATURE_LENDING=true
+FEATURE_ACHIEVEMENTS=true
+FEATURE_EVENTS=true
+FEATURE_PLAY_LOGS=true
+FEATURE_WISHLIST=true
+FEATURE_MESSAGING=true
+FEATURE_RATINGS=true
+```
+
 ## AI Features (Optional)
 
 To enable AI-powered game enrichment, add these to `/opt/gametaverns/.env`:
 
 ```bash
-PERPLEXITY_API_KEY=your_key_here  # https://perplexity.ai/settings/api
-FIRECRAWL_API_KEY=your_key_here   # https://firecrawl.dev/
+# For game URL import and description enhancement
+PERPLEXITY_API_KEY=pplx-...
+
+# For URL scraping
+FIRECRAWL_API_KEY=fc-...
+```
+
+Get keys at:
+- Perplexity: https://perplexity.ai/settings/api
+- Firecrawl: https://firecrawl.dev/
+
+Then restart: `pm2 restart gametaverns-api`
+
+## Discord Integration (Optional)
+
+```bash
+DISCORD_BOT_TOKEN=...
+DISCORD_CLIENT_ID=...
+DISCORD_CLIENT_SECRET=...
 ```
 
 Then restart: `pm2 restart gametaverns-api`
@@ -216,6 +338,8 @@ Then restart: `pm2 restart gametaverns-api`
 
 | Script | Purpose |
 |--------|---------|
+| `install.sh` | Full installation |
+| `preflight-check.sh` | Pre-install validation |
 | `health-check.sh` | System health dashboard |
 | `security-audit.sh` | Security vulnerability scan |
 | `backup.sh` | Create backups |
@@ -226,7 +350,6 @@ Then restart: `pm2 restart gametaverns-api`
 | `view-logs.sh` | Centralized log viewer |
 | `add-mail-user.sh` | Manage mail accounts |
 | `create-admin.sh` | Create admin user |
-| `preflight-check.sh` | Pre-install validation |
 | `restart-all.sh` | Restart all services |
 
 ## Support
