@@ -1,5 +1,5 @@
 import { Link, useSearchParams, useLocation } from "react-router-dom";
-import { Menu, X, FlaskConical } from "lucide-react";
+import { Menu, X, FlaskConical, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -7,6 +7,7 @@ import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useLibrary";
 import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
 // Social media icons as inline SVGs for consistency with site styling
 const TwitterIcon = ({ className }: { className?: string }) => (
@@ -46,6 +47,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
   const { tenantSlug, library, isOwner } = useTenant();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
+  const { data: profile } = useUserProfile();
   
   // Build tenant-aware home URL
   const homeUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
@@ -144,19 +146,35 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             Home
           </Link>
           
-          {/* Platform Home link - shows when viewing a library so users can return to landing */}
+          {/* Dashboard link for logged in users, or landing page for anonymous */}
           {tenantSlug && !isDemoMode && (
-            <a
-              href="/"
-              onClick={(e) => {
-                e.preventDefault();
-                // Navigate to platform root (remove tenant param)
-                window.location.href = window.location.origin;
-              }}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
-            >
-              Platform Home
-            </a>
+            isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <a
+                href="/"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.location.href = window.location.origin;
+                }}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+              >
+                Platform Home
+              </a>
+            )
+          )}
+          
+          {/* User display name when viewing libraries */}
+          {tenantSlug && isAuthenticated && profile?.display_name && (
+            <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground px-2">
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">{profile.display_name}</span>
+            </span>
           )}
           {/* Only show Demo link if demo mode is enabled and we're not already in demo */}
           {demoModeEnabled && !isDemoMode && (
