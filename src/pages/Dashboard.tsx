@@ -548,6 +548,15 @@ export default function Dashboard() {
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="mb-8 bg-wood-medium/30">
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="lending" className="gap-2">
+                <BookOpen className="h-4 w-4" />
+                Lending
+                {myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status)).length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                    {myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status)).length}
+                  </Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="achievements" className="gap-2">
                 <Trophy className="h-4 w-4" />
                 Achievements
@@ -685,6 +694,23 @@ export default function Dashboard() {
                   </Card>
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent value="lending">
+              <Card className="bg-wood-medium/30 border-wood-medium/50">
+                <CardHeader>
+                  <CardTitle className="text-cream flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-secondary" />
+                    Game Lending
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Track your borrowed games and loan requests
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <LendingDashboard />
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="achievements">
