@@ -367,9 +367,9 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* Account Settings Card */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-2">
-                <CardHeader>
+              {/* Account Settings Card - Full Width */}
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
+                <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2">
                     <Settings className="h-5 w-5 text-secondary" />
                     Account Settings
@@ -378,7 +378,7 @@ export default function Dashboard() {
                     Manage your profile and login credentials
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <AccountSettings />
                 </CardContent>
               </Card>
@@ -579,45 +579,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Upcoming Events - Full Width */}
-                <div className="lg:col-span-3">
-                  <UpcomingEventsWidget 
-                    libraryId={library.id} 
-                    isOwner={true}
-                    onCreateEvent={() => setShowCreateEvent(true)}
-                    onEditEvent={(event) => setEditEvent(event)}
-                  />
-                </div>
-
-                {/* Game Polls - Full Width */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 lg:col-span-3">
-                  <CardHeader>
-                    <CardTitle className="text-cream flex items-center gap-2">
-                      <Vote className="h-5 w-5 text-secondary" />
-                      Game Polls
-                    </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      Create and manage game night polls
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <PollsManager libraryId={library.id} />
-                  </CardContent>
-                </Card>
               </div>
-              
-              {/* Create/Edit Event Dialog */}
-              <CreateEventDialog
-                open={showCreateEvent || !!editEvent}
-                onOpenChange={(open) => {
-                  if (!open) {
-                    setShowCreateEvent(false);
-                    setEditEvent(null);
-                  }
-                }}
-                libraryId={library.id}
-                editEvent={editEvent}
-              />
             </TabsContent>
           )}
 
@@ -639,6 +601,48 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* ===== PERSISTENT EVENTS & POLLS SECTION (outside tabs) ===== */}
+        {library && (
+          <div className="mt-8 grid md:grid-cols-2 gap-6">
+            {/* Upcoming Events */}
+            <UpcomingEventsWidget 
+              libraryId={library.id} 
+              isOwner={true}
+              onCreateEvent={() => setShowCreateEvent(true)}
+              onEditEvent={(event) => setEditEvent(event)}
+            />
+
+            {/* Game Polls */}
+            <Card className="bg-wood-medium/30 border-wood-medium/50">
+              <CardHeader>
+                <CardTitle className="text-cream flex items-center gap-2">
+                  <Vote className="h-5 w-5 text-secondary" />
+                  Game Polls
+                </CardTitle>
+                <CardDescription className="text-cream/70">
+                  Create and manage game night polls
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PollsManager libraryId={library.id} />
+              </CardContent>
+            </Card>
+            
+            {/* Create/Edit Event Dialog */}
+            <CreateEventDialog
+              open={showCreateEvent || !!editEvent}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setShowCreateEvent(false);
+                  setEditEvent(null);
+                }
+              }}
+              libraryId={library.id}
+              editEvent={editEvent}
+            />
+          </div>
+        )}
 
         {/* Show Create Library prompt for non-owners */}
         {!library && !libraryLoading && (
