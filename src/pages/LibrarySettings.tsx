@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +12,7 @@ import { RatingsAdmin } from "@/components/settings/RatingsAdmin";
 import { WishlistAdmin } from "@/components/settings/WishlistAdmin";
 import { LibraryBranding } from "@/components/settings/LibraryBranding";
 import { LibraryDiscordSettings } from "@/components/settings/LibraryDiscordSettings";
+import { LibraryFeatureFlagsAdmin } from "@/components/settings/LibraryFeatureFlagsAdmin";
 
 export default function LibrarySettings() {
   const navigate = useNavigate();
@@ -129,9 +129,9 @@ export default function LibrarySettings() {
               <MessageSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Discord</span>
             </TabsTrigger>
-            <TabsTrigger value="advanced" className="gap-2">
+            <TabsTrigger value="features" className="gap-2">
               <ToggleRight className="h-4 w-4" />
-              <span className="hidden sm:inline">Advanced</span>
+              <span className="hidden sm:inline">Features</span>
             </TabsTrigger>
           </TabsList>
 
@@ -159,26 +159,8 @@ export default function LibrarySettings() {
             <LibraryDiscordSettings />
           </TabsContent>
 
-          <TabsContent value="advanced">
-            <Card>
-              <CardHeader>
-                <CardTitle>Advanced Settings</CardTitle>
-                <CardDescription>
-                  Additional configuration options
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="p-8 border-2 border-dashed border-muted-foreground/25 rounded-lg text-center">
-                  <ToggleRight className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground">
-                    Advanced settings coming soon
-                  </p>
-                  <p className="text-sm text-muted-foreground/70 mt-2">
-                    Turnstile protection, custom domains (premium), and more
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="features">
+            <LibraryFeatureFlagsAdmin />
           </TabsContent>
         </Tabs>
       </div>
