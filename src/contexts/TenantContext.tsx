@@ -69,8 +69,8 @@ export interface LibrarySettings {
   feature_events: boolean;
   feature_achievements: boolean;
   feature_lending: boolean;
-  // Content
-  turnstile_site_key: string | null;
+  // Content (turnstile_site_key excluded from public view for security)
+  turnstile_site_key?: string | null;
   footer_text: string | null;
   twitter_handle: string | null;
   instagram_url: string | null;
@@ -251,9 +251,9 @@ export function TenantProvider({ children }: TenantProviderProps) {
       
       setLibrary(libraryData as Library);
       
-      // Fetch library settings
+      // Fetch library settings using public view (accessible to all users including anonymous)
       const { data: settingsData, error: settingsError } = await supabase
-        .from("library_settings")
+        .from("library_settings_public")
         .select("*")
         .eq("library_id", libraryData.id)
         .single();
