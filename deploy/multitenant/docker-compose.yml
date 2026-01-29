@@ -53,16 +53,17 @@ services:
       SITE_NAME: ${SITE_NAME:-GameTaverns}
       SITE_URL: ${SITE_URL:-https://gametaverns.com}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://gametaverns.com,https://*.gametaverns.com}
-      # Email (SMTP)
+      # Email (SMTP) - REQUIRED for email verification
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@gametaverns.com}
       # Security
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-}
-      # AI (Optional)
+      # AI (Optional - BYOK)
       AI_PROVIDER: ${AI_PROVIDER:-}
       AI_API_KEY: ${AI_API_KEY:-}
       # Discord (Optional)
@@ -71,6 +72,8 @@ services:
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
       # Platform admins (comma-separated emails)
       PLATFORM_ADMINS: ${PLATFORM_ADMINS:-}
+      # Upload directory
+      UPLOAD_DIR: /app/uploads
     volumes:
       - uploads:/app/uploads
     healthcheck:
