@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.discord-delete-thread]
 verify_jwt = false
+
+[functions.game-recommendations]
+verify_jwt = false
