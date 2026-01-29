@@ -237,11 +237,12 @@ function splitAdminFields<T extends Record<string, any>>(game: T): {
 export function useGame(slugOrId: string | undefined) {
   const { isAdmin } = useAuth();
   const { library } = useTenant();
+  const libraryId = library?.id;
 
   return useQuery({
-    queryKey: ["games", slugOrId, isAdmin, library?.id],
+    queryKey: ["games", slugOrId, isAdmin, libraryId],
     queryFn: async (): Promise<GameWithRelations | null> => {
-      if (!slugOrId) return null;
+      if (!slugOrId || !libraryId) return null;
 
       // Check if it's a UUID or a slug
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
@@ -256,7 +257,8 @@ export function useGame(slugOrId: string | undefined) {
 
       if (canAccessAdminData) {
         // Library owners and admins can access full games table with admin_data
-        const query = supabase
+        // IMPORTANT: Always filter by library_id to handle duplicate slugs across libraries
+        let query = supabase
           .from("games")
           .select(
             `
@@ -264,14 +266,16 @@ export function useGame(slugOrId: string | undefined) {
               publisher:publishers(id, name),
               admin_data:game_admin_data(*)
             `
-          );
+          )
+          .eq("library_id", libraryId);
 
         const result = await (isUuid ? query.eq("id", slugOrId).maybeSingle() : query.eq("slug", slugOrId).maybeSingle());
         game = result.data;
         gameError = result.error;
       } else {
         // Public users use the public view
-        const query = supabase.from("games_public").select("*");
+        // IMPORTANT: Always filter by library_id to handle duplicate slugs across libraries
+        let query = supabase.from("games_public").select("*").eq("library_id", libraryId);
 
         const result = await (isUuid ? query.eq("id", slugOrId).maybeSingle() : query.eq("slug", slugOrId).maybeSingle());
         game = result.data;
@@ -286,7 +290,9 @@ export function useGame(slugOrId: string | undefined) {
           game.publisher = publisher;
         }
 
-        game.admin_data = null;
+        if (game) {
+          game.admin_data = null;
+        }
       }
 
       if (gameError) throw gameError;
@@ -316,7 +322,7 @@ export function useGame(slugOrId: string | undefined) {
         mechanics,
       };
     },
-    enabled: !!slugOrId,
+    enabled: !!slugOrId && !!libraryId,
   });
 }
 
