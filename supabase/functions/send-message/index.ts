@@ -275,6 +275,40 @@ export default async function handler(req: Request): Promise<Response> {
 
     console.log(`Message sent for game "${game.title}" (encrypted PII)`);
 
+    // Send Discord notification (fire-and-forget)
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      
+      // Get the library_id for the game
+      const { data: gameWithLibrary } = await supabaseAdmin
+        .from("games")
+        .select("library_id")
+        .eq("id", game_id)
+        .single();
+
+      if (gameWithLibrary?.library_id) {
+        fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            library_id: gameWithLibrary.library_id,
+            event_type: "message_received",
+            data: {
+              game_title: game.title,
+              sender_name: sender_name.trim(),
+            },
+          }),
+        }).catch(err => console.error("Discord notify failed:", err));
+      }
+    } catch (notifyError) {
+      console.error("Discord notification error:", notifyError);
+      // Don't fail the request if notification fails
+    }
+
     return new Response(
       JSON.stringify({ success: true, message: "Message sent successfully" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
