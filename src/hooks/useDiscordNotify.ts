@@ -228,18 +228,8 @@ export function useDiscordNotify() {
       event_date: string;
       event_location?: string | null;
     }) => {
-      // Send regular notification
-      sendDiscordNotification({
-        library_id: libraryId,
-        event_type: "event_created",
-        data: {
-          title: event.title,
-          event_date: event.event_date,
-          event_location: event.event_location,
-        },
-      });
-      
       // Post to forum channel with event_id so thread_id is saved
+      // (No separate notification needed - the forum post IS the announcement)
       postToDiscordForum(libraryId, {
         title: event.title,
         description: event.description,
