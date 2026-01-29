@@ -25,14 +25,6 @@ export function LibrarySettingsGeneral() {
   const [facebookUrl, setFacebookUrl] = useState(settings?.facebook_url || '');
   const [discordUrl, setDiscordUrl] = useState(settings?.discord_url || '');
   
-  // Feature flags
-  const [featurePlayLogs, setFeaturePlayLogs] = useState(settings?.feature_play_logs ?? true);
-  const [featureWishlist, setFeatureWishlist] = useState(settings?.feature_wishlist ?? true);
-  const [featureForSale, setFeatureForSale] = useState(settings?.feature_for_sale ?? true);
-  const [featureMessaging, setFeatureMessaging] = useState(settings?.feature_messaging ?? true);
-  const [featureComingSoon, setFeatureComingSoon] = useState(settings?.feature_coming_soon ?? true);
-  const [featureRatings, setFeatureRatings] = useState(settings?.feature_ratings ?? true);
-  const [featureEvents, setFeatureEvents] = useState((settings as unknown as { feature_events?: boolean })?.feature_events ?? true);
   
   const [isSaving, setIsSaving] = useState(false);
   
@@ -66,14 +58,7 @@ export function LibrarySettingsGeneral() {
           instagram_url: instagramUrl,
           facebook_url: facebookUrl,
           discord_url: discordUrl,
-          feature_play_logs: featurePlayLogs,
-          feature_wishlist: featureWishlist,
-          feature_for_sale: featureForSale,
-          feature_messaging: featureMessaging,
-          feature_coming_soon: featureComingSoon,
-          feature_ratings: featureRatings,
-          feature_events: featureEvents,
-        } as Parameters<typeof updateSettings.mutateAsync>[0]['updates'],
+        },
       });
       
       await refreshLibrary();
@@ -149,64 +134,6 @@ export function LibrarySettingsGeneral() {
           </CardContent>
         </Card>
         
-        {/* Features */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Features</CardTitle>
-            <CardDescription>Enable or disable library features</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Play Logging</Label>
-                <p className="text-sm text-muted-foreground">Track game sessions and plays</p>
-              </div>
-              <Switch checked={featurePlayLogs} onCheckedChange={setFeaturePlayLogs} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Wishlist</Label>
-                <p className="text-sm text-muted-foreground">Let visitors mark games they want to play</p>
-              </div>
-              <Switch checked={featureWishlist} onCheckedChange={setFeatureWishlist} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>For Sale Section</Label>
-                <p className="text-sm text-muted-foreground">List games you're selling</p>
-              </div>
-              <Switch checked={featureForSale} onCheckedChange={setFeatureForSale} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Messaging</Label>
-                <p className="text-sm text-muted-foreground">Allow visitors to send you messages</p>
-              </div>
-              <Switch checked={featureMessaging} onCheckedChange={setFeatureMessaging} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Coming Soon</Label>
-                <p className="text-sm text-muted-foreground">Show games you're expecting</p>
-              </div>
-              <Switch checked={featureComingSoon} onCheckedChange={setFeatureComingSoon} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Ratings</Label>
-                <p className="text-sm text-muted-foreground">Allow visitors to rate games</p>
-              </div>
-              <Switch checked={featureRatings} onCheckedChange={setFeatureRatings} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Events Calendar</Label>
-                <p className="text-sm text-muted-foreground">Show upcoming events to visitors</p>
-              </div>
-              <Switch checked={featureEvents} onCheckedChange={setFeatureEvents} />
-            </div>
-          </CardContent>
-        </Card>
         
         {/* Contact & Social */}
         <Card>
