@@ -723,10 +723,18 @@ Ticket to Ride,9209`}
 
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Note</AlertTitle>
-                  <AlertDescription>
-                    Large collections may take several minutes to import. Games already in your
-                    library will be skipped.
+                  <AlertTitle>Recommended: Use CSV Export</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>
+                      Due to recent BGG API changes, direct username import may not work. 
+                      For reliable imports, we recommend using BGG's CSV export:
+                    </p>
+                    <ol className="list-decimal list-inside text-xs space-y-1">
+                      <li>Go to your <a href="https://boardgamegeek.com/collection/user/" target="_blank" rel="noopener noreferrer" className="text-primary underline">BGG Collection</a></li>
+                      <li>Click the three dots menu (⋯) → Export</li>
+                      <li>Download the CSV file</li>
+                      <li>Use the "CSV/Excel" tab above to import</li>
+                    </ol>
                   </AlertDescription>
                 </Alert>
               </TabsContent>

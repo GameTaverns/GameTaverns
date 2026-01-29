@@ -292,21 +292,52 @@ Keep description CONCISE (100-150 words). Include brief overview and Quick Gamep
 async function fetchBGGCollection(username: string): Promise<{ id: string; name: string }[]> {
   const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&excludesubtype=boardgameexpansion`;
   
+  // BGG now requires an API token for access
+  const bggToken = Deno.env.get("BGG_API_TOKEN");
+  
+  const headers: Record<string, string> = {
+    "User-Agent": "GameTaverns/1.0 (Collection Import)",
+    "Accept": "application/xml",
+  };
+  
+  // Add authorization if token is configured
+  if (bggToken) {
+    headers["Authorization"] = `Bearer ${bggToken}`;
+  }
+  
   let attempts = 0;
   while (attempts < 5) {
-    const res = await fetch(collectionUrl);
+    const res = await fetch(collectionUrl, { headers });
     
     if (res.status === 202) {
+      // BGG is processing the request, wait and retry
       await new Promise(r => setTimeout(r, 3000));
       attempts++;
       continue;
     }
     
+    if (res.status === 401) {
+      // BGG now requires API registration and tokens
+      throw new Error(
+        "BGG API requires authentication. As an alternative, please export your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option instead."
+      );
+    }
+    
+    if (res.status === 404 || res.status === 400) {
+      throw new Error(`BGG username "${username}" not found or collection is private. Please check the username is correct and your collection is public.`);
+    }
+    
     if (!res.ok) {
-      throw new Error(`Failed to fetch collection: ${res.status}`);
+      throw new Error(`Failed to fetch BGG collection (status ${res.status}). Please try again or use CSV import.`);
     }
     
     const xml = await res.text();
+    
+    // Check for error messages in the response
+    if (xml.includes("<error>") || xml.includes("Invalid username")) {
+      throw new Error(`BGG username "${username}" not found. Please check the username is correct.`);
+    }
+    
     const games: { id: string; name: string }[] = [];
     
     const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>[\s\S]*?<name[^>]*>([^<]+)<\/name>[\s\S]*?<\/item>/g;
@@ -315,10 +346,15 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
       games.push({ id: match[1], name: match[2] });
     }
     
+    if (games.length === 0 && xml.includes("<items")) {
+      // Empty collection - valid but no owned games
+      console.log(`BGG collection for ${username} is empty or has no owned games`);
+    }
+    
     return games;
   }
   
-  throw new Error("BGG collection request timed out");
+  throw new Error("BGG collection request timed out. The collection may be too large - please try using CSV export instead.");
 }
 
 // Helper functions
@@ -939,9 +975,17 @@ export default async function handler(req: Request): Promise<Response> {
     });
   } catch (e) {
     console.error("Bulk import error:", e);
+    const errorMessage = e instanceof Error ? e.message : "Bulk import failed";
+    
+    // Return 400 for expected/user-fixable errors, 500 for unexpected server errors
+    const isUserError = errorMessage.includes("BGG API requires authentication") ||
+                       errorMessage.includes("not found") ||
+                       errorMessage.includes("private") ||
+                       errorMessage.includes("CSV export");
+    
     return new Response(
-      JSON.stringify({ success: false, error: e instanceof Error ? e.message : "Bulk import failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: isUserError ? 400 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 }
