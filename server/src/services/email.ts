@@ -6,25 +6,45 @@ let transporter: nodemailer.Transporter | null = null;
 
 function getTransporter(): nodemailer.Transporter {
   if (!transporter) {
-    if (!config.smtp.host || !config.smtp.user) {
-      throw new Error('SMTP configuration is incomplete');
-    }
+    // Check if we're using local Postfix (no auth) or external SMTP (with auth)
+    const isLocalPostfix = config.smtp.host === 'localhost' && !config.smtp.user;
     
-    transporter = nodemailer.createTransport({
-      host: config.smtp.host,
-      port: config.smtp.port,
-      secure: config.smtp.secure,
-      auth: {
-        user: config.smtp.user,
-        pass: config.smtp.pass,
-      },
-    });
+    if (isLocalPostfix) {
+      // Local Postfix - no authentication needed
+      transporter = nodemailer.createTransport({
+        host: 'localhost',
+        port: config.smtp.port || 25,
+        secure: false,
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+    } else {
+      // External SMTP with authentication
+      if (!config.smtp.host) {
+        throw new Error('SMTP configuration is incomplete');
+      }
+      
+      transporter = nodemailer.createTransport({
+        host: config.smtp.host,
+        port: config.smtp.port,
+        secure: config.smtp.secure,
+        auth: config.smtp.user ? {
+          user: config.smtp.user,
+          pass: config.smtp.pass,
+        } : undefined,
+      });
+    }
   }
   return transporter;
 }
 
+/**
+ * Check if email is configured (either local Postfix or external SMTP)
+ */
 export function isEmailConfigured(): boolean {
-  return !!(config.smtp.host && config.smtp.user && config.smtp.pass);
+  // Email is configured if we have a host (local Postfix) OR host + auth (external SMTP)
+  return !!(config.smtp.host || config.smtp.from);
 }
 
 interface EmailOptions {

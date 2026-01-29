@@ -1539,6 +1539,100 @@ EOF
     log_success "Management scripts created"
 }
 
+verify_installation() {
+    log_step "Verifying Installation"
+    
+    local errors=0
+    
+    # Check PostgreSQL
+    log_info "Checking PostgreSQL..."
+    if systemctl is-active --quiet postgresql; then
+        log_success "PostgreSQL is running"
+    else
+        log_error "PostgreSQL is NOT running"
+        ((errors++))
+    fi
+    
+    # Check database connection
+    log_info "Checking database connection..."
+    source "$CREDENTIALS_FILE" 2>/dev/null || true
+    if PGPASSWORD="${DB_PASSWORD}" psql -h localhost -U ${DB_USER} -d ${DB_NAME} -c "SELECT COUNT(*) FROM users;" > /dev/null 2>&1; then
+        log_success "Database connection OK"
+    else
+        log_error "Database connection FAILED"
+        ((errors++))
+    fi
+    
+    # Check API
+    log_info "Checking API server..."
+    sleep 2
+    if curl -s http://localhost:3001/health > /dev/null 2>&1; then
+        log_success "API server is responding"
+    else
+        log_error "API server is NOT responding"
+        log_warn "Check PM2 logs: pm2 logs gametaverns-api"
+        ((errors++))
+    fi
+    
+    # Check Nginx
+    log_info "Checking Nginx..."
+    if systemctl is-active --quiet nginx; then
+        log_success "Nginx is running"
+    else
+        log_error "Nginx is NOT running"
+        ((errors++))
+    fi
+    
+    # Check Nginx config
+    if nginx -t 2>/dev/null; then
+        log_success "Nginx configuration is valid"
+    else
+        log_error "Nginx configuration has errors"
+        ((errors++))
+    fi
+    
+    # Check mail services
+    log_info "Checking mail services..."
+    if systemctl is-active --quiet postfix; then
+        log_success "Postfix is running"
+    else
+        log_warn "Postfix is NOT running (email may not work)"
+    fi
+    
+    if systemctl is-active --quiet dovecot; then
+        log_success "Dovecot is running"
+    else
+        log_warn "Dovecot is NOT running (webmail may not work)"
+    fi
+    
+    # Check frontend build
+    log_info "Checking frontend build..."
+    if [[ -f "${INSTALL_DIR}/app/index.html" ]]; then
+        log_success "Frontend build exists"
+    else
+        log_error "Frontend build is missing"
+        ((errors++))
+    fi
+    
+    # Check backend build
+    log_info "Checking backend build..."
+    if [[ -f "${INSTALL_DIR}/server/dist/index.js" ]]; then
+        log_success "Backend build exists"
+    else
+        log_error "Backend build is missing"
+        ((errors++))
+    fi
+    
+    echo ""
+    if [[ $errors -gt 0 ]]; then
+        log_error "Installation completed with $errors error(s)"
+        log_warn "Please check the log file: ${LOG_FILE}"
+        return 1
+    else
+        log_success "All verification checks passed!"
+    fi
+}
+
 cleanup() {
     log_step "Cleanup"
 
@@ -1684,6 +1778,9 @@ main() {
     # Admin setup
     create_admin_user
     create_management_scripts
+
+    # Verify everything works
+    verify_installation
 
     # Cleanup
     cleanup

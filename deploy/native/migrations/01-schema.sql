@@ -766,6 +766,13 @@ SELECT
     created_at, updated_at
 FROM user_profiles;
 
+-- Game ratings view for library owners (hides IP/fingerprint)
+CREATE OR REPLACE VIEW game_ratings_library_view WITH (security_invoker = true) AS
+SELECT 
+    id, game_id, guest_identifier, rating,
+    created_at, updated_at
+FROM game_ratings;
+
 -- Game ratings summary
 CREATE OR REPLACE VIEW game_ratings_summary AS
 SELECT 
@@ -774,6 +781,12 @@ SELECT
     ROUND(AVG(rating)::numeric, 2) AS average_rating
 FROM game_ratings
 GROUP BY game_id;
+
+-- Site settings public view (for announcement banner)
+CREATE OR REPLACE VIEW site_settings_public AS
+SELECT id, key, value, created_at, updated_at
+FROM site_settings
+WHERE key IN ('announcement', 'announcement_active', 'maintenance_mode', 'signup_enabled');
 
 -- Game wishlist summary
 CREATE OR REPLACE VIEW game_wishlist_summary AS
