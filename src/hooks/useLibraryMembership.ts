@@ -115,16 +115,10 @@ export function useLibraryMembers(libraryId: string | undefined) {
     queryFn: async () => {
       if (!libraryId) return [];
       
-      // Fetch explicit members
+      // Fetch explicit members (without join - no FK relationship)
       const { data: members, error: membersError } = await supabase
         .from("library_members")
-        .select(`
-          *,
-          user_profiles:user_id (
-            display_name,
-            username
-          )
-        `)
+        .select("*")
         .eq("library_id", libraryId)
         .order("joined_at", { ascending: false });
       
@@ -139,31 +133,57 @@ export function useLibraryMembers(libraryId: string | undefined) {
       
       if (libraryError) throw libraryError;
       
+      // Collect all user IDs we need profiles for
+      const userIds = (members || []).map(m => m.user_id);
+      if (library.owner_id && !userIds.includes(library.owner_id)) {
+        userIds.push(library.owner_id);
+      }
+      
+      // Fetch all profiles in one query
+      const { data: profiles } = await supabase
+        .from("user_profiles")
+        .select("user_id, display_name, username")
+        .in("user_id", userIds);
+      
+      // Create a map for quick lookup
+      const profileMap = new Map(
+        (profiles || []).map(p => [p.user_id, { display_name: p.display_name, username: p.username }])
+      );
+      
+      // Build result with profiles attached
+      const result: Array<{
+        id: string;
+        library_id: string;
+        user_id: string;
+        role: string;
+        joined_at: string;
+        user_profiles: { display_name?: string; username?: string } | null;
+      }> = [];
+      
       // Check if owner is already in members list
       const ownerInMembers = members?.some(m => m.user_id === library.owner_id);
       
-      if (ownerInMembers || !library.owner_id) {
-        return members || [];
+      // Add owner first if not already a member
+      if (!ownerInMembers && library.owner_id) {
+        result.push({
+          id: `owner-${library.owner_id}`,
+          library_id: libraryId,
+          user_id: library.owner_id,
+          role: "owner",
+          joined_at: library.created_at,
+          user_profiles: profileMap.get(library.owner_id) || null,
+        });
       }
       
-      // Fetch owner's profile
-      const { data: ownerProfile } = await supabase
-        .from("user_profiles")
-        .select("display_name, username")
-        .eq("user_id", library.owner_id)
-        .single();
+      // Add all members with their profiles
+      for (const member of members || []) {
+        result.push({
+          ...member,
+          user_profiles: profileMap.get(member.user_id) || null,
+        });
+      }
       
-      // Add owner as a synthetic member entry at the beginning
-      const ownerMember = {
-        id: `owner-${library.owner_id}`,
-        library_id: libraryId,
-        user_id: library.owner_id,
-        role: "owner" as const,
-        joined_at: library.created_at,
-        user_profiles: ownerProfile,
-      };
-      
-      return [ownerMember, ...(members || [])];
+      return result;
     },
     enabled: !!libraryId,
     refetchOnMount: "always",
