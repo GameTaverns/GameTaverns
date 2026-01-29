@@ -203,17 +203,15 @@ export default function Dashboard() {
               <User className="h-4 w-4" />
               Personal
             </TabsTrigger>
-            {library && (
-              <TabsTrigger value="library" className="gap-2">
-                <Library className="h-4 w-4" />
-                Library
-                {(pendingLoanRequests > 0 || unreadCount > 0) && (
-                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                    {pendingLoanRequests + unreadCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="library" className="gap-2">
+              <Library className="h-4 w-4" />
+              Library
+              {library && (pendingLoanRequests > 0 || unreadCount > 0) && (
+                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {pendingLoanRequests + unreadCount}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="danger" className="gap-2">
               <AlertTriangle className="h-4 w-4" />
               Danger Zone
@@ -385,9 +383,9 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          {/* ===== LIBRARY TAB (only if user owns a library) ===== */}
-          {library && (
-            <TabsContent value="library">
+          {/* ===== LIBRARY TAB ===== */}
+          <TabsContent value="library">
+            {library ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Library Card */}
                 <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
@@ -580,8 +578,29 @@ export default function Dashboard() {
                 </Card>
 
               </div>
-            </TabsContent>
-          )}
+            ) : (
+              /* Non-owner: Show Create Library prompt */
+              <Card className="bg-wood-medium/30 border-wood-medium/50 border-dashed text-cream">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Library className="h-5 w-5 text-secondary" />
+                    Create Your Own Library
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Start your own board game library to share with your community
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link to="/create-library">
+                    <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Library
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
           {/* ===== DANGER ZONE TAB ===== */}
           <TabsContent value="danger">
@@ -642,29 +661,6 @@ export default function Dashboard() {
               editEvent={editEvent}
             />
           </div>
-        )}
-
-        {/* Show Create Library prompt for non-owners */}
-        {!library && !libraryLoading && (
-          <Card className="mt-8 bg-wood-medium/30 border-wood-medium/50 border-dashed text-cream">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Library className="h-5 w-5 text-secondary" />
-                Create Your Own Library
-              </CardTitle>
-              <CardDescription className="text-cream/70">
-                Start your own board game library to share with your community
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link to="/create-library">
-                <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Library
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
         )}
       </main>
     </div>
