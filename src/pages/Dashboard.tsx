@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   ExternalLink, 
@@ -13,7 +13,9 @@ import {
   Gamepad2,
   Palette,
   Mail,
-  ArrowRight
+  ArrowRight,
+  BarChart3,
+  Vote
 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyticsDashboard";
+import { PollsManager } from "@/components/polls/PollsManager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated } = useAuth();
@@ -173,204 +178,272 @@ export default function Dashboard() {
           Welcome back, {profile?.display_name || user?.email?.split("@")[0]}
         </h1>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Admin Card - Only show for site owners */}
-          {isSiteOwner && (
+        {library ? (
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="mb-8 bg-wood-medium/30">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="analytics" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="polls" className="gap-2">
+                <Vote className="h-4 w-4" />
+                Game Polls
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Admin Card - Only show for site owners */}
+                {isSiteOwner && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-secondary" />
+                        Platform Admin
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        Manage the GameTaverns platform
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Link to="/admin">
+                        <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                          <Shield className="h-4 w-4 mr-2" />
+                          Admin Dashboard
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {/* Library Card */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Library className="h-5 w-5 text-secondary" />
+                      My Library
+                    </CardTitle>
+                    <CardDescription className="text-cream/70">
+                      {library.name}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="text-sm text-cream/60">
+                        <span className="font-medium text-cream">URL:</span>{" "}
+                        {library.slug}.tavern.tzolak.com
+                      </div>
+                      <a href={libraryUrl!} className="block">
+                        <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Library
+                        </Button>
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Manage Games Card */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Gamepad2 className="h-5 w-5 text-secondary" />
+                      Manage Games
+                    </CardTitle>
+                    <CardDescription className="text-cream/70">
+                      Import, add, and organize your collection
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <a href={gamesUrl!}>
+                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import & Manage
+                      </Button>
+                    </a>
+                  </CardContent>
+                </Card>
+                
+                {/* Library Settings Card */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="h-5 w-5 text-secondary" />
+                      Library Settings
+                    </CardTitle>
+                    <CardDescription className="text-cream/70">
+                      Theme, branding, and site configuration
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <a href={settingsUrl!}>
+                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Customize Library
+                      </Button>
+                    </a>
+                  </CardContent>
+                </Card>
+                
+                {/* Messages Card */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Mail className="h-5 w-5 text-secondary" />
+                      Messages
+                      {unreadCount > 0 && (
+                        <Badge variant="destructive" className="ml-auto">
+                          {unreadCount} new
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription className="text-cream/70">
+                      View inquiries about games for sale
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <a href={`/?tenant=${library.slug}&path=/messages`}>
+                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                        <Mail className="h-4 w-4 mr-2" />
+                        View Messages
+                        {unreadCount > 0 && (
+                          <Badge variant="outline" className="ml-2 bg-cream/20">
+                            {unreadCount}
+                          </Badge>
+                        )}
+                      </Button>
+                    </a>
+                  </CardContent>
+                </Card>
+                
+                {/* Ratings & Wishlist Card */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Star className="h-5 w-5 text-secondary" />
+                      Ratings & Wishlist
+                    </CardTitle>
+                    <CardDescription className="text-cream/70">
+                      View user ratings and wishlist requests
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <a href={`/?tenant=${library.slug}&path=/settings&tab=ratings`}>
+                      <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
+                        <Star className="h-4 w-4 mr-2" />
+                        View Ratings
+                      </Button>
+                    </a>
+                    <a href={`/?tenant=${library.slug}&path=/settings&tab=wishlist`}>
+                      <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
+                        <Heart className="h-4 w-4 mr-2" />
+                        View Wishlist
+                      </Button>
+                    </a>
+                  </CardContent>
+                </Card>
+                
+                {/* Stats Card */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <CardTitle>Library Stats</CardTitle>
+                    <CardDescription className="text-cream/70">
+                      Your collection at a glance
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
+                        <div className="text-2xl font-bold text-secondary">
+                          {gameCount ?? "--"}
+                        </div>
+                        <div className="text-xs text-cream/60">Games</div>
+                      </div>
+                      <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
+                        <div className="text-2xl font-bold text-secondary">
+                          {playCount ?? "--"}
+                        </div>
+                        <div className="text-xs text-cream/60">Plays</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="analytics">
+              <Card className="bg-wood-medium/30 border-wood-medium/50">
+                <CardHeader>
+                  <CardTitle className="text-cream flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-secondary" />
+                    Library Analytics
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Insights into your collection's activity
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <LibraryAnalyticsDashboard libraryId={library.id} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="polls">
+              <Card className="bg-wood-medium/30 border-wood-medium/50">
+                <CardContent className="pt-6">
+                  <PollsManager libraryId={library.id} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Admin Card - Only show for site owners */}
+            {isSiteOwner && (
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-secondary" />
+                    Platform Admin
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Manage the GameTaverns platform
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link to="/admin">
+                    <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin Dashboard
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Create Library Card */}
             <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-secondary" />
-                  Platform Admin
+                  <Library className="h-5 w-5 text-secondary" />
+                  My Library
                 </CardTitle>
                 <CardDescription className="text-cream/70">
-                  Manage the GameTaverns platform
+                  You haven't created a library yet
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Link to="/admin">
-                  <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Admin Dashboard
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Library Card */}
-          <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Library className="h-5 w-5 text-secondary" />
-                My Library
-              </CardTitle>
-              <CardDescription className="text-cream/70">
-                {library ? library.name : "You haven't created a library yet"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {libraryLoading ? (
-                <div className="animate-pulse h-10 bg-wood-medium/30 rounded"></div>
-              ) : library ? (
-                <div className="space-y-3">
-                  <div className="text-sm text-cream/60">
-                    <span className="font-medium text-cream">URL:</span>{" "}
-                    {library.slug}.tavern.tzolak.com
-                  </div>
-                  <a href={libraryUrl!} className="block">
-                    <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      View Library
-                    </Button>
-                  </a>
-                </div>
-              ) : (
                 <Link to="/create-library">
                   <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Library
                   </Button>
                 </Link>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Manage Games Card */}
-          {library && (
-            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Gamepad2 className="h-5 w-5 text-secondary" />
-                  Manage Games
-                </CardTitle>
-                <CardDescription className="text-cream/70">
-                  Import, add, and organize your collection
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <a href={gamesUrl!}>
-                  <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import & Manage
-                  </Button>
-                </a>
               </CardContent>
             </Card>
-          )}
-          
-          {/* Library Settings Card */}
-          {library && (
-            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Palette className="h-5 w-5 text-secondary" />
-                  Library Settings
-                </CardTitle>
-                <CardDescription className="text-cream/70">
-                  Theme, branding, and site configuration
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <a href={settingsUrl!}>
-                  <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Customize Library
-                  </Button>
-                </a>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Messages Card */}
-          {library && (
-            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-secondary" />
-                  Messages
-                  {unreadCount > 0 && (
-                    <Badge variant="destructive" className="ml-auto">
-                      {unreadCount} new
-                    </Badge>
-                  )}
-                </CardTitle>
-                <CardDescription className="text-cream/70">
-                  View inquiries about games for sale
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <a href={`/?tenant=${library.slug}&path=/messages`}>
-                  <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                    <Mail className="h-4 w-4 mr-2" />
-                    View Messages
-                    {unreadCount > 0 && (
-                      <Badge variant="outline" className="ml-2 bg-cream/20">
-                        {unreadCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </a>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Ratings & Wishlist Card */}
-          {library && (
-            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-secondary" />
-                  Ratings & Wishlist
-                </CardTitle>
-                <CardDescription className="text-cream/70">
-                  View user ratings and wishlist requests
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <a href={`/?tenant=${library.slug}&path=/settings&tab=ratings`}>
-                  <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
-                    <Star className="h-4 w-4 mr-2" />
-                    View Ratings
-                  </Button>
-                </a>
-                <a href={`/?tenant=${library.slug}&path=/settings&tab=wishlist`}>
-                  <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
-                    <Heart className="h-4 w-4 mr-2" />
-                    View Wishlist
-                  </Button>
-                </a>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Stats Card */}
-          {library && (
-            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-              <CardHeader>
-                <CardTitle>Library Stats</CardTitle>
-                <CardDescription className="text-cream/70">
-                  Your collection at a glance
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
-                    <div className="text-2xl font-bold text-secondary">
-                      {gameCount ?? "--"}
-                    </div>
-                    <div className="text-xs text-cream/60">Games</div>
-                  </div>
-                  <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
-                    <div className="text-2xl font-bold text-secondary">
-                      {playCount ?? "--"}
-                    </div>
-                    <div className="text-xs text-cream/60">Plays</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+          </div>
+        )}
         
         {/* Danger Zone Section */}
         <div className="mt-12">

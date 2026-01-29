@@ -174,6 +174,113 @@ export type Database = {
           },
         ]
       }
+      game_night_rsvps: {
+        Row: {
+          created_at: string
+          guest_identifier: string
+          guest_name: string | null
+          id: string
+          poll_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          guest_identifier: string
+          guest_name?: string | null
+          id?: string
+          poll_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          guest_identifier?: string
+          guest_name?: string | null
+          id?: string
+          poll_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_night_rsvps_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "game_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_polls: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string | null
+          event_location: string | null
+          id: string
+          library_id: string
+          max_votes_per_user: number | null
+          poll_type: string
+          share_token: string | null
+          show_results_before_close: boolean | null
+          status: string
+          title: string
+          updated_at: string
+          voting_ends_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string | null
+          event_location?: string | null
+          id?: string
+          library_id: string
+          max_votes_per_user?: number | null
+          poll_type?: string
+          share_token?: string | null
+          show_results_before_close?: boolean | null
+          status?: string
+          title: string
+          updated_at?: string
+          voting_ends_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string | null
+          event_location?: string | null
+          id?: string
+          library_id?: string
+          max_votes_per_user?: number | null
+          poll_type?: string
+          share_token?: string | null
+          show_results_before_close?: boolean | null
+          status?: string
+          title?: string
+          updated_at?: string
+          voting_ends_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_polls_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_polls_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_ratings: {
         Row: {
           created_at: string
@@ -884,6 +991,101 @@ export type Database = {
         }
         Relationships: []
       }
+      poll_options: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          game_id: string
+          id: string
+          poll_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          game_id: string
+          id?: string
+          poll_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          game_id?: string
+          id?: string
+          poll_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_options_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_options_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "game_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_id: string
+          poll_id: string
+          voter_identifier: string
+          voter_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_id: string
+          poll_id: string
+          voter_identifier: string
+          voter_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_id?: string
+          poll_id?: string
+          voter_identifier?: string
+          voter_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_results"
+            referencedColumns: ["option_id"]
+          },
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "game_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       publishers: {
         Row: {
           created_at: string | null
@@ -1249,6 +1451,39 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      poll_results: {
+        Row: {
+          game_id: string | null
+          game_title: string | null
+          image_url: string | null
+          option_id: string | null
+          poll_id: string | null
+          vote_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_options_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_options_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "game_polls"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings_public: {
         Row: {
