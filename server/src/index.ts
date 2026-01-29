@@ -2,12 +2,13 @@ import { app } from './app.js';
 import { config, validateConfig } from './config.js';
 import { testConnection } from './services/db.js';
 import { initializeCoreDb, closeAllPools } from './services/mariadb.js';
+import { initializePostgres, closePool as closePostgresPool } from './services/postgres.js';
 
 async function main() {
   console.log(`
-  ╔═══════════════════════════════════════════════════════╗
-  ║        GameTaverns API Server v2.0.0                  ║
-  ╚═══════════════════════════════════════════════════════╝
+  ╔═══════════════════════════════════════════════════════════╗
+  ║        GameTaverns API Server v2.0.0                      ║
+  ╚═══════════════════════════════════════════════════════════╝
   `);
   
   // Validate config
@@ -28,9 +29,18 @@ async function main() {
       console.error('Failed to connect to MariaDB. Exiting.');
       process.exit(1);
     }
+  } else if (config.isStandalone) {
+    // Standalone PostgreSQL mode (multi-tenant)
+    console.log('Mode: Multi-tenant (PostgreSQL Standalone)');
+    try {
+      await initializePostgres();
+    } catch (error) {
+      console.error('Failed to connect to PostgreSQL. Exiting.');
+      process.exit(1);
+    }
   } else {
-    // Legacy PostgreSQL mode
-    console.log('Mode: Single-tenant (PostgreSQL)');
+    // Legacy Supabase mode
+    console.log('Mode: Single-tenant (Supabase PostgreSQL)');
     const dbConnected = await testConnection();
     if (!dbConnected) {
       console.error('Failed to connect to PostgreSQL. Exiting.');
@@ -44,7 +54,7 @@ async function main() {
   ✓ Server running on port ${config.port}
   ✓ Environment: ${config.nodeEnv}
   ✓ Site: ${config.siteName}
-  ✓ Database: ${config.isMariaDb ? 'MariaDB (multi-tenant)' : 'PostgreSQL'}
+  ✓ Database: ${config.isMariaDb ? 'MariaDB (multi-tenant)' : config.isStandalone ? 'PostgreSQL (standalone)' : 'Supabase'}
   
   Features:
     • Play Logs: ${config.features.playLogs ? '✓' : '✗'}
@@ -65,6 +75,8 @@ async function main() {
       
       if (config.isMariaDb) {
         await closeAllPools();
+      } else if (config.isStandalone) {
+        await closePostgresPool();
       }
       
       console.log('All connections closed. Exiting.');
