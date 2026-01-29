@@ -19,7 +19,7 @@ interface UserWithDetails {
   username: string | null;
   created_at: string;
   last_sign_in_at: string | null;
-  role: "admin" | "moderator" | "user" | null;
+  role: "admin" | "moderator" | "owner" | "user" | null;
   is_banned: boolean;
   banned_until: string | null;
 }
@@ -46,7 +46,7 @@ export function UserManagement() {
 
   // Update user role mutation
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, newRole }: { userId: string; newRole: "admin" | "moderator" | "user" | "none" }) => {
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: "admin" | "moderator" | "owner" | "user" | "none" }) => {
       setUpdatingUserId(userId);
       
       if (newRole === "none") {
@@ -127,6 +127,8 @@ export function UserManagement() {
         return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><Shield className="w-3 h-3 mr-1" />Staff</Badge>;
       case "moderator":
         return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30"><UserCog className="w-3 h-3 mr-1" />Moderator</Badge>;
+      case "owner":
+        return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30"><User className="w-3 h-3 mr-1" />Owner</Badge>;
       default:
         return <Badge variant="outline" className="text-cream/50">Regular User</Badge>;
     }
@@ -251,7 +253,7 @@ export function UserManagement() {
                       onValueChange={(value) => 
                         updateRoleMutation.mutate({ 
                           userId: user.id, 
-                          newRole: value as "admin" | "moderator" | "user" | "none" 
+                        newRole: value as "admin" | "moderator" | "owner" | "user" | "none" 
                         })
                       }
                       disabled={updatingUserId === user.id}
@@ -264,7 +266,8 @@ export function UserManagement() {
                         )}
                       </SelectTrigger>
                       <SelectContent className="bg-sidebar border-wood-medium/50">
-                        <SelectItem value="none">Regular User</SelectItem>
+                        <SelectItem value="none">Regular User (Tier 4)</SelectItem>
+                        <SelectItem value="owner">Owner (Tier 3)</SelectItem>
                         <SelectItem value="moderator">Moderator (Tier 2)</SelectItem>
                         <SelectItem value="admin">Staff (Tier 1)</SelectItem>
                       </SelectContent>
