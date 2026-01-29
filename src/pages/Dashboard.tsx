@@ -506,51 +506,101 @@ export default function Dashboard() {
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Admin Card - Only show for site owners */}
-            {isSiteOwner && (
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="mb-8 bg-wood-medium/30">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="achievements" className="gap-2">
+                <Trophy className="h-4 w-4" />
+                Achievements
+              </TabsTrigger>
+              <TabsTrigger value="account" className="gap-2">
+                <User className="h-4 w-4" />
+                Account
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Admin Card - Only show for site owners */}
+                {isSiteOwner && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-secondary" />
+                        Platform Admin
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        Manage the GameTaverns platform
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Link to="/admin">
+                        <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                          <Shield className="h-4 w-4 mr-2" />
+                          Admin Dashboard
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {/* Create Library Card */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Library className="h-5 w-5 text-secondary" />
+                      My Library
+                    </CardTitle>
+                    <CardDescription className="text-cream/70">
+                      You haven't created a library yet
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link to="/create-library">
+                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Library
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="achievements">
+              <Card className="bg-wood-medium/30 border-wood-medium/50">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-secondary" />
-                    Platform Admin
+                  <CardTitle className="text-cream flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-secondary" />
+                    Your Achievements
                   </CardTitle>
                   <CardDescription className="text-cream/70">
-                    Manage the GameTaverns platform
+                    Track your progress and unlock badges
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link to="/admin">
-                    <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                      <Shield className="h-4 w-4 mr-2" />
-                      Admin Dashboard
-                    </Button>
-                  </Link>
+                  <AchievementsDisplay />
                 </CardContent>
               </Card>
-            )}
-            
-            {/* Create Library Card */}
-            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Library className="h-5 w-5 text-secondary" />
-                  My Library
-                </CardTitle>
-                <CardDescription className="text-cream/70">
-                  You haven't created a library yet
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link to="/create-library">
-                  <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Library
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
+            </TabsContent>
+
+            <TabsContent value="account">
+              <Card className="bg-wood-medium/30 border-wood-medium/50">
+                <CardHeader>
+                  <CardTitle className="text-cream flex items-center gap-2">
+                    <User className="h-5 w-5 text-secondary" />
+                    Account Settings
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Manage your profile and login credentials
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AccountSettings />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         )}
         
         {/* Danger Zone Section */}
