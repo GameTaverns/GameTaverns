@@ -1,8 +1,7 @@
 import { useAchievements, type Achievement, type AchievementCategory } from "@/hooks/useAchievements";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -18,17 +17,18 @@ import {
   PenTool, 
   BookOpen,
   Lock,
-  Star
+  Star,
+  CheckCircle2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const CATEGORY_CONFIG: Record<AchievementCategory, { label: string; icon: React.ReactNode; color: string }> = {
-  collector: { label: "Collector", icon: <Gamepad2 className="h-4 w-4" />, color: "text-blue-500" },
-  player: { label: "Player", icon: <Trophy className="h-4 w-4" />, color: "text-green-500" },
-  social: { label: "Social", icon: <Users className="h-4 w-4" />, color: "text-purple-500" },
-  explorer: { label: "Explorer", icon: <Compass className="h-4 w-4" />, color: "text-orange-500" },
-  contributor: { label: "Contributor", icon: <PenTool className="h-4 w-4" />, color: "text-pink-500" },
-  lender: { label: "Lender", icon: <BookOpen className="h-4 w-4" />, color: "text-teal-500" },
+  collector: { label: "Collector", icon: <Gamepad2 className="h-5 w-5" />, color: "text-blue-500" },
+  player: { label: "Player", icon: <Trophy className="h-5 w-5" />, color: "text-green-500" },
+  social: { label: "Social", icon: <Users className="h-5 w-5" />, color: "text-purple-500" },
+  explorer: { label: "Explorer", icon: <Compass className="h-5 w-5" />, color: "text-orange-500" },
+  contributor: { label: "Contributor", icon: <PenTool className="h-5 w-5" />, color: "text-pink-500" },
+  lender: { label: "Lender", icon: <BookOpen className="h-5 w-5" />, color: "text-teal-500" },
 };
 
 interface AchievementCardProps {
@@ -42,67 +42,70 @@ interface AchievementCardProps {
 
 function AchievementCard({ achievement, isEarned, earnedAt, progress = 0, tierName, tierColor }: AchievementCardProps) {
   const percentComplete = Math.min(100, (progress / achievement.requirement_value) * 100);
-  const categoryConfig = CATEGORY_CONFIG[achievement.category];
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Card className={`transition-all ${isEarned ? "" : "opacity-60 grayscale"}`}>
-            <CardContent className="pt-4">
-              <div className="flex items-start gap-3">
+          <Card className={`transition-all ${isEarned ? "border-primary/30 bg-card" : "opacity-50 bg-muted/30"}`}>
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-3">
                 {/* Icon */}
-                <div className={`text-3xl ${isEarned ? "" : "opacity-50"}`}>
+                <div className={`text-2xl ${isEarned ? "" : "grayscale"}`}>
                   {achievement.icon || "🏆"}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-sm truncate">{achievement.name}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className={`font-semibold text-sm truncate ${isEarned ? "text-foreground" : "text-muted-foreground"}`}>
+                      {achievement.name}
+                    </h4>
                     {isEarned ? (
-                      <Badge className={tierColor} variant="secondary">
-                        {tierName}
-                      </Badge>
+                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
                     ) : (
-                      <Lock className="h-3 w-3 text-muted-foreground" />
+                      <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
                     )}
                   </div>
                   
-                  <p className="text-xs text-muted-foreground line-clamp-2">
+                  <p className={`text-xs line-clamp-1 ${isEarned ? "text-muted-foreground" : "text-muted-foreground/70"}`}>
                     {achievement.description}
                   </p>
 
                   {!isEarned && progress > 0 && (
-                    <div className="mt-2">
+                    <div className="mt-1.5">
                       <Progress value={percentComplete} className="h-1" />
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {progress} / {achievement.requirement_value}
                       </p>
                     </div>
                   )}
 
                   {isEarned && earnedAt && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-primary/70 mt-0.5">
                       Earned {formatDistanceToNow(new Date(earnedAt), { addSuffix: true })}
                     </p>
                   )}
                 </div>
 
-                {/* Points */}
-                <div className="text-right">
-                  <span className={`text-sm font-bold ${isEarned ? "text-primary" : "text-muted-foreground"}`}>
-                    +{achievement.points}
-                  </span>
+                {/* Points & Tier */}
+                <div className="text-right shrink-0">
+                  <Badge variant="secondary" className={`${isEarned ? tierColor : "bg-muted text-muted-foreground"} text-xs`}>
+                    {tierName}
+                  </Badge>
+                  <p className={`text-xs mt-1 ${isEarned ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                    +{achievement.points} pts
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{achievement.description}</p>
+          <p className="font-medium">{achievement.name}</p>
+          <p className="text-sm text-muted-foreground">{achievement.description}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {categoryConfig.label} • {tierName} • {achievement.points} points
+            {tierName} • {achievement.points} points
           </p>
         </TooltipContent>
       </Tooltip>
@@ -131,9 +134,9 @@ export function AchievementsDisplay() {
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-8 w-24" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-24" />
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-20" />
           ))}
         </div>
       </div>
@@ -142,6 +145,9 @@ export function AchievementsDisplay() {
 
   const earnedCount = userAchievements.length;
   const totalCount = allAchievements.filter((a) => !a.is_secret).length;
+
+  // Order categories for display
+  const categoryOrder: AchievementCategory[] = ['collector', 'player', 'lender', 'social', 'explorer', 'contributor'];
 
   return (
     <div className="space-y-6">
@@ -164,17 +170,17 @@ export function AchievementsDisplay() {
 
       {/* Recent Achievements */}
       {recentAchievements.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
             <Star className="h-4 w-4" />
             Recently Earned
           </h3>
-          <div className="flex gap-2 overflow-x-auto pb-2">
+          <div className="flex gap-2 flex-wrap">
             {recentAchievements.map((ua) => (
               <Badge
                 key={ua.id}
                 variant="secondary"
-                className={`${TIER_COLORS[ua.achievement?.tier || 1]} gap-1 whitespace-nowrap`}
+                className={`${TIER_COLORS[ua.achievement?.tier || 1]} gap-1`}
               >
                 <span>{ua.achievement?.icon || "🏆"}</span>
                 {ua.achievement?.name}
@@ -184,62 +190,49 @@ export function AchievementsDisplay() {
         </div>
       )}
 
-      {/* Categories */}
-      <Tabs defaultValue="all" className="space-y-4">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="all">All</TabsTrigger>
-          {Object.entries(CATEGORY_CONFIG).map(([key, config]) => (
-            <TabsTrigger key={key} value={key} className="gap-1">
-              {config.icon}
-              {config.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/* All Achievements by Category */}
+      <div className="space-y-8">
+        {categoryOrder.map((category) => {
+          const achievements = achievementsByCategory[category];
+          if (!achievements || achievements.length === 0) return null;
 
-        <TabsContent value="all">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {allAchievements
-              .filter((a) => !a.is_secret || isEarned(a.id))
-              .map((achievement) => {
-                const ua = userAchievements.find((u) => u.achievement_id === achievement.id);
-                return (
-                  <AchievementCard
-                    key={achievement.id}
-                    achievement={achievement}
-                    isEarned={!!ua}
-                    earnedAt={ua?.earned_at}
-                    progress={ua?.progress || 0}
-                    tierName={TIER_NAMES[achievement.tier]}
-                    tierColor={TIER_COLORS[achievement.tier]}
-                  />
-                );
-              })}
-          </div>
-        </TabsContent>
+          const config = CATEGORY_CONFIG[category];
+          const earnedInCategory = achievements.filter((a) => isEarned(a.id)).length;
 
-        {Object.entries(achievementsByCategory).map(([category, achievements]) => (
-          <TabsContent key={category} value={category}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {achievements
-                .filter((a) => !a.is_secret || isEarned(a.id))
-                .map((achievement) => {
-                  const ua = userAchievements.find((u) => u.achievement_id === achievement.id);
-                  return (
-                    <AchievementCard
-                      key={achievement.id}
-                      achievement={achievement}
-                      isEarned={!!ua}
-                      earnedAt={ua?.earned_at}
-                      progress={ua?.progress || 0}
-                      tierName={TIER_NAMES[achievement.tier]}
-                      tierColor={TIER_COLORS[achievement.tier]}
-                    />
-                  );
-                })}
+          return (
+            <div key={category} className="space-y-3">
+              {/* Category Header */}
+              <div className="flex items-center gap-2 border-b border-border pb-2">
+                <span className={config.color}>{config.icon}</span>
+                <h3 className="font-display font-semibold text-lg">{config.label}</h3>
+                <Badge variant="outline" className="ml-auto">
+                  {earnedInCategory} / {achievements.length}
+                </Badge>
+              </div>
+
+              {/* Achievement List */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {achievements
+                  .filter((a) => !a.is_secret || isEarned(a.id))
+                  .map((achievement) => {
+                    const ua = userAchievements.find((u) => u.achievement_id === achievement.id);
+                    return (
+                      <AchievementCard
+                        key={achievement.id}
+                        achievement={achievement}
+                        isEarned={!!ua}
+                        earnedAt={ua?.earned_at}
+                        progress={ua?.progress || 0}
+                        tierName={TIER_NAMES[achievement.tier]}
+                        tierColor={TIER_COLORS[achievement.tier]}
+                      />
+                    );
+                  })}
+              </div>
             </div>
-          </TabsContent>
-        ))}
-      </Tabs>
+          );
+        })}
+      </div>
     </div>
   );
 }
