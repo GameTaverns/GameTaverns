@@ -118,6 +118,23 @@ function buildEmbed(eventType: string, data: Record<string, unknown>): DiscordEm
   return embed;
 }
 
+// Helper to send DM via discord-send-dm function
+async function sendDM(supabaseUrl: string, userId: string, embed: DiscordEmbed): Promise<void> {
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/discord-send-dm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, embed }),
+    });
+    
+    if (!response.ok) {
+      console.error("DM send failed:", await response.text());
+    }
+  } catch (error) {
+    console.error("DM send error:", error);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -139,31 +156,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch library settings to get webhook URL and preferences
-    const { data: settings, error: settingsError } = await supabase
+    // Fetch library settings and owner info
+    // Fetch library with settings (one-to-one relationship)
+    const { data: library, error: libraryError } = await supabase
+      .from("libraries")
+      .select("owner_id")
+      .eq("id", library_id)
+      .maybeSingle();
+
+    if (libraryError) {
+      console.error("Error fetching library:", libraryError);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch library" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!library) {
+      return new Response(
+        JSON.stringify({ error: "Library not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch settings separately
+    const { data: settings } = await supabase
       .from("library_settings")
       .select("discord_webhook_url, discord_notifications")
       .eq("library_id", library_id)
       .maybeSingle();
 
-    if (settingsError) {
-      console.error("Error fetching settings:", settingsError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch library settings" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!settings?.discord_webhook_url) {
-      // No webhook configured - this is fine, just skip
-      return new Response(
-        JSON.stringify({ success: true, skipped: true, reason: "No webhook configured" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const notifications = (settings?.discord_notifications as Record<string, boolean>) || {};
 
     // Check if this notification type is enabled
-    const notifications = settings.discord_notifications || {};
     if (notifications[event_type] === false) {
       return new Response(
         JSON.stringify({ success: true, skipped: true, reason: "Notification type disabled" }),
@@ -174,7 +199,29 @@ Deno.serve(async (req) => {
     // Build the Discord embed
     const embed = buildEmbed(event_type, data);
 
-    // Send to Discord
+    // Determine notification destination based on event type
+    // Private notifications (message_received) → DM to library owner
+    // Public notifications (game_added, wishlist_vote, poll_*) → Webhook
+    const isPrivateEvent = event_type === "message_received";
+
+    if (isPrivateEvent) {
+      // Send DM to library owner
+      await sendDM(supabaseUrl, library.owner_id, embed);
+      
+      return new Response(
+        JSON.stringify({ success: true, method: "dm" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Public events → Send to webhook if configured
+    if (!settings?.discord_webhook_url) {
+      return new Response(
+        JSON.stringify({ success: true, skipped: true, reason: "No webhook configured" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const discordResponse = await fetch(settings.discord_webhook_url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -193,7 +240,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, method: "webhook" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
