@@ -73,6 +73,7 @@ export const config = {
   
   // Feature detection
   isMariaDb: !!process.env.DB_HOST || process.env.DATABASE_URL?.includes('mysql'),
+  isStandalone: process.env.STANDALONE === 'true' || process.env.VITE_STANDALONE === 'true',
 };
 
 // Validate required config in production
