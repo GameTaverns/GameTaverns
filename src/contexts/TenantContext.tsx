@@ -279,10 +279,10 @@ export function TenantProvider({ children }: TenantProviderProps) {
     }
   };
   
-  // Load library on mount and when slug changes
+  // Load library on mount and when slug or auth state changes
   useEffect(() => {
     fetchLibrary();
-  }, [tenantSlug]);
+  }, [tenantSlug, isAuthenticated]);
   
   const value: TenantContextType = {
     library,
