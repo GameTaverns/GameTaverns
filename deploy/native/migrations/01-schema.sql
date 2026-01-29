@@ -1,9 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- GameTaverns Database Schema
+-- GameTaverns Database Schema v2.1.0
 -- PostgreSQL 16+
 -- 
 -- This schema creates all tables, types, functions, triggers, and views
 -- for a complete multi-tenant board game library platform.
+--
+-- IMPORTANT: Run this on a fresh database. Uses IF NOT EXISTS for idempotency.
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -19,69 +21,98 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 -- CUSTOM TYPES (ENUMS)
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Application roles
-CREATE TYPE app_role AS ENUM ('admin', 'moderator', 'user');
+DO $$ BEGIN
+    CREATE TYPE app_role AS ENUM ('admin', 'moderator', 'user');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Game difficulty levels
-CREATE TYPE difficulty_level AS ENUM (
-    '1 - Light',
-    '2 - Medium Light',
-    '3 - Medium',
-    '4 - Medium Heavy',
-    '5 - Heavy'
-);
+DO $$ BEGIN
+    CREATE TYPE difficulty_level AS ENUM (
+        '1 - Light',
+        '2 - Medium Light',
+        '3 - Medium',
+        '4 - Medium Heavy',
+        '5 - Heavy'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Play time categories
-CREATE TYPE play_time AS ENUM (
-    '0-15 Minutes',
-    '15-30 Minutes',
-    '30-45 Minutes',
-    '45-60 Minutes',
-    '60+ Minutes',
-    '2+ Hours',
-    '3+ Hours'
-);
+DO $$ BEGIN
+    CREATE TYPE play_time AS ENUM (
+        '0-15 Minutes',
+        '15-30 Minutes',
+        '30-45 Minutes',
+        '45-60 Minutes',
+        '60+ Minutes',
+        '2+ Hours',
+        '3+ Hours'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Game types
-CREATE TYPE game_type AS ENUM (
-    'Board Game',
-    'Card Game',
-    'Dice Game',
-    'Party Game',
-    'War Game',
-    'Miniatures',
-    'RPG',
-    'Other'
-);
+DO $$ BEGIN
+    CREATE TYPE game_type AS ENUM (
+        'Board Game',
+        'Card Game',
+        'Dice Game',
+        'Party Game',
+        'War Game',
+        'Miniatures',
+        'RPG',
+        'Other'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Sale condition
-CREATE TYPE sale_condition AS ENUM (
-    'New in Shrink',
-    'Like New',
-    'Very Good',
-    'Good',
-    'Acceptable'
-);
+DO $$ BEGIN
+    CREATE TYPE sale_condition AS ENUM (
+        'New in Shrink',
+        'Like New',
+        'Very Good',
+        'Good',
+        'Acceptable'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Feedback types
-CREATE TYPE feedback_type AS ENUM (
-    'bug',
-    'feature',
-    'feedback',
-    'other'
-);
+DO $$ BEGIN
+    CREATE TYPE feedback_type AS ENUM (
+        'bug',
+        'feature',
+        'feedback',
+        'other'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Suspension actions
-CREATE TYPE suspension_action AS ENUM (
-    'suspended',
-    'restored'
-);
+DO $$ BEGIN
+    CREATE TYPE suspension_action AS ENUM (
+        'suspended',
+        'restored'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Library member roles
-CREATE TYPE library_member_role AS ENUM (
-    'member',
-    'moderator'
-);
+DO $$ BEGIN
+    CREATE TYPE library_member_role AS ENUM (
+        'member',
+        'moderator'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE achievement_category AS ENUM (
+        'collection',
+        'plays', 
+        'social',
+        'exploration',
+        'special'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE loan_status AS ENUM (
+        'requested',
+        'approved', 
+        'borrowed',
+        'returned',
+        'cancelled',
+        'declined'
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- UTILITY FUNCTIONS
@@ -100,7 +131,7 @@ AS $$
     ));
 $$;
 
--- Generate slug from title
+-- Generate slug from title (alias)
 CREATE OR REPLACE FUNCTION generate_slug(title text)
 RETURNS text
 LANGUAGE plpgsql
@@ -108,14 +139,14 @@ IMMUTABLE
 SET search_path = public
 AS $$
 DECLARE
-    slug TEXT;
+    result_slug TEXT;
 BEGIN
-    slug := lower(title);
-    slug := regexp_replace(slug, '[^a-z0-9\s-]', '', 'g');
-    slug := regexp_replace(slug, '\s+', '-', 'g');
-    slug := regexp_replace(slug, '-+', '-', 'g');
-    slug := trim(both '-' from slug);
-    RETURN slug;
+    result_slug := lower(title);
+    result_slug := regexp_replace(result_slug, '[^a-z0-9\s-]', '', 'g');
+    result_slug := regexp_replace(result_slug, '\s+', '-', 'g');
+    result_slug := regexp_replace(result_slug, '-+', '-', 'g');
+    result_slug := trim(both '-' from result_slug);
+    RETURN result_slug;
 END;
 $$;
 
@@ -131,7 +162,50 @@ BEGIN
 END;
 $$;
 
--- Check if user has a specific role
+-- ═══════════════════════════════════════════════════════════════════════════
+-- CORE TABLES (must be created first for FK references)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Users table (authentication)
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    email_verified BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- User profiles (public information)
+CREATE TABLE IF NOT EXISTS user_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    display_name TEXT,
+    username TEXT UNIQUE,
+    avatar_url TEXT,
+    bio TEXT,
+    discord_user_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_username ON user_profiles(username);
+
+-- User roles (authorization) - CRITICAL: separate from profiles for security
+CREATE TABLE IF NOT EXISTS user_roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role app_role NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(user_id, role)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
+
+-- Security definer function for role checking (prevents privilege escalation)
 CREATE OR REPLACE FUNCTION has_role(_user_id uuid, _role app_role)
 RETURNS boolean
 LANGUAGE sql
@@ -147,6 +221,58 @@ AS $$
     )
 $$;
 
+-- ═══════════════════════════════════════════════════════════════════════════
+-- TOKEN TABLES (Authentication)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS email_confirmation_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    confirmed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_tokens_token ON email_confirmation_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_email_tokens_user_id ON email_confirmation_tokens(user_id);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reset_tokens_token ON password_reset_tokens(token);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- MULTI-TENANT TABLES
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Libraries (tenants)
+-- NOTE: owner_id is hidden from public via libraries_public view and API layer
+CREATE TABLE IF NOT EXISTS libraries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    description TEXT,
+    custom_domain TEXT UNIQUE,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    is_premium BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_libraries_slug ON libraries(slug);
+CREATE INDEX IF NOT EXISTS idx_libraries_owner_id ON libraries(owner_id);
+CREATE INDEX IF NOT EXISTS idx_libraries_custom_domain ON libraries(custom_domain);
+
 -- Check if slug is available
 CREATE OR REPLACE FUNCTION is_slug_available(check_slug text)
 RETURNS boolean
@@ -160,140 +286,8 @@ AS $$
     );
 $$;
 
--- Check if user is a library member
-CREATE OR REPLACE FUNCTION is_library_member(_user_id uuid, _library_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM library_members
-        WHERE user_id = _user_id AND library_id = _library_id
-    ) OR EXISTS (
-        SELECT 1 FROM libraries
-        WHERE id = _library_id AND owner_id = _user_id
-    )
-$$;
-
--- Check if user is a library moderator
-CREATE OR REPLACE FUNCTION is_library_moderator(_user_id uuid, _library_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM library_members
-        WHERE user_id = _user_id 
-        AND library_id = _library_id 
-        AND role = 'moderator'
-    ) OR EXISTS (
-        SELECT 1 FROM libraries
-        WHERE id = _library_id AND owner_id = _user_id
-    ) OR has_role(_user_id, 'admin')
-$$;
-
--- ═══════════════════════════════════════════════════════════════════════════
--- CORE TABLES
--- ═══════════════════════════════════════════════════════════════════════════
-
--- Users table (authentication)
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    email_verified BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_users_email ON users(email);
-
--- User profiles (public information)
-CREATE TABLE user_profiles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    display_name TEXT,
-    username TEXT UNIQUE,
-    avatar_url TEXT,
-    bio TEXT,
-    discord_user_id TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_user_profiles_user_id ON user_profiles(user_id);
-CREATE INDEX idx_user_profiles_username ON user_profiles(username);
-
--- User roles (authorization)
-CREATE TABLE user_roles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role app_role NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE(user_id, role)
-);
-
-CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
-
--- ═══════════════════════════════════════════════════════════════════════════
--- TOKEN TABLES (Authentication)
--- ═══════════════════════════════════════════════════════════════════════════
-
--- Email confirmation tokens
-CREATE TABLE email_confirmation_tokens (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    email TEXT NOT NULL,
-    token TEXT NOT NULL UNIQUE,
-    expires_at TIMESTAMPTZ NOT NULL,
-    confirmed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_email_tokens_token ON email_confirmation_tokens(token);
-CREATE INDEX idx_email_tokens_user_id ON email_confirmation_tokens(user_id);
-
--- Password reset tokens
-CREATE TABLE password_reset_tokens (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    email TEXT NOT NULL,
-    token TEXT NOT NULL UNIQUE,
-    expires_at TIMESTAMPTZ NOT NULL,
-    used_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_reset_tokens_token ON password_reset_tokens(token);
-
--- ═══════════════════════════════════════════════════════════════════════════
--- MULTI-TENANT TABLES
--- ═══════════════════════════════════════════════════════════════════════════
-
--- Libraries (tenants)
-CREATE TABLE libraries (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    slug TEXT NOT NULL UNIQUE,
-    description TEXT,
-    custom_domain TEXT UNIQUE,
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    is_premium BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_libraries_slug ON libraries(slug);
-CREATE INDEX idx_libraries_owner_id ON libraries(owner_id);
-CREATE INDEX idx_libraries_custom_domain ON libraries(custom_domain);
-
 -- Library settings
-CREATE TABLE library_settings (
+CREATE TABLE IF NOT EXISTS library_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     library_id UUID NOT NULL UNIQUE REFERENCES libraries(id) ON DELETE CASCADE,
     
@@ -348,7 +342,7 @@ CREATE TABLE library_settings (
     instagram_url TEXT,
     facebook_url TEXT,
     
-    -- Discord integration (hidden from public)
+    -- Discord integration (hidden from public views)
     discord_webhook_url TEXT,
     discord_events_channel_id TEXT,
     discord_notifications JSONB DEFAULT '{"game_added": true, "poll_closed": true, "poll_created": true, "wishlist_vote": true, "message_received": true}',
@@ -377,7 +371,7 @@ CREATE TABLE library_settings (
 );
 
 -- Library suspensions (audit log)
-CREATE TABLE library_suspensions (
+CREATE TABLE IF NOT EXISTS library_suspensions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
     performed_by UUID NOT NULL REFERENCES users(id),
@@ -387,7 +381,7 @@ CREATE TABLE library_suspensions (
 );
 
 -- Library members (community membership)
-CREATE TABLE library_members (
+CREATE TABLE IF NOT EXISTS library_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -396,11 +390,11 @@ CREATE TABLE library_members (
     UNIQUE(library_id, user_id)
 );
 
-CREATE INDEX idx_library_members_library_id ON library_members(library_id);
-CREATE INDEX idx_library_members_user_id ON library_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_library_members_library_id ON library_members(library_id);
+CREATE INDEX IF NOT EXISTS idx_library_members_user_id ON library_members(user_id);
 
 -- Library followers
-CREATE TABLE library_followers (
+CREATE TABLE IF NOT EXISTS library_followers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
     follower_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -408,168 +402,68 @@ CREATE TABLE library_followers (
     UNIQUE(library_id, follower_user_id)
 );
 
-CREATE INDEX idx_library_followers_library_id ON library_followers(library_id);
+CREATE INDEX IF NOT EXISTS idx_library_followers_library_id ON library_followers(library_id);
+
+-- Helper function: check if user is a library member or owner
+CREATE OR REPLACE FUNCTION is_library_member(_user_id uuid, _library_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM library_members
+        WHERE user_id = _user_id AND library_id = _library_id
+    ) OR EXISTS (
+        SELECT 1 FROM libraries
+        WHERE id = _library_id AND owner_id = _user_id
+    )
+$$;
+
+-- Helper function: check if user is a library moderator or owner
+CREATE OR REPLACE FUNCTION is_library_moderator(_user_id uuid, _library_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM library_members
+        WHERE user_id = _user_id 
+        AND library_id = _library_id 
+        AND role = 'moderator'
+    ) OR EXISTS (
+        SELECT 1 FROM libraries
+        WHERE id = _library_id AND owner_id = _user_id
+    ) OR has_role(_user_id, 'admin')
+$$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- ACHIEVEMENTS TABLES
--- ═══════════════════════════════════════════════════════════════════════════
-
--- Achievement categories
-CREATE TYPE achievement_category AS ENUM (
-    'collection',
-    'plays', 
-    'social',
-    'exploration',
-    'special'
-);
-
--- Achievements definitions
-CREATE TABLE achievements (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slug TEXT NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    category achievement_category NOT NULL,
-    icon TEXT,
-    tier INTEGER NOT NULL DEFAULT 1,
-    points INTEGER NOT NULL DEFAULT 10,
-    requirement_type TEXT NOT NULL,
-    requirement_value INTEGER NOT NULL,
-    is_secret BOOLEAN NOT NULL DEFAULT false,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- User achievements (earned achievements)
-CREATE TABLE user_achievements (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    achievement_id UUID NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
-    library_id UUID REFERENCES libraries(id) ON DELETE CASCADE,
-    progress INTEGER NOT NULL DEFAULT 0,
-    earned_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE(user_id, achievement_id, library_id)
-);
-
-CREATE INDEX idx_user_achievements_user_id ON user_achievements(user_id);
-
--- ═══════════════════════════════════════════════════════════════════════════
--- LENDING SYSTEM TABLES
--- ═══════════════════════════════════════════════════════════════════════════
-
--- Loan status enum
-CREATE TYPE loan_status AS ENUM (
-    'requested',
-    'approved', 
-    'borrowed',
-    'returned',
-    'cancelled',
-    'declined'
-);
-
--- Game loans
-CREATE TABLE game_loans (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
-    library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
-    borrower_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    lender_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status loan_status NOT NULL DEFAULT 'requested',
-    requested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    approved_at TIMESTAMPTZ,
-    borrowed_at TIMESTAMPTZ,
-    due_date TIMESTAMPTZ,
-    returned_at TIMESTAMPTZ,
-    borrower_notes TEXT,
-    lender_notes TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_game_loans_game_id ON game_loans(game_id);
-CREATE INDEX idx_game_loans_library_id ON game_loans(library_id);
-CREATE INDEX idx_game_loans_borrower ON game_loans(borrower_user_id);
-CREATE INDEX idx_game_loans_lender ON game_loans(lender_user_id);
-CREATE INDEX idx_game_loans_status ON game_loans(status);
-
--- Borrower ratings (after loan is returned)
-CREATE TABLE borrower_ratings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    loan_id UUID NOT NULL UNIQUE REFERENCES game_loans(id) ON DELETE CASCADE,
-    rated_by_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    rated_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-    review TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_borrower_ratings_rated_user ON borrower_ratings(rated_user_id);
-
--- ═══════════════════════════════════════════════════════════════════════════
--- NOTIFICATIONS TABLES
--- ═══════════════════════════════════════════════════════════════════════════
-
--- Notification preferences
-CREATE TABLE notification_preferences (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    -- Email notifications
-    email_loan_requests BOOLEAN NOT NULL DEFAULT true,
-    email_loan_updates BOOLEAN NOT NULL DEFAULT true,
-    email_event_reminders BOOLEAN NOT NULL DEFAULT true,
-    email_wishlist_alerts BOOLEAN NOT NULL DEFAULT true,
-    email_achievement_earned BOOLEAN NOT NULL DEFAULT true,
-    -- Push notifications
-    push_loan_requests BOOLEAN NOT NULL DEFAULT true,
-    push_loan_updates BOOLEAN NOT NULL DEFAULT true,
-    push_event_reminders BOOLEAN NOT NULL DEFAULT true,
-    push_wishlist_alerts BOOLEAN NOT NULL DEFAULT true,
-    push_achievement_earned BOOLEAN NOT NULL DEFAULT true,
-    -- Discord notifications
-    discord_loan_requests BOOLEAN NOT NULL DEFAULT true,
-    discord_loan_updates BOOLEAN NOT NULL DEFAULT true,
-    discord_event_reminders BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Notification log
-CREATE TABLE notification_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    notification_type TEXT NOT NULL,
-    channel TEXT NOT NULL,
-    title TEXT NOT NULL,
-    body TEXT,
-    metadata JSONB,
-    read_at TIMESTAMPTZ,
-    sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_notification_log_user_id ON notification_log(user_id);
-CREATE INDEX idx_notification_log_read ON notification_log(user_id, read_at);
-
--- ═══════════════════════════════════════════════════════════════════════════
--- GAME TABLES
+-- REFERENCE TABLES (must exist before games)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- Publishers
-CREATE TABLE publishers (
+CREATE TABLE IF NOT EXISTS publishers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Mechanics
-CREATE TABLE mechanics (
+CREATE TABLE IF NOT EXISTS mechanics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Games
-CREATE TABLE games (
+-- ═══════════════════════════════════════════════════════════════════════════
+-- GAME TABLES
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Games (must be created before game_loans due to FK)
+CREATE TABLE IF NOT EXISTS games (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     library_id UUID REFERENCES libraries(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
@@ -619,13 +513,13 @@ CREATE TABLE games (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_games_library_id ON games(library_id);
-CREATE INDEX idx_games_slug ON games(slug);
-CREATE INDEX idx_games_bgg_id ON games(bgg_id);
-CREATE UNIQUE INDEX idx_games_library_slug ON games(library_id, slug);
+CREATE INDEX IF NOT EXISTS idx_games_library_id ON games(library_id);
+CREATE INDEX IF NOT EXISTS idx_games_slug ON games(slug);
+CREATE INDEX IF NOT EXISTS idx_games_bgg_id ON games(bgg_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_games_library_slug ON games(library_id, slug);
 
 -- Game mechanics junction
-CREATE TABLE game_mechanics (
+CREATE TABLE IF NOT EXISTS game_mechanics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
     mechanic_id UUID NOT NULL REFERENCES mechanics(id) ON DELETE CASCADE,
@@ -633,7 +527,7 @@ CREATE TABLE game_mechanics (
 );
 
 -- Game admin data (hidden from public)
-CREATE TABLE game_admin_data (
+CREATE TABLE IF NOT EXISTS game_admin_data (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL UNIQUE REFERENCES games(id) ON DELETE CASCADE,
     purchase_price NUMERIC,
@@ -643,11 +537,130 @@ CREATE TABLE game_admin_data (
 );
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- LENDING SYSTEM TABLES (depends on games)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Game loans
+CREATE TABLE IF NOT EXISTS game_loans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+    borrower_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    lender_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status loan_status NOT NULL DEFAULT 'requested',
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    approved_at TIMESTAMPTZ,
+    borrowed_at TIMESTAMPTZ,
+    due_date TIMESTAMPTZ,
+    returned_at TIMESTAMPTZ,
+    borrower_notes TEXT,
+    lender_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_loans_game_id ON game_loans(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_loans_library_id ON game_loans(library_id);
+CREATE INDEX IF NOT EXISTS idx_game_loans_borrower ON game_loans(borrower_user_id);
+CREATE INDEX IF NOT EXISTS idx_game_loans_lender ON game_loans(lender_user_id);
+CREATE INDEX IF NOT EXISTS idx_game_loans_status ON game_loans(status);
+
+-- Borrower ratings (after loan is returned)
+CREATE TABLE IF NOT EXISTS borrower_ratings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    loan_id UUID NOT NULL UNIQUE REFERENCES game_loans(id) ON DELETE CASCADE,
+    rated_by_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rated_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    review TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_borrower_ratings_rated_user ON borrower_ratings(rated_user_id);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ACHIEVEMENTS TABLES
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Achievements definitions
+CREATE TABLE IF NOT EXISTS achievements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category achievement_category NOT NULL,
+    icon TEXT,
+    tier INTEGER NOT NULL DEFAULT 1,
+    points INTEGER NOT NULL DEFAULT 10,
+    requirement_type TEXT NOT NULL,
+    requirement_value INTEGER NOT NULL,
+    is_secret BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- User achievements (earned achievements)
+CREATE TABLE IF NOT EXISTS user_achievements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    achievement_id UUID NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
+    library_id UUID REFERENCES libraries(id) ON DELETE CASCADE,
+    progress INTEGER NOT NULL DEFAULT 0,
+    earned_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(user_id, achievement_id, library_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- NOTIFICATIONS TABLES
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS notification_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    -- Email notifications
+    email_loan_requests BOOLEAN NOT NULL DEFAULT true,
+    email_loan_updates BOOLEAN NOT NULL DEFAULT true,
+    email_event_reminders BOOLEAN NOT NULL DEFAULT true,
+    email_wishlist_alerts BOOLEAN NOT NULL DEFAULT true,
+    email_achievement_earned BOOLEAN NOT NULL DEFAULT true,
+    -- Push notifications
+    push_loan_requests BOOLEAN NOT NULL DEFAULT true,
+    push_loan_updates BOOLEAN NOT NULL DEFAULT true,
+    push_event_reminders BOOLEAN NOT NULL DEFAULT true,
+    push_wishlist_alerts BOOLEAN NOT NULL DEFAULT true,
+    push_achievement_earned BOOLEAN NOT NULL DEFAULT true,
+    -- Discord notifications
+    discord_loan_requests BOOLEAN NOT NULL DEFAULT true,
+    discord_loan_updates BOOLEAN NOT NULL DEFAULT true,
+    discord_event_reminders BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS notification_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    notification_type TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT,
+    metadata JSONB,
+    read_at TIMESTAMPTZ,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_log_user_id ON notification_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_log_read ON notification_log(user_id, read_at);
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- USER INTERACTION TABLES
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- Game ratings (guest-accessible)
-CREATE TABLE game_ratings (
+CREATE TABLE IF NOT EXISTS game_ratings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
     guest_identifier TEXT NOT NULL,
@@ -659,10 +672,10 @@ CREATE TABLE game_ratings (
     UNIQUE(game_id, guest_identifier)
 );
 
-CREATE INDEX idx_game_ratings_game_id ON game_ratings(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_ratings_game_id ON game_ratings(game_id);
 
 -- Game wishlist (guest-accessible)
-CREATE TABLE game_wishlist (
+CREATE TABLE IF NOT EXISTS game_wishlist (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
     guest_identifier TEXT NOT NULL,
@@ -671,10 +684,10 @@ CREATE TABLE game_wishlist (
     UNIQUE(game_id, guest_identifier)
 );
 
-CREATE INDEX idx_game_wishlist_game_id ON game_wishlist(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_wishlist_game_id ON game_wishlist(game_id);
 
 -- Game messages (encrypted PII)
-CREATE TABLE game_messages (
+CREATE TABLE IF NOT EXISTS game_messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
     sender_name_encrypted TEXT,
@@ -685,14 +698,13 @@ CREATE TABLE game_messages (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_game_messages_game_id ON game_messages(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_messages_game_id ON game_messages(game_id);
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- PLAY LOGGING TABLES
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Game sessions
-CREATE TABLE game_sessions (
+CREATE TABLE IF NOT EXISTS game_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
     played_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -702,10 +714,9 @@ CREATE TABLE game_sessions (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_game_sessions_game_id ON game_sessions(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_sessions_game_id ON game_sessions(game_id);
 
--- Session players
-CREATE TABLE game_session_players (
+CREATE TABLE IF NOT EXISTS game_session_players (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES game_sessions(id) ON DELETE CASCADE,
     player_name TEXT NOT NULL,
@@ -715,14 +726,13 @@ CREATE TABLE game_session_players (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_session_players_session_id ON game_session_players(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_players_session_id ON game_session_players(session_id);
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- EVENTS & POLLS
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Library events
-CREATE TABLE library_events (
+CREATE TABLE IF NOT EXISTS library_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
     created_by UUID REFERENCES users(id),
@@ -735,11 +745,10 @@ CREATE TABLE library_events (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_library_events_library_id ON library_events(library_id);
-CREATE INDEX idx_library_events_date ON library_events(event_date);
+CREATE INDEX IF NOT EXISTS idx_library_events_library_id ON library_events(library_id);
+CREATE INDEX IF NOT EXISTS idx_library_events_date ON library_events(event_date);
 
--- Game polls
-CREATE TABLE game_polls (
+CREATE TABLE IF NOT EXISTS game_polls (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
     created_by UUID REFERENCES users(id),
@@ -757,11 +766,10 @@ CREATE TABLE game_polls (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_game_polls_library_id ON game_polls(library_id);
-CREATE INDEX idx_game_polls_share_token ON game_polls(share_token);
+CREATE INDEX IF NOT EXISTS idx_game_polls_library_id ON game_polls(library_id);
+CREATE INDEX IF NOT EXISTS idx_game_polls_share_token ON game_polls(share_token);
 
--- Poll options
-CREATE TABLE poll_options (
+CREATE TABLE IF NOT EXISTS poll_options (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     poll_id UUID NOT NULL REFERENCES game_polls(id) ON DELETE CASCADE,
     game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
@@ -769,10 +777,9 @@ CREATE TABLE poll_options (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_poll_options_poll_id ON poll_options(poll_id);
+CREATE INDEX IF NOT EXISTS idx_poll_options_poll_id ON poll_options(poll_id);
 
--- Poll votes
-CREATE TABLE poll_votes (
+CREATE TABLE IF NOT EXISTS poll_votes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     poll_id UUID NOT NULL REFERENCES game_polls(id) ON DELETE CASCADE,
     option_id UUID NOT NULL REFERENCES poll_options(id) ON DELETE CASCADE,
@@ -782,10 +789,9 @@ CREATE TABLE poll_votes (
     UNIQUE(poll_id, option_id, voter_identifier)
 );
 
-CREATE INDEX idx_poll_votes_poll_id ON poll_votes(poll_id);
+CREATE INDEX IF NOT EXISTS idx_poll_votes_poll_id ON poll_votes(poll_id);
 
--- Game night RSVPs
-CREATE TABLE game_night_rsvps (
+CREATE TABLE IF NOT EXISTS game_night_rsvps (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     poll_id UUID NOT NULL REFERENCES game_polls(id) ON DELETE CASCADE,
     guest_identifier TEXT NOT NULL,
@@ -800,8 +806,7 @@ CREATE TABLE game_night_rsvps (
 -- PLATFORM TABLES
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Platform feedback
-CREATE TABLE platform_feedback (
+CREATE TABLE IF NOT EXISTS platform_feedback (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sender_name TEXT NOT NULL,
     sender_email TEXT NOT NULL,
@@ -811,8 +816,7 @@ CREATE TABLE platform_feedback (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Site settings
-CREATE TABLE site_settings (
+CREATE TABLE IF NOT EXISTS site_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     key TEXT NOT NULL UNIQUE,
     value TEXT,
@@ -820,8 +824,7 @@ CREATE TABLE site_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Import jobs (for bulk imports)
-CREATE TABLE import_jobs (
+CREATE TABLE IF NOT EXISTS import_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -838,6 +841,27 @@ CREATE TABLE import_jobs (
 -- TRIGGERS
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- Drop existing triggers if they exist (for idempotency)
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
+DROP TRIGGER IF EXISTS update_libraries_updated_at ON libraries;
+DROP TRIGGER IF EXISTS update_library_settings_updated_at ON library_settings;
+DROP TRIGGER IF EXISTS update_library_events_updated_at ON library_events;
+DROP TRIGGER IF EXISTS update_games_updated_at ON games;
+DROP TRIGGER IF EXISTS update_game_admin_data_updated_at ON game_admin_data;
+DROP TRIGGER IF EXISTS update_game_ratings_updated_at ON game_ratings;
+DROP TRIGGER IF EXISTS update_game_sessions_updated_at ON game_sessions;
+DROP TRIGGER IF EXISTS update_game_polls_updated_at ON game_polls;
+DROP TRIGGER IF EXISTS update_game_night_rsvps_updated_at ON game_night_rsvps;
+DROP TRIGGER IF EXISTS update_import_jobs_updated_at ON import_jobs;
+DROP TRIGGER IF EXISTS update_site_settings_updated_at ON site_settings;
+DROP TRIGGER IF EXISTS update_game_loans_updated_at ON game_loans;
+DROP TRIGGER IF EXISTS update_user_achievements_updated_at ON user_achievements;
+DROP TRIGGER IF EXISTS update_notification_preferences_updated_at ON notification_preferences;
+DROP TRIGGER IF EXISTS set_game_slug ON games;
+DROP TRIGGER IF EXISTS create_library_settings_trigger ON libraries;
+DROP TRIGGER IF EXISTS create_user_profile_trigger ON users;
+
 -- Auto-update timestamps
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -849,6 +873,9 @@ CREATE TRIGGER update_libraries_updated_at BEFORE UPDATE ON libraries
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_library_settings_updated_at BEFORE UPDATE ON library_settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_library_events_updated_at BEFORE UPDATE ON library_events
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_games_updated_at BEFORE UPDATE ON games
@@ -910,7 +937,8 @@ SET search_path = public
 AS $$
 BEGIN
     INSERT INTO library_settings (library_id)
-    VALUES (NEW.id);
+    VALUES (NEW.id)
+    ON CONFLICT (library_id) DO NOTHING;
     RETURN NEW;
 END;
 $$;
@@ -927,7 +955,8 @@ SET search_path = public
 AS $$
 BEGIN
     INSERT INTO user_profiles (user_id, display_name)
-    VALUES (NEW.id, split_part(NEW.email, '@', 1));
+    VALUES (NEW.id, split_part(NEW.email, '@', 1))
+    ON CONFLICT (user_id) DO NOTHING;
     RETURN NEW;
 END;
 $$;
@@ -939,16 +968,16 @@ CREATE TRIGGER create_user_profile_trigger AFTER INSERT ON users
 -- VIEWS (for public access without sensitive data)
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- Public library view (hides owner_id)
-CREATE OR REPLACE VIEW libraries_public WITH (security_invoker = true) AS
+-- Public library view (HIDES owner_id for security)
+CREATE OR REPLACE VIEW libraries_public AS
 SELECT 
     id, name, slug, description, custom_domain,
     is_active, is_premium, created_at, updated_at
 FROM libraries
 WHERE is_active = true;
 
--- Public games view (hides is_favorite for non-owners)
-CREATE OR REPLACE VIEW games_public WITH (security_invoker = true) AS
+-- Public games view (includes is_favorite for owners, exposed via API layer control)
+CREATE OR REPLACE VIEW games_public AS
 SELECT 
     id, library_id, title, slug, description, image_url, additional_images,
     min_players, max_players, play_time, difficulty, game_type, suggested_age,
@@ -957,11 +986,12 @@ SELECT
     location_room, location_shelf, location_misc,
     sleeved, upgraded_components, inserts, in_base_game_box, crowdfunded,
     bgg_id, bgg_url, youtube_videos,
+    is_favorite,
     created_at, updated_at
 FROM games;
 
--- Public library settings (hides sensitive fields)
-CREATE OR REPLACE VIEW library_settings_public WITH (security_invoker = true) AS
+-- Public library settings (hides sensitive Discord webhook, Turnstile keys)
+CREATE OR REPLACE VIEW library_settings_public AS
 SELECT 
     id, library_id, logo_url, background_image_url, background_overlay_opacity,
     footer_text,
@@ -984,20 +1014,20 @@ SELECT
 FROM library_settings;
 
 -- Public user profiles (hides user_id, discord_user_id)
-CREATE OR REPLACE VIEW user_profiles_public WITH (security_invoker = true) AS
+CREATE OR REPLACE VIEW user_profiles_public AS
 SELECT 
     id, display_name, username, avatar_url, bio,
     created_at, updated_at
 FROM user_profiles;
 
--- Game ratings view for library owners (hides IP/fingerprint)
-CREATE OR REPLACE VIEW game_ratings_library_view WITH (security_invoker = true) AS
+-- Game ratings view for library owners (hides IP/fingerprint for privacy)
+CREATE OR REPLACE VIEW game_ratings_library_view AS
 SELECT 
     id, game_id, guest_identifier, rating,
     created_at, updated_at
 FROM game_ratings;
 
--- Game ratings summary
+-- Game ratings summary (aggregate only)
 CREATE OR REPLACE VIEW game_ratings_summary AS
 SELECT 
     game_id,
@@ -1006,7 +1036,7 @@ SELECT
 FROM game_ratings
 GROUP BY game_id;
 
--- Site settings public view (for announcement banner)
+-- Site settings public view (for announcement banner, maintenance mode)
 CREATE OR REPLACE VIEW site_settings_public AS
 SELECT id, key, value, created_at, updated_at
 FROM site_settings
@@ -1082,7 +1112,7 @@ FROM libraries l
 LEFT JOIN library_settings ls ON ls.library_id = l.id
 WHERE l.is_active = true AND COALESCE(ls.is_discoverable, true) = true;
 
--- Library members public view (count only)
+-- Library members public view (count only, no user IDs)
 CREATE OR REPLACE VIEW library_members_public AS
 SELECT 
     library_id,
@@ -1133,34 +1163,34 @@ $$;
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- Composite indexes for common queries
-CREATE INDEX idx_games_library_is_for_sale ON games(library_id, is_for_sale) WHERE is_for_sale = true;
-CREATE INDEX idx_games_library_is_coming_soon ON games(library_id, is_coming_soon) WHERE is_coming_soon = true;
-CREATE INDEX idx_games_library_is_expansion ON games(library_id, is_expansion);
-CREATE INDEX idx_games_parent_game_id ON games(parent_game_id) WHERE parent_game_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_games_library_is_for_sale ON games(library_id, is_for_sale) WHERE is_for_sale = true;
+CREATE INDEX IF NOT EXISTS idx_games_library_is_coming_soon ON games(library_id, is_coming_soon) WHERE is_coming_soon = true;
+CREATE INDEX IF NOT EXISTS idx_games_library_is_expansion ON games(library_id, is_expansion);
+CREATE INDEX IF NOT EXISTS idx_games_parent_game_id ON games(parent_game_id) WHERE parent_game_id IS NOT NULL;
 
--- Full text search indexes (pg_trgm extension must be created first at top of file)
+-- Full text search indexes (pg_trgm)
 CREATE INDEX IF NOT EXISTS idx_games_title_trgm ON games USING gin (title gin_trgm_ops);
 
 -- Date-based query optimization
-CREATE INDEX idx_library_events_future ON library_events(library_id, event_date) WHERE event_date > now();
-CREATE INDEX idx_game_polls_active ON game_polls(library_id, status) WHERE status = 'open';
-CREATE INDEX idx_game_sessions_recent ON game_sessions(game_id, played_at DESC);
+CREATE INDEX IF NOT EXISTS idx_library_events_future ON library_events(library_id, event_date) WHERE event_date > now();
+CREATE INDEX IF NOT EXISTS idx_game_polls_active ON game_polls(library_id, status) WHERE status = 'open';
+CREATE INDEX IF NOT EXISTS idx_game_sessions_recent ON game_sessions(game_id, played_at DESC);
 
 -- Token expiry indexes for cleanup
-CREATE INDEX idx_email_tokens_expires ON email_confirmation_tokens(expires_at);
-CREATE INDEX idx_reset_tokens_expires ON password_reset_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_email_tokens_expires ON email_confirmation_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_reset_tokens_expires ON password_reset_tokens(expires_at);
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- COMPLETE
+-- SEED DATA
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- Log successful migration
 INSERT INTO site_settings (key, value) VALUES 
-    ('schema_version', '2.0.0'),
+    ('schema_version', '2.1.0'),
     ('installed_at', now()::text)
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
 
--- Seed default achievements (optional but recommended)
+-- Seed default achievements
 INSERT INTO achievements (slug, name, description, category, tier, points, requirement_type, requirement_value) VALUES
     ('first_game', 'Welcome to the Shelf', 'Add your first game to your library', 'collection', 1, 10, 'games_owned', 1),
     ('collector_10', 'Budding Collector', 'Own 10 games in your library', 'collection', 1, 25, 'games_owned', 10),
@@ -1175,3 +1205,22 @@ INSERT INTO achievements (slug, name, description, category, tier, points, requi
     ('community_member', 'Community Member', 'Join your first library community', 'social', 1, 10, 'communities_joined', 1),
     ('explorer', 'Explorer', 'Visit 10 different libraries', 'exploration', 1, 20, 'libraries_visited', 10)
 ON CONFLICT (slug) DO NOTHING;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- MIGRATION COMPLETE
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 
+-- Schema version: 2.1.0
+-- 
+-- Key security notes for production:
+-- 1. owner_id is hidden from public via libraries_public view
+-- 2. User roles are in a separate table (prevents privilege escalation)
+-- 3. Sensitive Discord/Turnstile keys excluded from public views
+-- 4. IP addresses and fingerprints hidden from game_ratings_library_view
+-- 5. All security-definer functions have search_path set
+--
+-- Post-migration steps:
+-- 1. Create admin user: ./scripts/create-admin.sh
+-- 2. Configure SSL: ./scripts/setup-ssl.sh
+-- 3. Set up cron jobs: ./scripts/setup-cron.sh
+-- ═══════════════════════════════════════════════════════════════════════════
