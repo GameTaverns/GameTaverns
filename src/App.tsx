@@ -27,6 +27,13 @@ const DemoGameForm = lazy(() => import("./pages/DemoGameForm"));
 const Docs = lazy(() => import("./pages/Docs"));
 const LibrarySuspended = lazy(() => import("./pages/LibrarySuspended"));
 
+// Legal & Info pages
+const Legal = lazy(() => import("./pages/Legal"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Cookies = lazy(() => import("./pages/Cookies"));
+const About = lazy(() => import("./pages/About"));
+
 // Platform pages (multi-tenant)
 const Platform = lazy(() => import("./pages/Platform"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -140,6 +147,12 @@ function PlatformRoutes() {
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/admin" element={<PlatformAdmin />} />
       <Route path="/docs" element={<Docs />} />
+      {/* Legal & Info pages */}
+      <Route path="/legal" element={<Legal />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/cookies" element={<Cookies />} />
+      <Route path="/about" element={<About />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

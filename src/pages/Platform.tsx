@@ -187,8 +187,29 @@ export default function Platform() {
       
       {/* Footer */}
       <footer className="border-t border-border/30 bg-wood-dark/50 py-8">
-        <div className="container mx-auto px-4 text-center text-cream/50">
-          <p>&copy; 2026 GameTaverns. All rights reserved.</p>
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-cream/50 text-sm">
+              &copy; {new Date().getFullYear()} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
+            </p>
+            <nav className="flex gap-6 text-sm">
+              <Link to="/about" className="text-cream/50 hover:text-cream transition-colors">
+                About
+              </Link>
+              <Link to="/privacy" className="text-cream/50 hover:text-cream transition-colors">
+                Privacy
+              </Link>
+              <Link to="/terms" className="text-cream/50 hover:text-cream transition-colors">
+                Terms
+              </Link>
+              <Link to="/cookies" className="text-cream/50 hover:text-cream transition-colors">
+                Cookies
+              </Link>
+              <Link to="/legal" className="text-cream/50 hover:text-cream transition-colors">
+                Legal
+              </Link>
+            </nav>
+          </div>
         </div>
       </footer>
     </div>
