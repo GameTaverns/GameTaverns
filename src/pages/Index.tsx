@@ -1,11 +1,13 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpDown, X, AlertTriangle, Heart } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
 import { WishlistNamePrompt } from "@/components/games/WishlistNamePrompt";
+import { QuadrantFilterButton } from "@/components/games/QuadrantFilterButton";
 import { useGames } from "@/hooks/useGames";
+import { DIFFICULTY_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -48,6 +50,17 @@ const Index = () => {
   const { forSale: forSaleFlag, comingSoon: comingSoonFlag, wishlist: wishlistFlag, demoMode: demoModeEnabled, isLoading: flagsLoading } = useFeatureFlags();
   const { data: realGames = [], isLoading: gamesLoading } = useGames(!isDemoMode);
   const { myVotes, isLoading: wishlistLoading } = useWishlist();
+  
+  // Quadrant filter state
+  const [quadrantFilter, setQuadrantFilter] = useState<{
+    difficulty: number;
+    playTime: number;
+    intensity: number;
+  } | null>(null);
+
+  const handleQuadrantFilterChange = useCallback((filters: { difficulty: number; playTime: number; intensity: number } | null) => {
+    setQuadrantFilter(filters);
+  }, []);
   
   // Fetch ratings summary for top-rated filter
   const { data: ratingsData, isLoading: ratingsLoading } = useQuery({
@@ -215,6 +228,32 @@ const Index = () => {
       }
     }
 
+    // Apply quadrant filter (difficulty + play time)
+    if (quadrantFilter) {
+      const { difficulty: diffPos, playTime: playPos, intensity } = quadrantFilter;
+      
+      // Calculate which difficulty levels to include based on position and intensity
+      const targetDiffIndex = Math.floor(diffPos * DIFFICULTY_OPTIONS.length);
+      const targetPlayIndex = Math.floor(playPos * PLAY_TIME_OPTIONS.length);
+      
+      // Range based on intensity (lower intensity = broader range)
+      const range = Math.ceil((1 - intensity) * 2) + 1; // 1-3 levels range
+      
+      result = result.filter((g) => {
+        // Check difficulty
+        const gameDiffIndex = DIFFICULTY_OPTIONS.indexOf(g.difficulty as any);
+        const diffMatch = gameDiffIndex >= 0 && 
+          Math.abs(gameDiffIndex - targetDiffIndex) <= range;
+        
+        // Check play time
+        const gamePlayIndex = PLAY_TIME_OPTIONS.indexOf(g.play_time as any);
+        const playMatch = gamePlayIndex >= 0 && 
+          Math.abs(gamePlayIndex - targetPlayIndex) <= range;
+        
+        return diffMatch && playMatch;
+      });
+    }
+
     // Sort
     result.sort((a, b) => {
       switch (sortBy) {
@@ -230,7 +269,7 @@ const Index = () => {
     });
 
     return result;
-  }, [games, filter, filterValue, sortBy, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes]);
+  }, [games, filter, filterValue, sortBy, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredGames.length / ITEMS_PER_PAGE);
@@ -437,6 +476,9 @@ const Index = () => {
           </Pagination>
         </div>
       )}
+
+      {/* Quadrant Filter Floating Button (mobile only) */}
+      <QuadrantFilterButton onFilterChange={handleQuadrantFilterChange} />
     </Layout>
   );
 };
