@@ -78,10 +78,8 @@ docker compose version
 ### 2.1 Clone to /opt
 
 ```bash
-sudo git clone https://github.com/YOUR_USERNAME/GameTavern.git /opt/gametaverns
+sudo git clone https://github.com/GameTaverns/GameTaverns.git /opt/gametaverns
 ```
-
-> **Note:** Replace `YOUR_USERNAME` with your actual GitHub username or organization.
 
 ### 2.2 Set Ownership
 
