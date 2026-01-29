@@ -20,6 +20,8 @@ export interface FeatureFlags {
   demoMode: boolean;
   ratings: boolean;
   events: boolean;
+  achievements: boolean;
+  lending: boolean;
 }
 
 // Default values when nothing is configured
@@ -32,10 +34,12 @@ const DEFAULT_FLAGS: FeatureFlags = {
   demoMode: true,
   ratings: true,
   events: true,
+  achievements: true,
+  lending: true,
 };
 
 // Get flag from runtime config (Cloudron) or env var (Vite)
-function getConfigFlag(runtimeKey: 'PLAY_LOGS' | 'WISHLIST' | 'FOR_SALE' | 'MESSAGING' | 'COMING_SOON' | 'DEMO_MODE' | 'RATINGS' | 'EVENTS', envKey: string): boolean | undefined {
+function getConfigFlag(runtimeKey: 'PLAY_LOGS' | 'WISHLIST' | 'FOR_SALE' | 'MESSAGING' | 'COMING_SOON' | 'DEMO_MODE' | 'RATINGS' | 'EVENTS' | 'ACHIEVEMENTS' | 'LENDING', envKey: string): boolean | undefined {
   // Check runtime config first (Cloudron)
   const runtimeValue = getRuntimeFeatureFlag(runtimeKey);
   if (runtimeValue !== undefined) return runtimeValue;
@@ -74,6 +78,12 @@ function getConfigFlags(): Partial<FeatureFlags> {
   const events = getConfigFlag("EVENTS", "VITE_FEATURE_EVENTS");
   if (events !== undefined) flags.events = events;
   
+  const achievements = getConfigFlag("ACHIEVEMENTS", "VITE_FEATURE_ACHIEVEMENTS");
+  if (achievements !== undefined) flags.achievements = achievements;
+  
+  const lending = getConfigFlag("LENDING", "VITE_FEATURE_LENDING");
+  if (lending !== undefined) flags.lending = lending;
+  
   return flags;
 }
 
@@ -105,6 +115,8 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
       const dbDemoMode = (siteSettings as Record<string, string | undefined>).feature_demo_mode;
       const dbRatings = (siteSettings as Record<string, string | undefined>).feature_ratings;
       const dbEvents = (siteSettings as Record<string, string | undefined>).feature_events;
+      const dbAchievements = (siteSettings as Record<string, string | undefined>).feature_achievements;
+      const dbLending = (siteSettings as Record<string, string | undefined>).feature_lending;
       
       if (dbPlayLogs !== undefined) result.playLogs = dbPlayLogs === "true";
       if (dbWishlist !== undefined) result.wishlist = dbWishlist === "true";
@@ -114,6 +126,8 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
       if (dbDemoMode !== undefined) result.demoMode = dbDemoMode === "true";
       if (dbRatings !== undefined) result.ratings = dbRatings === "true";
       if (dbEvents !== undefined) result.events = dbEvents === "true";
+      if (dbAchievements !== undefined) result.achievements = dbAchievements === "true";
+      if (dbLending !== undefined) result.lending = dbLending === "true";
     }
     
     // Apply config overrides last (they take precedence)
@@ -136,6 +150,8 @@ export const FEATURE_FLAG_LABELS: Record<keyof FeatureFlags, string> = {
   demoMode: "Demo Mode",
   ratings: "Ratings",
   events: "Events Calendar",
+  achievements: "Achievements",
+  lending: "Game Lending",
 };
 
 export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
@@ -147,4 +163,6 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
   demoMode: "Allow visitors to access the demo environment",
   ratings: "Allow visitors to rate games (5-star system)",
   events: "Show upcoming events and calendar to visitors",
+  achievements: "Show achievements and badges for library engagement",
+  lending: "Allow registered users to request game loans",
 };

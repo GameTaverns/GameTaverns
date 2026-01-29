@@ -15,6 +15,9 @@ export interface DemoFeatureFlags {
   messaging: boolean;
   comingSoon: boolean;
   ratings: boolean;
+  events: boolean;
+  achievements: boolean;
+  lending: boolean;
 }
 
 const DEFAULT_DEMO_FEATURE_FLAGS: DemoFeatureFlags = {
@@ -24,6 +27,9 @@ const DEFAULT_DEMO_FEATURE_FLAGS: DemoFeatureFlags = {
   messaging: true,
   comingSoon: true,
   ratings: true,
+  events: true,
+  achievements: true,
+  lending: true,
 };
 
 // Demo session data types
