@@ -207,7 +207,12 @@ export function useUpdateUserProfile() {
   const { user } = useAuth();
   
   return useMutation({
-    mutationFn: async (updates: { display_name?: string; avatar_url?: string; bio?: string }) => {
+    mutationFn: async (updates: { 
+      display_name?: string | null; 
+      avatar_url?: string | null; 
+      bio?: string | null;
+      username?: string | null;
+    }) => {
       if (!user) throw new Error("Must be logged in");
       
       const { data, error } = await supabase
