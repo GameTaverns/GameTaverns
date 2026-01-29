@@ -1001,9 +1001,11 @@ export type Database = {
           discord_url: string | null
           discord_webhook_url: string | null
           facebook_url: string | null
+          feature_achievements: boolean | null
           feature_coming_soon: boolean | null
           feature_events: boolean | null
           feature_for_sale: boolean | null
+          feature_lending: boolean | null
           feature_messaging: boolean | null
           feature_play_logs: boolean | null
           feature_ratings: boolean | null
@@ -1062,9 +1064,11 @@ export type Database = {
           discord_url?: string | null
           discord_webhook_url?: string | null
           facebook_url?: string | null
+          feature_achievements?: boolean | null
           feature_coming_soon?: boolean | null
           feature_events?: boolean | null
           feature_for_sale?: boolean | null
+          feature_lending?: boolean | null
           feature_messaging?: boolean | null
           feature_play_logs?: boolean | null
           feature_ratings?: boolean | null
@@ -1123,9 +1127,11 @@ export type Database = {
           discord_url?: string | null
           discord_webhook_url?: string | null
           facebook_url?: string | null
+          feature_achievements?: boolean | null
           feature_coming_soon?: boolean | null
           feature_events?: boolean | null
           feature_for_sale?: boolean | null
+          feature_lending?: boolean | null
           feature_messaging?: boolean | null
           feature_play_logs?: boolean | null
           feature_ratings?: boolean | null
@@ -1973,9 +1979,11 @@ export type Database = {
           created_at: string | null
           discord_url: string | null
           facebook_url: string | null
+          feature_achievements: boolean | null
           feature_coming_soon: boolean | null
           feature_events: boolean | null
           feature_for_sale: boolean | null
+          feature_lending: boolean | null
           feature_messaging: boolean | null
           feature_play_logs: boolean | null
           feature_ratings: boolean | null
@@ -2027,9 +2035,11 @@ export type Database = {
           created_at?: string | null
           discord_url?: string | null
           facebook_url?: string | null
+          feature_achievements?: boolean | null
           feature_coming_soon?: boolean | null
           feature_events?: boolean | null
           feature_for_sale?: boolean | null
+          feature_lending?: boolean | null
           feature_messaging?: boolean | null
           feature_play_logs?: boolean | null
           feature_ratings?: boolean | null
@@ -2081,9 +2091,11 @@ export type Database = {
           created_at?: string | null
           discord_url?: string | null
           facebook_url?: string | null
+          feature_achievements?: boolean | null
           feature_coming_soon?: boolean | null
           feature_events?: boolean | null
           feature_for_sale?: boolean | null
+          feature_lending?: boolean | null
           feature_messaging?: boolean | null
           feature_play_logs?: boolean | null
           feature_ratings?: boolean | null

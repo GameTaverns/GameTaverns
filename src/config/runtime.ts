@@ -24,6 +24,8 @@ interface RuntimeConfig {
     DEMO_MODE?: boolean;
     RATINGS?: boolean;
     EVENTS?: boolean;
+    ACHIEVEMENTS?: boolean;
+    LENDING?: boolean;
   };
 }
 
