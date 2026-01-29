@@ -1,8 +1,8 @@
 # GameTaverns Deployment
 
-Deploy your own GameTaverns instance in minutes.
+Deploy your own GameTaverns instance in ~15 minutes.
 
-## Quick Start (Recommended)
+## Quick Start
 
 ```bash
 # 1. Get a fresh Ubuntu 24.04 server (any VPS provider)
@@ -15,12 +15,12 @@ sudo ./install.sh
 # 3. Follow the prompts. Done!
 ```
 
-The installer handles everything automatically:
-- Database (PostgreSQL 16)
-- Web server (Nginx)
-- Email (Postfix + Dovecot)  
-- SSL certificates (Certbot)
-- Security (Firewall + Fail2ban)
+The installer handles everything:
+- **Database**: PostgreSQL 16
+- **Web Server**: Nginx with rate limiting
+- **Email**: Postfix + Dovecot + Roundcube webmail
+- **Security**: UFW firewall, Fail2ban, SSL ready
+- **Monitoring**: Cockpit web console
 
 ## Requirements
 
@@ -34,20 +34,29 @@ The installer handles everything automatically:
 ## After Installation
 
 1. **Point your domain** to your server's IP address
-2. **Set up SSL**: `sudo certbot --nginx -d yourdomain.com`
-3. **Log in** at `https://yourdomain.com` with the admin account you created
+2. **Set up SSL**: `sudo ./scripts/setup-ssl.sh`
+3. **Set up automation**: `sudo ./scripts/setup-cron.sh`
+4. **Log in** at `https://yourdomain.com`
 
-## Management
+## Management Commands
 
 | Task | Command |
 |------|---------|
-| View logs | `pm2 logs gametaverns-api` |
-| Restart | `pm2 restart gametaverns-api` |
-| Backup | `./deploy/native/scripts/backup.sh` |
-| Update | `./deploy/native/scripts/update.sh` |
+| Health check | `./scripts/health-check.sh` |
+| View logs | `./scripts/view-logs.sh` |
+| Security audit | `./scripts/security-audit.sh` |
+| Backup | `./scripts/backup.sh` |
+| Update | `./scripts/update.sh` |
+| Add mail user | `./scripts/add-mail-user.sh add user@domain.com` |
 | Server GUI | `https://your-server-ip:9090` (Cockpit) |
+
+## Documentation
+
+- **[Native Install Guide](native/README.md)** - Full documentation
+- **[Architecture](ARCHITECTURE.md)** - System design
+- **[Self-Hosting Guide](SELF-HOSTING.md)** - Advanced configuration
 
 ## Support
 
-- **Issues**: https://github.com/GameTaverns/GameTaverns/issues
+- **GitHub**: https://github.com/GameTaverns/GameTaverns/issues
 - **Email**: admin@gametaverns.com
