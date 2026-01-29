@@ -175,7 +175,7 @@ export function useLibraryAnalytics(libraryId: string | null) {
     queryFn: async (): Promise<TopGame[]> => {
       if (!libraryId) throw new Error("No library ID");
 
-      // Get games with session counts
+      // Get games with session counts (exclude coming soon and expansions)
       const { data: games } = await supabase
         .from("games")
         .select(`
@@ -184,7 +184,8 @@ export function useLibraryAnalytics(libraryId: string | null) {
           image_url
         `)
         .eq("library_id", libraryId)
-        .eq("is_expansion", false);
+        .eq("is_expansion", false)
+        .eq("is_coming_soon", false);
 
       if (!games || games.length === 0) return [];
 
@@ -212,8 +213,9 @@ export function useLibraryAnalytics(libraryId: string | null) {
         })
       );
 
-      // Sort by play count and take top 10
+      // Filter to only games with plays, sort by play count, take top 10
       return gameStats
+        .filter((game) => game.playCount > 0)
         .sort((a, b) => b.playCount - a.playCount)
         .slice(0, 10);
     },
