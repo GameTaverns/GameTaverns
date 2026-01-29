@@ -92,15 +92,6 @@ export default function Platform() {
           >
             {isAuthenticated ? (myLibrary ? "Go to My Library" : "Create Your Library") : "Start Free"}
           </Button>
-          <Link to="/docs">
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="border-secondary/50 text-cream hover:bg-wood-medium/50 text-lg px-8 py-6"
-            >
-              Learn More
-            </Button>
-          </Link>
         </div>
         
         {/* Stats */}
@@ -215,7 +206,7 @@ export default function Platform() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="bg-wood-medium/20 rounded-xl p-6 border border-border/20 hover:border-secondary/60 hover:bg-wood-medium/30 transition-all duration-200">
+    <div className="bg-wood-medium/20 rounded-xl p-6 border border-border/20">
       <div className="text-secondary mb-4">{icon}</div>
       <h3 className="font-display text-xl font-semibold text-cream mb-2">{title}</h3>
       <p className="text-cream/60">{description}</p>
