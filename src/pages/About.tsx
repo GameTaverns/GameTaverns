@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { Dices, Heart, Users, Globe, Github } from "lucide-react";
+import { Heart, Users, Globe, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import logo from "@/assets/logo.png";
 
 export default function About() {
   return (
@@ -9,7 +10,7 @@ export default function About() {
       <div className="container max-w-4xl py-16 px-4">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <Dices className="h-16 w-16 mx-auto mb-6 text-primary" />
+          <img src={logo} alt="GameTaverns" className="h-20 mx-auto mb-6" />
           <h1 className="text-4xl font-display font-bold mb-4">About GameTaverns</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             A passion project built by board game enthusiasts, for board game enthusiasts.
@@ -146,11 +147,9 @@ export default function About() {
               feature suggestion, found a bug, or just want to share your favorite game, 
               we'd love to hear from you.
             </p>
-            <ul>
-              <li>General inquiries: <a href="mailto:hello@gametaverns.com" className="text-primary hover:underline">hello@gametaverns.com</a></li>
-              <li>Support: <a href="mailto:support@gametaverns.com" className="text-primary hover:underline">support@gametaverns.com</a></li>
-              <li>Privacy questions: <a href="mailto:privacy@gametaverns.com" className="text-primary hover:underline">privacy@gametaverns.com</a></li>
-            </ul>
+            <p>
+              Contact us at: <a href="mailto:admin@gametaverns.com" className="text-primary hover:underline">admin@gametaverns.com</a>
+            </p>
           </div>
         </section>
 
