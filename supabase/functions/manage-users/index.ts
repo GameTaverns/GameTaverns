@@ -166,18 +166,105 @@ export default async function handler(req: Request): Promise<Response> {
 
         // Get all roles
         const { data: roles } = await adminClient.from("user_roles").select("user_id, role");
+        
+        // Get all profiles for display names and usernames
+        const { data: profiles } = await adminClient.from("user_profiles").select("user_id, display_name, username");
 
-        // Map roles to users
+        // Map roles and profiles to users
         const roleMap = new Map(roles?.map((r) => [r.user_id, r.role]) || []);
+        const profileMap = new Map(profiles?.map((p) => [p.user_id, { display_name: p.display_name, username: p.username }]) || []);
+        
         const usersWithRoles = users.map((u) => ({
           id: u.id,
           email: u.email,
           created_at: u.created_at,
+          last_sign_in_at: u.last_sign_in_at,
           role: roleMap.get(u.id) || null,
+          display_name: profileMap.get(u.id)?.display_name || null,
+          username: profileMap.get(u.id)?.username || null,
+          is_banned: u.banned_until ? new Date(u.banned_until) > new Date() : false,
+          banned_until: u.banned_until,
         }));
 
         return new Response(
           JSON.stringify({ users: usersWithRoles }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "suspend": {
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: "User ID is required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Prevent self-suspension
+        if (userId === user.id) {
+          return new Response(
+            JSON.stringify({ error: "Cannot suspend your own account" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { duration, reason } = body;
+        
+        // Calculate ban duration string for Supabase
+        let banDuration: string;
+        if (duration === "permanent") {
+          banDuration = "876000h"; // ~100 years
+        } else if (duration === "7d") {
+          banDuration = "168h";
+        } else if (duration === "30d") {
+          banDuration = "720h";
+        } else if (duration === "90d") {
+          banDuration = "2160h";
+        } else {
+          banDuration = "168h"; // Default 7 days
+        }
+
+        // Use the ban_duration parameter which is the correct Supabase Admin API field
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
+          ban_duration: banDuration,
+          user_metadata: reason ? { suspension_reason: reason } : undefined,
+        });
+
+        if (updateError) {
+          return new Response(
+            JSON.stringify({ error: updateError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "unsuspend": {
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: "User ID is required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Use "none" to clear ban
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
+          ban_duration: "none",
+        });
+
+        if (updateError) {
+          return new Response(
+            JSON.stringify({ error: updateError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
