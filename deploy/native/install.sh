@@ -249,6 +249,42 @@ install_system_deps() {
     log_success "System dependencies installed"
 }
 
+install_cockpit() {
+    log_step "Installing Cockpit Web Console (Server Management GUI)"
+    
+    log_info "Installing Cockpit and modules..."
+    run_cmd "DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        cockpit \
+        cockpit-storaged \
+        cockpit-networkmanager \
+        cockpit-packagekit \
+        cockpit-pcp"
+    
+    log_info "Enabling Cockpit service..."
+    run_cmd "systemctl enable --now cockpit.socket"
+    
+    # Configure Cockpit to allow root login (needed for PM2/service management)
+    log_info "Configuring Cockpit settings..."
+    mkdir -p /etc/cockpit
+    cat > /etc/cockpit/cockpit.conf <<EOF
+[WebService]
+Origins = https://${DOMAIN:-localhost}:9090 wss://${DOMAIN:-localhost}:9090
+ProtocolHeader = X-Forwarded-Proto
+AllowUnencrypted = false
+
+[Session]
+IdleTimeout = 60
+EOF
+
+    # Open Cockpit port in UFW if active
+    if ufw status | grep -q "active"; then
+        log_info "Opening Cockpit port (9090) in firewall..."
+        run_cmd "ufw allow 9090/tcp"
+    fi
+    
+    log_success "Cockpit installed - Access at https://your-server:9090"
+}
+
 install_postgresql() {
     log_step "Installing PostgreSQL 16"
 
@@ -1656,6 +1692,16 @@ print_summary() {
     echo -e "${BOLD}Domain:${NC} ${DOMAIN}"
     echo -e "${BOLD}Mail Domain:${NC} ${MAIL_DOMAIN}"
     echo ""
+    echo -e "${BOLD}${CYAN}═══ MANAGEMENT INTERFACES ═══${NC}"
+    echo ""
+    echo -e "${BOLD}Server Management (Cockpit):${NC}"
+    echo "  URL: https://<your-server-ip>:9090"
+    echo "  Login with your server's root/sudo credentials"
+    echo "  Features: System monitoring, terminal, logs, services, storage"
+    echo ""
+    echo -e "${BOLD}Webmail (Roundcube):${NC}"
+    echo "  URL: http://mail.${MAIL_DOMAIN}"
+    echo ""
     echo -e "${BOLD}${CYAN}═══ CREDENTIALS ═══${NC}"
     echo -e "${YELLOW}IMPORTANT: Save these credentials securely!${NC}"
     echo -e "Credentials file: ${CREDENTIALS_FILE}"
@@ -1669,8 +1715,6 @@ print_summary() {
     echo "  admin@${MAIL_DOMAIN}: ${MAIL_ADMIN_PASSWORD}"
     echo "  legal@${MAIL_DOMAIN}: ${MAIL_LEGAL_PASSWORD}"
     echo "  support@${MAIL_DOMAIN}: ${MAIL_SUPPORT_PASSWORD}"
-    echo ""
-    echo -e "${BOLD}Webmail:${NC} http://mail.${MAIL_DOMAIN}"
     echo ""
     echo -e "${BOLD}${CYAN}═══ NEXT STEPS ═══${NC}"
     echo ""
@@ -1690,6 +1734,7 @@ print_summary() {
     echo ""
     echo -e "${BOLD}${CYAN}═══ USEFUL COMMANDS ═══${NC}"
     echo ""
+    echo "  Server GUI:           https://<your-server-ip>:9090"
     echo "  View API logs:        pm2 logs gametaverns-api"
     echo "  Restart API:          pm2 restart gametaverns-api"
     echo "  View mail logs:       tail -f /var/log/mail.log"
@@ -1721,6 +1766,7 @@ main() {
     echo "  • Nginx reverse proxy"
     echo "  • Postfix + Dovecot mail server"
     echo "  • Roundcube webmail interface"
+    echo "  • Cockpit web console (server management GUI)"
     echo "  • GameTaverns application"
     echo ""
     echo -e "${YELLOW}Estimated time: 10-20 minutes${NC}"
@@ -1742,6 +1788,7 @@ main() {
 
     # System setup
     install_system_deps
+    install_cockpit
     create_app_user
     setup_directories
 
