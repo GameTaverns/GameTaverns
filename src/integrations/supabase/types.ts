@@ -696,6 +696,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          discord_thread_id: string | null
           event_date: string
           event_location: string | null
           id: string
@@ -707,6 +708,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          discord_thread_id?: string | null
           event_date: string
           event_location?: string | null
           id?: string
@@ -718,6 +720,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          discord_thread_id?: string | null
           event_date?: string
           event_location?: string | null
           id?: string

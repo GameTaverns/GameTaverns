@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.discord-forum-post]
 verify_jwt = false
+
+[functions.discord-delete-thread]
+verify_jwt = false
