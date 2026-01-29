@@ -6,6 +6,7 @@ import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
 import { WishlistNamePrompt } from "@/components/games/WishlistNamePrompt";
 import { QuadrantFilterButton } from "@/components/games/QuadrantFilterButton";
+import { AdvancedSearch, type AdvancedFilters } from "@/components/games/AdvancedSearch";
 import { useGames } from "@/hooks/useGames";
 import { DIFFICULTY_OPTIONS } from "@/types/game";
 import { useDemoMode } from "@/contexts/DemoContext";
@@ -58,8 +59,15 @@ const Index = () => {
     intensity: number;
   } | null>(null);
 
+  // Advanced search filter state
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilters | null>(null);
+
   const handleQuadrantFilterChange = useCallback((filters: { difficulty: number; playTime: number; intensity: number } | null) => {
     setQuadrantFilter(filters);
+  }, []);
+
+  const handleAdvancedFiltersChange = useCallback((filters: AdvancedFilters) => {
+    setAdvancedFilters(filters);
   }, []);
   
   // Fetch ratings summary for top-rated filter
@@ -265,6 +273,58 @@ const Index = () => {
       });
     }
 
+    // Apply advanced search filters
+    if (advancedFilters) {
+      // Text search
+      if (advancedFilters.search) {
+        const searchLower = advancedFilters.search.toLowerCase();
+        result = result.filter((g) =>
+          g.title.toLowerCase().includes(searchLower) ||
+          (g.description && g.description.toLowerCase().includes(searchLower))
+        );
+      }
+
+      // Player count
+      if (advancedFilters.minPlayers !== null) {
+        result = result.filter((g) => (g.max_players ?? 0) >= advancedFilters.minPlayers!);
+      }
+      if (advancedFilters.maxPlayers !== null) {
+        result = result.filter((g) => (g.min_players ?? 99) <= advancedFilters.maxPlayers!);
+      }
+
+      // Difficulty (multi-select)
+      if (advancedFilters.difficulties.length > 0) {
+        result = result.filter((g) => advancedFilters.difficulties.includes(g.difficulty as string));
+      }
+
+      // Play Time (multi-select)
+      if (advancedFilters.playTimes.length > 0) {
+        result = result.filter((g) => advancedFilters.playTimes.includes(g.play_time as string));
+      }
+
+      // Game Type (multi-select)
+      if (advancedFilters.gameTypes.length > 0) {
+        result = result.filter((g) => advancedFilters.gameTypes.includes(g.game_type as string));
+      }
+
+      // Mechanics (multi-select - game must have ALL selected mechanics)
+      if (advancedFilters.mechanics.length > 0) {
+        result = result.filter((g) =>
+          advancedFilters.mechanics.every((mechName) =>
+            g.mechanics.some((m) => m.name === mechName)
+          )
+        );
+      }
+
+      // Quick filters
+      if (advancedFilters.forSale && forSaleFlag) {
+        result = result.filter((g) => g.is_for_sale);
+      }
+      if (advancedFilters.favorites) {
+        result = result.filter((g) => (g as any).is_favorite === true);
+      }
+    }
+
     // Sort
     result.sort((a, b) => {
       switch (sortBy) {
@@ -280,7 +340,7 @@ const Index = () => {
     });
 
     return result;
-  }, [games, filter, filterValue, sortBy, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter]);
+  }, [games, filter, filterValue, sortBy, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter, advancedFilters]);
 
   // Pagination
   const totalPages = Math.ceil(filteredGames.length / ITEMS_PER_PAGE);
@@ -357,6 +417,13 @@ const Index = () => {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Advanced Search */}
+      <AdvancedSearch
+        onFiltersChange={handleAdvancedFiltersChange}
+        totalResults={filteredGames.length}
+        className="mb-6"
+      />
 
       {/* Page Header */}
       <div className="mb-8">
