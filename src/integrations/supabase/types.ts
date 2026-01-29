@@ -2356,7 +2356,7 @@ export type Database = {
         | "explorer"
         | "contributor"
         | "lender"
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "owner"
       difficulty_level:
         | "1 - Light"
         | "2 - Medium Light"
@@ -2531,7 +2531,7 @@ export const Constants = {
         "contributor",
         "lender",
       ],
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "owner"],
       difficulty_level: [
         "1 - Light",
         "2 - Medium Light",
