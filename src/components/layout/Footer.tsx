@@ -25,11 +25,6 @@ export function Footer() {
             <h3 className="font-semibold mb-3">Platform</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About Us
-                </Link>
-              </li>
-              <li>
                 <Link to="/docs" className="text-muted-foreground hover:text-foreground transition-colors">
                   Documentation
                 </Link>

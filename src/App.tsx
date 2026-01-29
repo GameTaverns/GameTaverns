@@ -33,7 +33,7 @@ const Legal = lazy(() => import("./pages/Legal"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Cookies = lazy(() => import("./pages/Cookies"));
-const About = lazy(() => import("./pages/About"));
+
 
 // Platform pages (multi-tenant)
 const Platform = lazy(() => import("./pages/Platform"));
@@ -155,7 +155,7 @@ function PlatformRoutes() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/cookies" element={<Cookies />} />
-      <Route path="/about" element={<About />} />
+      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

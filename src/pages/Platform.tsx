@@ -193,9 +193,6 @@ export default function Platform() {
               &copy; {new Date().getFullYear()} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
             </p>
             <nav className="flex gap-6 text-sm">
-              <Link to="/about" className="text-cream/50 hover:text-cream transition-colors">
-                About
-              </Link>
               <Link to="/privacy" className="text-cream/50 hover:text-cream transition-colors">
                 Privacy
               </Link>
@@ -218,7 +215,7 @@ export default function Platform() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="bg-wood-medium/20 rounded-xl p-6 border border-border/20 hover:border-border/40 transition-colors">
+    <div className="bg-wood-medium/20 rounded-xl p-6 border border-border/20 hover:border-secondary/60 hover:bg-wood-medium/30 transition-all duration-200">
       <div className="text-secondary mb-4">{icon}</div>
       <h3 className="font-display text-xl font-semibold text-cream mb-2">{title}</h3>
       <p className="text-cream/60">{description}</p>
