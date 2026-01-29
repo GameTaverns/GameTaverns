@@ -23,6 +23,7 @@ import { YouTubeVideoList } from "@/components/games/YouTubeEmbed";
 import { StarRating } from "@/components/games/StarRating";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameRecommendations } from "@/components/games/GameRecommendations";
+import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
 import {
   Table,
   TableBody,
@@ -41,7 +42,7 @@ const GameDetail = () => {
   const { isAdmin } = useAuth();
   const isLibraryOwner = user && library?.owner_id === user.id;
   const canViewAdminData = isAdmin || isLibraryOwner;
-  const { playLogs, messaging, forSale, ratings } = useFeatureFlags();
+  const { playLogs, messaging, forSale, ratings, lending } = useFeatureFlags();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
   
@@ -369,6 +370,15 @@ const GameDetail = () => {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Favorite Button - visible to library owners */}
                 <FavoriteButton gameId={game.id} />
+                {/* Request Loan Button - visible when lending is enabled */}
+                {lending && library && !isDemoMode && (
+                  <RequestLoanButton
+                    gameId={game.id}
+                    gameTitle={game.title}
+                    libraryId={library.id}
+                    lenderUserId={library.owner_id || ""}
+                  />
+                )}
                 {canViewAdminData && (
                   <Button
                     variant="outline"

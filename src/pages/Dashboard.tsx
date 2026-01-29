@@ -17,7 +17,9 @@ import {
   BarChart3,
   Vote,
   User,
-  Calendar
+  Calendar,
+  BookOpen,
+  Trophy
 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -37,12 +39,18 @@ import { AccountSettings } from "@/components/settings/AccountSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UpcomingEventsWidget } from "@/components/events/UpcomingEventsWidget";
 import { CreateEventDialog } from "@/components/events/CreateEventDialog";
+import { LendingDashboard } from "@/components/lending/LendingDashboard";
+import { AchievementsDisplay } from "@/components/achievements/AchievementsDisplay";
+import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
+import { useLending } from "@/hooks/useLending";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated } = useAuth();
   const { data: library, isLoading: libraryLoading } = useMyLibrary();
   const { data: profile } = useUserProfile();
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
+  const { myLentLoans } = useLending();
+  const pendingLoanRequests = myLentLoans.filter((l) => l.status === "requested").length;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -155,6 +163,9 @@ export default function Dashboard() {
           </Link>
           
           <div className="flex items-center gap-4">
+            {/* Notifications */}
+            <NotificationsDropdown variant="dashboard" />
+            
             {/* Quick link to library */}
             {library && (
               <a 
@@ -188,6 +199,19 @@ export default function Dashboard() {
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="mb-8 bg-wood-medium/30 flex-wrap">
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="lending" className="gap-2">
+                <BookOpen className="h-4 w-4" />
+                Lending
+                {pendingLoanRequests > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                    {pendingLoanRequests}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="achievements" className="gap-2">
+                <Trophy className="h-4 w-4" />
+                Achievements
+              </TabsTrigger>
               <TabsTrigger value="analytics" className="gap-2">
                 <BarChart3 className="h-4 w-4" />
                 Analytics
@@ -403,6 +427,40 @@ export default function Dashboard() {
                 libraryId={library.id}
                 editEvent={editEvent}
               />
+            </TabsContent>
+
+            <TabsContent value="lending">
+              <Card className="bg-wood-medium/30 border-wood-medium/50">
+                <CardHeader>
+                  <CardTitle className="text-cream flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-secondary" />
+                    Game Lending
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Manage loan requests and track borrowed games
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <LendingDashboard />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="achievements">
+              <Card className="bg-wood-medium/30 border-wood-medium/50">
+                <CardHeader>
+                  <CardTitle className="text-cream flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-secondary" />
+                    Your Achievements
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Track your progress and unlock badges
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AchievementsDisplay />
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="analytics">
