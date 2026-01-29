@@ -5,8 +5,7 @@ export type DiscordEventType =
   | "wishlist_vote" 
   | "message_received" 
   | "poll_created" 
-  | "poll_closed"
-  | "event_created";
+  | "poll_closed";
 
 interface DiscordNotifyData {
   library_id: string;
