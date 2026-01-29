@@ -631,18 +631,25 @@ ${markdown.slice(0, 18000)}`,
           },
         };
 
-        // Call discord-notify function (fire and forget - don't block import)
+        // Call discord-notify function - must await to prevent edge function from terminating early
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         
-        fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
+        console.log("Sending Discord notification for:", game.title);
+        const notifyResponse = await fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${serviceRoleKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify(discordPayload),
-        }).catch((err) => console.error("Discord notification failed:", err));
+        });
+        
+        if (notifyResponse.ok) {
+          console.log("Discord notification sent successfully");
+        } else {
+          console.error("Discord notification failed:", await notifyResponse.text());
+        }
       } catch (discordErr) {
         console.error("Discord notification error:", discordErr);
         // Don't fail the import for notification issues
