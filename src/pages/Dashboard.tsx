@@ -388,7 +388,7 @@ export default function Dashboard() {
             {library ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Library Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Library className="h-5 w-5 text-secondary" />
@@ -398,7 +398,7 @@ export default function Dashboard() {
                       {library.name}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1 flex flex-col justify-end">
                     <div className="space-y-3">
                       <div className="text-sm text-cream/60">
                         <span className="font-medium text-cream">URL:</span>{" "}
@@ -415,7 +415,7 @@ export default function Dashboard() {
                 </Card>
                 
                 {/* Manage Games Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Gamepad2 className="h-5 w-5 text-secondary" />
@@ -425,7 +425,7 @@ export default function Dashboard() {
                       Import, add, and organize your collection
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1 flex flex-col justify-end">
                     <a href={gamesUrl!}>
                       <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                         <Upload className="h-4 w-4 mr-2" />
@@ -436,7 +436,7 @@ export default function Dashboard() {
                 </Card>
                 
                 {/* Library Settings Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Palette className="h-5 w-5 text-secondary" />
@@ -446,7 +446,7 @@ export default function Dashboard() {
                       Theme, branding, and site configuration
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1 flex flex-col justify-end">
                     <a href={settingsUrl!}>
                       <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                         <Settings className="h-4 w-4 mr-2" />
@@ -457,7 +457,7 @@ export default function Dashboard() {
                 </Card>
                 
                 {/* Messages Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Mail className="h-5 w-5 text-secondary" />
@@ -472,7 +472,7 @@ export default function Dashboard() {
                       View inquiries about games for sale
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1 flex flex-col justify-end">
                     <a href={`/?tenant=${library.slug}&path=/messages`}>
                       <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                         <Mail className="h-4 w-4 mr-2" />
@@ -488,7 +488,7 @@ export default function Dashboard() {
                 </Card>
                 
                 {/* Ratings & Wishlist Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Star className="h-5 w-5 text-secondary" />
@@ -498,7 +498,7 @@ export default function Dashboard() {
                       View user ratings and wishlist requests
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="flex-1 flex flex-col justify-end space-y-2">
                     <a href={`/?tenant=${library.slug}&path=/settings&tab=ratings`}>
                       <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
                         <Star className="h-4 w-4 mr-2" />
@@ -515,14 +515,14 @@ export default function Dashboard() {
                 </Card>
                 
                 {/* Stats Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
                   <CardHeader>
                     <CardTitle>Library Stats</CardTitle>
                     <CardDescription className="text-cream/70">
                       Your collection at a glance
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="flex-1 flex flex-col justify-end">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
                         <div className="text-2xl font-bold text-secondary">
