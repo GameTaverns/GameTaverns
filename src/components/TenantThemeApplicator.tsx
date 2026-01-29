@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTheme } from "next-themes";
 
@@ -11,6 +11,7 @@ export function TenantThemeApplicator() {
   const { settings, isTenantMode } = useTenant();
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const appliedRef = useRef(false);
   
   // Avoid hydration mismatch
   useEffect(() => {
@@ -18,18 +19,30 @@ export function TenantThemeApplicator() {
   }, []);
   
   const applyTheme = useCallback(() => {
-    if (!isTenantMode || !settings) return;
+    if (!isTenantMode || !settings) {
+      return;
+    }
     
     const root = document.documentElement;
     const isDark = root.classList.contains('dark');
     
-    // Helper to format HSL values properly
-    const formatHSL = (h: string | null, s: string | null, l: string | null) => {
+    console.log('[TenantTheme] Applying theme:', { isDark, isTenantMode, hasSettings: !!settings });
+    
+    // Helper to format HSL values properly - handles both "50%" and "50" formats
+    const formatHSL = (h: string | null | undefined, s: string | null | undefined, l: string | null | undefined): string | null => {
       if (!h || !s || !l) return null;
-      const hVal = h;
+      const hVal = h.replace('%', ''); // Hue shouldn't have %
       const sVal = s.includes('%') ? s : `${s}%`;
       const lVal = l.includes('%') ? l : `${l}%`;
       return `${hVal} ${sVal} ${lVal}`;
+    };
+    
+    // Calculate foreground color based on background lightness
+    const getForeground = (l: string | null | undefined): string => {
+      if (!l) return isDark ? '0 0% 95%' : '0 0% 10%';
+      const lightness = parseInt(l.replace('%', ''));
+      // If background is light (>50%), use dark foreground; if dark, use light foreground
+      return lightness > 50 ? '0 0% 10%' : '0 0% 95%';
     };
     
     if (isDark) {
@@ -40,15 +53,35 @@ export function TenantThemeApplicator() {
       const card = formatHSL(settings.theme_dark_card_h, settings.theme_dark_card_s, settings.theme_dark_card_l);
       const sidebar = formatHSL(settings.theme_dark_sidebar_h, settings.theme_dark_sidebar_s, settings.theme_dark_sidebar_l);
       
-      if (primary) root.style.setProperty('--primary', primary);
-      if (accent) root.style.setProperty('--accent', accent);
+      console.log('[TenantTheme] Dark mode values:', { primary, accent, background, card, sidebar });
+      
+      if (primary) {
+        root.style.setProperty('--primary', primary);
+        root.style.setProperty('--primary-foreground', getForeground(settings.theme_dark_primary_l));
+      }
+      if (accent) {
+        root.style.setProperty('--accent', accent);
+        root.style.setProperty('--accent-foreground', getForeground(settings.theme_dark_accent_l));
+      }
       if (background) {
         root.style.setProperty('--background', background);
-        // Also update related colors for consistency
-        root.style.setProperty('--muted', background);
+        root.style.setProperty('--foreground', getForeground(settings.theme_dark_background_l));
+        // Muted is slightly lighter/darker than background
+        const bgL = parseInt((settings.theme_dark_background_l || '10').replace('%', ''));
+        const mutedL = Math.min(bgL + 5, 100);
+        root.style.setProperty('--muted', `${settings.theme_dark_background_h} ${settings.theme_dark_background_s} ${mutedL}%`);
+        root.style.setProperty('--muted-foreground', `${settings.theme_dark_background_h} ${settings.theme_dark_background_s} 60%`);
       }
-      if (card) root.style.setProperty('--card', card);
-      if (sidebar) root.style.setProperty('--sidebar-background', sidebar);
+      if (card) {
+        root.style.setProperty('--card', card);
+        root.style.setProperty('--card-foreground', getForeground(settings.theme_dark_card_l));
+        root.style.setProperty('--popover', card);
+        root.style.setProperty('--popover-foreground', getForeground(settings.theme_dark_card_l));
+      }
+      if (sidebar) {
+        root.style.setProperty('--sidebar-background', sidebar);
+        root.style.setProperty('--sidebar-foreground', getForeground(settings.theme_dark_sidebar_l));
+      }
     } else {
       // Apply light mode colors
       const primary = formatHSL(settings.theme_primary_h, settings.theme_primary_s, settings.theme_primary_l);
@@ -57,22 +90,46 @@ export function TenantThemeApplicator() {
       const card = formatHSL(settings.theme_card_h, settings.theme_card_s, settings.theme_card_l);
       const sidebar = formatHSL(settings.theme_sidebar_h, settings.theme_sidebar_s, settings.theme_sidebar_l);
       
-      if (primary) root.style.setProperty('--primary', primary);
-      if (accent) root.style.setProperty('--accent', accent);
+      console.log('[TenantTheme] Light mode values:', { primary, accent, background, card, sidebar });
+      
+      if (primary) {
+        root.style.setProperty('--primary', primary);
+        root.style.setProperty('--primary-foreground', getForeground(settings.theme_primary_l));
+      }
+      if (accent) {
+        root.style.setProperty('--accent', accent);
+        root.style.setProperty('--accent-foreground', getForeground(settings.theme_accent_l));
+      }
       if (background) {
         root.style.setProperty('--background', background);
-        root.style.setProperty('--muted', background);
+        root.style.setProperty('--foreground', getForeground(settings.theme_background_l));
+        // Muted is slightly darker than background in light mode
+        const bgL = parseInt((settings.theme_background_l || '95').replace('%', ''));
+        const mutedL = Math.max(bgL - 5, 0);
+        root.style.setProperty('--muted', `${settings.theme_background_h} ${settings.theme_background_s} ${mutedL}%`);
+        root.style.setProperty('--muted-foreground', `${settings.theme_background_h} ${settings.theme_background_s} 40%`);
       }
-      if (card) root.style.setProperty('--card', card);
-      if (sidebar) root.style.setProperty('--sidebar-background', sidebar);
+      if (card) {
+        root.style.setProperty('--card', card);
+        root.style.setProperty('--card-foreground', getForeground(settings.theme_card_l));
+        root.style.setProperty('--popover', card);
+        root.style.setProperty('--popover-foreground', getForeground(settings.theme_card_l));
+      }
+      if (sidebar) {
+        root.style.setProperty('--sidebar-background', sidebar);
+        root.style.setProperty('--sidebar-foreground', getForeground(settings.theme_sidebar_l));
+      }
     }
     
     // Apply fonts
     if (settings.theme_font_display) {
       root.style.setProperty('--font-display', settings.theme_font_display);
+      // Also load the font if it's a Google Font
+      loadGoogleFont(settings.theme_font_display);
     }
     if (settings.theme_font_body) {
       root.style.setProperty('--font-body', settings.theme_font_body);
+      loadGoogleFont(settings.theme_font_body);
     }
     
     // Apply background image if set
@@ -84,7 +141,21 @@ export function TenantThemeApplicator() {
     } else {
       document.body.style.backgroundImage = '';
     }
+    
+    appliedRef.current = true;
   }, [settings, isTenantMode]);
+  
+  // Load Google Font dynamically
+  const loadGoogleFont = (fontName: string) => {
+    const linkId = `google-font-${fontName.replace(/\s+/g, '-').toLowerCase()}`;
+    if (!document.getElementById(linkId)) {
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@400;500;600;700&display=swap`;
+      document.head.appendChild(link);
+    }
+  };
   
   // Apply theme on mount and when settings/theme changes
   useEffect(() => {
@@ -94,17 +165,28 @@ export function TenantThemeApplicator() {
     
     // Cleanup on unmount
     return () => {
-      const root = document.documentElement;
-      const cssVars = ['--primary', '--accent', '--background', '--muted', '--card', '--sidebar-background', '--font-display', '--font-body'];
-      cssVars.forEach((key) => {
-        root.style.removeProperty(key);
-      });
-      document.body.style.backgroundImage = '';
-      document.body.style.backgroundSize = '';
-      document.body.style.backgroundPosition = '';
-      document.body.style.backgroundAttachment = '';
+      if (appliedRef.current) {
+        const root = document.documentElement;
+        const cssVars = [
+          '--primary', '--primary-foreground',
+          '--accent', '--accent-foreground', 
+          '--background', '--foreground',
+          '--muted', '--muted-foreground',
+          '--card', '--card-foreground',
+          '--popover', '--popover-foreground',
+          '--sidebar-background', '--sidebar-foreground',
+          '--font-display', '--font-body'
+        ];
+        cssVars.forEach((key) => {
+          root.style.removeProperty(key);
+        });
+        document.body.style.backgroundImage = '';
+        document.body.style.backgroundSize = '';
+        document.body.style.backgroundPosition = '';
+        document.body.style.backgroundAttachment = '';
+      }
     };
-  }, [mounted, applyTheme, resolvedTheme]);
+  }, [mounted, applyTheme, resolvedTheme, settings]);
   
   // Also listen for class changes on html element (for immediate response to theme toggle)
   useEffect(() => {
@@ -113,7 +195,8 @@ export function TenantThemeApplicator() {
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.attributeName === 'class') {
-          applyTheme();
+          // Small delay to let the theme class change propagate
+          setTimeout(applyTheme, 10);
         }
       });
     });
