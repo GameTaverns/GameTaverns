@@ -158,14 +158,14 @@ export function TenantThemeApplicator() {
       }
     }
     
-    // Apply fonts
+    // Apply fonts (wrap in quotes for CSS font-family)
     if (settings.theme_font_display) {
-      root.style.setProperty('--font-display', settings.theme_font_display);
+      root.style.setProperty('--font-display', `"${settings.theme_font_display}"`);
       // Also load the font if it's a Google Font
       loadGoogleFont(settings.theme_font_display);
     }
     if (settings.theme_font_body) {
-      root.style.setProperty('--font-body', settings.theme_font_body);
+      root.style.setProperty('--font-body', `"${settings.theme_font_body}"`);
       loadGoogleFont(settings.theme_font_body);
     }
     
