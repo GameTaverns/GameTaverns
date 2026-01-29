@@ -1,9 +1,20 @@
+import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
-import { Calendar, MapPin, Vote, CalendarPlus, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, Vote, CalendarPlus, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useUpcomingEvents, CalendarEvent } from "@/hooks/useLibraryEvents";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useUpcomingEvents, useDeleteEvent, CalendarEvent } from "@/hooks/useLibraryEvents";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -11,9 +22,20 @@ interface UpcomingEventsWidgetProps {
   libraryId: string;
   isOwner?: boolean;
   onCreateEvent?: () => void;
+  onEditEvent?: (event: CalendarEvent) => void;
 }
 
-function EventItem({ event, isOwner }: { event: CalendarEvent; isOwner: boolean }) {
+function EventItem({ 
+  event, 
+  isOwner, 
+  onEdit, 
+  onDelete 
+}: { 
+  event: CalendarEvent; 
+  isOwner: boolean;
+  onEdit?: (event: CalendarEvent) => void;
+  onDelete?: (event: CalendarEvent) => void;
+}) {
   const { buildUrl } = useTenantUrl();
   const eventDate = new Date(event.event_date);
   const isEventToday = isToday(eventDate);
@@ -24,8 +46,10 @@ function EventItem({ event, isOwner }: { event: CalendarEvent; isOwner: boolean 
     ? buildUrl(`/poll/${event.share_token}`)
     : null;
   
+  const isStandaloneEvent = event.event_type === "standalone";
+  
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group">
       {/* Date Badge */}
       <div className={`flex flex-col items-center justify-center min-w-[48px] h-12 rounded-lg text-center ${
         isEventToday 
@@ -81,6 +105,30 @@ function EventItem({ event, isOwner }: { event: CalendarEvent; isOwner: boolean 
             View Poll <ExternalLink className="h-3 w-3" />
           </a>
         )}
+        
+        {/* Owner Actions for standalone events */}
+        {isOwner && isStandaloneEvent && (
+          <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 px-2 text-xs"
+              onClick={() => onEdit?.(event)}
+            >
+              <Pencil className="h-3 w-3 mr-1" />
+              Edit
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+              onClick={() => onDelete?.(event)}
+            >
+              <Trash2 className="h-3 w-3 mr-1" />
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -89,9 +137,23 @@ function EventItem({ event, isOwner }: { event: CalendarEvent; isOwner: boolean 
 export function UpcomingEventsWidget({ 
   libraryId, 
   isOwner = false, 
-  onCreateEvent 
+  onCreateEvent,
+  onEditEvent,
 }: UpcomingEventsWidgetProps) {
   const { data: events, isLoading } = useUpcomingEvents(libraryId);
+  const deleteEvent = useDeleteEvent();
+  const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
+  
+  const handleDelete = async () => {
+    if (!eventToDelete) return;
+    
+    await deleteEvent.mutateAsync({
+      eventId: eventToDelete.id,
+      libraryId,
+    });
+    
+    setEventToDelete(null);
+  };
   
   if (isLoading) {
     return (
@@ -118,45 +180,74 @@ export function UpcomingEventsWidget({
   }
   
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-primary" />
-              Upcoming Events
-            </CardTitle>
-            <CardDescription className="text-xs mt-1">
-              Game nights & scheduled events
-            </CardDescription>
-          </div>
-          {isOwner && onCreateEvent && (
-            <Button variant="ghost" size="sm" onClick={onCreateEvent} className="h-8">
-              <CalendarPlus className="h-4 w-4 mr-1" />
-              Add
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        {events && events.length > 0 ? (
-          <div className="space-y-2">
-            {events.map((event) => (
-              <EventItem key={event.id} event={event} isOwner={isOwner} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-6 text-muted-foreground">
-            <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No upcoming events</p>
-            {isOwner && (
-              <p className="text-xs mt-1">
-                Create a Game Night poll or add a standalone event
-              </p>
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                Upcoming Events
+              </CardTitle>
+              <CardDescription className="text-xs mt-1">
+                Game nights & scheduled events
+              </CardDescription>
+            </div>
+            {isOwner && onCreateEvent && (
+              <Button variant="ghost" size="sm" onClick={onCreateEvent} className="h-8">
+                <CalendarPlus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
             )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent>
+          {events && events.length > 0 ? (
+            <div className="space-y-2">
+              {events.map((event) => (
+                <EventItem 
+                  key={event.id} 
+                  event={event} 
+                  isOwner={isOwner}
+                  onEdit={onEditEvent}
+                  onDelete={setEventToDelete}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 text-muted-foreground">
+              <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No upcoming events</p>
+              {isOwner && (
+                <p className="text-xs mt-1">
+                  Create a Game Night poll or add a standalone event
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!eventToDelete} onOpenChange={(open) => !open && setEventToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{eventToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteEvent.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

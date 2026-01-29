@@ -46,7 +46,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showCreateEvent, setShowCreateEvent] = useState(false);
-  
+  const [editEvent, setEditEvent] = useState<import("@/hooks/useLibraryEvents").CalendarEvent | null>(null);
   // Check if user is a site owner (has admin role)
   const { data: isSiteOwner } = useQuery({
     queryKey: ["user-role", user?.id],
@@ -386,15 +386,22 @@ export default function Dashboard() {
                     libraryId={library.id} 
                     isOwner={true}
                     onCreateEvent={() => setShowCreateEvent(true)}
+                    onEditEvent={(event) => setEditEvent(event)}
                   />
                 </div>
               </div>
               
-              {/* Create Event Dialog */}
+              {/* Create/Edit Event Dialog */}
               <CreateEventDialog
-                open={showCreateEvent}
-                onOpenChange={setShowCreateEvent}
+                open={showCreateEvent || !!editEvent}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setShowCreateEvent(false);
+                    setEditEvent(null);
+                  }
+                }}
                 libraryId={library.id}
+                editEvent={editEvent}
               />
             </TabsContent>
 

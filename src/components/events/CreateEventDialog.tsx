@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, MapPin, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,16 +20,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useCreateEvent } from "@/hooks/useLibraryEvents";
+import { useCreateEvent, useUpdateEvent, CalendarEvent } from "@/hooks/useLibraryEvents";
 import { useDiscordNotify } from "@/hooks/useDiscordNotify";
 
 interface CreateEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   libraryId: string;
+  editEvent?: CalendarEvent | null;
 }
 
-export function CreateEventDialog({ open, onOpenChange, libraryId }: CreateEventDialogProps) {
+export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: CreateEventDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState<Date | undefined>();
@@ -37,7 +38,30 @@ export function CreateEventDialog({ open, onOpenChange, libraryId }: CreateEvent
   const [location, setLocation] = useState("");
   
   const createEvent = useCreateEvent();
+  const updateEvent = useUpdateEvent();
   const { notify } = useDiscordNotify();
+  
+  const isEditMode = !!editEvent;
+  
+  // Populate form when editing
+  useEffect(() => {
+    if (editEvent && open) {
+      setTitle(editEvent.title);
+      setDescription(editEvent.description || "");
+      setLocation(editEvent.event_location || "");
+      
+      const eventDate = new Date(editEvent.event_date);
+      setDate(eventDate);
+      setTime(format(eventDate, "HH:mm"));
+    } else if (!open) {
+      // Reset form when dialog closes
+      setTitle("");
+      setDescription("");
+      setDate(undefined);
+      setTime("19:00");
+      setLocation("");
+    }
+  }, [editEvent, open]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,42 +73,55 @@ export function CreateEventDialog({ open, onOpenChange, libraryId }: CreateEvent
     const eventDate = new Date(date);
     eventDate.setHours(hours, minutes, 0, 0);
     
-    await createEvent.mutateAsync({
-      library_id: libraryId,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      event_date: eventDate.toISOString(),
-      event_location: location.trim() || undefined,
-    });
-    
-    // Send Discord notification for standalone event
-    notify({
-      library_id: libraryId,
-      event_type: "event_created",
-      data: {
+    if (isEditMode && editEvent) {
+      // Update existing event
+      await updateEvent.mutateAsync({
+        eventId: editEvent.id,
+        libraryId,
+        updates: {
+          title: title.trim(),
+          description: description.trim() || null,
+          event_date: eventDate.toISOString(),
+          event_location: location.trim() || null,
+        },
+      });
+    } else {
+      // Create new event
+      await createEvent.mutateAsync({
+        library_id: libraryId,
         title: title.trim(),
+        description: description.trim() || undefined,
         event_date: eventDate.toISOString(),
-        event_location: location.trim() || null,
-        description: description.trim() || null,
-      },
-    });
+        event_location: location.trim() || undefined,
+      });
+      
+      // Send Discord notification for new standalone event
+      notify({
+        library_id: libraryId,
+        event_type: "event_created",
+        data: {
+          title: title.trim(),
+          event_date: eventDate.toISOString(),
+          event_location: location.trim() || null,
+          description: description.trim() || null,
+        },
+      });
+    }
     
-    // Reset form
-    setTitle("");
-    setDescription("");
-    setDate(undefined);
-    setTime("19:00");
-    setLocation("");
     onOpenChange(false);
   };
+  
+  const isPending = createEvent.isPending || updateEvent.isPending;
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create Event</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Event" : "Create Event"}</DialogTitle>
           <DialogDescription>
-            Add a standalone event to your library calendar.
+            {isEditMode 
+              ? "Update the event details." 
+              : "Add a standalone event to your library calendar."}
           </DialogDescription>
         </DialogHeader>
         
@@ -132,7 +169,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId }: CreateEvent
                     mode="single"
                     selected={date}
                     onSelect={setDate}
-                    disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                    disabled={isEditMode ? undefined : (d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}
                   />
@@ -174,8 +211,10 @@ export function CreateEventDialog({ open, onOpenChange, libraryId }: CreateEvent
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createEvent.isPending || !title.trim() || !date}>
-              {createEvent.isPending ? "Creating..." : "Create Event"}
+            <Button type="submit" disabled={isPending || !title.trim() || !date}>
+              {isPending 
+                ? (isEditMode ? "Saving..." : "Creating...") 
+                : (isEditMode ? "Save Changes" : "Create Event")}
             </Button>
           </DialogFooter>
         </form>

@@ -32,6 +32,7 @@ export function LibrarySettingsGeneral() {
   const [featureMessaging, setFeatureMessaging] = useState(settings?.feature_messaging ?? true);
   const [featureComingSoon, setFeatureComingSoon] = useState(settings?.feature_coming_soon ?? true);
   const [featureRatings, setFeatureRatings] = useState(settings?.feature_ratings ?? true);
+  const [featureEvents, setFeatureEvents] = useState((settings as unknown as { feature_events?: boolean })?.feature_events ?? true);
   
   const [isSaving, setIsSaving] = useState(false);
   
@@ -71,7 +72,8 @@ export function LibrarySettingsGeneral() {
           feature_messaging: featureMessaging,
           feature_coming_soon: featureComingSoon,
           feature_ratings: featureRatings,
-        },
+          feature_events: featureEvents,
+        } as Parameters<typeof updateSettings.mutateAsync>[0]['updates'],
       });
       
       await refreshLibrary();
@@ -195,6 +197,13 @@ export function LibrarySettingsGeneral() {
                 <p className="text-sm text-muted-foreground">Allow visitors to rate games</p>
               </div>
               <Switch checked={featureRatings} onCheckedChange={setFeatureRatings} />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Events Calendar</Label>
+                <p className="text-sm text-muted-foreground">Show upcoming events to visitors</p>
+              </div>
+              <Switch checked={featureEvents} onCheckedChange={setFeatureEvents} />
             </div>
           </CardContent>
         </Card>
