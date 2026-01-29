@@ -44,6 +44,7 @@ import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenant, useTenantSettings } from "@/contexts/TenantContext";
 import { useUpcomingEvents } from "@/hooks/useLibraryEvents";
 import { Badge } from "@/components/ui/badge";
+import { TenantLogoImage } from "@/components/tenant/TenantLogoImage";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -243,9 +244,9 @@ export function Sidebar({ isOpen }: SidebarProps) {
           {/* Library Logo */}
           {isTenantMode && tenantSettings?.logo_url && (
             <Link to={libraryBaseUrl} className="mt-3">
-              <img 
-                src={tenantSettings.logo_url} 
-                alt={`${library?.name || 'Library'} logo`}
+              <TenantLogoImage
+                url={tenantSettings.logo_url}
+                alt={`${library?.name || "Library"} logo`}
                 className="w-28 h-28 object-contain rounded-xl bg-sidebar-accent/20"
               />
             </Link>

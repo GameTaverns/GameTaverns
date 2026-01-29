@@ -8,7 +8,8 @@ export interface Library {
   slug: string;
   name: string;
   description: string | null;
-  owner_id: string;
+  // Not present in public view (libraries_public)
+  owner_id?: string;
   is_active: boolean;
   is_premium: boolean;
   custom_domain: string | null;
@@ -213,10 +214,13 @@ export function TenantProvider({ children }: TenantProviderProps) {
     setSuspensionReason(null);
     
     try {
-      // First, try to fetch library by slug (including inactive ones to check suspension)
-      const { data: libraryData, error: libraryError } = await supabase
-        .from("libraries")
-        .select("*")
+      // Fetch library by slug.
+      // IMPORTANT: Signed-out visitors must use the public view (avoids private columns + permission issues).
+      const libraryQuery = isAuthenticated
+        ? supabase.from("libraries").select("*")
+        : supabase.from("libraries_public").select("*");
+
+      const { data: libraryData, error: libraryError } = await libraryQuery
         .eq("slug", tenantSlug)
         .single();
       
@@ -230,15 +234,19 @@ export function TenantProvider({ children }: TenantProviderProps) {
       
       // Check if library is suspended (inactive)
       if (!libraryData.is_active) {
-        // Fetch the latest suspension reason
-        const { data: suspensionData } = await supabase
-          .from("library_suspensions")
-          .select("reason")
-          .eq("library_id", libraryData.id)
-          .eq("action", "suspended")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
+        // For signed-out visitors we can't read suspension reasons (private), so show a generic message.
+        const suspensionData = isAuthenticated
+          ? (
+              await supabase
+                .from("library_suspensions")
+                .select("reason")
+                .eq("library_id", libraryData.id)
+                .eq("action", "suspended")
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .single()
+            ).data
+          : null;
         
         setIsSuspended(true);
         setSuspendedLibraryName(libraryData.name);
@@ -260,6 +268,8 @@ export function TenantProvider({ children }: TenantProviderProps) {
       
       if (!settingsError && settingsData) {
         setSettings(settingsData as LibrarySettings);
+      } else if (settingsError) {
+        console.warn("[Tenant] Failed to load public library settings", settingsError);
       }
     } catch (err) {
       console.error("Error fetching library:", err);
