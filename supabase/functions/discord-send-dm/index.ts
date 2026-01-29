@@ -113,6 +113,25 @@ Deno.serve(async (req) => {
     if (!messageResponse.ok) {
       const errorText = await messageResponse.text();
       console.error("Discord message error:", errorText);
+
+      // Discord returns 50007 when the bot cannot DM the user (privacy settings / no shared server / blocked).
+      // This should not break app workflows, so treat it as a skipped notification.
+      try {
+        const parsed = JSON.parse(errorText) as { code?: number; message?: string };
+        if (parsed?.code === 50007) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              skipped: true,
+              reason: "Cannot send messages to this user (Discord code 50007)",
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch {
+        // ignore parse errors and fall through to generic failure
+      }
+
       return new Response(
         JSON.stringify({ error: "Failed to send DM" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
