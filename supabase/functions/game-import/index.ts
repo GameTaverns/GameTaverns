@@ -298,7 +298,16 @@ IMPORTANT RULES:
 
 4. For mechanics, extract actual game mechanics (e.g., "Worker Placement", "Set Collection", "Dice Rolling").
 
-5. For publisher, extract the publisher company name.`,
+5. For publisher, extract the publisher company name.
+
+6. EXPANSION DETECTION - CRITICAL:
+   - Look for indicators that this is an EXPANSION (not a standalone game):
+     - The title contains words like "Expansion", "Promo", "Pack", "Mini Expansion", "Scenario", "Module"
+     - The page explicitly says "Expansion for [Base Game Name]" or "Requires [Base Game Name]"
+     - BoardGameGeek categorizes it as an expansion
+   - If it's an expansion, set is_expansion to true
+   - Extract the BASE GAME TITLE (exactly as it appears) into base_game_title field
+   - Example: "Wingspan: European Expansion" → is_expansion: true, base_game_title: "Wingspan"`,
           },
           {
             role: "user",
@@ -358,6 +367,8 @@ ${markdown.slice(0, 18000)}`,
                     description: "1-2 gameplay/component images only. No thumbnails, no duplicates of main image." 
                   },
                   bgg_url: { type: "string", description: "BoardGameGeek URL if available" },
+                  is_expansion: { type: "boolean", description: "True if this is an expansion/promo/pack that requires a base game" },
+                  base_game_title: { type: "string", description: "If is_expansion is true, the exact title of the base game this expands (e.g., 'Wingspan' for 'Wingspan: European Expansion')" },
                 },
                 required: ["title"],
                 additionalProperties: false,
@@ -461,6 +472,45 @@ ${markdown.slice(0, 18000)}`,
       }
     }
 
+    // Step 4b: Handle expansion detection - try to find parent game in this library
+    let detectedParentGameId: string | null = null;
+    const aiDetectedExpansion = extractedData.is_expansion === true;
+    const aiBaseGameTitle = extractedData.base_game_title;
+
+    if (aiDetectedExpansion && aiBaseGameTitle) {
+      console.log("AI detected expansion for base game:", aiBaseGameTitle);
+      
+      // Try exact match first
+      const { data: exactMatch } = await supabaseAdmin
+        .from("games")
+        .select("id, title")
+        .eq("library_id", targetLibraryId)
+        .eq("is_expansion", false)
+        .ilike("title", aiBaseGameTitle)
+        .maybeSingle();
+
+      if (exactMatch) {
+        detectedParentGameId = exactMatch.id;
+        console.log("Found exact parent game match:", exactMatch.title);
+      } else {
+        // Try fuzzy match - the base game title might be slightly different
+        const { data: fuzzyMatches } = await supabaseAdmin
+          .from("games")
+          .select("id, title")
+          .eq("library_id", targetLibraryId)
+          .eq("is_expansion", false)
+          .ilike("title", `%${aiBaseGameTitle.split(':')[0].trim()}%`)
+          .limit(5);
+
+        if (fuzzyMatches && fuzzyMatches.length === 1) {
+          detectedParentGameId = fuzzyMatches[0].id;
+          console.log("Found fuzzy parent game match:", fuzzyMatches[0].title);
+        } else if (fuzzyMatches && fuzzyMatches.length > 1) {
+          console.log("Multiple potential parent games found, skipping auto-link:", fuzzyMatches.map(g => g.title));
+        }
+      }
+    }
+
     // Step 5: Create the game
     // BGG/Geekdo image URLs sometimes include characters like parentheses in filters (e.g. no_upscale())
     // which can cause HTTP 400 unless properly URL-encoded.
@@ -546,8 +596,10 @@ ${markdown.slice(0, 18000)}`,
       is_for_sale: is_for_sale === true,
       sale_price: is_for_sale === true && sale_price ? Number(sale_price) : null,
       sale_condition: is_for_sale === true && sale_condition ? sale_condition : null,
-      is_expansion: is_expansion === true,
-      parent_game_id: is_expansion === true ? parent_game_id : null,
+      // Use explicit is_expansion from request, OR auto-detect from AI
+      is_expansion: is_expansion === true || aiDetectedExpansion === true,
+      // Use explicit parent_game_id from request, OR auto-detected parent
+      parent_game_id: is_expansion === true ? parent_game_id : (aiDetectedExpansion ? detectedParentGameId : null),
       location_room: location_room || null,
       location_shelf: location_shelf || null,
       location_misc: location_misc || null,
