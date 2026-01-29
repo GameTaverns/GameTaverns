@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, forwardRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTurnstileSiteKey } from "@/hooks/useSiteSettings";
 
@@ -27,6 +27,16 @@ declare global {
       remove: (widgetId: string) => void;
     };
   }
+}
+
+/**
+ * Detect if we're running in a Lovable preview environment where Turnstile won't work.
+ */
+function isPreviewEnvironment(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  // Lovable preview domains
+  return host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app");
 }
 
 let turnstileLoadPromise: Promise<void> | null = null;
@@ -57,7 +67,6 @@ function loadTurnstileScript(): Promise<void> {
     };
 
     if (existingScript) {
-      // Script already present; just wait for `window.turnstile`.
       waitForGlobal();
       return;
     }
@@ -70,7 +79,6 @@ function loadTurnstileScript(): Promise<void> {
     script.onerror = () => reject(new Error("Failed to load Turnstile script"));
     document.head.appendChild(script);
   }).finally(() => {
-    // Allow retry if it failed
     if (!window.turnstile) turnstileLoadPromise = null;
   });
 
@@ -83,7 +91,21 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     const widgetIdRef = useRef<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
+    const [isPreview, setIsPreview] = useState(false);
     const siteKey = useTurnstileSiteKey();
+
+    // Check for preview environment and auto-verify
+    useEffect(() => {
+      if (isPreviewEnvironment()) {
+        setIsPreview(true);
+        setIsLoading(false);
+        // Auto-verify with a preview bypass token after a brief delay
+        const timer = setTimeout(() => {
+          onVerify("PREVIEW_BYPASS_TOKEN");
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }, [onVerify]);
 
     const handleVerify = useCallback((token: string) => {
       setIsLoading(false);
@@ -112,7 +134,6 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
           theme: "auto",
           size: "normal",
         });
-        // Widget rendered, but still loading until verified or shown
         setTimeout(() => setIsLoading(false), 500);
       } catch (err) {
         console.error("Turnstile render error:", err);
@@ -122,6 +143,9 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     }, [handleVerify, onExpire, handleError, siteKey]);
 
     useEffect(() => {
+      // Skip loading Turnstile in preview
+      if (isPreviewEnvironment()) return;
+
       setIsLoading(true);
       setHasError(false);
 
@@ -151,6 +175,18 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       };
     }, [renderWidget]);
 
+    // Preview environment: show a simple "bypassed" indicator
+    if (isPreview) {
+      return (
+        <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          <span className="text-sm text-muted-foreground">
+            Verification bypassed (preview mode)
+          </span>
+        </div>
+      );
+    }
+
     return (
       <div className="relative flex justify-center min-h-[65px]">
         {isLoading && (
@@ -166,9 +202,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
             <div className="w-[300px]">
               <Skeleton className="h-[65px] rounded" />
               <p className="mt-2 text-xs text-muted-foreground text-center">
-                Verification failed to load in preview. This usually means the Turnstile script is
-                blocked (CSP/ad-block) or the preview hostname isn’t allowed in your Turnstile
-                settings.
+                Verification failed to load. Please refresh or try again.
               </p>
             </div>
           </div>
