@@ -6,7 +6,7 @@ export interface LibraryMember {
   id: string;
   library_id: string;
   user_id: string;
-  role: 'member' | 'moderator';
+  role: 'member' | 'moderator' | 'owner';
   joined_at: string;
 }
 
@@ -130,16 +130,30 @@ export function useLibraryMembers(libraryId: string | undefined) {
   });
 }
 
-// Hook to get all libraries/communities the current user is a member of
+// Type for membership with library info
+export interface MembershipWithLibrary {
+  id: string;
+  role: 'member' | 'moderator' | 'owner';
+  joined_at: string;
+  library: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+  } | null;
+}
+
+// Hook to get all libraries/communities the current user is a member of (including owned)
 export function useMyMemberships() {
   const { user } = useAuth();
   
   return useQuery({
     queryKey: ["my-memberships", user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<MembershipWithLibrary[]> => {
       if (!user?.id) return [];
       
-      const { data, error } = await supabase
+      // Fetch memberships
+      const { data: memberships, error: membershipsError } = await supabase
         .from("library_members")
         .select(`
           id,
@@ -155,8 +169,51 @@ export function useMyMemberships() {
         .eq("user_id", user.id)
         .order("joined_at", { ascending: false });
       
-      if (error) throw error;
-      return data;
+      if (membershipsError) throw membershipsError;
+      
+      // Fetch owned library
+      const { data: ownedLibrary, error: ownedError } = await supabase
+        .from("libraries")
+        .select("id, name, slug, description, created_at")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+      
+      if (ownedError) throw ownedError;
+      
+      // Combine: owned library first (as "owner" role), then memberships
+      const results: MembershipWithLibrary[] = [];
+      
+      if (ownedLibrary) {
+        // Check if the owned library isn't already in memberships
+        const alreadyMember = memberships?.some(m => m.library?.id === ownedLibrary.id);
+        if (!alreadyMember) {
+          results.push({
+            id: `owned-${ownedLibrary.id}`,
+            role: 'owner',
+            joined_at: ownedLibrary.created_at,
+            library: {
+              id: ownedLibrary.id,
+              name: ownedLibrary.name,
+              slug: ownedLibrary.slug,
+              description: ownedLibrary.description,
+            },
+          });
+        }
+      }
+      
+      // Add regular memberships (cast role to our union type)
+      if (memberships) {
+        for (const m of memberships) {
+          results.push({
+            id: m.id,
+            role: m.role as 'member' | 'moderator',
+            joined_at: m.joined_at,
+            library: m.library as MembershipWithLibrary['library'],
+          });
+        }
+      }
+      
+      return results;
     },
     enabled: !!user?.id,
   });
