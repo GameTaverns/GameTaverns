@@ -1,0 +1,369 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
+export type LoanStatus = 'requested' | 'approved' | 'active' | 'returned' | 'declined' | 'cancelled';
+
+export interface GameLoan {
+  id: string;
+  game_id: string;
+  library_id: string;
+  borrower_user_id: string;
+  lender_user_id: string;
+  status: LoanStatus;
+  requested_at: string;
+  approved_at: string | null;
+  borrowed_at: string | null;
+  due_date: string | null;
+  returned_at: string | null;
+  borrower_notes: string | null;
+  lender_notes: string | null;
+  created_at: string;
+  // Joined data
+  game?: {
+    id: string;
+    title: string;
+    slug: string | null;
+    image_url: string | null;
+  };
+  library?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  borrower_profile?: {
+    display_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+export interface BorrowerRating {
+  id: string;
+  loan_id: string;
+  rated_user_id: string;
+  rated_by_user_id: string;
+  rating: number;
+  review: string | null;
+  created_at: string;
+}
+
+export interface BorrowerReputation {
+  user_id: string;
+  total_ratings: number;
+  average_rating: number;
+  positive_ratings: number;
+}
+
+export function useLending() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Fetch loans where user is borrower
+  const { data: myBorrowedLoans = [], isLoading: borrowedLoading } = useQuery({
+    queryKey: ["loans", "borrowed", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from("game_loans")
+        .select(`
+          *,
+          game:games(id, title, slug, image_url),
+          library:libraries(id, name, slug)
+        `)
+        .eq("borrower_user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as GameLoan[];
+    },
+    enabled: !!user,
+  });
+
+  // Fetch loans where user is lender (library owner)
+  const { data: myLentLoans = [], isLoading: lentLoading } = useQuery({
+    queryKey: ["loans", "lent", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from("game_loans")
+        .select(`
+          *,
+          game:games(id, title, slug, image_url),
+          library:libraries(id, name, slug)
+        `)
+        .eq("lender_user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as GameLoan[];
+    },
+    enabled: !!user,
+  });
+
+  // Request to borrow a game
+  const requestLoan = useMutation({
+    mutationFn: async ({
+      gameId,
+      libraryId,
+      lenderUserId,
+      notes,
+    }: {
+      gameId: string;
+      libraryId: string;
+      lenderUserId: string;
+      notes?: string;
+    }) => {
+      if (!user) throw new Error("Must be logged in to request a loan");
+
+      const { data, error } = await supabase
+        .from("game_loans")
+        .insert({
+          game_id: gameId,
+          library_id: libraryId,
+          borrower_user_id: user.id,
+          lender_user_id: lenderUserId,
+          borrower_notes: notes || null,
+          status: "requested",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Loan request sent!");
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to request loan: " + error.message);
+    },
+  });
+
+  // Approve a loan request (lender action)
+  const approveLoan = useMutation({
+    mutationFn: async ({
+      loanId,
+      dueDate,
+      notes,
+    }: {
+      loanId: string;
+      dueDate?: string;
+      notes?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from("game_loans")
+        .update({
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          due_date: dueDate || null,
+          lender_notes: notes || null,
+        })
+        .eq("id", loanId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Loan approved!");
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to approve loan: " + error.message);
+    },
+  });
+
+  // Decline a loan request
+  const declineLoan = useMutation({
+    mutationFn: async ({ loanId, notes }: { loanId: string; notes?: string }) => {
+      const { data, error } = await supabase
+        .from("game_loans")
+        .update({
+          status: "declined",
+          lender_notes: notes || null,
+        })
+        .eq("id", loanId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Loan request declined");
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to decline loan: " + error.message);
+    },
+  });
+
+  // Mark as picked up (active)
+  const markPickedUp = useMutation({
+    mutationFn: async ({ loanId }: { loanId: string }) => {
+      const { data, error } = await supabase
+        .from("game_loans")
+        .update({
+          status: "active",
+          borrowed_at: new Date().toISOString(),
+        })
+        .eq("id", loanId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Game marked as picked up!");
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to update loan: " + error.message);
+    },
+  });
+
+  // Mark as returned
+  const markReturned = useMutation({
+    mutationFn: async ({ loanId }: { loanId: string }) => {
+      const { data, error } = await supabase
+        .from("game_loans")
+        .update({
+          status: "returned",
+          returned_at: new Date().toISOString(),
+        })
+        .eq("id", loanId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Game marked as returned!");
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to update loan: " + error.message);
+    },
+  });
+
+  // Cancel a loan request (borrower action)
+  const cancelLoan = useMutation({
+    mutationFn: async ({ loanId }: { loanId: string }) => {
+      const { data, error } = await supabase
+        .from("game_loans")
+        .update({ status: "cancelled" })
+        .eq("id", loanId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Loan request cancelled");
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to cancel loan: " + error.message);
+    },
+  });
+
+  // Rate a borrower after return
+  const rateBorrower = useMutation({
+    mutationFn: async ({
+      loanId,
+      borrowerUserId,
+      rating,
+      review,
+    }: {
+      loanId: string;
+      borrowerUserId: string;
+      rating: number;
+      review?: string;
+    }) => {
+      if (!user) throw new Error("Must be logged in to rate");
+
+      const { data, error } = await supabase
+        .from("borrower_ratings")
+        .insert({
+          loan_id: loanId,
+          rated_user_id: borrowerUserId,
+          rated_by_user_id: user.id,
+          rating,
+          review: review || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Rating submitted!");
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["borrower-reputation"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to submit rating: " + error.message);
+    },
+  });
+
+  // Get borrower reputation
+  const useBorrowerReputation = (userId: string | undefined) => {
+    return useQuery({
+      queryKey: ["borrower-reputation", userId],
+      queryFn: async () => {
+        if (!userId) return null;
+
+        const { data, error } = await supabase
+          .from("borrower_reputation")
+          .select("*")
+          .eq("user_id", userId)
+          .single();
+
+        if (error && error.code !== "PGRST116") throw error;
+        return data as BorrowerReputation | null;
+      },
+      enabled: !!userId,
+    });
+  };
+
+  // Check if game is available for loan (not currently on loan)
+  const checkGameAvailability = async (gameId: string): Promise<boolean> => {
+    const { data, error } = await supabase
+      .from("game_loans")
+      .select("id")
+      .eq("game_id", gameId)
+      .in("status", ["requested", "approved", "active"])
+      .limit(1);
+
+    if (error) {
+      console.error("Error checking game availability:", error);
+      return true; // Assume available on error
+    }
+
+    return data.length === 0;
+  };
+
+  return {
+    myBorrowedLoans,
+    myLentLoans,
+    isLoading: borrowedLoading || lentLoading,
+    requestLoan,
+    approveLoan,
+    declineLoan,
+    markPickedUp,
+    markReturned,
+    cancelLoan,
+    rateBorrower,
+    useBorrowerReputation,
+    checkGameAvailability,
+  };
+}

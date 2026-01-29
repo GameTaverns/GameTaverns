@@ -44,6 +44,7 @@ const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
+const Directory = lazy(() => import("./pages/Directory"));
 
 // Library admin pages
 const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
@@ -149,6 +150,7 @@ function PlatformRoutes() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/admin" element={<PlatformAdmin />} />
+      <Route path="/directory" element={<Directory />} />
       <Route path="/docs" element={<Docs />} />
       {/* Legal & Info pages */}
       <Route path="/legal" element={<Legal />} />
