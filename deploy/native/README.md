@@ -70,7 +70,33 @@ sudo ./install.sh
 | Nginx | Latest | Reverse proxy |
 | Postfix | Latest | Outgoing email (SMTP) |
 | Dovecot | Latest | Incoming email (IMAP) |
+| Roundcube | Latest | Webmail interface |
+| **Cockpit** | Latest | **Web-based server management GUI** |
 | Certbot | Latest | SSL certificates (optional) |
+
+## Management Interfaces
+
+After installation, you'll have access to these web interfaces:
+
+| Interface | URL | Purpose |
+|-----------|-----|---------|
+| **Cockpit** | `https://<server-ip>:9090` | Server management GUI (logs, services, terminal, storage) |
+| **Roundcube** | `http://mail.yourdomain.com` | Webmail for admin/legal/support accounts |
+| **App** | `https://yourdomain.com` | Your GameTaverns application |
+
+### Cockpit Features
+
+Cockpit provides a modern web-based GUI for server administration:
+
+- **System Overview**: CPU, RAM, disk usage in real-time
+- **Logs**: Browse systemd journal logs (filter by service, time, severity)
+- **Services**: Start/stop/restart PM2, Nginx, PostgreSQL, Postfix, Dovecot
+- **Terminal**: Full browser-based SSH terminal
+- **Storage**: Manage disks, partitions, and mounts
+- **Networking**: Configure interfaces, firewall rules
+- **Updates**: View and install system package updates
+
+Login with your server's root or sudo user credentials.
 
 ## Directory Structure
 
