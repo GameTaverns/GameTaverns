@@ -371,12 +371,12 @@ const GameDetail = () => {
                 {/* Favorite Button - visible to library owners */}
                 <FavoriteButton gameId={game.id} />
                 {/* Request Loan Button - visible when lending is enabled */}
-                {lending && library && !isDemoMode && (
+                {lending && library && library.owner_id && !isDemoMode && (
                   <RequestLoanButton
                     gameId={game.id}
                     gameTitle={game.title}
                     libraryId={library.id}
-                    lenderUserId={library.owner_id || ""}
+                    lenderUserId={library.owner_id}
                   />
                 )}
                 {canViewAdminData && (
