@@ -119,7 +119,11 @@ function AchievementCard({ achievement, isEarned, earnedAt, progress = 0, tierNa
   );
 }
 
-export function AchievementsDisplay() {
+interface AchievementsDisplayProps {
+  compact?: boolean;
+}
+
+export function AchievementsDisplay({ compact = false }: AchievementsDisplayProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const queryClient = useQueryClient();
   
@@ -192,6 +196,56 @@ export function AchievementsDisplay() {
 
   // Order categories for display
   const categoryOrder: AchievementCategory[] = ['collector', 'player', 'lender', 'social', 'explorer', 'contributor'];
+
+  // Compact mode - show summary only
+  if (compact) {
+    return (
+      <div className="space-y-4">
+        {/* Summary Stats */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium">
+                {earnedCount} / {totalCount} unlocked
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold text-primary">{totalPoints}</span>
+            <span className="text-xs text-muted-foreground">pts</span>
+          </div>
+        </div>
+
+        {/* Recent Badges */}
+        {recentAchievements.length > 0 && (
+          <div className="flex gap-2 flex-wrap">
+            {recentAchievements.slice(0, 4).map((ua) => (
+              <Badge
+                key={ua.id}
+                variant="secondary"
+                className={`${TIER_COLORS[ua.achievement?.tier || 1]} gap-1 text-xs`}
+              >
+                <span>{ua.achievement?.icon || "🏆"}</span>
+                {ua.achievement?.name}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleSyncAchievements}
+          disabled={isSyncing}
+          className="w-full"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+          {isSyncing ? "Syncing..." : "Sync Progress"}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

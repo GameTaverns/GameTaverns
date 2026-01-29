@@ -133,7 +133,11 @@ export function LendingDashboard() {
               </div>
               
               <p className="text-sm text-muted-foreground mb-2">
-                {isLender ? "Borrower" : "From"}: {loan.library?.name || "Unknown"}
+                {isLender ? "Borrower" : (
+                  <span>
+                    From: <span className="font-medium text-foreground">{loan.library?.name || "Unknown Library"}</span>
+                  </span>
+                )}
               </p>
 
               {loan.due_date && (
