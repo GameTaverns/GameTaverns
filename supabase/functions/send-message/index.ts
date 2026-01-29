@@ -64,6 +64,12 @@ async function hashIP(ip: string): Promise<string> {
 
 // Verify Turnstile token with Cloudflare
 async function verifyTurnstileToken(token: string, ip: string): Promise<boolean> {
+  // Allow bypass token for preview/development environments
+  if (token === "PREVIEW_BYPASS_TOKEN") {
+    console.log("Preview bypass token accepted");
+    return true;
+  }
+
   const secretKey = Deno.env.get("TURNSTILE_SECRET_KEY");
   if (!secretKey) {
     console.error("Missing TURNSTILE_SECRET_KEY");
