@@ -63,22 +63,33 @@ Visit `https://yourdomain.com` and log in with your admin account.
 ### Check Status
 
 ```bash
-pm2 status                  # Is the API running?
-pm2 logs gametaverns-api    # View recent logs
+./scripts/health-check.sh          # Full health dashboard
+./scripts/health-check.sh --quiet  # Only show failures (for cron)
+./scripts/health-check.sh --json   # JSON output for monitoring
+```
+
+### View Logs
+
+```bash
+./scripts/view-logs.sh             # All recent logs
+./scripts/view-logs.sh api -f      # Follow API logs
+./scripts/view-logs.sh nginx -e    # Nginx errors only
+./scripts/view-logs.sh -s "error"  # Search all logs
 ```
 
 ### Restart Services
 
 ```bash
-pm2 restart gametaverns-api  # Restart API
-sudo systemctl reload nginx  # Reload web server
+./scripts/restart-all.sh           # Restart everything
+pm2 restart gametaverns-api        # Restart API only
+sudo systemctl reload nginx        # Reload web server
 ```
 
 ### Backup & Restore
 
 ```bash
-./scripts/backup.sh              # Backup database
-./scripts/backup.sh --full       # Backup database + uploads
+./scripts/backup.sh              # Quick database backup
+./scripts/backup.sh --full       # Database + uploads + mail config
 ./scripts/restore.sh <file.gz>   # Restore from backup
 ```
 
@@ -88,11 +99,47 @@ sudo systemctl reload nginx  # Reload web server
 ./scripts/update.sh
 ```
 
-### Add a Mail Account
+### Mail Account Management
 
 ```bash
-./scripts/add-mail-user.sh user@yourdomain.com
+./scripts/add-mail-user.sh list                    # List all accounts
+./scripts/add-mail-user.sh add user@domain.com    # Add account
+./scripts/add-mail-user.sh passwd user@domain.com # Change password
+./scripts/add-mail-user.sh remove user@domain.com # Remove account
 ```
+
+## Automated Maintenance
+
+Set up automated backups, health checks, and cleanup:
+
+```bash
+sudo ./scripts/setup-cron.sh
+```
+
+This configures:
+- **Daily backups** at 3:00 AM
+- **Health checks** every 5 minutes
+- **Log rotation** weekly
+- **Token cleanup** daily
+- **SSL renewal** twice daily
+
+## Security
+
+### Run Security Audit
+
+```bash
+sudo ./scripts/security-audit.sh
+```
+
+Checks firewall, SSH config, SSL, file permissions, and more.
+
+### Security Checklist
+
+- [ ] Firewall enabled (`sudo ufw status`)
+- [ ] SSL certificates installed (`./scripts/setup-ssl.sh`)
+- [ ] Fail2ban running (`systemctl status fail2ban`)
+- [ ] Strong passwords (check `/root/gametaverns-credentials.txt`)
+- [ ] Regular backups (`./scripts/setup-cron.sh`)
 
 ## Management Interfaces
 
@@ -104,11 +151,19 @@ sudo systemctl reload nginx  # Reload web server
 
 ## Troubleshooting
 
+### Quick Diagnostics
+
+```bash
+./scripts/health-check.sh     # Shows all service status
+./scripts/view-logs.sh -e     # Shows recent errors
+```
+
 ### API won't start
 
 ```bash
 pm2 logs gametaverns-api --lines 50  # Check error logs
 cat /opt/gametaverns/.env            # Verify config
+pm2 restart gametaverns-api          # Restart
 ```
 
 ### Database connection issues
@@ -151,22 +206,28 @@ pm2 restart gametaverns-api         # Restart API
 To enable AI-powered game enrichment, add these to `/opt/gametaverns/.env`:
 
 ```bash
-# Get key at: https://www.perplexity.ai/settings/api
-PERPLEXITY_API_KEY=your_key_here
-
-# Get key at: https://firecrawl.dev/
-FIRECRAWL_API_KEY=your_key_here
+PERPLEXITY_API_KEY=your_key_here  # https://perplexity.ai/settings/api
+FIRECRAWL_API_KEY=your_key_here   # https://firecrawl.dev/
 ```
 
 Then restart: `pm2 restart gametaverns-api`
 
-## Security Checklist
+## Script Reference
 
-- [ ] Changed default passwords (auto-generated, check credentials file)
-- [ ] SSL enabled (`certbot --nginx`)
-- [ ] Firewall active (`sudo ufw status`)
-- [ ] Regular backups (`./scripts/backup.sh` in cron)
-- [ ] Server updates (`apt update && apt upgrade`)
+| Script | Purpose |
+|--------|---------|
+| `health-check.sh` | System health dashboard |
+| `security-audit.sh` | Security vulnerability scan |
+| `backup.sh` | Create backups |
+| `restore.sh` | Restore from backup |
+| `update.sh` | Update to latest version |
+| `setup-ssl.sh` | Configure SSL certificates |
+| `setup-cron.sh` | Set up automated maintenance |
+| `view-logs.sh` | Centralized log viewer |
+| `add-mail-user.sh` | Manage mail accounts |
+| `create-admin.sh` | Create admin user |
+| `preflight-check.sh` | Pre-install validation |
+| `restart-all.sh` | Restart all services |
 
 ## Support
 
