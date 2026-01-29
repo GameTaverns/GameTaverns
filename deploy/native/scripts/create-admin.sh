@@ -57,24 +57,30 @@ rm /tmp/hash-password.js
 
 # Insert user and assign admin role
 sudo -u postgres psql -d ${DB_NAME} <<EOF
--- Create user
+-- Create user (trigger auto-creates profile)
 INSERT INTO users (email, password_hash, email_verified)
 VALUES ('${ADMIN_EMAIL}', '${PASSWORD_HASH}', true)
 ON CONFLICT (email) DO UPDATE SET 
     password_hash = EXCLUDED.password_hash,
     email_verified = true;
 
--- Get user ID
+-- Get user ID and update profile + role
 DO \$\$
 DECLARE
     user_uuid UUID;
 BEGIN
     SELECT id INTO user_uuid FROM users WHERE email = '${ADMIN_EMAIL}';
     
-    -- Update display name
-    UPDATE user_profiles 
-    SET display_name = '${DISPLAY_NAME}'
-    WHERE user_id = user_uuid;
+    IF user_uuid IS NULL THEN
+        RAISE EXCEPTION 'Failed to find user with email: ${ADMIN_EMAIL}';
+    END IF;
+    
+    -- Ensure profile exists (in case trigger failed)
+    INSERT INTO user_profiles (user_id, display_name)
+    VALUES (user_uuid, '${DISPLAY_NAME}')
+    ON CONFLICT (user_id) DO UPDATE SET 
+        display_name = EXCLUDED.display_name,
+        updated_at = NOW();
     
     -- Assign admin role
     INSERT INTO user_roles (user_id, role)

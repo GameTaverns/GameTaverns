@@ -1292,10 +1292,8 @@ module.exports = {
     instances: 'max',
     exec_mode: 'cluster',
     env: {
-      NODE_ENV: 'production',
-      PORT: 3001
+      NODE_ENV: 'production'
     },
-    node_args: '--env-file=${INSTALL_DIR}/.env',
     error_file: '${INSTALL_DIR}/logs/api-error.log',
     out_file: '${INSTALL_DIR}/logs/api-out.log',
     log_date_format: 'YYYY-MM-DD HH:mm:ss Z',

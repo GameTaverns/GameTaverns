@@ -13,6 +13,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "unaccent";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- CUSTOM TYPES (ENUMS)
@@ -878,9 +879,8 @@ CREATE INDEX idx_games_library_is_coming_soon ON games(library_id, is_coming_soo
 CREATE INDEX idx_games_library_is_expansion ON games(library_id, is_expansion);
 CREATE INDEX idx_games_parent_game_id ON games(parent_game_id) WHERE parent_game_id IS NOT NULL;
 
--- Full text search indexes (if needed)
-CREATE INDEX idx_games_title_trgm ON games USING gin (title gin_trgm_ops);
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- Full text search indexes (pg_trgm extension must be created first at top of file)
+CREATE INDEX IF NOT EXISTS idx_games_title_trgm ON games USING gin (title gin_trgm_ops);
 
 -- Date-based query optimization
 CREATE INDEX idx_library_events_future ON library_events(library_id, event_date) WHERE event_date > now();
