@@ -7,7 +7,7 @@ import { GameGrid } from "@/components/games/GameGrid";
 import { WishlistNamePrompt } from "@/components/games/WishlistNamePrompt";
 import { QuadrantFilterButton } from "@/components/games/QuadrantFilterButton";
 import { useGames } from "@/hooks/useGames";
-import { DIFFICULTY_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
+import { DIFFICULTY_OPTIONS } from "@/types/game";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -53,12 +53,12 @@ const Index = () => {
   
   // Quadrant filter state
   const [quadrantFilter, setQuadrantFilter] = useState<{
+    playerCount: number;
     difficulty: number;
-    playTime: number;
     intensity: number;
   } | null>(null);
 
-  const handleQuadrantFilterChange = useCallback((filters: { difficulty: number; playTime: number; intensity: number } | null) => {
+  const handleQuadrantFilterChange = useCallback((filters: { playerCount: number; difficulty: number; intensity: number } | null) => {
     setQuadrantFilter(filters);
   }, []);
   
@@ -228,29 +228,48 @@ const Index = () => {
       }
     }
 
-    // Apply quadrant filter (difficulty + play time)
+    // Apply quadrant filter (player count + difficulty)
     if (quadrantFilter) {
-      const { difficulty: diffPos, playTime: playPos, intensity } = quadrantFilter;
+      const { playerCount: playerPos, difficulty: diffPos, intensity } = quadrantFilter;
       
-      // Calculate which difficulty levels to include based on position and intensity
-      const targetDiffIndex = Math.floor(diffPos * DIFFICULTY_OPTIONS.length);
-      const targetPlayIndex = Math.floor(playPos * PLAY_TIME_OPTIONS.length);
+      // Map player position (0-1) to player count ranges
+      // 0 = Solo (1), 0.25 = 2 Players, 0.5 = 3-4, 0.75 = 5-6, 1 = 7+
+      const playerRanges = [
+        { min: 1, max: 1 },     // Solo
+        { min: 2, max: 2 },     // 2 Players
+        { min: 3, max: 4 },     // 3-4 Players
+        { min: 5, max: 6 },     // 5-6 Players
+        { min: 7, max: 99 },    // 7+ Players
+      ];
+      
+      const targetPlayerIndex = Math.min(4, Math.floor(playerPos * 5));
+      const targetDiffIndex = Math.min(4, Math.floor(diffPos * DIFFICULTY_OPTIONS.length));
       
       // Range based on intensity (lower intensity = broader range)
       const range = Math.ceil((1 - intensity) * 2) + 1; // 1-3 levels range
       
       result = result.filter((g) => {
+        // Check player count
+        const gameMin = g.min_players ?? 1;
+        const gameMax = g.max_players ?? gameMin;
+        
+        // Check if game supports any player count within the target range (with tolerance)
+        let playerMatch = false;
+        for (let i = Math.max(0, targetPlayerIndex - range); i <= Math.min(4, targetPlayerIndex + range); i++) {
+          const { min, max } = playerRanges[i];
+          // Game supports this player count if its range overlaps
+          if (gameMin <= max && gameMax >= min) {
+            playerMatch = true;
+            break;
+          }
+        }
+        
         // Check difficulty
         const gameDiffIndex = DIFFICULTY_OPTIONS.indexOf(g.difficulty as any);
         const diffMatch = gameDiffIndex >= 0 && 
           Math.abs(gameDiffIndex - targetDiffIndex) <= range;
         
-        // Check play time
-        const gamePlayIndex = PLAY_TIME_OPTIONS.indexOf(g.play_time as any);
-        const playMatch = gamePlayIndex >= 0 && 
-          Math.abs(gamePlayIndex - targetPlayIndex) <= range;
-        
-        return diffMatch && playMatch;
+        return playerMatch && diffMatch;
       });
     }
 

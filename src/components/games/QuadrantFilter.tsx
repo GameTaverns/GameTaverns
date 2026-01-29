@@ -7,12 +7,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface QuadrantFilterProps {
   isOpen: boolean;
   onClose: () => void;
-  onFilterChange: (filters: { difficulty: number; playTime: number; intensity: number }) => void;
+  onFilterChange: (filters: { playerCount: number; difficulty: number; intensity: number }) => void;
 }
 
-// Map position (0-1) to difficulty levels
+// Map position (0-1) to player count and difficulty levels
+const PLAYER_LABELS = ["Solo", "2 Players", "3-4 Players", "5-6 Players", "7+ Players"];
 const DIFFICULTY_LABELS = ["Light", "Medium Light", "Medium", "Medium Heavy", "Heavy"];
-const PLAYTIME_LABELS = ["Quick", "Short", "Medium", "Long", "Epic"];
 
 export function QuadrantFilter({ isOpen, onClose, onFilterChange }: QuadrantFilterProps) {
   const isMobile = useIsMobile();
@@ -105,24 +105,24 @@ export function QuadrantFilter({ isOpen, onClose, onFilterChange }: QuadrantFilt
   // Emit filter changes
   useEffect(() => {
     // Convert position to filter values
-    // X: 0 = Light, 1 = Heavy (difficulty)
-    // Y: 0 = Quick, 1 = Epic (play time) - inverted for natural feel (top = quick)
+    // X: 0 = Solo, 1 = 7+ Players (player count)
+    // Y: 0 = Light, 1 = Heavy (difficulty) - inverted for natural feel (top = light)
     onFilterChange({
-      difficulty: position.x,
-      playTime: 1 - position.y, // Invert Y so top = quick
+      playerCount: position.x,
+      difficulty: 1 - position.y, // Invert Y so top = light
       intensity,
     });
   }, [position, intensity, onFilterChange]);
 
   // Get current labels based on position
-  const getDifficultyLabel = () => {
+  const getPlayerLabel = () => {
     const index = Math.min(4, Math.floor(position.x * 5));
-    return DIFFICULTY_LABELS[index];
+    return PLAYER_LABELS[index];
   };
 
-  const getPlayTimeLabel = () => {
+  const getDifficultyLabel = () => {
     const index = Math.min(4, Math.floor((1 - position.y) * 5));
-    return PLAYTIME_LABELS[index];
+    return DIFFICULTY_LABELS[index];
   };
 
   // Calculate ring size based on intensity (larger = more lenient)
@@ -160,11 +160,11 @@ export function QuadrantFilter({ isOpen, onClose, onFilterChange }: QuadrantFilt
 
           {/* Quadrant Area */}
           <div className="p-5">
-            {/* Labels */}
+            {/* Labels - X axis (Player Count) */}
             <div className="flex justify-between text-xs text-muted-foreground mb-2 px-2">
-              <span>Light</span>
-              <span className="text-primary font-medium">{getDifficultyLabel()}</span>
-              <span>Heavy</span>
+              <span>Solo</span>
+              <span className="text-primary font-medium">{getPlayerLabel()}</span>
+              <span>7+ Players</span>
             </div>
 
             {/* Main Quadrant */}
@@ -188,22 +188,22 @@ export function QuadrantFilter({ isOpen, onClose, onFilterChange }: QuadrantFilt
               <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
                 <div className="bg-gradient-to-br from-emerald-400/40 to-emerald-500/20 flex items-center justify-center">
                   <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-medium opacity-60">
-                    Light & Quick
+                    Solo & Light
                   </span>
                 </div>
                 <div className="bg-gradient-to-bl from-sky-400/40 to-sky-500/20 flex items-center justify-center">
                   <span className="text-[10px] text-sky-700 dark:text-sky-300 font-medium opacity-60">
-                    Complex & Quick
+                    Group & Light
                   </span>
                 </div>
                 <div className="bg-gradient-to-tr from-amber-400/40 to-amber-500/20 flex items-center justify-center">
                   <span className="text-[10px] text-amber-700 dark:text-amber-300 font-medium opacity-60">
-                    Light & Epic
+                    Solo & Heavy
                   </span>
                 </div>
                 <div className="bg-gradient-to-tl from-rose-400/40 to-rose-500/20 flex items-center justify-center">
                   <span className="text-[10px] text-rose-700 dark:text-rose-300 font-medium opacity-60">
-                    Complex & Epic
+                    Group & Heavy
                   </span>
                 </div>
               </div>
@@ -267,11 +267,11 @@ export function QuadrantFilter({ isOpen, onClose, onFilterChange }: QuadrantFilt
               </motion.div>
             </div>
 
-            {/* Vertical labels */}
+            {/* Vertical labels - Y axis (Difficulty) */}
             <div className="flex justify-between text-xs text-muted-foreground mt-2 px-2">
-              <span>Quick</span>
-              <span className="text-primary font-medium">{getPlayTimeLabel()}</span>
-              <span>Epic</span>
+              <span>Light</span>
+              <span className="text-primary font-medium">{getDifficultyLabel()}</span>
+              <span>Heavy</span>
             </div>
 
             {/* Intensity indicator */}
