@@ -15,7 +15,8 @@ import {
   Mail,
   ArrowRight,
   BarChart3,
-  Vote
+  Vote,
+  User
 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyticsDashboard";
 import { PollsManager } from "@/components/polls/PollsManager";
+import { AccountSettings } from "@/components/settings/AccountSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Dashboard() {
@@ -180,7 +182,7 @@ export default function Dashboard() {
         
         {library ? (
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="mb-8 bg-wood-medium/30">
+            <TabsList className="mb-8 bg-wood-medium/30 flex-wrap">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="analytics" className="gap-2">
                 <BarChart3 className="h-4 w-4" />
@@ -189,6 +191,10 @@ export default function Dashboard() {
               <TabsTrigger value="polls" className="gap-2">
                 <Vote className="h-4 w-4" />
                 Game Polls
+              </TabsTrigger>
+              <TabsTrigger value="account" className="gap-2">
+                <User className="h-4 w-4" />
+                Account
               </TabsTrigger>
             </TabsList>
 
@@ -393,6 +399,23 @@ export default function Dashboard() {
               <Card className="bg-wood-medium/30 border-wood-medium/50">
                 <CardContent className="pt-6">
                   <PollsManager libraryId={library.id} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="account">
+              <Card className="bg-wood-medium/30 border-wood-medium/50">
+                <CardHeader>
+                  <CardTitle className="text-cream flex items-center gap-2">
+                    <User className="h-5 w-5 text-secondary" />
+                    Account Settings
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Manage your profile and login credentials
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AccountSettings />
                 </CardContent>
               </Card>
             </TabsContent>
