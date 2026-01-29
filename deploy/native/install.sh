@@ -405,16 +405,34 @@ EOF
     echo "Domain: ${DOMAIN}" >> /tmp/gametaverns-install.log
 }
 
+clone_repository() {
+    log_info "Cloning GameTaverns repository..."
+
+    # Check if already cloned
+    if [[ -d "${INSTALL_DIR}/.git" ]]; then
+        log_info "Repository already exists, pulling latest..."
+        cd ${INSTALL_DIR}
+        git pull origin main
+    else
+        # Clone fresh
+        git clone https://github.com/GameTaverns/GameTaverns.git ${INSTALL_DIR}
+    fi
+
+    chown -R ${APP_USER}:${APP_USER} ${INSTALL_DIR}
+
+    log_success "Repository ready"
+}
+
 build_frontend() {
     log_info "Building frontend..."
 
     cd ${INSTALL_DIR}
 
     # Install frontend dependencies
-    npm ci
+    sudo -u ${APP_USER} npm ci
 
-    # Build frontend
-    npm run build
+    # Build frontend with production settings
+    sudo -u ${APP_USER} npm run build
 
     # Copy build to app directory
     cp -r dist/* ${INSTALL_DIR}/app/
@@ -515,8 +533,15 @@ run_migrations() {
 
     cd ${INSTALL_DIR}
 
-    # Run the schema migration
-    sudo -u ${APP_USER} psql -d ${DB_NAME} -f ${INSTALL_DIR}/deploy/native/migrations/01-schema.sql
+    # Run the schema migration as postgres user (has permissions)
+    sudo -u postgres psql -d ${DB_NAME} -f ${INSTALL_DIR}/deploy/native/migrations/01-schema.sql
+
+    # Grant permissions to app user for all new objects
+    sudo -u postgres psql -d ${DB_NAME} <<EOF
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${DB_USER};
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${DB_USER};
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${DB_USER};
+EOF
 
     log_success "Database migrations complete"
 }
@@ -677,11 +702,12 @@ main() {
     install_postfix
     configure_postfix
 
-    # Application
-    build_frontend
-    build_backend
+    # Application - clone FIRST, then build
+    clone_repository
     create_env_file
     run_migrations
+    build_frontend
+    build_backend
 
     # Configuration
     configure_nginx

@@ -856,6 +856,29 @@ END;
 $$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- PERFORMANCE INDEXES
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Composite indexes for common queries
+CREATE INDEX idx_games_library_is_for_sale ON games(library_id, is_for_sale) WHERE is_for_sale = true;
+CREATE INDEX idx_games_library_is_coming_soon ON games(library_id, is_coming_soon) WHERE is_coming_soon = true;
+CREATE INDEX idx_games_library_is_expansion ON games(library_id, is_expansion);
+CREATE INDEX idx_games_parent_game_id ON games(parent_game_id) WHERE parent_game_id IS NOT NULL;
+
+-- Full text search indexes (if needed)
+CREATE INDEX idx_games_title_trgm ON games USING gin (title gin_trgm_ops);
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Date-based query optimization
+CREATE INDEX idx_library_events_future ON library_events(library_id, event_date) WHERE event_date > now();
+CREATE INDEX idx_game_polls_active ON game_polls(library_id, status) WHERE status = 'open';
+CREATE INDEX idx_game_sessions_recent ON game_sessions(game_id, played_at DESC);
+
+-- Token expiry indexes for cleanup
+CREATE INDEX idx_email_tokens_expires ON email_confirmation_tokens(expires_at);
+CREATE INDEX idx_reset_tokens_expires ON password_reset_tokens(expires_at);
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- COMPLETE
 -- ═══════════════════════════════════════════════════════════════════════════
 
