@@ -166,6 +166,7 @@ export function useLibraryMembers(libraryId: string | undefined) {
       return [ownerMember, ...(members || [])];
     },
     enabled: !!libraryId,
+    refetchOnMount: "always",
   });
 }
 
