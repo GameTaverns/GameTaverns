@@ -124,13 +124,11 @@ export function UserManagement() {
   const getRoleBadge = (role: string | null) => {
     switch (role) {
       case "admin":
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><Shield className="w-3 h-3 mr-1" />Admin</Badge>;
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><Shield className="w-3 h-3 mr-1" />Staff</Badge>;
       case "moderator":
         return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30"><UserCog className="w-3 h-3 mr-1" />Moderator</Badge>;
-      case "user":
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30"><User className="w-3 h-3 mr-1" />User</Badge>;
       default:
-        return <Badge variant="outline" className="text-cream/50">No Role</Badge>;
+        return <Badge variant="outline" className="text-cream/50">Regular User</Badge>;
     }
   };
 
@@ -144,32 +142,40 @@ export function UserManagement() {
 
   return (
     <div className="space-y-4">
-      {/* Role Legend */}
+      {/* Role Legend - 4 Tier System */}
       <div className="bg-wood-medium/20 rounded-lg p-4 border border-wood-medium/30">
-        <h4 className="font-semibold text-cream mb-2">Role Permissions</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-          <div className="flex items-start gap-2">
-            <Shield className="w-4 h-4 text-red-400 mt-0.5" />
+        <h4 className="font-semibold text-cream mb-3">Role Hierarchy (4 Tiers)</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+          <div className="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+            <Shield className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
             <div>
-              <span className="text-cream font-medium">Admin</span>
-              <p className="text-cream/60">Full platform access: manage users, libraries, settings, view all data</p>
+              <span className="text-cream font-medium">Tier 1: Staff</span>
+              <p className="text-cream/60 text-xs mt-1">Platform admins with full access to site management, user control, and all settings</p>
             </div>
           </div>
-          <div className="flex items-start gap-2">
-            <UserCog className="w-4 h-4 text-blue-400 mt-0.5" />
+          <div className="flex items-start gap-2 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+            <UserCog className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
             <div>
-              <span className="text-cream font-medium">Moderator</span>
-              <p className="text-cream/60">Content moderation (reserved for future use)</p>
+              <span className="text-cream font-medium">Tier 2: Moderator</span>
+              <p className="text-cream/60 text-xs mt-1">Site-wide or community moderation capabilities (content oversight)</p>
             </div>
           </div>
-          <div className="flex items-start gap-2">
-            <User className="w-4 h-4 text-green-400 mt-0.5" />
+          <div className="flex items-start gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+            <User className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
             <div>
-              <span className="text-cream font-medium">User / No Role</span>
-              <p className="text-cream/60">Standard access: can create & manage their own libraries only</p>
+              <span className="text-cream font-medium">Tier 3: Owners</span>
+              <p className="text-cream/60 text-xs mt-1">Library/community owners with dashboard access to manage their own libraries</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 p-3 bg-wood-medium/30 rounded-lg border border-wood-medium/40">
+            <User className="w-4 h-4 text-cream/60 mt-0.5 flex-shrink-0" />
+            <div>
+              <span className="text-cream font-medium">Tier 4: Users</span>
+              <p className="text-cream/60 text-xs mt-1">Regular users who can join communities, borrow games, and participate in events</p>
             </div>
           </div>
         </div>
+        <p className="text-cream/50 text-xs mt-3 italic">Note: Tier 3 (Owner) status is determined by library ownership, not by role assignment here.</p>
       </div>
 
       <div className="flex items-center justify-between">
@@ -257,11 +263,10 @@ export function UserManagement() {
                           <SelectValue />
                         )}
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No Role</SelectItem>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="moderator">Moderator</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
+                      <SelectContent className="bg-sidebar border-wood-medium/50">
+                        <SelectItem value="none">Regular User</SelectItem>
+                        <SelectItem value="moderator">Moderator (Tier 2)</SelectItem>
+                        <SelectItem value="admin">Staff (Tier 1)</SelectItem>
                       </SelectContent>
                     </Select>
                     
