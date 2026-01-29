@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useDiscordNotify } from "@/hooks/useDiscordNotify";
 
 export interface CalendarEvent {
   event_type: "poll" | "standalone";
@@ -76,6 +77,7 @@ export function useAllLibraryEvents(libraryId: string | undefined) {
 export function useCreateEvent() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const discord = useDiscordNotify();
 
   return useMutation({
     mutationFn: async (input: CreateEventInput) => {
@@ -94,9 +96,18 @@ export function useCreateEvent() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["library-events", variables.library_id] });
       queryClient.invalidateQueries({ queryKey: ["library-all-events", variables.library_id] });
+      
+      // Send Discord notification and forum post
+      discord.notifyEventCreated(variables.library_id, {
+        title: variables.title,
+        description: variables.description,
+        event_date: variables.event_date,
+        event_location: variables.event_location,
+      });
+      
       toast({
         title: "Event created",
         description: "Your event has been added to the calendar.",
