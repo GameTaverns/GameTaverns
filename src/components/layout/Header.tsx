@@ -126,6 +126,21 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           <Link to={homeUrl} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
             Home
           </Link>
+          
+          {/* Platform Home link - shows when viewing a library so users can return to landing */}
+          {tenantSlug && !isDemoMode && (
+            <a
+              href="/"
+              onClick={(e) => {
+                e.preventDefault();
+                // Navigate to platform root (remove tenant param)
+                window.location.href = window.location.origin;
+              }}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              Platform Home
+            </a>
+          )}
           {/* Only show Demo link if demo mode is enabled and we're not already in demo */}
           {demoModeEnabled && !isDemoMode && (
             <Link to="/?demo=true" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
