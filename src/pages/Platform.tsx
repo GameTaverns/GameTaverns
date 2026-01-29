@@ -57,14 +57,9 @@ export default function Platform() {
               </>
             ) : (
               <>
-                <Link to="/login">
+              <Link to="/login">
                   <Button variant="ghost" className="text-cream/80 hover:text-cream hover:bg-wood-medium/50">
                     Sign In
-                  </Button>
-                </Link>
-                <Link to="/signup">
-                  <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                    Get Started
                   </Button>
                 </Link>
               </>
