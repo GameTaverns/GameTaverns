@@ -28,7 +28,12 @@ export const config = {
   siteUrl: process.env.SITE_URL || 'http://localhost:3000',
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:5173').split(','),
   
-  // AI (BYOK)
+  // AI Services (Platform-level keys)
+  perplexityApiKey: process.env.PERPLEXITY_API_KEY || '',
+  openaiApiKey: process.env.OPENAI_API_KEY || '',
+  firecrawlApiKey: process.env.FIRECRAWL_API_KEY || '',
+  
+  // Legacy AI (BYOK)
   aiProvider: process.env.AI_PROVIDER as 'openai' | 'gemini' | undefined,
   aiApiKey: process.env.AI_API_KEY,
   
