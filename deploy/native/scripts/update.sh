@@ -70,11 +70,30 @@ npm ci --silent
 echo -e "${YELLOW}[INFO]${NC} Building backend..."
 npm run build
 
-# Check for new migrations
+# Run database migrations
+echo -e "${YELLOW}[INFO]${NC} Applying database migrations..."
 if [[ -f "${INSTALL_DIR}/deploy/native/migrations/01-schema.sql" ]]; then
-    echo -e "${YELLOW}[INFO]${NC} Checking database schema..."
     # Run migrations idempotently (CREATE IF NOT EXISTS, etc.)
-    sudo -u postgres psql -d gametaverns -f ${INSTALL_DIR}/deploy/native/migrations/01-schema.sql 2>/dev/null || true
+    if sudo -u postgres psql -d gametaverns -f ${INSTALL_DIR}/deploy/native/migrations/01-schema.sql > /dev/null 2>&1; then
+        echo -e "${GREEN}[OK]${NC} Database migrations applied"
+        
+        # Verify critical tables exist
+        REQUIRED_TABLES=("users" "libraries" "games" "library_members" "game_loans" "achievements")
+        MISSING_TABLES=()
+        
+        for table in "${REQUIRED_TABLES[@]}"; do
+            if ! sudo -u postgres psql -d gametaverns -tAc "SELECT 1 FROM pg_tables WHERE tablename='${table}' AND schemaname='public';" 2>/dev/null | grep -q 1; then
+                MISSING_TABLES+=("$table")
+            fi
+        done
+        
+        if [ ${#MISSING_TABLES[@]} -gt 0 ]; then
+            echo -e "${RED}[ERROR]${NC} Missing required tables: ${MISSING_TABLES[*]}"
+            echo "Please check migration logs or run migrations manually."
+        fi
+    else
+        echo -e "${YELLOW}[WARN]${NC} Migration had warnings (may be normal for existing tables)"
+    fi
 fi
 
 # Restart API

@@ -77,6 +77,12 @@ CREATE TYPE suspension_action AS ENUM (
     'restored'
 );
 
+-- Library member roles
+CREATE TYPE library_member_role AS ENUM (
+    'member',
+    'moderator'
+);
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- UTILITY FUNCTIONS
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -152,6 +158,42 @@ AS $$
     SELECT NOT EXISTS (
         SELECT 1 FROM libraries WHERE slug = lower(check_slug)
     );
+$$;
+
+-- Check if user is a library member
+CREATE OR REPLACE FUNCTION is_library_member(_user_id uuid, _library_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM library_members
+        WHERE user_id = _user_id AND library_id = _library_id
+    ) OR EXISTS (
+        SELECT 1 FROM libraries
+        WHERE id = _library_id AND owner_id = _user_id
+    )
+$$;
+
+-- Check if user is a library moderator
+CREATE OR REPLACE FUNCTION is_library_moderator(_user_id uuid, _library_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM library_members
+        WHERE user_id = _user_id 
+        AND library_id = _library_id 
+        AND role = 'moderator'
+    ) OR EXISTS (
+        SELECT 1 FROM libraries
+        WHERE id = _library_id AND owner_id = _user_id
+    ) OR has_role(_user_id, 'admin')
 $$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -314,7 +356,12 @@ CREATE TABLE library_settings (
     -- Security
     turnstile_site_key TEXT,
     
-    -- Features
+    -- Community & Lending features
+    allow_lending BOOLEAN NOT NULL DEFAULT false,
+    is_discoverable BOOLEAN NOT NULL DEFAULT true,
+    lending_terms TEXT,
+    
+    -- Feature flags
     feature_play_logs BOOLEAN DEFAULT true,
     feature_wishlist BOOLEAN DEFAULT true,
     feature_for_sale BOOLEAN DEFAULT true,
@@ -322,6 +369,8 @@ CREATE TABLE library_settings (
     feature_ratings BOOLEAN DEFAULT true,
     feature_coming_soon BOOLEAN DEFAULT true,
     feature_events BOOLEAN DEFAULT true,
+    feature_lending BOOLEAN DEFAULT true,
+    feature_achievements BOOLEAN DEFAULT true,
     
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -336,6 +385,170 @@ CREATE TABLE library_suspensions (
     reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Library members (community membership)
+CREATE TABLE library_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role library_member_role NOT NULL DEFAULT 'member',
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(library_id, user_id)
+);
+
+CREATE INDEX idx_library_members_library_id ON library_members(library_id);
+CREATE INDEX idx_library_members_user_id ON library_members(user_id);
+
+-- Library followers
+CREATE TABLE library_followers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+    follower_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    followed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(library_id, follower_user_id)
+);
+
+CREATE INDEX idx_library_followers_library_id ON library_followers(library_id);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ACHIEVEMENTS TABLES
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Achievement categories
+CREATE TYPE achievement_category AS ENUM (
+    'collection',
+    'plays', 
+    'social',
+    'exploration',
+    'special'
+);
+
+-- Achievements definitions
+CREATE TABLE achievements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category achievement_category NOT NULL,
+    icon TEXT,
+    tier INTEGER NOT NULL DEFAULT 1,
+    points INTEGER NOT NULL DEFAULT 10,
+    requirement_type TEXT NOT NULL,
+    requirement_value INTEGER NOT NULL,
+    is_secret BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- User achievements (earned achievements)
+CREATE TABLE user_achievements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    achievement_id UUID NOT NULL REFERENCES achievements(id) ON DELETE CASCADE,
+    library_id UUID REFERENCES libraries(id) ON DELETE CASCADE,
+    progress INTEGER NOT NULL DEFAULT 0,
+    earned_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(user_id, achievement_id, library_id)
+);
+
+CREATE INDEX idx_user_achievements_user_id ON user_achievements(user_id);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- LENDING SYSTEM TABLES
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Loan status enum
+CREATE TYPE loan_status AS ENUM (
+    'requested',
+    'approved', 
+    'borrowed',
+    'returned',
+    'cancelled',
+    'declined'
+);
+
+-- Game loans
+CREATE TABLE game_loans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id UUID NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    library_id UUID NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+    borrower_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    lender_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status loan_status NOT NULL DEFAULT 'requested',
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    approved_at TIMESTAMPTZ,
+    borrowed_at TIMESTAMPTZ,
+    due_date TIMESTAMPTZ,
+    returned_at TIMESTAMPTZ,
+    borrower_notes TEXT,
+    lender_notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_game_loans_game_id ON game_loans(game_id);
+CREATE INDEX idx_game_loans_library_id ON game_loans(library_id);
+CREATE INDEX idx_game_loans_borrower ON game_loans(borrower_user_id);
+CREATE INDEX idx_game_loans_lender ON game_loans(lender_user_id);
+CREATE INDEX idx_game_loans_status ON game_loans(status);
+
+-- Borrower ratings (after loan is returned)
+CREATE TABLE borrower_ratings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    loan_id UUID NOT NULL UNIQUE REFERENCES game_loans(id) ON DELETE CASCADE,
+    rated_by_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rated_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    review TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_borrower_ratings_rated_user ON borrower_ratings(rated_user_id);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- NOTIFICATIONS TABLES
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- Notification preferences
+CREATE TABLE notification_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    -- Email notifications
+    email_loan_requests BOOLEAN NOT NULL DEFAULT true,
+    email_loan_updates BOOLEAN NOT NULL DEFAULT true,
+    email_event_reminders BOOLEAN NOT NULL DEFAULT true,
+    email_wishlist_alerts BOOLEAN NOT NULL DEFAULT true,
+    email_achievement_earned BOOLEAN NOT NULL DEFAULT true,
+    -- Push notifications
+    push_loan_requests BOOLEAN NOT NULL DEFAULT true,
+    push_loan_updates BOOLEAN NOT NULL DEFAULT true,
+    push_event_reminders BOOLEAN NOT NULL DEFAULT true,
+    push_wishlist_alerts BOOLEAN NOT NULL DEFAULT true,
+    push_achievement_earned BOOLEAN NOT NULL DEFAULT true,
+    -- Discord notifications
+    discord_loan_requests BOOLEAN NOT NULL DEFAULT true,
+    discord_loan_updates BOOLEAN NOT NULL DEFAULT true,
+    discord_event_reminders BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Notification log
+CREATE TABLE notification_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    notification_type TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT,
+    metadata JSONB,
+    read_at TIMESTAMPTZ,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_notification_log_user_id ON notification_log(user_id);
+CREATE INDEX idx_notification_log_read ON notification_log(user_id, read_at);
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- GAME TABLES
@@ -662,6 +875,15 @@ CREATE TRIGGER update_import_jobs_updated_at BEFORE UPDATE ON import_jobs
 CREATE TRIGGER update_site_settings_updated_at BEFORE UPDATE ON site_settings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_game_loans_updated_at BEFORE UPDATE ON game_loans
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_achievements_updated_at BEFORE UPDATE ON user_achievements
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_notification_preferences_updated_at BEFORE UPDATE ON notification_preferences
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Auto-generate game slugs
 CREATE OR REPLACE FUNCTION games_set_slug()
 RETURNS TRIGGER
@@ -757,6 +979,7 @@ SELECT
     contact_email, discord_url, twitter_handle, instagram_url, facebook_url,
     feature_play_logs, feature_wishlist, feature_for_sale, feature_messaging,
     feature_ratings, feature_coming_soon, feature_events,
+    feature_lending, feature_achievements, allow_lending, is_discoverable,
     created_at, updated_at
 FROM library_settings;
 
@@ -841,6 +1064,42 @@ SELECT
 FROM game_polls gp
 WHERE gp.event_date IS NOT NULL;
 
+-- Library directory (discoverable libraries with stats)
+CREATE OR REPLACE VIEW library_directory AS
+SELECT 
+    l.id,
+    l.name,
+    l.slug,
+    l.description,
+    l.created_at,
+    ls.logo_url,
+    ls.is_discoverable,
+    ls.allow_lending,
+    (SELECT COUNT(*) FROM games g WHERE g.library_id = l.id)::bigint AS game_count,
+    (SELECT COUNT(*) FROM library_members lm WHERE lm.library_id = l.id)::bigint AS member_count,
+    (SELECT COUNT(*) FROM library_followers lf WHERE lf.library_id = l.id)::bigint AS follower_count
+FROM libraries l
+LEFT JOIN library_settings ls ON ls.library_id = l.id
+WHERE l.is_active = true AND COALESCE(ls.is_discoverable, true) = true;
+
+-- Library members public view (count only)
+CREATE OR REPLACE VIEW library_members_public AS
+SELECT 
+    library_id,
+    COUNT(*)::bigint AS member_count
+FROM library_members
+GROUP BY library_id;
+
+-- Borrower reputation view
+CREATE OR REPLACE VIEW borrower_reputation AS
+SELECT 
+    rated_user_id AS user_id,
+    ROUND(AVG(rating)::numeric, 2) AS average_rating,
+    COUNT(*) AS total_ratings,
+    COUNT(*) FILTER (WHERE rating >= 4) AS positive_ratings
+FROM borrower_ratings
+GROUP BY rated_user_id;
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- TOKEN CLEANUP FUNCTIONS
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -897,6 +1156,22 @@ CREATE INDEX idx_reset_tokens_expires ON password_reset_tokens(expires_at);
 
 -- Log successful migration
 INSERT INTO site_settings (key, value) VALUES 
-    ('schema_version', '1.0.0'),
+    ('schema_version', '2.0.0'),
     ('installed_at', now()::text)
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+
+-- Seed default achievements (optional but recommended)
+INSERT INTO achievements (slug, name, description, category, tier, points, requirement_type, requirement_value) VALUES
+    ('first_game', 'Welcome to the Shelf', 'Add your first game to your library', 'collection', 1, 10, 'games_owned', 1),
+    ('collector_10', 'Budding Collector', 'Own 10 games in your library', 'collection', 1, 25, 'games_owned', 10),
+    ('collector_25', 'Serious Collector', 'Own 25 games in your library', 'collection', 2, 50, 'games_owned', 25),
+    ('collector_50', 'Devoted Collector', 'Own 50 games in your library', 'collection', 3, 100, 'games_owned', 50),
+    ('collector_100', 'Master Collector', 'Own 100 games in your library', 'collection', 4, 200, 'games_owned', 100),
+    ('first_play', 'First Roll', 'Log your first game play session', 'plays', 1, 10, 'plays_logged', 1),
+    ('player_10', 'Regular Player', 'Log 10 game play sessions', 'plays', 1, 25, 'plays_logged', 10),
+    ('player_50', 'Avid Player', 'Log 50 game play sessions', 'plays', 2, 75, 'plays_logged', 50),
+    ('first_loan', 'Generous Lender', 'Lend a game to a community member', 'social', 1, 15, 'games_lent', 1),
+    ('trusted_lender', 'Trusted Lender', 'Successfully complete 5 loans', 'social', 2, 50, 'games_lent', 5),
+    ('community_member', 'Community Member', 'Join your first library community', 'social', 1, 10, 'communities_joined', 1),
+    ('explorer', 'Explorer', 'Visit 10 different libraries', 'exploration', 1, 20, 'libraries_visited', 10)
+ON CONFLICT (slug) DO NOTHING;

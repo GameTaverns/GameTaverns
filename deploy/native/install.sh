@@ -1167,6 +1167,8 @@ FEATURE_MESSAGING=true
 FEATURE_RATINGS=true
 FEATURE_EVENTS=true
 FEATURE_POLLS=true
+FEATURE_LENDING=true
+FEATURE_ACHIEVEMENTS=true
 
 # ════════════════════════════════════════════════════════════════
 # OPTIONAL: AI SERVICES (Required for game URL import)
