@@ -19,6 +19,7 @@ export interface FeatureFlags {
   comingSoon: boolean;
   demoMode: boolean;
   ratings: boolean;
+  events: boolean;
 }
 
 // Default values when nothing is configured
@@ -30,10 +31,11 @@ const DEFAULT_FLAGS: FeatureFlags = {
   comingSoon: true,
   demoMode: true,
   ratings: true,
+  events: true,
 };
 
 // Get flag from runtime config (Cloudron) or env var (Vite)
-function getConfigFlag(runtimeKey: 'PLAY_LOGS' | 'WISHLIST' | 'FOR_SALE' | 'MESSAGING' | 'COMING_SOON' | 'DEMO_MODE' | 'RATINGS', envKey: string): boolean | undefined {
+function getConfigFlag(runtimeKey: 'PLAY_LOGS' | 'WISHLIST' | 'FOR_SALE' | 'MESSAGING' | 'COMING_SOON' | 'DEMO_MODE' | 'RATINGS' | 'EVENTS', envKey: string): boolean | undefined {
   // Check runtime config first (Cloudron)
   const runtimeValue = getRuntimeFeatureFlag(runtimeKey);
   if (runtimeValue !== undefined) return runtimeValue;
@@ -69,6 +71,9 @@ function getConfigFlags(): Partial<FeatureFlags> {
   const ratings = getConfigFlag("RATINGS", "VITE_FEATURE_RATINGS");
   if (ratings !== undefined) flags.ratings = ratings;
   
+  const events = getConfigFlag("EVENTS", "VITE_FEATURE_EVENTS");
+  if (events !== undefined) flags.events = events;
+  
   return flags;
 }
 
@@ -81,6 +86,7 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
     // In demo mode, use demo-specific feature flags (demoMode flag is always true in demo)
     if (isDemoMode && demoFeatureFlags) {
       return {
+        ...DEFAULT_FLAGS, // Start with defaults to ensure all flags exist
         ...demoFeatureFlags,
         demoMode: true, // Always true when already in demo mode
       };
@@ -98,6 +104,7 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
       const dbComingSoon = (siteSettings as Record<string, string | undefined>).feature_coming_soon;
       const dbDemoMode = (siteSettings as Record<string, string | undefined>).feature_demo_mode;
       const dbRatings = (siteSettings as Record<string, string | undefined>).feature_ratings;
+      const dbEvents = (siteSettings as Record<string, string | undefined>).feature_events;
       
       if (dbPlayLogs !== undefined) result.playLogs = dbPlayLogs === "true";
       if (dbWishlist !== undefined) result.wishlist = dbWishlist === "true";
@@ -106,6 +113,7 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
       if (dbComingSoon !== undefined) result.comingSoon = dbComingSoon === "true";
       if (dbDemoMode !== undefined) result.demoMode = dbDemoMode === "true";
       if (dbRatings !== undefined) result.ratings = dbRatings === "true";
+      if (dbEvents !== undefined) result.events = dbEvents === "true";
     }
     
     // Apply config overrides last (they take precedence)
@@ -127,6 +135,7 @@ export const FEATURE_FLAG_LABELS: Record<keyof FeatureFlags, string> = {
   comingSoon: "Coming Soon",
   demoMode: "Demo Mode",
   ratings: "Ratings",
+  events: "Events Calendar",
 };
 
 export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
@@ -137,4 +146,5 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<keyof FeatureFlags, string> = {
   comingSoon: "Show upcoming games that aren't available yet",
   demoMode: "Allow visitors to access the demo environment",
   ratings: "Allow visitors to rate games (5-star system)",
+  events: "Show upcoming events and calendar to visitors",
 };

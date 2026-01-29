@@ -23,6 +23,7 @@ interface RuntimeConfig {
     COMING_SOON?: boolean;
     DEMO_MODE?: boolean;
     RATINGS?: boolean;
+    EVENTS?: boolean;
   };
 }
 

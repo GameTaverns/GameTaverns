@@ -24,6 +24,17 @@ export interface CreateEventInput {
   event_location?: string;
 }
 
+export interface UpdateEventInput {
+  eventId: string;
+  libraryId: string;
+  updates: {
+    title?: string;
+    description?: string | null;
+    event_date?: string;
+    event_location?: string | null;
+  };
+}
+
 /**
  * Fetch upcoming events for a library (polls with event dates + standalone events)
  */
@@ -116,6 +127,48 @@ export function useCreateEvent() {
     onError: (error: Error) => {
       toast({
         title: "Failed to create event",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+/**
+ * Update a standalone event
+ */
+export function useUpdateEvent() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ eventId, updates }: UpdateEventInput) => {
+      const { data, error } = await supabase
+        .from("library_events")
+        .update({
+          title: updates.title,
+          description: updates.description,
+          event_date: updates.event_date,
+          event_location: updates.event_location,
+        })
+        .eq("id", eventId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["library-events", variables.libraryId] });
+      queryClient.invalidateQueries({ queryKey: ["library-all-events", variables.libraryId] });
+      toast({
+        title: "Event updated",
+        description: "Your event has been updated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update event",
         description: error.message,
         variant: "destructive",
       });

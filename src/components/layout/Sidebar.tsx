@@ -149,7 +149,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const { isDemoMode, demoGames } = useDemoMode();
   const { isAuthenticated, user, signOut, isAdmin } = useAuth();
   const { data: settings } = useSiteSettings();
-  const { forSale, comingSoon, wishlist } = useFeatureFlags();
+  const { forSale, comingSoon, wishlist, events } = useFeatureFlags();
   const { toast } = useToast();
   const { tenantSlug, library, isTenantMode } = useTenant();
   const tenantSettings = useTenantSettings();
@@ -323,8 +323,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
             )}
           </nav>
 
-          {/* Upcoming Events - Only in tenant mode when library exists */}
-          {isTenantMode && library && <SidebarUpcomingEvents libraryId={library.id} />}
+          {/* Upcoming Events - Only in tenant mode when library exists and events feature enabled */}
+          {isTenantMode && library && events && <SidebarUpcomingEvents libraryId={library.id} />}
 
           {/* Player Count */}
           <FilterSection title="Player Count" icon={<Users className="h-4 w-4" />} defaultOpen={currentFilter === "players"}>
