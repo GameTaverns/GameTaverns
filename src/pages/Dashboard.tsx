@@ -270,7 +270,15 @@ export default function Dashboard() {
                           <span className="text-sm font-medium truncate">
                             {membership.library?.name}
                           </span>
-                          <ArrowRight className="h-4 w-4 text-cream/60 flex-shrink-0" />
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {membership.role === 'owner' && (
+                              <Badge variant="secondary" className="text-xs">Owner</Badge>
+                            )}
+                            {membership.role === 'moderator' && (
+                              <Badge variant="outline" className="text-xs">Mod</Badge>
+                            )}
+                            <ArrowRight className="h-4 w-4 text-cream/60" />
+                          </div>
                         </a>
                       ))}
                       {myMemberships.length > 3 && (
