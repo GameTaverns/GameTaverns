@@ -264,6 +264,9 @@ export function LibraryDiscordSettings() {
                 <Label>Messages Received</Label>
                 <p className="text-sm text-muted-foreground">
                   When someone sends you a message about a game
+                  <span className="block text-xs text-primary mt-1">
+                    → Sent as Discord DM (requires linked account in Account Settings)
+                  </span>
                 </p>
               </div>
               <Switch

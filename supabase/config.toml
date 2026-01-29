@@ -11,3 +11,15 @@ verify_jwt = false
 
 [functions.signup]
 verify_jwt = false
+
+[functions.discord-oauth-callback]
+verify_jwt = false
+
+[functions.discord-unlink]
+verify_jwt = false
+
+[functions.discord-send-dm]
+verify_jwt = false
+
+[functions.discord-config]
+verify_jwt = false

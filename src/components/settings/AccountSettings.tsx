@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile, useUpdateUserProfile } from "@/hooks/useLibrary";
 import { supabase } from "@/integrations/supabase/client";
+import { DiscordLinkCard } from "./DiscordLinkCard";
 
 export function AccountSettings() {
   const { user } = useAuth();
@@ -231,6 +232,9 @@ export function AccountSettings() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Discord Integration */}
+      <DiscordLinkCard />
     </div>
   );
 }
