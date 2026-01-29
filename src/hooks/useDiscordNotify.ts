@@ -13,6 +13,15 @@ interface DiscordNotifyData {
   data: Record<string, unknown>;
 }
 
+interface DiscordScheduledEventData {
+  title: string;
+  event_date: string;
+  event_location?: string | null;
+  description?: string | null;
+  poll_url?: string;
+  share_token?: string;
+}
+
 /**
  * Send a Discord notification for a library event.
  * This is a fire-and-forget operation - errors are logged but don't block the main flow.
@@ -25,6 +34,31 @@ export async function sendDiscordNotification(payload: DiscordNotifyData): Promi
   } catch (error) {
     // Log but don't throw - Discord notifications shouldn't break main functionality
     console.error("Discord notification failed:", error);
+  }
+}
+
+/**
+ * Create a Discord Scheduled Event for a game night poll.
+ * This is a fire-and-forget operation - errors are logged but don't block the main flow.
+ */
+export async function createDiscordScheduledEvent(
+  libraryId: string,
+  poll: DiscordScheduledEventData & { poll_type?: string; game_count?: number }
+): Promise<void> {
+  try {
+    await supabase.functions.invoke("discord-create-event", {
+      body: {
+        library_id: libraryId,
+        poll_id: poll.share_token || "unknown",
+        name: `🎲 ${poll.title}`,
+        description: poll.description,
+        scheduled_start_time: poll.event_date,
+        location: poll.event_location,
+        poll_url: poll.poll_url,
+      },
+    });
+  } catch (error) {
+    console.error("Discord event creation failed:", error);
   }
 }
 
@@ -91,17 +125,34 @@ export function useDiscordNotify() {
       poll_type: string;
       game_count: number;
       share_token?: string;
+      event_date?: string | null;
+      event_location?: string | null;
+      description?: string | null;
+      poll_url?: string;
     }) => {
-      return sendDiscordNotification({
+      // Send regular notification
+      sendDiscordNotification({
         library_id: libraryId,
         event_type: "poll_created",
         data: {
           poll_title: poll.title,
           poll_type: poll.poll_type,
           game_count: poll.game_count,
-          // poll_url will be constructed based on context
+          poll_url: poll.poll_url,
         },
       });
+
+      // If it's a game night with an event date, also create a Discord scheduled event
+      if (poll.poll_type === "game_night" && poll.event_date) {
+        return createDiscordScheduledEvent(libraryId, {
+          title: poll.title,
+          event_date: poll.event_date,
+          event_location: poll.event_location,
+          description: poll.description,
+          poll_url: poll.poll_url,
+          share_token: poll.share_token,
+        });
+      }
     },
     
     notifyPollClosed: (libraryId: string, data: {
