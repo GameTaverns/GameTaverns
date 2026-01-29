@@ -44,12 +44,16 @@ export function useUpcomingEvents(libraryId: string | undefined, limit = 5) {
     queryFn: async () => {
       if (!libraryId) return [];
       
+      // Get start of today (midnight) for proper date comparison
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       // Query the combined view
       const { data, error } = await supabase
         .from("library_calendar_events")
         .select("*")
         .eq("library_id", libraryId)
-        .gte("event_date", new Date().toISOString())
+        .gte("event_date", today.toISOString())
         .order("event_date", { ascending: true })
         .limit(limit);
 
