@@ -1536,6 +1536,186 @@ export type Database = {
         }
         Relationships: []
       }
+      library_settings_public: {
+        Row: {
+          background_image_url: string | null
+          background_overlay_opacity: string | null
+          contact_email: string | null
+          created_at: string | null
+          discord_url: string | null
+          facebook_url: string | null
+          feature_coming_soon: boolean | null
+          feature_events: boolean | null
+          feature_for_sale: boolean | null
+          feature_messaging: boolean | null
+          feature_play_logs: boolean | null
+          feature_ratings: boolean | null
+          feature_wishlist: boolean | null
+          footer_text: string | null
+          id: string | null
+          instagram_url: string | null
+          library_id: string | null
+          logo_url: string | null
+          theme_accent_h: string | null
+          theme_accent_l: string | null
+          theme_accent_s: string | null
+          theme_background_h: string | null
+          theme_background_l: string | null
+          theme_background_s: string | null
+          theme_card_h: string | null
+          theme_card_l: string | null
+          theme_card_s: string | null
+          theme_dark_accent_h: string | null
+          theme_dark_accent_l: string | null
+          theme_dark_accent_s: string | null
+          theme_dark_background_h: string | null
+          theme_dark_background_l: string | null
+          theme_dark_background_s: string | null
+          theme_dark_card_h: string | null
+          theme_dark_card_l: string | null
+          theme_dark_card_s: string | null
+          theme_dark_primary_h: string | null
+          theme_dark_primary_l: string | null
+          theme_dark_primary_s: string | null
+          theme_dark_sidebar_h: string | null
+          theme_dark_sidebar_l: string | null
+          theme_dark_sidebar_s: string | null
+          theme_font_body: string | null
+          theme_font_display: string | null
+          theme_primary_h: string | null
+          theme_primary_l: string | null
+          theme_primary_s: string | null
+          theme_sidebar_h: string | null
+          theme_sidebar_l: string | null
+          theme_sidebar_s: string | null
+          twitter_handle: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          background_image_url?: string | null
+          background_overlay_opacity?: string | null
+          contact_email?: string | null
+          created_at?: string | null
+          discord_url?: string | null
+          facebook_url?: string | null
+          feature_coming_soon?: boolean | null
+          feature_events?: boolean | null
+          feature_for_sale?: boolean | null
+          feature_messaging?: boolean | null
+          feature_play_logs?: boolean | null
+          feature_ratings?: boolean | null
+          feature_wishlist?: boolean | null
+          footer_text?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          library_id?: string | null
+          logo_url?: string | null
+          theme_accent_h?: string | null
+          theme_accent_l?: string | null
+          theme_accent_s?: string | null
+          theme_background_h?: string | null
+          theme_background_l?: string | null
+          theme_background_s?: string | null
+          theme_card_h?: string | null
+          theme_card_l?: string | null
+          theme_card_s?: string | null
+          theme_dark_accent_h?: string | null
+          theme_dark_accent_l?: string | null
+          theme_dark_accent_s?: string | null
+          theme_dark_background_h?: string | null
+          theme_dark_background_l?: string | null
+          theme_dark_background_s?: string | null
+          theme_dark_card_h?: string | null
+          theme_dark_card_l?: string | null
+          theme_dark_card_s?: string | null
+          theme_dark_primary_h?: string | null
+          theme_dark_primary_l?: string | null
+          theme_dark_primary_s?: string | null
+          theme_dark_sidebar_h?: string | null
+          theme_dark_sidebar_l?: string | null
+          theme_dark_sidebar_s?: string | null
+          theme_font_body?: string | null
+          theme_font_display?: string | null
+          theme_primary_h?: string | null
+          theme_primary_l?: string | null
+          theme_primary_s?: string | null
+          theme_sidebar_h?: string | null
+          theme_sidebar_l?: string | null
+          theme_sidebar_s?: string | null
+          twitter_handle?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          background_image_url?: string | null
+          background_overlay_opacity?: string | null
+          contact_email?: string | null
+          created_at?: string | null
+          discord_url?: string | null
+          facebook_url?: string | null
+          feature_coming_soon?: boolean | null
+          feature_events?: boolean | null
+          feature_for_sale?: boolean | null
+          feature_messaging?: boolean | null
+          feature_play_logs?: boolean | null
+          feature_ratings?: boolean | null
+          feature_wishlist?: boolean | null
+          footer_text?: string | null
+          id?: string | null
+          instagram_url?: string | null
+          library_id?: string | null
+          logo_url?: string | null
+          theme_accent_h?: string | null
+          theme_accent_l?: string | null
+          theme_accent_s?: string | null
+          theme_background_h?: string | null
+          theme_background_l?: string | null
+          theme_background_s?: string | null
+          theme_card_h?: string | null
+          theme_card_l?: string | null
+          theme_card_s?: string | null
+          theme_dark_accent_h?: string | null
+          theme_dark_accent_l?: string | null
+          theme_dark_accent_s?: string | null
+          theme_dark_background_h?: string | null
+          theme_dark_background_l?: string | null
+          theme_dark_background_s?: string | null
+          theme_dark_card_h?: string | null
+          theme_dark_card_l?: string | null
+          theme_dark_card_s?: string | null
+          theme_dark_primary_h?: string | null
+          theme_dark_primary_l?: string | null
+          theme_dark_primary_s?: string | null
+          theme_dark_sidebar_h?: string | null
+          theme_dark_sidebar_l?: string | null
+          theme_dark_sidebar_s?: string | null
+          theme_font_body?: string | null
+          theme_font_display?: string | null
+          theme_primary_h?: string | null
+          theme_primary_l?: string | null
+          theme_primary_s?: string | null
+          theme_sidebar_h?: string | null
+          theme_sidebar_l?: string | null
+          theme_sidebar_s?: string | null
+          twitter_handle?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_settings_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: true
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_settings_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: true
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_results: {
         Row: {
           game_id: string | null
