@@ -1139,6 +1139,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          discord_user_id: string | null
           display_name: string | null
           id: string
           updated_at: string
@@ -1149,6 +1150,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          discord_user_id?: string | null
           display_name?: string | null
           id?: string
           updated_at?: string
@@ -1159,6 +1161,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          discord_user_id?: string | null
           display_name?: string | null
           id?: string
           updated_at?: string
