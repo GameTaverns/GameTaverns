@@ -1,488 +1,477 @@
-# GameTaverns Multi-Tenant Self-Hosted Deployment
+# GameTaverns Multi-Tenant Deployment Guide
 
-Complete guide for deploying GameTaverns as a self-hosted multi-tenant SaaS platform.
-
-## 📋 Table of Contents
-
-1. [Overview](#overview)
-2. [Requirements](#requirements)
-3. [Quick Start](#quick-start)
-4. [Detailed Setup](#detailed-setup)
-5. [GitHub CI/CD](#github-cicd)
-6. [SSL Configuration](#ssl-configuration)
-7. [DNS Setup](#dns-setup)
-8. [Administration](#administration)
-9. [Maintenance](#maintenance)
-10. [Troubleshooting](#troubleshooting)
+> **Target:** Fresh Ubuntu 22.04+ server → Production multi-tenant platform  
+> **Time:** ~30 minutes  
+> **Result:** `https://yourdomain.com` with wildcard subdomains for libraries
 
 ---
 
-## Overview
+## Prerequisites Checklist
 
-This deployment creates a complete multi-tenant board game library platform where:
+Before starting, ensure you have:
 
-- Users sign up and create their own libraries
-- Each library gets a subdomain (e.g., `mylib.gametaverns.com`)
-- All data is isolated per-library
-- Single database with row-level isolation
-- Platform admins can manage all libraries
+- [ ] **Fresh Ubuntu 22.04+ server** (Debian 12+ also works)
+- [ ] **Root or sudo access** to the server
+- [ ] **Domain name** with access to DNS settings
+- [ ] **Cloudflare account** (free tier works) for wildcard SSL
 
-### Architecture
+**Recommended Specs:**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Internet                                  │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   Nginx Reverse Proxy                            │
-│         (SSL termination, subdomain routing)                     │
-│                  gametaverns.com:443                             │
-│              *.gametaverns.com:443                               │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-│  Frontend   │   │  Express    │   │  PostgreSQL │
-│   (Nginx)   │──▶│    API      │──▶│  Database   │
-│   :80       │   │   :3001     │   │   :5432     │
-└─────────────┘   └─────────────┘   └─────────────┘
-```
+| Scale | RAM | CPU | Storage | Example |
+|-------|-----|-----|---------|---------|
+| 50–100 libraries | 32GB | 6 cores | NVMe SSD | OVH Sys-1 ($30/mo) |
 
 ---
 
-## Requirements
+## Step 1: Server Preparation
 
-### Server Requirements
+SSH into your fresh server and run these commands **in order**.
 
-| Tenants | RAM | CPU | Storage |
-|---------|-----|-----|---------|
-| 1-10 | 4GB | 2 cores | 40GB |
-| 10-50 | 8GB | 4 cores | 80GB |
-| 50-200 | 16GB | 4+ cores | 160GB |
-
-### Software Requirements
-
-- Ubuntu 22.04+ or Debian 12+
-- Docker 24.0+
-- Docker Compose 2.0+
-- Domain with DNS access
-
----
-
-## Quick Start
-
-### 1. Prepare Your Server
+### 1.1 Update System
 
 ```bash
-# Update system
 sudo apt update && sudo apt upgrade -y
+```
 
-# Install Docker
+### 1.2 Install Docker
+
+```bash
 curl -fsSL https://get.docker.com | sh
+```
+
+### 1.3 Add Your User to Docker Group
+
+```bash
 sudo usermod -aG docker $USER
+```
 
-# Re-login to apply group changes
+### 1.4 Apply Group Changes
+
+**⚠️ IMPORTANT:** You must log out and back in for the group change to take effect.
+
+```bash
 exit
-# SSH back in
+```
 
-# Install Docker Compose plugin
+Now SSH back into your server.
+
+### 1.5 Install Docker Compose Plugin
+
+```bash
 sudo apt install docker-compose-plugin -y
+```
 
-# Verify installation
+### 1.6 Verify Installation
+
+```bash
 docker --version
 docker compose version
 ```
 
-### 2. Clone and Setup
+**✓ Checkpoint:** Both commands should output version numbers (Docker 24+, Compose 2+).
+
+---
+
+## Step 2: Clone Repository
+
+### 2.1 Clone to /opt
 
 ```bash
-# Clone repository
-git clone https://github.com/YOUR_USERNAME/GameTavern.git /opt/gametaverns
+sudo git clone https://github.com/YOUR_USERNAME/GameTavern.git /opt/gametaverns
+```
+
+> **Note:** Replace `YOUR_USERNAME` with your actual GitHub username or organization.
+
+### 2.2 Set Ownership
+
+```bash
+sudo chown -R $USER:$USER /opt/gametaverns
+```
+
+### 2.3 Navigate to Deploy Directory
+
+```bash
 cd /opt/gametaverns/deploy/multitenant
+```
 
-# Make scripts executable
+### 2.4 Make Scripts Executable
+
+```bash
 chmod +x install.sh scripts/*.sh
+```
 
-# Run interactive installer
+**✓ Checkpoint:** You should be in `/opt/gametaverns/deploy/multitenant`.
+
+---
+
+## Step 3: Configure the Platform
+
+### 3.1 Run Interactive Installer
+
+```bash
 ./install.sh
 ```
 
-### 3. Start Services
+The installer will prompt you for:
+
+| Prompt | Example | Notes |
+|--------|---------|-------|
+| Domain | `gametaverns.com` | Your actual domain |
+| Site name | `GameTaverns` | Display name |
+| Admin email | `admin@example.com` | For SSL & notifications |
+| SSL method | `2` (Cloudflare) | Recommended for wildcards |
+| Cloudflare API token | `abc123...` | See Step 3.2 below |
+
+### 3.2 Get Cloudflare API Token
+
+1. Go to [Cloudflare Dashboard → API Tokens](https://dash.cloudflare.com/profile/api-tokens)
+2. Click **Create Token**
+3. Use **Edit zone DNS** template
+4. Set zone to your domain
+5. Click **Create Token**
+6. Copy the token (you won't see it again)
+
+**✓ Checkpoint:** You should have a `.env` file in the current directory.
+
+---
+
+## Step 4: Configure DNS
+
+In your **Cloudflare DNS settings**, add these records:
+
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| A | `@` | `YOUR_SERVER_IP` | DNS only (gray) |
+| A | `*` | `YOUR_SERVER_IP` | DNS only (gray) |
+| A | `www` | `YOUR_SERVER_IP` | DNS only (gray) |
+
+> **⚠️ CRITICAL:** Set proxy status to **DNS only** (gray cloud icon), not Proxied (orange). This is required for wildcard SSL certificates.
+
+**✓ Checkpoint:** Running `dig yourdomain.com` should return your server IP.
+
+---
+
+## Step 5: Update Nginx Configuration
+
+The default nginx config uses `gametaverns.com`. Update it to your domain.
+
+### 5.1 Edit Proxy Config
 
 ```bash
-# Start the stack
-docker compose up -d
+nano nginx/proxy.conf
+```
 
-# Watch logs
-docker compose logs -f
+### 5.2 Find and Replace Domain
 
-# Check health
+Replace all instances of `gametaverns.com` with your domain. There are **6 occurrences**:
+
+- Line 87: `server_name yourdomain.com www.yourdomain.com;`
+- Line 89: `ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;`
+- Line 90: `ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;`
+- Line 99: `if ($host = 'www.yourdomain.com') {`
+- Line 100: `return 301 https://yourdomain.com$request_uri;`
+- Lines 135-136: SSL certificate paths again
+
+**Tip:** Use Ctrl+W in nano to search, or use sed:
+
+```bash
+sed -i 's/gametaverns\.com/yourdomain.com/g' nginx/proxy.conf
+```
+
+### 5.3 Save and Exit
+
+Press `Ctrl+X`, then `Y`, then `Enter`.
+
+**✓ Checkpoint:** `grep yourdomain nginx/proxy.conf` shows your domain.
+
+---
+
+## Step 6: Start Services
+
+### 6.1 Start Database and API First (Without SSL Proxy)
+
+```bash
+docker compose up -d db api app
+```
+
+### 6.2 Wait for Database to Initialize
+
+```bash
+docker compose logs -f db
+```
+
+Wait until you see: `database system is ready to accept connections`
+
+Press `Ctrl+C` to exit logs.
+
+### 6.3 Verify Services are Healthy
+
+```bash
 docker compose ps
 ```
 
-### 4. Create Admin
+**✓ Checkpoint:** All three services (db, api, app) should show `healthy` or `running`.
+
+---
+
+## Step 7: Get SSL Certificates
+
+### 7.1 Run Cloudflare SSL Setup
+
+```bash
+./scripts/setup-ssl-cloudflare.sh
+```
+
+This will:
+- Request a wildcard certificate for `yourdomain.com` and `*.yourdomain.com`
+- Save certificates to `nginx/ssl/`
+
+**✓ Checkpoint:** You should see "Wildcard SSL certificate obtained!"
+
+### 7.2 Start the SSL Proxy
+
+```bash
+docker compose --profile production up -d proxy certbot
+```
+
+### 7.3 Verify SSL is Working
+
+```bash
+curl -I https://yourdomain.com
+```
+
+**✓ Checkpoint:** You should see `HTTP/2 200` or a redirect.
+
+---
+
+## Step 8: Create Admin Account
+
+### 8.1 Run Admin Creation Script
 
 ```bash
 ./scripts/create-admin.sh
 ```
 
-### 5. Configure SSL
+You'll be prompted for:
+
+| Prompt | Example | Notes |
+|--------|---------|-------|
+| Email | `admin@example.com` | Your login email |
+| Display Name | `John Smith` | Shown on your library |
+| Library slug | `johns-games` | URL: `johns-games.yourdomain.com` |
+| Password | (hidden) | Minimum 8 characters |
+
+**✓ Checkpoint:** You should see "Admin Created Successfully!"
+
+---
+
+## Step 9: Verify Deployment
+
+### 9.1 Test Main Site
+
+Open in browser: `https://yourdomain.com`
+
+You should see the GameTaverns landing page.
+
+### 9.2 Test Your Library
+
+Open in browser: `https://your-slug.yourdomain.com`
+
+You should see your empty library.
+
+### 9.3 Test Admin Login
+
+1. Go to `https://yourdomain.com`
+2. Click Login
+3. Enter your admin credentials
+4. You should be redirected to your library
+
+### 9.4 Test Platform Admin
+
+Go to `https://yourdomain.com/admin`
+
+You should see the platform administration dashboard.
+
+---
+
+## 🎉 Deployment Complete!
+
+Your multi-tenant GameTaverns platform is now live:
+
+- **Main site:** `https://yourdomain.com`
+- **Libraries:** `https://[slug].yourdomain.com`
+- **Platform admin:** `https://yourdomain.com/admin`
+
+---
+
+## Post-Deployment
+
+### Enable Automatic Backups
 
 ```bash
-# For Let's Encrypt
-./scripts/setup-ssl.sh
+# Add daily backup at 2 AM
+(crontab -l 2>/dev/null; echo "0 2 * * * /opt/gametaverns/deploy/multitenant/scripts/backup.sh") | crontab -
+```
 
-# OR for Cloudflare (recommended for wildcards)
-./scripts/setup-ssl-cloudflare.sh
+### Configure Firewall
+
+```bash
+# Allow only essential ports
+sudo ufw allow 22/tcp   # SSH
+sudo ufw allow 80/tcp   # HTTP (redirects to HTTPS)
+sudo ufw allow 443/tcp  # HTTPS
+sudo ufw enable
+```
+
+### Set Up Fail2ban (Optional)
+
+```bash
+sudo apt install fail2ban -y
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
 ```
 
 ---
 
-## Detailed Setup
+## Common Operations
 
-### Directory Structure
-
-```
-/opt/gametaverns/
-├── deploy/multitenant/
-│   ├── docker-compose.yml      # Main compose file
-│   ├── .env                    # Configuration (generated)
-│   ├── install.sh              # Interactive installer
-│   ├── migrations/
-│   │   └── 01-core-schema.sql  # Database schema
-│   ├── nginx/
-│   │   ├── app.conf            # Frontend config
-│   │   ├── proxy.conf          # Reverse proxy config
-│   │   └── ssl/                # SSL certificates
-│   ├── scripts/
-│   │   ├── create-admin.sh     # Create admin user
-│   │   ├── setup-ssl.sh        # Let's Encrypt setup
-│   │   ├── setup-ssl-cloudflare.sh
-│   │   ├── backup.sh           # Database backup
-│   │   └── restore.sh          # Database restore
-│   └── backups/                # Backup storage
-└── server/                     # API source code
-```
-
-### Configuration Options
-
-The `.env` file contains all configuration. Key settings:
+### View Logs
 
 ```bash
-# Domain and branding
-DOMAIN=gametaverns.com
-SITE_NAME=GameTaverns
-
-# Database
-POSTGRES_PASSWORD=<generated>
-
-# Security
-JWT_SECRET=<generated>
-PII_ENCRYPTION_KEY=<generated>
-
-# Email (optional but recommended)
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-SMTP_FROM=noreply@gametaverns.com
-
-# Discord integration (optional)
-DISCORD_BOT_TOKEN=
-DISCORD_CLIENT_ID=
-DISCORD_CLIENT_SECRET=
-
-# Platform admins (comma-separated emails)
-PLATFORM_ADMINS=admin@example.com
-```
-
----
-
-## GitHub CI/CD
-
-### Setup Requirements
-
-1. **GitHub Secrets** - Add these to your repository:
-
-   | Secret | Description |
-   |--------|-------------|
-   | `DEPLOY_HOST` | Server IP or hostname |
-   | `DEPLOY_USER` | SSH username |
-   | `DEPLOY_KEY` | SSH private key |
-
-2. **Server SSH Key**:
-   ```bash
-   # On your local machine
-   ssh-keygen -t ed25519 -C "github-deploy"
-   
-   # Copy public key to server
-   ssh-copy-id -i ~/.ssh/id_ed25519.pub user@your-server
-   
-   # Add private key to GitHub secrets as DEPLOY_KEY
-   ```
-
-### Deployment Flow
-
-```
-Push to main → Build Docker Images → Push to GHCR → SSH to Server → Pull & Restart
-```
-
-### Manual Deployment
-
-To deploy manually from GitHub:
-1. Go to Actions tab
-2. Select "Deploy to Production"
-3. Click "Run workflow"
-
-### Updating from Lovable
-
-1. Make changes in Lovable
-2. Commit syncs to GitHub
-3. Push to `main` branch triggers deploy
-4. New version is live in ~5 minutes
-
----
-
-## SSL Configuration
-
-### Option 1: Let's Encrypt (Standard)
-
-Best for single domain without wildcards:
-
-```bash
-./scripts/setup-ssl.sh
-```
-
-Requires:
-- Port 80 open to internet
-- DNS pointing to your server
-
-### Option 2: Cloudflare (Recommended)
-
-Best for wildcard subdomains:
-
-1. Get API token from [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens)
-   - Permission: Zone → DNS → Edit
-   
-2. Run setup:
-   ```bash
-   ./scripts/setup-ssl-cloudflare.sh
-   ```
-
-### Certificate Renewal
-
-Certificates auto-renew via certbot container. Check status:
-
-```bash
-docker compose logs certbot
-```
-
----
-
-## DNS Setup
-
-### Required DNS Records
-
-| Type | Name | Value | Notes |
-|------|------|-------|-------|
-| A | @ | `YOUR_SERVER_IP` | Root domain |
-| A | * | `YOUR_SERVER_IP` | Wildcard for subdomains |
-| A | www | `YOUR_SERVER_IP` | www redirect |
-
-### Cloudflare Settings
-
-If using Cloudflare:
-1. Set SSL/TLS to "Full (strict)"
-2. Enable "Always Use HTTPS"
-3. **Disable** proxy (gray cloud) for wildcard if using local SSL
-
----
-
-## Administration
-
-### Platform Admin Dashboard
-
-Access at `https://gametaverns.com/admin`
-
-Features:
-- View all libraries
-- Suspend/unsuspend libraries
-- View platform analytics
-- Manage user feedback
-
-### Creating Additional Admins
-
-```bash
-docker exec -it gametaverns-db psql -U postgres -d gametaverns << EOF
-INSERT INTO user_roles (user_id, role)
-SELECT id, 'admin' FROM users WHERE email = 'admin@example.com';
-EOF
-```
-
-### Suspending a Library
-
-Via admin dashboard or:
-
-```bash
-docker exec -it gametaverns-db psql -U postgres -d gametaverns << EOF
-UPDATE libraries SET is_active = false WHERE slug = 'problem-library';
-EOF
-```
-
----
-
-## Maintenance
-
-### Daily Operations
-
-```bash
-# View logs
+# All services
 docker compose logs -f
-docker compose logs api --tail=100
 
-# Check health
-docker compose ps
-curl http://localhost:3001/health
+# Specific service
+docker compose logs -f api
+docker compose logs -f db
+docker compose logs -f proxy
+```
 
-# Restart a service
+### Restart Services
+
+```bash
+# Restart everything
+docker compose restart
+
+# Restart specific service
 docker compose restart api
 ```
 
-### Backups
+### Manual Backup
 
 ```bash
-# Manual backup
 ./scripts/backup.sh
-
-# Scheduled backup (add to crontab)
-0 2 * * * /opt/gametaverns/deploy/multitenant/scripts/backup.sh
-
-# List backups
-ls -la backups/
-
-# Restore from backup
-./scripts/restore.sh backups/gametaverns_20240115_020000.sql.gz
 ```
 
-### Updates
+### Restore from Backup
 
 ```bash
-# Pull latest code
+./scripts/restore.sh backups/gametaverns_YYYYMMDD_HHMMSS.sql.gz
+```
+
+### Update to Latest Version
+
+```bash
 cd /opt/gametaverns
 git pull origin main
-
-# Rebuild and restart
 cd deploy/multitenant
 docker compose build
 docker compose up -d
 ```
 
-### Database Operations
+### Access Database
 
 ```bash
-# Access database
 docker exec -it gametaverns-db psql -U postgres -d gametaverns
-
-# Run SQL file
-docker exec -i gametaverns-db psql -U postgres -d gametaverns < script.sql
-
-# View table sizes
-docker exec -it gametaverns-db psql -U postgres -d gametaverns -c "
-SELECT relname, pg_size_pretty(pg_total_relation_size(relid))
-FROM pg_catalog.pg_statio_user_tables
-ORDER BY pg_total_relation_size(relid) DESC LIMIT 10;"
 ```
 
 ---
 
 ## Troubleshooting
 
-### Service Won't Start
+### "Permission denied" when running Docker
+
+You didn't log out and back in after adding yourself to the docker group. Run:
 
 ```bash
-# Check logs
-docker compose logs api --tail=50
-
-# Common issues:
-# - Database not ready: wait and retry
-# - Port conflict: check `netstat -tlnp`
-# - Missing .env: run install.sh
+exit
 ```
+
+Then SSH back in.
+
+### SSL Certificate Not Found
+
+1. Check if certificates exist: `ls nginx/ssl/`
+2. Re-run SSL setup: `./scripts/setup-ssl-cloudflare.sh`
+3. Check Cloudflare token has DNS edit permissions
 
 ### Database Connection Failed
 
-```bash
-# Check if database is running
-docker compose ps db
+1. Check database is running: `docker compose ps db`
+2. View database logs: `docker compose logs db`
+3. Restart database: `docker compose restart db`
 
-# Test connection
-docker exec -it gametaverns-db psql -U postgres -d gametaverns -c "SELECT 1"
+### Library Subdomain Not Working
 
-# Restart database
-docker compose restart db
-```
+1. Verify DNS wildcard: `dig test.yourdomain.com`
+2. Check nginx is running: `docker compose ps proxy`
+3. View nginx logs: `docker compose logs proxy`
 
-### SSL Certificate Issues
+### API Returns 502 Bad Gateway
 
-```bash
-# Check certificate status
-docker compose run --rm certbot certificates
+1. Check API is running: `docker compose ps api`
+2. View API logs: `docker compose logs api`
+3. Restart API: `docker compose restart api`
 
-# Force renewal
-docker compose run --rm certbot renew --force-renewal
+### "Address already in use" Error
 
-# Check nginx config
-docker compose exec proxy nginx -t
-```
-
-### Library Not Loading
-
-1. Check DNS: `dig library.gametaverns.com`
-2. Check nginx logs: `docker compose logs proxy`
-3. Check if library exists: 
-   ```sql
-   SELECT * FROM libraries WHERE slug = 'library';
-   ```
-
-### Memory Issues
+Another service is using port 80 or 443:
 
 ```bash
-# Check memory usage
-docker stats --no-stream
+# Find what's using the port
+sudo lsof -i :80
+sudo lsof -i :443
 
-# Prune unused Docker resources
-docker system prune -a
-
-# Increase swap
-sudo fallocate -l 4G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
+# Stop the conflicting service (e.g., apache)
+sudo systemctl stop apache2
+sudo systemctl disable apache2
 ```
 
 ---
 
-## Security Checklist
+## Architecture Reference
 
-- [ ] Strong passwords in `.env`
-- [ ] SSL certificates configured
-- [ ] Firewall allows only 80, 443, 22
-- [ ] Regular backups enabled
-- [ ] SSH key authentication only
-- [ ] Fail2ban installed
-- [ ] Updates automated
+```
+Internet
+    │
+    ▼
+┌─────────────────────────────────────┐
+│        Nginx Proxy (:443)           │  ← SSL termination
+│   *.yourdomain.com → app            │  ← Subdomain routing
+│   /api/* → api                      │  ← API proxy
+└──────────────┬──────────────────────┘
+               │
+    ┌──────────┼──────────┐
+    ▼          ▼          ▼
+┌────────┐ ┌────────┐ ┌────────┐
+│  App   │ │  API   │ │   DB   │
+│ :80    │ │ :3001  │ │ :5432  │
+│ (nginx)│ │(express)│ │(postgres)│
+└────────┘ └────────┘ └────────┘
+```
+
+**Container Names:**
+- `gametaverns-db` - PostgreSQL 16
+- `gametaverns-api` - Express.js API
+- `gametaverns-app` - Nginx serving React build
+- `gametaverns-proxy` - Nginx reverse proxy (production profile)
+- `gametaverns-certbot` - SSL certificate renewal (production profile)
 
 ---
 
 ## Support
 
-- **Documentation**: This README
-- **Issues**: GitHub Issues
-- **Email**: support@gametaverns.com
-
----
+- **Issues:** [GitHub Issues](https://github.com/YOUR_USERNAME/GameTavern/issues)
+- **Documentation:** This file
 
 *Last updated: January 2025*
