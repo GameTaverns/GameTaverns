@@ -216,11 +216,11 @@ export function TenantProvider({ children }: TenantProviderProps) {
     try {
       // Fetch library by slug.
       // IMPORTANT: Signed-out visitors must use the public view (avoids private columns + permission issues).
-      const libraryQuery = isAuthenticated
-        ? supabase.from("libraries").select("*")
-        : supabase.from("libraries_public").select("*");
-
-      const { data: libraryData, error: libraryError } = await libraryQuery
+      // NOTE: We intentionally load the base library record from the public view first,
+      // then (only when authenticated) fetch owner_id from the private table.
+      const { data: libraryData, error: libraryError } = await supabase
+        .from("libraries_public")
+        .select("*")
         .eq("slug", tenantSlug)
         .single();
       
@@ -257,7 +257,21 @@ export function TenantProvider({ children }: TenantProviderProps) {
         return;
       }
       
-      setLibrary(libraryData as Library);
+      // Attach owner_id for authenticated users only (prevents leaking owner_id to anonymous visitors)
+      let ownerId: string | undefined = undefined;
+      if (isAuthenticated) {
+        const { data: ownerRow, error: ownerErr } = await supabase
+          .from("libraries")
+          .select("owner_id")
+          .eq("id", libraryData.id)
+          .single();
+
+        if (!ownerErr && ownerRow?.owner_id) {
+          ownerId = ownerRow.owner_id;
+        }
+      }
+
+      setLibrary({ ...(libraryData as Library), owner_id: ownerId } as Library);
       
       // Fetch library settings using public view (accessible to all users including anonymous)
       const { data: settingsData, error: settingsError } = await supabase
