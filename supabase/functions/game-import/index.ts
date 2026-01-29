@@ -611,6 +611,44 @@ ${markdown.slice(0, 18000)}`,
 
     console.log("Game imported successfully:", game.title);
 
+    // Step 8: Send Discord notification for NEW games only (not updates)
+    if (!existingId) {
+      try {
+        const playerCount = game.min_players && game.max_players
+          ? `${game.min_players}-${game.max_players} players`
+          : game.min_players
+            ? `${game.min_players}+ players`
+            : undefined;
+
+        const discordPayload = {
+          library_id: targetLibraryId,
+          event_type: "game_added",
+          data: {
+            title: game.title,
+            image_url: game.image_url,
+            player_count: playerCount,
+            play_time: game.play_time,
+          },
+        };
+
+        // Call discord-notify function (fire and forget - don't block import)
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        
+        fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceRoleKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(discordPayload),
+        }).catch((err) => console.error("Discord notification failed:", err));
+      } catch (discordErr) {
+        console.error("Discord notification error:", discordErr);
+        // Don't fail the import for notification issues
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
