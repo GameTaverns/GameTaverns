@@ -6,7 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 interface QuadrantFilterButtonProps {
-  onFilterChange: (filters: { playerCount: number; difficulty: number; intensity: number } | null) => void;
+  onFilterChange: (filters: { difficulty: number; playTime: number; intensity: number } | null) => void;
   className?: string;
 }
 
@@ -15,9 +15,9 @@ export function QuadrantFilterButton({ onFilterChange, className }: QuadrantFilt
   const [hasActiveFilter, setHasActiveFilter] = useState(false);
   const isMobile = useIsMobile();
 
-  const handleFilterChange = useCallback((filters: { playerCount: number; difficulty: number; intensity: number }) => {
+  const handleFilterChange = useCallback((filters: { difficulty: number; playTime: number; intensity: number }) => {
     // Only mark as active if moved from center
-    const isActive = Math.abs(filters.playerCount - 0.5) > 0.1 || Math.abs(filters.difficulty - 0.5) > 0.1;
+    const isActive = Math.abs(filters.difficulty - 0.5) > 0.1 || Math.abs(filters.playTime - 0.5) > 0.1;
     setHasActiveFilter(isActive);
     onFilterChange(isActive ? filters : null);
   }, [onFilterChange]);
