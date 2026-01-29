@@ -21,7 +21,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useCreateEvent, useUpdateEvent, CalendarEvent } from "@/hooks/useLibraryEvents";
-import { useDiscordNotify } from "@/hooks/useDiscordNotify";
 
 interface CreateEventDialogProps {
   open: boolean;
@@ -39,7 +38,6 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
   
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent();
-  const { notify } = useDiscordNotify();
   
   const isEditMode = !!editEvent;
   
@@ -94,18 +92,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
         event_date: eventDate.toISOString(),
         event_location: location.trim() || undefined,
       });
-      
-      // Send Discord notification for new standalone event
-      notify({
-        library_id: libraryId,
-        event_type: "event_created",
-        data: {
-          title: title.trim(),
-          event_date: eventDate.toISOString(),
-          event_location: location.trim() || null,
-          description: description.trim() || null,
-        },
-      });
+      // Discord notification is handled by useCreateEvent hook
     }
     
     onOpenChange(false);

@@ -19,7 +19,7 @@ interface DiscordEmbed {
 
 interface NotificationPayload {
   library_id: string;
-  event_type: "game_added" | "wishlist_vote" | "message_received" | "poll_created" | "poll_closed" | "event_created";
+  event_type: "game_added" | "wishlist_vote" | "message_received" | "poll_created" | "poll_closed";
   data: Record<string, unknown>;
 }
 
@@ -30,7 +30,6 @@ const COLORS = {
   message_received: 0x3b82f6, // Blue
   poll_created: 0x8b5cf6,    // Purple
   poll_closed: 0x6366f1,     // Indigo
-  event_created: 0x06b6d4,   // Cyan
 };
 
 function buildEmbed(eventType: string, data: Record<string, unknown>): DiscordEmbed {
@@ -108,29 +107,6 @@ function buildEmbed(eventType: string, data: Record<string, unknown>): DiscordEm
       }
       if (data.total_votes) {
         embed.fields.push({ name: "Total Votes", value: String(data.total_votes), inline: true });
-      }
-      break;
-
-    case "event_created":
-      embed.title = "📅 New Event Scheduled";
-      embed.description = `**${data.title}**`;
-      embed.fields = [];
-      if (data.event_date) {
-        const eventDate = new Date(data.event_date as string);
-        embed.fields.push({ 
-          name: "Date", 
-          value: eventDate.toLocaleDateString("en-US", { 
-            weekday: "long", 
-            month: "long", 
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit"
-          }), 
-          inline: true 
-        });
-      }
-      if (data.event_location) {
-        embed.fields.push({ name: "Location", value: data.event_location as string, inline: true });
       }
       break;
 
