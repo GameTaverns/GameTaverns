@@ -53,12 +53,12 @@ const Index = () => {
   
   // Quadrant filter state
   const [quadrantFilter, setQuadrantFilter] = useState<{
-    playerCount: number;
     difficulty: number;
+    playTime: number;
     intensity: number;
   } | null>(null);
 
-  const handleQuadrantFilterChange = useCallback((filters: { playerCount: number; difficulty: number; intensity: number } | null) => {
+  const handleQuadrantFilterChange = useCallback((filters: { difficulty: number; playTime: number; intensity: number } | null) => {
     setQuadrantFilter(filters);
   }, []);
   
@@ -228,48 +228,40 @@ const Index = () => {
       }
     }
 
-    // Apply quadrant filter (player count + difficulty)
+    // Apply quadrant filter (difficulty + play time)
     if (quadrantFilter) {
-      const { playerCount: playerPos, difficulty: diffPos, intensity } = quadrantFilter;
+      const { difficulty: diffPos, playTime: playTimePos, intensity } = quadrantFilter;
       
-      // Map player position (0-1) to player count ranges
-      // 0 = Solo (1), 0.25 = 2 Players, 0.5 = 3-4, 0.75 = 5-6, 1 = 7+
-      const playerRanges = [
-        { min: 1, max: 1 },     // Solo
-        { min: 2, max: 2 },     // 2 Players
-        { min: 3, max: 4 },     // 3-4 Players
-        { min: 5, max: 6 },     // 5-6 Players
-        { min: 7, max: 99 },    // 7+ Players
+      // Map play time position (0-1) to play time indices
+      const PLAY_TIME_OPTIONS: string[] = [
+        '0-15 Minutes',
+        '15-30 Minutes',
+        '30-45 Minutes',
+        '45-60 Minutes',
+        '60+ Minutes',
+        '2+ Hours',
+        '3+ Hours'
       ];
       
-      const targetPlayerIndex = Math.min(4, Math.floor(playerPos * 5));
-      const targetDiffIndex = Math.min(4, Math.floor(diffPos * DIFFICULTY_OPTIONS.length));
+      const targetDiffIndex = Math.min(4, Math.floor(diffPos * 5));
+      const targetPlayTimeIndex = Math.min(6, Math.floor(playTimePos * 7));
       
       // Range based on intensity (lower intensity = broader range)
-      const range = Math.ceil((1 - intensity) * 2) + 1; // 1-3 levels range
+      const diffRange = Math.ceil((1 - intensity) * 2) + 1; // 1-3 levels range
+      const playTimeRange = Math.ceil((1 - intensity) * 3) + 1; // 1-4 levels range
       
       result = result.filter((g) => {
-        // Check player count
-        const gameMin = g.min_players ?? 1;
-        const gameMax = g.max_players ?? gameMin;
-        
-        // Check if game supports any player count within the target range (with tolerance)
-        let playerMatch = false;
-        for (let i = Math.max(0, targetPlayerIndex - range); i <= Math.min(4, targetPlayerIndex + range); i++) {
-          const { min, max } = playerRanges[i];
-          // Game supports this player count if its range overlaps
-          if (gameMin <= max && gameMax >= min) {
-            playerMatch = true;
-            break;
-          }
-        }
-        
         // Check difficulty
         const gameDiffIndex = DIFFICULTY_OPTIONS.indexOf(g.difficulty as any);
         const diffMatch = gameDiffIndex >= 0 && 
-          Math.abs(gameDiffIndex - targetDiffIndex) <= range;
+          Math.abs(gameDiffIndex - targetDiffIndex) <= diffRange;
         
-        return playerMatch && diffMatch;
+        // Check play time
+        const gamePlayTimeIndex = PLAY_TIME_OPTIONS.indexOf(g.play_time as any);
+        const playTimeMatch = gamePlayTimeIndex >= 0 && 
+          Math.abs(gamePlayTimeIndex - targetPlayTimeIndex) <= playTimeRange;
+        
+        return diffMatch && playTimeMatch;
       });
     }
 
