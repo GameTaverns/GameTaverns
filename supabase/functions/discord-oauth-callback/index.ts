@@ -104,13 +104,31 @@ Deno.serve(async (req) => {
     // Save Discord user ID to user_profiles
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { error: updateError } = await supabase
+    // First check if profile exists
+    const { data: existingProfile } = await supabase
       .from("user_profiles")
-      .update({ discord_user_id: discordUser.id })
-      .eq("user_id", userId);
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    if (updateError) {
-      console.error("Profile update error:", updateError);
+    let upsertError;
+    if (existingProfile) {
+      // Update existing profile
+      const { error } = await supabase
+        .from("user_profiles")
+        .update({ discord_user_id: discordUser.id })
+        .eq("user_id", userId);
+      upsertError = error;
+    } else {
+      // Create new profile with Discord ID
+      const { error } = await supabase
+        .from("user_profiles")
+        .insert({ user_id: userId, discord_user_id: discordUser.id });
+      upsertError = error;
+    }
+
+    if (upsertError) {
+      console.error("Profile update error:", upsertError);
       return redirectWithError("Failed to link Discord account", appOrigin);
     }
 
