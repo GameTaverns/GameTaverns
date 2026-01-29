@@ -33,19 +33,22 @@ export function useLibraryMembership(libraryId: string | undefined) {
     enabled: !!libraryId && !!user?.id,
   });
 
-  // Get member count for a library
+  // Get member count for a library (includes owner)
   const { data: memberCount } = useQuery({
     queryKey: ["library-member-count", libraryId],
     queryFn: async () => {
       if (!libraryId) return 0;
       
+      // Count explicit members
       const { count, error } = await supabase
         .from("library_members")
         .select("*", { count: "exact", head: true })
         .eq("library_id", libraryId);
       
       if (error) throw error;
-      return count || 0;
+      
+      // Add 1 for the owner (owner is always counted)
+      return (count || 0) + 1;
     },
     enabled: !!libraryId,
   });
@@ -105,13 +108,15 @@ export function useLibraryMembership(libraryId: string | undefined) {
 }
 
 // Hook to get all members of a library (for library owners/mods)
+// Includes both explicit members from library_members AND the owner
 export function useLibraryMembers(libraryId: string | undefined) {
   return useQuery({
     queryKey: ["library-members", libraryId],
     queryFn: async () => {
       if (!libraryId) return [];
       
-      const { data, error } = await supabase
+      // Fetch explicit members
+      const { data: members, error: membersError } = await supabase
         .from("library_members")
         .select(`
           *,
@@ -123,8 +128,42 @@ export function useLibraryMembers(libraryId: string | undefined) {
         .eq("library_id", libraryId)
         .order("joined_at", { ascending: false });
       
-      if (error) throw error;
-      return data;
+      if (membersError) throw membersError;
+      
+      // Fetch the library to get owner info
+      const { data: library, error: libraryError } = await supabase
+        .from("libraries")
+        .select("owner_id, created_at")
+        .eq("id", libraryId)
+        .single();
+      
+      if (libraryError) throw libraryError;
+      
+      // Check if owner is already in members list
+      const ownerInMembers = members?.some(m => m.user_id === library.owner_id);
+      
+      if (ownerInMembers || !library.owner_id) {
+        return members || [];
+      }
+      
+      // Fetch owner's profile
+      const { data: ownerProfile } = await supabase
+        .from("user_profiles")
+        .select("display_name, username")
+        .eq("user_id", library.owner_id)
+        .single();
+      
+      // Add owner as a synthetic member entry at the beginning
+      const ownerMember = {
+        id: `owner-${library.owner_id}`,
+        library_id: libraryId,
+        user_id: library.owner_id,
+        role: "owner" as const,
+        joined_at: library.created_at,
+        user_profiles: ownerProfile,
+      };
+      
+      return [ownerMember, ...(members || [])];
     },
     enabled: !!libraryId,
   });
