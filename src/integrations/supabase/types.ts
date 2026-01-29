@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          category: Database["public"]["Enums"]["achievement_category"]
+          created_at: string
+          description: string
+          icon: string | null
+          id: string
+          is_secret: boolean
+          name: string
+          points: number
+          requirement_type: string
+          requirement_value: number
+          slug: string
+          tier: number
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["achievement_category"]
+          created_at?: string
+          description: string
+          icon?: string | null
+          id?: string
+          is_secret?: boolean
+          name: string
+          points?: number
+          requirement_type: string
+          requirement_value: number
+          slug: string
+          tier?: number
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["achievement_category"]
+          created_at?: string
+          description?: string
+          icon?: string | null
+          id?: string
+          is_secret?: boolean
+          name?: string
+          points?: number
+          requirement_type?: string
+          requirement_value?: number
+          slug?: string
+          tier?: number
+        }
+        Relationships: []
+      }
+      borrower_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          loan_id: string
+          rated_by_user_id: string
+          rated_user_id: string
+          rating: number
+          review: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          loan_id: string
+          rated_by_user_id: string
+          rated_user_id: string
+          rating: number
+          review?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          loan_id?: string
+          rated_by_user_id?: string
+          rated_user_id?: string
+          rating?: number
+          review?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "borrower_ratings_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: true
+            referencedRelation: "game_loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_confirmation_tokens: {
         Row: {
           confirmed_at: string | null
@@ -82,6 +165,96 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: true
             referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_loans: {
+        Row: {
+          approved_at: string | null
+          borrowed_at: string | null
+          borrower_notes: string | null
+          borrower_user_id: string
+          created_at: string
+          due_date: string | null
+          game_id: string
+          id: string
+          lender_notes: string | null
+          lender_user_id: string
+          library_id: string
+          requested_at: string
+          returned_at: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          borrowed_at?: string | null
+          borrower_notes?: string | null
+          borrower_user_id: string
+          created_at?: string
+          due_date?: string | null
+          game_id: string
+          id?: string
+          lender_notes?: string | null
+          lender_user_id: string
+          library_id: string
+          requested_at?: string
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          borrowed_at?: string | null
+          borrower_notes?: string | null
+          borrower_user_id?: string
+          created_at?: string
+          due_date?: string | null
+          game_id?: string
+          id?: string
+          lender_notes?: string | null
+          lender_user_id?: string
+          library_id?: string
+          requested_at?: string
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_loans_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_loans_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_loans_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_loans_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_loans_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -277,6 +450,13 @@ export type Database = {
             columns: ["library_id"]
             isOneToOne: false
             referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_polls_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -576,6 +756,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "games_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "games_parent_game_id_fkey"
             columns: ["parent_game_id"]
             isOneToOne: false
@@ -648,6 +835,13 @@ export type Database = {
             columns: ["library_id"]
             isOneToOne: false
             referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_jobs_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -743,10 +937,61 @@ export type Database = {
             referencedRelation: "libraries_public"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "library_events_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_followers: {
+        Row: {
+          followed_at: string
+          follower_user_id: string
+          id: string
+          library_id: string
+        }
+        Insert: {
+          followed_at?: string
+          follower_user_id: string
+          id?: string
+          library_id: string
+        }
+        Update: {
+          followed_at?: string
+          follower_user_id?: string
+          id?: string
+          library_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_followers_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_followers_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_followers_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       library_settings: {
         Row: {
+          allow_lending: boolean
           background_image_url: string | null
           background_overlay_opacity: string | null
           contact_email: string | null
@@ -766,6 +1011,8 @@ export type Database = {
           footer_text: string | null
           id: string
           instagram_url: string | null
+          is_discoverable: boolean
+          lending_terms: string | null
           library_id: string
           logo_url: string | null
           theme_accent_h: string | null
@@ -805,6 +1052,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_lending?: boolean
           background_image_url?: string | null
           background_overlay_opacity?: string | null
           contact_email?: string | null
@@ -824,6 +1072,8 @@ export type Database = {
           footer_text?: string | null
           id?: string
           instagram_url?: string | null
+          is_discoverable?: boolean
+          lending_terms?: string | null
           library_id: string
           logo_url?: string | null
           theme_accent_h?: string | null
@@ -863,6 +1113,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_lending?: boolean
           background_image_url?: string | null
           background_overlay_opacity?: string | null
           contact_email?: string | null
@@ -882,6 +1133,8 @@ export type Database = {
           footer_text?: string | null
           id?: string
           instagram_url?: string | null
+          is_discoverable?: boolean
+          lending_terms?: string | null
           library_id?: string
           logo_url?: string | null
           theme_accent_h?: string | null
@@ -933,6 +1186,13 @@ export type Database = {
             columns: ["library_id"]
             isOneToOne: true
             referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_settings_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: true
+            referencedRelation: "library_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -977,6 +1237,13 @@ export type Database = {
             referencedRelation: "libraries_public"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "library_suspensions_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       mechanics: {
@@ -994,6 +1261,102 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      notification_log: {
+        Row: {
+          body: string | null
+          channel: string
+          id: string
+          metadata: Json | null
+          notification_type: string
+          read_at: string | null
+          sent_at: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          channel: string
+          id?: string
+          metadata?: Json | null
+          notification_type: string
+          read_at?: string | null
+          sent_at?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          channel?: string
+          id?: string
+          metadata?: Json | null
+          notification_type?: string
+          read_at?: string | null
+          sent_at?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          discord_event_reminders: boolean
+          discord_loan_requests: boolean
+          discord_loan_updates: boolean
+          email_achievement_earned: boolean
+          email_event_reminders: boolean
+          email_loan_requests: boolean
+          email_loan_updates: boolean
+          email_wishlist_alerts: boolean
+          id: string
+          push_achievement_earned: boolean
+          push_event_reminders: boolean
+          push_loan_requests: boolean
+          push_loan_updates: boolean
+          push_wishlist_alerts: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discord_event_reminders?: boolean
+          discord_loan_requests?: boolean
+          discord_loan_updates?: boolean
+          email_achievement_earned?: boolean
+          email_event_reminders?: boolean
+          email_loan_requests?: boolean
+          email_loan_updates?: boolean
+          email_wishlist_alerts?: boolean
+          id?: string
+          push_achievement_earned?: boolean
+          push_event_reminders?: boolean
+          push_loan_requests?: boolean
+          push_loan_updates?: boolean
+          push_wishlist_alerts?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discord_event_reminders?: boolean
+          discord_loan_requests?: boolean
+          discord_loan_updates?: boolean
+          email_achievement_earned?: boolean
+          email_event_reminders?: boolean
+          email_loan_requests?: boolean
+          email_loan_updates?: boolean
+          email_wishlist_alerts?: boolean
+          id?: string
+          push_achievement_earned?: boolean
+          push_event_reminders?: boolean
+          push_loan_requests?: boolean
+          push_loan_updates?: boolean
+          push_wishlist_alerts?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1194,6 +1557,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          earned_at: string
+          id: string
+          notified: boolean
+          progress: number
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          earned_at?: string
+          id?: string
+          notified?: boolean
+          progress?: number
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          earned_at?: string
+          id?: string
+          notified?: boolean
+          progress?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null
@@ -1253,6 +1651,15 @@ export type Database = {
       }
     }
     Views: {
+      borrower_reputation: {
+        Row: {
+          average_rating: number | null
+          positive_ratings: number | null
+          total_ratings: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       game_ratings_library_view: {
         Row: {
           created_at: string | null
@@ -1463,6 +1870,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "games_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "games_parent_game_id_fkey"
             columns: ["parent_game_id"]
             isOneToOne: false
@@ -1533,6 +1947,21 @@ export type Database = {
           poll_status: string | null
           share_token: string | null
           title: string | null
+        }
+        Relationships: []
+      }
+      library_directory: {
+        Row: {
+          allow_lending: boolean | null
+          created_at: string | null
+          description: string | null
+          follower_count: number | null
+          game_count: number | null
+          id: string | null
+          is_discoverable: boolean | null
+          logo_url: string | null
+          name: string | null
+          slug: string | null
         }
         Relationships: []
       }
@@ -1714,6 +2143,13 @@ export type Database = {
             referencedRelation: "libraries_public"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "library_settings_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: true
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
         ]
       }
       poll_results: {
@@ -1817,6 +2253,13 @@ export type Database = {
       slugify: { Args: { input: string }; Returns: string }
     }
     Enums: {
+      achievement_category:
+        | "collector"
+        | "player"
+        | "social"
+        | "explorer"
+        | "contributor"
+        | "lender"
       app_role: "admin" | "moderator" | "user"
       difficulty_level:
         | "1 - Light"
@@ -1834,6 +2277,13 @@ export type Database = {
         | "Miniatures"
         | "RPG"
         | "Other"
+      loan_status:
+        | "requested"
+        | "approved"
+        | "active"
+        | "returned"
+        | "declined"
+        | "cancelled"
       play_time:
         | "0-15 Minutes"
         | "15-30 Minutes"
@@ -1976,6 +2426,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      achievement_category: [
+        "collector",
+        "player",
+        "social",
+        "explorer",
+        "contributor",
+        "lender",
+      ],
       app_role: ["admin", "moderator", "user"],
       difficulty_level: [
         "1 - Light",
@@ -1994,6 +2452,14 @@ export const Constants = {
         "Miniatures",
         "RPG",
         "Other",
+      ],
+      loan_status: [
+        "requested",
+        "approved",
+        "active",
+        "returned",
+        "declined",
+        "cancelled",
       ],
       play_time: [
         "0-15 Minutes",
