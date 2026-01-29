@@ -30,7 +30,13 @@ import { format } from "date-fns";
 
 export function LibraryMemberManagement() {
   const { library } = useTenant();
-  const { data: members, isLoading } = useLibraryMembers(library?.id);
+  const {
+    data: members,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useLibraryMembers(library?.id);
   const { memberCount } = useLibraryMembership(library?.id);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -103,6 +109,39 @@ export function LibraryMemberManagement() {
     );
   }
 
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Community Members
+          </CardTitle>
+          <CardDescription>
+            We couldn't load your member list. Please try again.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center gap-3">
+          <Button onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Retrying...
+              </>
+            ) : (
+              "Retry"
+            )}
+          </Button>
+          <div className="text-sm text-muted-foreground truncate">
+            {(error as any)?.message || "Unknown error"}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const membersList = members ?? [];
+
   return (
     <div className="space-y-6">
       <Card>
@@ -121,7 +160,7 @@ export function LibraryMemberManagement() {
             <div className="text-sm text-muted-foreground">Total Members</div>
           </div>
 
-          {members && members.length > 0 ? (
+          {membersList.length > 0 ? (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -133,7 +172,7 @@ export function LibraryMemberManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {members.map((member) => {
+                  {membersList.map((member) => {
                     const profile = member.user_profiles as { display_name?: string; username?: string } | null;
                     const displayName = profile?.display_name || profile?.username || "Unknown User";
                     
@@ -165,6 +204,22 @@ export function LibraryMemberManagement() {
                   })}
                 </TableBody>
               </Table>
+            </div>
+          ) : memberCount && memberCount > 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-primary" />
+              <p>Loading members…</p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ["library-members", library?.id] });
+                  refetch();
+                }}
+                disabled={isFetching}
+              >
+                Refresh
+              </Button>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
