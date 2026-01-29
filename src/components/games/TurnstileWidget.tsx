@@ -29,6 +29,54 @@ declare global {
   }
 }
 
+let turnstileLoadPromise: Promise<void> | null = null;
+
+function loadTurnstileScript(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.turnstile) return Promise.resolve();
+  if (turnstileLoadPromise) return turnstileLoadPromise;
+
+  turnstileLoadPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src*="challenges.cloudflare.com/turnstile/v0/api.js"]'
+    );
+
+    const waitForGlobal = (timeoutMs = 10000) => {
+      const start = Date.now();
+      const interval = window.setInterval(() => {
+        if (window.turnstile) {
+          window.clearInterval(interval);
+          resolve();
+          return;
+        }
+        if (Date.now() - start > timeoutMs) {
+          window.clearInterval(interval);
+          reject(new Error("Turnstile did not initialize"));
+        }
+      }, 100);
+    };
+
+    if (existingScript) {
+      // Script already present; just wait for `window.turnstile`.
+      waitForGlobal();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => waitForGlobal();
+    script.onerror = () => reject(new Error("Failed to load Turnstile script"));
+    document.head.appendChild(script);
+  }).finally(() => {
+    // Allow retry if it failed
+    if (!window.turnstile) turnstileLoadPromise = null;
+  });
+
+  return turnstileLoadPromise;
+}
+
 export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
   function TurnstileWidget({ onVerify, onExpire, onError }, _ref) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -77,62 +125,23 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       setIsLoading(true);
       setHasError(false);
 
-      const attemptRender = () => {
-        if (window.turnstile && containerRef.current && !widgetIdRef.current) {
+      let cancelled = false;
+
+      (async () => {
+        try {
+          await loadTurnstileScript();
+          if (cancelled) return;
           renderWidget();
+        } catch (e) {
+          if (cancelled) return;
+          console.error("Turnstile load error:", e);
+          setHasError(true);
+          setIsLoading(false);
         }
-      };
-
-      if (window.turnstile) {
-        setTimeout(attemptRender, 50);
-        return;
-      }
-
-      const existingScript = document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]');
-      if (existingScript) {
-        const checkInterval = setInterval(() => {
-          if (window.turnstile) {
-            clearInterval(checkInterval);
-            attemptRender();
-          }
-        }, 100);
-        
-        const timeout = setTimeout(() => {
-          clearInterval(checkInterval);
-          if (!widgetIdRef.current) {
-            setHasError(true);
-            setIsLoading(false);
-          }
-        }, 10000);
-        
-        return () => {
-          clearInterval(checkInterval);
-          clearTimeout(timeout);
-          if (widgetIdRef.current && window.turnstile) {
-            try {
-              window.turnstile.remove(widgetIdRef.current);
-            } catch (e) {}
-            widgetIdRef.current = null;
-          }
-        };
-      }
-
-      const script = document.createElement("script");
-      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-      script.async = true;
-      
-      script.onload = () => {
-        setTimeout(attemptRender, 100);
-      };
-
-      script.onerror = () => {
-        setHasError(true);
-        setIsLoading(false);
-      };
-
-      document.head.appendChild(script);
+      })();
 
       return () => {
+        cancelled = true;
         if (widgetIdRef.current && window.turnstile) {
           try {
             window.turnstile.remove(widgetIdRef.current);
@@ -154,7 +163,14 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
         )}
         {hasError && !isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Skeleton className="w-[300px] h-[65px] rounded" />
+            <div className="w-[300px]">
+              <Skeleton className="h-[65px] rounded" />
+              <p className="mt-2 text-xs text-muted-foreground text-center">
+                Verification failed to load in preview. This usually means the Turnstile script is
+                blocked (CSP/ad-block) or the preview hostname isn’t allowed in your Turnstile
+                settings.
+              </p>
+            </div>
           </div>
         )}
         <div 
