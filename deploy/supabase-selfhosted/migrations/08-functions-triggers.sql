@@ -1,12 +1,13 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Database Functions & Triggers
+-- Complete 1:1 parity with Lovable Cloud schema
 -- =============================================================================
 
 -- ===========================================
 -- Utility Functions
 -- ===========================================
 
--- Slugify function
+-- Slugify function (uses unaccent extension)
 CREATE OR REPLACE FUNCTION public.slugify(input text)
 RETURNS text
 LANGUAGE sql
@@ -14,12 +15,12 @@ IMMUTABLE
 SET search_path = 'public, extensions'
 AS $$
   SELECT trim(both '-' from regexp_replace(
-    regexp_replace(lower(extensions.unaccent(coalesce(input, ''))), '[^a-z0-9]+', '-', 'g'),
+    regexp_replace(lower(unaccent(coalesce(input, ''))), '[^a-z0-9]+', '-', 'g'),
     '-{2,}', '-', 'g'
   ));
 $$;
 
--- Generate slug function
+-- Generate slug function (fallback without unaccent)
 CREATE OR REPLACE FUNCTION public.generate_slug(title text)
 RETURNS text
 LANGUAGE plpgsql
@@ -50,8 +51,18 @@ BEGIN
 END;
 $$;
 
+-- Set timezone function
+CREATE OR REPLACE FUNCTION public.set_timezone()
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+  SET timezone TO 'America/New_York';
+$$;
+
 -- ===========================================
--- Role Check Functions
+-- Role Check Functions (SECURITY DEFINER to prevent recursion)
 -- ===========================================
 
 CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
@@ -116,7 +127,7 @@ $$;
 -- Auto-Triggers
 -- ===========================================
 
--- Auto-set game slug
+-- Auto-set game slug on insert/update
 CREATE OR REPLACE FUNCTION public.set_game_slug()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -130,13 +141,27 @@ BEGIN
 END;
 $$;
 
+-- Alias function for compatibility
+CREATE OR REPLACE FUNCTION public.games_set_slug()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = 'public'
+AS $$
+BEGIN
+  IF NEW.slug IS NULL OR btrim(NEW.slug) = '' THEN
+    NEW.slug := public.slugify(NEW.title);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
 DROP TRIGGER IF EXISTS games_set_slug_trigger ON public.games;
 CREATE TRIGGER games_set_slug_trigger
     BEFORE INSERT OR UPDATE ON public.games
     FOR EACH ROW
     EXECUTE FUNCTION public.set_game_slug();
 
--- Auto-create library settings
+-- Auto-create library settings when library is created
 CREATE OR REPLACE FUNCTION public.create_library_settings()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -156,7 +181,7 @@ CREATE TRIGGER create_library_settings_trigger
     FOR EACH ROW
     EXECUTE FUNCTION public.create_library_settings();
 
--- Auto-create user profile (for Supabase auth)
+-- Auto-create user profile when user signs up (for Supabase auth)
 CREATE OR REPLACE FUNCTION public.create_user_profile()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -170,8 +195,8 @@ BEGIN
 END;
 $$;
 
--- Note: This trigger is attached to auth.users by Supabase
--- It will be created separately if needed
+-- NOTE: The trigger on auth.users is created in a separate migration
+-- since it requires superuser access to the auth schema
 
 -- ===========================================
 -- Updated_at Triggers
@@ -201,6 +226,66 @@ CREATE TRIGGER update_user_profiles_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_game_admin_data_updated_at ON public.game_admin_data;
+CREATE TRIGGER update_game_admin_data_updated_at
+    BEFORE UPDATE ON public.game_admin_data
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_game_ratings_updated_at ON public.game_ratings;
+CREATE TRIGGER update_game_ratings_updated_at
+    BEFORE UPDATE ON public.game_ratings
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_game_sessions_updated_at ON public.game_sessions;
+CREATE TRIGGER update_game_sessions_updated_at
+    BEFORE UPDATE ON public.game_sessions
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_game_loans_updated_at ON public.game_loans;
+CREATE TRIGGER update_game_loans_updated_at
+    BEFORE UPDATE ON public.game_loans
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_library_events_updated_at ON public.library_events;
+CREATE TRIGGER update_library_events_updated_at
+    BEFORE UPDATE ON public.library_events
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_game_polls_updated_at ON public.game_polls;
+CREATE TRIGGER update_game_polls_updated_at
+    BEFORE UPDATE ON public.game_polls
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_game_night_rsvps_updated_at ON public.game_night_rsvps;
+CREATE TRIGGER update_game_night_rsvps_updated_at
+    BEFORE UPDATE ON public.game_night_rsvps
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_notification_preferences_updated_at ON public.notification_preferences;
+CREATE TRIGGER update_notification_preferences_updated_at
+    BEFORE UPDATE ON public.notification_preferences
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_import_jobs_updated_at ON public.import_jobs;
+CREATE TRIGGER update_import_jobs_updated_at
+    BEFORE UPDATE ON public.import_jobs
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_site_settings_updated_at ON public.site_settings;
+CREATE TRIGGER update_site_settings_updated_at
+    BEFORE UPDATE ON public.site_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at_column();
+
 -- ===========================================
 -- Cleanup Functions
 -- ===========================================
@@ -214,7 +299,16 @@ AS $$
 BEGIN
   DELETE FROM public.password_reset_tokens
   WHERE expires_at < now() - interval '24 hours';
-  
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.cleanup_expired_email_tokens()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+BEGIN
   DELETE FROM public.email_confirmation_tokens
   WHERE expires_at < now() - interval '24 hours';
 END;
