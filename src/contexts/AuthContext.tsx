@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useMemo, useCallback, type ReactNode } from "react";
-import { supabase } from "@/integrations/backend/client";
+import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -82,6 +82,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+
+    // =============================
+    // Self-hosted auth (Express + JWT)
+    // =============================
+    if (isSelfHostedMode()) {
+      const bootstrapSelfHosted = async () => {
+        try {
+          const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+          if (!token) {
+            if (!mounted) return;
+            setSession(null);
+            setUser(null);
+            setIsAdmin(false);
+            setLoading(false);
+            setRoleLoading(false);
+            return;
+          }
+
+          // Validate token + fetch user
+          const me = await apiClient.get<{ id: string; email: string; roles?: string[]; isAdmin?: boolean }>(
+            "/auth/me"
+          );
+
+          if (!mounted) return;
+          setSession(null);
+          setUser(({ id: me.id, email: me.email } as unknown) as User);
+          setIsAdmin(!!me.isAdmin || (me.roles ?? []).includes("admin"));
+          setLoading(false);
+          setRoleLoading(false);
+        } catch {
+          // Token invalid / API unreachable → clear and reset
+          try {
+            localStorage.removeItem("auth_token");
+          } catch {}
+          if (!mounted) return;
+          setSession(null);
+          setUser(null);
+          setIsAdmin(false);
+          setLoading(false);
+          setRoleLoading(false);
+        }
+      };
+
+      bootstrapSelfHosted();
+
+      return () => {
+        mounted = false;
+      };
+    }
 
     const decodeJwtPayload = (jwt?: string): any | null => {
       if (!jwt) return null;
@@ -286,6 +335,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [apiUrl, anonKey, authStorageKey, clearAuthStorage, getAllAuthTokenKeys]);
 
   const signIn = useCallback(async (emailOrUsername: string, password: string) => {
+    if (isSelfHostedMode()) {
+      try {
+        const res = await apiClient.post<{
+          user: { id: string; email: string; role?: string; roles?: string[] };
+          token: string;
+        }>("/auth/login", {
+          email: emailOrUsername,
+          password,
+        });
+
+        if (typeof window !== "undefined") {
+          localStorage.setItem("auth_token", res.token);
+        }
+
+        setSession(null);
+        setUser(({ id: res.user.id, email: res.user.email } as unknown) as User);
+        const roles = res.user.roles ?? (res.user.role ? [res.user.role] : []);
+        setIsAdmin(roles.includes("admin"));
+        setLoading(false);
+        setRoleLoading(false);
+
+        return { error: null };
+      } catch (e: any) {
+        return { error: { message: e?.message?.includes("Invalid credentials") ? "Invalid login credentials" : (e?.message || "Sign in failed") } };
+      }
+    }
+
     const controller = new AbortController();
     const timeoutMs = 15000;
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -392,6 +468,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [apiUrl, anonKey, authStorageKey]);
 
   const signUp = useCallback(async (email: string, password: string) => {
+    if (isSelfHostedMode()) {
+      try {
+        await apiClient.post("/auth/register", {
+          email,
+          password,
+          displayName: email.split("@")[0],
+        });
+        return { error: null };
+      } catch (e: any) {
+        return { error: { message: e?.message || "Signup failed" } };
+      }
+    }
+
     try {
       const res = await fetch(`${apiUrl}/functions/v1/signup`, {
         method: "POST",
@@ -419,6 +508,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [apiUrl, anonKey]);
 
   const signOut = useCallback(async () => {
+    if (isSelfHostedMode()) {
+      try {
+        localStorage.removeItem("auth_token");
+      } catch {}
+      adminRoleCache.clear();
+      setIsAdmin(false);
+      setSession(null);
+      setUser(null);
+      return { error: null };
+    }
+
     const { error } = await supabase.auth.signOut();
     adminRoleCache.clear();
     setIsAdmin(false);
