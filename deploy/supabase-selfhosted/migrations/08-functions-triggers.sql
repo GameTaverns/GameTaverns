@@ -7,20 +7,7 @@
 -- Utility Functions
 -- ===========================================
 
--- Slugify function (uses unaccent extension)
-CREATE OR REPLACE FUNCTION public.slugify(input text)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-SET search_path = 'public'
-AS $$
-  SELECT trim(both '-' from regexp_replace(
-    regexp_replace(lower(extensions.unaccent(coalesce(input, ''))), '[^a-z0-9]+', '-', 'g'),
-    '-{2,}', '-', 'g'
-  ));
-$$;
-
--- Generate slug function (fallback without unaccent)
+-- Generate slug function (pure SQL, no extension dependency)
 CREATE OR REPLACE FUNCTION public.generate_slug(title text)
 RETURNS text
 LANGUAGE plpgsql
@@ -36,6 +23,30 @@ BEGIN
   slug := regexp_replace(slug, '-+', '-', 'g');
   slug := trim(both '-' from slug);
   RETURN slug;
+END;
+$$;
+
+-- Slugify function with unaccent (uses extensions schema)
+CREATE OR REPLACE FUNCTION public.slugify(input text)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = 'public'
+AS $$
+DECLARE
+  result TEXT;
+BEGIN
+  -- Try to use unaccent if available, otherwise fall back to generate_slug
+  BEGIN
+    SELECT trim(both '-' from regexp_replace(
+      regexp_replace(lower(extensions.unaccent(coalesce(input, ''))), '[^a-z0-9]+', '-', 'g'),
+      '-{2,}', '-', 'g'
+    )) INTO result;
+    RETURN result;
+  EXCEPTION WHEN OTHERS THEN
+    -- Fallback if unaccent not available
+    RETURN public.generate_slug(input);
+  END;
 END;
 $$;
 
@@ -135,7 +146,7 @@ SET search_path = 'public'
 AS $$
 BEGIN
   IF NEW.slug IS NULL OR NEW.slug = '' THEN
-    NEW.slug := generate_slug(NEW.title);
+    NEW.slug := public.generate_slug(NEW.title);
   END IF;
   RETURN NEW;
 END;
@@ -170,7 +181,8 @@ SET search_path = 'public'
 AS $$
 BEGIN
     INSERT INTO public.library_settings (library_id)
-    VALUES (NEW.id);
+    VALUES (NEW.id)
+    ON CONFLICT (library_id) DO NOTHING;
     RETURN NEW;
 END;
 $$;
@@ -190,7 +202,8 @@ SET search_path = 'public'
 AS $$
 BEGIN
     INSERT INTO public.user_profiles (user_id, display_name)
-    VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1)));
+    VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1)))
+    ON CONFLICT (user_id) DO NOTHING;
     RETURN NEW;
 END;
 $$;

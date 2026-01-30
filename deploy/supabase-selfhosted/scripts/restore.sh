@@ -13,7 +13,10 @@ if [ ! -f "$INSTALL_DIR/.env" ]; then
     exit 1
 fi
 
+# Source the .env file
+set -a
 source "$INSTALL_DIR/.env"
+set +a
 
 echo ""
 echo "=============================================="
@@ -53,13 +56,17 @@ if [ "$CONFIRM" != "yes" ]; then
     exit 0
 fi
 
-echo ""
-echo "Stopping services..."
 cd "$INSTALL_DIR"
-docker compose stop app functions
+
+echo ""
+echo "Stopping application services..."
+docker compose stop app functions studio 2>/dev/null || true
 
 echo ""
 echo "Restoring database..."
+# Drop existing connections and restore
+docker compose exec -T db psql -U supabase_admin -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'postgres' AND pid <> pg_backend_pid();" 2>/dev/null || true
+
 gunzip -c "$DB_BACKUP" | docker compose exec -T db psql -U supabase_admin -d postgres
 echo "  ✓ Database restored"
 
@@ -67,8 +74,14 @@ echo "  ✓ Database restored"
 if [ -f "$STORAGE_BACKUP" ]; then
     echo ""
     echo "Restoring storage..."
-    rm -rf "$INSTALL_DIR/volumes/storage"
-    tar -xzf "$STORAGE_BACKUP" -C "$INSTALL_DIR/volumes"
+    # Stop storage service first
+    docker compose stop storage imgproxy 2>/dev/null || true
+    
+    # Restore to named volume
+    docker run --rm \
+        -v gametaverns_storage-data:/data \
+        -v "$BACKUP_DIR":/backup \
+        alpine sh -c "rm -rf /data/* && tar -xzf /backup/storage_${BACKUP_DATE}.tar.gz -C /data"
     echo "  ✓ Storage restored"
 fi
 
@@ -76,13 +89,17 @@ fi
 if [ -f "$MAIL_BACKUP" ]; then
     echo ""
     echo "Restoring mail data..."
-    rm -rf "$INSTALL_DIR/volumes/mail"
-    tar -xzf "$MAIL_BACKUP" -C "$INSTALL_DIR/volumes"
+    docker compose stop mail roundcube 2>/dev/null || true
+    
+    docker run --rm \
+        -v gametaverns_mail-data:/data \
+        -v "$BACKUP_DIR":/backup \
+        alpine sh -c "rm -rf /data/* && tar -xzf /backup/mail_${BACKUP_DATE}.tar.gz -C /data"
     echo "  ✓ Mail data restored"
 fi
 
 echo ""
-echo "Starting services..."
+echo "Starting all services..."
 docker compose up -d
 
 echo ""

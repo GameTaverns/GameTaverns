@@ -7,8 +7,6 @@
 #   2. docker compose up -d
 #   3. Access at https://yourdomain.com
 
-version: "3.8"
-
 services:
   # ===========================================
   # Kong API Gateway
@@ -27,9 +25,6 @@ services:
       KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
-      # Keys for Kong to substitute in config
-      ANON_KEY: ${ANON_KEY}
-      SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
     volumes:
       - ./kong.yml:/var/lib/kong/kong.yml:ro
     healthcheck:
@@ -61,8 +56,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXP: ${JWT_EXPIRY:-3600}
     volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
+      - db-data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
     command:
       - postgres
       - -c
@@ -96,7 +91,7 @@ services:
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
       GOTRUE_SITE_URL: ${SITE_URL}
-      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
+      GOTRUE_URI_ALLOW_LIST: "${ADDITIONAL_REDIRECT_URLS:-}"
       GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
       GOTRUE_JWT_ADMIN_ROLES: service_role
       GOTRUE_JWT_AUD: authenticated
@@ -108,9 +103,9 @@ services:
       GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-false}
       GOTRUE_SMTP_HOST: ${SMTP_HOST:-mail}
       GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
-      GOTRUE_SMTP_USER: ${SMTP_USER:-}
-      GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
-      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-}
+      GOTRUE_SMTP_USER: "${SMTP_USER:-}"
+      GOTRUE_SMTP_PASS: "${SMTP_PASS:-}"
+      GOTRUE_SMTP_ADMIN_EMAIL: "${SMTP_ADMIN_EMAIL:-}"
       GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-GameTaverns}
       GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
@@ -215,7 +210,7 @@ services:
       ENABLE_IMAGE_TRANSFORMATION: "true"
       IMGPROXY_URL: http://imgproxy:8080
     volumes:
-      - ./volumes/storage:/var/lib/storage
+      - storage-data:/var/lib/storage
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5000/status || exit 1"]
       interval: 10s
@@ -241,7 +236,7 @@ services:
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
       IMGPROXY_USE_ETAG: "true"
     volumes:
-      - ./volumes/storage:/var/lib/storage:ro
+      - storage-data:/var/lib/storage:ro
     healthcheck:
       test: ["CMD", "imgproxy", "health"]
       interval: 10s
@@ -265,20 +260,20 @@ services:
       SUPABASE_DB_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@db:5432/postgres
       VERIFY_JWT: "false"
       # External API keys
-      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-}
-      PERPLEXITY_API_KEY: ${PERPLEXITY_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
-      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
-      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
-      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
-      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      PII_ENCRYPTION_KEY: "${PII_ENCRYPTION_KEY:-}"
+      PERPLEXITY_API_KEY: "${PERPLEXITY_API_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      FIRECRAWL_API_KEY: "${FIRECRAWL_API_KEY:-}"
+      DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN:-}"
+      DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
+      DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:-}"
+      TURNSTILE_SECRET_KEY: "${TURNSTILE_SECRET_KEY:-}"
       # SMTP for edge functions
       SMTP_HOST: ${SMTP_HOST:-mail}
       SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASS: "${SMTP_PASS:-}"
+      SMTP_FROM: "${SMTP_FROM:-}"
     volumes:
       - ../../supabase/functions:/home/deno/functions:ro
     command:
@@ -389,11 +384,11 @@ services:
       - "587:587"
       - "993:993"
     environment:
-      MAIL_DOMAIN: ${MAIL_DOMAIN}
-      POSTMASTER_EMAIL: ${SMTP_ADMIN_EMAIL:-postmaster@${MAIL_DOMAIN}}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN}}
+      POSTMASTER_EMAIL: ${SMTP_ADMIN_EMAIL:-postmaster@${DOMAIN}}
     volumes:
-      - ./volumes/mail/vmail:/var/mail/vhosts
-      - ./volumes/mail/config:/etc/mail-config
+      - mail-data:/var/mail/vhosts
+      - mail-config:/etc/mail-config
     networks:
       - gametaverns
 
@@ -424,3 +419,4 @@ volumes:
   db-data:
   storage-data:
   mail-data:
+  mail-config:
