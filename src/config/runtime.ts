@@ -1,17 +1,20 @@
 /**
  * Runtime Configuration Helper
  * 
- * Supports two deployment modes:
- * 1. Lovable/Vite: Uses import.meta.env.VITE_* variables (build-time)
- * 2. Cloudron: Uses window.__RUNTIME_CONFIG__ (injected at container start)
+ * Supports three deployment modes:
+ * 1. Lovable Cloud: Uses Supabase directly via import.meta.env.VITE_* variables
+ * 2. Self-Hosted (Native): Uses Express API backend, no Supabase
+ * 3. Cloudron: Uses window.__RUNTIME_CONFIG__ (injected at container start)
  * 
  * Priority: Runtime Config → Vite Env → Defaults
  */
 
-// Type for runtime config injected by Cloudron's start.sh
+// Type for runtime config injected by Cloudron's start.sh or self-hosted
 interface RuntimeConfig {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
+  API_BASE_URL?: string;
+  SELF_HOSTED?: boolean;
   SITE_NAME?: string;
   SITE_DESCRIPTION?: string;
   SITE_AUTHOR?: string;
@@ -35,9 +38,38 @@ declare global {
   }
 }
 
-// Get runtime config (Cloudron) or empty object
+// Get runtime config (Cloudron/self-hosted) or empty object
 function getRuntimeConfig(): RuntimeConfig {
   return (typeof window !== 'undefined' && window.__RUNTIME_CONFIG__) || {};
+}
+
+/**
+ * Detect if running in self-hosted mode
+ * 
+ * Self-hosted is detected when:
+ * 1. Explicitly set via runtime config
+ * 2. No Supabase URL is available (neither from runtime nor VITE env)
+ * 3. Running on a known self-hosted domain pattern
+ */
+export function isSelfHostedMode(): boolean {
+  const runtime = getRuntimeConfig();
+  
+  // Explicit flag
+  if (runtime.SELF_HOSTED === true) {
+    return true;
+  }
+  
+  // Check if Supabase URL is available
+  const hasSupabaseUrl = 
+    (runtime.SUPABASE_URL && runtime.SUPABASE_URL !== '') ||
+    (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_URL !== '');
+  
+  // If no Supabase URL, we're in self-hosted mode
+  if (!hasSupabaseUrl) {
+    return true;
+  }
+  
+  return false;
 }
 
 /**
@@ -51,7 +83,7 @@ export function getConfig<T>(
 ): T {
   const runtime = getRuntimeConfig();
   
-  // Check runtime config first (Cloudron)
+  // Check runtime config first (Cloudron/self-hosted)
   const runtimeValue = runtime[runtimeKey];
   if (runtimeValue !== undefined && runtimeValue !== '') {
     return runtimeValue as T;
@@ -69,12 +101,27 @@ export function getConfig<T>(
 
 /**
  * Get Supabase configuration
+ * Returns empty strings if in self-hosted mode (client will use stub)
  */
 export function getSupabaseConfig() {
   return {
     url: getConfig('SUPABASE_URL', 'VITE_SUPABASE_URL', ''),
     anonKey: getConfig('SUPABASE_ANON_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY', ''),
   };
+}
+
+/**
+ * Get API base URL for self-hosted mode
+ */
+export function getApiBaseUrl(): string {
+  const runtime = getRuntimeConfig();
+  
+  if (runtime.API_BASE_URL) {
+    return runtime.API_BASE_URL;
+  }
+  
+  // Default to relative /api path
+  return '/api';
 }
 
 /**
