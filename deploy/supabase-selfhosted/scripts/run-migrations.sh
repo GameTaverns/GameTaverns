@@ -96,30 +96,34 @@ for migration in "${MIGRATION_FILES[@]}"; do
         echo -n "Running: $migration ... "
         
         # Run migration and capture output and exit code
-        OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres -f "/docker-entrypoint-initdb.d/$migration" 2>&1)
+        OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres -f "/docker-entrypoint-initdb.d/$migration" 2>&1) || true
         EXIT_CODE=$?
         
-        # Check for actual errors (not just notices)
-        if [ $EXIT_CODE -eq 0 ]; then
-            # Check if output contains ERROR (not just NOTICE)
-            if echo "$OUTPUT" | grep -qE "^ERROR:|FATAL:"; then
-                ERROR_MSG=$(echo "$OUTPUT" | grep -E "^ERROR:|FATAL:" | head -1)
+        # Check for actual errors (not just notices) - case insensitive
+        if echo "$OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
+            ERROR_MSG=$(echo "$OUTPUT" | grep -iE "^ERROR:|^FATAL:" | head -1)
+            # Check if it's a duplicate/exists warning
+            if echo "$ERROR_MSG" | grep -qiE "already exists|duplicate|does not exist"; then
+                echo -e "${YELLOW}⚠ Warning${NC}"
+                echo "    $ERROR_MSG"
+                ((WARNING_COUNT++))
+            else
                 echo -e "${RED}✗ Error${NC}"
                 echo "    $ERROR_MSG"
                 ((ERROR_COUNT++))
-            else
-                echo -e "${GREEN}✓${NC}"
-                ((SUCCESS_COUNT++))
             fi
-        else
-            # Non-zero exit code
-            if echo "$OUTPUT" | grep -qE "already exists|duplicate"; then
+        elif [ $EXIT_CODE -ne 0 ]; then
+            # Non-zero exit code but no ERROR in output
+            if echo "$OUTPUT" | grep -qiE "already exists|duplicate"; then
                 echo -e "${YELLOW}⚠ Warning (already exists)${NC}"
                 ((WARNING_COUNT++))
             else
                 echo -e "${RED}✗ Error (exit code: $EXIT_CODE)${NC}"
                 ((ERROR_COUNT++))
             fi
+        else
+            echo -e "${GREEN}✓${NC}"
+            ((SUCCESS_COUNT++))
         fi
     else
         echo -e "${YELLOW}⚠ $migration not found, skipping${NC}"

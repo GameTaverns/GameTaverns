@@ -147,18 +147,30 @@ echo -e "${GREEN}✓ User created with ID: $USER_ID${NC}"
 # Add admin role
 echo -e "${BLUE}Adding admin role...${NC}"
 
-# First ensure user_roles table exists and has the right structure
-ROLE_RESULT=$(docker compose exec -T db psql -U supabase_admin -d postgres -c \
-    "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING RETURNING id;" 2>&1)
+# First check if user_roles table exists
+TABLE_CHECK=$(docker compose exec -T db psql -U supabase_admin -d postgres -tAc \
+    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_roles');" 2>&1)
 
-if echo "$ROLE_RESULT" | grep -qE "ERROR|does not exist"; then
-    echo -e "${YELLOW}Warning: Could not add admin role automatically.${NC}"
+if [ "$TABLE_CHECK" != "t" ]; then
+    echo -e "${YELLOW}Warning: user_roles table does not exist yet.${NC}"
+    echo "Run migrations first: ./scripts/run-migrations.sh"
     echo ""
-    echo "To add the admin role manually, run:"
-    echo "  docker compose exec db psql -U supabase_admin -d postgres"
-    echo "  INSERT INTO user_roles (user_id, role) VALUES ('$USER_ID', 'admin');"
+    echo "Then add admin role manually:"
+    echo "  docker compose exec db psql -U supabase_admin -d postgres -c \"INSERT INTO user_roles (user_id, role) VALUES ('$USER_ID', 'admin');\""
 else
-    echo -e "${GREEN}✓ Admin role added successfully${NC}"
+    # Insert admin role
+    ROLE_RESULT=$(docker compose exec -T db psql -U supabase_admin -d postgres -c \
+        "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING RETURNING id;" 2>&1)
+
+    if echo "$ROLE_RESULT" | grep -qiE "ERROR"; then
+        echo -e "${YELLOW}Warning: Could not add admin role automatically.${NC}"
+        echo ""
+        echo "To add the admin role manually, run:"
+        echo "  docker compose exec db psql -U supabase_admin -d postgres"
+        echo "  INSERT INTO user_roles (user_id, role) VALUES ('$USER_ID', 'admin');"
+    else
+        echo -e "${GREEN}✓ Admin role added successfully${NC}"
+    fi
 fi
 
 echo ""

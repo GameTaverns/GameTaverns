@@ -1,9 +1,16 @@
 #!/bin/bash
 # =============================================================================
 # Backup Script for GameTaverns Self-Hosted
+# Version: 2.0.0
 # =============================================================================
 
 set -e
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root: sudo ./backup.sh"
+    exit 1
+fi
 
 INSTALL_DIR="/opt/gametaverns"
 BACKUP_DIR="/opt/gametaverns/backups"

@@ -591,7 +591,7 @@ info "Verifying installation..."
 sleep 10
 
 # Check all containers are running
-FAILED_CONTAINERS=$(docker compose ps --format '{{.Name}} {{.Status}}' 2>/dev/null | grep -v "Up" | grep -v "NAME" || true)
+FAILED_CONTAINERS=$(docker compose ps --format '{{.Name}} {{.Status}}' 2>/dev/null | grep -v -E "(Up|healthy|running)" | grep -v "NAME" || true)
 if [ -n "$FAILED_CONTAINERS" ]; then
     warn "Some containers may still be starting:"
     echo "$FAILED_CONTAINERS"
