@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, forwardRef, useState } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTurnstileSiteKey } from "@/hooks/useSiteSettings";
+import { isSelfHostedMode } from "@/config/runtime";
 
 interface TurnstileWidgetProps {
   onVerify: (token: string) => void;
@@ -30,12 +31,18 @@ declare global {
 }
 
 /**
- * Detect if we're running in a Lovable preview environment where Turnstile won't work.
+ * Detect if we're running in an environment where Turnstile should be bypassed:
+ * - Lovable preview environments
+ * - Self-hosted mode (no Cloudflare integration)
  */
-function isPreviewEnvironment(): boolean {
+function shouldBypassTurnstile(): boolean {
   if (typeof window === "undefined") return false;
-  const host = window.location.hostname;
+  
+  // Self-hosted mode - no Turnstile configured
+  if (isSelfHostedMode()) return true;
+  
   // Lovable preview domains
+  const host = window.location.hostname;
   return host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app");
 }
 
@@ -94,14 +101,14 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     const [isPreview, setIsPreview] = useState(false);
     const siteKey = useTurnstileSiteKey();
 
-    // Check for preview environment and auto-verify
+    // Check for bypass environment and auto-verify
     useEffect(() => {
-      if (isPreviewEnvironment()) {
+      if (shouldBypassTurnstile()) {
         setIsPreview(true);
         setIsLoading(false);
-        // Auto-verify with a preview bypass token after a brief delay
+        // Auto-verify with a bypass token after a brief delay
         const timer = setTimeout(() => {
-          onVerify("PREVIEW_BYPASS_TOKEN");
+          onVerify("TURNSTILE_BYPASS_TOKEN");
         }, 300);
         return () => clearTimeout(timer);
       }
@@ -143,8 +150,8 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     }, [handleVerify, onExpire, handleError, siteKey]);
 
     useEffect(() => {
-      // Skip loading Turnstile in preview
-      if (isPreviewEnvironment()) return;
+      // Skip loading Turnstile in bypass mode
+      if (shouldBypassTurnstile()) return;
 
       setIsLoading(true);
       setHasError(false);
@@ -175,13 +182,14 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       };
     }, [renderWidget]);
 
-    // Preview environment: show a simple "bypassed" indicator
+    // Bypass mode: show a simple indicator
     if (isPreview) {
+      const bypassReason = isSelfHostedMode() ? "self-hosted mode" : "preview mode";
       return (
         <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
           <CheckCircle2 className="h-4 w-4 text-primary" />
           <span className="text-sm text-muted-foreground">
-            Verification bypassed (preview mode)
+            Verification bypassed ({bypassReason})
           </span>
         </div>
       );
