@@ -46,7 +46,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
   const { demoMode: demoModeEnabled } = useFeatureFlags();
   const { tenantSlug, library, isOwner } = useTenant();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { data: profile } = useUserProfile();
   
   // Build tenant-aware home URL
@@ -170,10 +170,10 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           )}
           
           {/* User display name when viewing libraries */}
-          {tenantSlug && isAuthenticated && profile?.display_name && (
+          {tenantSlug && isAuthenticated && (profile?.display_name || (user as any)?.user_metadata?.display_name) && (
             <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground px-2">
               <User className="h-4 w-4" />
-              <span className="hidden sm:inline">{profile.display_name}</span>
+              <span className="hidden sm:inline">{profile?.display_name || (user as any)?.user_metadata?.display_name}</span>
             </span>
           )}
           {/* Only show Demo link if demo mode is enabled and we're not already in demo */}
