@@ -187,18 +187,37 @@ export function useUserProfile() {
       
       // Self-hosted: use API
       if (isSelfHostedMode()) {
-        const profile = await apiClient.get<{
-          id: string;
-          user_id: string;
-          display_name: string | null;
-          username: string | null;
-          avatar_url: string | null;
-          bio: string | null;
-          created_at: string;
-          roles?: string[];
-          libraries?: any[];
-        }>("/profiles/me");
-        return profile;
+        try {
+          const profile = await apiClient.get<{
+            id: string;
+            user_id: string;
+            display_name: string | null;
+            username: string | null;
+            avatar_url: string | null;
+            bio: string | null;
+            created_at: string;
+            roles?: string[];
+            libraries?: any[];
+            email?: string;
+          }>("/profiles/me");
+          return profile;
+        } catch (error) {
+          console.error("[useUserProfile] API error:", error);
+          // Fallback to user metadata if profile endpoint fails
+          const metadata = (user as any)?.user_metadata;
+          if (metadata) {
+            return {
+              id: user.id,
+              user_id: user.id,
+              display_name: metadata.display_name || null,
+              username: metadata.username || null,
+              avatar_url: metadata.avatar_url || null,
+              bio: null,
+              created_at: new Date().toISOString(),
+            };
+          }
+          throw error;
+        }
       }
       
       // Supabase mode
