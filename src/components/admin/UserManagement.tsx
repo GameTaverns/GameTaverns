@@ -32,7 +32,7 @@ export function UserManagement() {
   const [suspendReason, setSuspendReason] = useState("");
 
   // Fetch users via edge function (Cloud) or API (self-hosted)
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, isError, error } = useQuery({
     queryKey: ["admin-users-full"],
     queryFn: async () => {
       if (isSelfHostedMode()) {
@@ -156,6 +156,17 @@ export function UserManagement() {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-secondary" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-foreground">
+        <div className="font-semibold">Failed to load users</div>
+        <div className="mt-1 text-muted-foreground">
+          {(error as Error)?.message || "Unknown error"}
+        </div>
       </div>
     );
   }

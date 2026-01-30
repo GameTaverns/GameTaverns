@@ -15,7 +15,8 @@ router.use(authMiddleware, adminMiddleware);
 router.get('/users', async (req: Request, res: Response) => {
   try {
     const result = await pool.query(`
-      SELECT u.id, u.email, u.created_at, u.last_sign_in_at,
+      SELECT u.id, u.email, u.created_at,
+             NULL::timestamptz as last_sign_in_at,
              up.display_name, up.username,
              ARRAY_AGG(ur.role) FILTER (WHERE ur.role IS NOT NULL) as roles
       FROM users u
