@@ -206,7 +206,8 @@ check_memory() {
 
 check_ssl_expiry() {
     local domain
-    domain=$(grep "DOMAIN=" "$INSTALL_DIR/.env" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "")
+    # Try to extract domain from SITE_URL (e.g., https://gametaverns.com -> gametaverns.com)
+    domain=$(grep "SITE_URL=" "$INSTALL_DIR/.env" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | sed 's|https://||;s|http://||' || echo "")
     
     if [ -z "$domain" ]; then
         STATUS["ssl"]="skipped"

@@ -48,23 +48,23 @@ echo -e "${YELLOW}[INFO]${NC} Pulling latest code..."
 git fetch origin
 git reset --hard origin/main
 
-# Install frontend dependencies
+# Install frontend dependencies (clean install for production)
 echo -e "${YELLOW}[INFO]${NC} Installing frontend dependencies..."
-npm ci --silent
+npm ci --silent 2>/dev/null || npm install --silent
 
 # Build frontend
 echo -e "${YELLOW}[INFO]${NC} Building frontend..."
-npm run build
+NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
 # Copy to app directory
 echo -e "${YELLOW}[INFO]${NC} Deploying frontend..."
 mkdir -p ${INSTALL_DIR}/app
 cp -r dist/* ${INSTALL_DIR}/app/
 
-# Install backend dependencies
+# Install backend dependencies (clean install for production)
 echo -e "${YELLOW}[INFO]${NC} Installing backend dependencies..."
 cd ${INSTALL_DIR}/server
-npm ci --silent
+npm ci --silent 2>/dev/null || npm install --silent
 
 # Build backend
 echo -e "${YELLOW}[INFO]${NC} Building backend..."

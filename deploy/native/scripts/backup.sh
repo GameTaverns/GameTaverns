@@ -27,9 +27,13 @@ NC='\033[0m'
 
 # Quiet mode for cron
 QUIET=false
-if [[ "$1" == "-q" || "$2" == "-q" ]]; then
-    QUIET=true
-fi
+FULL_BACKUP=false
+for arg in "$@"; do
+    case $arg in
+        -q|--quiet) QUIET=true ;;
+        --full) FULL_BACKUP=true ;;
+    esac
+done
 
 log() {
     if [[ "$QUIET" == "false" ]]; then
@@ -58,7 +62,7 @@ else
 fi
 
 # Full backup (optional)
-if [[ "$1" == "--full" || "$2" == "--full" ]]; then
+if [[ "$FULL_BACKUP" == "true" ]]; then
     # Uploads
     if [[ -d "${INSTALL_DIR}/uploads" ]]; then
         log "${YELLOW}[INFO]${NC} Backing up uploads..."
@@ -100,7 +104,7 @@ if [[ "$QUIET" == "false" ]]; then
     echo ""
     echo "  Database: ${BACKUP_DIR}/db_${DATE}.sql.gz (${BACKUP_SIZE})"
     
-    if [[ "$1" == "--full" || "$2" == "--full" ]]; then
+    if [[ "$FULL_BACKUP" == "true" ]]; then
         [[ -f "${BACKUP_DIR}/uploads_${DATE}.tar.gz" ]] && echo "  Uploads:  ${BACKUP_DIR}/uploads_${DATE}.tar.gz"
         [[ -f "${BACKUP_DIR}/mail_config_${DATE}.tar.gz" ]] && echo "  Mail:     ${BACKUP_DIR}/mail_config_${DATE}.tar.gz"
         [[ -f "${BACKUP_DIR}/env_${DATE}.backup" ]] && echo "  Config:   ${BACKUP_DIR}/env_${DATE}.backup"

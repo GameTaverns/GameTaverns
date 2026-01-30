@@ -268,7 +268,7 @@ install_cockpit() {
     mkdir -p /etc/cockpit
     cat > /etc/cockpit/cockpit.conf <<EOF
 [WebService]
-Origins = https://${DOMAIN:-localhost}:9090 wss://${DOMAIN:-localhost}:9090
+Origins = https://${DOMAIN:-localhost}:9090 wss://${DOMAIN:-localhost}:9090 https://dashboard.${DOMAIN:-localhost}:9090 wss://dashboard.${DOMAIN:-localhost}:9090
 ProtocolHeader = X-Forwarded-Proto
 AllowUnencrypted = false
 
@@ -1722,8 +1722,10 @@ print_summary() {
     echo "   - A record: ${DOMAIN} → <your-server-ip>"
     echo "   - A record: *.${DOMAIN} → <your-server-ip>"
     echo "   - A record: mail.${DOMAIN} → <your-server-ip>"
+    echo "   - A record: dashboard.${DOMAIN} → <your-server-ip> (for Cockpit)"
     echo "   - MX record: ${DOMAIN} → mail.${DOMAIN}"
     echo "   - SPF record: v=spf1 ip4:<your-server-ip> -all"
+    echo "   - DKIM/DMARC: See docs for email deliverability"
     echo ""
     echo "2. Set up SSL certificates:"
     echo "   sudo certbot --nginx -d ${DOMAIN} -d *.${DOMAIN} -d mail.${DOMAIN}"
