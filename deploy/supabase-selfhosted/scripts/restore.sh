@@ -77,9 +77,10 @@ if [ -f "$STORAGE_BACKUP" ]; then
     # Stop storage service first
     docker compose stop storage imgproxy 2>/dev/null || true
     
+    STORAGE_VOLUME="gametaverns_storage-data"
     # Restore to named volume
     docker run --rm \
-        -v gametaverns_storage-data:/data \
+        -v "${STORAGE_VOLUME}":/data \
         -v "$BACKUP_DIR":/backup \
         alpine sh -c "rm -rf /data/* && tar -xzf /backup/storage_${BACKUP_DATE}.tar.gz -C /data"
     echo "  ✓ Storage restored"
@@ -91,8 +92,9 @@ if [ -f "$MAIL_BACKUP" ]; then
     echo "Restoring mail data..."
     docker compose stop mail roundcube 2>/dev/null || true
     
+    MAIL_VOLUME="gametaverns_mail-data"
     docker run --rm \
-        -v gametaverns_mail-data:/data \
+        -v "${MAIL_VOLUME}":/data \
         -v "$BACKUP_DIR":/backup \
         alpine sh -c "rm -rf /data/* && tar -xzf /backup/mail_${BACKUP_DATE}.tar.gz -C /data"
     echo "  ✓ Mail data restored"

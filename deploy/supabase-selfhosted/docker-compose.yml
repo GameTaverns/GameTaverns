@@ -7,6 +7,8 @@
 #   2. docker compose up -d
 #   3. Access at https://yourdomain.com
 
+name: gametaverns
+
 services:
   # ===========================================
   # Kong API Gateway
@@ -269,13 +271,15 @@ services:
       DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:-}"
       TURNSTILE_SECRET_KEY: "${TURNSTILE_SECRET_KEY:-}"
       # SMTP for edge functions
-      SMTP_HOST: ${SMTP_HOST:-mail}
-      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_HOST: "${SMTP_HOST:-mail}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
       SMTP_USER: "${SMTP_USER:-}"
       SMTP_PASS: "${SMTP_PASS:-}"
       SMTP_FROM: "${SMTP_FROM:-}"
     volumes:
-      - ../../supabase/functions:/home/deno/functions:ro
+      # Note: This path is resolved from the repo root during docker build
+      # The install.sh copies the functions to /opt/gametaverns/supabase/functions
+      - ./supabase/functions:/home/deno/functions:ro
     command:
       - start
       - --main-service
@@ -353,17 +357,17 @@ services:
   # ===========================================
   app:
     build:
-      context: ../..
-      dockerfile: deploy/supabase-selfhosted/Dockerfile.app
+      context: .
+      dockerfile: Dockerfile.app
     container_name: gametaverns-app
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:80"
     environment:
-      SUPABASE_URL: ${API_EXTERNAL_URL}
-      SUPABASE_ANON_KEY: ${ANON_KEY}
-      SITE_NAME: ${SITE_NAME:-GameTaverns}
-      SITE_DESCRIPTION: ${SITE_DESCRIPTION:-Browse and discover our collection of board games}
+      SUPABASE_URL: "${API_EXTERNAL_URL}"
+      SUPABASE_ANON_KEY: "${ANON_KEY}"
+      SITE_NAME: "${SITE_NAME:-GameTaverns}"
+      SITE_DESCRIPTION: "${SITE_DESCRIPTION:-Browse and discover our collection of board games}"
     depends_on:
       kong:
         condition: service_healthy
