@@ -104,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const me = await apiClient.get<{ 
             id: string; 
             email: string; 
+            emailVerified?: boolean;
             roles?: string[]; 
             isAdmin?: boolean;
             displayName?: string;
@@ -114,16 +115,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!mounted) return;
           setSession(null);
           // Build a user-like object with profile info for self-hosted mode
+          const isAdminFlag = !!me.isAdmin || (me.roles ?? []).includes("admin");
           setUser(({ 
             id: me.id, 
             email: me.email,
+            email_confirmed_at: me.emailVerified ? new Date().toISOString() : undefined,
             user_metadata: {
-              display_name: me.displayName,
-              username: me.username,
-              avatar_url: me.avatarUrl,
-            }
+              display_name: me.displayName || undefined,
+              username: me.username || undefined,
+              avatar_url: me.avatarUrl || undefined,
+            },
+            // Store admin flag so other hooks can access it directly
+            app_metadata: {
+              is_admin: isAdminFlag,
+            },
           } as unknown) as User);
-          setIsAdmin(!!me.isAdmin || (me.roles ?? []).includes("admin"));
+          setIsAdmin(isAdminFlag);
           setLoading(false);
           setRoleLoading(false);
         } catch {

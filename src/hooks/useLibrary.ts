@@ -203,20 +203,17 @@ export function useUserProfile() {
           return profile;
         } catch (error) {
           console.error("[useUserProfile] API error:", error);
-          // Fallback to user metadata if profile endpoint fails
+          // Fallback to user metadata stored by AuthContext
           const metadata = (user as any)?.user_metadata;
-          if (metadata) {
-            return {
-              id: user.id,
-              user_id: user.id,
-              display_name: metadata.display_name || null,
-              username: metadata.username || null,
-              avatar_url: metadata.avatar_url || null,
-              bio: null,
-              created_at: new Date().toISOString(),
-            };
-          }
-          throw error;
+          return {
+            id: user.id,
+            user_id: user.id,
+            display_name: metadata?.display_name || null,
+            username: metadata?.username || null,
+            avatar_url: metadata?.avatar_url || null,
+            bio: null,
+            created_at: new Date().toISOString(),
+          };
         }
       }
       
@@ -234,6 +231,10 @@ export function useUserProfile() {
       return data;
     },
     enabled: isAuthenticated && !!user,
+    // Retry once on error for transient failures
+    retry: 1,
+    // Allow stale data for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }
 
