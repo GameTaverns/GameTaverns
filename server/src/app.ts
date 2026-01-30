@@ -93,6 +93,49 @@ app.get('/api', (req, res) => {
   });
 });
 
+// Public site settings (for frontend to fetch turnstile key, etc.)
+app.get('/api/settings/public', async (req, res) => {
+  try {
+    // Import pool dynamically to avoid circular dependencies
+    const { pool } = await import('./services/db.js');
+    
+    // Only expose safe, public settings
+    const publicKeys = [
+      'site_name', 'site_description', 'site_author',
+      'turnstile_site_key', 
+      'theme_primary_h', 'theme_primary_s', 'theme_primary_l',
+      'theme_accent_h', 'theme_accent_s', 'theme_accent_l',
+      'theme_background_h', 'theme_background_s', 'theme_background_l',
+      'theme_card_h', 'theme_card_s', 'theme_card_l',
+      'theme_sidebar_h', 'theme_sidebar_s', 'theme_sidebar_l',
+      'theme_dark_primary_h', 'theme_dark_primary_s', 'theme_dark_primary_l',
+      'theme_dark_accent_h', 'theme_dark_accent_s', 'theme_dark_accent_l',
+      'theme_dark_background_h', 'theme_dark_background_s', 'theme_dark_background_l',
+      'theme_dark_card_h', 'theme_dark_card_s', 'theme_dark_card_l',
+      'theme_dark_sidebar_h', 'theme_dark_sidebar_s', 'theme_dark_sidebar_l',
+      'theme_font_display', 'theme_font_body',
+      'footer_text', 'twitter_handle', 'instagram_url', 'facebook_url', 'discord_url', 'contact_email',
+      'feature_play_logs', 'feature_wishlist', 'feature_for_sale', 'feature_messaging',
+      'feature_coming_soon', 'feature_demo_mode', 'feature_ratings', 'feature_events',
+    ];
+    
+    const result = await pool.query(
+      'SELECT key, value FROM site_settings WHERE key = ANY($1)',
+      [publicKeys]
+    );
+    
+    const settings: Record<string, string | null> = {};
+    result.rows.forEach(row => {
+      settings[row.key] = row.value;
+    });
+    
+    res.json(settings);
+  } catch (error) {
+    console.error('Get public settings error:', error);
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
 // Platform routes (signup, login, etc.) - for main domain
 app.use('/api/platform', platformRoutes);
 

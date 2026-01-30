@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/backend/client";
+import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { 
   loadDemoSiteSettings, 
@@ -67,7 +67,7 @@ export function useSiteSettings() {
   const { isDemoMode } = useDemoMode();
 
   return useQuery({
-    queryKey: ["site-settings", isDemoMode],
+    queryKey: ["site-settings", isDemoMode, isSelfHostedMode()],
     queryFn: async (): Promise<SiteSettings> => {
       // In demo mode, return demo settings from sessionStorage
       if (isDemoMode) {
@@ -76,7 +76,18 @@ export function useSiteSettings() {
         return convertDemoSettingsToSiteSettings(siteSettings, themeSettings);
       }
 
-      // Live mode: fetch from database
+      // Self-hosted mode: fetch from Express API
+      if (isSelfHostedMode()) {
+        try {
+          const settings = await apiClient.get<Record<string, string | null>>('/settings/public');
+          return settings as SiteSettings;
+        } catch (error) {
+          console.warn('Failed to fetch site settings from API:', error);
+          return {};
+        }
+      }
+
+      // Cloud mode: fetch from Supabase
       let data, error;
       
       // First try the full table (admins only)
@@ -110,6 +121,11 @@ export function useSiteSettings() {
 }
 
 export function useTurnstileSiteKey() {
-  const { data: settings } = useSiteSettings();
-  return settings?.turnstile_site_key || "0x4AAAAAACMX7o8e260x6gzV";
+  const { data: settings, isLoading } = useSiteSettings();
+  
+  // Return undefined while loading to prevent bypass message flashing
+  if (isLoading) return undefined;
+  
+  // Return the configured key, or undefined if not set (will trigger bypass)
+  return settings?.turnstile_site_key || undefined;
 }

@@ -2,7 +2,6 @@ import { useEffect, useRef, useCallback, forwardRef, useState } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTurnstileSiteKey } from "@/hooks/useSiteSettings";
-import { isSelfHostedMode } from "@/config/runtime";
 
 interface TurnstileWidgetProps {
   onVerify: (token: string) => void;
@@ -32,18 +31,26 @@ declare global {
 
 /**
  * Detect if we're running in an environment where Turnstile should be bypassed:
- * - Lovable preview environments
- * - Self-hosted mode (no Cloudflare integration)
+ * - Lovable preview environments (always bypass)
+ * - When no Turnstile site key is configured
+ * 
+ * Note: Self-hosted mode CAN have Turnstile if configured in the database
  */
-function shouldBypassTurnstile(): boolean {
+function shouldBypassTurnstile(siteKey?: string): boolean {
   if (typeof window === "undefined") return false;
   
-  // Self-hosted mode - no Turnstile configured
-  if (isSelfHostedMode()) return true;
-  
-  // Lovable preview domains
+  // Lovable preview domains - always bypass
   const host = window.location.hostname;
-  return host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app");
+  if (host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app")) {
+    return true;
+  }
+  
+  // If no site key is configured, bypass
+  if (!siteKey) {
+    return true;
+  }
+  
+  return false;
 }
 
 let turnstileLoadPromise: Promise<void> | null = null;
@@ -103,7 +110,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
 
     // Check for bypass environment and auto-verify
     useEffect(() => {
-      if (shouldBypassTurnstile()) {
+      if (shouldBypassTurnstile(siteKey)) {
         setIsPreview(true);
         setIsLoading(false);
         // Auto-verify with a bypass token after a brief delay
@@ -112,7 +119,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
         }, 300);
         return () => clearTimeout(timer);
       }
-    }, [onVerify]);
+    }, [onVerify, siteKey]);
 
     const handleVerify = useCallback((token: string) => {
       setIsLoading(false);
@@ -151,7 +158,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
 
     useEffect(() => {
       // Skip loading Turnstile in bypass mode
-      if (shouldBypassTurnstile()) return;
+      if (shouldBypassTurnstile(siteKey)) return;
 
       setIsLoading(true);
       setHasError(false);
@@ -184,7 +191,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
 
     // Bypass mode: show a simple indicator
     if (isPreview) {
-      const bypassReason = isSelfHostedMode() ? "self-hosted mode" : "preview mode";
+      const bypassReason = !siteKey ? "no site key configured" : "preview mode";
       return (
         <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
           <CheckCircle2 className="h-4 w-4 text-primary" />
