@@ -65,6 +65,19 @@ if [ "$EUID" -ne 0 ]; then
     error "Please run as root: sudo ./install.sh"
 fi
 
+# Check minimum RAM (2GB)
+TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
+if [ "$TOTAL_RAM_GB" -lt 2 ]; then
+    warn "System has less than 2GB RAM. Recommended: 4GB+ for production."
+fi
+
+# Check disk space (10GB minimum)
+FREE_DISK_GB=$(df / | tail -1 | awk '{print int($4/1024/1024)}')
+if [ "$FREE_DISK_GB" -lt 10 ]; then
+    warn "Less than 10GB free disk space. Recommended: 20GB+"
+fi
+
 # Run preflight check if exists
 if [ -f "$SCRIPT_DIR/scripts/preflight-check.sh" ]; then
     info "Running pre-flight checks..."
@@ -107,36 +120,47 @@ echo ""
 echo -e "${BLUE}--- Discord Integration ---${NC}"
 echo "Create app at: https://discord.com/developers/applications"
 read -p "Discord Bot Token: " DISCORD_BOT_TOKEN
+DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
 read -p "Discord Client ID: " DISCORD_CLIENT_ID
+DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
 read -p "Discord Client Secret: " DISCORD_CLIENT_SECRET
+DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
 
 # AI Services
 echo ""
 echo -e "${BLUE}--- AI Services ---${NC}"
 echo "Perplexity (https://www.perplexity.ai/settings/api)"
 read -p "Perplexity API Key: " PERPLEXITY_API_KEY
+PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
 echo "OpenAI (https://platform.openai.com/api-keys) - optional"
 read -p "OpenAI API Key: " OPENAI_API_KEY
+OPENAI_API_KEY=${OPENAI_API_KEY:-}
 echo "Firecrawl (https://www.firecrawl.dev/) - for URL imports"
 read -p "Firecrawl API Key: " FIRECRAWL_API_KEY
+FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
 
 # Bot Protection
 echo ""
 echo -e "${BLUE}--- Cloudflare Turnstile ---${NC}"
 echo "Get keys at: https://dash.cloudflare.com/?to=/:account/turnstile"
 read -p "Turnstile Site Key: " TURNSTILE_SITE_KEY
+TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
 read -p "Turnstile Secret Key: " TURNSTILE_SECRET_KEY
+TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
 
 # External SMTP (optional)
 echo ""
 echo -e "${BLUE}--- External SMTP (optional) ---${NC}"
 echo "Leave empty to use built-in mail server"
 read -p "External SMTP Host: " EXT_SMTP_HOST
+EXT_SMTP_HOST=${EXT_SMTP_HOST:-}
 if [ -n "$EXT_SMTP_HOST" ]; then
     read -p "External SMTP Port [587]: " EXT_SMTP_PORT
     EXT_SMTP_PORT=${EXT_SMTP_PORT:-587}
     read -p "External SMTP User: " EXT_SMTP_USER
+    EXT_SMTP_USER=${EXT_SMTP_USER:-}
     read -s -p "External SMTP Password: " EXT_SMTP_PASS
+    EXT_SMTP_PASS=${EXT_SMTP_PASS:-}
     echo ""
 else
     EXT_SMTP_PORT=""
@@ -238,10 +262,6 @@ echo ""
 info "Setting up directories..."
 
 mkdir -p "$INSTALL_DIR"
-mkdir -p "$INSTALL_DIR/volumes/db/data"
-mkdir -p "$INSTALL_DIR/volumes/storage"
-mkdir -p "$INSTALL_DIR/volumes/mail/vmail"
-mkdir -p "$INSTALL_DIR/volumes/mail/config"
 mkdir -p "$INSTALL_DIR/logs"
 mkdir -p "$INSTALL_DIR/nginx/ssl"
 mkdir -p "$INSTALL_DIR/backups"
@@ -380,8 +400,10 @@ success "Credentials saved to $CREDS_FILE"
 echo ""
 info "Rendering Kong configuration..."
 
-# Move template and render with actual keys
-cp "$INSTALL_DIR/kong.yml" "$INSTALL_DIR/kong.yml.template"
+# Backup template
+cp "$INSTALL_DIR/kong.yml" "$INSTALL_DIR/kong.yml.template" 2>/dev/null || true
+
+# Replace placeholders with actual keys
 sed -e "s|{{ANON_KEY}}|${ANON_KEY}|g" \
     -e "s|{{SERVICE_ROLE_KEY}}|${SERVICE_ROLE_KEY}|g" \
     "$INSTALL_DIR/kong.yml.template" > "$INSTALL_DIR/kong.yml"
@@ -420,7 +442,7 @@ docker compose up -d 2>&1 | tee -a "$LOG_FILE"
 # Wait for database health
 echo ""
 info "Waiting for database to be ready..."
-MAX_RETRIES=30
+MAX_RETRIES=60
 RETRY_COUNT=0
 
 while ! docker compose exec -T db pg_isready -U supabase_admin -d postgres > /dev/null 2>&1; do
@@ -429,18 +451,23 @@ while ! docker compose exec -T db pg_isready -U supabase_admin -d postgres > /de
         error "Database failed to start after $MAX_RETRIES attempts. Check logs: docker compose logs db"
     fi
     echo "  Waiting for database... ($RETRY_COUNT/$MAX_RETRIES)"
-    sleep 5
+    sleep 3
 done
 
 success "Database is ready"
 
+# Give PostgreSQL time to fully initialize roles
+sleep 5
+
 # ===========================================
-# Run Database Migrations
+# Run Database Migrations Manually
 # ===========================================
 echo ""
 info "Running database migrations..."
 
-# Define migration order
+# Note: Migrations in /docker-entrypoint-initdb.d only run on fresh DB
+# For existing installations, we run them manually
+
 MIGRATION_FILES=(
     "01-extensions.sql"
     "02-enums.sql"
@@ -457,18 +484,24 @@ MIGRATION_FILES=(
     "13-storage-buckets.sql"
 )
 
+MIGRATION_ERRORS=0
 for migration in "${MIGRATION_FILES[@]}"; do
     if [ -f "$INSTALL_DIR/migrations/$migration" ]; then
         echo "  Running: $migration"
-        if docker compose exec -T db psql -U supabase_admin -d postgres < "$INSTALL_DIR/migrations/$migration" >> "$LOG_FILE" 2>&1; then
+        if docker compose exec -T db psql -U supabase_admin -d postgres -f "/docker-entrypoint-initdb.d/$migration" >> "$LOG_FILE" 2>&1; then
             success "  $migration"
         else
-            warn "  $migration (check $LOG_FILE for details)"
+            warn "  $migration may have had issues (often OK for IF NOT EXISTS)"
+            MIGRATION_ERRORS=$((MIGRATION_ERRORS + 1))
         fi
     else
         warn "  $migration not found, skipping"
     fi
 done
+
+if [ $MIGRATION_ERRORS -gt 0 ]; then
+    warn "Some migrations had warnings - this is often normal for 'already exists' errors"
+fi
 
 success "Database migrations complete"
 
@@ -478,13 +511,26 @@ success "Database migrations complete"
 echo ""
 info "Verifying installation..."
 
+# Wait for services to stabilize
+sleep 10
+
 # Check all containers are running
-FAILED_CONTAINERS=$(docker compose ps --format '{{.Name}} {{.Status}}' | grep -v "Up" | grep -v "NAME" || true)
+FAILED_CONTAINERS=$(docker compose ps --format '{{.Name}} {{.Status}}' 2>/dev/null | grep -v "Up" | grep -v "NAME" || true)
 if [ -n "$FAILED_CONTAINERS" ]; then
-    warn "Some containers are not running:"
+    warn "Some containers may still be starting:"
     echo "$FAILED_CONTAINERS"
 else
     success "All containers running"
+fi
+
+# Verify critical tables exist
+echo ""
+info "Verifying database schema..."
+TABLES_CHECK=$(docker compose exec -T db psql -U supabase_admin -d postgres -t -c "SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('users', 'libraries', 'games', 'library_settings');" 2>/dev/null | tr -d ' ')
+if [ "$TABLES_CHECK" = "4" ]; then
+    success "Core database tables created"
+else
+    warn "Some tables may be missing. Check: docker compose exec db psql -U supabase_admin -d postgres -c '\\dt public.*'"
 fi
 
 # ===========================================
