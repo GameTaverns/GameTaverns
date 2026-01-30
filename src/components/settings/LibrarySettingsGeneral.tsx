@@ -124,7 +124,7 @@ export function LibrarySettingsGeneral() {
               <Label>Library URL</Label>
               <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
                 <span className="font-mono text-sm">
-                  {library.slug}.tavern.tzolak.com
+                  {library.slug}.gametaverns.com
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">
