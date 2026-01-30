@@ -32,7 +32,7 @@ import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
 import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyticsDashboard";

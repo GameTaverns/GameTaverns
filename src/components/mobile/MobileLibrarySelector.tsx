@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Library, ArrowRight, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { toast } from "sonner";
 import { useMobileLibrary } from "@/hooks/useCapacitor";
 

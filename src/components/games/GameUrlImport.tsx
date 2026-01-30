@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAllGamesFlat } from "@/hooks/useGames";
 import { SALE_CONDITION_OPTIONS, type SaleCondition } from "@/types/game";

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTenant } from "@/contexts/TenantContext";
 
 export interface GameRecommendation {

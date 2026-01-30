@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Star, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { cn } from "@/lib/utils";
