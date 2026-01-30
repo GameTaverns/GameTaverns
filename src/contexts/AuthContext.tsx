@@ -101,13 +101,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           // Validate token + fetch user
-          const me = await apiClient.get<{ id: string; email: string; roles?: string[]; isAdmin?: boolean }>(
-            "/auth/me"
-          );
+          const me = await apiClient.get<{ 
+            id: string; 
+            email: string; 
+            roles?: string[]; 
+            isAdmin?: boolean;
+            displayName?: string;
+            username?: string;
+            avatarUrl?: string;
+          }>("/auth/me");
 
           if (!mounted) return;
           setSession(null);
-          setUser(({ id: me.id, email: me.email } as unknown) as User);
+          // Build a user-like object with profile info for self-hosted mode
+          setUser(({ 
+            id: me.id, 
+            email: me.email,
+            user_metadata: {
+              display_name: me.displayName,
+              username: me.username,
+              avatar_url: me.avatarUrl,
+            }
+          } as unknown) as User);
           setIsAdmin(!!me.isAdmin || (me.roles ?? []).includes("admin"));
           setLoading(false);
           setRoleLoading(false);

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile, useUpdateUserProfile } from "@/hooks/useLibrary";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { DiscordLinkCard } from "./DiscordLinkCard";
 
 export function AccountSettings() {
@@ -56,6 +56,20 @@ export function AccountSettings() {
     // Check availability
     setIsCheckingUsername(true);
     try {
+      // Self-hosted mode: use API endpoint
+      if (isSelfHostedMode()) {
+        const result = await apiClient.get<{ available: boolean; reason?: string }>(
+          `/profiles/check/username/${encodeURIComponent(value)}`
+        );
+        if (!result.available) {
+          setUsernameError(result.reason || "This username is already taken");
+          return false;
+        }
+        setUsernameError(null);
+        return true;
+      }
+      
+      // Supabase mode
       const { data, error } = await supabase
         .from("user_profiles")
         .select("id")
