@@ -3,18 +3,26 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
+# Install bun for faster installs (optional fallback to npm)
+RUN npm install -g bun || true
+
+# Copy package files first (for caching)
 COPY package*.json ./
 COPY bun.lockb* ./
-RUN npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+# Install dependencies (try bun first, fallback to npm)
+RUN if command -v bun > /dev/null 2>&1 && [ -f bun.lockb ]; then \
+      bun install --frozen-lockfile; \
+    else \
+      npm ci --legacy-peer-deps || npm install --legacy-peer-deps; \
+    fi
 
 # Copy source
 COPY . .
 
-# Build arguments for runtime config
-ARG SUPABASE_URL
-ARG SUPABASE_ANON_KEY
-ARG SITE_NAME
+# Build arguments for any compile-time config (not used, runtime config is injected)
+ARG VITE_BUILD_DATE
+ENV VITE_BUILD_DATE=${VITE_BUILD_DATE:-$(date -I)}
 
 # Build the app
 RUN npm run build
