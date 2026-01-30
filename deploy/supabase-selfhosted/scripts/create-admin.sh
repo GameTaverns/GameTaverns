@@ -1,11 +1,13 @@
 #!/bin/bash
 # =============================================================================
 # Create Admin User for GameTaverns
+# Domain: gametaverns.com
 # =============================================================================
 
 set -e
 
 INSTALL_DIR="/opt/gametaverns"
+DOMAIN="gametaverns.com"
 
 if [ ! -f "$INSTALL_DIR/.env" ]; then
     echo "Error: .env file not found. Run install.sh first."
@@ -17,10 +19,12 @@ source "$INSTALL_DIR/.env"
 echo ""
 echo "=============================================="
 echo "  Create Admin User"
+echo "  Domain: $DOMAIN"
 echo "=============================================="
 echo ""
 
-read -p "Enter admin email: " ADMIN_EMAIL
+read -p "Enter admin email [admin@$DOMAIN]: " ADMIN_EMAIL
+ADMIN_EMAIL=${ADMIN_EMAIL:-admin@$DOMAIN}
 read -s -p "Enter admin password: " ADMIN_PASSWORD
 echo ""
 read -p "Enter display name [Admin]: " DISPLAY_NAME

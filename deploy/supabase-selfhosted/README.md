@@ -2,13 +2,33 @@
 
 Complete self-hosted stack using official Supabase Docker images for 1:1 feature parity with Lovable Cloud.
 
+**Domain:** `gametaverns.com` (hardcoded)  
+**Tenant Libraries:** `*.gametaverns.com` (e.g., `tzolak.gametaverns.com`)
+
 ## Requirements
 
 - Ubuntu 22.04 or 24.04 LTS
 - 4GB RAM minimum (8GB recommended)
 - 50GB disk space
-- Domain with DNS pointed to server
+- DNS configured (see below)
 - Ports 80, 443 open
+
+## DNS Configuration
+
+Before running the installer, configure these DNS records pointing to your server:
+
+| Type | Name | Value |
+|------|------|-------|
+| A | @ | YOUR_SERVER_IP |
+| A | www | YOUR_SERVER_IP |
+| A | api | YOUR_SERVER_IP |
+| A | mail | YOUR_SERVER_IP |
+| A | studio | YOUR_SERVER_IP |
+| A | * | YOUR_SERVER_IP |
+| MX | @ | mail.gametaverns.com |
+| TXT | @ | v=spf1 mx a ~all |
+
+The wildcard (`*`) record enables tenant subdomains like `tzolak.gametaverns.com`.
 
 ## Quick Start
 
@@ -20,15 +40,32 @@ cd GameTaverns/deploy/supabase-selfhosted
 # 2. Run preflight check (catches common issues)
 sudo ./scripts/preflight-check.sh
 
-# 3. Run installer
+# 3. Run installer (will prompt for API keys)
 sudo ./install.sh
 
 # 4. Start services
+cd /opt/gametaverns
 docker compose up -d
 
-# 5. Set up SSL
+# 5. Set up SSL (includes wildcard cert for *.gametaverns.com)
 sudo ./scripts/setup-ssl.sh
+
+# 6. Create admin user
+sudo ./scripts/create-admin.sh
 ```
+
+## API Keys Configured During Install
+
+The installer prompts for all API keys upfront:
+
+| Key | Purpose | Required |
+|-----|---------|----------|
+| Discord Bot Token | Notifications & webhooks | Recommended |
+| Discord Client ID/Secret | OAuth login | Recommended |
+| Perplexity API Key | Game recommendations | Recommended |
+| OpenAI API Key | Enhanced AI features | Optional |
+| Firecrawl API Key | URL-based game imports | Recommended |
+| Turnstile Site/Secret | Bot protection | Required |
 
 ## Architecture
 
