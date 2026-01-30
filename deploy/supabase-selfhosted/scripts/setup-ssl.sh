@@ -7,15 +7,30 @@
 
 set -e
 
-INSTALL_DIR="/opt/gametaverns"
-DOMAIN="gametaverns.com"
-
-if [ ! -f "$INSTALL_DIR/.env" ]; then
-    echo "Error: .env file not found"
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root: sudo ./setup-ssl.sh"
     exit 1
 fi
 
+INSTALL_DIR="/opt/gametaverns"
+DOMAIN="gametaverns.com"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+if [ ! -f "$INSTALL_DIR/.env" ]; then
+    echo -e "${RED}Error: .env file not found. Run install.sh first.${NC}"
+    exit 1
+fi
+
+# Source env file safely
+set -a
 source "$INSTALL_DIR/.env"
+set +a
 
 echo ""
 echo "=============================================="

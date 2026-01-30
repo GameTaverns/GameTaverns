@@ -5,6 +5,12 @@
 
 set -e
 
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root: sudo ./run-migrations.sh"
+    exit 1
+fi
+
 INSTALL_DIR="/opt/gametaverns"
 MIGRATIONS_DIR="$INSTALL_DIR/migrations"
 
