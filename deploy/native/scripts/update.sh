@@ -2,7 +2,8 @@
 #
 # Update GameTaverns to the latest version
 #
-# Usage: ./update.sh
+# Usage: sudo ./update.sh
+# Version: 2.0.0
 #
 
 set -e
@@ -13,6 +14,7 @@ INSTALL_DIR="/opt/gametaverns"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo ""
@@ -21,24 +23,35 @@ echo "║          GameTaverns - Update                                     ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
 
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${RED}Please run as root: sudo ./update.sh${NC}"
+    exit 1
+fi
+
 # Check we're in the right place
 if [[ ! -d "${INSTALL_DIR}" ]]; then
     echo -e "${RED}[ERROR]${NC} Installation not found at ${INSTALL_DIR}"
     exit 1
 fi
 
-cd ${INSTALL_DIR}
+cd "${INSTALL_DIR}"
+
+# Configure git safe directory to avoid ownership errors
+git config --global --add safe.directory "${INSTALL_DIR}" 2>/dev/null || true
 
 # Check for uncommitted changes
 if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
     echo -e "${YELLOW}[WARN]${NC} Local changes detected. Stashing..."
-    git stash
+    git stash push -m "Auto-stash before update $(date +%Y%m%d-%H%M%S)"
 fi
 
 # Create backup first
 echo -e "${YELLOW}[INFO]${NC} Creating backup before update..."
 if [[ -x "${INSTALL_DIR}/deploy/native/scripts/backup.sh" ]]; then
-    ${INSTALL_DIR}/deploy/native/scripts/backup.sh || true
+    if ! "${INSTALL_DIR}/deploy/native/scripts/backup.sh"; then
+        echo -e "${YELLOW}[WARN]${NC} Backup had issues but continuing with update"
+    fi
 else
     echo -e "${YELLOW}[WARN]${NC} Backup script not found, skipping backup"
 fi

@@ -1,13 +1,24 @@
 # GameTaverns Self-Hosted: Troubleshooting Guide
 
+This guide covers common issues and their solutions for the self-hosted deployment.
+
 ## Quick Diagnostics
 
+Run these commands first to understand the current state:
+
 ```bash
-# Check all container status
+# Navigate to installation directory
+cd /opt/gametaverns
+
+# Check all container status (most important)
 docker compose ps
 
-# View logs for all services
-docker compose logs -f
+# Quick health check
+docker compose exec -T db pg_isready -U supabase_admin -d postgres
+curl -s http://localhost:8000/auth/v1/health
+
+# View logs for all services (last 100 lines)
+docker compose logs --tail=100
 
 # View logs for specific service
 docker compose logs -f db
@@ -257,13 +268,36 @@ docker compose up -d
 
 ## Getting Help
 
-1. Check the logs first: `docker compose logs -f`
-2. Review this troubleshooting guide
-3. Check GitHub Issues: https://github.com/GameTaverns/GameTaverns/issues
-4. Join Discord: https://discord.gg/gametaverns
+### Before Asking for Help
 
-When reporting issues, include:
-- Output of `docker compose ps`
-- Relevant logs from `docker compose logs [service]`
-- Your Ubuntu version: `lsb_release -a`
-- Docker version: `docker --version`
+1. **Check the logs first**: `docker compose logs -f --tail=200`
+2. **Identify the failing service**: `docker compose ps`
+3. **Review this troubleshooting guide**
+4. **Check GitHub Issues**: https://github.com/GameTaverns/GameTaverns/issues
+
+### When Reporting Issues
+
+Include the following in your bug report:
+
+```bash
+# System information
+uname -a
+lsb_release -a
+docker --version
+docker compose version
+
+# Container status
+docker compose ps
+
+# Last 50 lines of logs from failing service
+docker compose logs --tail=50 [service_name]
+
+# Environment (with secrets redacted)
+cat .env | grep -v "PASSWORD\|SECRET\|KEY\|TOKEN"
+```
+
+### Support Channels
+
+- **GitHub Issues**: https://github.com/GameTaverns/GameTaverns/issues
+- **Discord**: https://discord.gg/gametaverns
+- **Documentation**: See README.md and MIGRATION.md

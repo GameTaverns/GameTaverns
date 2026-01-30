@@ -1,40 +1,61 @@
 #!/bin/bash
 # Mail server entrypoint
+# Version: 2.0.0
 
 set -e
 
 MAIL_DOMAIN="${MAIL_DOMAIN:-localhost}"
-POSTMASTER_EMAIL="${POSTMASTER_EMAIL:-postmaster@$MAIL_DOMAIN}"
+POSTMASTER_EMAIL="${POSTMASTER_EMAIL:-postmaster@${MAIL_DOMAIN}}"
 
 echo "=============================================="
 echo "  Configuring Mail Server"
-echo "  Domain: $MAIL_DOMAIN"
+echo "  Domain: ${MAIL_DOMAIN}"
+echo "  Postmaster: ${POSTMASTER_EMAIL}"
 echo "=============================================="
+echo ""
 
-# Configure Postfix
-postconf -e "myhostname=mail.$MAIL_DOMAIN"
-postconf -e "mydomain=$MAIL_DOMAIN"
+# Ensure required directories exist
+mkdir -p /var/spool/postfix
+mkdir -p /var/spool/rsyslog
+mkdir -p /var/log
+mkdir -p /run/dovecot
+
+# Configure Postfix with proper quoting
+postconf -e "myhostname=mail.${MAIL_DOMAIN}"
+postconf -e "mydomain=${MAIL_DOMAIN}"
 postconf -e "myorigin=\$mydomain"
 postconf -e "mydestination=\$myhostname, localhost.\$mydomain, localhost, \$mydomain"
-postconf -e "virtual_mailbox_domains=$MAIL_DOMAIN"
+postconf -e "virtual_mailbox_domains=${MAIL_DOMAIN}"
 postconf -e "virtual_mailbox_base=/var/mail/vhosts"
 postconf -e "virtual_mailbox_maps=hash:/etc/postfix/vmailbox"
 postconf -e "virtual_uid_maps=static:5000"
 postconf -e "virtual_gid_maps=static:5000"
 postconf -e "smtpd_tls_security_level=may"
 postconf -e "smtp_tls_security_level=may"
+postconf -e "smtpd_relay_restrictions=permit_mynetworks,permit_sasl_authenticated,reject_unauth_destination"
 
 # Create virtual mailbox file if it doesn't exist
+mkdir -p /etc/postfix
 if [ ! -f /etc/postfix/vmailbox ]; then
-    echo "$POSTMASTER_EMAIL    $MAIL_DOMAIN/postmaster/" > /etc/postfix/vmailbox
-    postmap /etc/postfix/vmailbox
+    echo "${POSTMASTER_EMAIL}    ${MAIL_DOMAIN}/postmaster/" > /etc/postfix/vmailbox
 fi
+postmap /etc/postfix/vmailbox
 
-# Create mailbox directories
-mkdir -p "/var/mail/vhosts/$MAIL_DOMAIN"
-chown -R vmail:vmail "/var/mail/vhosts/$MAIL_DOMAIN"
+# Create mailbox directories with correct permissions
+mkdir -p "/var/mail/vhosts/${MAIL_DOMAIN}"
+mkdir -p "/var/mail/vhosts/${MAIL_DOMAIN}/postmaster"
 
-# Configure Dovecot
+# Ensure vmail user exists (uid/gid 5000)
+if ! getent passwd vmail > /dev/null 2>&1; then
+    groupadd -g 5000 vmail 2>/dev/null || true
+    useradd -u 5000 -g 5000 -s /sbin/nologin -d /var/mail/vhosts vmail 2>/dev/null || true
+fi
+chown -R vmail:vmail "/var/mail/vhosts"
+chmod -R 700 "/var/mail/vhosts"
+
+# Configure Dovecot directories
+mkdir -p /etc/dovecot/conf.d
+
 cat > /etc/dovecot/conf.d/10-mail.conf << EOF
 mail_location = maildir:/var/mail/vhosts/%d/%n
 mail_uid = vmail
@@ -65,14 +86,18 @@ EOF
 if [ ! -f /etc/dovecot/users ]; then
     touch /etc/dovecot/users
 fi
-chown root:dovecot /etc/dovecot/users
+
+# Handle dovecot group existence
+if getent group dovecot > /dev/null 2>&1; then
+    chown root:dovecot /etc/dovecot/users
+else
+    chown root:root /etc/dovecot/users
+fi
 chmod 640 /etc/dovecot/users
 
-# Ensure rsyslog directories exist
-mkdir -p /var/spool/rsyslog
-
-echo ""
-echo "✓ Mail server configured for $MAIL_DOMAIN"
+echo "✓ Postfix configured"
+echo "✓ Dovecot configured"
+echo "✓ Mail server ready for ${MAIL_DOMAIN}"
 echo ""
 
 exec "$@"

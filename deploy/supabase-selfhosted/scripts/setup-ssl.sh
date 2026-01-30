@@ -3,6 +3,7 @@
 # SSL Setup with Certbot for GameTaverns
 # Domain: gametaverns.com (hardcoded)
 # Includes wildcard certificate for *.gametaverns.com (tenant libraries)
+# Version: 2.0.0
 # =============================================================================
 
 set -e
@@ -40,17 +41,29 @@ echo "  Includes: *.${DOMAIN} (tenant subdomains)"
 echo "=============================================="
 echo ""
 
+# Pre-flight DNS check
+echo -e "${BLUE}Checking DNS resolution...${NC}"
+if command -v host &>/dev/null; then
+    if ! host "$DOMAIN" > /dev/null 2>&1; then
+        echo -e "${YELLOW}Warning: $DOMAIN does not resolve. DNS may not be configured.${NC}"
+    else
+        echo -e "${GREEN}✓ $DOMAIN resolves correctly${NC}"
+    fi
+fi
+
 # Install Certbot if needed
 if ! command -v certbot &> /dev/null; then
-    echo "Installing Certbot..."
+    echo -e "${BLUE}Installing Certbot...${NC}"
     apt-get update
     apt-get install -y certbot python3-certbot-nginx python3-certbot-dns-cloudflare
+    echo -e "${GREEN}✓ Certbot installed${NC}"
 fi
 
 # Install Nginx if needed
 if ! command -v nginx &> /dev/null; then
-    echo "Installing Nginx..."
+    echo -e "${BLUE}Installing Nginx...${NC}"
     apt-get install -y nginx
+    echo -e "${GREEN}✓ Nginx installed${NC}"
 fi
 
 # ===========================================

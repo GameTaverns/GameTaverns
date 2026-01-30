@@ -2,6 +2,7 @@
 # =============================================================================
 # Create Admin User for GameTaverns
 # Domain: gametaverns.com
+# Version: 2.0.0
 # =============================================================================
 
 set -e
@@ -18,6 +19,7 @@ DOMAIN="gametaverns.com"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 if [ ! -f "$INSTALL_DIR/.env" ]; then
@@ -39,17 +41,24 @@ echo ""
 
 read -p "Enter admin email [admin@$DOMAIN]: " ADMIN_EMAIL
 ADMIN_EMAIL=${ADMIN_EMAIL:-admin@$DOMAIN}
+
+# Validate email format
+if ! echo "$ADMIN_EMAIL" | grep -qE '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'; then
+    echo -e "${RED}Error: Invalid email format${NC}"
+    exit 1
+fi
+
 read -s -p "Enter admin password: " ADMIN_PASSWORD
 echo ""
 
 if [ -z "$ADMIN_PASSWORD" ]; then
-    echo "Error: Password cannot be empty"
+    echo -e "${RED}Error: Password cannot be empty${NC}"
     exit 1
 fi
 
 # Password minimum length check
-if [ ${#ADMIN_PASSWORD} -lt 6 ]; then
-    echo "Error: Password must be at least 6 characters"
+if [ ${#ADMIN_PASSWORD} -lt 8 ]; then
+    echo -e "${RED}Error: Password must be at least 8 characters${NC}"
     exit 1
 fi
 
@@ -57,20 +66,27 @@ read -p "Enter display name [Admin]: " DISPLAY_NAME
 DISPLAY_NAME=${DISPLAY_NAME:-Admin}
 
 echo ""
-echo "Creating admin user..."
+echo -e "${BLUE}Creating admin user...${NC}"
 
 cd "$INSTALL_DIR"
 
 # Wait for Kong and Auth to be ready
-MAX_RETRIES=60
+MAX_RETRIES=90
 RETRY_COUNT=0
 AUTH_READY=false
+
+echo -e "${BLUE}Waiting for auth service...${NC}"
 
 while [ "$AUTH_READY" = "false" ]; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        echo "Error: Auth service not responding after $MAX_RETRIES attempts."
-        echo "Check: docker compose logs auth kong"
+        echo -e "${RED}Error: Auth service not responding after $MAX_RETRIES attempts.${NC}"
+        echo ""
+        echo "Troubleshooting steps:"
+        echo "  1. Check container status: docker compose ps"
+        echo "  2. Check auth logs: docker compose logs auth"
+        echo "  3. Check kong logs: docker compose logs kong"
+        echo "  4. Restart services: docker compose restart"
         exit 1
     fi
     
@@ -83,9 +99,10 @@ while [ "$AUTH_READY" = "false" ]; do
     fi
 done
 
-echo "Auth service is ready"
+echo -e "${GREEN}✓ Auth service is ready${NC}"
 
 # Create user via Supabase Auth API
+echo -e "${BLUE}Creating user account...${NC}"
 RESPONSE=$(curl -s -X POST \
     "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
     -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
@@ -98,12 +115,21 @@ RESPONSE=$(curl -s -X POST \
         \"user_metadata\": {
             \"display_name\": \"$DISPLAY_NAME\"
         }
-    }")
+    }" 2>&1)
 
 # Check for error in response
-if echo "$RESPONSE" | grep -q '"error"'; then
-    echo "Error creating user:"
-    echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
+if echo "$RESPONSE" | grep -qE '"error"|"code":'; then
+    ERROR_MSG=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message', d.get('error', 'Unknown error')))" 2>/dev/null || echo "$RESPONSE")
+    echo -e "${RED}Error creating user: $ERROR_MSG${NC}"
+    
+    # Check for common errors
+    if echo "$RESPONSE" | grep -qi "already registered"; then
+        echo ""
+        echo "This email is already registered. You can:"
+        echo "  1. Use a different email address"
+        echo "  2. Reset the password for this user"
+        echo "  3. Add admin role to existing user manually"
+    fi
     exit 1
 fi
 
@@ -111,22 +137,26 @@ fi
 USER_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 
 if [ -z "$USER_ID" ]; then
-    echo "Error: Could not extract user ID from response:"
-    echo "$RESPONSE"
+    echo -e "${RED}Error: Could not extract user ID from response${NC}"
+    echo "Response: $RESPONSE"
     exit 1
 fi
 
-echo "  User created with ID: $USER_ID"
+echo -e "${GREEN}✓ User created with ID: $USER_ID${NC}"
 
 # Add admin role
-echo "Adding admin role..."
+echo -e "${BLUE}Adding admin role...${NC}"
+
+# First ensure user_roles table exists and has the right structure
 ROLE_RESULT=$(docker compose exec -T db psql -U supabase_admin -d postgres -c \
     "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING RETURNING id;" 2>&1)
 
-if echo "$ROLE_RESULT" | grep -q "ERROR"; then
-    echo -e "${YELLOW}Warning: Could not add admin role. You may need to add it manually.${NC}"
-    echo "  Run: docker compose exec db psql -U supabase_admin -d postgres"
-    echo "  Then: INSERT INTO user_roles (user_id, role) VALUES ('$USER_ID', 'admin');"
+if echo "$ROLE_RESULT" | grep -qE "ERROR|does not exist"; then
+    echo -e "${YELLOW}Warning: Could not add admin role automatically.${NC}"
+    echo ""
+    echo "To add the admin role manually, run:"
+    echo "  docker compose exec db psql -U supabase_admin -d postgres"
+    echo "  INSERT INTO user_roles (user_id, role) VALUES ('$USER_ID', 'admin');"
 else
     echo -e "${GREEN}✓ Admin role added successfully${NC}"
 fi
@@ -138,6 +168,7 @@ echo "=============================================="
 echo ""
 echo "  Email: $ADMIN_EMAIL"
 echo "  User ID: $USER_ID"
+echo "  Display Name: $DISPLAY_NAME"
 echo ""
 echo "You can now log in at: https://$DOMAIN"
 echo ""
