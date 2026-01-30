@@ -230,8 +230,8 @@ fi
 
 section "HTTPS/SSL Configuration"
 
-# Check for SSL certificates
-domain=$(grep "DOMAIN=" "${INSTALL_DIR}/.env" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "")
+# Check for SSL certificates (extract domain from SITE_URL)
+domain=$(grep "SITE_URL=" "${INSTALL_DIR}/.env" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | sed 's|https://||;s|http://||' || echo "")
 
 if [ -n "$domain" ]; then
     cert_path="/etc/letsencrypt/live/${domain}/fullchain.pem"
