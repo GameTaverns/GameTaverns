@@ -289,16 +289,20 @@ if [ -f "$PROJECT_ROOT/package.json" ]; then
     cp "$PROJECT_ROOT/tsconfig.node.json" "$INSTALL_DIR/" 2>/dev/null || true
     cp "$PROJECT_ROOT/tailwind.config.ts" "$INSTALL_DIR/"
     cp "$PROJECT_ROOT/postcss.config.js" "$INSTALL_DIR/"
-    cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/" 2>/dev/null || touch "$INSTALL_DIR/components.json"
     cp "$PROJECT_ROOT/index.html" "$INSTALL_DIR/"
-    cp "$PROJECT_ROOT/eslint.config.js" "$INSTALL_DIR/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/index.html" "$INSTALL_DIR/"
+    
+    # Optional config files - create empty if missing
+    cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/" 2>/dev/null || echo '{}' > "$INSTALL_DIR/components.json"
     cp "$PROJECT_ROOT/eslint.config.js" "$INSTALL_DIR/" 2>/dev/null || true
     
     # Copy edge functions
     mkdir -p "$INSTALL_DIR/supabase"
-    cp -r "$PROJECT_ROOT/supabase/functions" "$INSTALL_DIR/supabase/"
+    if [ -d "$PROJECT_ROOT/supabase/functions" ]; then
+        cp -r "$PROJECT_ROOT/supabase/functions" "$INSTALL_DIR/supabase/"
+        success "Edge functions copied"
+    else
+        warn "No edge functions found at $PROJECT_ROOT/supabase/functions"
+    fi
     
     # Copy supabase config (needed for edge functions)
     cp "$PROJECT_ROOT/supabase/config.toml" "$INSTALL_DIR/supabase/" 2>/dev/null || true

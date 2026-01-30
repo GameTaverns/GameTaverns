@@ -176,7 +176,11 @@ BEGIN
             FOR EACH ROW
             EXECUTE FUNCTION public.set_game_slug();
         RAISE NOTICE 'Created games_set_slug_trigger';
+    ELSE
+        RAISE NOTICE 'Skipping games_set_slug_trigger - games table does not exist yet';
     END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Error creating games_set_slug_trigger: %', SQLERRM;
 END $$;
 
 -- Auto-create library settings when library is created
