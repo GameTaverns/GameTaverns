@@ -145,6 +145,10 @@ app.use('/api/tenant', tenantRoutes);
 // Auth routes (extended with email verification)
 app.use('/api/auth', authExtendedRoutes);
 
+// Compatibility alias: some frontends/proxies call auth routes without the /api prefix
+// Keep this lightweight so both /api/auth/* and /auth/* work in self-hosted deployments.
+app.use('/auth', authExtendedRoutes);
+
 // Standard routes (work on both main domain and tenant subdomains)
 app.use('/api/games', gamesRoutes);
 app.use('/api/bgg', bggRoutes);
