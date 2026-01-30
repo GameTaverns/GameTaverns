@@ -51,7 +51,7 @@ async function aiComplete(messages: Array<{ role: string; content: string }>, ma
         return { success: false, error: `AI request failed: ${response.status}` };
       }
       
-      const data = await response.json();
+      const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
       return { success: true, content: data.choices?.[0]?.message?.content };
     } else {
       // OpenAI
@@ -74,7 +74,7 @@ async function aiComplete(messages: Array<{ role: string; content: string }>, ma
         return { success: false, error: `AI request failed: ${response.status}` };
       }
       
-      const data = await response.json();
+      const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
       return { success: true, content: data.choices?.[0]?.message?.content };
     }
   } catch (error) {
@@ -194,7 +194,7 @@ router.post('/import-game', authMiddleware, async (req: Request, res: Response) 
       return;
     }
     
-    const scrapeData = await scrapeResponse.json();
+    const scrapeData = await scrapeResponse.json() as { data?: { markdown?: string; rawHtml?: string }; markdown?: string; rawHtml?: string };
     const markdown = scrapeData.data?.markdown || scrapeData.markdown;
     const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || '';
     
