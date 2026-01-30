@@ -48,7 +48,7 @@ import { useLending } from "@/hooks/useLending";
 import { useMyMemberships, useLibraryMembership } from "@/hooks/useLibraryMembership";
 
 export default function Dashboard() {
-  const { user, signOut, isAuthenticated } = useAuth();
+  const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
   const { data: library, isLoading: libraryLoading } = useMyLibrary();
   const { data: profile } = useUserProfile();
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
@@ -60,22 +60,6 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editEvent, setEditEvent] = useState<import("@/hooks/useLibraryEvents").CalendarEvent | null>(null);
-
-  // Check if user is a site owner (has admin role)
-  const { data: isSiteOwner } = useQuery({
-    queryKey: ["user-role", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return false;
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      return !!data;
-    },
-    enabled: !!user?.id,
-  });
   
   // Fetch library stats
   const { data: gameCount } = useQuery({
@@ -128,8 +112,6 @@ export default function Dashboard() {
     }
   };
   
-  const { loading } = useAuth();
-  
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate("/login");
@@ -180,7 +162,7 @@ export default function Dashboard() {
                 <ArrowRight className="h-4 w-4" />
               </a>
             )}
-            <span className="text-cream/80 hidden sm:inline">{profile?.display_name || user?.email}</span>
+            <span className="text-cream/80 hidden sm:inline">{profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email}</span>
             <Button 
               variant="ghost" 
               size="icon"
@@ -195,7 +177,7 @@ export default function Dashboard() {
       
       <main className="container mx-auto px-4 py-12">
         <h1 className="font-display text-4xl font-bold text-cream mb-8">
-          Welcome back, {profile?.display_name || user?.email?.split("@")[0]}
+          Welcome back, {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0]}
         </h1>
         
         <Tabs defaultValue="personal" className="w-full">
@@ -223,7 +205,7 @@ export default function Dashboard() {
           <TabsContent value="personal">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Admin Card - Only show for site owners */}
-              {isSiteOwner && (
+              {isAdmin && (
                 <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">

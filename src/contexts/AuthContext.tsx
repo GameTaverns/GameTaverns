@@ -218,6 +218,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return direct;
         }
 
+        // Prefer security-definer function call (avoids RLS chicken/egg on user_roles)
+        // Function exists in DB: public.has_role(_user_id uuid, _role app_role) returns boolean
+        try {
+          const rpc = await Promise.race([
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (supabase as any).rpc("has_role", { _user_id: userId, _role: "admin" }),
+            new Promise<{ data: null; error: null }>((resolve) =>
+              setTimeout(() => resolve({ data: null, error: null }), timeoutMs)
+            ),
+          ]);
+
+          const { data: rpcData, error: rpcError } = rpc as any;
+          if (!rpcError && typeof rpcData === "boolean") {
+            adminRoleCache.set(userId, { isAdmin: rpcData, timestamp: Date.now() });
+            return rpcData;
+          }
+        } catch {
+          // fall through to table query
+        }
+
         const result = await Promise.race([
           supabase
             .from("user_roles")
