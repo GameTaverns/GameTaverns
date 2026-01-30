@@ -95,12 +95,25 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     const siteKey = useTurnstileSiteKey();
     const settingsLoaded = useSiteSettingsLoaded();
 
+    // Safety timeout: if settings haven't loaded in 5 seconds, bypass
+    useEffect(() => {
+      if (settingsLoaded || bypassReason) return;
+      
+      const timeout = setTimeout(() => {
+        if (!settingsLoaded && !bypassReason) {
+          console.warn('[TurnstileWidget] Settings timeout - bypassing verification');
+          setBypassReason("settings timeout");
+          setIsLoading(false);
+          onVerify("TURNSTILE_BYPASS_TOKEN");
+        }
+      }, 5000);
+      
+      return () => clearTimeout(timeout);
+    }, [settingsLoaded, bypassReason, onVerify]);
+
     // Check for bypass conditions AFTER settings are loaded
     useEffect(() => {
-      // Don't make bypass decision until settings are loaded
-      if (!settingsLoaded) return;
-
-      // Lovable preview domains - always bypass
+      // Lovable preview domains - always bypass immediately (don't wait for settings)
       if (isLovablePreview()) {
         setBypassReason("preview mode");
         setIsLoading(false);
@@ -109,6 +122,9 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
         }, 300);
         return () => clearTimeout(timer);
       }
+
+      // Don't make other bypass decisions until settings are loaded
+      if (!settingsLoaded) return;
       
       // If no site key is configured after settings loaded, bypass
       if (!siteKey) {

@@ -82,8 +82,14 @@ export function useSiteSettings() {
           const settings = await apiClient.get<Record<string, string | null>>('/settings/public');
           return settings as SiteSettings;
         } catch (error) {
-          console.warn('Failed to fetch site settings from API:', error);
-          return {};
+          // If the settings table doesn't exist or API fails, return empty settings
+          // This allows the app to continue functioning without blocking on settings
+          console.warn('[Self-Hosted] Failed to fetch site settings from API:', error);
+          // Return minimal defaults so the app works without a settings table
+          return {
+            site_name: 'GameTaverns',
+            // No turnstile_site_key = bypass verification
+          };
         }
       }
 
