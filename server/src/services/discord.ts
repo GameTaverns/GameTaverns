@@ -163,7 +163,7 @@ export async function sendDirectMessage(
       return false;
     }
     
-    const channel = await channelRes.json();
+    const channel = await channelRes.json() as { id: string };
     
     // Send message
     const messageRes = await fetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
@@ -213,7 +213,7 @@ export async function createScheduledEvent(
       return null;
     }
     
-    const event = await response.json();
+    const event = await response.json() as { id: string };
     return event.id;
   } catch (error) {
     console.error('Discord event creation error:', error);
