@@ -26,6 +26,9 @@ import aiRoutes from './routes/ai.js';
 
 export const app = express();
 
+// Trust proxy (required for rate limiting behind Nginx)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
