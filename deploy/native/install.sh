@@ -1260,11 +1260,56 @@ build_frontend() {
     if [[ -d "${INSTALL_DIR}/dist" ]]; then
         log_info "Copying build to app directory..."
         cp -r dist/* ${INSTALL_DIR}/app/
+        
+        # Inject runtime configuration for self-hosted mode
+        log_info "Injecting self-hosted runtime configuration..."
+        inject_runtime_config
+        
         chown -R ${APP_USER}:${APP_USER} ${INSTALL_DIR}/app
         log_success "Frontend built successfully"
     else
         log_error "Frontend build failed - dist directory not found"
         exit 1
+    fi
+}
+
+# Inject runtime configuration into index.html
+inject_runtime_config() {
+    local INDEX_FILE="${INSTALL_DIR}/app/index.html"
+    local CONFIG_JS="${INSTALL_DIR}/app/runtime-config.js"
+    
+    # Create runtime config JavaScript file
+    cat > "$CONFIG_JS" <<'CONFIGEOF'
+// GameTaverns Self-Hosted Runtime Configuration
+// Generated during installation - regenerate with: /opt/gametaverns/deploy/native/scripts/rebuild-config.sh
+window.__RUNTIME_CONFIG__ = {
+  SELF_HOSTED: true,
+  API_BASE_URL: "/api",
+  SUPABASE_URL: "",
+  SUPABASE_ANON_KEY: "",
+  SITE_NAME: "GameTaverns",
+  FEATURES: {
+    PLAY_LOGS: true,
+    WISHLIST: true,
+    FOR_SALE: true,
+    MESSAGING: true,
+    COMING_SOON: true,
+    RATINGS: true,
+    EVENTS: true,
+    ACHIEVEMENTS: true,
+    LENDING: true
+  }
+};
+console.log('[GameTaverns] Self-hosted mode active');
+CONFIGEOF
+
+    # Inject script tag into index.html (before other scripts)
+    if grep -q "runtime-config.js" "$INDEX_FILE"; then
+        log_info "Runtime config already injected"
+    else
+        # Insert runtime-config.js script before the first <script> tag
+        sed -i 's|<script|<script src="/runtime-config.js"></script>\n    <script|' "$INDEX_FILE"
+        log_info "Runtime config script injected into index.html"
     fi
 }
 
