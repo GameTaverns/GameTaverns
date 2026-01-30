@@ -44,6 +44,14 @@ router.post('/register', async (req: Request, res: Response) => {
     );
     
     const user = result.rows[0];
+    
+    // Auto-create user profile
+    const displayName = email.split('@')[0];
+    await pool.query(
+      'INSERT INTO user_profiles (user_id, display_name) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING',
+      [user.id, displayName]
+    );
+    
     const token = signToken({ sub: user.id, email: user.email });
     
     res.status(201).json({
