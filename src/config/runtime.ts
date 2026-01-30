@@ -104,6 +104,12 @@ export function getConfig<T>(
  * Returns empty strings if in self-hosted mode (client will use stub)
  */
 export function getSupabaseConfig() {
+  // In self-hosted mode we *must* ignore any baked-in Vite env values,
+  // otherwise the app will accidentally talk to the cloud auth endpoint.
+  if (isSelfHostedMode()) {
+    return { url: '', anonKey: '' };
+  }
+
   return {
     url: getConfig('SUPABASE_URL', 'VITE_SUPABASE_URL', ''),
     anonKey: getConfig('SUPABASE_ANON_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY', ''),
