@@ -3,7 +3,8 @@
 Complete self-hosted stack using official Supabase Docker images for 1:1 feature parity with Lovable Cloud.
 
 **Domain:** `gametaverns.com` (hardcoded)  
-**Tenant Libraries:** `*.gametaverns.com` (e.g., `tzolak.gametaverns.com`)
+**Tenant Libraries:** `*.gametaverns.com` (e.g., `tzolak.gametaverns.com`)  
+**Version:** 2.0.0
 
 ## ⚠️ Database Isolation
 
@@ -16,11 +17,17 @@ Complete self-hosted stack using official Supabase Docker images for 1:1 feature
 
 ## Requirements
 
-- Ubuntu 22.04 or 24.04 LTS
-- 4GB RAM minimum (8GB recommended)
-- 50GB disk space
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| OS | Ubuntu 22.04 LTS | Ubuntu 24.04 LTS |
+| RAM | 2GB | 4GB+ |
+| Disk | 20GB | 50GB+ |
+| CPU | 1 vCPU | 2+ vCPU |
+
+**Network Requirements:**
+- Ports 80, 443 open (HTTPS)
+- Ports 25, 587, 993 open (optional, for mail)
 - DNS configured (see below)
-- Ports 80, 443 open
 
 ## DNS Configuration
 
@@ -34,7 +41,7 @@ Before running the installer, configure these DNS records pointing to your serve
 | A | mail | YOUR_SERVER_IP |
 | A | studio | YOUR_SERVER_IP |
 | A | * | YOUR_SERVER_IP |
-| MX | @ | mail.gametaverns.com |
+| MX | @ | mail.gametaverns.com (priority 10) |
 | TXT | @ | v=spf1 mx a ~all |
 
 The wildcard (`*`) record enables tenant subdomains like `tzolak.gametaverns.com`.

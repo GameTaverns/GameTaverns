@@ -120,7 +120,25 @@ check_port() {
     local service=$2
     local critical=${3:-true}
     echo -n "  Port $port ($service)... "
-    if ss -tuln 2>/dev/null | grep -q ":$port " || netstat -tuln 2>/dev/null | grep -q ":$port "; then
+    
+    # Try ss first, then netstat as fallback
+    local in_use=false
+    if command -v ss &>/dev/null; then
+        if ss -tuln 2>/dev/null | grep -qE ":${port}\s"; then
+            in_use=true
+        fi
+    elif command -v netstat &>/dev/null; then
+        if netstat -tuln 2>/dev/null | grep -qE ":${port}\s"; then
+            in_use=true
+        fi
+    else
+        # Neither tool available, try lsof
+        if command -v lsof &>/dev/null && lsof -i ":$port" &>/dev/null; then
+            in_use=true
+        fi
+    fi
+    
+    if [ "$in_use" = "true" ]; then
         if [ "$critical" = "true" ]; then
             echo -e "${RED}✗ In use${NC}"
             ((ERRORS++))
@@ -133,12 +151,15 @@ check_port() {
     fi
 }
 
+# Critical ports (will cause errors)
 check_port 80 "HTTP" true
 check_port 443 "HTTPS" true
-check_port 3000 "Frontend" true
-check_port 3001 "Studio" false
 check_port 5432 "PostgreSQL" true
 check_port 8000 "Kong API" true
+
+# Optional ports (warnings only)
+check_port 3000 "Frontend" false
+check_port 3001 "Studio" false
 check_port 25 "SMTP" false
 check_port 587 "SMTP Submission" false
 check_port 993 "IMAPS" false

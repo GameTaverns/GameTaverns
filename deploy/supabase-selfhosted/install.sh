@@ -3,9 +3,17 @@
 # GameTaverns - Self-Hosted Supabase Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
+# Version: 2.0.0
 # =============================================================================
 
 set -euo pipefail
+
+# Ensure script is run from correct location
+SCRIPT_DIR_CHECK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ ! -f "$SCRIPT_DIR_CHECK/docker-compose.yml" ]]; then
+    echo "ERROR: This script must be run from the deploy/supabase-selfhosted directory"
+    exit 1
+fi
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -276,13 +284,21 @@ PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 if [ -f "$PROJECT_ROOT/package.json" ]; then
     info "Copying application source files..."
     
+    # Verify critical source directories exist
+    if [ ! -d "$PROJECT_ROOT/src" ]; then
+        error "Source directory not found: $PROJECT_ROOT/src"
+    fi
+    
     # Copy frontend source
     cp -r "$PROJECT_ROOT/src" "$INSTALL_DIR/"
     cp -r "$PROJECT_ROOT/public" "$INSTALL_DIR/"
+    
     # Copy package files first
     cp "$PROJECT_ROOT/package.json" "$INSTALL_DIR/"
     cp "$PROJECT_ROOT/package-lock.json" "$INSTALL_DIR/" 2>/dev/null || true
     cp "$PROJECT_ROOT/bun.lockb" "$INSTALL_DIR/" 2>/dev/null || true
+    
+    # Copy build config files
     cp "$PROJECT_ROOT/vite.config.ts" "$INSTALL_DIR/"
     cp "$PROJECT_ROOT/tsconfig.json" "$INSTALL_DIR/"
     cp "$PROJECT_ROOT/tsconfig.app.json" "$INSTALL_DIR/" 2>/dev/null || true
@@ -291,17 +307,36 @@ if [ -f "$PROJECT_ROOT/package.json" ]; then
     cp "$PROJECT_ROOT/postcss.config.js" "$INSTALL_DIR/"
     cp "$PROJECT_ROOT/index.html" "$INSTALL_DIR/"
     
-    # Optional config files - create empty if missing
-    cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/" 2>/dev/null || echo '{}' > "$INSTALL_DIR/components.json"
+    # Optional config files - create empty/default if missing
+    if [ -f "$PROJECT_ROOT/components.json" ]; then
+        cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/"
+    else
+        echo '{"$schema":"https://ui.shadcn.com/schema.json","style":"default","tailwind":{"config":"tailwind.config.ts","css":"src/index.css"}}' > "$INSTALL_DIR/components.json"
+    fi
     cp "$PROJECT_ROOT/eslint.config.js" "$INSTALL_DIR/" 2>/dev/null || true
     
     # Copy edge functions
     mkdir -p "$INSTALL_DIR/supabase"
     if [ -d "$PROJECT_ROOT/supabase/functions" ]; then
         cp -r "$PROJECT_ROOT/supabase/functions" "$INSTALL_DIR/supabase/"
-        success "Edge functions copied"
+        # Verify main function exists
+        if [ -d "$INSTALL_DIR/supabase/functions/main" ]; then
+            success "Edge functions copied (main router present)"
+        else
+            warn "Edge functions copied but main router not found"
+        fi
     else
         warn "No edge functions found at $PROJECT_ROOT/supabase/functions"
+        # Create placeholder main function
+        mkdir -p "$INSTALL_DIR/supabase/functions/main"
+        cat > "$INSTALL_DIR/supabase/functions/main/index.ts" << 'MAINEOF'
+// Placeholder main function
+Deno.serve(async (req) => {
+  return new Response(JSON.stringify({ status: "ok" }), {
+    headers: { "Content-Type": "application/json" }
+  });
+});
+MAINEOF
     fi
     
     # Copy supabase config (needed for edge functions)

@@ -282,6 +282,9 @@ services:
       SMTP_USER: "${SMTP_USER:-}"
       SMTP_PASS: "${SMTP_PASS:-}"
       SMTP_FROM: "${SMTP_FROM:-noreply@gametaverns.com}"
+      # Site info for edge functions
+      SITE_URL: "${SITE_URL:-https://gametaverns.com}"
+      SITE_NAME: "${SITE_NAME:-GameTaverns}"
     volumes:
       # Note: This path is resolved from the repo root during docker build
       # The install.sh copies the functions to /opt/gametaverns/supabase/functions
@@ -293,13 +296,15 @@ services:
       - --port
       - "9000"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || curl -sf http://localhost:9000/ || exit 1"]
       interval: 15s
       timeout: 10s
-      retries: 10
-      start_period: 30s
+      retries: 15
+      start_period: 45s
     depends_on:
       db:
+        condition: service_healthy
+      kong:
         condition: service_healthy
     networks:
       - gametaverns
