@@ -2,12 +2,71 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { pool } from '../services/db.js';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../utils/password.js';
-import { signToken } from '../utils/jwt.js';
+import { signToken, verifyToken } from '../utils/jwt.js';
 import { sendEmail, buildVerificationEmail, buildPasswordResetEmail, isEmailConfigured } from '../services/email.js';
 import { generateToken } from '../services/encryption.js';
 import { loginLimiter } from '../middleware/rateLimit.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
+
+// =====================
+// Get Current User (for session validation)
+// =====================
+
+router.get('/me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.sub;
+    
+    if (!userId) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    
+    // Get user info
+    const userResult = await pool.query(
+      'SELECT id, email, email_verified FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    if (userResult.rows.length === 0) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Get roles
+    const roleResult = await pool.query(
+      'SELECT role FROM user_roles WHERE user_id = $1',
+      [userId]
+    );
+    
+    const roles = roleResult.rows.map(r => r.role);
+    const isAdmin = roles.includes('admin');
+    
+    // Get profile
+    const profileResult = await pool.query(
+      'SELECT display_name, username, avatar_url FROM user_profiles WHERE user_id = $1',
+      [userId]
+    );
+    const profile = profileResult.rows[0] || {};
+    
+    res.json({
+      id: user.id,
+      email: user.email,
+      emailVerified: user.email_verified,
+      roles,
+      isAdmin,
+      displayName: profile.display_name,
+      username: profile.username,
+      avatarUrl: profile.avatar_url,
+    });
+  } catch (error) {
+    console.error('Get current user error:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
 
 // =====================
 // Registration with Email Verification
