@@ -1246,10 +1246,16 @@ build_frontend() {
     cd ${INSTALL_DIR}
 
     log_info "Installing frontend dependencies..."
-    sudo -u ${APP_USER} npm ci >> "$LOG_FILE" 2>&1
+    # Use npm install if package-lock.json doesn't exist (project uses bun.lockb)
+    if [[ -f "package-lock.json" ]]; then
+        sudo -u ${APP_USER} npm ci >> "$LOG_FILE" 2>&1
+    else
+        log_info "No package-lock.json found, using npm install..."
+        sudo -u ${APP_USER} npm install >> "$LOG_FILE" 2>&1
+    fi
 
     log_info "Building frontend (this may take a few minutes)..."
-    sudo -u ${APP_USER} npm run build >> "$LOG_FILE" 2>&1
+    sudo -u ${APP_USER} NODE_OPTIONS="--max-old-space-size=2048" npm run build >> "$LOG_FILE" 2>&1
 
     if [[ -d "${INSTALL_DIR}/dist" ]]; then
         log_info "Copying build to app directory..."
@@ -1268,7 +1274,13 @@ build_backend() {
     cd ${INSTALL_DIR}/server
 
     log_info "Installing backend dependencies..."
-    npm ci >> "$LOG_FILE" 2>&1
+    # Use npm install if package-lock.json doesn't exist
+    if [[ -f "package-lock.json" ]]; then
+        npm ci >> "$LOG_FILE" 2>&1
+    else
+        log_info "No package-lock.json found, using npm install..."
+        npm install >> "$LOG_FILE" 2>&1
+    fi
 
     log_info "Building TypeScript..."
     npm run build >> "$LOG_FILE" 2>&1
