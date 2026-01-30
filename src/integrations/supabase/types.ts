@@ -2297,6 +2297,15 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profiles_minimal: {
+        Row: {
+          avatar_url: string | null
+          display_name: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
       user_profiles_public: {
         Row: {
           avatar_url: string | null
@@ -2328,6 +2337,10 @@ export type Database = {
     Functions: {
       cleanup_expired_email_tokens: { Args: never; Returns: undefined }
       cleanup_expired_tokens: { Args: never; Returns: undefined }
+      cleanup_old_messages: {
+        Args: { retention_days?: number }
+        Returns: number
+      }
       generate_slug: { Args: { title: string }; Returns: string }
       has_role: {
         Args: {
