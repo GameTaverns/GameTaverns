@@ -147,7 +147,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/ready || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 15
+      start_period: 10s
     depends_on:
       db:
         condition: service_healthy
@@ -183,7 +184,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:4000/api/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 15
+      start_period: 15s
     depends_on:
       db:
         condition: service_healthy
@@ -217,7 +219,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:5000/status || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 15
+      start_period: 10s
     depends_on:
       db:
         condition: service_healthy
@@ -316,7 +319,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 15
+      start_period: 10s
     depends_on:
       db:
         condition: service_healthy
@@ -389,11 +393,17 @@ services:
       - "587:587"
       - "993:993"
     environment:
-      MAIL_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN}}
-      POSTMASTER_EMAIL: ${SMTP_ADMIN_EMAIL:-postmaster@${DOMAIN}}
+      MAIL_DOMAIN: "${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}"
+      POSTMASTER_EMAIL: "${SMTP_ADMIN_EMAIL:-postmaster@gametaverns.com}"
     volumes:
       - mail-data:/var/mail/vhosts
       - mail-config:/etc/mail-config
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep postfix || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - gametaverns
 
