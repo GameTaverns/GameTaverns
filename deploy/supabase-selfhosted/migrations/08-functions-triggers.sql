@@ -12,10 +12,10 @@ CREATE OR REPLACE FUNCTION public.slugify(input text)
 RETURNS text
 LANGUAGE sql
 IMMUTABLE
-SET search_path = 'public, extensions'
+SET search_path = 'public'
 AS $$
   SELECT trim(both '-' from regexp_replace(
-    regexp_replace(lower(unaccent(coalesce(input, ''))), '[^a-z0-9]+', '-', 'g'),
+    regexp_replace(lower(extensions.unaccent(coalesce(input, ''))), '[^a-z0-9]+', '-', 'g'),
     '-{2,}', '-', 'g'
   ));
 $$;

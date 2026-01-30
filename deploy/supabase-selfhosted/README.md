@@ -50,18 +50,27 @@ cd GameTaverns/deploy/supabase-selfhosted
 sudo ./scripts/preflight-check.sh
 
 # 3. Run installer (will prompt for API keys)
+# This handles EVERYTHING: Docker, database, migrations, etc.
 sudo ./install.sh
 
-# 4. Start services
+# 4. Set up SSL (includes wildcard cert for *.gametaverns.com)
 cd /opt/gametaverns
-docker compose up -d
-
-# 5. Set up SSL (includes wildcard cert for *.gametaverns.com)
 sudo ./scripts/setup-ssl.sh
 
-# 6. Create admin user
+# 5. Create admin user
 sudo ./scripts/create-admin.sh
+
+# 6. Visit https://gametaverns.com
 ```
+
+The installer is fully automated and will:
+- Install Docker and Docker Compose if needed
+- Generate all security keys (JWT, encryption, etc.)
+- Pull all required Docker images
+- Build the frontend container
+- Start all services
+- Run all database migrations
+- Create the storage buckets
 
 ## API Keys Configured During Install
 

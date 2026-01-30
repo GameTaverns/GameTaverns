@@ -58,10 +58,12 @@ userdb {
 EOF
 
 # Create users file if it doesn't exist
+# Permissions: root:dovecot 640 for security
 if [ ! -f /etc/dovecot/users ]; then
     touch /etc/dovecot/users
-    chmod 600 /etc/dovecot/users
 fi
+chown root:dovecot /etc/dovecot/users
+chmod 640 /etc/dovecot/users
 
 echo "Mail server configured"
 

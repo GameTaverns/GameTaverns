@@ -175,17 +175,21 @@ docker compose restart storage
 **Symptoms:**
 - API returning 502/503 errors
 - Routes not working
+- "Invalid API key" errors
 
 **Solutions:**
 ```bash
 # Check Kong logs
 docker compose logs kong
 
-# Verify Kong config
-docker compose exec kong kong config parse /etc/kong/kong.yml
+# Verify Kong config has correct API keys
+cat /opt/gametaverns/kong.yml | grep -A2 "key:"
 
-# Reload Kong
-docker compose exec kong kong reload
+# If keys show {{ANON_KEY}} instead of actual keys, re-render config:
+source /opt/gametaverns/.env
+sed -e "s|{{ANON_KEY}}|${ANON_KEY}|g" \
+    -e "s|{{SERVICE_ROLE_KEY}}|${SERVICE_ROLE_KEY}|g" \
+    /opt/gametaverns/kong.yml.template > /opt/gametaverns/kong.yml
 
 # Restart Kong
 docker compose restart kong

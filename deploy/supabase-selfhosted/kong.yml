@@ -1,21 +1,23 @@
 # Kong Declarative Configuration for Supabase
 # This routes all API requests to the appropriate Supabase services
+# NOTE: Environment variables are substituted by the container at runtime
 
 _format_version: "2.1"
 _transform: true
 
 ###
 ### Consumers / API Keys
+### NOTE: Keys are injected via docker-compose environment
 ###
 
 consumers:
   - username: DASHBOARD
   - username: anon
     keyauth_credentials:
-      - key: ${ANON_KEY}
+      - key: "{{ANON_KEY}}"
   - username: service_role
     keyauth_credentials:
-      - key: ${SERVICE_ROLE_KEY}
+      - key: "{{SERVICE_ROLE_KEY}}"
 
 ###
 ### ACLs
@@ -32,7 +34,7 @@ acls:
 ###
 
 services:
-  ## Auth Service
+  ## Auth Service - Open endpoints (no auth required)
   - name: auth-v1-open
     url: http://auth:9999/verify
     routes:
@@ -63,6 +65,7 @@ services:
     plugins:
       - name: cors
 
+  ## Auth Service - Protected endpoints
   - name: auth-v1
     _comment: "GoTrue: /auth/v1/* -> http://auth:9999/*"
     url: http://auth:9999

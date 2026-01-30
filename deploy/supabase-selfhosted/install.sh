@@ -375,6 +375,20 @@ chmod 600 "$CREDS_FILE"
 success "Credentials saved to $CREDS_FILE"
 
 # ===========================================
+# Render Kong Configuration with API Keys
+# ===========================================
+echo ""
+info "Rendering Kong configuration..."
+
+# Move template and render with actual keys
+cp "$INSTALL_DIR/kong.yml" "$INSTALL_DIR/kong.yml.template"
+sed -e "s|{{ANON_KEY}}|${ANON_KEY}|g" \
+    -e "s|{{SERVICE_ROLE_KEY}}|${SERVICE_ROLE_KEY}|g" \
+    "$INSTALL_DIR/kong.yml.template" > "$INSTALL_DIR/kong.yml"
+
+success "Kong configuration rendered"
+
+# ===========================================
 # Pull Docker Images
 # ===========================================
 echo ""
@@ -440,6 +454,7 @@ MIGRATION_FILES=(
     "10-rls-policies.sql"
     "11-seed-data.sql"
     "12-auth-trigger.sql"
+    "13-storage-buckets.sql"
 )
 
 for migration in "${MIGRATION_FILES[@]}"; do

@@ -43,6 +43,8 @@ MIGRATION_FILES=(
     "09-views.sql"
     "10-rls-policies.sql"
     "11-seed-data.sql"
+    "12-auth-trigger.sql"
+    "13-storage-buckets.sql"
 )
 
 for migration in "${MIGRATION_FILES[@]}"; do
