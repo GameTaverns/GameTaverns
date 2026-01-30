@@ -129,3 +129,8 @@ export function useTurnstileSiteKey() {
   // Return the configured key, or undefined if not set (will trigger bypass)
   return settings?.turnstile_site_key || undefined;
 }
+
+export function useSiteSettingsLoaded() {
+  const { isLoading, isFetched } = useSiteSettings();
+  return !isLoading && isFetched;
+}

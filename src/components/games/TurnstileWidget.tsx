@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, forwardRef, useState } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useTurnstileSiteKey } from "@/hooks/useSiteSettings";
+import { useTurnstileSiteKey, useSiteSettingsLoaded } from "@/hooks/useSiteSettings";
 
 interface TurnstileWidgetProps {
   onVerify: (token: string) => void;
@@ -30,27 +30,13 @@ declare global {
 }
 
 /**
- * Detect if we're running in an environment where Turnstile should be bypassed:
- * - Lovable preview environments (always bypass)
- * - When no Turnstile site key is configured
- * 
- * Note: Self-hosted mode CAN have Turnstile if configured in the database
+ * Detect if we're running in a Lovable preview environment.
+ * These environments should always bypass Turnstile.
  */
-function shouldBypassTurnstile(siteKey?: string): boolean {
+function isLovablePreview(): boolean {
   if (typeof window === "undefined") return false;
-  
-  // Lovable preview domains - always bypass
   const host = window.location.hostname;
-  if (host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app")) {
-    return true;
-  }
-  
-  // If no site key is configured, bypass
-  if (!siteKey) {
-    return true;
-  }
-  
-  return false;
+  return host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app");
 }
 
 let turnstileLoadPromise: Promise<void> | null = null;
@@ -105,21 +91,38 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     const widgetIdRef = useRef<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
-    const [isPreview, setIsPreview] = useState(false);
+    const [bypassReason, setBypassReason] = useState<string | null>(null);
     const siteKey = useTurnstileSiteKey();
+    const settingsLoaded = useSiteSettingsLoaded();
 
-    // Check for bypass environment and auto-verify
+    // Check for bypass conditions AFTER settings are loaded
     useEffect(() => {
-      if (shouldBypassTurnstile(siteKey)) {
-        setIsPreview(true);
+      // Don't make bypass decision until settings are loaded
+      if (!settingsLoaded) return;
+
+      // Lovable preview domains - always bypass
+      if (isLovablePreview()) {
+        setBypassReason("preview mode");
         setIsLoading(false);
-        // Auto-verify with a bypass token after a brief delay
         const timer = setTimeout(() => {
           onVerify("TURNSTILE_BYPASS_TOKEN");
         }, 300);
         return () => clearTimeout(timer);
       }
-    }, [onVerify, siteKey]);
+      
+      // If no site key is configured after settings loaded, bypass
+      if (!siteKey) {
+        setBypassReason("no site key configured");
+        setIsLoading(false);
+        const timer = setTimeout(() => {
+          onVerify("TURNSTILE_BYPASS_TOKEN");
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+      
+      // Site key exists - proceed with real Turnstile
+      setBypassReason(null);
+    }, [settingsLoaded, siteKey, onVerify]);
 
     const handleVerify = useCallback((token: string) => {
       setIsLoading(false);
@@ -157,8 +160,8 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     }, [handleVerify, onExpire, handleError, siteKey]);
 
     useEffect(() => {
-      // Skip loading Turnstile in bypass mode
-      if (shouldBypassTurnstile(siteKey)) return;
+      // Don't load Turnstile until we know we need it
+      if (!settingsLoaded || !siteKey || isLovablePreview()) return;
 
       setIsLoading(true);
       setHasError(false);
@@ -187,11 +190,22 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
           widgetIdRef.current = null;
         }
       };
-    }, [renderWidget]);
+    }, [renderWidget, settingsLoaded, siteKey]);
+
+    // Still loading settings - show loading state
+    if (!settingsLoaded) {
+      return (
+        <div className="flex items-center justify-center min-h-[65px]">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Loading verification...</span>
+          </div>
+        </div>
+      );
+    }
 
     // Bypass mode: show a simple indicator
-    if (isPreview) {
-      const bypassReason = !siteKey ? "no site key configured" : "preview mode";
+    if (bypassReason) {
       return (
         <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
           <CheckCircle2 className="h-4 w-4 text-primary" />
