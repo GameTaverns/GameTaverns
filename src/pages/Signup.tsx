@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { TurnstileWidget } from "@/components/games/TurnstileWidget";
+import { apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 // IMPORTANT: we do NOT call supabase.auth.signUp() here because it triggers the default
 // provider confirmation email. We use a backend function that creates the user and
 // sends our branded SMTP confirmation email.
@@ -85,6 +86,46 @@ export default function Signup() {
     setIsLoading(true);
     
     try {
+      // Self-hosted mode: call local API
+      if (isSelfHostedMode()) {
+        const response = await apiClient.post<{ 
+          message?: string; 
+          requiresVerification?: boolean;
+          user?: { id: string; email: string };
+          token?: string;
+        }>("/auth/register", {
+          email,
+          password,
+          displayName: displayName || email.split("@")[0],
+        });
+
+        if (response.requiresVerification) {
+          toast({
+            title: "Check your email!",
+            description: response.message || "We've sent you a confirmation link. Please verify your email to continue.",
+          });
+          navigate("/login", { 
+            state: { message: "Please check your email and click the confirmation link to activate your account." } 
+          });
+        } else if (response.token) {
+          // Auto-login if no email verification required
+          localStorage.setItem("auth_token", response.token);
+          toast({
+            title: "Account created!",
+            description: "Welcome to GameTaverns!",
+          });
+          navigate("/dashboard");
+        } else {
+          toast({
+            title: "Account created!",
+            description: "You can now log in.",
+          });
+          navigate("/login");
+        }
+        return;
+      }
+
+      // Cloud mode: call Supabase Edge Function
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/signup`,
         {
