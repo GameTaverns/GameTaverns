@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,10 +31,28 @@ export function UserManagement() {
   const [suspendDuration, setSuspendDuration] = useState<string>("7d");
   const [suspendReason, setSuspendReason] = useState("");
 
-  // Fetch users via edge function (includes email from auth.users)
+  // Fetch users via edge function (Cloud) or API (self-hosted)
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users-full"],
     queryFn: async () => {
+      if (isSelfHostedMode()) {
+        // Self-hosted: use Express API
+        const data = await apiClient.get<any[]>("/admin/users");
+        // Transform to expected format
+        return data.map((u: any) => ({
+          id: u.id,
+          email: u.email,
+          display_name: u.display_name || null,
+          username: u.username || null,
+          created_at: u.created_at,
+          last_sign_in_at: u.last_sign_in_at || null,
+          role: u.roles?.[0] || null,
+          is_banned: u.is_banned || false,
+          banned_until: u.banned_until || null,
+        })) as UserWithDetails[];
+      }
+      
+      // Cloud: use edge function
       const { data, error } = await supabase.functions.invoke("manage-users", {
         body: { action: "list" },
       });
