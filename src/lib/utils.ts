@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { getSupabaseConfig } from "@/config/runtime";
+import { getSupabaseConfig, isSelfHostedMode } from "@/config/runtime";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -36,9 +36,18 @@ export function proxiedImageUrl(url: string | null | undefined): string | undefi
     
     // Only proxy BGG images - other images (like Unsplash) work fine directly
     if (u.hostname === "cf.geekdo-images.com") {
-      const normalized = cleanBggUrl(url);
+      // In self-hosted mode, use local API proxy if available
+      if (isSelfHostedMode()) {
+        const normalized = cleanBggUrl(url);
+        return `/api/image-proxy?url=${encodeURIComponent(normalized)}`;
+      }
+      
+      // Cloud mode: use Supabase Edge Function
       const { url: apiUrl } = getSupabaseConfig();
-      return `${apiUrl}/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
+      if (apiUrl) {
+        const normalized = cleanBggUrl(url);
+        return `${apiUrl}/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
+      }
     }
     
     // For all other URLs (Unsplash, etc.), just return the original

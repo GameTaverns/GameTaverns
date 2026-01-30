@@ -432,6 +432,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let email = emailOrUsername;
       
       if (!emailOrUsername.includes("@")) {
+        // Self-hosted mode should not reach here (handled above), but just in case
+        if (isSelfHostedMode()) {
+          return { error: { message: "Username login not yet supported in self-hosted mode. Please use email." } };
+        }
+        
         try {
           const resolveRes = await fetch(`${apiUrl}/functions/v1/resolve-username`, {
             method: "POST",

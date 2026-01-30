@@ -39,6 +39,27 @@ export default function LibraryGames() {
     let remaining = 999;
     
     try {
+      // Self-hosted mode: use local API
+      if (isSelfHostedMode()) {
+        const token = localStorage.getItem("auth_token");
+        if (!token) {
+          toast({
+            title: "Authentication required",
+            description: "Please log in to refresh images",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Self-hosted may not have this feature yet
+        toast({
+          title: "Feature not available",
+          description: "Image refresh is not yet available in self-hosted mode",
+        });
+        return;
+      }
+
+      // Cloud mode: use Supabase Edge Function
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       

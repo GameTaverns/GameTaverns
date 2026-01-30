@@ -25,7 +25,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/backend/client";
+import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
+import { getSupabaseConfig } from "@/config/runtime";
 import { useTenant } from "@/contexts/TenantContext";
 
 type ImportMode = "csv" | "bgg_collection" | "bgg_links";
@@ -201,7 +202,51 @@ export function BulkImportDialog({
         return;
       }
 
-      // Get auth token
+      // Self-hosted mode: use local API
+      if (isSelfHostedMode()) {
+        const token = localStorage.getItem("auth_token");
+        if (!token) {
+          toast({
+            title: "Authentication required",
+            description: "Please log in to import games",
+            variant: "destructive",
+          });
+          setIsImporting(false);
+          return;
+        }
+
+        // For self-hosted, use simple POST (no streaming for now)
+        try {
+          const result = await apiClient.post<ImportResult>("/games/bulk-import", payload);
+          setResult(result);
+
+          if (result.imported > 0) {
+            toast({
+              title: "Import complete!",
+              description: `Successfully imported ${result.imported} game${result.imported !== 1 ? "s" : ""}${result.failed > 0 ? `. ${result.failed} failed.` : ""}`,
+            });
+            onImportComplete?.();
+          } else if (result.failed > 0) {
+            toast({
+              title: "Import failed",
+              description: `All ${result.failed} games failed to import. Check the errors below.`,
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          toast({
+            title: "Import failed",
+            description: error instanceof Error ? error.message : "An error occurred during import",
+            variant: "destructive",
+          });
+        } finally {
+          setIsImporting(false);
+          setProgress(null);
+        }
+        return;
+      }
+
+      // Cloud mode: Get auth token
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       
@@ -218,15 +263,16 @@ export function BulkImportDialog({
       // Create abort controller for cancellation
       abortControllerRef.current = new AbortController();
 
+      const { url: apiUrl, anonKey } = getSupabaseConfig();
       // Use streaming fetch
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import`,
+        `${apiUrl}/functions/v1/bulk-import`,
         {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json",
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            "apikey": anonKey,
           },
           body: JSON.stringify(payload),
           signal: abortControllerRef.current.signal,
