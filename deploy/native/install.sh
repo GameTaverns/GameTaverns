@@ -1297,7 +1297,9 @@ setup_pm2() {
     log_step "Setting Up PM2 Process Manager"
 
     log_info "Creating PM2 ecosystem file..."
-    cat > ${INSTALL_DIR}/ecosystem.config.js <<EOF
+    # NOTE: The repository root uses ESM ("type": "module").
+    # PM2 loads ecosystem files via require(), so we must use .cjs to force CommonJS.
+    cat > ${INSTALL_DIR}/ecosystem.config.cjs <<EOF
 module.exports = {
   apps: [{
     name: 'gametaverns-api',
@@ -1322,11 +1324,11 @@ module.exports = {
 };
 EOF
 
-    chown ${APP_USER}:${APP_USER} ${INSTALL_DIR}/ecosystem.config.js
+    chown ${APP_USER}:${APP_USER} ${INSTALL_DIR}/ecosystem.config.cjs
 
     log_info "Starting application with PM2..."
     cd ${INSTALL_DIR}
-    pm2 start ecosystem.config.js >> "$LOG_FILE" 2>&1
+    pm2 start ecosystem.config.cjs >> "$LOG_FILE" 2>&1
     pm2 save >> "$LOG_FILE" 2>&1
 
     # Verify it's running
