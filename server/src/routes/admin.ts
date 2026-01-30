@@ -11,15 +11,17 @@ const router = Router();
 // All routes require admin
 router.use(authMiddleware, adminMiddleware);
 
-// List users
+// List users with profile data
 router.get('/users', async (req: Request, res: Response) => {
   try {
     const result = await pool.query(`
-      SELECT u.id, u.email, u.created_at,
+      SELECT u.id, u.email, u.created_at, u.last_sign_in_at,
+             up.display_name, up.username,
              ARRAY_AGG(ur.role) FILTER (WHERE ur.role IS NOT NULL) as roles
       FROM users u
+      LEFT JOIN user_profiles up ON u.id = up.user_id
       LEFT JOIN user_roles ur ON u.id = ur.user_id
-      GROUP BY u.id
+      GROUP BY u.id, up.display_name, up.username
       ORDER BY u.created_at DESC
     `);
     
