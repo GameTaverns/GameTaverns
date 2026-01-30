@@ -6,6 +6,7 @@
 # Usage: 
 #   ./setup-ssl.sh                    # Interactive mode
 #   ./setup-ssl.sh gametaverns.com    # Specify domain
+#   ./setup-ssl.sh --wildcard         # Wildcard cert (requires DNS plugin)
 #
 
 set -e
@@ -17,6 +18,7 @@ CREDENTIALS_FILE="/root/gametaverns-credentials.txt"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 echo ""
@@ -25,10 +27,23 @@ echo "║          GameTaverns - SSL Certificate Setup                      ║"
 echo "╚═══════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# Get domain
-if [[ -n "$1" ]]; then
-    DOMAIN="$1"
-elif [[ -f "$CREDENTIALS_FILE" ]]; then
+# Parse arguments
+WILDCARD_MODE=false
+DOMAIN=""
+
+for arg in "$@"; do
+    case $arg in
+        --wildcard)
+            WILDCARD_MODE=true
+            ;;
+        *)
+            DOMAIN="$arg"
+            ;;
+    esac
+done
+
+# Get domain from credentials if not provided
+if [[ -z "$DOMAIN" ]] && [[ -f "$CREDENTIALS_FILE" ]]; then
     source "$CREDENTIALS_FILE"
 fi
 
@@ -67,11 +82,44 @@ if [[ -z "$EMAIL" ]]; then
 fi
 
 echo ""
-echo -e "${YELLOW}[INFO]${NC} Obtaining certificates..."
+
+# Handle wildcard certificate request
+if [[ "$WILDCARD_MODE" == "true" ]]; then
+    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║          Wildcard Certificate Setup                               ║${NC}"
+    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}[INFO]${NC} Wildcard certificates (*.${DOMAIN}) require DNS-01 challenge."
+    echo ""
+    echo "The nginx plugin cannot be used for wildcards. You have two options:"
+    echo ""
+    echo -e "${GREEN}Option 1: Manual DNS Challenge${NC}"
+    echo "  Run this command and add the TXT record when prompted:"
+    echo -e "  ${CYAN}sudo certbot certonly --manual --preferred-challenges dns -d ${DOMAIN} -d '*.${DOMAIN}'${NC}"
+    echo ""
+    echo -e "${GREEN}Option 2: Cloudflare DNS Plugin (automated)${NC}"
+    echo "  1. Install the plugin:"
+    echo -e "     ${CYAN}apt install python3-certbot-dns-cloudflare${NC}"
+    echo ""
+    echo "  2. Create credentials file /root/.cloudflare.ini:"
+    echo -e "     ${CYAN}dns_cloudflare_api_token = YOUR_API_TOKEN${NC}"
+    echo -e "     ${CYAN}chmod 600 /root/.cloudflare.ini${NC}"
+    echo ""
+    echo "  3. Run certbot with DNS plugin:"
+    echo -e "     ${CYAN}sudo certbot certonly --dns-cloudflare --dns-cloudflare-credentials /root/.cloudflare.ini -d ${DOMAIN} -d '*.${DOMAIN}'${NC}"
+    echo ""
+    echo "  4. After obtaining cert, run this script again WITHOUT --wildcard to configure nginx."
+    echo ""
+    echo -e "${YELLOW}[NOTE]${NC} For most setups, individual subdomain certs work fine."
+    echo "       Only use wildcard if you have many dynamic subdomains."
+    echo ""
+    exit 0
+fi
+
+echo -e "${YELLOW}[INFO]${NC} Obtaining certificates for specific domains..."
 echo ""
 
-# Try the simpler nginx plugin first (works for non-wildcard)
-# This is the easiest method and works with Cloudflare proxy too
+# Request certs for root domain and www first
 if certbot --nginx \
     --non-interactive \
     --agree-tos \
@@ -81,10 +129,10 @@ if certbot --nginx \
     -d "www.${DOMAIN}" 2>/dev/null; then
     
     echo ""
-    echo -e "${GREEN}[OK]${NC} SSL certificates installed!"
+    echo -e "${GREEN}[OK]${NC} SSL certificates installed for ${DOMAIN} and www.${DOMAIN}"
     
 else
-    echo -e "${YELLOW}[INFO]${NC} Standard method failed, trying alternate..."
+    echo -e "${YELLOW}[INFO]${NC} www subdomain failed, trying root domain only..."
     
     # Try without www
     if certbot --nginx \
@@ -112,14 +160,18 @@ else
     fi
 fi
 
-# Also try to get cert for mail subdomain
+# Request separate certs for subdomains (NOT combined with wildcard)
 echo ""
 echo -e "${YELLOW}[INFO]${NC} Attempting mail subdomain certificate..."
-certbot --nginx \
+if certbot --nginx \
     --non-interactive \
     --agree-tos \
     --email "${EMAIL}" \
-    -d "mail.${DOMAIN}" 2>/dev/null || echo -e "${YELLOW}[WARN]${NC} Mail cert skipped (may not be needed)"
+    -d "mail.${DOMAIN}" 2>/dev/null; then
+    echo -e "${GREEN}[OK]${NC} Mail subdomain certificate installed"
+else
+    echo -e "${YELLOW}[WARN]${NC} Mail cert skipped (subdomain may not be configured)"
+fi
 
 # Verify auto-renewal is set up
 echo ""
