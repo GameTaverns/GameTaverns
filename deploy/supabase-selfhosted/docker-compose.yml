@@ -89,10 +89,10 @@ services:
     environment:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
-      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-https://api.gametaverns.com}
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
-      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_SITE_URL: ${SITE_URL:-https://gametaverns.com}
       GOTRUE_URI_ALLOW_LIST: "${ADDITIONAL_REDIRECT_URLS:-}"
       GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
       GOTRUE_JWT_ADMIN_ROLES: service_role
@@ -103,25 +103,25 @@ services:
       # Email settings
       GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP:-true}
       GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-false}
-      GOTRUE_SMTP_HOST: ${SMTP_HOST:-mail}
-      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_HOST: "${SMTP_HOST:-mail}"
+      GOTRUE_SMTP_PORT: "${SMTP_PORT:-587}"
       GOTRUE_SMTP_USER: "${SMTP_USER:-}"
       GOTRUE_SMTP_PASS: "${SMTP_PASS:-}"
       GOTRUE_SMTP_ADMIN_EMAIL: "${SMTP_ADMIN_EMAIL:-}"
-      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-GameTaverns}
+      GOTRUE_SMTP_SENDER_NAME: "${SMTP_SENDER_NAME:-GameTaverns}"
       GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
       # Rate limiting
       GOTRUE_RATE_LIMIT_HEADER: X-Forwarded-For
-      GOTRUE_RATE_LIMIT_EMAIL_SENT: 100
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: "100"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 10s
+      start_period: 30s
     depends_on:
       db:
         condition: service_healthy
@@ -261,7 +261,7 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@db:5432/postgres
       VERIFY_JWT: "false"
-      # External API keys
+      # External API keys (all quoted for safety with empty values)
       PII_ENCRYPTION_KEY: "${PII_ENCRYPTION_KEY:-}"
       PERPLEXITY_API_KEY: "${PERPLEXITY_API_KEY:-}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
@@ -275,7 +275,7 @@ services:
       SMTP_PORT: "${SMTP_PORT:-587}"
       SMTP_USER: "${SMTP_USER:-}"
       SMTP_PASS: "${SMTP_PASS:-}"
-      SMTP_FROM: "${SMTP_FROM:-}"
+      SMTP_FROM: "${SMTP_FROM:-noreply@gametaverns.com}"
     volumes:
       # Note: This path is resolved from the repo root during docker build
       # The install.sh copies the functions to /opt/gametaverns/supabase/functions
@@ -287,10 +287,11 @@ services:
       - --port
       - "9000"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/health || exit 1"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
+      interval: 15s
+      timeout: 10s
       retries: 10
+      start_period: 30s
     depends_on:
       db:
         condition: service_healthy

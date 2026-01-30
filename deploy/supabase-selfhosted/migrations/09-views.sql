@@ -268,3 +268,22 @@ SELECT
     created_at
 FROM public.game_polls
 WHERE event_date IS NOT NULL;
+
+-- ===========================================
+-- Site Settings Public View (for unauthenticated access)
+-- ===========================================
+CREATE OR REPLACE VIEW public.site_settings_public
+WITH (security_invoker = false)
+AS
+SELECT 
+    key,
+    value
+FROM public.site_settings
+WHERE key IN (
+    'maintenance_mode', 
+    'maintenance_message', 
+    'announcement_enabled', 
+    'announcement_message', 
+    'announcement_type',
+    'turnstile_site_key'
+);
