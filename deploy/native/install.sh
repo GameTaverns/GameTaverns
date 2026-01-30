@@ -1092,6 +1092,71 @@ EOF
     fi
 }
 
+configure_api_keys() {
+    log_step "Configuring External API Keys"
+    
+    echo ""
+    echo -e "${BOLD}${CYAN}Optional: Configure external service API keys${NC}"
+    echo "You can skip these now and add them later to ${INSTALL_DIR}/.env"
+    echo ""
+    
+    # Cloudflare Turnstile
+    echo -e "${BOLD}Cloudflare Turnstile (Bot Protection)${NC}"
+    echo "Get keys from: https://dash.cloudflare.com → Turnstile"
+    read -p "Turnstile Site Key (press Enter to skip): " TURNSTILE_SITE_KEY
+    if [[ -n "$TURNSTILE_SITE_KEY" ]]; then
+        read -p "Turnstile Secret Key: " TURNSTILE_SECRET_KEY
+        save_credential "TURNSTILE_SITE_KEY" "$TURNSTILE_SITE_KEY"
+        save_credential "TURNSTILE_SECRET_KEY" "$TURNSTILE_SECRET_KEY"
+        log_success "Turnstile keys configured"
+    else
+        log_info "Skipping Turnstile configuration"
+    fi
+    echo ""
+    
+    # Perplexity AI
+    echo -e "${BOLD}Perplexity AI (Game Metadata Enrichment)${NC}"
+    echo "Get key from: https://www.perplexity.ai/settings/api"
+    read -p "Perplexity API Key (press Enter to skip): " PERPLEXITY_API_KEY
+    if [[ -n "$PERPLEXITY_API_KEY" ]]; then
+        save_credential "PERPLEXITY_API_KEY" "$PERPLEXITY_API_KEY"
+        log_success "Perplexity API key configured"
+    else
+        log_info "Skipping Perplexity configuration"
+    fi
+    echo ""
+    
+    # Firecrawl
+    echo -e "${BOLD}Firecrawl (URL Scraping for Imports)${NC}"
+    echo "Get key from: https://firecrawl.dev/"
+    read -p "Firecrawl API Key (press Enter to skip): " FIRECRAWL_API_KEY
+    if [[ -n "$FIRECRAWL_API_KEY" ]]; then
+        save_credential "FIRECRAWL_API_KEY" "$FIRECRAWL_API_KEY"
+        log_success "Firecrawl API key configured"
+    else
+        log_info "Skipping Firecrawl configuration"
+    fi
+    echo ""
+    
+    # Discord
+    echo -e "${BOLD}Discord Integration (Bot Notifications)${NC}"
+    echo "Create app at: https://discord.com/developers/applications"
+    read -p "Discord Bot Token (press Enter to skip): " DISCORD_BOT_TOKEN
+    if [[ -n "$DISCORD_BOT_TOKEN" ]]; then
+        read -p "Discord Client ID: " DISCORD_CLIENT_ID
+        read -p "Discord Client Secret: " DISCORD_CLIENT_SECRET
+        save_credential "DISCORD_BOT_TOKEN" "$DISCORD_BOT_TOKEN"
+        save_credential "DISCORD_CLIENT_ID" "$DISCORD_CLIENT_ID"
+        save_credential "DISCORD_CLIENT_SECRET" "$DISCORD_CLIENT_SECRET"
+        log_success "Discord integration configured"
+    else
+        log_info "Skipping Discord configuration"
+    fi
+    echo ""
+    
+    log_success "API key configuration complete"
+}
+
 create_env_file() {
     log_step "Creating Environment File"
 
@@ -1171,28 +1236,28 @@ FEATURE_LENDING=true
 FEATURE_ACHIEVEMENTS=true
 
 # ════════════════════════════════════════════════════════════════
-# OPTIONAL: AI SERVICES (Required for game URL import)
+# CLOUDFLARE TURNSTILE (Bot Protection)
+# Get keys from: https://dash.cloudflare.com → Turnstile
+# ════════════════════════════════════════════════════════════════
+TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
+TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
+
+# ════════════════════════════════════════════════════════════════
+# AI SERVICES (For game metadata enrichment)
 # ════════════════════════════════════════════════════════════════
 # Get Perplexity key: https://www.perplexity.ai/settings/api
-PERPLEXITY_API_KEY=
+PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
 
 # Get Firecrawl key: https://firecrawl.dev/
-FIRECRAWL_API_KEY=
-
-# Alternative (if no Perplexity key):
-# OPENAI_API_KEY=
+FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
 
 # ════════════════════════════════════════════════════════════════
-# OPTIONAL: DISCORD INTEGRATION
+# DISCORD INTEGRATION
+# Create at: https://discord.com/developers/applications
 # ════════════════════════════════════════════════════════════════
-# DISCORD_BOT_TOKEN=
-# DISCORD_CLIENT_ID=
-# DISCORD_CLIENT_SECRET=
-
-# ════════════════════════════════════════════════════════════════
-# OPTIONAL: CLOUDFLARE TURNSTILE (Bot protection)
-# ════════════════════════════════════════════════════════════════
-# TURNSTILE_SECRET_KEY=
+DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
+DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
 
 # ════════════════════════════════════════════════════════════════
 # PLATFORM ADMINS
@@ -1226,6 +1291,36 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${DB_USER};
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO ${DB_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${DB_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${DB_USER};
+EOF
+
+    # Load API keys from credentials file
+    source "$CREDENTIALS_FILE" 2>/dev/null || true
+
+    log_info "Configuring site_settings..."
+    sudo -u postgres psql -d ${DB_NAME} <<EOF >> "$LOG_FILE" 2>&1
+-- Platform settings
+INSERT INTO site_settings (key, value) VALUES 
+    ('site_name', 'GameTaverns'),
+    ('site_description', 'Share your board game collection'),
+    ('site_url', 'https://${DOMAIN}')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+
+-- Turnstile (if configured)
+$(if [[ -n "$TURNSTILE_SITE_KEY" ]]; then
+    echo "INSERT INTO site_settings (key, value) VALUES ('turnstile_site_key', '${TURNSTILE_SITE_KEY}') ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();"
+fi)
+
+-- Features (all enabled by default)
+INSERT INTO site_settings (key, value) VALUES 
+    ('feature_play_logs', 'true'),
+    ('feature_wishlist', 'true'),
+    ('feature_for_sale', 'true'),
+    ('feature_messaging', 'true'),
+    ('feature_ratings', 'true'),
+    ('feature_events', 'true'),
+    ('feature_coming_soon', 'false'),
+    ('feature_demo_mode', 'false')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
 EOF
 
     # Verify tables were created
@@ -1774,33 +1869,59 @@ print_summary() {
     echo "  legal@${MAIL_DOMAIN}: ${MAIL_LEGAL_PASSWORD}"
     echo "  support@${MAIL_DOMAIN}: ${MAIL_SUPPORT_PASSWORD}"
     echo ""
+    echo -e "${BOLD}${CYAN}═══ API INTEGRATIONS ═══${NC}"
+    echo ""
+    if [[ -n "$TURNSTILE_SITE_KEY" ]]; then
+        echo -e "  ${GREEN}✓${NC} Cloudflare Turnstile: Configured"
+    else
+        echo -e "  ${YELLOW}○${NC} Cloudflare Turnstile: Not configured (add to .env later)"
+    fi
+    if [[ -n "$PERPLEXITY_API_KEY" ]]; then
+        echo -e "  ${GREEN}✓${NC} Perplexity AI: Configured"
+    else
+        echo -e "  ${YELLOW}○${NC} Perplexity AI: Not configured (optional)"
+    fi
+    if [[ -n "$FIRECRAWL_API_KEY" ]]; then
+        echo -e "  ${GREEN}✓${NC} Firecrawl: Configured"
+    else
+        echo -e "  ${YELLOW}○${NC} Firecrawl: Not configured (optional)"
+    fi
+    if [[ -n "$DISCORD_BOT_TOKEN" ]]; then
+        echo -e "  ${GREEN}✓${NC} Discord: Configured"
+    else
+        echo -e "  ${YELLOW}○${NC} Discord: Not configured (optional)"
+    fi
+    echo -e "  ${GREEN}✓${NC} BoardGameGeek: Built-in (no key needed)"
+    echo ""
     echo -e "${BOLD}${CYAN}═══ NEXT STEPS ═══${NC}"
     echo ""
     echo "1. Configure DNS records:"
     echo "   - A record: ${DOMAIN} → <your-server-ip>"
     echo "   - A record: *.${DOMAIN} → <your-server-ip>"
     echo "   - A record: mail.${DOMAIN} → <your-server-ip>"
-    echo "   - A record: dashboard.${DOMAIN} → <your-server-ip> (for Cockpit)"
-    echo "   - MX record: ${DOMAIN} → mail.${DOMAIN}"
-    echo "   - SPF record: v=spf1 ip4:<your-server-ip> -all"
-    echo "   - DKIM/DMARC: See docs for email deliverability"
+    echo "   - MX record: ${DOMAIN} → mail.${DOMAIN} (priority 10)"
+    echo "   - TXT record: v=spf1 ip4:<your-server-ip> -all"
     echo ""
     echo "2. Set up SSL certificates:"
-    echo "   sudo certbot --nginx -d ${DOMAIN} -d *.${DOMAIN} -d mail.${DOMAIN}"
+    echo "   cd ${INSTALL_DIR}/deploy/native/scripts && sudo ./setup-ssl.sh"
     echo ""
-    echo "3. Add API keys to ${INSTALL_DIR}/.env:"
-    echo "   - PERPLEXITY_API_KEY (for AI features)"
-    echo "   - FIRECRAWL_API_KEY (for URL import)"
-    echo ""
+    if [[ -z "$TURNSTILE_SITE_KEY" || -z "$PERPLEXITY_API_KEY" ]]; then
+        echo "3. Add missing API keys (edit .env, then restart API):"
+        echo "   nano ${INSTALL_DIR}/.env"
+        echo "   pm2 restart gametaverns-api"
+        echo ""
+    fi
     echo -e "${BOLD}${CYAN}═══ USEFUL COMMANDS ═══${NC}"
     echo ""
     echo "  Server GUI:           https://<your-server-ip>:9090"
+    echo "  Application:          https://${DOMAIN}"
     echo "  View API logs:        pm2 logs gametaverns-api"
     echo "  Restart API:          pm2 restart gametaverns-api"
     echo "  View mail logs:       tail -f /var/log/mail.log"
     echo "  Add mail user:        ${INSTALL_DIR}/deploy/native/scripts/add-mail-user.sh"
     echo "  Database backup:      ${INSTALL_DIR}/deploy/native/scripts/backup.sh"
     echo "  Update application:   ${INSTALL_DIR}/deploy/native/scripts/update.sh"
+    echo "  Health check:         ${INSTALL_DIR}/deploy/native/scripts/health-check.sh"
     echo ""
     echo -e "${BOLD}Log file:${NC} ${LOG_FILE}"
     echo ""
@@ -1866,6 +1987,9 @@ main() {
     configure_dovecot
     install_roundcube
     configure_nginx_roundcube
+
+    # API Keys configuration
+    configure_api_keys
 
     # Application
     clone_repository
