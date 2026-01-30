@@ -3,10 +3,13 @@
 
 set -e
 
-MAIL_DOMAIN=${MAIL_DOMAIN:-localhost}
-POSTMASTER_EMAIL=${POSTMASTER_EMAIL:-postmaster@$MAIL_DOMAIN}
+MAIL_DOMAIN="${MAIL_DOMAIN:-localhost}"
+POSTMASTER_EMAIL="${POSTMASTER_EMAIL:-postmaster@$MAIL_DOMAIN}"
 
-echo "Configuring mail server for domain: $MAIL_DOMAIN"
+echo "=============================================="
+echo "  Configuring Mail Server"
+echo "  Domain: $MAIL_DOMAIN"
+echo "=============================================="
 
 # Configure Postfix
 postconf -e "myhostname=mail.$MAIL_DOMAIN"
@@ -65,6 +68,11 @@ fi
 chown root:dovecot /etc/dovecot/users
 chmod 640 /etc/dovecot/users
 
-echo "Mail server configured"
+# Ensure rsyslog directories exist
+mkdir -p /var/spool/rsyslog
+
+echo ""
+echo "✓ Mail server configured for $MAIL_DOMAIN"
+echo ""
 
 exec "$@"

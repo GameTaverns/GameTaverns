@@ -240,13 +240,16 @@ services:
       IMGPROXY_BIND: ":8080"
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
       IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+      IMGPROXY_MAX_SRC_RESOLUTION: "50"
     volumes:
       - storage-data:/var/lib/storage:ro
     healthcheck:
-      test: ["CMD", "imgproxy", "health"]
-      interval: 10s
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - gametaverns
 

@@ -4,11 +4,12 @@
 # Validates system requirements before installation
 # =============================================================================
 
-set -e
+# Don't use set -e - we want to count errors, not exit on first one
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 ERRORS=0
@@ -117,26 +118,30 @@ echo "Checking port availability..."
 check_port() {
     local port=$1
     local service=$2
+    local critical=${3:-true}
     echo -n "  Port $port ($service)... "
-    if ss -tuln | grep -q ":$port "; then
-        PROCESS=$(ss -tuln | grep ":$port " | head -1)
-        echo -e "${RED}✗ In use${NC}"
-        echo "    $PROCESS"
-        ((ERRORS++))
+    if ss -tuln 2>/dev/null | grep -q ":$port " || netstat -tuln 2>/dev/null | grep -q ":$port "; then
+        if [ "$critical" = "true" ]; then
+            echo -e "${RED}✗ In use${NC}"
+            ((ERRORS++))
+        else
+            echo -e "${YELLOW}⚠ In use (may conflict)${NC}"
+            ((WARNINGS++))
+        fi
     else
         echo -e "${GREEN}✓ Available${NC}"
     fi
 }
 
-check_port 80 "HTTP"
-check_port 443 "HTTPS"
-check_port 3000 "Frontend"
-check_port 3001 "Studio"
-check_port 5432 "PostgreSQL"
-check_port 8000 "Kong API"
-check_port 25 "SMTP"
-check_port 587 "SMTP Submission"
-check_port 993 "IMAPS"
+check_port 80 "HTTP" true
+check_port 443 "HTTPS" true
+check_port 3000 "Frontend" true
+check_port 3001 "Studio" false
+check_port 5432 "PostgreSQL" true
+check_port 8000 "Kong API" true
+check_port 25 "SMTP" false
+check_port 587 "SMTP Submission" false
+check_port 993 "IMAPS" false
 
 # ===========================================
 # Check DNS
