@@ -5,6 +5,15 @@ Complete self-hosted stack using official Supabase Docker images for 1:1 feature
 **Domain:** `gametaverns.com` (hardcoded)  
 **Tenant Libraries:** `*.gametaverns.com` (e.g., `tzolak.gametaverns.com`)
 
+## ⚠️ Database Isolation
+
+**This is a completely fresh, isolated database.**
+
+- No connection to Lovable Cloud
+- No shared data with any other environment
+- All data starts from scratch
+- See `MIGRATION.md` for importing existing data
+
 ## Requirements
 
 - Ubuntu 22.04 or 24.04 LTS

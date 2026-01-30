@@ -347,6 +347,51 @@ docker compose pull
 success "Docker images pulled"
 
 # ===========================================
+# Build Frontend
+# ===========================================
+echo ""
+echo "Building frontend application..."
+
+docker compose build app
+
+success "Frontend built"
+
+# ===========================================
+# Start Services
+# ===========================================
+echo ""
+echo "Starting all services..."
+
+docker compose up -d
+
+# Wait for database to be healthy
+echo "Waiting for database to be ready..."
+sleep 10
+until docker compose exec -T db pg_isready -U supabase_admin -d postgres > /dev/null 2>&1; do
+    echo "  Database not ready, waiting..."
+    sleep 5
+done
+
+success "All services started"
+
+# ===========================================
+# Run Database Migrations
+# ===========================================
+echo ""
+echo "Running database migrations..."
+
+# Run each migration file
+for migration in "$INSTALL_DIR/migrations"/*.sql; do
+    if [ -f "$migration" ]; then
+        filename=$(basename "$migration")
+        echo "  Running: $filename"
+        docker compose exec -T db psql -U supabase_admin -d postgres < "$migration"
+    fi
+done
+
+success "Database migrations complete"
+
+# ===========================================
 # Summary
 # ===========================================
 echo ""
@@ -354,26 +399,51 @@ echo "=============================================="
 echo -e "${GREEN}  Installation Complete!${NC}"
 echo "=============================================="
 echo ""
+echo "Your GameTaverns instance is now running!"
+echo ""
 echo "Next steps:"
 echo ""
-echo "1. Configure DNS:"
-echo "   A record: $DOMAIN -> YOUR_SERVER_IP"
-echo "   A record: api.$DOMAIN -> YOUR_SERVER_IP"
-echo "   A record: mail.$DOMAIN -> YOUR_SERVER_IP"
+echo "1. Configure DNS (if not already done):"
+echo "   A record: @ -> YOUR_SERVER_IP"
+echo "   A record: * -> YOUR_SERVER_IP (for tenant subdomains)"
+echo "   A record: api -> YOUR_SERVER_IP"
+echo "   A record: mail -> YOUR_SERVER_IP"
+echo "   A record: studio -> YOUR_SERVER_IP"
 echo ""
-echo "2. Start services:"
+echo "2. Set up SSL (includes wildcard for *.gametaverns.com):"
 echo "   cd $INSTALL_DIR"
-echo "   docker compose up -d"
+echo "   sudo ./scripts/setup-ssl.sh"
 echo ""
-echo "3. Set up SSL:"
-echo "   ./scripts/setup-ssl.sh"
+echo "3. Create your admin user:"
+echo "   sudo ./scripts/create-admin.sh"
 echo ""
-echo "4. Create admin user:"
-echo "   ./scripts/create-admin.sh"
+echo "=============================================="
+echo "  URLs (after SSL setup)"
+echo "=============================================="
 echo ""
-echo "5. (Optional) Add API keys to .env:"
-echo "   nano $INSTALL_DIR/.env"
-echo "   docker compose restart functions"
+echo "  Main Site:   https://$DOMAIN"
+echo "  API:         https://api.$DOMAIN"
+echo "  Studio:      https://studio.$DOMAIN"
+echo "  Webmail:     https://mail.$DOMAIN"
+echo ""
+echo "  Libraries:   https://{slug}.$DOMAIN"
+echo "               e.g., https://tzolak.$DOMAIN"
+echo ""
+echo "=============================================="
+echo "  API Keys Status"
+echo "=============================================="
+[ -n "$DISCORD_BOT_TOKEN" ] && echo "  ✓ Discord Bot Token" || echo "  ✗ Discord Bot Token (not configured)"
+[ -n "$DISCORD_CLIENT_ID" ] && echo "  ✓ Discord OAuth" || echo "  ✗ Discord OAuth (not configured)"
+[ -n "$PERPLEXITY_API_KEY" ] && echo "  ✓ Perplexity AI" || echo "  ✗ Perplexity AI (not configured)"
+[ -n "$FIRECRAWL_API_KEY" ] && echo "  ✓ Firecrawl" || echo "  ✗ Firecrawl (not configured)"
+[ -n "$TURNSTILE_SITE_KEY" ] && echo "  ✓ Turnstile Bot Protection" || echo "  ✗ Turnstile (not configured)"
+echo ""
+echo "To update API keys later:"
+echo "  nano $INSTALL_DIR/.env"
+echo "  docker compose restart functions"
 echo ""
 echo "Credentials saved to: $CREDS_FILE"
+echo ""
+echo "View logs: docker compose logs -f"
+echo "Check status: docker compose ps"
 echo ""
