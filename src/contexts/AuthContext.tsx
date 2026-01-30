@@ -3,6 +3,37 @@ import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/cl
 import { getSupabaseConfig } from "@/config/runtime";
 import type { User, Session } from "@supabase/supabase-js";
 
+type SelfHostedMe = {
+  id: string;
+  email: string;
+  emailVerified?: boolean;
+  roles?: string[];
+  isAdmin?: boolean;
+  displayName?: string;
+  username?: string;
+  avatarUrl?: string;
+};
+
+function mapSelfHostedMeToUser(me: SelfHostedMe): { user: User; isAdmin: boolean } {
+  const isAdminFlag = !!me.isAdmin || (me.roles ?? []).includes("admin");
+  const user = ({
+    id: me.id,
+    email: me.email,
+    email_confirmed_at: me.emailVerified ? new Date().toISOString() : undefined,
+    user_metadata: {
+      display_name: me.displayName || undefined,
+      username: me.username || undefined,
+      avatar_url: me.avatarUrl || undefined,
+    },
+    // Store admin flag so other hooks can access it directly
+    app_metadata: {
+      is_admin: isAdminFlag,
+    },
+  } as unknown) as User;
+
+  return { user, isAdmin: isAdminFlag };
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -101,36 +132,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           // Validate token + fetch user
-          const me = await apiClient.get<{ 
-            id: string; 
-            email: string; 
-            emailVerified?: boolean;
-            roles?: string[]; 
-            isAdmin?: boolean;
-            displayName?: string;
-            username?: string;
-            avatarUrl?: string;
-          }>("/auth/me");
+          const me = await apiClient.get<SelfHostedMe>("/auth/me");
 
           if (!mounted) return;
           setSession(null);
-          // Build a user-like object with profile info for self-hosted mode
-          const isAdminFlag = !!me.isAdmin || (me.roles ?? []).includes("admin");
-          setUser(({ 
-            id: me.id, 
-            email: me.email,
-            email_confirmed_at: me.emailVerified ? new Date().toISOString() : undefined,
-            user_metadata: {
-              display_name: me.displayName || undefined,
-              username: me.username || undefined,
-              avatar_url: me.avatarUrl || undefined,
-            },
-            // Store admin flag so other hooks can access it directly
-            app_metadata: {
-              is_admin: isAdminFlag,
-            },
-          } as unknown) as User);
-          setIsAdmin(isAdminFlag);
+          const mapped = mapSelfHostedMeToUser(me);
+          setUser(mapped.user);
+          setIsAdmin(mapped.isAdmin);
           setLoading(false);
           setRoleLoading(false);
         } catch {
@@ -391,12 +399,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem("auth_token", res.token);
         }
 
+        // IMPORTANT: /auth/login may not include full role/profile data.
+        // Always hydrate from /auth/me so the UI (display name + /admin gating) updates immediately.
         setSession(null);
-        setUser(({ id: res.user.id, email: res.user.email } as unknown) as User);
-        const roles = res.user.roles ?? (res.user.role ? [res.user.role] : []);
-        setIsAdmin(roles.includes("admin"));
-        setLoading(false);
-        setRoleLoading(false);
+        setRoleLoading(true);
+        try {
+          const me = await apiClient.get<SelfHostedMe>("/auth/me");
+          const mapped = mapSelfHostedMeToUser(me);
+          setUser(mapped.user);
+          setIsAdmin(mapped.isAdmin);
+        } catch {
+          // Fallback to login response if /auth/me fails (still lets user proceed)
+          setUser(({ id: res.user.id, email: res.user.email } as unknown) as User);
+          const roles = res.user.roles ?? (res.user.role ? [res.user.role] : []);
+          setIsAdmin(roles.includes("admin"));
+        } finally {
+          setLoading(false);
+          setRoleLoading(false);
+        }
 
         return { error: null };
       } catch (e: any) {
