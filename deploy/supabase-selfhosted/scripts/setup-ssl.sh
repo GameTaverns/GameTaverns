@@ -1,11 +1,14 @@
 #!/bin/bash
 # =============================================================================
 # SSL Setup with Certbot for GameTaverns
+# Domain: gametaverns.com (hardcoded)
+# Includes wildcard certificate for *.gametaverns.com (tenant libraries)
 # =============================================================================
 
 set -e
 
 INSTALL_DIR="/opt/gametaverns"
+DOMAIN="gametaverns.com"
 
 if [ ! -f "$INSTALL_DIR/.env" ]; then
     echo "Error: .env file not found"
@@ -14,22 +17,19 @@ fi
 
 source "$INSTALL_DIR/.env"
 
-# Extract domain from SITE_URL
-DOMAIN=$(echo "$SITE_URL" | sed 's|https://||' | sed 's|http://||')
-
 echo ""
 echo "=============================================="
 echo "  SSL Certificate Setup"
+echo "  Domain: $DOMAIN"
+echo "  Includes: *.${DOMAIN} (tenant subdomains)"
 echo "=============================================="
-echo ""
-echo "Domain: $DOMAIN"
 echo ""
 
 # Install Certbot if needed
 if ! command -v certbot &> /dev/null; then
     echo "Installing Certbot..."
     apt-get update
-    apt-get install -y certbot python3-certbot-nginx
+    apt-get install -y certbot python3-certbot-nginx python3-certbot-dns-cloudflare
 fi
 
 # Install Nginx if needed
@@ -38,111 +38,108 @@ if ! command -v nginx &> /dev/null; then
     apt-get install -y nginx
 fi
 
-# Create Nginx config for domain
-cat > /etc/nginx/sites-available/gametaverns << EOF
-# GameTaverns - Main Site
-server {
-    listen 80;
-    server_name $DOMAIN www.$DOMAIN;
-    
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-    
-    location / {
-        return 301 https://\$server_name\$request_uri;
-    }
-}
-
-# API Subdomain
-server {
-    listen 80;
-    server_name api.$DOMAIN;
-    
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-    
-    location / {
-        return 301 https://\$server_name\$request_uri;
-    }
-}
-
-# Mail Subdomain (Roundcube)
-server {
-    listen 80;
-    server_name mail.$DOMAIN;
-    
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-    
-    location / {
-        return 301 https://\$server_name\$request_uri;
-    }
-}
-EOF
-
-ln -sf /etc/nginx/sites-available/gametaverns /etc/nginx/sites-enabled/
-nginx -t && systemctl reload nginx
-
+# ===========================================
+# Wildcard Certificate Setup
+# ===========================================
 echo ""
-echo "Obtaining SSL certificates..."
+echo -e "\033[1;33mWildcard certificates (*.gametaverns.com) require DNS validation.\033[0m"
+echo "This is needed so tenant libraries like tzolak.gametaverns.com work with HTTPS."
+echo ""
+echo "Options:"
+echo "  1. Cloudflare DNS (recommended - automatic renewal)"
+echo "  2. Manual DNS (requires manual renewal every 90 days)"
+echo ""
+read -p "Select option [1/2]: " DNS_OPTION
 
-certbot certonly --nginx \
-    -d "$DOMAIN" \
-    -d "www.$DOMAIN" \
-    -d "api.$DOMAIN" \
-    -d "mail.$DOMAIN" \
-    --non-interactive \
-    --agree-tos \
-    --email "${SMTP_ADMIN_EMAIL:-admin@$DOMAIN}"
+if [ "$DNS_OPTION" = "1" ]; then
+    # Cloudflare automated DNS validation
+    echo ""
+    echo "Enter your Cloudflare API token (needs Zone:DNS:Edit permission):"
+    read -s CF_API_TOKEN
+    
+    mkdir -p /etc/letsencrypt
+    cat > /etc/letsencrypt/cloudflare.ini << EOF
+dns_cloudflare_api_token = $CF_API_TOKEN
+EOF
+    chmod 600 /etc/letsencrypt/cloudflare.ini
+    
+    echo ""
+    echo "Obtaining wildcard certificate via Cloudflare DNS..."
+    certbot certonly \
+        --dns-cloudflare \
+        --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
+        -d "$DOMAIN" \
+        -d "*.$DOMAIN" \
+        --non-interactive \
+        --agree-tos \
+        --email "${SMTP_ADMIN_EMAIL:-admin@$DOMAIN}"
+else
+    # Manual DNS validation
+    echo ""
+    echo "Obtaining wildcard certificate via manual DNS..."
+    echo -e "\033[1;33mYou will need to add a TXT record to your DNS.\033[0m"
+    echo ""
+    certbot certonly \
+        --manual \
+        --preferred-challenges dns \
+        -d "$DOMAIN" \
+        -d "*.$DOMAIN" \
+        --agree-tos \
+        --email "${SMTP_ADMIN_EMAIL:-admin@$DOMAIN}"
+fi
 
-# Create full HTTPS config
-cat > /etc/nginx/sites-available/gametaverns << EOF
-# GameTaverns - Main Site (HTTPS)
+# ===========================================
+# Create Nginx Configuration
+# ===========================================
+
+# Create wildcard subdomain handler for tenant libraries
+cat > /etc/nginx/sites-available/gametaverns << 'NGINX_EOF'
+# ===========================================
+# GameTaverns - Main Site & API
+# Domain: gametaverns.com
+# ===========================================
+
+# Main site (HTTPS)
 server {
     listen 443 ssl http2;
-    server_name $DOMAIN www.$DOMAIN;
+    server_name gametaverns.com www.gametaverns.com;
     
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
     
-    # Frontend
     location / {
-        proxy_pass http://127.0.0.1:${APP_PORT:-3000};
+        proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 
 # API Subdomain (HTTPS)
 server {
     listen 443 ssl http2;
-    server_name api.$DOMAIN;
+    server_name api.gametaverns.com;
     
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     
-    # Kong Gateway
     location / {
-        proxy_pass http://127.0.0.1:${KONG_HTTP_PORT:-8000};
+        proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 300s;
         proxy_connect_timeout 75s;
     }
@@ -151,54 +148,93 @@ server {
 # Roundcube Webmail (HTTPS)
 server {
     listen 443 ssl http2;
-    server_name mail.$DOMAIN;
+    server_name mail.gametaverns.com;
     
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     
     location / {
-        proxy_pass http://127.0.0.1:${ROUNDCUBE_PORT:-9001};
+        proxy_pass http://127.0.0.1:9001;
         proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 
-# Studio (HTTPS) - optional, can be disabled in production
+# Studio - Database Admin (HTTPS)
 server {
     listen 443 ssl http2;
-    server_name studio.$DOMAIN;
+    server_name studio.gametaverns.com;
     
-    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     
-    # Basic auth for Studio access
+    # Optional: Basic auth for studio access
     # auth_basic "Studio Access";
     # auth_basic_user_file /etc/nginx/.htpasswd;
     
     location / {
-        proxy_pass http://127.0.0.1:${STUDIO_PORT:-3001};
+        proxy_pass http://127.0.0.1:3001;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 
-# HTTP redirects
+# ===========================================
+# Wildcard: Tenant Library Subdomains
+# Matches: *.gametaverns.com (except reserved)
+# Examples: tzolak.gametaverns.com, mycollection.gametaverns.com
+# ===========================================
+server {
+    listen 443 ssl http2;
+    server_name ~^(?<tenant>[a-z0-9-]+)\.gametaverns\.com$;
+    
+    # Skip reserved subdomains (handled above)
+    if ($tenant ~* ^(www|api|mail|studio|admin|dashboard)$) {
+        return 404;
+    }
+    
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    
+    # Pass tenant slug to frontend via header
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Tenant-Slug $tenant;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# ===========================================
+# HTTP to HTTPS Redirects
+# ===========================================
 server {
     listen 80;
-    server_name $DOMAIN www.$DOMAIN api.$DOMAIN mail.$DOMAIN studio.$DOMAIN;
-    return 301 https://\$server_name\$request_uri;
+    server_name gametaverns.com www.gametaverns.com api.gametaverns.com mail.gametaverns.com studio.gametaverns.com *.gametaverns.com;
+    return 301 https://$host$request_uri;
 }
-EOF
+NGINX_EOF
+
+ln -sf /etc/nginx/sites-available/gametaverns /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
 nginx -t && systemctl reload nginx
 
@@ -208,10 +244,14 @@ echo "  SSL Setup Complete!"
 echo "=============================================="
 echo ""
 echo "Your site is now available at:"
-echo "  - https://$DOMAIN"
-echo "  - https://api.$DOMAIN"
-echo "  - https://mail.$DOMAIN"
-echo "  - https://studio.$DOMAIN (database admin)"
+echo "  - https://gametaverns.com (main site)"
+echo "  - https://api.gametaverns.com (API)"
+echo "  - https://mail.gametaverns.com (webmail)"
+echo "  - https://studio.gametaverns.com (database admin)"
+echo ""
+echo "Tenant libraries will be accessible at:"
+echo "  - https://{slug}.gametaverns.com"
+echo "  - Example: https://tzolak.gametaverns.com"
 echo ""
 echo "SSL certificates will auto-renew via Certbot."
 echo ""

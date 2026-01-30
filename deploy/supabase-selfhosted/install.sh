@@ -2,6 +2,7 @@
 # =============================================================================
 # GameTaverns - Self-Hosted Supabase Installation Script
 # Ubuntu 22.04 / 24.04 LTS
+# Domain: gametaverns.com (hardcoded)
 # =============================================================================
 
 set -e
@@ -15,6 +16,10 @@ NC='\033[0m'
 INSTALL_DIR="/opt/gametaverns"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="/var/log/gametaverns-install.log"
+
+# Hardcoded domain
+DOMAIN="gametaverns.com"
+SITE_NAME="GameTaverns"
 
 # ===========================================
 # Logging
@@ -43,6 +48,7 @@ echo ""
 echo "=============================================="
 echo "  GameTaverns Self-Hosted Installer"
 echo "  Supabase Edition"
+echo "  Domain: $DOMAIN"
 echo "=============================================="
 echo ""
 
@@ -68,21 +74,57 @@ fi
 # ===========================================
 echo ""
 echo "=============================================="
-echo "  Configuration"
+echo "  Admin Configuration"
 echo "=============================================="
 echo ""
-
-read -p "Enter your domain (e.g., gametaverns.com): " DOMAIN
-DOMAIN=${DOMAIN:-gametaverns.com}
-
-read -p "Enter site name [GameTaverns]: " SITE_NAME
-SITE_NAME=${SITE_NAME:-GameTaverns}
 
 read -p "Enter admin email [admin@$DOMAIN]: " ADMIN_EMAIL
 ADMIN_EMAIL=${ADMIN_EMAIL:-admin@$DOMAIN}
 
 read -p "Timezone [America/New_York]: " TIMEZONE
 TIMEZONE=${TIMEZONE:-America/New_York}
+
+# ===========================================
+# API Keys Configuration
+# ===========================================
+echo ""
+echo "=============================================="
+echo "  API Keys Configuration"
+echo "=============================================="
+echo ""
+echo -e "${YELLOW}Note: Press Enter to skip any optional keys${NC}"
+echo ""
+
+# Discord Integration
+echo -e "${BLUE}--- Discord Integration (for notifications & OAuth) ---${NC}"
+read -p "Discord Bot Token: " DISCORD_BOT_TOKEN
+read -p "Discord Client ID: " DISCORD_CLIENT_ID
+read -p "Discord Client Secret: " DISCORD_CLIENT_SECRET
+
+# AI Services
+echo ""
+echo -e "${BLUE}--- AI Services (for game recommendations & import) ---${NC}"
+read -p "Perplexity API Key: " PERPLEXITY_API_KEY
+read -p "OpenAI API Key (optional): " OPENAI_API_KEY
+read -p "Firecrawl API Key (for URL imports): " FIRECRAWL_API_KEY
+
+# Bot Protection
+echo ""
+echo -e "${BLUE}--- Cloudflare Turnstile (bot protection) ---${NC}"
+read -p "Turnstile Site Key: " TURNSTILE_SITE_KEY
+read -p "Turnstile Secret Key: " TURNSTILE_SECRET_KEY
+
+# External SMTP (optional)
+echo ""
+echo -e "${BLUE}--- External SMTP (leave empty to use built-in mail server) ---${NC}"
+read -p "External SMTP Host (optional): " EXT_SMTP_HOST
+if [ -n "$EXT_SMTP_HOST" ]; then
+    read -p "External SMTP Port [587]: " EXT_SMTP_PORT
+    EXT_SMTP_PORT=${EXT_SMTP_PORT:-587}
+    read -p "External SMTP User: " EXT_SMTP_USER
+    read -s -p "External SMTP Password: " EXT_SMTP_PASS
+    echo ""
+fi
 
 # ===========================================
 # Install Docker
@@ -186,14 +228,20 @@ cat > "$INSTALL_DIR/.env" << EOF
 ############################################################
 # GameTaverns Self-Hosted Configuration
 # Generated: $(date)
+# Domain: $DOMAIN (hardcoded)
 ############################################################
 
-# Domain & URLs
+# Domain & URLs (hardcoded for gametaverns.com)
+DOMAIN=$DOMAIN
 SITE_URL=https://$DOMAIN
 API_EXTERNAL_URL=https://api.$DOMAIN
+STUDIO_URL=https://studio.$DOMAIN
 MAIL_DOMAIN=$DOMAIN
 
-# Security Keys
+# Wildcard subdomain for libraries (*.gametaverns.com)
+LIBRARY_SUBDOMAIN_PATTERN=*.${DOMAIN}
+
+# Security Keys (auto-generated)
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 JWT_SECRET=$JWT_SECRET
 ANON_KEY=$ANON_KEY
@@ -219,11 +267,11 @@ ENABLE_EMAIL_SIGNUP=true
 ENABLE_EMAIL_AUTOCONFIRM=false
 JWT_EXPIRY=3600
 
-# SMTP (using internal mail server)
-SMTP_HOST=mail
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
+# SMTP Configuration
+SMTP_HOST=${EXT_SMTP_HOST:-mail}
+SMTP_PORT=${EXT_SMTP_PORT:-587}
+SMTP_USER=${EXT_SMTP_USER:-}
+SMTP_PASS=${EXT_SMTP_PASS:-}
 SMTP_ADMIN_EMAIL=$ADMIN_EMAIL
 SMTP_SENDER_NAME=$SITE_NAME
 SMTP_FROM=noreply@$DOMAIN
@@ -231,15 +279,23 @@ SMTP_FROM=noreply@$DOMAIN
 # Timezone
 TIMEZONE=$TIMEZONE
 
-# External API Keys (add after installation)
-PERPLEXITY_API_KEY=
-OPENAI_API_KEY=
-FIRECRAWL_API_KEY=
-DISCORD_BOT_TOKEN=
-DISCORD_CLIENT_ID=
-DISCORD_CLIENT_SECRET=
-TURNSTILE_SITE_KEY=
-TURNSTILE_SECRET_KEY=
+# ===========================================
+# API Keys (configured during installation)
+# ===========================================
+
+# Discord Integration
+DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
+DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
+
+# AI Services
+PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
+OPENAI_API_KEY=${OPENAI_API_KEY:-}
+FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+
+# Bot Protection (Cloudflare Turnstile)
+TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
+TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
 EOF
 
 chmod 600 "$INSTALL_DIR/.env"
