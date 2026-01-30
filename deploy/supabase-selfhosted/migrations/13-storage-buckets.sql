@@ -11,9 +11,18 @@ VALUES (
     5242880, -- 5MB limit
     ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+    public = true,
+    file_size_limit = 5242880,
+    allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
 
 -- Storage policies for library-logos bucket
+-- Drop existing policies first to allow clean re-runs
+DROP POLICY IF EXISTS "Public logos are viewable by everyone" ON storage.objects;
+DROP POLICY IF EXISTS "Library owners can upload logos" ON storage.objects;
+DROP POLICY IF EXISTS "Library owners can update logos" ON storage.objects;
+DROP POLICY IF EXISTS "Library owners can delete logos" ON storage.objects;
+DROP POLICY IF EXISTS "Admins can manage all logos" ON storage.objects;
 
 -- Anyone can view logos (public bucket)
 CREATE POLICY "Public logos are viewable by everyone"

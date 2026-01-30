@@ -1,23 +1,23 @@
 # Kong Declarative Configuration for Supabase
 # This routes all API requests to the appropriate Supabase services
-# NOTE: Environment variables are substituted by the container at runtime
+# NOTE: ANON_KEY and SERVICE_ROLE_KEY are substituted by install.sh
 
 _format_version: "2.1"
 _transform: true
 
 ###
 ### Consumers / API Keys
-### NOTE: Keys are injected via docker-compose environment
+### These get replaced by install.sh during setup
 ###
 
 consumers:
   - username: DASHBOARD
   - username: anon
     keyauth_credentials:
-      - key: "{{ANON_KEY}}"
+      - key: "ANON_KEY_PLACEHOLDER"
   - username: service_role
     keyauth_credentials:
-      - key: "{{SERVICE_ROLE_KEY}}"
+      - key: "SERVICE_ROLE_KEY_PLACEHOLDER"
 
 ###
 ### ACLs

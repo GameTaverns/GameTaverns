@@ -270,6 +270,40 @@ mkdir -p "$INSTALL_DIR/backups"
 cp -r "$SCRIPT_DIR"/* "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/scripts"/*.sh 2>/dev/null || true
 
+# Copy source files needed for builds
+# The script should be run from the project root (where package.json is)
+PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+if [ -f "$PROJECT_ROOT/package.json" ]; then
+    info "Copying application source files..."
+    
+    # Copy frontend source
+    cp -r "$PROJECT_ROOT/src" "$INSTALL_DIR/"
+    cp -r "$PROJECT_ROOT/public" "$INSTALL_DIR/"
+    cp "$PROJECT_ROOT/package.json" "$INSTALL_DIR/"
+    cp "$PROJECT_ROOT/package-lock.json" "$INSTALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT/bun.lockb" "$INSTALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT/vite.config.ts" "$INSTALL_DIR/"
+    cp "$PROJECT_ROOT/tsconfig.json" "$INSTALL_DIR/"
+    cp "$PROJECT_ROOT/tsconfig.app.json" "$INSTALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT/tsconfig.node.json" "$INSTALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT/tailwind.config.ts" "$INSTALL_DIR/"
+    cp "$PROJECT_ROOT/postcss.config.js" "$INSTALL_DIR/"
+    cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT/index.html" "$INSTALL_DIR/"
+    cp "$PROJECT_ROOT/eslint.config.js" "$INSTALL_DIR/" 2>/dev/null || true
+    
+    # Copy edge functions
+    mkdir -p "$INSTALL_DIR/supabase"
+    cp -r "$PROJECT_ROOT/supabase/functions" "$INSTALL_DIR/supabase/"
+    
+    # Copy supabase config (needed for edge functions)
+    cp "$PROJECT_ROOT/supabase/config.toml" "$INSTALL_DIR/supabase/" 2>/dev/null || true
+    
+    success "Application source files copied"
+else
+    error "Could not find project root at $PROJECT_ROOT - run install.sh from the deploy/supabase-selfhosted directory within the cloned repo"
+fi
+
 success "Directory structure created at $INSTALL_DIR"
 
 # ===========================================
@@ -400,15 +434,14 @@ success "Credentials saved to $CREDS_FILE"
 echo ""
 info "Rendering Kong configuration..."
 
-# Backup template
-cp "$INSTALL_DIR/kong.yml" "$INSTALL_DIR/kong.yml.template" 2>/dev/null || true
+# Replace placeholders with actual keys using sed
+# This handles the API keys that Kong needs for authentication
+sed -i \
+    -e "s|ANON_KEY_PLACEHOLDER|${ANON_KEY}|g" \
+    -e "s|SERVICE_ROLE_KEY_PLACEHOLDER|${SERVICE_ROLE_KEY}|g" \
+    "$INSTALL_DIR/kong.yml"
 
-# Replace placeholders with actual keys
-sed -e "s|{{ANON_KEY}}|${ANON_KEY}|g" \
-    -e "s|{{SERVICE_ROLE_KEY}}|${SERVICE_ROLE_KEY}|g" \
-    "$INSTALL_DIR/kong.yml.template" > "$INSTALL_DIR/kong.yml"
-
-success "Kong configuration rendered"
+success "Kong configuration rendered with API keys"
 
 # ===========================================
 # Pull Docker Images
@@ -526,7 +559,7 @@ fi
 # Verify critical tables exist
 echo ""
 info "Verifying database schema..."
-TABLES_CHECK=$(docker compose exec -T db psql -U supabase_admin -d postgres -t -c "SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('users', 'libraries', 'games', 'library_settings');" 2>/dev/null | tr -d ' ')
+TABLES_CHECK=$(docker compose exec -T db psql -U supabase_admin -d postgres -t -c "SELECT COUNT(*) FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('user_profiles', 'libraries', 'games', 'library_settings');" 2>/dev/null | tr -d ' ')
 if [ "$TABLES_CHECK" = "4" ]; then
     success "Core database tables created"
 else

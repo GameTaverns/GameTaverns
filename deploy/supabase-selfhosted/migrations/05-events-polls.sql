@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.game_polls (
     voting_ends_at TIMESTAMPTZ,
     max_votes_per_user INTEGER DEFAULT 1,
     show_results_before_close BOOLEAN DEFAULT false,
-    share_token TEXT DEFAULT encode(gen_random_bytes(16), 'hex'),
+    share_token TEXT DEFAULT encode(extensions.gen_random_bytes(16), 'hex'),
     created_by UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

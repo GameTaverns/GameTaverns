@@ -42,26 +42,36 @@ else
     exit 1
 fi
 
-# Storage backup (from named volume)
+# Storage backup (from named volume - project name is 'gametaverns')
 echo "Backing up storage..."
-if docker run --rm \
-    -v gametaverns_storage-data:/data:ro \
-    -v "$BACKUP_DIR":/backup \
-    alpine tar -czf /backup/storage_${DATE}.tar.gz -C /data . 2>/dev/null; then
-    echo "  ✓ Storage backup complete"
+STORAGE_VOLUME="gametaverns_storage-data"
+if docker volume inspect "$STORAGE_VOLUME" > /dev/null 2>&1; then
+    if docker run --rm \
+        -v "${STORAGE_VOLUME}":/data:ro \
+        -v "$BACKUP_DIR":/backup \
+        alpine tar -czf /backup/storage_${DATE}.tar.gz -C /data . 2>/dev/null; then
+        echo "  ✓ Storage backup complete"
+    else
+        echo "  ⚠ Storage backup failed"
+    fi
 else
-    echo "  ⚠ Storage backup skipped (volume may not exist)"
+    echo "  ⚠ Storage backup skipped (volume $STORAGE_VOLUME not found)"
 fi
 
 # Mail backup (from named volume)
 echo "Backing up mail data..."
-if docker run --rm \
-    -v gametaverns_mail-data:/data:ro \
-    -v "$BACKUP_DIR":/backup \
-    alpine tar -czf /backup/mail_${DATE}.tar.gz -C /data . 2>/dev/null; then
-    echo "  ✓ Mail backup complete"
+MAIL_VOLUME="gametaverns_mail-data"
+if docker volume inspect "$MAIL_VOLUME" > /dev/null 2>&1; then
+    if docker run --rm \
+        -v "${MAIL_VOLUME}":/data:ro \
+        -v "$BACKUP_DIR":/backup \
+        alpine tar -czf /backup/mail_${DATE}.tar.gz -C /data . 2>/dev/null; then
+        echo "  ✓ Mail backup complete"
+    else
+        echo "  ⚠ Mail backup failed"
+    fi
 else
-    echo "  ⚠ Mail backup skipped (volume may not exist)"
+    echo "  ⚠ Mail backup skipped (volume $MAIL_VOLUME not found)"
 fi
 
 # Configuration backup
