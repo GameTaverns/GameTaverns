@@ -4,6 +4,8 @@ import { Loader2, CheckCircle, XCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logoImage from "@/assets/logo.png";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { isSelfHostedMode, apiClient } from "@/integrations/backend/client";
+import { getSupabaseConfig } from "@/config/runtime";
 
 type VerificationStatus = "verifying" | "success" | "error" | "no-token";
 
@@ -24,18 +26,30 @@ export default function VerifyEmail() {
 
     const verifyEmail = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-email`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ token }),
-          }
-        );
+        let data: { valid?: boolean; email?: string; error?: string };
 
-        const data = await response.json();
+        if (isSelfHostedMode()) {
+          // Self-hosted: call local API
+          data = await apiClient.post<{ valid?: boolean; email?: string; error?: string }>(
+            "/auth/verify-email",
+            { token }
+          );
+        } else {
+          // Cloud mode: call Supabase Edge Function
+          const { url: apiUrl, anonKey } = getSupabaseConfig();
+          const response = await fetch(
+            `${apiUrl}/functions/v1/verify-email`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': anonKey,
+              },
+              body: JSON.stringify({ token }),
+            }
+          );
+          data = await response.json();
+        }
 
         if (data.valid) {
           setStatus("success");

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { getSupabaseConfig } from "@/config/runtime";
 
 export interface GameRecommendation {
   id: string;
@@ -22,16 +23,36 @@ export function useGameRecommendations(gameId: string | undefined, enabled = tru
     queryFn: async (): Promise<GameRecommendation[]> => {
       if (!gameId || !library?.id) return [];
 
+      // Self-hosted mode: use local API
+      if (isSelfHostedMode()) {
+        try {
+          const response = await apiClient.post<{ recommendations: GameRecommendation[] }>(
+            "/games/recommendations",
+            {
+              game_id: gameId,
+              library_id: library.id,
+              limit: 5,
+            }
+          );
+          return response.recommendations || [];
+        } catch {
+          // Feature may not be implemented in self-hosted
+          return [];
+        }
+      }
+
+      // Cloud mode: call Supabase Edge Function
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
+      const { url: apiUrl, anonKey } = getSupabaseConfig();
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/game-recommendations`,
+        `${apiUrl}/functions/v1/game-recommendations`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            "apikey": anonKey,
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
