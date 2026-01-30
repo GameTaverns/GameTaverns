@@ -115,8 +115,18 @@ function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; t
     }
   }, [tenantSlug, pathParam, tabParam, location.pathname, navigate]);
   
-  // Show loading while redirect is in progress or tenant is loading
-  if ((tenantSlug && pathParam && location.pathname === "/") || (tenantSlug && isLoading)) {
+  // Show loading while redirect is in progress
+  // IMPORTANT: For platform mode (no tenant), don't wait for tenant loading
+  if (tenantSlug && pathParam && location.pathname === "/") {
+    return (
+      <div className="min-h-screen parchment-texture flex items-center justify-center animate-fade-in">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+  
+  // Only show loading spinner for tenant mode while tenant data loads
+  if (tenantSlug && isLoading) {
     return (
       <div className="min-h-screen parchment-texture flex items-center justify-center animate-fade-in">
         <div className="animate-pulse text-muted-foreground">Loading...</div>

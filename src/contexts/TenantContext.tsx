@@ -169,9 +169,13 @@ export function TenantProvider({ children }: TenantProviderProps) {
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
   
+  // Resolve tenant slug early to determine if we need to load
+  const tenantSlugEarly = useMemo(() => resolveTenantSlug(), [location.search]);
+  
   const [library, setLibrary] = useState<Library | null>(null);
   const [settings, setSettings] = useState<LibrarySettings | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Start as NOT loading if there's no tenant - platform mode renders immediately
+  const [isLoading, setIsLoading] = useState(!!tenantSlugEarly);
   const [error, setError] = useState<string | null>(null);
   
   // Suspension state
@@ -179,8 +183,8 @@ export function TenantProvider({ children }: TenantProviderProps) {
   const [suspendedLibraryName, setSuspendedLibraryName] = useState<string | null>(null);
   const [suspensionReason, setSuspensionReason] = useState<string | null>(null);
   
-  // Resolve tenant slug
-  const tenantSlug = useMemo(() => resolveTenantSlug(), [location.search]);
+  // Use the early-resolved tenant slug
+  const tenantSlug = tenantSlugEarly;
   
   // Check if we're on an admin path
   const isAdminMode = location.pathname.includes("/admin");
