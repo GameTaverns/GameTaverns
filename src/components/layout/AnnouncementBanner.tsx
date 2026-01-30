@@ -1,15 +1,26 @@
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 
 export function AnnouncementBanner() {
   const [dismissed, setDismissed] = useState(false);
   
   // Fetch announcement directly from the public view to ensure it works for all users
   const { data: announcement } = useQuery({
-    queryKey: ["announcement-banner"],
+    queryKey: ["announcement-banner", isSelfHostedMode()],
     queryFn: async () => {
+      // Self-hosted mode: fetch from Express API
+      if (isSelfHostedMode()) {
+        try {
+          const settings = await apiClient.get<Record<string, string | null>>('/settings/public');
+          return settings.announcement_banner || null;
+        } catch {
+          return null;
+        }
+      }
+
+      // Cloud mode: fetch from Supabase
       const { data, error } = await supabase
         .from("site_settings_public")
         .select("value")

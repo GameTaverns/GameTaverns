@@ -12,7 +12,7 @@ import { DIFFICULTY_OPTIONS } from "@/types/game";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useWishlist } from "@/hooks/useWishlist";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 

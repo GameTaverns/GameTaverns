@@ -3,7 +3,7 @@ import { Search, X, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useQuery } from "@tanstack/react-query";
 import { GameImage } from "@/components/games/GameImage";
 import { useDebounce } from "@/hooks/useDebounce";

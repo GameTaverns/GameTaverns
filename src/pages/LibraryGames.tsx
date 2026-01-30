@@ -12,7 +12,7 @@ import { BulkImportDialog } from "@/components/games/BulkImportDialog";
 import { CategoryManager } from "@/components/games/CategoryManager";
 import { GameCollectionTable } from "@/components/games/GameCollectionTable";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 
 type ImportMode = "csv" | "bgg_collection" | "bgg_links";
 

@@ -24,7 +24,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 

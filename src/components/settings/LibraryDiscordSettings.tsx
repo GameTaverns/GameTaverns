@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdateLibrarySettings } from "@/hooks/useLibrary";
 import { useTenant } from "@/contexts/TenantContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 
 interface DiscordNotifications {
   game_added: boolean;

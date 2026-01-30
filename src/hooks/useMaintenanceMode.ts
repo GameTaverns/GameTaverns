@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export function useMaintenanceMode() {
@@ -7,8 +7,19 @@ export function useMaintenanceMode() {
 
   // Fetch maintenance mode setting from public view (accessible to all users)
   const { data: isMaintenanceMode, isLoading: settingLoading } = useQuery({
-    queryKey: ["maintenance-mode"],
+    queryKey: ["maintenance-mode", isSelfHostedMode()],
     queryFn: async () => {
+      // Self-hosted mode: fetch from Express API
+      if (isSelfHostedMode()) {
+        try {
+          const settings = await apiClient.get<Record<string, string | null>>('/settings/public');
+          return settings.maintenance_mode === "true";
+        } catch {
+          return false;
+        }
+      }
+
+      // Cloud mode: fetch from Supabase
       const { data, error } = await supabase
         .from("site_settings_public")
         .select("value")
