@@ -1,11 +1,14 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Public Views (for unauthenticated access)
+-- Complete 1:1 parity with Lovable Cloud schema
 -- =============================================================================
 
 -- ===========================================
 -- Public Libraries View (strips sensitive data)
 -- ===========================================
-CREATE OR REPLACE VIEW public.libraries_public AS
+CREATE OR REPLACE VIEW public.libraries_public 
+WITH (security_invoker = false)
+AS
 SELECT 
     id,
     slug,
@@ -20,9 +23,11 @@ FROM public.libraries
 WHERE is_active = true;
 
 -- ===========================================
--- Public Library Settings View
+-- Public Library Settings View (security_invoker = false for anon access)
 -- ===========================================
-CREATE OR REPLACE VIEW public.library_settings_public AS
+CREATE OR REPLACE VIEW public.library_settings_public
+WITH (security_invoker = false)
+AS
 SELECT 
     ls.library_id,
     ls.logo_url,
@@ -82,9 +87,11 @@ JOIN public.libraries l ON l.id = ls.library_id
 WHERE l.is_active = true;
 
 -- ===========================================
--- Public Games View (strips private data)
+-- Public Games View (strips private data like is_favorite)
 -- ===========================================
-CREATE OR REPLACE VIEW public.games_public AS
+CREATE OR REPLACE VIEW public.games_public
+WITH (security_invoker = false)
+AS
 SELECT 
     g.id,
     g.library_id,
@@ -119,14 +126,17 @@ SELECT
     g.youtube_videos,
     g.created_at,
     g.updated_at
+    -- NOTE: is_favorite is intentionally excluded (owner-only)
 FROM public.games g
 JOIN public.libraries l ON l.id = g.library_id
 WHERE l.is_active = true;
 
 -- ===========================================
--- Public User Profiles View (strips user_id)
+-- Public User Profiles View (strips user_id for privacy)
 -- ===========================================
-CREATE OR REPLACE VIEW public.user_profiles_public AS
+CREATE OR REPLACE VIEW public.user_profiles_public
+WITH (security_invoker = false)
+AS
 SELECT 
     id,
     display_name,
@@ -139,7 +149,9 @@ FROM public.user_profiles;
 -- ===========================================
 -- Library Directory View (for discovery)
 -- ===========================================
-CREATE OR REPLACE VIEW public.library_directory AS
+CREATE OR REPLACE VIEW public.library_directory
+WITH (security_invoker = false)
+AS
 SELECT 
     l.id,
     l.slug,
@@ -157,9 +169,23 @@ JOIN public.library_settings ls ON ls.library_id = l.id
 WHERE l.is_active = true AND ls.is_discoverable = true;
 
 -- ===========================================
+-- Library Members Public View (just counts)
+-- ===========================================
+CREATE OR REPLACE VIEW public.library_members_public
+WITH (security_invoker = false)
+AS
+SELECT 
+    library_id,
+    COUNT(*) as member_count
+FROM public.library_members
+GROUP BY library_id;
+
+-- ===========================================
 -- Game Ratings Summary View
 -- ===========================================
-CREATE OR REPLACE VIEW public.game_ratings_summary AS
+CREATE OR REPLACE VIEW public.game_ratings_summary
+WITH (security_invoker = false)
+AS
 SELECT 
     game_id,
     COUNT(*)::integer as rating_count,
@@ -168,9 +194,27 @@ FROM public.game_ratings
 GROUP BY game_id;
 
 -- ===========================================
+-- Game Ratings Library View (for library owners)
+-- ===========================================
+CREATE OR REPLACE VIEW public.game_ratings_library_view
+WITH (security_invoker = false)
+AS
+SELECT 
+    gr.id,
+    gr.game_id,
+    gr.guest_identifier,
+    gr.rating,
+    gr.created_at,
+    gr.updated_at
+    -- NOTE: ip_address and device_fingerprint excluded for privacy
+FROM public.game_ratings gr;
+
+-- ===========================================
 -- Game Wishlist Summary View
 -- ===========================================
-CREATE OR REPLACE VIEW public.game_wishlist_summary AS
+CREATE OR REPLACE VIEW public.game_wishlist_summary
+WITH (security_invoker = false)
+AS
 SELECT 
     game_id,
     COUNT(*) as vote_count,
@@ -181,7 +225,9 @@ GROUP BY game_id;
 -- ===========================================
 -- Borrower Reputation View
 -- ===========================================
-CREATE OR REPLACE VIEW public.borrower_reputation AS
+CREATE OR REPLACE VIEW public.borrower_reputation
+WITH (security_invoker = false)
+AS
 SELECT 
     rated_user_id as user_id,
     COUNT(*) as total_ratings,
@@ -193,7 +239,9 @@ GROUP BY rated_user_id;
 -- ===========================================
 -- Library Calendar Events View (combined events + polls)
 -- ===========================================
-CREATE OR REPLACE VIEW public.library_calendar_events AS
+CREATE OR REPLACE VIEW public.library_calendar_events
+WITH (security_invoker = false)
+AS
 SELECT 
     id,
     library_id,
@@ -201,8 +249,8 @@ SELECT
     description,
     event_date,
     event_location,
-    NULL as share_token,
-    NULL as poll_status,
+    NULL::text as share_token,
+    NULL::text as poll_status,
     'event' as event_type,
     created_at
 FROM public.library_events
