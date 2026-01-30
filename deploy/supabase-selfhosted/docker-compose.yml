@@ -1,0 +1,423 @@
+# GameTaverns - Self-Hosted Supabase Stack
+# Based on official Supabase self-hosted configuration
+# https://supabase.com/docs/guides/self-hosting/docker
+#
+# Usage:
+#   1. Run ./install.sh to generate .env
+#   2. docker compose up -d
+#   3. Access at https://yourdomain.com
+
+version: "3.8"
+
+services:
+  # ===========================================
+  # Kong API Gateway
+  # ===========================================
+  kong:
+    image: kong:2.8.1
+    container_name: gametaverns-kong
+    restart: unless-stopped
+    ports:
+      - "${KONG_HTTP_PORT:-8000}:8000/tcp"
+      - "${KONG_HTTPS_PORT:-8443}:8443/tcp"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+    volumes:
+      - ./kong.yml:/var/lib/kong/kong.yml:ro
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    depends_on:
+      auth:
+        condition: service_healthy
+      rest:
+        condition: service_healthy
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # PostgreSQL Database
+  # ===========================================
+  db:
+    image: supabase/postgres:15.6.1.143
+    container_name: gametaverns-db
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
+    volumes:
+      - ./volumes/db/data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+      - -c
+      - wal_level=logical
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=256MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supabase_admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Supabase Auth (GoTrue)
+  # ===========================================
+  auth:
+    image: supabase/gotrue:v2.158.1
+    container_name: gametaverns-auth
+    restart: unless-stopped
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      # Email settings
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP:-true}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-false}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-mail}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-GameTaverns}
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      # Rate limiting
+      GOTRUE_RATE_LIMIT_HEADER: X-Forwarded-For
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: 100
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # PostgREST (REST API)
+  # ===========================================
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    container_name: gametaverns-rest
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Supabase Realtime
+  # ===========================================
+  realtime:
+    image: supabase/realtime:v2.30.34
+    container_name: gametaverns-realtime
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      FLY_APP_NAME: realtime
+      FLY_ALLOC_ID: any
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Supabase Storage
+  # ===========================================
+  storage:
+    image: supabase/storage-api:v1.0.6
+    container_name: gametaverns-storage
+    restart: unless-stopped
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:8080
+    volumes:
+      - ./volumes/storage:/var/lib/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_healthy
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Image Proxy (for storage transformations)
+  # ===========================================
+  imgproxy:
+    image: darthsim/imgproxy:v3.18
+    container_name: gametaverns-imgproxy
+    restart: unless-stopped
+    environment:
+      IMGPROXY_BIND: ":8080"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+    volumes:
+      - ./volumes/storage:/var/lib/storage:ro
+    healthcheck:
+      test: ["CMD", "imgproxy", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Edge Functions (Deno Runtime)
+  # ===========================================
+  functions:
+    image: supabase/edge-runtime:v1.66.4
+    container_name: gametaverns-functions
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_DB_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      VERIFY_JWT: "false"
+      # External API keys
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-}
+      PERPLEXITY_API_KEY: ${PERPLEXITY_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+      # SMTP for edge functions
+      SMTP_HOST: ${SMTP_HOST:-mail}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      - ../../supabase/functions:/home/deno/functions:ro
+    command:
+      - start
+      - --main-service
+      - /home/deno/functions/main
+      - --port
+      - "9000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Postgres Meta (for Studio)
+  # ===========================================
+  meta:
+    image: supabase/postgres-meta:v0.83.2
+    container_name: gametaverns-meta
+    restart: unless-stopped
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Supabase Studio
+  # ===========================================
+  studio:
+    image: supabase/studio:20240729-ce42139
+    container_name: gametaverns-studio
+    restart: unless-stopped
+    ports:
+      - "${STUDIO_PORT:-3001}:3000"
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DEFAULT_ORGANIZATION_NAME: ${SITE_NAME:-GameTaverns}
+      DEFAULT_PROJECT_NAME: ${SITE_NAME:-GameTaverns}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${API_EXTERNAL_URL}
+      NEXT_PUBLIC_SUPABASE_URL: ${API_EXTERNAL_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      NEXT_PUBLIC_IS_PLATFORM: "false"
+      NEXT_PUBLIC_ENABLE_LOGS: "false"
+    depends_on:
+      meta:
+        condition: service_healthy
+      kong:
+        condition: service_healthy
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Frontend Application
+  # ===========================================
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/supabase-selfhosted/Dockerfile.app
+    container_name: gametaverns-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:80"
+    environment:
+      SUPABASE_URL: ${API_EXTERNAL_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SITE_NAME: ${SITE_NAME:-GameTaverns}
+      SITE_DESCRIPTION: ${SITE_DESCRIPTION:-Browse and discover our collection of board games}
+    depends_on:
+      kong:
+        condition: service_healthy
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Mail Server (Postfix + Dovecot)
+  # ===========================================
+  mail:
+    build:
+      context: ./mail
+      dockerfile: Dockerfile
+    container_name: gametaverns-mail
+    restart: unless-stopped
+    ports:
+      - "25:25"
+      - "587:587"
+      - "993:993"
+    environment:
+      MAIL_DOMAIN: ${MAIL_DOMAIN}
+      POSTMASTER_EMAIL: ${SMTP_ADMIN_EMAIL:-postmaster@${MAIL_DOMAIN}}
+    volumes:
+      - ./volumes/mail/vmail:/var/mail/vhosts
+      - ./volumes/mail/config:/etc/mail-config
+    networks:
+      - gametaverns
+
+  # ===========================================
+  # Roundcube Webmail
+  # ===========================================
+  roundcube:
+    image: roundcube/roundcubemail:1.6.6-apache
+    container_name: gametaverns-roundcube
+    restart: unless-stopped
+    ports:
+      - "${ROUNDCUBE_PORT:-9001}:80"
+    environment:
+      ROUNDCUBEMAIL_DEFAULT_HOST: mail
+      ROUNDCUBEMAIL_DEFAULT_PORT: 993
+      ROUNDCUBEMAIL_SMTP_SERVER: mail
+      ROUNDCUBEMAIL_SMTP_PORT: 587
+    depends_on:
+      - mail
+    networks:
+      - gametaverns
+
+networks:
+  gametaverns:
+    driver: bridge
+
+volumes:
+  db-data:
+  storage-data:
+  mail-data:
