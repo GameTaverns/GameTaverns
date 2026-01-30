@@ -107,6 +107,37 @@ export const apiClient = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
+  
+  async put<T>(path: string, body?: unknown, options?: RequestInit): Promise<T> {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options?.headers,
+      },
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+  
+  async delete<T>(path: string, options?: RequestInit): Promise<T> {
+    const token = localStorage.getItem('auth_token');
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'DELETE',
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options?.headers,
+      },
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
 };
 
 /**
