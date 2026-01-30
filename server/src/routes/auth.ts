@@ -110,7 +110,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
 router.get('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, created_at FROM users WHERE id = $1',
+      'SELECT id, email, email_verified, created_at FROM users WHERE id = $1',
       [req.user!.sub]
     );
     
@@ -121,6 +121,13 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
     
     const user = result.rows[0];
     
+    // Get profile data (display_name, username, avatar_url)
+    const profileResult = await pool.query(
+      'SELECT display_name, username, avatar_url FROM user_profiles WHERE user_id = $1',
+      [user.id]
+    );
+    const profile = profileResult.rows[0] || {};
+    
     // Get role
     const roleResult = await pool.query(
       'SELECT role FROM user_roles WHERE user_id = $1',
@@ -129,7 +136,12 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
     const roles = roleResult.rows.map(r => r.role);
     
     res.json({
-      ...user,
+      id: user.id,
+      email: user.email,
+      emailVerified: !!user.email_verified,
+      displayName: profile.display_name || null,
+      username: profile.username || null,
+      avatarUrl: profile.avatar_url || null,
       roles,
       isAdmin: roles.includes('admin'),
     });
