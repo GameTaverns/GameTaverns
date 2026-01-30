@@ -99,9 +99,9 @@ export function getCorePool(): mysql.Pool {
 /**
  * Resolve tenant from subdomain
  * 
- * Supports two domain structures:
+ * Supports domain structures:
  * 1. gametaverns.com (production): library.gametaverns.com → 'library'
- * 2. tavern.tzolak.com (staging): library.tavern.tzolak.com → 'library'
+ * 2. Custom domains via custom_domain column
  */
 export async function resolveTenant(hostname: string): Promise<TenantContext | null> {
   const parts = hostname.split('.');
@@ -113,20 +113,10 @@ export async function resolveTenant(hostname: string): Promise<TenantContext | n
   
   let slug: string | null = null;
   
-  // Check for staging domain: tavern.tzolak.com
-  // library.tavern.tzolak.com = 4 parts → slug = 'library'
-  // tavern.tzolak.com = 3 parts → main site
-  if (hostname.endsWith('.tavern.tzolak.com')) {
-    if (parts.length === 4) {
-      slug = parts[0];
-    } else {
-      return null; // Main site (tavern.tzolak.com)
-    }
-  }
   // Check for production domain: gametaverns.com  
   // library.gametaverns.com = 3 parts → slug = 'library'
   // gametaverns.com = 2 parts → main site
-  else if (hostname.endsWith('.gametaverns.com') || hostname.endsWith('gametaverns.com')) {
+  if (hostname.endsWith('.gametaverns.com') || hostname.endsWith('gametaverns.com')) {
     if (parts.length === 3) {
       slug = parts[0];
     } else {

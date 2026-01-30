@@ -55,8 +55,7 @@ export function getPool(): pg.Pool {
  * 
  * Supports domain structures:
  * 1. gametaverns.com (production): library.gametaverns.com → 'library'
- * 2. tavern.tzolak.com (staging): library.tavern.tzolak.com → 'library'
- * 3. Custom domains via custom_domain column
+ * 2. Custom domains via custom_domain column
  */
 export async function resolveTenant(hostname: string): Promise<TenantContext | null> {
   const parts = hostname.split('.');
@@ -68,16 +67,8 @@ export async function resolveTenant(hostname: string): Promise<TenantContext | n
   
   let slug: string | null = null;
   
-  // Check for staging domain: tavern.tzolak.com
-  if (hostname.endsWith('.tavern.tzolak.com')) {
-    if (parts.length === 4) {
-      slug = parts[0];
-    } else {
-      return null; // Main site
-    }
-  }
   // Check for production domain: gametaverns.com  
-  else if (hostname.endsWith('.gametaverns.com') || hostname.endsWith('gametaverns.com')) {
+  if (hostname.endsWith('.gametaverns.com') || hostname.endsWith('gametaverns.com')) {
     if (parts.length === 3) {
       slug = parts[0];
     } else {

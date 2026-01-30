@@ -393,7 +393,7 @@ export default function Dashboard() {
                     <div className="space-y-3">
                       <div className="text-sm text-cream/60">
                         <span className="font-medium text-cream">URL:</span>{" "}
-                        {library.slug}.tavern.tzolak.com
+                        {library.slug}.gametaverns.com
                       </div>
                       <a href={libraryUrl!} className="block">
                         <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">

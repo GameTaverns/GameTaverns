@@ -116,9 +116,7 @@ interface TenantProviderProps {
 /**
  * Resolves tenant from:
  * 1. ?tenant=slug query param (for Lovable preview testing)
- * 2. Subdomain - supports two structures:
- *    - Production: library.gametaverns.com → 'library'
- *    - Staging: library.tavern.tzolak.com → 'library'
+ * 2. Subdomain: library.gametaverns.com → 'library'
  * 3. Custom domain (future)
  */
 function resolveTenantSlug(): string | null {
@@ -144,14 +142,8 @@ function resolveTenantSlug(): string | null {
   
   let slug: string | null = null;
   
-  // Staging domain: library.tavern.tzolak.com (4 parts)
-  if (hostname.endsWith(".tavern.tzolak.com")) {
-    if (parts.length === 4) {
-      slug = parts[0];
-    }
-  }
   // Production domain: library.gametaverns.com (3 parts)
-  else if (hostname.endsWith(".gametaverns.com")) {
+  if (hostname.endsWith(".gametaverns.com")) {
     if (parts.length === 3) {
       slug = parts[0];
     }
