@@ -1450,18 +1450,17 @@ create_admin_user() {
 
     log_info "Creating admin user..."
 
-    # Hash password using Node.js bcrypt
+    # Hash password using Node.js bcrypt (must run from server dir where bcryptjs is installed)
     cd ${INSTALL_DIR}/server
     
-    cat > /tmp/hash-password.js <<'HASHEOF'
-const bcrypt = require('bcryptjs');
-const password = process.argv[2];
-const hash = bcrypt.hashSync(password, 12);
-console.log(hash);
-HASHEOF
-
-    PASSWORD_HASH=$(node /tmp/hash-password.js "${ADMIN_PASSWORD}")
-    rm /tmp/hash-password.js
+    # Ensure bcryptjs is installed
+    if [[ ! -d "node_modules/bcryptjs" ]]; then
+        log_info "Installing bcryptjs..."
+        npm install bcryptjs --silent 2>/dev/null || npm install bcryptjs
+    fi
+    
+    # Hash the password inline using Node.js
+    PASSWORD_HASH=$(node -e "console.log(require('bcryptjs').hashSync('${ADMIN_PASSWORD}', 12))")
 
     # Insert user
     sudo -u postgres psql -d ${DB_NAME} <<EOF >> "$LOG_FILE" 2>&1
