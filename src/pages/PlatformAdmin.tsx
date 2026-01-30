@@ -4,8 +4,6 @@ import { Shield, Users, Database, Settings, Activity, MessageCircle } from "luci
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
-import { useQuery } from "@tanstack/react-query";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { LibraryManagement } from "@/components/admin/LibraryManagement";
 import { PlatformSettings } from "@/components/admin/PlatformSettings";
@@ -17,26 +15,9 @@ import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 
 export default function PlatformAdmin() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, isAdmin, roleLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("analytics");
   const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
-  
-  // Check if user is a site owner (has admin role)
-  const { data: isSiteOwner, isLoading: roleLoading } = useQuery({
-    queryKey: ["user-role", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return false;
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      
-      return !!data;
-    },
-    enabled: !!user?.id,
-  });
   
   useEffect(() => {
     // Wait for auth to load before redirecting
@@ -47,10 +28,10 @@ export default function PlatformAdmin() {
   
   useEffect(() => {
     // Wait for both auth and role to load before redirecting non-admins
-    if (!authLoading && !roleLoading && !isSiteOwner && isAuthenticated) {
+    if (!authLoading && !roleLoading && !isAdmin && isAuthenticated) {
       navigate("/dashboard");
     }
-  }, [isSiteOwner, roleLoading, authLoading, isAuthenticated, navigate]);
+  }, [isAdmin, roleLoading, authLoading, isAuthenticated, navigate]);
   
   if (authLoading || roleLoading) {
     return (
@@ -60,7 +41,7 @@ export default function PlatformAdmin() {
     );
   }
   
-  if (!isSiteOwner) {
+  if (!isAdmin) {
     return null;
   }
   
