@@ -10,6 +10,7 @@ import { DemoThemeApplicator } from "@/components/DemoThemeApplicator";
 import { TenantThemeApplicator } from "@/components/TenantThemeApplicator";
 import { DemoProvider } from "@/contexts/DemoContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { DemoGuard } from "@/components/system/DemoGuard";
 import { MaintenanceGuard } from "@/components/system/MaintenanceGuard";
 import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironmentBanner";
@@ -218,9 +219,11 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <BrowserRouter>
-          <Toaster />
-          <Sonner />
-          <AppRoutes />
+          <AuthProvider>
+            <Toaster />
+            <Sonner />
+            <AppRoutes />
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
