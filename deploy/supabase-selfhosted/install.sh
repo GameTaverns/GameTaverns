@@ -279,6 +279,7 @@ if [ -f "$PROJECT_ROOT/package.json" ]; then
     # Copy frontend source
     cp -r "$PROJECT_ROOT/src" "$INSTALL_DIR/"
     cp -r "$PROJECT_ROOT/public" "$INSTALL_DIR/"
+    # Copy package files first
     cp "$PROJECT_ROOT/package.json" "$INSTALL_DIR/"
     cp "$PROJECT_ROOT/package-lock.json" "$INSTALL_DIR/" 2>/dev/null || true
     cp "$PROJECT_ROOT/bun.lockb" "$INSTALL_DIR/" 2>/dev/null || true
@@ -288,6 +289,9 @@ if [ -f "$PROJECT_ROOT/package.json" ]; then
     cp "$PROJECT_ROOT/tsconfig.node.json" "$INSTALL_DIR/" 2>/dev/null || true
     cp "$PROJECT_ROOT/tailwind.config.ts" "$INSTALL_DIR/"
     cp "$PROJECT_ROOT/postcss.config.js" "$INSTALL_DIR/"
+    cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/" 2>/dev/null || touch "$INSTALL_DIR/components.json"
+    cp "$PROJECT_ROOT/index.html" "$INSTALL_DIR/"
+    cp "$PROJECT_ROOT/eslint.config.js" "$INSTALL_DIR/" 2>/dev/null || true
     cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/" 2>/dev/null || true
     cp "$PROJECT_ROOT/index.html" "$INSTALL_DIR/"
     cp "$PROJECT_ROOT/eslint.config.js" "$INSTALL_DIR/" 2>/dev/null || true

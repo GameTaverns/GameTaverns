@@ -50,18 +50,29 @@ echo "Creating admin user..."
 
 cd "$INSTALL_DIR"
 
-# Wait for Kong to be ready
-MAX_RETRIES=30
+# Wait for Kong and Auth to be ready
+MAX_RETRIES=60
 RETRY_COUNT=0
-while ! curl -sf "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; do
+AUTH_READY=false
+
+while [ "$AUTH_READY" = "false" ]; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        echo "Error: Auth service not responding. Check: docker compose logs auth"
+        echo "Error: Auth service not responding after $MAX_RETRIES attempts."
+        echo "Check: docker compose logs auth kong"
         exit 1
     fi
-    echo "  Waiting for auth service... ($RETRY_COUNT/$MAX_RETRIES)"
-    sleep 2
+    
+    # Try the health endpoint first (simpler)
+    if curl -sf "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; then
+        AUTH_READY=true
+    else
+        echo "  Waiting for auth service... ($RETRY_COUNT/$MAX_RETRIES)"
+        sleep 3
+    fi
 done
+
+echo "Auth service is ready"
 
 # Create user via Supabase Auth API
 RESPONSE=$(curl -s -X POST \

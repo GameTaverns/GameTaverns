@@ -166,11 +166,18 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS games_set_slug_trigger ON public.games;
-CREATE TRIGGER games_set_slug_trigger
-    BEFORE INSERT OR UPDATE ON public.games
-    FOR EACH ROW
-    EXECUTE FUNCTION public.set_game_slug();
+-- Create trigger only if games table exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'games') THEN
+        DROP TRIGGER IF EXISTS games_set_slug_trigger ON public.games;
+        CREATE TRIGGER games_set_slug_trigger
+            BEFORE INSERT OR UPDATE ON public.games
+            FOR EACH ROW
+            EXECUTE FUNCTION public.set_game_slug();
+        RAISE NOTICE 'Created games_set_slug_trigger';
+    END IF;
+END $$;
 
 -- Auto-create library settings when library is created
 CREATE OR REPLACE FUNCTION public.create_library_settings()
