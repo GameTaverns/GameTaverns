@@ -14,6 +14,7 @@ import { DemoGuard } from "@/components/system/DemoGuard";
 import { MaintenanceGuard } from "@/components/system/MaintenanceGuard";
 import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironmentBanner";
 import { MobileAppShell } from "@/components/mobile/MobileAppShell";
+import { isSelfHostedMode } from "@/config/runtime";
 
 // Lazy load route components to reduce initial bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -82,8 +83,8 @@ function AppRoutes() {
             </Suspense>
           </MaintenanceGuard>
           
-          {/* Testing environment watermark */}
-          <TestingEnvironmentBanner />
+          {/* Testing environment watermark - hidden in self-hosted mode */}
+          {!isSelfHostedMode() && <TestingEnvironmentBanner />}
         </MobileAppShell>
       </DemoProvider>
     </TenantProvider>
