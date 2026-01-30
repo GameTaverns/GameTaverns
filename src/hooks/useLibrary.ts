@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/backend/client";
+import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { useAuth } from "./useAuth";
 import { Library, LibrarySettings } from "@/contexts/TenantContext";
 
@@ -185,6 +185,23 @@ export function useUserProfile() {
     queryFn: async () => {
       if (!user) return null;
       
+      // Self-hosted: use API
+      if (isSelfHostedMode()) {
+        const profile = await apiClient.get<{
+          id: string;
+          user_id: string;
+          display_name: string | null;
+          username: string | null;
+          avatar_url: string | null;
+          bio: string | null;
+          created_at: string;
+          roles?: string[];
+          libraries?: any[];
+        }>("/profiles/me");
+        return profile;
+      }
+      
+      // Supabase mode
       const { data, error } = await supabase
         .from("user_profiles")
         .select("*")
@@ -215,6 +232,13 @@ export function useUpdateUserProfile() {
     }) => {
       if (!user) throw new Error("Must be logged in");
       
+      // Self-hosted: use API
+      if (isSelfHostedMode()) {
+        const profile = await apiClient.put<any>("/profiles/me", updates);
+        return profile;
+      }
+      
+      // Supabase mode
       const { data, error } = await supabase
         .from("user_profiles")
         .update(updates)

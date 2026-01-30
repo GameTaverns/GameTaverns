@@ -6,34 +6,7 @@ import { authMiddleware, optionalAuth } from '../middleware/auth.js';
 const router = Router();
 
 // =====================
-// Get user profile
-// =====================
-
-router.get('/:userId', optionalAuth, async (req: Request, res: Response) => {
-  try {
-    const { userId } = req.params;
-    
-    const result = await pool.query(
-      `SELECT up.id, up.display_name, up.username, up.avatar_url, up.bio, up.created_at
-       FROM user_profiles up
-       WHERE up.user_id = $1`,
-      [userId]
-    );
-    
-    if (result.rows.length === 0) {
-      res.status(404).json({ error: 'Profile not found' });
-      return;
-    }
-    
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error('Get profile error:', error);
-    res.status(500).json({ error: 'Failed to fetch profile' });
-  }
-});
-
-// =====================
-// Get current user's profile
+// Get current user's profile (MUST be before /:userId to avoid route capture)
 // =====================
 
 router.get('/me', authMiddleware, async (req: Request, res: Response) => {
@@ -81,9 +54,9 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
 router.put('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
     const schema = z.object({
-      display_name: z.string().max(100).optional(),
-      username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
-      bio: z.string().max(500).optional(),
+      display_name: z.string().max(100).optional().nullable(),
+      username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional().nullable(),
+      bio: z.string().max(500).optional().nullable(),
       avatar_url: z.string().url().optional().nullable(),
     });
     
@@ -200,6 +173,33 @@ router.get('/check/username/:username', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Check username error:', error);
     res.status(500).json({ error: 'Failed to check username' });
+  }
+});
+
+// =====================
+// Get user profile by ID (MUST be after specific routes like /me, /check)
+// =====================
+
+router.get('/:userId', optionalAuth, async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    
+    const result = await pool.query(
+      `SELECT up.id, up.display_name, up.username, up.avatar_url, up.bio, up.created_at
+       FROM user_profiles up
+       WHERE up.user_id = $1`,
+      [userId]
+    );
+    
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Profile not found' });
+      return;
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
   }
 });
 
