@@ -19,9 +19,21 @@ export default function PlatformAdmin() {
   const [activeTab, setActiveTab] = useState("analytics");
   const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
   
+  // Debug logging for admin access issues
+  useEffect(() => {
+    console.log('[PlatformAdmin] Auth state:', { 
+      authLoading, 
+      roleLoading, 
+      isAuthenticated, 
+      isAdmin, 
+      userId: user?.id 
+    });
+  }, [authLoading, roleLoading, isAuthenticated, isAdmin, user?.id]);
+  
   useEffect(() => {
     // Wait for auth to load before redirecting
     if (!authLoading && !isAuthenticated) {
+      console.log('[PlatformAdmin] Not authenticated, redirecting to login');
       navigate("/login");
     }
   }, [isAuthenticated, authLoading, navigate]);
@@ -29,6 +41,7 @@ export default function PlatformAdmin() {
   useEffect(() => {
     // Wait for both auth and role to load before redirecting non-admins
     if (!authLoading && !roleLoading && !isAdmin && isAuthenticated) {
+      console.log('[PlatformAdmin] Not admin, redirecting to dashboard');
       navigate("/dashboard");
     }
   }, [isAdmin, roleLoading, authLoading, isAuthenticated, navigate]);
