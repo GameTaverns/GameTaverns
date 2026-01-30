@@ -58,6 +58,19 @@ export function isSelfHostedMode(): boolean {
   if (runtime.SELF_HOSTED === true) {
     return true;
   }
+
+  // If a self-hosted auth token exists, we are definitely running against the
+  // local Express backend.
+  //
+  // This is critical for standalone builds where Vite env vars may still
+  // contain cloud values, but the user has authenticated via /api/auth/*.
+  try {
+    if (typeof window !== "undefined" && window.localStorage?.getItem("auth_token")) {
+      return true;
+    }
+  } catch {
+    // ignore
+  }
   
   // Check if Supabase URL is available
   const hasSupabaseUrl = 

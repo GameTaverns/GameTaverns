@@ -11,6 +11,12 @@ export function useMyLibrary() {
     queryKey: ["my-library", user?.id],
     queryFn: async () => {
       if (!user) return null;
+
+      // Self-hosted: prefer /profiles/me which already returns owned libraries
+      if (isSelfHostedMode()) {
+        const me = await apiClient.get<{ libraries?: Library[] }>("/profiles/me");
+        return (me.libraries?.[0] as Library | undefined) ?? null;
+      }
       
       const { data, error } = await supabase
         .from("libraries")
