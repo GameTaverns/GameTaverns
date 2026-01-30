@@ -63,7 +63,7 @@ cp -r dist/* ${INSTALL_DIR}/app/
 
 # Inject runtime config for self-hosted mode
 echo -e "${YELLOW}[INFO]${NC} Injecting runtime configuration..."
-${INSTALL_DIR}/deploy/native/scripts/rebuild-config.sh
+bash ${INSTALL_DIR}/deploy/native/scripts/rebuild-config.sh
 
 # Install backend dependencies (clean install for production)
 echo -e "${YELLOW}[INFO]${NC} Installing backend dependencies..."
