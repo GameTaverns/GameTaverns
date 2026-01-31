@@ -1,24 +1,30 @@
 #!/bin/bash
 # Mail server entrypoint
-# Version: 2.0.0
+# Version: 2.1.0
 
 set -e
 
+# Ensure environment variables have defaults
 MAIL_DOMAIN="${MAIL_DOMAIN:-localhost}"
 POSTMASTER_EMAIL="${POSTMASTER_EMAIL:-postmaster@${MAIL_DOMAIN}}"
 
 echo "=============================================="
 echo "  Configuring Mail Server"
+echo "  Version: 2.1.0"
 echo "  Domain: ${MAIL_DOMAIN}"
 echo "  Postmaster: ${POSTMASTER_EMAIL}"
 echo "=============================================="
 echo ""
 
-# Ensure required directories exist
+# Ensure required directories exist with correct permissions
 mkdir -p /var/spool/postfix
 mkdir -p /var/spool/rsyslog
 mkdir -p /var/log
 mkdir -p /run/dovecot
+mkdir -p /var/lib/dovecot
+
+# Set proper permissions for Dovecot runtime
+chmod 755 /run/dovecot
 
 # Configure Postfix with proper quoting
 postconf -e "myhostname=mail.${MAIL_DOMAIN}"

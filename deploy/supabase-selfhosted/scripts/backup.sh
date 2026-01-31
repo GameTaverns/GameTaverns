@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # Backup Script for GameTaverns Self-Hosted
-# Version: 2.0.0
+# Version: 2.1.0
 # =============================================================================
 
 set -e
@@ -16,6 +16,7 @@ INSTALL_DIR="/opt/gametaverns"
 BACKUP_DIR="/opt/gametaverns/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=${1:-7}  # Allow override via argument
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

@@ -1,6 +1,7 @@
 # GameTaverns - Self-Hosted Supabase Stack
 # Based on official Supabase self-hosted configuration
 # https://supabase.com/docs/guides/self-hosting/docker
+# Version: 2.1.0
 #
 # Usage:
 #   1. Run ./install.sh to generate .env

@@ -1,26 +1,29 @@
 #!/bin/bash
 # =============================================================================
 # Restore Script for GameTaverns Self-Hosted
+# Version: 2.1.0
 # =============================================================================
 
 set -e
 
 INSTALL_DIR="/opt/gametaverns"
 BACKUP_DIR="/opt/gametaverns/backups"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
-if [ ! -f "$INSTALL_DIR/.env" ]; then
-    echo -e "${RED}Error: .env file not found${NC}"
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${RED}Please run as root: sudo ./restore.sh${NC}"
     exit 1
 fi
 
-# Check root
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Please run as root: sudo ./restore.sh${NC}"
+if [ ! -f "$INSTALL_DIR/.env" ]; then
+    echo -e "${RED}Error: .env file not found${NC}"
     exit 1
 fi
 

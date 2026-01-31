@@ -1,5 +1,8 @@
 # GameTaverns: Migration Guide
 
+**Version:** 2.1.0  
+**Last Updated:** 2026-01-31
+
 This guide covers migrating from existing deployments to the new self-hosted Supabase stack.
 
 ## Important: Database Isolation
@@ -167,4 +170,6 @@ If migration fails, you can always:
 ## Support
 
 - Check `TROUBLESHOOTING.md` for common issues
+- Check `README.md` for installation overview
 - GitHub Issues: https://github.com/GameTaverns/GameTaverns/issues
+- Discord: https://discord.gg/gametaverns

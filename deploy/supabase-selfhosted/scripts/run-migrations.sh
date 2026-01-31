@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # Run Database Migrations for GameTaverns Self-Hosted
-# Version: 2.0.0
+# Version: 2.1.0
 # =============================================================================
 
 set -e
@@ -14,6 +14,7 @@ fi
 
 INSTALL_DIR="/opt/gametaverns"
 MIGRATIONS_DIR="$INSTALL_DIR/migrations"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
