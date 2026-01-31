@@ -174,6 +174,13 @@ export default async function handler(req: Request): Promise<Response> {
         const { data: libraryOwners } = await adminClient.from("libraries").select("owner_id");
         const libraryOwnerSet = new Set(libraryOwners?.map((l) => l.owner_id) || []);
 
+        // Get all library moderators (users with moderator role in library_members)
+        const { data: libraryModerators } = await adminClient
+          .from("library_members")
+          .select("user_id")
+          .eq("role", "moderator");
+        const libraryModeratorSet = new Set(libraryModerators?.map((m) => m.user_id) || []);
+
         // Map roles and profiles to users
         const roleMap = new Map(roles?.map((r) => [r.user_id, r.role]) || []);
         const profileMap = new Map(profiles?.map((p) => [p.user_id, { display_name: p.display_name, username: p.username }]) || []);
@@ -198,7 +205,8 @@ export default async function handler(req: Request): Promise<Response> {
             username: profileMap.get(u.id)?.username || null,
             is_banned: u.banned_until ? new Date(u.banned_until) > new Date() : false,
             banned_until: u.banned_until,
-            is_library_owner: libraryOwnerSet.has(u.id), // Additional flag for UI
+            is_library_owner: libraryOwnerSet.has(u.id),
+            is_library_moderator: libraryModeratorSet.has(u.id),
           };
         });
 
