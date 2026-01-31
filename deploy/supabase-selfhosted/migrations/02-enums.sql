@@ -1,14 +1,25 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Custom Enums
+-- Version: 2.2.0 - 5-Tier Role Hierarchy
 -- =============================================================================
 
--- App roles
+-- App roles (Platform-level roles)
+-- T1: admin    - Site super-administrators with full access
+-- T2: staff    - Site staff with elevated privileges
+-- T3: owner    - Library/community owners (explicit assignment for dashboard access)
+-- T4: moderator - (DEPRECATED at platform level, use library_member_role instead)
+-- T5: (no role) - Regular users
 DO $$ BEGIN
-    CREATE TYPE app_role AS ENUM ('admin', 'moderator');
-EXCEPTION WHEN duplicate_object THEN NULL;
+    CREATE TYPE app_role AS ENUM ('admin', 'staff', 'owner', 'moderator');
+EXCEPTION WHEN duplicate_object THEN 
+    -- Enum exists, add new values if missing
+    BEGIN ALTER TYPE app_role ADD VALUE 'staff'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER TYPE app_role ADD VALUE 'owner'; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
 
--- Library member roles
+-- Library member roles (Community-level roles within a specific library)
+-- moderator - Can manage polls, events, remove users within their community
+-- member    - Regular community member
 DO $$ BEGIN
     CREATE TYPE library_member_role AS ENUM ('member', 'moderator');
 EXCEPTION WHEN duplicate_object THEN NULL;

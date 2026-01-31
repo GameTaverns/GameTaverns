@@ -2,7 +2,8 @@
 # =============================================================================
 # Create Admin User for GameTaverns
 # Domain: gametaverns.com
-# Version: 2.1.1
+# Version: 2.2.0 - 5-Tier Role Hierarchy
+# Roles: admin (T1), staff (T2), owner (T3), moderator (T4), user (T5)
 # =============================================================================
 
 set -e

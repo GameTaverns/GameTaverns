@@ -2,7 +2,7 @@
 # =============================================================================
 # GameTaverns - Pre-flight Check Script
 # Validates system requirements before installation
-# Version: 2.1.1
+# Version: 2.2.0
 # =============================================================================
 
 # Don't use set -e - we want to count errors, not exit on first one

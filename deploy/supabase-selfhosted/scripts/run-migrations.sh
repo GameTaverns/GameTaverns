@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # Run Database Migrations for GameTaverns Self-Hosted
-# Version: 2.1.1
+# Version: 2.2.0 - 5-Tier Role Hierarchy
 # =============================================================================
 
 set -e

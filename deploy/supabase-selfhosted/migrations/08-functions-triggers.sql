@@ -1,5 +1,6 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Database Functions & Triggers
+-- Version: 2.2.0 - 5-Tier Role Hierarchy
 -- Complete 1:1 parity with Lovable Cloud schema
 -- =============================================================================
 
@@ -73,9 +74,27 @@ AS $$
 $$;
 
 -- ===========================================
--- Role Check Functions (SECURITY DEFINER to prevent recursion)
+-- Role Hierarchy Functions (5-Tier System)
+-- T1: admin, T2: staff, T3: owner, T4: moderator, T5: user
 -- ===========================================
 
+-- Get the tier number for a role (lower = more privileged)
+CREATE OR REPLACE FUNCTION public.get_role_tier(_role app_role)
+RETURNS integer
+LANGUAGE sql
+IMMUTABLE
+SET search_path = 'public'
+AS $$
+  SELECT CASE _role
+    WHEN 'admin' THEN 1
+    WHEN 'staff' THEN 2
+    WHEN 'owner' THEN 3
+    WHEN 'moderator' THEN 4
+    ELSE 5
+  END;
+$$;
+
+-- Check if user has a specific role (exact match)
 CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
 RETURNS boolean
 LANGUAGE sql
@@ -90,6 +109,23 @@ AS $$
     )
 $$;
 
+-- Check if user has at least a certain role level (hierarchical check)
+-- e.g., has_role_level(uid, 'staff') returns true if user is admin or staff
+CREATE OR REPLACE FUNCTION public.has_role_level(_user_id uuid, _min_role app_role)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles
+    WHERE user_id = _user_id
+      AND public.get_role_tier(role) <= public.get_role_tier(_min_role)
+  )
+$$;
+
+-- Check if user is a member of a library (includes owner)
 CREATE OR REPLACE FUNCTION public.is_library_member(_user_id uuid, _library_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -105,6 +141,7 @@ AS $$
   )
 $$;
 
+-- Check if user is a moderator of a library (or owner, or platform staff/admin)
 CREATE OR REPLACE FUNCTION public.is_library_moderator(_user_id uuid, _library_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -112,14 +149,16 @@ STABLE SECURITY DEFINER
 SET search_path = 'public'
 AS $$
   SELECT EXISTS (
+    -- User is a moderator in the specific library (library_member_role)
     SELECT 1 FROM public.library_members
     WHERE user_id = _user_id 
     AND library_id = _library_id 
     AND role = 'moderator'
   ) OR EXISTS (
+    -- User is the library owner
     SELECT 1 FROM public.libraries
     WHERE id = _library_id AND owner_id = _user_id
-  ) OR public.has_role(_user_id, 'admin')
+  ) OR public.has_role_level(_user_id, 'staff') -- admin or staff at platform level
 $$;
 
 -- Check slug availability
