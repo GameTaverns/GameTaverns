@@ -118,23 +118,20 @@ export function UserManagement() {
         }
       }
       
-      if (newRole === "none") {
-        const { error } = await supabase.from("user_roles").delete().eq("user_id", userId);
-        if (error) throw error;
-      } else {
-        const { data: existingRole } = await supabase
+      // Always delete all existing roles first to avoid duplicates
+      const { error: deleteError } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userId);
+      
+      if (deleteError) throw deleteError;
+      
+      // Insert new role if not "none"
+      if (newRole !== "none") {
+        const { error: insertError } = await supabase
           .from("user_roles")
-          .select("id")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        if (existingRole) {
-          const { error } = await supabase.from("user_roles").update({ role: newRole }).eq("user_id", userId);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: newRole });
-          if (error) throw error;
-        }
+          .insert({ user_id: userId, role: newRole });
+        if (insertError) throw insertError;
       }
     },
     onSuccess: () => {
