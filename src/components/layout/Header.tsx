@@ -1,5 +1,5 @@
 import { Link, useSearchParams, useLocation } from "react-router-dom";
-import { Menu, X, FlaskConical, User } from "lucide-react";
+import { Menu, X, FlaskConical, User, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -145,6 +145,17 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           <Link to={homeUrl} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
             Home
           </Link>
+          
+          {/* Browse Libraries - show when not in tenant mode and not in demo */}
+          {!tenantSlug && !isDemoMode && (
+            <Link
+              to="/directory"
+              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              <Globe className="h-4 w-4" />
+              <span className="hidden sm:inline">Browse Libraries</span>
+            </Link>
+          )}
           
           {/* Dashboard link for logged in users, or landing page for anonymous */}
           {tenantSlug && !isDemoMode && (
