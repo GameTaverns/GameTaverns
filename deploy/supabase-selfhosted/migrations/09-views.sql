@@ -123,6 +123,7 @@ SELECT
     g.location_room,
     g.location_shelf,
     g.location_misc,
+    g.genre,
     g.youtube_videos,
     g.created_at,
     g.updated_at

@@ -1,6 +1,6 @@
 # GameTaverns Self-Hosted: Troubleshooting Guide
 
-**Version:** 2.1.0  
+**Version:** 2.1.1  
 **Last Updated:** 2026-01-31
 
 This guide covers common issues and their solutions for the self-hosted deployment.
