@@ -170,21 +170,37 @@ export default async function handler(req: Request): Promise<Response> {
         // Get all profiles for display names and usernames
         const { data: profiles } = await adminClient.from("user_profiles").select("user_id, display_name, username");
 
+        // Get all library owners (users who own at least one library)
+        const { data: libraryOwners } = await adminClient.from("libraries").select("owner_id");
+        const libraryOwnerSet = new Set(libraryOwners?.map((l) => l.owner_id) || []);
+
         // Map roles and profiles to users
         const roleMap = new Map(roles?.map((r) => [r.user_id, r.role]) || []);
         const profileMap = new Map(profiles?.map((p) => [p.user_id, { display_name: p.display_name, username: p.username }]) || []);
         
-        const usersWithRoles = users.map((u) => ({
-          id: u.id,
-          email: u.email,
-          created_at: u.created_at,
-          last_sign_in_at: u.last_sign_in_at,
-          role: roleMap.get(u.id) || null,
-          display_name: profileMap.get(u.id)?.display_name || null,
-          username: profileMap.get(u.id)?.username || null,
-          is_banned: u.banned_until ? new Date(u.banned_until) > new Date() : false,
-          banned_until: u.banned_until,
-        }));
+        const usersWithRoles = users.map((u) => {
+          // Determine effective role:
+          // 1. Explicit role in user_roles takes precedence
+          // 2. If no explicit role but owns a library, they're an "owner"
+          // 3. Otherwise, no role (regular user)
+          let effectiveRole = roleMap.get(u.id) || null;
+          if (!effectiveRole && libraryOwnerSet.has(u.id)) {
+            effectiveRole = "owner";
+          }
+          
+          return {
+            id: u.id,
+            email: u.email,
+            created_at: u.created_at,
+            last_sign_in_at: u.last_sign_in_at,
+            role: effectiveRole,
+            display_name: profileMap.get(u.id)?.display_name || null,
+            username: profileMap.get(u.id)?.username || null,
+            is_banned: u.banned_until ? new Date(u.banned_until) > new Date() : false,
+            banned_until: u.banned_until,
+            is_library_owner: libraryOwnerSet.has(u.id), // Additional flag for UI
+          };
+        });
 
         return new Response(
           JSON.stringify({ users: usersWithRoles }),
