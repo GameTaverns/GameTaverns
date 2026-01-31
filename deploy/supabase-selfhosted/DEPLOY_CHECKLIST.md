@@ -1,9 +1,21 @@
 # GameTaverns Self-Hosted: Deployment Checklist
 
-**Version:** 2.1.1  
+**Version:** 2.2.0 - 5-Tier Role Hierarchy  
 **Last Audit:** 2026-01-31
 
 Use this checklist before deploying to ensure everything is ready.
+
+## Role Hierarchy (5 Tiers)
+
+| Tier | Role | Description |
+|------|------|-------------|
+| T1 | `admin` | Super-administrators with full platform control |
+| T2 | `staff` | Site staff with elevated privileges |
+| T3 | `owner` | Library/community owners (explicit assignment) |
+| T4 | `moderator` | Community moderators (library_member_role, per-library) |
+| T5 | (none) | Regular users |
+
+**Note:** T4 Moderators have limited abilities within their assigned communities (run polls, remove users, set up events).
 
 ## Pre-Deployment Audit (Completed: 2026-01-31)
 
@@ -12,13 +24,13 @@ Use this checklist before deploying to ensure everything is ready.
 | File | Status | Notes |
 |------|--------|-------|
 | 01-extensions.sql | ✅ | Extensions schema, uuid-ossp, pgcrypto, unaccent |
-| 02-enums.sql | ✅ | All enums: app_role, library_member_role, difficulty_level, game_type, play_time, sale_condition, loan_status, achievement_category, feedback_type, suspension_action |
+| 02-enums.sql | ✅ | **Updated:** app_role now includes 'admin', 'staff', 'owner', 'moderator' for 5-tier hierarchy |
 | 03-core-tables.sql | ✅ | user_profiles, user_roles, libraries, library_settings, library_members, library_followers, publishers, mechanics |
 | 04-games-tables.sql | ✅ | games, game_admin_data, game_mechanics, game_ratings, game_wishlist, game_messages, game_sessions, game_session_players, game_loans, borrower_ratings - includes genre field |
 | 05-events-polls.sql | ✅ | library_events, game_polls, poll_options, poll_votes, game_night_rsvps |
 | 06-achievements-notifications.sql | ✅ | achievements, user_achievements, notification_preferences, notification_log, push_subscriptions |
 | 07-platform-admin.sql | ✅ | platform_feedback, site_settings, library_suspensions, import_jobs, password_reset_tokens, email_confirmation_tokens |
-| 08-functions-triggers.sql | ✅ | All helper functions (has_role, is_library_member, etc.), updated_at triggers, slug generation |
+| 08-functions-triggers.sql | ✅ | **Updated:** Added get_role_tier(), has_role_level() for hierarchical role checks |
 | 09-views.sql | ✅ | Public views: libraries_public, library_settings_public, games_public (with genre), user_profiles_public, library_directory, game_ratings_summary, game_wishlist_summary, borrower_reputation, library_calendar_events, site_settings_public |
 | 10-rls-policies.sql | ✅ | 755 lines of RLS policies, all use DROP IF EXISTS for idempotent runs |
 | 11-seed-data.sql | ✅ | Default achievements and mechanics |

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Inject runtime configuration into the frontend
 # This runs at container start to inject environment-specific values
-# Version: 2.1.1
+# Version: 2.2.0
 # Supports: Docker, Alpine, GNU/Linux
 
 set -e

@@ -3,7 +3,7 @@
 # SSL Setup with Certbot for GameTaverns
 # Domain: gametaverns.com (hardcoded)
 # Includes wildcard certificate for *.gametaverns.com (tenant libraries)
-# Version: 2.1.1
+# Version: 2.2.0
 # =============================================================================
 
 set -e
