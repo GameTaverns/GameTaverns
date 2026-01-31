@@ -1,7 +1,8 @@
 # GameTaverns: Migration Guide
 
-**Version:** 2.1.0  
+**Version:** 2.1.1  
 **Last Updated:** 2026-01-31
+**Last Audit:** 2026-01-31
 
 This guide covers migrating from existing deployments to the new self-hosted Supabase stack.
 
