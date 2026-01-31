@@ -35,6 +35,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { GameImage } from "./GameImage";
 import { motion, AnimatePresence } from "framer-motion";
+import { GENRE_OPTIONS } from "@/types/game";
 
 // Types
 interface Game {
@@ -66,19 +67,6 @@ const GAME_TYPES = [
   "Miniatures",
   "RPG",
   "Other",
-];
-
-const GENRES = [
-  "Fantasy",
-  "Sci-Fi",
-  "Historical",
-  "Horror",
-  "Mystery",
-  "Adventure",
-  "Economic",
-  "Abstract",
-  "Humor",
-  "Nature",
 ];
 
 const PLAY_TIMES = [
@@ -385,7 +373,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
               <div>
                 <Label className="text-xs text-cream/70 mb-1 block">Genre</Label>
                 <div className="flex flex-wrap gap-1">
-                  {GENRES.map(genre => (
+                  {GENRE_OPTIONS.map(genre => (
                     <Badge
                       key={genre}
                       variant={selectedGenres.includes(genre) ? "default" : "outline"}

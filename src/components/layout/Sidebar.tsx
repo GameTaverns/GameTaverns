@@ -21,12 +21,13 @@ import {
   Heart,
   TrendingUp,
   Calendar,
-  MapPin
+  MapPin,
+  Wand2
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
-import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
+import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS, GENRE_OPTIONS } from "@/types/game";
 import { useMechanics, usePublishers } from "@/hooks/useGames";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -371,6 +372,22 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 )}
               >
                 {type}
+              </button>
+            ))}
+          </FilterSection>
+
+          {/* Genre */}
+          <FilterSection title="Genre" icon={<Wand2 className="h-4 w-4" />} defaultOpen={currentFilter === "genre"}>
+            {GENRE_OPTIONS.map((genre) => (
+              <button
+                key={genre}
+                onClick={() => handleFilterClick("genre", genre)}
+                className={cn(
+                  "sidebar-link text-sm w-full text-left",
+                  isActive("genre", genre) && "sidebar-link-active"
+                )}
+              >
+                {genre}
               </button>
             ))}
           </FilterSection>

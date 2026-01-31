@@ -232,6 +232,9 @@ const Index = () => {
               return !isNaN(gameAge) && gameAge <= filterAge;
             });
             break;
+          case "genre":
+            result = result.filter((g) => (g as any).genre === filterValue);
+            break;
         }
       }
     }
