@@ -1,6 +1,7 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Row Level Security Policies
 -- Complete 1:1 parity with Lovable Cloud schema
+-- Version: 2.2.0 - 5-Tier Role Hierarchy
 -- IMPORTANT: Uses DROP POLICY IF EXISTS for idempotent re-runs
 -- =============================================================================
 
@@ -457,11 +458,22 @@ CREATE POLICY "Lenders can delete loan records" ON public.game_loans
     );
 
 -- ===========================================
--- Borrower Ratings Policies
+-- Borrower Ratings Policies (Hardened for Security)
+-- Only visible to: rater, rated user, library owner, or admin
 -- ===========================================
 DROP POLICY IF EXISTS "Anyone can view borrower ratings" ON public.borrower_ratings;
-CREATE POLICY "Anyone can view borrower ratings" ON public.borrower_ratings
-    FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can view ratings for their loans" ON public.borrower_ratings;
+CREATE POLICY "Users can view ratings for their loans" ON public.borrower_ratings
+    FOR SELECT USING (
+        auth.uid() = rated_by_user_id
+        OR auth.uid() = rated_user_id
+        OR EXISTS (
+            SELECT 1 FROM public.game_loans gl
+            JOIN public.libraries l ON l.id = gl.library_id
+            WHERE gl.id = loan_id AND l.owner_id = auth.uid()
+        )
+        OR public.has_role(auth.uid(), 'admin')
+    );
 
 DROP POLICY IF EXISTS "Lenders can rate borrowers after return" ON public.borrower_ratings;
 CREATE POLICY "Lenders can rate borrowers after return" ON public.borrower_ratings

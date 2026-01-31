@@ -2,7 +2,7 @@
 -- GameTaverns Self-Hosted: Auth Trigger Setup
 -- This creates the trigger on auth.users to auto-create profiles
 -- Must be run after the Supabase auth schema is initialized
--- Version: 2.1.0 - Improved robustness and error handling
+-- Version: 2.2.0 - 5-Tier Role Hierarchy
 -- =============================================================================
 
 -- Create trigger on auth.users to auto-create user profiles

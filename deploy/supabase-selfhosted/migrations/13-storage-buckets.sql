@@ -1,5 +1,6 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Storage Buckets & Policies
+-- Version: 2.2.0 - 5-Tier Role Hierarchy
 -- =============================================================================
 
 -- First check if storage schema exists (it should be created by Supabase)
