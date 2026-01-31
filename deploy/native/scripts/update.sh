@@ -3,7 +3,7 @@
 # Update GameTaverns to the latest version
 #
 # Usage: sudo ./update.sh
-# Version: 2.0.0
+# Version: 2.2.0 - 5-Tier Role Hierarchy
 #
 
 set -e
