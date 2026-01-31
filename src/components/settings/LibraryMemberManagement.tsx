@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, UserMinus, Users, Shield, Crown } from "lucide-react";
+import { Loader2, UserMinus, Users, Shield, Crown, ShieldCheck, ShieldOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useTenant } from "@/contexts/TenantContext";
 import { useLibraryMembers, useLibraryMembership } from "@/hooks/useLibraryMembership";
 import { supabase } from "@/integrations/backend/client";
@@ -29,7 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
 export function LibraryMemberManagement() {
-  const { library } = useTenant();
+  const { library, isOwner } = useTenant();
   const {
     data: members,
     isLoading,
@@ -42,6 +47,7 @@ export function LibraryMemberManagement() {
   const { toast } = useToast();
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
 
   const handleRemoveMember = async () => {
     if (!removingMemberId) return;
@@ -71,6 +77,39 @@ export function LibraryMemberManagement() {
     } finally {
       setIsRemoving(false);
       setRemovingMemberId(null);
+    }
+  };
+
+  const handleToggleModerator = async (memberId: string, currentRole: string) => {
+    if (!isOwner) return;
+    
+    setUpdatingRoleId(memberId);
+    const newRole = currentRole === "moderator" ? "member" : "moderator";
+    
+    try {
+      const { error } = await supabase
+        .from("library_members")
+        .update({ role: newRole })
+        .eq("id", memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: newRole === "moderator" ? "Moderator assigned" : "Moderator removed",
+        description: newRole === "moderator" 
+          ? "This member can now manage polls, events, and remove users."
+          : "This member no longer has moderator privileges.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["library-members", library?.id] });
+    } catch (error: any) {
+      toast({
+        title: "Error updating role",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingRoleId(null);
     }
   };
 
@@ -152,12 +191,32 @@ export function LibraryMemberManagement() {
           </CardTitle>
           <CardDescription>
             Manage the members of your community. Members can borrow games, vote in polls, and RSVP to events.
+            {isOwner && " As the owner, you can assign moderators who can manage polls, events, and remove members."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4 p-4 bg-muted/30 rounded-lg">
             <div className="text-2xl font-bold text-primary">{memberCount ?? 0}</div>
             <div className="text-sm text-muted-foreground">Total Members</div>
+          </div>
+
+          {/* Role Legend */}
+          <div className="mb-4 p-3 bg-muted/20 rounded-lg border border-border/50">
+            <h4 className="text-sm font-medium mb-2">Community Roles</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <Crown className="h-3.5 w-3.5 text-primary" />
+                <span><strong>Owner</strong> - Full control</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Shield className="h-3.5 w-3.5 text-secondary" />
+                <span><strong>Moderator</strong> - Manage polls, events, users</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                <span><strong>Member</strong> - Participate in community</span>
+              </div>
+            </div>
           </div>
 
           {membersList.length > 0 ? (
@@ -175,6 +234,8 @@ export function LibraryMemberManagement() {
                   {membersList.map((member) => {
                     const profile = member.user_profiles as { display_name?: string; username?: string } | null;
                     const displayName = profile?.display_name || profile?.username || "Unknown User";
+                    const memberRole = member.role as string;
+                    const isUpdatingRole = updatingRoleId === member.id;
                     
                     return (
                       <TableRow key={member.id}>
@@ -182,22 +243,62 @@ export function LibraryMemberManagement() {
                           {displayName}
                         </TableCell>
                         <TableCell>
-                          {getRoleBadge(member.role)}
+                          {getRoleBadge(memberRole)}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {format(new Date(member.joined_at), "MMM d, yyyy")}
                         </TableCell>
                         <TableCell className="text-right">
-                          {(member.role as string) !== "owner" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => setRemovingMemberId(member.id)}
-                            >
-                              <UserMinus className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Moderator toggle - only for owners, not on owner row */}
+                            {isOwner && memberRole !== "owner" && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={memberRole === "moderator" 
+                                      ? "text-secondary hover:text-secondary hover:bg-secondary/10" 
+                                      : "text-muted-foreground hover:text-secondary hover:bg-secondary/10"
+                                    }
+                                    onClick={() => handleToggleModerator(member.id, memberRole)}
+                                    disabled={isUpdatingRole}
+                                  >
+                                    {isUpdatingRole ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : memberRole === "moderator" ? (
+                                      <ShieldOff className="h-4 w-4" />
+                                    ) : (
+                                      <ShieldCheck className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {memberRole === "moderator" 
+                                    ? "Remove moderator role" 
+                                    : "Make moderator"
+                                  }
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            
+                            {/* Remove member - not for owner */}
+                            {memberRole !== "owner" && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => setRemovingMemberId(member.id)}
+                                  >
+                                    <UserMinus className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Remove from community</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

@@ -641,6 +641,7 @@ export type Database = {
           description: string | null
           difficulty: Database["public"]["Enums"]["difficulty_level"] | null
           game_type: Database["public"]["Enums"]["game_type"] | null
+          genre: string | null
           id: string
           image_url: string | null
           in_base_game_box: boolean | null
@@ -677,6 +678,7 @@ export type Database = {
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
           game_type?: Database["public"]["Enums"]["game_type"] | null
+          genre?: string | null
           id?: string
           image_url?: string | null
           in_base_game_box?: boolean | null
@@ -713,6 +715,7 @@ export type Database = {
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
           game_type?: Database["public"]["Enums"]["game_type"] | null
+          genre?: string | null
           id?: string
           image_url?: string | null
           in_base_game_box?: boolean | null
@@ -2342,9 +2345,20 @@ export type Database = {
         Returns: number
       }
       generate_slug: { Args: { title: string }; Returns: string }
+      get_role_tier: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_role_level: {
+        Args: {
+          _min_role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
@@ -2369,7 +2383,7 @@ export type Database = {
         | "explorer"
         | "contributor"
         | "lender"
-      app_role: "admin" | "moderator" | "user" | "owner"
+      app_role: "admin" | "moderator" | "user" | "owner" | "staff"
       difficulty_level:
         | "1 - Light"
         | "2 - Medium Light"
@@ -2544,7 +2558,7 @@ export const Constants = {
         "contributor",
         "lender",
       ],
-      app_role: ["admin", "moderator", "user", "owner"],
+      app_role: ["admin", "moderator", "user", "owner", "staff"],
       difficulty_level: [
         "1 - Light",
         "2 - Medium Light",

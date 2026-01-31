@@ -1,0 +1,39 @@
+# Postfix main configuration for GameTaverns
+# This is a base configuration - entrypoint.sh will customize it
+
+# Basic settings
+smtpd_banner = $myhostname ESMTP
+biff = no
+append_dot_mydomain = no
+
+# TLS settings
+smtpd_tls_cert_file = /etc/ssl/certs/ssl-cert-snakeoil.pem
+smtpd_tls_key_file = /etc/ssl/private/ssl-cert-snakeoil.key
+smtpd_use_tls = yes
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+smtpd_tls_security_level = may
+smtp_tls_security_level = may
+
+# Network settings
+inet_interfaces = all
+inet_protocols = ipv4
+
+# SASL authentication
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_auth_enable = yes
+smtpd_recipient_restrictions = permit_sasl_authenticated, permit_mynetworks, reject_unauth_destination
+
+# Virtual mailbox settings (configured by entrypoint)
+virtual_mailbox_base = /var/mail/vhosts
+virtual_minimum_uid = 5000
+virtual_uid_maps = static:5000
+virtual_gid_maps = static:5000
+
+# Queue settings
+mailbox_size_limit = 0
+recipient_delimiter = +
+
+# SMTP relay settings (for sending)
+relayhost =

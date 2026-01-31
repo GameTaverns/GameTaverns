@@ -1,0 +1,181 @@
+#!/bin/bash
+# =============================================================================
+# Run Database Migrations for GameTaverns Self-Hosted
+# Version: 2.2.0 - 5-Tier Role Hierarchy
+# Last Audit: 2026-01-31
+# =============================================================================
+
+set -e
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root: sudo ./run-migrations.sh"
+    exit 1
+fi
+
+INSTALL_DIR="/opt/gametaverns"
+MIGRATIONS_DIR="$INSTALL_DIR/migrations"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+if [ ! -f "$INSTALL_DIR/.env" ]; then
+    echo -e "${RED}Error: .env file not found. Run install.sh first.${NC}"
+    exit 1
+fi
+
+# Source the .env file
+set -a
+source "$INSTALL_DIR/.env"
+set +a
+
+echo ""
+echo "=============================================="
+echo "  Running Database Migrations"
+echo "=============================================="
+echo ""
+
+cd "$INSTALL_DIR"
+
+# Ensure docker compose is available
+if ! docker compose version > /dev/null 2>&1; then
+    echo -e "${RED}Error: docker compose not available${NC}"
+    exit 1
+fi
+
+# Wait for database to be ready
+echo -e "${BLUE}Waiting for database to be ready...${NC}"
+MAX_RETRIES=90
+RETRY_COUNT=0
+
+until docker compose exec -T db pg_isready -U supabase_admin -d postgres > /dev/null 2>&1; do
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo -e "${RED}Error: Database not ready after $MAX_RETRIES attempts${NC}"
+        echo ""
+        echo "Troubleshooting:"
+        echo "  1. Check container status: docker compose ps"
+        echo "  2. Check database logs: docker compose logs db"
+        exit 1
+    fi
+    echo "  Database not ready, waiting... ($RETRY_COUNT/$MAX_RETRIES)"
+    sleep 2
+done
+echo -e "${GREEN}✓ Database is ready!${NC}"
+echo ""
+
+# Ensure PostgreSQL has fully initialized (roles, etc)
+sleep 5
+
+# Run migrations in order
+MIGRATION_FILES=(
+    "01-extensions.sql"
+    "02-enums.sql"
+    "03-core-tables.sql"
+    "04-games-tables.sql"
+    "05-events-polls.sql"
+    "06-achievements-notifications.sql"
+    "07-platform-admin.sql"
+    "08-functions-triggers.sql"
+    "09-views.sql"
+    "10-rls-policies.sql"
+    "11-seed-data.sql"
+    "12-auth-trigger.sql"
+    "13-storage-buckets.sql"
+)
+
+SUCCESS_COUNT=0
+WARNING_COUNT=0
+SKIP_COUNT=0
+ERROR_COUNT=0
+
+for migration in "${MIGRATION_FILES[@]}"; do
+    if [ -f "$MIGRATIONS_DIR/$migration" ]; then
+        echo -n "Running: $migration ... "
+        
+        # Run migration and capture output and exit code
+        OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres -f "/docker-entrypoint-initdb.d/$migration" 2>&1) || true
+        EXIT_CODE=$?
+        
+        # Check for actual errors (not just notices) - case insensitive
+        if echo "$OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
+            ERROR_MSG=$(echo "$OUTPUT" | grep -iE "^ERROR:|^FATAL:" | head -1)
+            # Check if it's a duplicate/exists warning
+            if echo "$ERROR_MSG" | grep -qiE "already exists|duplicate|does not exist"; then
+                echo -e "${YELLOW}⚠ Warning${NC}"
+                echo "    $ERROR_MSG"
+                ((WARNING_COUNT++))
+            else
+                echo -e "${RED}✗ Error${NC}"
+                echo "    $ERROR_MSG"
+                ((ERROR_COUNT++))
+            fi
+        elif [ $EXIT_CODE -ne 0 ]; then
+            # Non-zero exit code but no ERROR in output
+            if echo "$OUTPUT" | grep -qiE "already exists|duplicate"; then
+                echo -e "${YELLOW}⚠ Warning (already exists)${NC}"
+                ((WARNING_COUNT++))
+            else
+                echo -e "${RED}✗ Error (exit code: $EXIT_CODE)${NC}"
+                ((ERROR_COUNT++))
+            fi
+        else
+            echo -e "${GREEN}✓${NC}"
+            ((SUCCESS_COUNT++))
+        fi
+    else
+        echo -e "${YELLOW}⚠ $migration not found, skipping${NC}"
+        ((SKIP_COUNT++))
+    fi
+done
+
+echo ""
+echo "=============================================="
+echo "  Migration Summary"
+echo "=============================================="
+echo ""
+echo -e "  ${GREEN}✓ Successful:${NC}  $SUCCESS_COUNT"
+if [ $WARNING_COUNT -gt 0 ]; then
+    echo -e "  ${YELLOW}⚠ Warnings:${NC}    $WARNING_COUNT (often OK for 'already exists')"
+fi
+if [ $SKIP_COUNT -gt 0 ]; then
+    echo -e "  ⊘ Skipped:     $SKIP_COUNT"
+fi
+if [ $ERROR_COUNT -gt 0 ]; then
+    echo -e "  ${RED}✗ Errors:${NC}      $ERROR_COUNT"
+fi
+echo ""
+
+# Verify key tables exist
+echo -e "${BLUE}Verifying schema...${NC}"
+TABLES=(
+    "user_profiles"
+    "libraries"
+    "games"
+    "library_settings"
+    "achievements"
+)
+
+MISSING_TABLES=0
+for table in "${TABLES[@]}"; do
+    if docker compose exec -T db psql -U supabase_admin -d postgres -tAc \
+        "SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = '$table';" 2>/dev/null | grep -q 1; then
+        echo -e "  ${GREEN}✓${NC} $table"
+    else
+        echo -e "  ${RED}✗${NC} $table (missing)"
+        ((MISSING_TABLES++))
+    fi
+done
+
+echo ""
+if [ $MISSING_TABLES -eq 0 ]; then
+    echo -e "${GREEN}✓ All core tables verified${NC}"
+else
+    echo -e "${RED}✗ $MISSING_TABLES core table(s) missing${NC}"
+    exit 1
+fi
+echo ""
