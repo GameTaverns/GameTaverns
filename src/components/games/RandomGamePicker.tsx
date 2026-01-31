@@ -105,6 +105,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
         .select("id, title, image_url, slug, difficulty, game_type, play_time, min_players, max_players, genre")
         .eq("library_id", libraryId)
         .eq("is_expansion", false)
+        .eq("is_coming_soon", false)
         .order("title");
       if (error) throw error;
       return data as Game[];
