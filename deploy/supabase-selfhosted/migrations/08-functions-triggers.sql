@@ -395,3 +395,39 @@ BEGIN
   RETURN deleted_count;
 END;
 $$;
+
+-- ===========================================
+-- Rate Limiting Functions
+-- ===========================================
+
+-- Check follow rate limit (10 follows per minute per user)
+CREATE OR REPLACE FUNCTION public.check_follow_rate_limit()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public'
+AS $$
+DECLARE
+  recent_follow_count INTEGER;
+BEGIN
+  -- Count follows by this user in the last minute
+  SELECT COUNT(*) INTO recent_follow_count
+  FROM public.library_followers
+  WHERE follower_user_id = NEW.follower_user_id
+  AND followed_at > NOW() - INTERVAL '1 minute';
+  
+  -- Allow maximum 10 follows per minute
+  IF recent_follow_count >= 10 THEN
+    RAISE EXCEPTION 'Rate limit exceeded. Please wait before following more libraries.';
+  END IF;
+  
+  RETURN NEW;
+END;
+$$;
+
+-- Create rate limit trigger on library_followers
+DROP TRIGGER IF EXISTS check_follow_rate_limit_trigger ON public.library_followers;
+CREATE TRIGGER check_follow_rate_limit_trigger
+    BEFORE INSERT ON public.library_followers
+    FOR EACH ROW
+    EXECUTE FUNCTION public.check_follow_rate_limit();

@@ -1,6 +1,7 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Extensions & Prerequisites
 -- This is a FRESH database - completely isolated from Lovable Cloud
+-- Version: 2.2.0 - 5-Tier Role Hierarchy
 -- =============================================================================
 
 -- Create extensions schema FIRST if it doesn't exist
