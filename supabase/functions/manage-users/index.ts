@@ -189,10 +189,13 @@ export default async function handler(req: Request): Promise<Response> {
           // Determine effective role:
           // 1. Explicit role in user_roles takes precedence
           // 2. If no explicit role but owns a library, they're an "owner"
-          // 3. Otherwise, no role (regular user)
+          // 3. If no explicit role but is a library moderator, they're a "moderator"
+          // 4. Otherwise, no role (regular user)
           let effectiveRole = roleMap.get(u.id) || null;
           if (!effectiveRole && libraryOwnerSet.has(u.id)) {
             effectiveRole = "owner";
+          } else if (!effectiveRole && libraryModeratorSet.has(u.id)) {
+            effectiveRole = "moderator";
           }
           
           return {
