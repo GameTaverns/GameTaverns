@@ -21,7 +21,8 @@ import {
   BookOpen,
   Trophy,
   AlertTriangle,
-  Users
+  Users,
+  Globe
 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -152,6 +153,14 @@ export default function Dashboard() {
           
           <div className="flex items-center gap-4">
             <NotificationsDropdown variant="dashboard" />
+            
+            <Link 
+              to="/directory"
+              className="flex items-center gap-2 px-3 py-1.5 bg-secondary/20 hover:bg-secondary/30 rounded-lg text-cream transition-colors"
+            >
+              <Globe className="h-4 w-4" />
+              <span className="hidden sm:inline">Browse Libraries</span>
+            </Link>
             
             {library && (
               <a 
