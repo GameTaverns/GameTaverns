@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Calendar,
   MapPin,
-  Wand2
+  Wand2,
+  Globe
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
@@ -322,6 +323,20 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 <ShoppingCart className="h-5 w-5" />
                 <span>For Sale</span>
               </button>
+            )}
+            
+            {/* Library Directory - only show when not in tenant mode */}
+            {!isTenantMode && (
+              <Link
+                to="/directory"
+                className={cn(
+                  "sidebar-link",
+                  location.pathname === "/directory" && "sidebar-link-active"
+                )}
+              >
+                <Globe className="h-5 w-5" />
+                <span>Browse Libraries</span>
+              </Link>
             )}
           </nav>
 
