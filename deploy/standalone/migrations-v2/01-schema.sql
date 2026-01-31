@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS games (
     location_room TEXT,
     location_shelf TEXT,
     location_misc TEXT,
+    genre TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );

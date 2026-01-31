@@ -641,6 +641,7 @@ export type Database = {
           description: string | null
           difficulty: Database["public"]["Enums"]["difficulty_level"] | null
           game_type: Database["public"]["Enums"]["game_type"] | null
+          genre: string | null
           id: string
           image_url: string | null
           in_base_game_box: boolean | null
@@ -677,6 +678,7 @@ export type Database = {
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
           game_type?: Database["public"]["Enums"]["game_type"] | null
+          genre?: string | null
           id?: string
           image_url?: string | null
           in_base_game_box?: boolean | null
@@ -713,6 +715,7 @@ export type Database = {
           description?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"] | null
           game_type?: Database["public"]["Enums"]["game_type"] | null
+          genre?: string | null
           id?: string
           image_url?: string | null
           in_base_game_box?: boolean | null

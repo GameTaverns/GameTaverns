@@ -47,6 +47,7 @@ interface Game {
   play_time: string | null;
   min_players: number | null;
   max_players: number | null;
+  genre: string | null;
 }
 
 interface RandomGamePickerProps {
@@ -65,6 +66,19 @@ const GAME_TYPES = [
   "Miniatures",
   "RPG",
   "Other",
+];
+
+const GENRES = [
+  "Fantasy",
+  "Sci-Fi",
+  "Historical",
+  "Horror",
+  "Mystery",
+  "Adventure",
+  "Economic",
+  "Abstract",
+  "Humor",
+  "Nature",
 ];
 
 const PLAY_TIMES = [
@@ -86,6 +100,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
   
   // Filter state
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedPlayTimes, setSelectedPlayTimes] = useState<string[]>([]);
   const [playerCount, setPlayerCount] = useState<string>("");
   
@@ -99,7 +114,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
     queryFn: async () => {
       const { data, error } = await supabase
         .from("games")
-        .select("id, title, image_url, slug, difficulty, game_type, play_time, min_players, max_players")
+        .select("id, title, image_url, slug, difficulty, game_type, play_time, min_players, max_players, genre")
         .eq("library_id", libraryId)
         .eq("is_expansion", false)
         .order("title");
@@ -142,6 +157,10 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
         if (selectedTypes.length > 0 && game.game_type && !selectedTypes.includes(game.game_type)) {
           return false;
         }
+        // Genre filter
+        if (selectedGenres.length > 0 && (!game.genre || !selectedGenres.includes(game.genre))) {
+          return false;
+        }
         // Play time filter
         if (selectedPlayTimes.length > 0 && game.play_time && !selectedPlayTimes.includes(game.play_time)) {
           return false;
@@ -161,7 +180,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
     }
     
     return [];
-  }, [mode, allGames, wishlistData, selectedTypes, selectedPlayTimes, playerCount, manualGames]);
+  }, [mode, allGames, wishlistData, selectedTypes, selectedGenres, selectedPlayTimes, playerCount, manualGames]);
   
   // Spin and pick a random game
   const handleSpin = useCallback(() => {
@@ -239,6 +258,13 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
   const togglePlayTime = (time: string) => {
     setSelectedPlayTimes(prev => 
       prev.includes(time) ? prev.filter(t => t !== time) : [...prev, time]
+    );
+  };
+  
+  // Toggle genre filter
+  const toggleGenre = (genre: string) => {
+    setSelectedGenres(prev => 
+      prev.includes(genre) ? prev.filter(g => g !== genre) : [...prev, genre]
     );
   };
   
@@ -350,6 +376,28 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
                       onClick={() => toggleType(type)}
                     >
                       {type}
+                    </Badge>
+                  ))}
+                </div>
+                </div>
+              
+              {/* Genre */}
+              <div>
+                <Label className="text-xs text-cream/70 mb-1 block">Genre</Label>
+                <div className="flex flex-wrap gap-1">
+                  {GENRES.map(genre => (
+                    <Badge
+                      key={genre}
+                      variant={selectedGenres.includes(genre) ? "default" : "outline"}
+                      className={cn(
+                        "cursor-pointer text-xs",
+                        selectedGenres.includes(genre) 
+                          ? "bg-secondary text-secondary-foreground" 
+                          : "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50"
+                      )}
+                      onClick={() => toggleGenre(genre)}
+                    >
+                      {genre}
                     </Badge>
                   ))}
                 </div>
