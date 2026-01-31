@@ -142,6 +142,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.set_game_slug()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY INVOKER
 SET search_path = 'public'
 AS $$
 BEGIN
@@ -156,6 +157,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.games_set_slug()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY INVOKER
 SET search_path = 'public'
 AS $$
 BEGIN

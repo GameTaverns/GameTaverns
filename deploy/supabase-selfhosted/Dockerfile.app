@@ -1,6 +1,7 @@
 # GameTaverns Frontend - Production Build
 # Build context should be /opt/gametaverns (after install.sh copies files)
-# Version: 2.0.0
+# Version: 2.1.0
+# Last Audit: 2026-01-31
 
 FROM node:20-alpine AS builder
 
