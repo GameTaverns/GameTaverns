@@ -63,6 +63,7 @@ const GameForm = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("3 - Medium");
   const [gameType, setGameType] = useState<GameType>("Board Game");
+  const [genre, setGenre] = useState<string>("");
   const [playTime, setPlayTime] = useState<PlayTime>("45-60 Minutes");
   const [minPlayers, setMinPlayers] = useState(1);
   const [maxPlayers, setMaxPlayers] = useState(4);
@@ -101,6 +102,7 @@ const GameForm = () => {
       setImageUrl(existingGame.image_url || "");
       setDifficulty(existingGame.difficulty);
       setGameType(existingGame.game_type);
+      setGenre((existingGame as any).genre || "");
       setPlayTime(existingGame.play_time);
       setMinPlayers(existingGame.min_players);
       setMaxPlayers(existingGame.max_players);
@@ -181,6 +183,7 @@ const GameForm = () => {
       additional_images: [],
       difficulty,
       game_type: gameType,
+      genre: genre.trim() || null,
       play_time: playTime,
       min_players: minPlayers,
       max_players: maxPlayers,
@@ -316,6 +319,27 @@ const GameForm = () => {
                       {GAME_TYPE_OPTIONS.map((t) => (
                         <SelectItem key={t} value={t}>{t}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Genre</Label>
+                  <Select value={genre} onValueChange={setGenre}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select genre" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Fantasy">Fantasy</SelectItem>
+                      <SelectItem value="Sci-Fi">Sci-Fi</SelectItem>
+                      <SelectItem value="Historical">Historical</SelectItem>
+                      <SelectItem value="Horror">Horror</SelectItem>
+                      <SelectItem value="Mystery">Mystery</SelectItem>
+                      <SelectItem value="Adventure">Adventure</SelectItem>
+                      <SelectItem value="Economic">Economic</SelectItem>
+                      <SelectItem value="Abstract">Abstract</SelectItem>
+                      <SelectItem value="Humor">Humor</SelectItem>
+                      <SelectItem value="Nature">Nature</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

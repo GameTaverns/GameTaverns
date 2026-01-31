@@ -54,6 +54,9 @@ CREATE TABLE IF NOT EXISTS public.games (
     location_shelf TEXT,
     location_misc TEXT,
     
+    -- Theme/Genre
+    genre TEXT,
+    
     -- Media
     youtube_videos TEXT[] DEFAULT '{}',
     
