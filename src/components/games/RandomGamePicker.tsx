@@ -380,12 +380,12 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
               {/* Player Count */}
               <div>
                 <Label className="text-xs text-cream/70 mb-1 block">Player Count</Label>
-                <Select value={playerCount} onValueChange={setPlayerCount}>
+                <Select value={playerCount} onValueChange={(val) => setPlayerCount(val === "any" ? "" : val)}>
                   <SelectTrigger className="w-32 h-8 bg-wood-medium/20 border-cream/20">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any</SelectItem>
+                    <SelectItem value="any">Any</SelectItem>
                     {[1,2,3,4,5,6,7,8].map(n => (
                       <SelectItem key={n} value={n.toString()}>{n} players</SelectItem>
                     ))}
