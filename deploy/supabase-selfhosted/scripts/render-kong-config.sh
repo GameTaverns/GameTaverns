@@ -2,6 +2,8 @@
 # =============================================================================
 # Kong Configuration Renderer
 # Substitutes environment variables in kong.yml
+# Version: 2.2.0 - 5-Tier Role Hierarchy
+# Last Audit: 2026-01-31
 # =============================================================================
 
 set -e

@@ -2,7 +2,8 @@
 # =============================================================================
 # GameTaverns - Pre-flight Check Script
 # Validates system requirements before installation
-# Version: 2.2.0
+# Version: 2.2.0 - 5-Tier Role Hierarchy
+# Last Audit: 2026-01-31
 # =============================================================================
 
 # Don't use set -e - we want to count errors, not exit on first one
