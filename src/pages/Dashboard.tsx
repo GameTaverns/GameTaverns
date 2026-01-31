@@ -46,6 +46,7 @@ import { AchievementsDisplay } from "@/components/achievements/AchievementsDispl
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 import { useLending } from "@/hooks/useLending";
 import { useMyMemberships, useLibraryMembership } from "@/hooks/useLibraryMembership";
+import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -644,6 +645,9 @@ export default function Dashboard() {
                 <PollsManager libraryId={library.id} />
               </CardContent>
             </Card>
+
+            {/* Random Game Picker */}
+            <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />
             
             {/* Create/Edit Event Dialog */}
             <CreateEventDialog
