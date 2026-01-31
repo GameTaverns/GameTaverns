@@ -1,6 +1,6 @@
 # GameTaverns: Migration Guide
 
-**Version:** 2.1.1  
+**Version:** 2.2.0 - 5-Tier Role Hierarchy  
 **Last Updated:** 2026-01-31
 **Last Audit:** 2026-01-31
 

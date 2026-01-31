@@ -1,7 +1,7 @@
 # Kong Declarative Configuration for Supabase
 # This routes all API requests to the appropriate Supabase services
 # NOTE: ANON_KEY_PLACEHOLDER and SERVICE_ROLE_KEY_PLACEHOLDER are substituted by install.sh
-# Version: 2.1.1
+# Version: 2.2.0 - 5-Tier Role Hierarchy
 #
 # After install, verify keys were substituted:
 #   grep -q "PLACEHOLDER" /opt/gametaverns/kong.yml && echo "KEYS NOT SET" || echo "Keys configured"

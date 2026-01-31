@@ -189,30 +189,25 @@ export function UserManagement() {
     },
   });
 
-  const getRoleBadge = (role: AppRole, isLibraryOwner?: boolean, isLibraryModerator?: boolean) => {
-    const libraryIndicator = isLibraryOwner ? (
+  const getRoleBadge = (role: AppRole, isLibraryOwner?: boolean) => {
+    // Library ownership indicator (amber Library icon)
+    const libraryIndicator = isLibraryOwner && role !== "owner" ? (
       <span className="ml-1" title="Owns a library">
         <Library className="w-3 h-3 inline text-amber-400" />
       </span>
     ) : null;
     
-    const moderatorIndicator = isLibraryModerator && !isLibraryOwner ? (
-      <span className="ml-1" title="Community moderator">
-        <UserCog className="w-3 h-3 inline text-blue-400" />
-      </span>
-    ) : null;
-    
     switch (role) {
       case "admin":
-        return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30"><Crown className="w-3 h-3 mr-1" />Admin{libraryIndicator}{moderatorIndicator}</Badge>;
+        return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30"><Crown className="w-3 h-3 mr-1" />Admin{libraryIndicator}</Badge>;
       case "staff":
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><Shield className="w-3 h-3 mr-1" />Staff{libraryIndicator}{moderatorIndicator}</Badge>;
+        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><Shield className="w-3 h-3 mr-1" />Staff{libraryIndicator}</Badge>;
       case "owner":
-        return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30"><Star className="w-3 h-3 mr-1" />Owner{libraryIndicator}{moderatorIndicator}</Badge>;
+        return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30"><Star className="w-3 h-3 mr-1" />Owner</Badge>;
       case "moderator":
-        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30"><UserCog className="w-3 h-3 mr-1" />Moderator{libraryIndicator}{moderatorIndicator}</Badge>;
+        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30"><UserCog className="w-3 h-3 mr-1" />Moderator (T4){libraryIndicator}</Badge>;
       default:
-        return <Badge variant="outline" className="text-cream/50">User{libraryIndicator}{moderatorIndicator}</Badge>;
+        return <Badge variant="outline" className="text-cream/50">User{libraryIndicator}</Badge>;
     }
   };
 
@@ -382,7 +377,7 @@ export function UserManagement() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>{getRoleBadge(user.role, user.is_library_owner, user.is_library_moderator)}</TableCell>
+                  <TableCell>{getRoleBadge(user.role, user.is_library_owner)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {canModify ? (
