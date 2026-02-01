@@ -127,7 +127,7 @@ fi
 if [ -f "$MAIL_BACKUP" ]; then
     echo ""
     echo "Restoring mail data..."
-    docker compose stop mail roundcube 2>/dev/null || true
+    docker compose stop mail sogo 2>/dev/null || true
     
     MAIL_VOLUME="gametaverns_mail-data"
     if docker volume inspect "$MAIL_VOLUME" > /dev/null 2>&1; then

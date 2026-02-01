@@ -19,7 +19,7 @@ Use this checklist before deploying to ensure everything is ready.
 
 ## Pre-Deployment Audit (Completed: 2026-01-31)
 
-### ✅ Database Migrations (13 files)
+### ✅ Database Migrations (14 files)
 
 | File | Status | Notes |
 |------|--------|-------|
@@ -36,6 +36,7 @@ Use this checklist before deploying to ensure everything is ready.
 | 11-seed-data.sql | ✅ | Default achievements and mechanics |
 | 12-auth-trigger.sql | ✅ | Auto-create user profiles on signup, role grants |
 | 13-storage-buckets.sql | ✅ | library-logos bucket with RLS policies |
+| 14-sogo-database.sql | ✅ | SOGo groupware database and user |
 
 ### ✅ Docker Configuration
 
@@ -51,7 +52,7 @@ Use this checklist before deploying to ensure everything is ready.
 | Postgres Meta | v0.83.2 | ✅ Studio backend |
 | Studio | 20240729 | ✅ Admin UI |
 | imgproxy | v3.18 | ✅ Image transformations |
-| Roundcube | 1.6.6 | ✅ Webmail |
+| SOGo | latest | ✅ Groupware (Webmail + Calendar + Contacts) |
 | Nginx | 1.25-alpine | ✅ Reverse proxy |
 | Node | 20-alpine | ✅ Frontend build |
 
