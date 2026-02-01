@@ -327,7 +327,7 @@ KONG_HTTP_PORT=8000
 KONG_HTTPS_PORT=8443
 STUDIO_PORT=3001
 POSTGRES_PORT=5432
-SOGO_PORT=9001
+ROUNDCUBE_PORT=9001
 
 # Auth Configuration
 DISABLE_SIGNUP=false
@@ -534,7 +534,8 @@ MIGRATION_FILES=(
     "11-seed-data.sql"
     "12-auth-trigger.sql"
     "13-storage-buckets.sql"
-    "14-sogo-database.sql"
+    "15-totp-2fa.sql"
+    "16-security-hardening.sql"
 )
 
 for migration in "${MIGRATION_FILES[@]}"; do

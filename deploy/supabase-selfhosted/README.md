@@ -87,9 +87,9 @@ sudo ./install.sh
 - ✓ Docker image pulls
 - ✓ Security key generation (JWT, encryption, etc.)
 - ✓ API key configuration (Discord, Perplexity, Turnstile, etc.)
-- ✓ Database setup & all 14 migrations
+- ✓ Database setup & all 15 migrations
 - ✓ Frontend build
-- ✓ Mail server (Postfix + Dovecot + SOGo)
+- ✓ Mail server (Postfix + Dovecot + Roundcube)
 - ✓ SSL certificate setup (Let's Encrypt or Cloudflare)
 - ✓ Admin user creation
 
@@ -125,8 +125,8 @@ docker compose restart functions
          ┌────────────────────┼────────────────────┐
          ▼                    ▼                    ▼
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│   Frontend      │  │   Kong Gateway  │  │   SOGo          │
-│   (Static)      │  │   (Port 8000)   │  │   Groupware     │
+│   Frontend      │  │   Kong Gateway  │  │   Roundcube     │
+│   (Static)      │  │   (Port 8000)   │  │   Webmail       │
 │   Port 3000     │  │                 │  │   Port 9001     │
 └─────────────────┘  └────────┬────────┘  └─────────────────┘
                               │
@@ -160,16 +160,15 @@ docker compose restart functions
 | Edge Functions | 9000 | Deno runtime |
 | Mail (Postfix) | 25/587 | Outgoing email |
 | Mail (Dovecot) | 993 | IMAP |
-| SOGo | 9001 | Webmail + Calendar + Contacts |
+| Roundcube | 9001 | Webmail |
 
-### SOGo Groupware Features
+### Roundcube Webmail
 
-SOGo provides a full groupware solution accessible at `https://mail.gametaverns.com`:
+Roundcube provides a lightweight webmail client accessible at `https://mail.gametaverns.com`:
 
 - **Webmail**: Full email client with search, folders, filters
-- **Calendar**: CalDAV with event scheduling and sharing
-- **Contacts**: CardDAV address book with sync
-- **ActiveSync**: Mobile device synchronization (iOS/Android)
+- **Archive**: Built-in archive plugin for email organization
+- **Attachments**: Up to 25MB file attachments
 
 ## Directory Structure
 
