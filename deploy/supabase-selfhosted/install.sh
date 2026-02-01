@@ -184,10 +184,31 @@ success "Configuration collected"
 # ===========================================
 step "2/10" "Generating Security Keys"
 
-POSTGRES_PASSWORD=$(openssl rand -base64 32 | tr -d '/+=' | head -c 32)
-JWT_SECRET=$(openssl rand -base64 64 | tr -d '/+=' | head -c 64)
-SECRET_KEY_BASE=$(openssl rand -base64 64 | tr -d '/+=' | head -c 64)
-PII_ENCRYPTION_KEY=$(openssl rand -base64 32 | tr -d '/+=' | head -c 32)
+# IMPORTANT:
+# If this installer is re-run on an existing installation, we must *not* rotate
+# the database password / JWT secrets, otherwise existing containers (esp. PostgREST)
+# will fail to authenticate against the already-initialized database volume.
+EXISTING_ENV="$INSTALL_DIR/.env"
+if [ -f "$EXISTING_ENV" ]; then
+    info "Existing installation detected ($EXISTING_ENV). Reusing existing security keys."
+    # shellcheck disable=SC1090
+    set -a
+    source "$EXISTING_ENV"
+    set +a
+fi
+
+gen_secret() {
+    # Usage: gen_secret <bytes> <max_chars>
+    local bytes="$1"
+    local max_chars="$2"
+    openssl rand -base64 "$bytes" | tr -d '/+=' | head -c "$max_chars"
+}
+
+# Only generate missing keys (first install or partially configured install)
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-"$(gen_secret 32 32)"}
+JWT_SECRET=${JWT_SECRET:-"$(gen_secret 64 64)"}
+SECRET_KEY_BASE=${SECRET_KEY_BASE:-"$(gen_secret 64 64)"}
+PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY:-"$(gen_secret 32 32)"}
 
 # Generate Supabase JWT tokens
 generate_jwt() {
@@ -206,8 +227,8 @@ generate_jwt() {
     echo "${header_b64}.${payload_b64}.${sig}"
 }
 
-ANON_KEY=$(generate_jwt "anon")
-SERVICE_ROLE_KEY=$(generate_jwt "service_role")
+ANON_KEY=${ANON_KEY:-"$(generate_jwt "anon")"}
+SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY:-"$(generate_jwt "service_role")"}
 
 success "Security keys generated"
 
