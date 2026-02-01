@@ -228,32 +228,40 @@ chmod +x "$INSTALL_DIR/scripts"/*.sh 2>/dev/null || true
 # Copy source files from project root
 PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 if [ -f "$PROJECT_ROOT/package.json" ]; then
-    info "Copying application source files..."
+    # Check if PROJECT_ROOT and INSTALL_DIR are the same (running from cloned repo)
+    PROJECT_ROOT_REAL=$(realpath "$PROJECT_ROOT" 2>/dev/null || readlink -f "$PROJECT_ROOT")
+    INSTALL_DIR_REAL=$(realpath "$INSTALL_DIR" 2>/dev/null || readlink -f "$INSTALL_DIR")
     
-    [ -d "$PROJECT_ROOT/src" ] || error "Source directory not found: $PROJECT_ROOT/src"
-    
-    cp -r "$PROJECT_ROOT/src" "$INSTALL_DIR/"
-    cp -r "$PROJECT_ROOT/public" "$INSTALL_DIR/"
-    cp "$PROJECT_ROOT/package.json" "$INSTALL_DIR/"
-    cp "$PROJECT_ROOT/package-lock.json" "$INSTALL_DIR/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/bun.lockb" "$INSTALL_DIR/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/vite.config.ts" "$INSTALL_DIR/"
-    cp "$PROJECT_ROOT/tsconfig.json" "$INSTALL_DIR/"
-    cp "$PROJECT_ROOT/tsconfig.app.json" "$INSTALL_DIR/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/tsconfig.node.json" "$INSTALL_DIR/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/tailwind.config.ts" "$INSTALL_DIR/"
-    cp "$PROJECT_ROOT/postcss.config.js" "$INSTALL_DIR/"
-    cp "$PROJECT_ROOT/index.html" "$INSTALL_DIR/"
-    cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/" 2>/dev/null || true
-    
-    # Copy edge functions
-    mkdir -p "$INSTALL_DIR/supabase"
-    if [ -d "$PROJECT_ROOT/supabase/functions" ]; then
-        cp -r "$PROJECT_ROOT/supabase/functions" "$INSTALL_DIR/supabase/"
+    if [ "$PROJECT_ROOT_REAL" = "$INSTALL_DIR_REAL" ]; then
+        info "Running from install directory - skipping source copy (files already in place)"
+    else
+        info "Copying application source files..."
+        
+        [ -d "$PROJECT_ROOT/src" ] || error "Source directory not found: $PROJECT_ROOT/src"
+        
+        cp -r "$PROJECT_ROOT/src" "$INSTALL_DIR/"
+        cp -r "$PROJECT_ROOT/public" "$INSTALL_DIR/"
+        cp "$PROJECT_ROOT/package.json" "$INSTALL_DIR/"
+        cp "$PROJECT_ROOT/package-lock.json" "$INSTALL_DIR/" 2>/dev/null || true
+        cp "$PROJECT_ROOT/bun.lockb" "$INSTALL_DIR/" 2>/dev/null || true
+        cp "$PROJECT_ROOT/vite.config.ts" "$INSTALL_DIR/"
+        cp "$PROJECT_ROOT/tsconfig.json" "$INSTALL_DIR/"
+        cp "$PROJECT_ROOT/tsconfig.app.json" "$INSTALL_DIR/" 2>/dev/null || true
+        cp "$PROJECT_ROOT/tsconfig.node.json" "$INSTALL_DIR/" 2>/dev/null || true
+        cp "$PROJECT_ROOT/tailwind.config.ts" "$INSTALL_DIR/"
+        cp "$PROJECT_ROOT/postcss.config.js" "$INSTALL_DIR/"
+        cp "$PROJECT_ROOT/index.html" "$INSTALL_DIR/"
+        cp "$PROJECT_ROOT/components.json" "$INSTALL_DIR/" 2>/dev/null || true
+        
+        # Copy edge functions
+        mkdir -p "$INSTALL_DIR/supabase"
+        if [ -d "$PROJECT_ROOT/supabase/functions" ]; then
+            cp -r "$PROJECT_ROOT/supabase/functions" "$INSTALL_DIR/supabase/"
+        fi
+        cp "$PROJECT_ROOT/supabase/config.toml" "$INSTALL_DIR/supabase/" 2>/dev/null || true
+        
+        success "Application source files copied"
     fi
-    cp "$PROJECT_ROOT/supabase/config.toml" "$INSTALL_DIR/supabase/" 2>/dev/null || true
-    
-    success "Application source files copied"
 else
     error "Project root not found at $PROJECT_ROOT"
 fi
