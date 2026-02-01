@@ -1,0 +1,324 @@
+import { useState } from "react";
+import { Layout } from "@/components/layout/Layout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { usePlayStats } from "@/hooks/usePlayStats";
+import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Dices, 
+  Users, 
+  Clock, 
+  Calendar,
+  TrendingUp,
+  Gamepad2,
+  Sparkles,
+  Hash
+} from "lucide-react";
+import { format, addMonths, subMonths } from "date-fns";
+import { GameImage } from "@/components/games/GameImage";
+
+function StatCard({ 
+  value, 
+  label, 
+  icon: Icon 
+}: { 
+  value: string | number; 
+  label: string; 
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+      <CardContent className="p-4 text-center">
+        {Icon && (
+          <Icon className="h-5 w-5 mx-auto mb-1 text-primary/70" />
+        )}
+        <div className="text-3xl font-bold text-foreground font-display">
+          {value}
+        </div>
+        <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+          {label}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MechanicsList({ 
+  mechanics 
+}: { 
+  mechanics: { name: string; percentage: number; count: number }[] 
+}) {
+  if (mechanics.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm text-center py-4">
+        No mechanics data available
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {mechanics.map((m) => (
+        <div key={m.name} className="flex justify-between items-center">
+          <span className="text-sm text-foreground truncate flex-1 mr-2">
+            {m.name}
+          </span>
+          <span className="text-sm font-semibold text-primary">
+            {m.percentage}%
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TopGamesList({ 
+  games 
+}: { 
+  games: { id: string; title: string; image_url: string | null; plays: number }[] 
+}) {
+  if (games.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm text-center py-4">
+        No games played this month
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {games.slice(0, 5).map((game, index) => (
+        <div key={game.id} className="flex items-center gap-3">
+          <span className="text-lg font-bold text-muted-foreground w-5">
+            {index + 1}
+          </span>
+          <div className="h-10 w-10 rounded overflow-hidden flex-shrink-0">
+            <GameImage
+              imageUrl={game.image_url || ""}
+              alt={game.title}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <span className="text-sm text-foreground truncate flex-1">
+            {game.title}
+          </span>
+          <span className="text-sm font-semibold text-primary">
+            {game.plays}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GameImageGrid({ 
+  games 
+}: { 
+  games: { id: string; title: string; image_url: string | null; plays: number }[] 
+}) {
+  const displayGames = games.slice(0, 9);
+  
+  if (displayGames.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
+      {displayGames.map((game) => (
+        <div key={game.id} className="aspect-square relative group">
+          <GameImage
+            imageUrl={game.image_url || ""}
+            alt={game.title}
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <span className="text-white text-xs text-center px-1 line-clamp-2">
+              {game.title}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function PlayStatsPage() {
+  const { library, isOwner } = useTenant();
+  const { user } = useAuth();
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  
+  const { data: stats, isLoading, error } = usePlayStats(
+    library?.id || null,
+    selectedMonth
+  );
+
+  const handlePrevMonth = () => {
+    setSelectedMonth((prev) => subMonths(prev, 1));
+  };
+
+  const handleNextMonth = () => {
+    const next = addMonths(selectedMonth, 1);
+    if (next <= new Date()) {
+      setSelectedMonth(next);
+    }
+  };
+
+  const canGoNext = addMonths(selectedMonth, 1) <= new Date();
+
+  if (!user || !isOwner) {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            Access Denied
+          </h1>
+          <p className="text-muted-foreground">
+            Only library owners can view play statistics.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header with month navigation */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold font-display text-foreground">
+              Play Stats
+            </h1>
+            <p className="text-muted-foreground">
+              Your gaming activity summary
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handlePrevMonth}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="min-w-[120px] text-center">
+              <span className="text-lg font-semibold text-foreground">
+                {format(selectedMonth, "MMM yyyy")}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleNextMonth}
+              disabled={!canGoNext}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+        ) : error ? (
+          <Card>
+            <CardContent className="py-8 text-center text-destructive">
+              Failed to load statistics
+            </CardContent>
+          </Card>
+        ) : stats ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left column - Game images grid */}
+            <div className="lg:col-span-1">
+              <Card className="overflow-hidden">
+                <CardContent className="p-2">
+                  <GameImageGrid games={stats.topGames} />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right column - Stats */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Main stats grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatCard 
+                  value={stats.totalPlays} 
+                  label="Plays" 
+                  icon={Dices}
+                />
+                <StatCard 
+                  value={stats.hIndex} 
+                  label="H-Index" 
+                  icon={TrendingUp}
+                />
+                <StatCard 
+                  value={stats.gamesPlayed} 
+                  label="Games" 
+                  icon={Gamepad2}
+                />
+                <StatCard 
+                  value={stats.newGamesThisMonth} 
+                  label="New" 
+                  icon={Sparkles}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatCard 
+                  value={stats.uniquePlayers} 
+                  label="Players" 
+                  icon={Users}
+                />
+                <StatCard 
+                  value={stats.totalHours} 
+                  label="Hours" 
+                  icon={Clock}
+                />
+                <StatCard 
+                  value={stats.daysWithPlays} 
+                  label="Days" 
+                  icon={Calendar}
+                />
+                <StatCard 
+                  value={`${stats.topMechanics.length}`} 
+                  label="Mechanics" 
+                  icon={Hash}
+                />
+              </div>
+
+              {/* Mechanics breakdown */}
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-primary" />
+                    Top Mechanics
+                  </h3>
+                  <MechanicsList mechanics={stats.topMechanics} />
+                </CardContent>
+              </Card>
+
+              {/* Top games */}
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Dices className="h-4 w-4 text-primary" />
+                    Most Played
+                  </h3>
+                  <TopGamesList games={stats.topGames} />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </Layout>
+  );
+}
