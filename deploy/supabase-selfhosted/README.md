@@ -4,8 +4,8 @@ Complete self-hosted stack using official Supabase Docker images for 1:1 feature
 
 **Domain:** `gametaverns.com` (hardcoded)  
 **Tenant Libraries:** `*.gametaverns.com` (e.g., `tzolak.gametaverns.com`)  
-**Version:** 2.2.0 - 5-Tier Role Hierarchy
-**Last Audit:** 2026-01-31
+**Version:** 2.2.0 - 5-Tier Role Hierarchy  
+**Last Audit:** 2026-02-01
 
 ## ⚠️ Database Isolation
 
@@ -32,7 +32,7 @@ Complete self-hosted stack using official Supabase Docker images for 1:1 feature
 
 ## DNS Configuration
 
-Before running the installer, configure these DNS records pointing to your server:
+Configure these DNS records pointing to your server **before** running the installer:
 
 | Type | Name | Value |
 |------|------|-------|
@@ -47,38 +47,52 @@ Before running the installer, configure these DNS records pointing to your serve
 
 The wildcard (`*`) record enables tenant subdomains like `tzolak.gametaverns.com`.
 
-## Quick Start
+## Quick Start (2 Steps)
+
+### Step 1: Bootstrap Server (Fresh Ubuntu Only)
+
+Run this on a fresh Ubuntu server to install all prerequisites:
 
 ```bash
-# 1. Clone and navigate
-git clone https://github.com/GameTaverns/GameTaverns.git
-cd GameTaverns/deploy/supabase-selfhosted
+# Option A: One-liner (downloads and runs bootstrap script)
+curl -fsSL https://raw.githubusercontent.com/GameTaverns/GameTaverns/main/deploy/supabase-selfhosted/bootstrap.sh | sudo bash
 
-# 2. Run preflight check (catches common issues)
-sudo ./scripts/preflight-check.sh
-
-# 3. Run installer (will prompt for API keys)
-# This handles EVERYTHING: Docker, database, migrations, etc.
-sudo ./install.sh
-
-# 4. Set up SSL (includes wildcard cert for *.gametaverns.com)
-cd /opt/gametaverns
-sudo ./scripts/setup-ssl.sh
-
-# 5. Create admin user
-sudo ./scripts/create-admin.sh
-
-# 6. Visit https://gametaverns.com
+# Option B: Manual download
+wget https://raw.githubusercontent.com/GameTaverns/GameTaverns/main/deploy/supabase-selfhosted/bootstrap.sh
+chmod +x bootstrap.sh
+sudo ./bootstrap.sh
 ```
 
-The installer is fully automated and will:
-- Install Docker and Docker Compose if needed
-- Generate all security keys (JWT, encryption, etc.)
-- Pull all required Docker images
-- Build the frontend container
-- Start all services
-- Run all database migrations
-- Create the storage buckets
+**Bootstrap installs:**
+- Docker & Docker Compose
+- Nginx (reverse proxy)
+- Certbot (SSL certificates)
+- UFW Firewall (configured)
+- Fail2ban (security)
+- Git, curl, jq, and utilities
+
+### Step 2: Install GameTaverns
+
+```bash
+# Clone repository
+git clone https://github.com/GameTaverns/GameTaverns.git /opt/gametaverns
+
+# Run installer (handles EVERYTHING)
+cd /opt/gametaverns/deploy/supabase-selfhosted
+sudo ./install.sh
+```
+
+**The installer handles:**
+- ✓ Docker image pulls
+- ✓ Security key generation (JWT, encryption, etc.)
+- ✓ API key configuration (Discord, Perplexity, Turnstile, etc.)
+- ✓ Database setup & all 14 migrations
+- ✓ Frontend build
+- ✓ Mail server (Postfix + Dovecot + SOGo)
+- ✓ SSL certificate setup (Let's Encrypt or Cloudflare)
+- ✓ Admin user creation
+
+After completion, visit: **https://gametaverns.com**
 
 ## API Keys Configured During Install
 
@@ -91,7 +105,13 @@ The installer prompts for all API keys upfront:
 | Perplexity API Key | Game recommendations | Recommended |
 | OpenAI API Key | Enhanced AI features | Optional |
 | Firecrawl API Key | URL-based game imports | Recommended |
-| Turnstile Site/Secret | Bot protection | Required |
+| Turnstile Site/Secret | Bot protection | **Required** |
+
+To update API keys later:
+```bash
+nano /opt/gametaverns/.env
+docker compose restart functions
+```
 
 ## Architecture
 
@@ -154,7 +174,7 @@ SOGo provides a full groupware solution accessible at `https://mail.gametaverns.
 
 ```
 /opt/gametaverns/
-├── .env                    # Production config
+├── .env                    # Production config (chmod 600)
 ├── docker-compose.yml      # Main orchestration
 ├── volumes/
 │   ├── db/                 # PostgreSQL data
@@ -163,12 +183,37 @@ SOGo provides a full groupware solution accessible at `https://mail.gametaverns.
 ├── nginx/
 │   ├── gametaverns.conf    # Main site
 │   └── ssl/                # Certificates
+├── scripts/                # Management scripts
 └── logs/                   # Application logs
 ```
 
-## Common Issues & Solutions
+## Management Commands
 
-### Issue: Services won't start
+```bash
+cd /opt/gametaverns
+
+# View all logs
+docker compose logs -f
+
+# Check service status
+docker compose ps
+
+# Restart specific service
+docker compose restart auth
+
+# Backup database
+./scripts/backup.sh
+
+# Update to latest version
+./scripts/update.sh
+
+# Re-run migrations
+./scripts/run-migrations.sh
+```
+
+## Troubleshooting
+
+### Services won't start
 ```bash
 # Check Docker is running
 sudo systemctl status docker
@@ -180,7 +225,7 @@ sudo netstat -tlnp | grep -E '(3000|8000|5432)'
 docker compose logs -f
 ```
 
-### Issue: Database connection refused
+### Database connection refused
 ```bash
 # Wait for healthy status
 docker compose ps
@@ -189,7 +234,7 @@ docker compose ps
 docker compose logs db
 ```
 
-### Issue: Auth not working
+### Auth not working
 ```bash
 # Verify JWT secrets match
 docker compose exec auth env | grep JWT
@@ -198,29 +243,13 @@ docker compose exec auth env | grep JWT
 docker compose logs auth
 ```
 
-### Issue: Edge functions failing
+### Edge functions failing
 ```bash
 # Check function logs
 docker compose logs functions
 
 # Verify functions are mounted
 docker compose exec functions ls -la /home/deno/functions
-```
-
-## Maintenance
-
-```bash
-# Backup database
-./scripts/backup.sh
-
-# Update to latest
-./scripts/update.sh
-
-# View all logs
-docker compose logs -f
-
-# Restart specific service
-docker compose restart auth
 ```
 
 ## Migrating from Native Deployment
@@ -233,3 +262,12 @@ If you're migrating from the native Express-based deployment:
 4. **Config**: Map `.env` values to new format
 
 See `MIGRATION.md` for detailed steps.
+
+## Security Checklist
+
+- [ ] Change default admin password after first login
+- [ ] Delete `/root/gametaverns-credentials.txt` after noting values
+- [ ] Configure Turnstile for bot protection
+- [ ] Set up proper DNS SPF/DKIM for email deliverability
+- [ ] Enable automatic backups via cron
+- [ ] Review RLS policies for your use case
