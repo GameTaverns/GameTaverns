@@ -1,12 +1,11 @@
 import { Link } from "react-router-dom";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useGameRecommendations } from "@/hooks/useGameRecommendations";
 import { useTenant } from "@/contexts/TenantContext";
 import { useDemoMode } from "@/contexts/DemoContext";
-import { directImageUrl } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GameImage } from "./GameImage";
 
 interface GameRecommendationsProps {
   gameId: string;
@@ -64,11 +63,16 @@ export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsPr
               >
                 <div className="aspect-square rounded-lg overflow-hidden bg-muted mb-2 relative">
                   {game.image_url ? (
-                    <img
-                      src={directImageUrl(game.image_url)}
+                    <GameImage
+                      imageUrl={game.image_url}
                       alt={game.title}
-                      className="h-full w-full object-contain transition-transform group-hover:scale-105"
                       loading="lazy"
+                      className="h-full w-full object-contain transition-transform group-hover:scale-105"
+                      fallback={
+                        <div className="h-full w-full flex items-center justify-center">
+                          <span className="text-4xl">🎲</span>
+                        </div>
+                      }
                     />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center">
