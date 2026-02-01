@@ -138,16 +138,19 @@ read -p "Discord Client Secret: " DISCORD_CLIENT_SECRET
 DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
 
 echo ""
-echo -e "${BLUE}=== AI Services ===${NC}"
-echo "Perplexity (https://www.perplexity.ai/settings/api) - for game recommendations"
+echo -e "${BLUE}=== AI Services (Perplexity powers all AI features) ===${NC}"
+echo "Perplexity (https://www.perplexity.ai/settings/api) - RECOMMENDED for all AI"
 read -p "Perplexity API Key: " PERPLEXITY_API_KEY
 PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
-echo "OpenAI (https://platform.openai.com/api-keys) - optional enhanced AI"
-read -p "OpenAI API Key: " OPENAI_API_KEY
-OPENAI_API_KEY=${OPENAI_API_KEY:-}
 echo "Firecrawl (https://www.firecrawl.dev/) - for URL-based game imports"
 read -p "Firecrawl API Key: " FIRECRAWL_API_KEY
 FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+
+echo ""
+echo -e "${BLUE}=== BoardGameGeek Integration ===${NC}"
+echo "BGG API Token (optional) - for authenticated collection imports"
+read -p "BGG API Token: " BGG_API_TOKEN
+BGG_API_TOKEN=${BGG_API_TOKEN:-}
 
 echo ""
 echo -e "${BLUE}=== Cloudflare Turnstile (Bot Protection) ===${NC}"
@@ -321,10 +324,12 @@ DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
 DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
 DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
 
-# AI Services
+# AI Services (Perplexity powers ALL AI features)
 PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
-OPENAI_API_KEY=${OPENAI_API_KEY:-}
 FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+
+# BoardGameGeek
+BGG_API_TOKEN=${BGG_API_TOKEN:-}
 
 # Bot Protection (Cloudflare Turnstile)
 TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
@@ -624,8 +629,9 @@ echo ""
 echo -e "${BLUE}API Keys Status:${NC}"
 [ -n "${DISCORD_BOT_TOKEN:-}" ] && echo "  ✓ Discord Bot" || echo "  ○ Discord Bot (not configured)"
 [ -n "${DISCORD_CLIENT_ID:-}" ] && echo "  ✓ Discord OAuth" || echo "  ○ Discord OAuth (not configured)"
-[ -n "${PERPLEXITY_API_KEY:-}" ] && echo "  ✓ Perplexity AI" || echo "  ○ Perplexity AI (not configured)"
+[ -n "${PERPLEXITY_API_KEY:-}" ] && echo "  ✓ Perplexity AI (all AI features)" || echo "  ○ Perplexity AI (not configured)"
 [ -n "${FIRECRAWL_API_KEY:-}" ] && echo "  ✓ Firecrawl" || echo "  ○ Firecrawl (not configured)"
+[ -n "${BGG_API_TOKEN:-}" ] && echo "  ✓ BGG API Token" || echo "  ○ BGG API Token (not configured)"
 [ -n "${TURNSTILE_SITE_KEY:-}" ] && echo "  ✓ Turnstile" || echo "  ○ Turnstile (not configured)"
 echo ""
 echo -e "${BLUE}Credentials saved to:${NC} $CREDS_FILE"

@@ -1,5 +1,6 @@
-// Shared AI client for edge functions - supports Perplexity API for standalone independence
-// Falls back to Lovable AI gateway for cloud deployments
+// Shared AI client for edge functions - Perplexity is the PRIMARY AI provider
+// Priority: Perplexity (recommended) > Lovable AI (cloud fallback)
+// Note: OpenAI, Anthropic, Google are legacy options - Perplexity is preferred
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,10 +39,10 @@ export interface AIResponse {
 
 /**
  * Get AI provider configuration
- * Priority: PERPLEXITY > OPENAI > ANTHROPIC > GOOGLE_AI > LOVABLE (cloud fallback)
+ * Priority: PERPLEXITY (recommended) > LOVABLE (cloud fallback) > OpenAI/Anthropic/Google (legacy)
  */
 function getAIConfig(): { endpoint: string; apiKey: string; model: string; provider: string } | null {
-  // Check for Perplexity (preferred for standalone - includes web search)
+  // Check for Perplexity (PREFERRED - includes web search, best for game data)
   const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
   if (perplexityKey) {
     return {
@@ -49,39 +50,6 @@ function getAIConfig(): { endpoint: string; apiKey: string; model: string; provi
       apiKey: perplexityKey,
       model: "sonar",
       provider: "perplexity",
-    };
-  }
-
-  // Check for OpenAI
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (openaiKey) {
-    return {
-      endpoint: "https://api.openai.com/v1/chat/completions",
-      apiKey: openaiKey,
-      model: "gpt-4o-mini",
-      provider: "openai",
-    };
-  }
-
-  // Check for Anthropic Claude
-  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (anthropicKey) {
-    return {
-      endpoint: "https://api.anthropic.com/v1/messages",
-      apiKey: anthropicKey,
-      model: "claude-3-haiku-20240307",
-      provider: "anthropic",
-    };
-  }
-
-  // Check for Google AI (Gemini)
-  const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
-  if (googleKey) {
-    return {
-      endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
-      apiKey: googleKey,
-      model: "gemini-1.5-flash",
-      provider: "google",
     };
   }
 
@@ -93,6 +61,39 @@ function getAIConfig(): { endpoint: string; apiKey: string; model: string; provi
       apiKey: lovableKey,
       model: "google/gemini-2.5-flash",
       provider: "lovable",
+    };
+  }
+
+  // Legacy: OpenAI (if configured)
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (openaiKey) {
+    return {
+      endpoint: "https://api.openai.com/v1/chat/completions",
+      apiKey: openaiKey,
+      model: "gpt-4o-mini",
+      provider: "openai",
+    };
+  }
+
+  // Legacy: Anthropic Claude
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (anthropicKey) {
+    return {
+      endpoint: "https://api.anthropic.com/v1/messages",
+      apiKey: anthropicKey,
+      model: "claude-3-haiku-20240307",
+      provider: "anthropic",
+    };
+  }
+
+  // Legacy: Google AI (Gemini)
+  const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
+  if (googleKey) {
+    return {
+      endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+      apiKey: googleKey,
+      model: "gemini-1.5-flash",
+      provider: "google",
     };
   }
 
@@ -110,11 +111,11 @@ export function isAIConfigured(): boolean {
  * Get AI provider name for logging
  */
 export function getAIProviderName(): string {
-  if (Deno.env.get("PERPLEXITY_API_KEY")) return "Perplexity";
-  if (Deno.env.get("OPENAI_API_KEY")) return "OpenAI";
-  if (Deno.env.get("ANTHROPIC_API_KEY")) return "Anthropic Claude";
-  if (Deno.env.get("GOOGLE_AI_API_KEY")) return "Google Gemini";
+  if (Deno.env.get("PERPLEXITY_API_KEY")) return "Perplexity (recommended)";
   if (Deno.env.get("LOVABLE_API_KEY")) return "Lovable AI";
+  if (Deno.env.get("OPENAI_API_KEY")) return "OpenAI (legacy)";
+  if (Deno.env.get("ANTHROPIC_API_KEY")) return "Anthropic Claude (legacy)";
+  if (Deno.env.get("GOOGLE_AI_API_KEY")) return "Google Gemini (legacy)";
   return "None";
 }
 
@@ -127,7 +128,7 @@ export async function aiComplete(options: AIRequestOptions): Promise<AIResponse>
   if (!config) {
     return {
       success: false,
-      error: "AI service not configured. Set PERPLEXITY_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_AI_API_KEY.",
+      error: "AI service not configured. Set PERPLEXITY_API_KEY (recommended) or LOVABLE_API_KEY.",
     };
   }
 

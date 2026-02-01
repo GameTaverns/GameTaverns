@@ -16,7 +16,7 @@ This document outlines everything needed to replicate the Lovable Cloud platform
 | **Frontend** | React SPA | Vite build → Nginx |
 | **File Storage** | Uploads (logos, etc.) | Local filesystem + Nginx |
 | **Email (Transactional)** | Verification, password reset | Postfix (localhost SMTP) |
-| **Email (Mailboxes)** | Staff accounts | Dovecot (IMAP) + Roundcube (Webmail) |
+| **Email (Mailboxes)** | Staff accounts | Dovecot (IMAP) + SOGo (Webmail + Groupware) |
 | **Reverse Proxy** | SSL, routing | Nginx |
 | **Process Manager** | Keep services running | PM2 |
 | **Server Management** | GUI dashboard | Cockpit (port 9090) |
@@ -29,10 +29,10 @@ This document outlines everything needed to replicate the Lovable Cloud platform
 | Service | Purpose | Required? | Config Variable |
 |---------|---------|-----------|-----------------|
 | **Cloudflare Turnstile** | Bot protection on forms | Recommended | `TURNSTILE_SECRET_KEY`, `TURNSTILE_SITE_KEY` |
-| **Perplexity AI** | Game metadata enrichment | Optional | `PERPLEXITY_API_KEY` |
+| **Perplexity AI** | All AI features (recommendations, descriptions) | Recommended | `PERPLEXITY_API_KEY` |
 | **Firecrawl** | URL scraping for imports | Optional | `FIRECRAWL_API_KEY` |
 | **Discord** | Bot notifications, OAuth | Optional | `DISCORD_BOT_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` |
-| **BoardGameGeek** | Game data lookup | Built-in | No key needed (public XML API) |
+| **BoardGameGeek** | Collection imports (enhanced with auth) | Optional | `BGG_API_TOKEN` |
 
 ---
 
@@ -174,10 +174,14 @@ Full PostgreSQL schema in `deploy/native/migrations/01-schema.sql`:
 - Sends verification emails, password resets, notifications
 - SPF/DKIM records for deliverability
 
-### Staff Mailboxes (Dovecot)
+### Staff Mailboxes (Dovecot + SOGo)
 - Virtual mailbox accounts (no system users)
 - IMAP access via any mail client
-- Roundcube webmail at `mail.yourdomain.com`
+- SOGo groupware at `mail.yourdomain.com`:
+  - Webmail with modern interface
+  - Calendar (CalDAV) with event sharing
+  - Contacts (CardDAV) address book
+  - ActiveSync for mobile devices
 
 ### Recommended Accounts
 ```bash

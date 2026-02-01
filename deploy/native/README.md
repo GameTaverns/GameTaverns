@@ -45,7 +45,7 @@ sudo ./scripts/preflight-check.sh
 | Nginx | Latest | Reverse proxy |
 | Postfix | Latest | Outgoing mail (SMTP) |
 | Dovecot | Latest | Incoming mail (IMAP/POP3) |
-| Roundcube | Latest | Webmail interface |
+| SOGo | Latest | Webmail + Calendar + Contacts |
 | Cockpit | Latest | Server management GUI |
 
 ## Database Schema (v2.0.0)
@@ -188,7 +188,7 @@ This configures:
 | Interface | URL | Purpose |
 |-----------|-----|---------|
 | **Cockpit** | `https://YOUR_IP:9090` | Server management GUI |
-| **Roundcube** | `http://mail.yourdomain.com` | Webmail |
+| **SOGo** | `https://mail.yourdomain.com` | Webmail, Calendar, Contacts |
 | **App** | `https://yourdomain.com` | Main application |
 
 ## Security
@@ -306,23 +306,36 @@ FEATURE_MESSAGING=true
 FEATURE_RATINGS=true
 ```
 
-## AI Features (Optional)
+## AI Features (Perplexity)
 
-To enable AI-powered game enrichment, add these to `/opt/gametaverns/.env`:
+All AI features are powered by Perplexity AI. Add to `/opt/gametaverns/.env`:
 
 ```bash
-# For game URL import and description enhancement
+# Perplexity AI - powers ALL AI features:
+# - Game recommendations
+# - Description enhancement/condensing
+# - Game metadata enrichment from URLs
 PERPLEXITY_API_KEY=pplx-...
 
-# For URL scraping
+# For URL scraping (optional, complements Perplexity)
 FIRECRAWL_API_KEY=fc-...
 ```
 
 Get keys at:
-- Perplexity: https://perplexity.ai/settings/api
+- **Perplexity**: https://perplexity.ai/settings/api (recommended)
 - Firecrawl: https://firecrawl.dev/
 
 Then restart: `pm2 restart gametaverns-api`
+
+## BoardGameGeek Integration
+
+For enhanced BGG collection imports, add your BGG API token:
+
+```bash
+BGG_API_TOKEN=your_bgg_api_token
+```
+
+This enables authenticated API access for more reliable collection synchronization.
 
 ## Discord Integration (Optional)
 
