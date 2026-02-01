@@ -77,8 +77,9 @@ sudo ./bootstrap.sh
 # Clone repository
 git clone https://github.com/GameTaverns/GameTaverns.git /opt/gametaverns
 
-# Run installer (handles EVERYTHING)
+# Make installer executable and run
 cd /opt/gametaverns/deploy/supabase-selfhosted
+chmod +x install.sh
 sudo ./install.sh
 ```
 

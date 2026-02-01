@@ -9,6 +9,7 @@ One-command installation for Ubuntu 24.04 LTS.
 
 git clone https://github.com/GameTaverns/GameTaverns.git /opt/gametaverns
 cd /opt/gametaverns/deploy/native
+chmod +x install.sh
 sudo ./install.sh
 ```
 

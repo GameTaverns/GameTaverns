@@ -68,9 +68,28 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Copyright */}
-        <div className="mt-8 pt-6 border-t text-center text-sm text-muted-foreground">
-          <p>© {currentYear} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.</p>
+        {/* Copyright & Attribution */}
+        <div className="mt-8 pt-6 border-t">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground text-center md:text-left">
+              © {currentYear} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
+            </p>
+            {/* BGG Attribution - Required for API usage */}
+            <a 
+              href="https://boardgamegeek.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              title="Game data powered by BoardGameGeek"
+            >
+              <img 
+                src="https://cf.geekdo-static.com/images/geekdo/bgg_logo.png" 
+                alt="Powered by BoardGameGeek" 
+                className="h-6"
+              />
+              <span className="text-xs text-muted-foreground">Powered by BGG</span>
+            </a>
+          </div>
         </div>
       </div>
     </footer>
