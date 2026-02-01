@@ -89,6 +89,7 @@ export const config = {
   
   // External services
   bggApiUrl: process.env.BGG_API_URL || 'https://boardgamegeek.com/xmlapi2',
+  bggApiToken: process.env.BGG_API_TOKEN || '',
   
   // Feature detection
   isMariaDb: !!process.env.DB_HOST || process.env.DATABASE_URL?.includes('mysql'),
