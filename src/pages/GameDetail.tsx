@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenant } from "@/contexts/TenantContext";
-import { directImageUrl } from "@/lib/utils";
+import { directImageUrl, proxiedImageUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,6 +45,7 @@ const GameDetail = () => {
   const { playLogs, messaging, forSale, ratings, lending } = useFeatureFlags();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
+  const [useProxyForImage, setUseProxyForImage] = useState<Record<string, boolean>>({});
   
   // Build tenant-aware base URL for links
   const baseFilterUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
@@ -53,7 +54,26 @@ const GameDetail = () => {
   useEffect(() => {
     setSelectedImageIndex(0);
     setBrokenImageUrls([]);
+    setUseProxyForImage({});
   }, [slug]);
+
+  // Helper to get image src with proxy fallback
+  const getImageSrc = (url: string) => {
+    if (useProxyForImage[url]) return proxiedImageUrl(url);
+    return directImageUrl(url);
+  };
+
+  // Handle image error with proxy fallback
+  const handleImageError = (url: string) => {
+    if (!url) return;
+    if (!useProxyForImage[url]) {
+      // First try proxy as fallback
+      setUseProxyForImage(prev => ({ ...prev, [url]: true }));
+    } else {
+      // Both failed, mark as broken
+      setBrokenImageUrls(prev => prev.includes(url) ? prev : [...prev, url]);
+    }
+  };
 
   // Build demo base games + expansions grouping (matches real data shape)
   const demoBaseGames = useMemo(() => {
@@ -278,18 +298,13 @@ const GameDetail = () => {
                     const selectedUrl = allImages[safeIndex];
 
                     return (
-                                      <img
-                                        src={directImageUrl(selectedUrl)}
+                      <img
+                        src={getImageSrc(selectedUrl)}
                         alt={game.title}
                         loading="eager"
                         decoding="async"
                         referrerPolicy="no-referrer"
-                        onError={() => {
-                          if (!selectedUrl) return;
-                          setBrokenImageUrls((prev) =>
-                            prev.includes(selectedUrl) ? prev : [...prev, selectedUrl]
-                          );
-                        }}
+                        onError={() => handleImageError(selectedUrl)}
                         className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                       />
                     );
@@ -341,17 +356,13 @@ const GameDetail = () => {
                         : "border-border hover:border-primary/50"
                     }`}
                    >
-                                      <img
-                                        src={directImageUrl(img)}
+                      <img
+                        src={getImageSrc(img)}
                         alt={`${game.title} - Image ${idx + 1}`}
                         loading="lazy"
                         decoding="async"
                         referrerPolicy="no-referrer"
-                        onError={() => {
-                          setBrokenImageUrls((prev) =>
-                            prev.includes(img) ? prev : [...prev, img]
-                          );
-                        }}
+                        onError={() => handleImageError(img)}
                         className="h-full w-full object-contain bg-muted"
                       />
                   </button>
