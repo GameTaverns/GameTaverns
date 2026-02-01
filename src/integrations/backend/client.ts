@@ -11,10 +11,14 @@ import { getSupabaseConfig, isSelfHostedMode as checkSelfHostedMode, getApiBaseU
  */
 
 // Lazy-initialized Supabase client to ensure env vars are available
+// IMPORTANT: Only cache REAL clients, not stubs - this allows recovery if
+// mode detection changes (e.g., after patch deployment)
 let _supabaseClient: SupabaseClient<Database> | null = null;
+let _isRealClient = false;
 
 function getOrCreateSupabaseClient(): SupabaseClient<Database> {
-  if (_supabaseClient) return _supabaseClient;
+  // Only return cached client if it's a REAL client (not a stub)
+  if (_supabaseClient && _isRealClient) return _supabaseClient;
   
   const { url, anonKey } = getSupabaseConfig();
   
@@ -27,12 +31,14 @@ function getOrCreateSupabaseClient(): SupabaseClient<Database> {
         autoRefreshToken: true,
       },
     });
+    _isRealClient = true;
     return _supabaseClient;
   }
   
-  // Self-hosted mode: create a stub client
+  // Self-hosted mode: create a stub client (NOT cached permanently)
   // This prevents crashes while allowing the app to load
   console.info('[Self-Hosted Mode] Supabase client not available. Using API backend.');
+  _isRealClient = false;
   
   // Return a minimal stub that satisfies the SupabaseClient type
   // In self-hosted mode, the app should route through /api/* endpoints
