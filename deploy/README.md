@@ -2,59 +2,71 @@
 
 Deploy your own GameTaverns instance in ~15 minutes.
 
-## Quick Start
+## Recommended: Supabase Self-Hosted (Full Feature Parity)
+
+The **supabase-selfhosted** deployment provides 1:1 feature parity with Lovable Cloud and is the recommended option.
+
+### Quick Start (2 Steps)
 
 ```bash
-# 1. Get a fresh Ubuntu 24.04 server (any VPS provider)
+# STEP 1: Bootstrap server (installs Docker, Nginx, Certbot, etc.)
+curl -fsSL https://raw.githubusercontent.com/GameTaverns/GameTaverns/main/deploy/supabase-selfhosted/bootstrap.sh | sudo bash
 
-# 2. Clone and install
+# STEP 2: Clone and install (handles EVERYTHING)
 git clone https://github.com/GameTaverns/GameTaverns.git /opt/gametaverns
-cd /opt/gametaverns/deploy/native
+cd /opt/gametaverns/deploy/supabase-selfhosted
 sudo ./install.sh
-
-# 3. Follow the prompts. Done!
 ```
 
-The installer handles everything:
-- **Database**: PostgreSQL 16
-- **Web Server**: Nginx with rate limiting
-- **Email**: Postfix + Dovecot + Roundcube webmail
-- **Security**: UFW firewall, Fail2ban, SSL ready
-- **Monitoring**: Cockpit web console
+The installer handles:
+- ✓ Security key generation
+- ✓ API key configuration (Discord, Perplexity, Turnstile, etc.)
+- ✓ Database setup & migrations
+- ✓ Frontend build
+- ✓ Mail server (Postfix + Dovecot + SOGo webmail)
+- ✓ SSL certificates
+- ✓ Admin user creation
 
-## Requirements
+### Requirements
 
 | Requirement | Minimum |
 |-------------|---------|
-| OS | Ubuntu 24.04 LTS |
-| RAM | 4 GB |
+| OS | Ubuntu 22.04/24.04 LTS |
+| RAM | 2 GB (4 GB recommended) |
 | Disk | 20 GB |
-| CPU | 2 cores |
+| CPU | 1 core (2+ recommended) |
 
-## After Installation
+### After Installation
 
-1. **Point your domain** to your server's IP address
-2. **Set up SSL**: `sudo ./scripts/setup-ssl.sh`
-3. **Set up automation**: `sudo ./scripts/setup-cron.sh`
-4. **Log in** at `https://yourdomain.com`
+1. **Point your domain** to your server's IP address (including `*.yourdomain.com` for tenant subdomains)
+2. **Log in** at `https://yourdomain.com` with the admin credentials you created
 
-## Management Commands
+### Management Commands
 
 | Task | Command |
 |------|---------|
-| Health check | `./scripts/health-check.sh` |
-| View logs | `./scripts/view-logs.sh` |
-| Security audit | `./scripts/security-audit.sh` |
-| Backup | `./scripts/backup.sh` |
+| View logs | `docker compose logs -f` |
+| Check status | `docker compose ps` |
+| Restart services | `docker compose restart` |
+| Backup database | `./scripts/backup.sh` |
 | Update | `./scripts/update.sh` |
-| Add mail user | `./scripts/add-mail-user.sh add user@domain.com` |
-| Server GUI | `https://your-server-ip:9090` (Cockpit) |
+
+## Alternative Deployments
+
+| Deployment | Description | Use Case |
+|------------|-------------|----------|
+| [supabase-selfhosted](supabase-selfhosted/) | Full Supabase stack with Docker | **Recommended** - Production |
+| [native](native/) | Direct PostgreSQL + PM2 | Minimal resources |
+| [standalone](standalone/) | Docker with MariaDB | Legacy support |
+| [multitenant](multitenant/) | Multi-tenant Docker | Service providers |
+| [cloudron](cloudron/) | Cloudron package | Cloudron users |
 
 ## Documentation
 
-- **[Native Install Guide](native/README.md)** - Full documentation
+- **[Supabase Self-Hosted Guide](supabase-selfhosted/README.md)** - Full documentation
 - **[Architecture](ARCHITECTURE.md)** - System design
 - **[Self-Hosting Guide](SELF-HOSTING.md)** - Advanced configuration
+- **[Migration Guide](supabase-selfhosted/MIGRATION.md)** - Import existing data
 
 ## Support
 
