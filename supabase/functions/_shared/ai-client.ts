@@ -2,11 +2,6 @@
 // Priority: Perplexity (recommended) > Lovable AI (cloud fallback)
 // Note: OpenAI, Anthropic, Google are legacy options - Perplexity is preferred
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
 export interface AIMessage {
   role: "system" | "user" | "assistant";
   content: string;
