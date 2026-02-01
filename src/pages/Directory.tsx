@@ -20,7 +20,8 @@ import {
   TrendingUp, 
   Clock, 
   BookOpen,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft
 } from "lucide-react";
 
 export default function Directory() {
@@ -153,6 +154,14 @@ export default function Directory() {
   return (
     <Layout hideSidebar>
       <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Back to Dashboard */}
+        {user && (
+          <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Link>
+        )}
+        
         {/* Header */}
         <div className="mb-8">
           <h1 className="font-display text-3xl font-bold text-foreground mb-2">

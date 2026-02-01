@@ -52,10 +52,38 @@ export function proxiedImageUrl(url: string | null | undefined): string | undefi
     }
     
     // For all other URLs (Unsplash, etc.), just return the original
-    return url;
+    return cleanBggUrl(url);
   } catch {
     return url;
   }
+}
+
+/**
+ * Check if a URL is a BGG image that needs proxying
+ */
+export function isBggImage(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    return u.hostname === "cf.geekdo-images.com";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get the best image URL - uses proxy for BGG images, direct for others
+ */
+export function getOptimalImageUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  
+  // For BGG images, always use proxy first (bypasses hotlink protection reliably)
+  if (isBggImage(url)) {
+    return proxiedImageUrl(url);
+  }
+  
+  // For other images, use direct URL
+  return directImageUrl(url);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { proxiedImageUrl, directImageUrl } from "@/lib/utils";
+import { getOptimalImageUrl, proxiedImageUrl, directImageUrl, isBggImage } from "@/lib/utils";
 
 interface GameImageProps {
   imageUrl: string;
@@ -22,8 +22,15 @@ export function GameImage({
   const [imageError, setImageError] = useState(false);
 
   const getImageSrc = () => {
-    if (useFallback) return proxiedImageUrl(imageUrl);
-    return directImageUrl(imageUrl);
+    // For BGG images: start with proxy, fall back to direct
+    // For other images: start with direct, fall back to proxy
+    if (isBggImage(imageUrl)) {
+      if (useFallback) return directImageUrl(imageUrl);
+      return proxiedImageUrl(imageUrl);
+    } else {
+      if (useFallback) return proxiedImageUrl(imageUrl);
+      return directImageUrl(imageUrl);
+    }
   };
 
   const handleImageError = () => {
@@ -51,4 +58,3 @@ export function GameImage({
     />
   );
 }
-
