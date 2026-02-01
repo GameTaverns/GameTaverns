@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { getOptimalImageUrl, proxiedImageUrl, directImageUrl, isBggImage } from "@/lib/utils";
+import { proxiedImageUrl, directImageUrl, isBggImage } from "@/lib/utils";
 
 interface GameImageProps {
   imageUrl: string;

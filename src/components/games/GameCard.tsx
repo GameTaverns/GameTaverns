@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, Clock, DollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,11 +6,12 @@ import { ExpansionList } from "./ExpansionList";
 import { WishlistButton } from "./WishlistButton";
 import { FavoriteButton } from "./FavoriteButton";
 import { StarRating } from "./StarRating";
+import { GameImage } from "./GameImage";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import type { GameWithRelations } from "@/types/game";
-import { cn, proxiedImageUrl, directImageUrl } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface GameCardProps {
   game: GameWithRelations;
@@ -22,8 +22,6 @@ export function GameCard({ game, priority = false }: GameCardProps) {
   const { isDemoMode } = useDemoMode();
   const { wishlist, forSale, comingSoon } = useFeatureFlags();
   const { buildUrl } = useTenantUrl();
-  const [imageError, setImageError] = useState(false);
-  const [useFallback, setUseFallback] = useState(false);
   
   const playerRange = game.min_players === game.max_players
     ? `${game.min_players}`
@@ -34,23 +32,6 @@ export function GameCard({ game, priority = false }: GameCardProps) {
   const basePath = isDemoMode ? "/demo/game" : "/game";
   const gameUrl = buildUrl(`${basePath}/${game.slug || game.id}`);
 
-  // Get the appropriate image URL - try direct first (browser with no-referrer often works), then proxy
-  const getImageSrc = () => {
-    if (!game.image_url) return undefined;
-    if (useFallback) return proxiedImageUrl(game.image_url);
-    return directImageUrl(game.image_url);
-  };
-
-  const handleImageError = () => {
-    if (!useFallback) {
-      // First try the proxy as fallback
-      setUseFallback(true);
-    } else {
-      // Both failed, show placeholder
-      setImageError(true);
-    }
-  };
-
   return (
     <div>
       <div className="relative">
@@ -58,20 +39,19 @@ export function GameCard({ game, priority = false }: GameCardProps) {
           <Card className="group overflow-hidden card-elevated card-hover bg-card border-border">
             {/* Image */}
             <div className="relative aspect-square overflow-hidden bg-muted">
-              {game.image_url && !imageError ? (
-                <>
-                  <img
-                    src={getImageSrc()}
-                    alt={game.title}
-                    loading={priority ? "eager" : "lazy"}
-                    decoding={priority ? "sync" : "async"}
-                    fetchPriority={priority ? "high" : "auto"}
-                    referrerPolicy="no-referrer"
-                    onError={handleImageError}
-                    className="h-full w-full object-contain"
-                  />
-                  <span className="sr-only">{game.title}</span>
-                </>
+              {game.image_url ? (
+                <GameImage
+                  imageUrl={game.image_url}
+                  alt={game.title}
+                  loading={priority ? "eager" : "lazy"}
+                  priority={priority}
+                  className="h-full w-full object-contain"
+                  fallback={
+                    <div className="flex h-full items-center justify-center bg-muted">
+                      <span className="text-4xl text-muted-foreground/50">🎲</span>
+                    </div>
+                  }
+                />
               ) : (
                 <div className="flex h-full items-center justify-center bg-muted">
                   <span className="text-4xl text-muted-foreground/50">🎲</span>
