@@ -51,6 +51,7 @@ const Directory = lazy(() => import("./pages/Directory"));
 // Library admin pages
 const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
 const LibraryGames = lazy(() => import("./pages/LibraryGames"));
+const PlayStatsPage = lazy(() => import("./pages/PlayStatsPage"));
 const PollPage = lazy(() => import("./pages/PollPage"));
 
 const queryClient = new QueryClient();
@@ -204,6 +205,7 @@ function LibraryRoutes({ isDemoMode }: { isDemoMode: boolean }) {
       <Route path="/add" element={<GameForm />} />
       <Route path="/edit/:id" element={<GameForm />} />
       <Route path="/messages" element={<Messages />} />
+      <Route path="/stats" element={<PlayStatsPage />} />
       <Route path="/poll/:token" element={<PollPage />} />
       
       {/* Docs accessible from library too */}

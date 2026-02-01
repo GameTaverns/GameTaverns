@@ -518,12 +518,15 @@ export default function Dashboard() {
                 {/* Stats Card */}
                 <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
                   <CardHeader>
-                    <CardTitle>Library Stats</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-secondary" />
+                      Library Stats
+                    </CardTitle>
                     <CardDescription className="text-cream/70">
                       Your collection at a glance
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-end">
+                  <CardContent className="flex-1 flex flex-col justify-end space-y-4">
                     <div className="grid grid-cols-3 gap-3">
                       <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
                         <div className="text-2xl font-bold text-secondary">
@@ -544,6 +547,12 @@ export default function Dashboard() {
                         <div className="text-xs text-cream/60">Members</div>
                       </div>
                     </div>
+                    <a href={`/?tenant=${library.slug}&path=/stats`}>
+                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        Monthly Play Stats
+                      </Button>
+                    </a>
                   </CardContent>
                 </Card>
 
