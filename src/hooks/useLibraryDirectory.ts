@@ -134,8 +134,8 @@ export function useLibraryDirectory() {
     );
   };
 
-  // Get libraries with lending enabled
-  const lendingLibraries = libraries.filter((lib) => lib.allow_lending);
+  // Get libraries with lending enabled (explicitly check for true to handle null)
+  const lendingLibraries = libraries.filter((lib) => lib.allow_lending === true);
 
   // Get popular libraries (top 10 by followers)
   const popularLibraries = [...libraries]
