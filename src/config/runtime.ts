@@ -54,35 +54,36 @@ function getRuntimeConfig(): RuntimeConfig {
 export function isSelfHostedMode(): boolean {
   const runtime = getRuntimeConfig();
   
-  // Explicit flag
+  // Explicit flag takes priority
   if (runtime.SELF_HOSTED === true) {
     return true;
   }
-
-  // If a self-hosted auth token exists, we are definitely running against the
-  // local Express backend.
-  //
-  // This is critical for standalone builds where Vite env vars may still
-  // contain cloud values, but the user has authenticated via /api/auth/*.
+  
+  // Check if Supabase URL is available from runtime config or Vite env
+  const hasSupabaseUrl = 
+    (runtime.SUPABASE_URL && runtime.SUPABASE_URL !== '') ||
+    (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_URL !== '');
+  
+  // If Supabase URL is available, we're in cloud mode - NOT self-hosted
+  // This takes priority over auth_token check to prevent localStorage pollution
+  // from causing cloud mode to accidentally switch to self-hosted mode
+  if (hasSupabaseUrl) {
+    return false;
+  }
+  
+  // No Supabase URL available - check for self-hosted auth token
+  // This handles standalone builds where Vite env vars are empty
+  // but user has authenticated via /api/auth/*
   try {
     if (typeof window !== "undefined" && window.localStorage?.getItem("auth_token")) {
       return true;
     }
   } catch {
-    // ignore
+    // ignore localStorage errors
   }
   
-  // Check if Supabase URL is available
-  const hasSupabaseUrl = 
-    (runtime.SUPABASE_URL && runtime.SUPABASE_URL !== '') ||
-    (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_URL !== '');
-  
-  // If no Supabase URL, we're in self-hosted mode
-  if (!hasSupabaseUrl) {
-    return true;
-  }
-  
-  return false;
+  // No Supabase URL and no auth token - still self-hosted (fresh install)
+  return true;
 }
 
 /**
