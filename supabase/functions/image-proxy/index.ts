@@ -110,7 +110,8 @@ export default async function handler(req: Request): Promise<Response> {
     let normalizedTarget = target
       // Strip bad scraping artifacts
       .replace(/&quot;.*$/, "")
-      .replace(/;$/, "")
+      .replace(/[;,]+$/, "")
+      .replace(/[\s\u0000-\u001F]+$/g, "")
       // Decode any encoded parentheses - BGG wants literal ( and )
       .replace(/%2528/gi, "(")
       .replace(/%2529/gi, ")")
