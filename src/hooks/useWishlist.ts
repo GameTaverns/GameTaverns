@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { useDemoMode } from "@/contexts/DemoContext";
+import { useAuth } from "@/hooks/useAuth";
 
 // Generate a stable guest identifier for this browser session
 function getGuestIdentifier(): string {
@@ -17,22 +18,21 @@ function getGuestIdentifier(): string {
   return id;
 }
 
-// Get stored guest name
-function getStoredGuestName(): string {
-  return localStorage.getItem("guest_wishlist_name") || "";
-}
-
-// Store guest name
-function setStoredGuestName(name: string) {
-  if (name.trim()) {
-    localStorage.setItem("guest_wishlist_name", name.trim());
-  }
-}
-
 export function useWishlist() {
   const queryClient = useQueryClient();
   const [guestIdentifier] = useState(() => getGuestIdentifier());
-  const [guestName, setGuestName] = useState(() => getStoredGuestName());
+  
+  // Get display name from authenticated user
+  const { user } = useAuth();
+  const displayName = useMemo(() => {
+    if (!user) return null;
+    // Try user_metadata first (set during signup or profile update)
+    const metaName = user.user_metadata?.display_name;
+    if (metaName) return metaName;
+    // Fallback to email prefix
+    if (user.email) return user.email.split("@")[0];
+    return null;
+  }, [user]);
   
   // Check for demo mode
   const { 
@@ -86,7 +86,7 @@ export function useWishlist() {
         body: {
           action: "add",
           game_id: gameId,
-          guest_name: guestName || null,
+          guest_name: displayName || null,
           guest_identifier: guestIdentifier,
         },
       });
@@ -123,7 +123,7 @@ export function useWishlist() {
         if (hasVotedForGame(gameId)) {
           removeDemoWishlistVote(gameId);
         } else {
-          addDemoWishlistVote(gameId, guestName || undefined);
+          addDemoWishlistVote(gameId, displayName || undefined);
         }
       } else {
         // Use Supabase edge function
@@ -134,7 +134,7 @@ export function useWishlist() {
         }
       }
     },
-    [isDemoMode, hasVotedForGame, removeDemoWishlistVote, addDemoWishlistVote, guestName, myVotes, addVoteMutation, removeVoteMutation]
+    [isDemoMode, hasVotedForGame, removeDemoWishlistVote, addDemoWishlistVote, displayName, myVotes, addVoteMutation, removeVoteMutation]
   );
 
   const hasVoted = useCallback(
@@ -157,11 +157,6 @@ export function useWishlist() {
     [isDemoMode, getDemoWishlistVotes, voteCounts]
   );
 
-  const updateGuestName = useCallback((name: string) => {
-    setGuestName(name);
-    setStoredGuestName(name);
-  }, []);
-
   return {
     voteCounts: isDemoMode ? {} : voteCounts,
     myVotes: isDemoMode ? new Set<string>() : myVotes,
@@ -169,8 +164,7 @@ export function useWishlist() {
     toggleVote,
     hasVoted,
     getVoteCount,
-    guestName,
-    updateGuestName,
+    displayName,
     isPending: isDemoMode ? false : (addVoteMutation.isPending || removeVoteMutation.isPending),
   };
 }
