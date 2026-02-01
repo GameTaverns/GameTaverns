@@ -18,7 +18,8 @@ function cleanBggUrl(url: string): string {
     .replace(/%2528/g, "(")  // Double-encoded
     .replace(/%2529/g, ")")
     .replace(/&quot;.*$/, "") // Remove HTML entities from bad scraping
-    .replace(/;$/, "");       // Remove trailing semicolons
+    .replace(/[\s\u0000-\u001F]+$/g, "") // Strip trailing control/whitespace
+    .replace(/[;,]+$/g, "");  // Remove trailing punctuation (common scraping artifacts)
 }
 
 /**
