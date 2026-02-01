@@ -1281,8 +1281,14 @@ run_migrations() {
         exit 1
     fi
 
-    log_info "Applying database schema..."
+    log_info "Applying database schema (01-schema.sql)..."
     sudo -u postgres psql -d ${DB_NAME} -f ${INSTALL_DIR}/deploy/native/migrations/01-schema.sql >> "$LOG_FILE" 2>&1
+
+    # Apply 2FA migration if exists
+    if [[ -f "${INSTALL_DIR}/deploy/native/migrations/02-totp-2fa.sql" ]]; then
+        log_info "Applying 2FA migration (02-totp-2fa.sql)..."
+        sudo -u postgres psql -d ${DB_NAME} -f ${INSTALL_DIR}/deploy/native/migrations/02-totp-2fa.sql >> "$LOG_FILE" 2>&1
+    fi
 
     log_info "Granting final permissions..."
     sudo -u postgres psql -d ${DB_NAME} <<EOF >> "$LOG_FILE" 2>&1

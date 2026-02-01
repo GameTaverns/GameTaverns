@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
 # Run Database Migrations for GameTaverns Self-Hosted
-# Version: 2.2.0 - 5-Tier Role Hierarchy
-# Last Audit: 2026-01-31
+# Version: 2.3.0 - With 2FA & Security Hardening
+# Last Audit: 2026-02-01
 # =============================================================================
 
 set -e
@@ -87,6 +87,8 @@ MIGRATION_FILES=(
     "12-auth-trigger.sql"
     "13-storage-buckets.sql"
     "14-sogo-database.sql"
+    "15-totp-2fa.sql"
+    "16-security-hardening.sql"
 )
 
 SUCCESS_COUNT=0

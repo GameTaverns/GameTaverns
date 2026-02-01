@@ -724,10 +724,19 @@ CREATE POLICY "Deny all direct access to email tokens" ON public.email_confirmat
 
 -- ===========================================
 -- Library Members Policies
+-- Security Hardened: User IDs not exposed to public
 -- ===========================================
 DROP POLICY IF EXISTS "Anyone can view library members" ON public.library_members;
-CREATE POLICY "Anyone can view library members" ON public.library_members
-    FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Authenticated users can view library members" ON public.library_members;
+CREATE POLICY "Authenticated users can view library members" ON public.library_members
+    FOR SELECT 
+    TO authenticated
+    USING (
+        -- Users can see members of libraries they're part of
+        public.is_library_member(auth.uid(), library_id)
+        -- Or if they're an admin
+        OR public.has_role(auth.uid(), 'admin')
+    );
 
 DROP POLICY IF EXISTS "Users can join libraries" ON public.library_members;
 CREATE POLICY "Users can join libraries" ON public.library_members
