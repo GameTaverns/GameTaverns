@@ -51,7 +51,8 @@ export function GameImage({
       alt={alt}
       loading={loading}
       decoding={priority ? "sync" : "async"}
-      fetchPriority={priority ? "high" : "auto"}
+      // @ts-expect-error - fetchpriority is a valid HTML attribute but React types don't include it
+      fetchpriority={priority ? "high" : "auto"}
       referrerPolicy="no-referrer"
       onError={handleImageError}
       className={className}
