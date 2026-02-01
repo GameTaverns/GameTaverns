@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { getSupabaseConfig, isSelfHostedMode, getApiBaseUrl } from "@/config/runtime";
+import { getSupabaseConfig, isSelfHostedMode as checkSelfHostedMode, getApiBaseUrl } from "@/config/runtime";
 
 /**
  * Runtime-configurable Supabase client.
@@ -9,19 +9,25 @@ import { getSupabaseConfig, isSelfHostedMode, getApiBaseUrl } from "@/config/run
  * throws helpful errors if accidentally used. The app should use
  * the API client instead for self-hosted deployments.
  */
-const { url, anonKey } = getSupabaseConfig();
 
-// Create a real or stub Supabase client based on mode
-function createSupabaseClient(): SupabaseClient<Database> {
+// Lazy-initialized Supabase client to ensure env vars are available
+let _supabaseClient: SupabaseClient<Database> | null = null;
+
+function getOrCreateSupabaseClient(): SupabaseClient<Database> {
+  if (_supabaseClient) return _supabaseClient;
+  
+  const { url, anonKey } = getSupabaseConfig();
+  
   if (url && anonKey) {
     // Real Supabase client for cloud mode
-    return createClient<Database>(url, anonKey, {
+    _supabaseClient = createClient<Database>(url, anonKey, {
       auth: {
         storage: localStorage,
         persistSession: true,
         autoRefreshToken: true,
       },
     });
+    return _supabaseClient;
   }
   
   // Self-hosted mode: create a stub client
@@ -66,10 +72,24 @@ function createSupabaseClient(): SupabaseClient<Database> {
     },
   };
   
-  return new Proxy({} as SupabaseClient<Database>, stubHandler);
+  _supabaseClient = new Proxy({} as SupabaseClient<Database>, stubHandler);
+  return _supabaseClient;
 }
 
-export const supabase = createSupabaseClient();
+// Export a getter that lazily initializes the client
+export const supabase = new Proxy({} as SupabaseClient<Database>, {
+  get(_target, prop) {
+    return (getOrCreateSupabaseClient() as any)[prop];
+  },
+});
+
+/**
+ * Check if we should use API client (self-hosted) vs Supabase (cloud)
+ * This is a function that checks fresh each time - not cached at module load
+ */
+export function isSelfHostedMode(): boolean {
+  return checkSelfHostedMode();
+}
 
 /**
  * API client for self-hosted mode
@@ -140,7 +160,4 @@ export const apiClient = {
   },
 };
 
-/**
- * Check if we should use API client (self-hosted) vs Supabase (cloud)
- */
-export { isSelfHostedMode };
+// isSelfHostedMode is now defined above as a function
