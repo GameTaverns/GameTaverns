@@ -2,9 +2,16 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { getSupabaseConfig, isSelfHostedMode as checkSelfHostedMode, getApiBaseUrl } from "@/config/runtime";
 
+// Re-export the official Supabase client to ensure single instance
+// This prevents auth state synchronization issues between multiple clients
+import { supabase as officialSupabaseClient } from "@/integrations/supabase/client";
+
 /**
  * Runtime-configurable Supabase client.
  *
+ * In cloud mode, we re-export the official auto-generated client to ensure
+ * a single shared instance with consistent auth state.
+ * 
  * In self-hosted mode (no Supabase URL), returns a stub client that
  * throws helpful errors if accidentally used. The app should use
  * the API client instead for self-hosted deployments.
@@ -23,14 +30,9 @@ function getOrCreateSupabaseClient(): SupabaseClient<Database> {
   const { url, anonKey } = getSupabaseConfig();
   
   if (url && anonKey) {
-    // Real Supabase client for cloud mode
-    _supabaseClient = createClient<Database>(url, anonKey, {
-      auth: {
-        storage: localStorage,
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    });
+    // In cloud mode, use the official auto-generated client to ensure
+    // a single shared instance with consistent auth state
+    _supabaseClient = officialSupabaseClient;
     _isRealClient = true;
     return _supabaseClient;
   }
