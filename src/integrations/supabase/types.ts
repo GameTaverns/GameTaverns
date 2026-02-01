@@ -1747,6 +1747,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_totp_settings: {
+        Row: {
+          backup_codes_encrypted: string | null
+          created_at: string
+          id: string
+          is_enabled: boolean
+          totp_secret_encrypted: string
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          backup_codes_encrypted?: string | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          totp_secret_encrypted: string
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          backup_codes_encrypted?: string | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          totp_secret_encrypted?: string
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       borrower_reputation: {
@@ -2417,6 +2450,7 @@ export type Database = {
       is_slug_available: { Args: { check_slug: string }; Returns: boolean }
       set_timezone: { Args: never; Returns: undefined }
       slugify: { Args: { input: string }; Returns: string }
+      user_has_totp_enabled: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       achievement_category:
