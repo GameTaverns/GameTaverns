@@ -3,7 +3,7 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.2.0 - 5-Tier Role Hierarchy
+# Version: 2.3.0 - 2FA & Security Hardening
 # 
 # This script handles EVERYTHING:
 #   ✓ Docker verification

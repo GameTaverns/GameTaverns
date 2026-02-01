@@ -3,7 +3,7 @@
 # Update GameTaverns to the latest version
 #
 # Usage: sudo ./update.sh
-# Version: 2.2.0 - 5-Tier Role Hierarchy
+# Version: 2.3.0 - 2FA & Security Hardening
 #
 
 set -e
@@ -92,25 +92,34 @@ echo -e "${YELLOW}[INFO]${NC} Applying database migrations..."
 if [[ -f "${INSTALL_DIR}/deploy/native/migrations/01-schema.sql" ]]; then
     # Run migrations idempotently (CREATE IF NOT EXISTS, etc.)
     if sudo -u postgres psql -d gametaverns -f ${INSTALL_DIR}/deploy/native/migrations/01-schema.sql > /dev/null 2>&1; then
-        echo -e "${GREEN}[OK]${NC} Database migrations applied"
-        
-        # Verify critical tables exist
-        REQUIRED_TABLES=("users" "libraries" "games" "library_members" "game_loans" "achievements")
-        MISSING_TABLES=()
-        
-        for table in "${REQUIRED_TABLES[@]}"; do
-            if ! sudo -u postgres psql -d gametaverns -tAc "SELECT 1 FROM pg_tables WHERE tablename='${table}' AND schemaname='public';" 2>/dev/null | grep -q 1; then
-                MISSING_TABLES+=("$table")
-            fi
-        done
-        
-        if [ ${#MISSING_TABLES[@]} -gt 0 ]; then
-            echo -e "${RED}[ERROR]${NC} Missing required tables: ${MISSING_TABLES[*]}"
-            echo "Please check migration logs or run migrations manually."
-        fi
+        echo -e "${GREEN}[OK]${NC} Database schema applied"
     else
-        echo -e "${YELLOW}[WARN]${NC} Migration had warnings (may be normal for existing tables)"
+        echo -e "${YELLOW}[WARN]${NC} Schema migration had warnings (may be normal for existing tables)"
     fi
+fi
+
+# Apply 2FA migration if exists
+if [[ -f "${INSTALL_DIR}/deploy/native/migrations/02-totp-2fa.sql" ]]; then
+    if sudo -u postgres psql -d gametaverns -f ${INSTALL_DIR}/deploy/native/migrations/02-totp-2fa.sql > /dev/null 2>&1; then
+        echo -e "${GREEN}[OK]${NC} 2FA migration applied"
+    else
+        echo -e "${YELLOW}[WARN]${NC} 2FA migration had warnings (may be normal for existing tables)"
+    fi
+fi
+
+# Verify critical tables exist
+REQUIRED_TABLES=("users" "libraries" "games" "library_members" "game_loans" "achievements" "user_totp_settings")
+MISSING_TABLES=()
+
+for table in "${REQUIRED_TABLES[@]}"; do
+    if ! sudo -u postgres psql -d gametaverns -tAc "SELECT 1 FROM pg_tables WHERE tablename='${table}' AND schemaname='public';" 2>/dev/null | grep -q 1; then
+        MISSING_TABLES+=("$table")
+    fi
+done
+
+if [ ${#MISSING_TABLES[@]} -gt 0 ]; then
+    echo -e "${RED}[ERROR]${NC} Missing required tables: ${MISSING_TABLES[*]}"
+    echo "Please check migration logs or run migrations manually."
 fi
 
 # Restart API
