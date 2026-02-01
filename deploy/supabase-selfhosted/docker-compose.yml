@@ -420,27 +420,31 @@ services:
   # SOGo Groupware (Webmail + Calendar + Contacts)
   # ===========================================
   sogo:
-    image: iredmail/sogo:latest
+    image: hardware/sogo:latest
     container_name: gametaverns-sogo
     restart: unless-stopped
     ports:
       - "${SOGO_PORT:-9001}:80"
     environment:
-      # Database - uses sogo schema in main postgres DB
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      POSTGRES_DATABASE: postgres
-      POSTGRES_USER: supabase_admin
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      # Mail server
-      IMAP_SERVER: mail
-      SMTP_SERVER: mail
+      # Database configuration
+      DBHOST: db
+      DBPORT: 5432
+      DBNAME: postgres
+      DBUSER: supabase_admin
+      DBPASS: ${POSTGRES_PASSWORD}
+      # Mail server configuration
+      IMAP_HOST: mail
+      IMAP_PORT: 993
+      SMTP_HOST: mail
+      SMTP_PORT: 587
       # Domain configuration
-      SOGO_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}
-      SOGO_MAIL_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}
+      DOMAIN: ${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}
       TITLE: ${SITE_NAME:-GameTaverns} Mail
       # Timezone
       TZ: ${TIMEZONE:-America/New_York}
+      # SOGo specific
+      SOGO_WORKERS: 2
+      REDIS_HOST: ""
     volumes:
       - sogo-data:/var/lib/sogo
     depends_on:
