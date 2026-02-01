@@ -104,8 +104,8 @@ The installer prompts for all API keys upfront:
          ┌────────────────────┼────────────────────┐
          ▼                    ▼                    ▼
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│   Frontend      │  │   Kong Gateway  │  │   Roundcube     │
-│   (Static)      │  │   (Port 8000)   │  │   (Webmail)     │
+│   Frontend      │  │   Kong Gateway  │  │   SOGo          │
+│   (Static)      │  │   (Port 8000)   │  │   Groupware     │
 │   Port 3000     │  │                 │  │   Port 9001     │
 └─────────────────┘  └────────┬────────┘  └─────────────────┘
                               │
@@ -139,7 +139,16 @@ The installer prompts for all API keys upfront:
 | Edge Functions | 9000 | Deno runtime |
 | Mail (Postfix) | 25/587 | Outgoing email |
 | Mail (Dovecot) | 993 | IMAP |
-| Roundcube | 9001 | Webmail UI |
+| SOGo | 9001 | Webmail + Calendar + Contacts |
+
+### SOGo Groupware Features
+
+SOGo provides a full groupware solution accessible at `https://mail.gametaverns.com`:
+
+- **Webmail**: Full email client with search, folders, filters
+- **Calendar**: CalDAV with event scheduling and sharing
+- **Contacts**: CardDAV address book with sync
+- **ActiveSync**: Mobile device synchronization (iOS/Android)
 
 ## Directory Structure
 
