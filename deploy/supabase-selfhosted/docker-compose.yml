@@ -417,48 +417,34 @@ services:
       - gametaverns
 
   # ===========================================
-  # SOGo Groupware (Webmail + Calendar + Contacts)
-  # Uses Mailcow's maintained SOGo image from Docker Hub
+  # Roundcube Webmail
+  # Lightweight webmail client for email access
   # ===========================================
-  sogo:
-    image: mailcow/sogo:1.129
-    container_name: gametaverns-sogo
+  roundcube:
+    image: roundcube/roundcubemail:1.6-apache
+    container_name: gametaverns-roundcube
     restart: unless-stopped
     ports:
-      - "${SOGO_PORT:-9001}:20000"
+      - "${ROUNDCUBE_PORT:-9001}:80"
     environment:
-      # Database configuration
-      DBHOST: db
-      DBPORT: 5432
-      DBNAME: postgres
-      DBUSER: supabase_admin
-      DBPASS: ${POSTGRES_PASSWORD}
-      # Mail server configuration  
-      IMAP_HOST: mail
-      IMAP_PORT: 993
-      SMTP_HOST: mail
-      SMTP_PORT: 587
-      # Domain configuration
-      MAIL_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}
-      SOGO_EXPIRE_SESSION: 480
-      SOGO_ENABLE_LOGGING: "NO"
-      # Timezone
-      TZ: ${TIMEZONE:-America/New_York}
-      # ACL settings
-      ACL_ANYONE: disallow
+      ROUNDCUBEMAIL_DEFAULT_HOST: mail
+      ROUNDCUBEMAIL_DEFAULT_PORT: 993
+      ROUNDCUBEMAIL_SMTP_SERVER: mail
+      ROUNDCUBEMAIL_SMTP_PORT: 587
+      ROUNDCUBEMAIL_SKIN: elastic
+      ROUNDCUBEMAIL_PLUGINS: archive,zipdownload,managesieve
+      ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE: 25M
     volumes:
-      - sogo-data:/var/lib/sogo
+      - roundcube-data:/var/www/html/db
     depends_on:
-      db:
-        condition: service_healthy
       mail:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:20000/SOGo/ || exit 0"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 0"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 90s
+      start_period: 30s
     networks:
       - gametaverns
 
@@ -471,4 +457,4 @@ volumes:
   storage-data:
   mail-data:
   mail-config:
-  sogo-data:
+  roundcube-data:

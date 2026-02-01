@@ -86,7 +86,6 @@ MIGRATION_FILES=(
     "11-seed-data.sql"
     "12-auth-trigger.sql"
     "13-storage-buckets.sql"
-    "14-sogo-database.sql"
     "15-totp-2fa.sql"
     "16-security-hardening.sql"
 )

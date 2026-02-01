@@ -174,7 +174,7 @@ server {
     }
 }
 
-# SOGo Groupware (HTTPS)
+# Roundcube Webmail (HTTPS)
 server {
     listen 443 ssl http2;
     server_name mail.gametaverns.com;
