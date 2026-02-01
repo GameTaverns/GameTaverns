@@ -418,10 +418,10 @@ services:
 
   # ===========================================
   # SOGo Groupware (Webmail + Calendar + Contacts)
-  # Uses Mailcow's maintained SOGo image
+  # Uses Mailcow's maintained SOGo image from GitHub Container Registry
   # ===========================================
   sogo:
-    image: mailcow/sogo:1.121.4
+    image: ghcr.io/mailcow/sogo:1.121.4
     container_name: gametaverns-sogo
     restart: unless-stopped
     ports:
