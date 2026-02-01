@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Trophy, Sparkles, Clock, Trash2, Calendar, Users } from "lucide-react";
+import { Trophy, Sparkles, Clock, Trash2, Calendar, Users, Puzzle } from "lucide-react";
 import { useGameSessions, type GameSession } from "@/hooks/useGameSessions";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,6 +76,33 @@ function SessionCard({
           </AlertDialog>
         )}
       </div>
+
+      {/* Expansions Used */}
+      {session.expansions && session.expansions.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Puzzle className="h-4 w-4" />
+            Expansions Used
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {session.expansions.map((exp) => (
+              <div
+                key={exp.id}
+                className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50 text-xs"
+              >
+                {exp.image_url && (
+                  <img
+                    src={exp.image_url}
+                    alt=""
+                    className="w-5 h-5 rounded object-cover"
+                  />
+                )}
+                <span>{exp.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Players */}
       {sortedPlayers.length > 0 && (

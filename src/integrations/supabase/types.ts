@@ -509,6 +509,49 @@ export type Database = {
           },
         ]
       }
+      game_session_expansions: {
+        Row: {
+          created_at: string
+          expansion_id: string
+          id: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          expansion_id: string
+          id?: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          expansion_id?: string
+          id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_session_expansions_expansion_id_fkey"
+            columns: ["expansion_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_session_expansions_expansion_id_fkey"
+            columns: ["expansion_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_session_expansions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_session_players: {
         Row: {
           created_at: string

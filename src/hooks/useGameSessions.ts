@@ -10,6 +10,13 @@ export interface SessionPlayer {
   is_first_play: boolean;
 }
 
+export interface SessionExpansion {
+  id: string;
+  expansion_id: string;
+  title: string;
+  image_url: string | null;
+}
+
 export interface GameSession {
   id: string;
   game_id: string;
@@ -18,6 +25,7 @@ export interface GameSession {
   notes: string | null;
   created_at: string;
   players: SessionPlayer[];
+  expansions: SessionExpansion[];
 }
 
 export interface CreateSessionInput {
@@ -26,6 +34,7 @@ export interface CreateSessionInput {
   duration_minutes?: number | null;
   notes?: string | null;
   players: Omit<SessionPlayer, "id">[];
+  expansion_ids?: string[];
 }
 
 export function useGameSessions(gameId: string) {
@@ -49,19 +58,43 @@ export function useGameSessions(gameId: string) {
       if (sessionsError) throw sessionsError;
       if (!sessionsData || sessionsData.length === 0) return [];
 
-      // Fetch players for all sessions
       const sessionIds = sessionsData.map((s) => s.id);
-      const { data: playersData, error: playersError } = await supabase
-        .from("game_session_players")
-        .select("*")
-        .in("session_id", sessionIds);
 
-      if (playersError) throw playersError;
+      // Fetch players and expansions in parallel
+      const [playersResult, expansionsResult] = await Promise.all([
+        supabase
+          .from("game_session_players")
+          .select("*")
+          .in("session_id", sessionIds),
+        supabase
+          .from("game_session_expansions")
+          .select("id, session_id, expansion_id")
+          .in("session_id", sessionIds),
+      ]);
 
-      // Combine sessions with their players
+      if (playersResult.error) throw playersResult.error;
+      if (expansionsResult.error) throw expansionsResult.error;
+
+      // Fetch expansion game details if any
+      const expansionIds = [...new Set((expansionsResult.data || []).map((e) => e.expansion_id))];
+      let expansionDetails: Record<string, { title: string; image_url: string | null }> = {};
+      
+      if (expansionIds.length > 0) {
+        const { data: games } = await supabase
+          .from("games")
+          .select("id, title, image_url")
+          .in("id", expansionIds);
+        
+        expansionDetails = (games || []).reduce((acc, g) => {
+          acc[g.id] = { title: g.title, image_url: g.image_url };
+          return acc;
+        }, {} as Record<string, { title: string; image_url: string | null }>);
+      }
+
+      // Combine sessions with their players and expansions
       return sessionsData.map((session) => ({
         ...session,
-        players: (playersData || [])
+        players: (playersResult.data || [])
           .filter((p) => p.session_id === session.id)
           .map((p) => ({
             id: p.id,
@@ -69,6 +102,14 @@ export function useGameSessions(gameId: string) {
             score: p.score,
             is_winner: p.is_winner,
             is_first_play: p.is_first_play,
+          })),
+        expansions: (expansionsResult.data || [])
+          .filter((e) => e.session_id === session.id)
+          .map((e) => ({
+            id: e.id,
+            expansion_id: e.expansion_id,
+            title: expansionDetails[e.expansion_id]?.title || "Unknown",
+            image_url: expansionDetails[e.expansion_id]?.image_url || null,
           })),
       })) as GameSession[];
     },
@@ -108,6 +149,19 @@ export function useGameSessions(gameId: string) {
         if (playersError) throw playersError;
       }
 
+      // Create expansion records if any
+      if (input.expansion_ids && input.expansion_ids.length > 0) {
+        const { error: expansionsError } = await supabase
+          .from("game_session_expansions")
+          .insert(
+            input.expansion_ids.map((expId) => ({
+              session_id: session.id,
+              expansion_id: expId,
+            }))
+          );
+
+        if (expansionsError) throw expansionsError;
+      }
       return session;
     },
     onSuccess: () => {

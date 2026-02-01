@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Minus, Trophy, Sparkles, Clock, Calendar } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Minus, Trophy, Sparkles, Clock, Calendar, Puzzle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,12 +14,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useGameSessions, type CreateSessionInput } from "@/hooks/useGameSessions";
+import { supabase } from "@/integrations/backend/client";
 
 interface PlayerInput {
   name: string;
   score: string;
   isWinner: boolean;
   isFirstPlay: boolean;
+}
+
+interface Expansion {
+  id: string;
+  title: string;
+  image_url: string | null;
 }
 
 interface LogPlayDialogProps {
@@ -34,13 +41,49 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
 
   const [playedAt, setPlayedAt] = useState(() => {
     const now = new Date();
-    return now.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+    return now.toISOString().slice(0, 16);
   });
   const [duration, setDuration] = useState("");
   const [notes, setNotes] = useState("");
   const [players, setPlayers] = useState<PlayerInput[]>([
     { name: "", score: "", isWinner: false, isFirstPlay: false },
   ]);
+  
+  // Expansion state
+  const [expansions, setExpansions] = useState<Expansion[]>([]);
+  const [selectedExpansions, setSelectedExpansions] = useState<Set<string>>(new Set());
+  const [loadingExpansions, setLoadingExpansions] = useState(false);
+
+  // Fetch expansions when dialog opens
+  useEffect(() => {
+    if (open && gameId) {
+      setLoadingExpansions(true);
+      supabase
+        .from("games")
+        .select("id, title, image_url")
+        .eq("parent_game_id", gameId)
+        .eq("is_expansion", true)
+        .order("title")
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setExpansions(data);
+          }
+          setLoadingExpansions(false);
+        });
+    }
+  }, [open, gameId]);
+
+  const toggleExpansion = (expansionId: string) => {
+    setSelectedExpansions((prev) => {
+      const next = new Set(prev);
+      if (next.has(expansionId)) {
+        next.delete(expansionId);
+      } else {
+        next.add(expansionId);
+      }
+      return next;
+    });
+  };
 
   const addPlayer = () => {
     setPlayers([...players, { name: "", score: "", isWinner: false, isFirstPlay: false }]);
@@ -74,6 +117,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
         is_winner: p.isWinner,
         is_first_play: p.isFirstPlay,
       })),
+      expansion_ids: Array.from(selectedExpansions),
     };
 
     await createSession.mutateAsync(input);
@@ -87,6 +131,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
     setDuration("");
     setNotes("");
     setPlayers([{ name: "", score: "", isWinner: false, isFirstPlay: false }]);
+    setSelectedExpansions(new Set());
   };
 
   return (
@@ -129,6 +174,37 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
               />
             </div>
           </div>
+
+          {/* Expansions Used */}
+          {!loadingExpansions && expansions.length > 0 && (
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Puzzle className="h-4 w-4" />
+                Expansions Used
+              </Label>
+              <div className="grid gap-2 max-h-32 overflow-y-auto">
+                {expansions.map((expansion) => (
+                  <label
+                    key={expansion.id}
+                    className="flex items-center gap-3 p-2 rounded-md bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                  >
+                    <Checkbox
+                      checked={selectedExpansions.has(expansion.id)}
+                      onCheckedChange={() => toggleExpansion(expansion.id)}
+                    />
+                    {expansion.image_url && (
+                      <img
+                        src={expansion.image_url}
+                        alt=""
+                        className="w-8 h-8 rounded object-cover"
+                      />
+                    )}
+                    <span className="text-sm font-medium truncate">{expansion.title}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Players */}
           <div className="space-y-3">
