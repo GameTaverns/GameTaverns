@@ -10,6 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { TurnstileWidget } from "@/components/games/TurnstileWidget";
+import { TotpVerify } from "@/components/auth/TotpVerify";
+import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseConfig } from "@/config/runtime";
 
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -19,9 +22,12 @@ const Login = () => {
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileKey, setTurnstileKey] = useState(0);
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [pendingAccessToken, setPendingAccessToken] = useState<string | null>(null);
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { url: apiUrl, anonKey } = getSupabaseConfig();
 
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
@@ -71,11 +77,59 @@ const Login = () => {
         return;
       }
 
+      // Check if user has 2FA enabled
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        try {
+          const response = await fetch(`${apiUrl}/functions/v1/totp-status`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: anonKey,
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.isEnabled) {
+              // User has 2FA enabled - show verification screen
+              setPendingAccessToken(session.access_token);
+              setRequires2FA(true);
+              return;
+            } else if (data.requiresSetup) {
+              // User needs to set up 2FA (required for all users)
+              navigate("/setup-2fa", { replace: true });
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to check 2FA status:", e);
+          // Continue to dashboard if 2FA check fails
+        }
+      }
+
       toast({ title: "Welcome back!" });
       navigate("/dashboard", { replace: true });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handle2FASuccess = () => {
+    setRequires2FA(false);
+    setPendingAccessToken(null);
+    toast({ title: "Welcome back!" });
+    navigate("/dashboard", { replace: true });
+  };
+
+  const handle2FACancel = async () => {
+    // Sign out and reset state
+    await supabase.auth.signOut();
+    setRequires2FA(false);
+    setPendingAccessToken(null);
+    resetTurnstile();
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -124,8 +178,21 @@ const Login = () => {
   }
 
   // Already authenticated, will redirect
-  if (isAuthenticated) {
+  if (isAuthenticated && !requires2FA) {
     return null;
+  }
+
+  // Show 2FA verification screen
+  if (requires2FA && pendingAccessToken) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center p-4">
+        <TotpVerify 
+          accessToken={pendingAccessToken}
+          onSuccess={handle2FASuccess}
+          onCancel={handle2FACancel}
+        />
+      </div>
+    );
   }
 
   return (

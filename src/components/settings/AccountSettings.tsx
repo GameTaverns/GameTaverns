@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile, useUpdateUserProfile } from "@/hooks/useLibrary";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { DiscordLinkCard } from "./DiscordLinkCard";
+import { TwoFactorSettings } from "./TwoFactorSettings";
 
 export function AccountSettings() {
   const { user } = useAuth();
@@ -246,6 +247,9 @@ export function AccountSettings() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Two-Factor Authentication */}
+      <TwoFactorSettings />
 
       {/* Discord Integration */}
       <DiscordLinkCard />
