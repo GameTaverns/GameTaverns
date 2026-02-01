@@ -86,6 +86,7 @@ MIGRATION_FILES=(
     "11-seed-data.sql"
     "12-auth-trigger.sql"
     "13-storage-buckets.sql"
+    "14-sogo-database.sql"
 )
 
 SUCCESS_COUNT=0

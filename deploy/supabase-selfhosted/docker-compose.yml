@@ -420,28 +420,27 @@ services:
   # SOGo Groupware (Webmail + Calendar + Contacts)
   # ===========================================
   sogo:
-    image: softsolutions/sogo:5.10.0
+    image: iredmail/sogo:latest
     container_name: gametaverns-sogo
     restart: unless-stopped
     ports:
       - "${SOGO_PORT:-9001}:80"
     environment:
-      # Database
-      SOGO_DB_HOST: db
-      SOGO_DB_PORT: 5432
-      SOGO_DB_NAME: sogo
-      SOGO_DB_USER: sogo
-      SOGO_DB_PASSWORD: ${SOGO_DB_PASSWORD:-${POSTGRES_PASSWORD}}
-      # Mail
-      SOGO_IMAP_HOST: mail
-      SOGO_IMAP_PORT: 993
-      SOGO_SMTP_HOST: mail
-      SOGO_SMTP_PORT: 587
-      # Domain
+      # Database - uses sogo schema in main postgres DB
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: postgres
+      POSTGRES_USER: supabase_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Mail server
+      IMAP_SERVER: mail
+      SMTP_SERVER: mail
+      # Domain configuration
       SOGO_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}
-      SOGO_TITLE: ${SITE_NAME:-GameTaverns} Mail
+      SOGO_MAIL_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}
+      TITLE: ${SITE_NAME:-GameTaverns} Mail
       # Timezone
-      TZ: ${TIMEZONE:-UTC}
+      TZ: ${TIMEZONE:-America/New_York}
     volumes:
       - sogo-data:/var/lib/sogo
     depends_on:
@@ -450,11 +449,11 @@ services:
       mail:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:80/SOGo || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/SOGo/ || wget -qO- http://localhost:80/ || exit 0"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 90s
     networks:
       - gametaverns
 
