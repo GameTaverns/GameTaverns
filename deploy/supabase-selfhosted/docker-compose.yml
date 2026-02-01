@@ -418,30 +418,34 @@ services:
 
   # ===========================================
   # SOGo Groupware (Webmail + Calendar + Contacts)
-  # OPTIONAL: Enable with: docker compose --profile webmail up -d
+  # Uses Mailcow's maintained SOGo image
   # ===========================================
   sogo:
-    image: inverse/sogo:nightly
+    image: mailcow/sogo:1.121.4
     container_name: gametaverns-sogo
     restart: unless-stopped
-    profiles:
-      - webmail
     ports:
-      - "${SOGO_PORT:-9001}:80"
+      - "${SOGO_PORT:-9001}:20000"
     environment:
       # Database configuration
-      PGHOST: db
-      PGPORT: 5432
-      PGDATABASE: postgres
-      PGUSER: supabase_admin
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      # Mail server configuration
-      SOGO_MAIL_IMAP_SERVER: mail
-      SOGO_MAIL_SMTP_SERVER: mail
+      DBHOST: db
+      DBPORT: 5432
+      DBNAME: postgres
+      DBUSER: supabase_admin
+      DBPASS: ${POSTGRES_PASSWORD}
+      # Mail server configuration  
+      IMAP_HOST: mail
+      IMAP_PORT: 993
+      SMTP_HOST: mail
+      SMTP_PORT: 587
       # Domain configuration
-      SOGO_MAIL_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}
+      SOGO_EXPIRE_SESSION: 480
+      SOGO_ENABLE_LOGGING: "NO"
       # Timezone
       TZ: ${TIMEZONE:-America/New_York}
+      # ACL settings
+      ACL_ANYONE: disallow
     volumes:
       - sogo-data:/var/lib/sogo
     depends_on:
@@ -450,7 +454,7 @@ services:
       mail:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:80/SOGo/ || exit 0"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:20000/SOGo/ || exit 0"]
       interval: 30s
       timeout: 10s
       retries: 5
