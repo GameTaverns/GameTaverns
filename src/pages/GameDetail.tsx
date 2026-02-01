@@ -183,7 +183,9 @@ const GameDetail = () => {
     const blockedPathFragments = [
       "geeklist",
       "geeklistimagebar",
-      "opengraph",
+      // NOTE: Do NOT block "opengraph".
+      // Many games (including Coffee Rush) have their primary image stored as a
+      // BoardGameGeek OpenGraph URL, which is a perfectly valid hero image.
       "thumb",
       "avatar",
       "icon",
