@@ -70,6 +70,9 @@ export interface LibrarySettings {
   feature_events: boolean;
   feature_achievements: boolean;
   feature_lending: boolean;
+  // Privacy (may not be present in public view)
+  is_discoverable?: boolean;
+  allow_lending?: boolean;
   // Content (turnstile_site_key excluded from public view for security)
   turnstile_site_key?: string | null;
   footer_text: string | null;

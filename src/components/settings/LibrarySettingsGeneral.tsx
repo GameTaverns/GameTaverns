@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Save, Loader2 } from "lucide-react";
+import { Save, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ export function LibrarySettingsGeneral() {
   const [instagramUrl, setInstagramUrl] = useState(settings?.instagram_url || '');
   const [facebookUrl, setFacebookUrl] = useState(settings?.facebook_url || '');
   const [discordUrl, setDiscordUrl] = useState(settings?.discord_url || '');
+  const [isDiscoverable, setIsDiscoverable] = useState(settings?.is_discoverable ?? true);
   
   
   const [isSaving, setIsSaving] = useState(false);
@@ -58,6 +59,7 @@ export function LibrarySettingsGeneral() {
           instagram_url: instagramUrl,
           facebook_url: facebookUrl,
           discord_url: discordUrl,
+          is_discoverable: isDiscoverable,
         },
       });
       
@@ -130,6 +132,34 @@ export function LibrarySettingsGeneral() {
               <p className="text-sm text-muted-foreground">
                 Library URLs cannot be changed after creation.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Privacy & Visibility */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {isDiscoverable ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+              Privacy & Visibility
+            </CardTitle>
+            <CardDescription>Control how your library appears to others</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="discoverable">Show in Library Directory</Label>
+                <p className="text-sm text-muted-foreground">
+                  {isDiscoverable 
+                    ? "Your library is visible in the public directory and can be discovered by other users."
+                    : "Your library is private and won't appear in the public directory. Users can still access it directly via URL."}
+                </p>
+              </div>
+              <Switch
+                id="discoverable"
+                checked={isDiscoverable}
+                onCheckedChange={setIsDiscoverable}
+              />
             </div>
           </CardContent>
         </Card>
