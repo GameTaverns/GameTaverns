@@ -164,7 +164,8 @@ const GameDetail = () => {
 
   const sanitizeImageUrl = (url: string): string | null => {
     // Reject obviously corrupted strings from scraping (HTML entities, trailing junk)
-    if (!url || url.includes("&quot;") || url.includes(";") || url.includes(" ")) return null;
+    // Note: Allow semicolons since BGG uses filter syntax like "filters:no_upscale():strip_icc()"
+    if (!url || url.includes("&quot;") || url.includes(" ")) return null;
 
     let parsed: URL;
     try {
