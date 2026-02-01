@@ -417,21 +417,44 @@ services:
       - gametaverns
 
   # ===========================================
-  # Roundcube Webmail
+  # SOGo Groupware (Webmail + Calendar + Contacts)
   # ===========================================
-  roundcube:
-    image: roundcube/roundcubemail:1.6.6-apache
-    container_name: gametaverns-roundcube
+  sogo:
+    image: softsolutions/sogo:5.10.0
+    container_name: gametaverns-sogo
     restart: unless-stopped
     ports:
-      - "${ROUNDCUBE_PORT:-9001}:80"
+      - "${SOGO_PORT:-9001}:80"
     environment:
-      ROUNDCUBEMAIL_DEFAULT_HOST: mail
-      ROUNDCUBEMAIL_DEFAULT_PORT: 993
-      ROUNDCUBEMAIL_SMTP_SERVER: mail
-      ROUNDCUBEMAIL_SMTP_PORT: 587
+      # Database
+      SOGO_DB_HOST: db
+      SOGO_DB_PORT: 5432
+      SOGO_DB_NAME: sogo
+      SOGO_DB_USER: sogo
+      SOGO_DB_PASSWORD: ${SOGO_DB_PASSWORD:-${POSTGRES_PASSWORD}}
+      # Mail
+      SOGO_IMAP_HOST: mail
+      SOGO_IMAP_PORT: 993
+      SOGO_SMTP_HOST: mail
+      SOGO_SMTP_PORT: 587
+      # Domain
+      SOGO_DOMAIN: ${MAIL_DOMAIN:-${DOMAIN:-gametaverns.com}}
+      SOGO_TITLE: ${SITE_NAME:-GameTaverns} Mail
+      # Timezone
+      TZ: ${TIMEZONE:-UTC}
+    volumes:
+      - sogo-data:/var/lib/sogo
     depends_on:
-      - mail
+      db:
+        condition: service_healthy
+      mail:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/SOGo || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     networks:
       - gametaverns
 
@@ -444,3 +467,4 @@ volumes:
   storage-data:
   mail-data:
   mail-config:
+  sogo-data:
