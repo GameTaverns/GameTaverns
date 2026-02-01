@@ -150,6 +150,9 @@ export function LibraryFeatureFlagsAdmin() {
         updateData[FEATURE_FLAG_DB_KEYS[flagKey]] = localFlags[flagKey];
       });
       
+      // Sync allow_lending with feature_lending for directory visibility
+      updateData.allow_lending = localFlags.lending;
+      
       const { error } = await supabase
         .from("library_settings")
         .update(updateData)
