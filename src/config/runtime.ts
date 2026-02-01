@@ -58,6 +58,26 @@ export function isSelfHostedMode(): boolean {
   if (runtime.SELF_HOSTED === true) {
     return true;
   }
+
+  // 1b. Hard override for Lovable environments.
+  // In Lovable preview/published apps, there is no self-hosted /api backend available.
+  // If we mis-detect self-hosted mode here, the app will start requesting /api/* and
+  // appear "empty" (no libraries/games) and auth will fail.
+  try {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname.toLowerCase();
+      if (
+        host.endsWith(".lovableproject.com") ||
+        host.endsWith(".lovable.app") ||
+        host === "lovable.app" ||
+        host === "lovableproject.com"
+      ) {
+        return false;
+      }
+    }
+  } catch {
+    // ignore
+  }
   
   // 2. Check if Supabase URL is available - this is the PRIMARY check
   // IMPORTANT: Check VITE env DIRECTLY, not through getConfig which might recurse
