@@ -31,7 +31,47 @@ docker compose logs -f functions
 
 ## Common Issues
 
-### 1. Database Connection Refused
+### 1. Password Authentication Failed (PostgREST/Auth)
+
+**Symptoms:**
+- "password authentication failed for user authenticator" in `docker logs gametaverns-rest`
+- "password authentication failed for user supabase_auth_admin" in `docker logs gametaverns-auth`
+- REST/Auth containers marked as unhealthy
+- Services fail with "dependency failed to start"
+
+**This is the most common issue** after a fresh install or when restarting services.
+
+**Solution:**
+```bash
+cd /opt/gametaverns
+
+# Run the password fix script
+./scripts/fix-db-passwords.sh
+
+# This will:
+# 1. Create missing roles (authenticator, anon, authenticated, service_role)
+# 2. Set passwords for all roles to match POSTGRES_PASSWORD from .env
+# 3. Grant necessary permissions
+# 4. Restart affected services
+```
+
+If the script doesn't exist, run:
+```bash
+# Manual fix - set passwords directly
+source .env
+docker compose exec -T db psql -U supabase_admin -d postgres << EOSQL
+ALTER ROLE authenticator WITH LOGIN PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+GRANT anon TO authenticator;
+GRANT authenticated TO authenticator;
+GRANT service_role TO authenticator;
+EOSQL
+
+docker compose restart rest auth storage
+```
+
+### 2. Database Connection Refused
 
 **Symptoms:**
 - "Connection refused" errors

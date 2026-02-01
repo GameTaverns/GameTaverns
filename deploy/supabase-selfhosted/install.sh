@@ -448,10 +448,72 @@ while ! docker compose exec -T db pg_isready -U supabase_admin -d postgres > /de
     sleep 3
 done
 
-success "All services started"
+success "Database is ready"
 
 # Give PostgreSQL time to fully initialize
 sleep 5
+
+# ===========================================
+# CRITICAL: Fix role passwords before other services connect
+# ===========================================
+info "Setting up database role passwords..."
+
+# Escape single quotes in password for SQL
+ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
+
+docker compose exec -T db psql -U supabase_admin -d postgres << EOSQL >> "$LOG_FILE" 2>&1
+-- Create roles if they don't exist
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
+    CREATE ROLE authenticator WITH LOGIN NOINHERIT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    CREATE ROLE anon NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN BYPASSRLS;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+    CREATE ROLE supabase_auth_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+    CREATE ROLE supabase_storage_admin WITH LOGIN CREATEDB CREATEROLE;
+  END IF;
+END
+\$\$;
+
+-- Set passwords for all login roles
+ALTER ROLE authenticator WITH LOGIN PASSWORD '${ESCAPED_PW}';
+ALTER ROLE supabase_auth_admin WITH PASSWORD '${ESCAPED_PW}';
+ALTER ROLE supabase_storage_admin WITH PASSWORD '${ESCAPED_PW}';
+ALTER ROLE supabase_admin WITH PASSWORD '${ESCAPED_PW}';
+
+-- Grant role switching permissions
+GRANT anon TO authenticator;
+GRANT authenticated TO authenticator;
+GRANT service_role TO authenticator;
+GRANT anon TO supabase_admin;
+GRANT authenticated TO supabase_admin;
+GRANT service_role TO supabase_admin;
+
+-- Grant schema usage
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON SCHEMA public TO supabase_auth_admin;
+GRANT ALL ON SCHEMA public TO supabase_storage_admin;
+
+-- Ensure supabase_auth_admin has necessary permissions for GoTrue migrations
+ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
+EOSQL
+
+success "Database role passwords configured"
+
+# Wait for other services now that DB roles are configured
+info "Waiting for services to connect..."
+sleep 10
 
 # ===========================================
 # STEP 8: Run Database Migrations
