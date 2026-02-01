@@ -3,7 +3,8 @@ import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePlayStats } from "@/hooks/usePlayStats";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePlayStats, StatsPeriod } from "@/hooks/usePlayStats";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
@@ -18,7 +19,7 @@ import {
   Sparkles,
   Hash
 } from "lucide-react";
-import { format, addMonths, subMonths } from "date-fns";
+import { format, addMonths, subMonths, addYears, subYears } from "date-fns";
 import { GameImage } from "@/components/games/GameImage";
 
 function StatCard({ 
@@ -149,25 +150,44 @@ function GameImageGrid({
 export default function PlayStatsPage() {
   const { library, isOwner } = useTenant();
   const { user } = useAuth();
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [period, setPeriod] = useState<StatsPeriod>("month");
   
   const { data: stats, isLoading, error } = usePlayStats(
     library?.id || null,
-    selectedMonth
+    selectedDate,
+    period
   );
 
-  const handlePrevMonth = () => {
-    setSelectedMonth((prev) => subMonths(prev, 1));
-  };
-
-  const handleNextMonth = () => {
-    const next = addMonths(selectedMonth, 1);
-    if (next <= new Date()) {
-      setSelectedMonth(next);
+  const handlePrev = () => {
+    if (period === "month") {
+      setSelectedDate((prev) => subMonths(prev, 1));
+    } else {
+      setSelectedDate((prev) => subYears(prev, 1));
     }
   };
 
-  const canGoNext = addMonths(selectedMonth, 1) <= new Date();
+  const handleNext = () => {
+    if (period === "month") {
+      const next = addMonths(selectedDate, 1);
+      if (next <= new Date()) {
+        setSelectedDate(next);
+      }
+    } else {
+      const next = addYears(selectedDate, 1);
+      if (next <= new Date()) {
+        setSelectedDate(next);
+      }
+    }
+  };
+
+  const canGoNext = period === "month" 
+    ? addMonths(selectedDate, 1) <= new Date()
+    : addYears(selectedDate, 1) <= new Date();
+  
+  const displayLabel = period === "month" 
+    ? format(selectedDate, "MMM yyyy") 
+    : format(selectedDate, "yyyy");
 
   if (!user || !isOwner) {
     return (
@@ -187,8 +207,8 @@ export default function PlayStatsPage() {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header with month navigation */}
-        <div className="flex items-center justify-between">
+        {/* Header with period toggle and navigation */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold font-display text-foreground">
               Play Stats
@@ -198,27 +218,36 @@ export default function PlayStatsPage() {
             </p>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handlePrevMonth}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="min-w-[120px] text-center">
-              <span className="text-lg font-semibold text-foreground">
-                {format(selectedMonth, "MMM yyyy")}
-              </span>
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleNextMonth}
+          <div className="flex items-center gap-4">
+            <Tabs value={period} onValueChange={(v) => setPeriod(v as StatsPeriod)}>
+              <TabsList>
+                <TabsTrigger value="month">Monthly</TabsTrigger>
+                <TabsTrigger value="year">Annual</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePrev}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="min-w-[100px] text-center">
+                <span className="text-lg font-semibold text-foreground">
+                  {displayLabel}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleNext}
               disabled={!canGoNext}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
+            </div>
           </div>
         </div>
 
@@ -265,7 +294,7 @@ export default function PlayStatsPage() {
                   icon={Gamepad2}
                 />
                 <StatCard 
-                  value={stats.newGamesThisMonth} 
+                  value={stats.newGamesThisPeriod} 
                   label="New" 
                   icon={Sparkles}
                 />

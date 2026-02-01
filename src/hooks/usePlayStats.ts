@@ -1,18 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
-import { startOfMonth, endOfMonth, format, differenceInMinutes, parseISO } from "date-fns";
+import { startOfMonth, endOfMonth, startOfYear, endOfYear, format, parseISO } from "date-fns";
+
+export type StatsPeriod = "month" | "year";
 
 export interface PlayStats {
   totalPlays: number;
   gamesPlayed: number;
-  newGamesThisMonth: number;
+  newGamesThisPeriod: number;
   uniquePlayers: number;
   totalHours: number;
   daysWithPlays: number;
   hIndex: number;
   topMechanics: { name: string; percentage: number; count: number }[];
   topGames: { id: string; title: string; image_url: string | null; plays: number }[];
-  monthLabel: string;
+  periodLabel: string;
 }
 
 interface GamePlayCount {
@@ -34,13 +36,20 @@ function calculateHIndex(playCounts: number[]): number {
   return h;
 }
 
-export function usePlayStats(libraryId: string | null, month?: Date) {
-  const targetMonth = month || new Date();
-  const monthStart = startOfMonth(targetMonth);
-  const monthEnd = endOfMonth(targetMonth);
+export function usePlayStats(
+  libraryId: string | null, 
+  targetDate?: Date,
+  period: StatsPeriod = "month"
+) {
+  const target = targetDate || new Date();
+  const periodStart = period === "month" ? startOfMonth(target) : startOfYear(target);
+  const periodEnd = period === "month" ? endOfMonth(target) : endOfYear(target);
+  const periodKey = period === "month" 
+    ? format(periodStart, "yyyy-MM") 
+    : format(periodStart, "yyyy");
 
   return useQuery({
-    queryKey: ["play-stats", libraryId, format(monthStart, "yyyy-MM")],
+    queryKey: ["play-stats", libraryId, periodKey, period],
     queryFn: async (): Promise<PlayStats> => {
       if (!libraryId) throw new Error("No library ID");
 
@@ -51,31 +60,35 @@ export function usePlayStats(libraryId: string | null, month?: Date) {
         .eq("library_id", libraryId)
         .eq("is_expansion", false);
 
+      const periodLabel = period === "month" 
+        ? format(target, "MMM yyyy") 
+        : format(target, "yyyy");
+
       if (!games || games.length === 0) {
         return {
           totalPlays: 0,
           gamesPlayed: 0,
-          newGamesThisMonth: 0,
+          newGamesThisPeriod: 0,
           uniquePlayers: 0,
           totalHours: 0,
           daysWithPlays: 0,
           hIndex: 0,
           topMechanics: [],
           topGames: [],
-          monthLabel: format(targetMonth, "MMM yyyy"),
+          periodLabel,
         };
       }
 
       const gameIds = games.map((g) => g.id);
       const gameMap = new Map(games.map((g) => [g.id, g]));
 
-      // Get all sessions for this month
+      // Get all sessions for this period
       const { data: sessions } = await supabase
         .from("game_sessions")
         .select("id, game_id, played_at, duration_minutes")
         .in("game_id", gameIds)
-        .gte("played_at", monthStart.toISOString())
-        .lte("played_at", monthEnd.toISOString());
+        .gte("played_at", periodStart.toISOString())
+        .lte("played_at", periodEnd.toISOString());
 
       const sessionList = sessions || [];
       const totalPlays = sessionList.length;
@@ -150,10 +163,10 @@ export function usePlayStats(libraryId: string | null, month?: Date) {
         }
       });
 
-      let newGamesThisMonth = 0;
+      let newGamesThisPeriod = 0;
       firstPlayDates.forEach((date) => {
-        if (date >= monthStart && date <= monthEnd) {
-          newGamesThisMonth++;
+        if (date >= periodStart && date <= periodEnd) {
+          newGamesThisPeriod++;
         }
       });
 
@@ -202,14 +215,14 @@ export function usePlayStats(libraryId: string | null, month?: Date) {
       return {
         totalPlays,
         gamesPlayed,
-        newGamesThisMonth,
+        newGamesThisPeriod,
         uniquePlayers,
         totalHours,
         daysWithPlays,
         hIndex,
         topMechanics,
         topGames,
-        monthLabel: format(targetMonth, "MMM yyyy"),
+        periodLabel,
       };
     },
     enabled: !!libraryId,
