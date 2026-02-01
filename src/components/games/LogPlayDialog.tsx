@@ -16,6 +16,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useGameSessions, type CreateSessionInput } from "@/hooks/useGameSessions";
 import { supabase } from "@/integrations/backend/client";
 
+function toDateTimeLocalValue(date: Date): string {
+  // datetime-local expects local time without timezone (YYYY-MM-DDTHH:mm)
+  // Using toISOString() would be UTC and can shift the displayed day/month.
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 interface PlayerInput {
   name: string;
   score: string;
@@ -40,8 +47,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
   const { createSession } = useGameSessions(gameId);
 
   const [playedAt, setPlayedAt] = useState(() => {
-    const now = new Date();
-    return now.toISOString().slice(0, 16);
+    return toDateTimeLocalValue(new Date());
   });
   const [duration, setDuration] = useState("");
   const [notes, setNotes] = useState("");
@@ -126,8 +132,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
   };
 
   const resetForm = () => {
-    const now = new Date();
-    setPlayedAt(now.toISOString().slice(0, 16));
+    setPlayedAt(toDateTimeLocalValue(new Date()));
     setDuration("");
     setNotes("");
     setPlayers([{ name: "", score: "", isWinner: false, isFirstPlay: false }]);
