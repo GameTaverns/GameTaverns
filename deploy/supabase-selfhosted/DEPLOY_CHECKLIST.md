@@ -1,7 +1,7 @@
 # GameTaverns Self-Hosted: Deployment Checklist
 
-**Version:** 2.2.0 - 5-Tier Role Hierarchy  
-**Last Audit:** 2026-01-31
+**Version:** 2.3.0 - 2FA & Security Hardening  
+**Last Audit:** 2026-02-01
 
 Use this checklist before deploying to ensure everything is ready.
 
@@ -17,9 +17,9 @@ Use this checklist before deploying to ensure everything is ready.
 
 **Note:** T4 Moderators have limited abilities within their assigned communities (run polls, remove users, set up events).
 
-## Pre-Deployment Audit (Completed: 2026-01-31)
+## Pre-Deployment Audit (Completed: 2026-02-01)
 
-### ✅ Database Migrations (14 files)
+### ✅ Database Migrations (16 files)
 
 | File | Status | Notes |
 |------|--------|-------|
@@ -32,11 +32,13 @@ Use this checklist before deploying to ensure everything is ready.
 | 07-platform-admin.sql | ✅ | platform_feedback, site_settings, library_suspensions, import_jobs, password_reset_tokens, email_confirmation_tokens |
 | 08-functions-triggers.sql | ✅ | **Updated:** Added get_role_tier(), has_role_level() for hierarchical role checks |
 | 09-views.sql | ✅ | Public views: libraries_public, library_settings_public, games_public (with genre), user_profiles_public, library_directory, game_ratings_summary, game_wishlist_summary, borrower_reputation, library_calendar_events, site_settings_public |
-| 10-rls-policies.sql | ✅ | 755 lines of RLS policies, all use DROP IF EXISTS for idempotent runs |
+| 10-rls-policies.sql | ✅ | 776 lines of RLS policies, all use DROP IF EXISTS for idempotent runs |
 | 11-seed-data.sql | ✅ | Default achievements and mechanics |
 | 12-auth-trigger.sql | ✅ | Auto-create user profiles on signup, role grants |
 | 13-storage-buckets.sql | ✅ | library-logos bucket with RLS policies |
 | 14-sogo-database.sql | ✅ | SOGo groupware database and user |
+| 15-totp-2fa.sql | ✅ | **NEW:** TOTP 2FA support with user_totp_settings table |
+| 16-security-hardening.sql | ✅ | **NEW:** Library members privacy fix, member access policies |
 
 ### ✅ Docker Configuration
 

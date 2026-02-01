@@ -1,7 +1,7 @@
 # GameTaverns - Self-Hosted Supabase Stack
 # Based on official Supabase self-hosted configuration
 # https://supabase.com/docs/guides/self-hosting/docker
-# Version: 2.2.0 - 5-Tier Role Hierarchy
+# Version: 2.3.0 - 2FA & Security Hardening
 #
 # Usage:
 #   1. Run ./install.sh to generate .env
