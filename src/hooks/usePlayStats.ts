@@ -1,40 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
-import { startOfMonth, endOfMonth, startOfYear, endOfYear, format, parseISO } from "date-fns";
+import {
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  format,
+  parseISO,
+} from "date-fns";
+import type { PlayStats, StatsPeriod } from "@/hooks/playStats/types";
+import { calculateHIndex } from "@/hooks/playStats/calculateHIndex";
+import { fetchLibrarySessionsForPeriod } from "@/hooks/playStats/fetchLibrarySessions";
 
-export type StatsPeriod = "month" | "year";
+export type { PlayStats, StatsPeriod };
 
-export interface PlayStats {
-  totalPlays: number;
-  gamesPlayed: number;
-  newGamesThisPeriod: number;
-  uniquePlayers: number;
-  totalHours: number;
-  daysWithPlays: number;
-  hIndex: number;
-  topMechanics: { name: string; percentage: number; count: number }[];
-  topGames: { id: string; title: string; image_url: string | null; plays: number }[];
-  periodLabel: string;
-}
-
-interface GamePlayCount {
-  gameId: string;
-  count: number;
-}
-
-function calculateHIndex(playCounts: number[]): number {
-  // Sort in descending order
-  const sorted = [...playCounts].sort((a, b) => b - a);
-  let h = 0;
-  for (let i = 0; i < sorted.length; i++) {
-    if (sorted[i] >= i + 1) {
-      h = i + 1;
-    } else {
-      break;
-    }
-  }
-  return h;
-}
+// NOTE: helper logic extracted to src/hooks/playStats/* to keep this hook maintainable.
 
 export function usePlayStats(
   libraryId: string | null, 
@@ -54,11 +34,13 @@ export function usePlayStats(
       if (!libraryId) throw new Error("No library ID");
 
       // Get all games for this library
-      const { data: games } = await supabase
+      const { data: games, error: gamesError } = await supabase
         .from("games")
         .select("id, title, image_url, created_at")
         .eq("library_id", libraryId)
         .eq("is_expansion", false);
+
+      if (gamesError) throw gamesError;
 
       const periodLabel = period === "month" 
         ? format(target, "MMM yyyy") 
@@ -83,14 +65,13 @@ export function usePlayStats(
       const gameMap = new Map(games.map((g) => [g.id, g]));
 
       // Get all sessions for this period
-      const { data: sessions } = await supabase
-        .from("game_sessions")
-        .select("id, game_id, played_at, duration_minutes")
-        .in("game_id", gameIds)
-        .gte("played_at", periodStart.toISOString())
-        .lte("played_at", periodEnd.toISOString());
+      // IMPORTANT: query by library via join filter to avoid massive `in(game_id, ...)` URLs.
+      const sessionList = await fetchLibrarySessionsForPeriod({
+        libraryId,
+        periodStartIso: periodStart.toISOString(),
+        periodEndIso: periodEnd.toISOString(),
+      });
 
-      const sessionList = sessions || [];
       const totalPlays = sessionList.length;
 
       // Unique games played this month
@@ -137,10 +118,12 @@ export function usePlayStats(
       const sessionIds = sessionList.map((s) => s.id);
       let uniquePlayers = 0;
       if (sessionIds.length > 0) {
-        const { data: players } = await supabase
+        const { data: players, error: playersError } = await supabase
           .from("game_session_players")
           .select("player_name")
           .in("session_id", sessionIds);
+
+        if (playersError) throw playersError;
 
         const uniquePlayerNames = new Set(
           (players || []).map((p) => p.player_name.toLowerCase().trim())
@@ -150,11 +133,13 @@ export function usePlayStats(
 
       // New games this month (games with first play this month)
       // Get all sessions for these games to find first play dates
-      const { data: allSessions } = await supabase
+      const { data: allSessions, error: allSessionsError } = await supabase
         .from("game_sessions")
         .select("game_id, played_at")
         .in("game_id", Array.from(uniqueGameIds))
         .order("played_at", { ascending: true });
+
+      if (allSessionsError) throw allSessionsError;
 
       const firstPlayDates = new Map<string, Date>();
       (allSessions || []).forEach((s) => {
@@ -175,18 +160,22 @@ export function usePlayStats(
       let topMechanics: { name: string; percentage: number; count: number }[] = [];
       
       if (playedGameIds.length > 0) {
-        const { data: gameMechanics } = await supabase
+        const { data: gameMechanics, error: gameMechanicsError } = await supabase
           .from("game_mechanics")
           .select("game_id, mechanic_id")
           .in("game_id", playedGameIds);
 
+        if (gameMechanicsError) throw gameMechanicsError;
+
         if (gameMechanics && gameMechanics.length > 0) {
           const mechanicIds = [...new Set(gameMechanics.map((gm) => gm.mechanic_id))];
           
-          const { data: mechanics } = await supabase
+          const { data: mechanics, error: mechanicsError } = await supabase
             .from("mechanics")
             .select("id, name")
             .in("id", mechanicIds);
+
+          if (mechanicsError) throw mechanicsError;
 
           const mechanicNameMap = new Map(
             (mechanics || []).map((m) => [m.id, m.name])
