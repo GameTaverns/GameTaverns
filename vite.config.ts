@@ -13,9 +13,6 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // CRITICAL: Redirect the auto-generated Supabase client to our self-hosted-aware version
-      // This prevents the Lovable-generated client from crashing in self-hosted mode
-      "@/integrations/supabase/client": path.resolve(__dirname, "./src/integrations/backend/client.ts"),
     },
   },
   build: {
