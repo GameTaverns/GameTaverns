@@ -21,28 +21,38 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 -- CUSTOM TYPES (ENUMS)
 -- ═══════════════════════════════════════════════════════════════════════════
 
+-- App roles (Platform-level roles)
+-- T1: admin    - Site super-administrators with full access
+-- T2: staff    - Site staff with elevated privileges
+-- T3: owner    - Library/community owners (explicit assignment for dashboard access)
+-- T4: moderator - (DEPRECATED at platform level, use library_member_role instead)
+-- T5: (no role) - Regular users
 DO $$ BEGIN
-    CREATE TYPE app_role AS ENUM ('admin', 'moderator', 'user');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    CREATE TYPE app_role AS ENUM ('admin', 'staff', 'owner', 'moderator');
+EXCEPTION WHEN duplicate_object THEN 
+    -- Enum exists, add new values if missing
+    BEGIN ALTER TYPE app_role ADD VALUE 'staff'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER TYPE app_role ADD VALUE 'owner'; EXCEPTION WHEN duplicate_object THEN NULL; END;
+END $$;
 
 DO $$ BEGIN
     CREATE TYPE difficulty_level AS ENUM (
-        '1 - Light',
-        '2 - Medium Light',
+        '1 - Very Easy',
+        '2 - Easy',
         '3 - Medium',
-        '4 - Medium Heavy',
-        '5 - Heavy'
+        '4 - Hard',
+        '5 - Very Hard'
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
     CREATE TYPE play_time AS ENUM (
-        '0-15 Minutes',
-        '15-30 Minutes',
+        'Under 30 Minutes',
         '30-45 Minutes',
         '45-60 Minutes',
-        '60+ Minutes',
-        '2+ Hours',
+        '60-90 Minutes',
+        '90-120 Minutes',
+        '2-3 Hours',
         '3+ Hours'
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -53,16 +63,20 @@ DO $$ BEGIN
         'Card Game',
         'Dice Game',
         'Party Game',
-        'War Game',
-        'Miniatures',
-        'RPG',
+        'Strategy Game',
+        'Cooperative Game',
+        'Miniatures Game',
+        'Role-Playing Game',
+        'Deck Building',
+        'Area Control',
+        'Worker Placement',
         'Other'
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
     CREATE TYPE sale_condition AS ENUM (
-        'New in Shrink',
+        'New',
         'Like New',
         'Very Good',
         'Good',
@@ -74,15 +88,14 @@ DO $$ BEGIN
     CREATE TYPE feedback_type AS ENUM (
         'bug',
         'feature',
-        'feedback',
-        'other'
+        'general'
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
     CREATE TYPE suspension_action AS ENUM (
         'suspended',
-        'restored'
+        'reinstated'
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
@@ -96,9 +109,8 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
     CREATE TYPE achievement_category AS ENUM (
         'collection',
-        'plays', 
         'social',
-        'exploration',
+        'engagement',
         'special'
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -219,6 +231,38 @@ AS $$
         WHERE user_id = _user_id
           AND role = _role
     )
+$$;
+
+-- Get the tier number for a role (lower = more privileged)
+CREATE OR REPLACE FUNCTION get_role_tier(_role app_role)
+RETURNS integer
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public
+AS $$
+  SELECT CASE _role
+    WHEN 'admin' THEN 1
+    WHEN 'staff' THEN 2
+    WHEN 'owner' THEN 3
+    WHEN 'moderator' THEN 4
+    ELSE 5
+  END;
+$$;
+
+-- Check if user has at least a certain role level (hierarchical check)
+CREATE OR REPLACE FUNCTION has_role_level(_user_id uuid, _min_role app_role)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM user_roles
+    WHERE user_id = _user_id
+      AND get_role_tier(role) <= get_role_tier(_min_role)
+  )
 $$;
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -497,6 +541,9 @@ CREATE TABLE IF NOT EXISTS games (
     location_shelf TEXT,
     location_misc TEXT,
     
+    -- Theme/Genre
+    genre TEXT,
+    
     -- Component status
     sleeved BOOLEAN DEFAULT false,
     upgraded_components BOOLEAN DEFAULT false,
@@ -507,7 +554,7 @@ CREATE TABLE IF NOT EXISTS games (
     -- External references
     bgg_id TEXT,
     bgg_url TEXT,
-    youtube_videos TEXT[] DEFAULT '{}',
+    youtube_videos TEXT[] DEFAULT '{}'::text[],
     
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
@@ -984,6 +1031,7 @@ SELECT
     publisher_id, is_expansion, parent_game_id,
     is_coming_soon, is_for_sale, sale_price, sale_condition,
     location_room, location_shelf, location_misc,
+    genre,
     sleeved, upgraded_components, inserts, in_base_game_box, crowdfunded,
     bgg_id, bgg_url, youtube_videos,
     is_favorite,
@@ -1186,31 +1234,41 @@ CREATE INDEX IF NOT EXISTS idx_reset_tokens_expires ON password_reset_tokens(exp
 
 -- Log successful migration
 INSERT INTO site_settings (key, value) VALUES 
-    ('schema_version', '2.1.0'),
+    ('schema_version', '2.3.0'),
     ('installed_at', now()::text)
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
 
 -- Seed default achievements
-INSERT INTO achievements (slug, name, description, category, tier, points, requirement_type, requirement_value) VALUES
-    ('first_game', 'Welcome to the Shelf', 'Add your first game to your library', 'collection', 1, 10, 'games_owned', 1),
-    ('collector_10', 'Budding Collector', 'Own 10 games in your library', 'collection', 1, 25, 'games_owned', 10),
-    ('collector_25', 'Serious Collector', 'Own 25 games in your library', 'collection', 2, 50, 'games_owned', 25),
-    ('collector_50', 'Devoted Collector', 'Own 50 games in your library', 'collection', 3, 100, 'games_owned', 50),
-    ('collector_100', 'Master Collector', 'Own 100 games in your library', 'collection', 4, 200, 'games_owned', 100),
-    ('first_play', 'First Roll', 'Log your first game play session', 'plays', 1, 10, 'plays_logged', 1),
-    ('player_10', 'Regular Player', 'Log 10 game play sessions', 'plays', 1, 25, 'plays_logged', 10),
-    ('player_50', 'Avid Player', 'Log 50 game play sessions', 'plays', 2, 75, 'plays_logged', 50),
-    ('first_loan', 'Generous Lender', 'Lend a game to a community member', 'social', 1, 15, 'games_lent', 1),
-    ('trusted_lender', 'Trusted Lender', 'Successfully complete 5 loans', 'social', 2, 50, 'games_lent', 5),
-    ('community_member', 'Community Member', 'Join your first library community', 'social', 1, 10, 'communities_joined', 1),
-    ('explorer', 'Explorer', 'Visit 10 different libraries', 'exploration', 1, 20, 'libraries_visited', 10)
+INSERT INTO achievements (slug, name, description, category, tier, points, requirement_type, requirement_value, is_secret) VALUES
+    -- Collection achievements
+    ('first_game', 'First Game', 'Add your first game to the collection', 'collection', 1, 10, 'games_added', 1, false),
+    ('collector_10', 'Growing Collection', 'Add 10 games to the collection', 'collection', 1, 25, 'games_added', 10, false),
+    ('collector_50', 'Serious Collector', 'Add 50 games to the collection', 'collection', 2, 50, 'games_added', 50, false),
+    ('collector_100', 'Master Collector', 'Add 100 games to the collection', 'collection', 3, 100, 'games_added', 100, false),
+    ('collector_250', 'Legendary Hoarder', 'Add 250 games to the collection', 'collection', 4, 250, 'games_added', 250, false),
+    
+    -- Social achievements
+    ('first_member', 'Welcome!', 'Someone joined your library', 'social', 1, 15, 'members_count', 1, false),
+    ('community_10', 'Community Builder', '10 members in your library', 'social', 2, 50, 'members_count', 10, false),
+    ('community_50', 'Town Square', '50 members in your library', 'social', 3, 100, 'members_count', 50, false),
+    
+    -- Engagement achievements
+    ('first_play', 'Game Night!', 'Log your first play session', 'engagement', 1, 10, 'plays_logged', 1, false),
+    ('plays_10', 'Regular Player', 'Log 10 play sessions', 'engagement', 1, 25, 'plays_logged', 10, false),
+    ('plays_50', 'Dedicated Gamer', 'Log 50 play sessions', 'engagement', 2, 50, 'plays_logged', 50, false),
+    ('first_loan', 'Sharing is Caring', 'Lend your first game', 'engagement', 1, 20, 'loans_made', 1, false),
+    ('first_event', 'Event Organizer', 'Create your first event', 'engagement', 1, 15, 'events_created', 1, false),
+    
+    -- Special achievements
+    ('early_adopter', 'Early Adopter', 'Joined during the early days', 'special', 1, 100, 'special', 1, true),
+    ('premium_member', 'Premium Supporter', 'Upgraded to premium', 'special', 1, 50, 'special', 1, false)
 ON CONFLICT (slug) DO NOTHING;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- MIGRATION COMPLETE
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 
--- Schema version: 2.1.0
+-- Schema version: 2.3.0
 -- 
 -- Key security notes for production:
 -- 1. owner_id is hidden from public via libraries_public view
@@ -1218,6 +1276,7 @@ ON CONFLICT (slug) DO NOTHING;
 -- 3. Sensitive Discord/Turnstile keys excluded from public views
 -- 4. IP addresses and fingerprints hidden from game_ratings_library_view
 -- 5. All security-definer functions have search_path set
+-- 6. Library members view restricted to authenticated members only
 --
 -- Post-migration steps:
 -- 1. Create admin user: ./scripts/create-admin.sh

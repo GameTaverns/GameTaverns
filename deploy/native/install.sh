@@ -2,6 +2,7 @@
 #
 # GameTaverns Native Installation Script
 # For Ubuntu 24.04 LTS
+# Version: 2.3.0 - 2FA & Security Hardening
 #
 # Usage: sudo ./install.sh
 #
@@ -11,7 +12,7 @@
 # - PM2 process manager
 # - Nginx reverse proxy
 # - Postfix + Dovecot mail server (send & receive)
-# - Roundcube webmail interface
+# - SOGo webmail interface
 #
 
 set -eE  # Exit on error, inherit ERR trap

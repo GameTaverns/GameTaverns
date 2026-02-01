@@ -49,7 +49,7 @@ sudo ./scripts/preflight-check.sh
 | SOGo | Latest | Webmail + Calendar + Contacts |
 | Cockpit | Latest | Server management GUI |
 
-## Database Schema (v2.0.0)
+## Database Schema (v2.3.0)
 
 The migration creates all tables needed for the full-featured platform:
 
