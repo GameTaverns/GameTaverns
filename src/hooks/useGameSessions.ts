@@ -166,6 +166,11 @@ export function useGameSessions(gameId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["game-sessions", gameId] });
+      // Also invalidate play stats and analytics caches
+      queryClient.invalidateQueries({ queryKey: ["play-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["library-analytics-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["library-analytics-trends"] });
+      queryClient.invalidateQueries({ queryKey: ["library-analytics-top-games"] });
       toast({
         title: "Play session logged!",
         description: "The game session has been recorded.",
@@ -191,6 +196,11 @@ export function useGameSessions(gameId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["game-sessions", gameId] });
+      // Also invalidate play stats and analytics caches
+      queryClient.invalidateQueries({ queryKey: ["play-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["library-analytics-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["library-analytics-trends"] });
+      queryClient.invalidateQueries({ queryKey: ["library-analytics-top-games"] });
       toast({
         title: "Session deleted",
         description: "The play session has been removed.",
