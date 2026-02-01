@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenant } from "@/contexts/TenantContext";
-import { directImageUrl, proxiedImageUrl } from "@/lib/utils";
+import { getOptimalImageUrl, proxiedImageUrl, directImageUrl, isBggImage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -57,17 +57,24 @@ const GameDetail = () => {
     setUseProxyForImage({});
   }, [slug]);
 
-  // Helper to get image src with proxy fallback
+  // Helper to get image src - use proxy first for BGG, with fallback
   const getImageSrc = (url: string) => {
-    if (useProxyForImage[url]) return proxiedImageUrl(url);
+    // If we've already tried proxy and it failed, try direct
+    if (useProxyForImage[url] === false) return directImageUrl(url);
+    // For BGG images, always start with proxy (bypasses hotlink protection)
+    if (isBggImage(url)) return proxiedImageUrl(url);
+    // For other images, use direct URL
     return directImageUrl(url);
   };
 
-  // Handle image error with proxy fallback
+  // Handle image error with fallback
   const handleImageError = (url: string) => {
     if (!url) return;
-    if (!useProxyForImage[url]) {
-      // First try proxy as fallback
+    if (useProxyForImage[url] === undefined && isBggImage(url)) {
+      // Proxy failed for BGG image, try direct as fallback
+      setUseProxyForImage(prev => ({ ...prev, [url]: false }));
+    } else if (useProxyForImage[url] === undefined && !isBggImage(url)) {
+      // Direct failed for non-BGG image, try proxy as fallback
       setUseProxyForImage(prev => ({ ...prev, [url]: true }));
     } else {
       // Both failed, mark as broken
