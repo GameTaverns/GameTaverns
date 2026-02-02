@@ -421,10 +421,13 @@ else
     fi
 fi
 
-# NOTE: Mail subdomain is already covered by the wildcard certificate *.${DOMAIN}
-# No need for a separate certificate - requesting one would overwrite nginx config
+# ============================================================================
+# NOTE: Mail subdomain is ALREADY covered by the wildcard certificate *.${DOMAIN}
+# Do NOT request a separate certificate - it causes nginx config overwrites
+# ============================================================================
 echo ""
-echo -e "${GREEN}[OK]${NC} Mail subdomain covered by wildcard certificate (*.${DOMAIN})"
+echo -e "${GREEN}[OK]${NC} Mail subdomain is covered by wildcard certificate (*.${DOMAIN})"
+echo -e "${YELLOW}[INFO]${NC} No separate mail certificate needed."
 
 # Verify auto-renewal is set up
 echo ""
