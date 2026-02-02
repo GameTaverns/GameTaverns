@@ -922,6 +922,7 @@ clone_repository() {
     if [[ -d "${INSTALL_DIR}/.git" ]]; then
         log_info "Repository already exists, pulling latest..."
         cd ${INSTALL_DIR}
+        git config --global --add safe.directory "${INSTALL_DIR}" 2>/dev/null || true
         run_cmd "git fetch origin"
         run_cmd "git reset --hard origin/main"
     else

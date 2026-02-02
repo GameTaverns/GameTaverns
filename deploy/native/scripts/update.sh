@@ -58,6 +58,7 @@ fi
 
 # Pull latest code
 echo -e "${YELLOW}[INFO]${NC} Pulling latest code..."
+git config --global --add safe.directory "${INSTALL_DIR}" 2>/dev/null || true
 git fetch origin
 git reset --hard origin/main
 
