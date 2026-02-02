@@ -280,7 +280,7 @@ list_users() {
     local domain=$(grep "MAIL_DOMAIN=" "$CREDENTIALS_FILE" 2>/dev/null | cut -d'=' -f2 || echo "")
     if [ -n "$domain" ]; then
         echo "  Mail Server: mail.${domain}"
-        echo "  Webmail:     https://mail.${domain} (SOGo)"
+        echo "  Webmail:     https://mail.${domain} (Roundcube)"
     fi
     echo ""
 }
