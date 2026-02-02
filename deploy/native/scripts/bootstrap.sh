@@ -184,28 +184,20 @@ fi
 if [[ $WARNINGS -gt 0 ]]; then
     echo -e "${YELLOW}Pre-flight completed with $WARNINGS warning(s).${NC}"
     echo ""
-    # Handle both interactive and piped execution (curl | bash)
+
+    # IMPORTANT:
+    # - In interactive mode, default is YES (pressing Enter continues)
+    # - In non-interactive/piped mode (e.g. curl | bash), we auto-continue
     if [[ -t 0 ]]; then
-        # Interactive terminal - ask for confirmation
-        read -p "Continue anyway? (y/n) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        read -r -p "Continue anyway? [Y/n] " REPLY
+        if [[ -z "${REPLY}" || "${REPLY}" =~ ^[Yy]$ ]]; then
+            :
+        else
             echo "Cancelled."
             exit 1
         fi
     else
-        # Piped execution - try to read from /dev/tty, or auto-continue with notice
-        if [[ -e /dev/tty ]]; then
-            echo -n "Continue anyway? (y/n) "
-            read -n 1 -r REPLY < /dev/tty
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                echo "Cancelled."
-                exit 1
-            fi
-        else
-            echo -e "${YELLOW}Running in non-interactive mode - continuing with warnings...${NC}"
-        fi
+        echo -e "${YELLOW}Non-interactive mode detected — continuing despite warnings...${NC}"
     fi
 else
     echo -e "${GREEN}All pre-flight checks passed!${NC}"
