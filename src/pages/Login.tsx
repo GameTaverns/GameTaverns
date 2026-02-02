@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { TurnstileWidget } from "@/components/games/TurnstileWidget";
 import { TotpVerify } from "@/components/auth/TotpVerify";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { getSupabaseConfig } from "@/config/runtime";
 
 const Login = () => {
