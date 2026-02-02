@@ -16,7 +16,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useTotpStatus } from "@/hooks/useTotpStatus";
 import { TotpSetup } from "@/components/auth/TotpSetup";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { getSupabaseConfig } from "@/config/runtime";
 
 export function TwoFactorSettings() {
