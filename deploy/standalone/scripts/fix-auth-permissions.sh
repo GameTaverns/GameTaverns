@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # Fix Auth Permissions for Game Haven Standalone
-# Version: 2.3.1 - Gateway Container Fixes
-# Run this if you get "Database error checking email" errors
+# Version: 2.3.2 - Schema Parity Audit
+# Audited: 2026-02-02
 # Grants proper access to auth schema tables created by GoTrue
 #
 

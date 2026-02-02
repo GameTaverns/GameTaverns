@@ -26,8 +26,8 @@ mkdir -p "$BACKUP_DIR"
 
 echo -e "${YELLOW}Creating backup...${NC}"
 
-# Dump database using TCP connection
-docker exec gamehaven-db pg_dump -h localhost -U postgres -d postgres > "$BACKUP_FILE"
+# Dump database using TCP connection (supabase_admin is the default superuser)
+docker exec gamehaven-db pg_dump -h localhost -U supabase_admin -d postgres > "$BACKUP_FILE"
 
 # Compress
 gzip "$BACKUP_FILE"

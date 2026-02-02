@@ -1,8 +1,8 @@
 #!/bin/bash
 #
 # Create Admin User for Game Haven (Standalone Stack)
-# Version: 2.3.1 - Gateway Container Fixes
-# Can be run standalone or credentials passed via environment
+# Version: 2.3.2 - Schema Parity Audit
+# Audited: 2026-02-02
 #
 # Usage:
 #   Interactive:  ./scripts/create-admin.sh
