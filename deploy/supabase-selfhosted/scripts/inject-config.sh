@@ -27,6 +27,9 @@ ESCAPED_SITE_NAME=$(escape_js "${SITE_NAME:-GameTaverns}")
 ESCAPED_SITE_DESC=$(escape_js "${SITE_DESCRIPTION:-Browse and discover our collection of board games}")
 
 # Generate runtime config with proper escaping using IIFE pattern
+# IMPORTANT: SELF_HOSTED must be FALSE for Supabase stack!
+# SELF_HOSTED: true = Express API backend at /api/*
+# SELF_HOSTED: false = Supabase/Kong backend at SUPABASE_URL
 cat > "$CONFIG_FILE" << EOF
 // Runtime configuration - injected at container start
 // Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -35,7 +38,7 @@ cat > "$CONFIG_FILE" << EOF
   'use strict';
   try {
     window.__RUNTIME_CONFIG__ = {
-      SELF_HOSTED: true,
+      SELF_HOSTED: false,
       SUPABASE_URL: "${SUPABASE_URL:-}",
       SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY:-}",
       SITE_NAME: "${ESCAPED_SITE_NAME}",
@@ -43,7 +46,7 @@ cat > "$CONFIG_FILE" << EOF
       FEATURE_DEMO_MODE: false,
       BUILD_TIME: "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     };
-    console.log('[GameTaverns] Runtime config loaded: Self-Hosted Mode');
+    console.log('[GameTaverns] Runtime config loaded: Supabase Mode');
   } catch (e) {
     console.error('[GameTaverns] Failed to load runtime config:', e);
   }
