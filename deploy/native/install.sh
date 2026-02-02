@@ -922,7 +922,15 @@ clone_repository() {
     if [[ -d "${INSTALL_DIR}/.git" ]]; then
         log_info "Repository already exists, pulling latest..."
         cd ${INSTALL_DIR}
-        git config --global --add safe.directory "${INSTALL_DIR}" 2>/dev/null || true
+        # Git 2.35+ may refuse to operate on repos whose ownership differs from the
+        # current user ("detected dubious ownership"). In some non-interactive
+        # environments, `git config --global` can also fail if HOME isn't set.
+        export HOME="${HOME:-/root}"
+        (
+            git config --global --add safe.directory "${INSTALL_DIR}" 2>/dev/null \
+            || git config --system --add safe.directory "${INSTALL_DIR}" 2>/dev/null \
+            || true
+        )
         run_cmd "git fetch origin"
         run_cmd "git reset --hard origin/main"
     else
