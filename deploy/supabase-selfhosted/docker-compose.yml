@@ -430,12 +430,17 @@ services:
     ports:
       - "${ROUNDCUBE_PORT:-9001}:80"
     environment:
-      ROUNDCUBEMAIL_DEFAULT_HOST: mail
+      # ssl:// prefix required for IMAPS on port 993
+      ROUNDCUBEMAIL_DEFAULT_HOST: ssl://mail
       ROUNDCUBEMAIL_DEFAULT_PORT: 993
-      ROUNDCUBEMAIL_SMTP_SERVER: mail
+      # tls:// for STARTTLS on port 587
+      ROUNDCUBEMAIL_SMTP_SERVER: tls://mail
       ROUNDCUBEMAIL_SMTP_PORT: 587
       ROUNDCUBEMAIL_SKIN: elastic
       ROUNDCUBEMAIL_PLUGINS: archive,zipdownload,managesieve
+      # Skip SSL cert verification for self-signed certs
+      ROUNDCUBEMAIL_DEFAULT_HOST_VERIFY_PEER: "false"
+      ROUNDCUBEMAIL_DEFAULT_HOST_VERIFY_PEER_NAME: "false"
       ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE: 25M
     volumes:
       - roundcube-data:/var/www/html/db
