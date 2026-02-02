@@ -203,15 +203,18 @@ export default async function handler(req: Request): Promise<Response> {
         if (/_itemrep/i.test(url)) return 0; // Box art - highest priority
         if (/_imagepage/i.test(url)) return 1; // Full-size photos
         if (/_original/i.test(url)) return 2; // Original uploads
-        return 3; // Other images
+        if (/\/pic\d+/i.test(url)) return 3; // Standard BGG image format
+        return 4; // Other images
       };
       return getPriority(a) - getPriority(b);
     });
     
-    // Take only the first image (box art preferred) for simplicity
+    // Take the first image as main (box art preferred), then additional images
     const mainImage = sortedImageLinks[0] || null;
+    // Get up to 5 additional images (excluding the main one)
+    const additionalScrapedImages = sortedImageLinks.slice(1, 6);
 
-    console.log("Found image links:", sortedImageLinks.length);
+    console.log("Found image links:", sortedImageLinks.length, "main:", !!mainImage, "additional:", additionalScrapedImages.length);
     console.log("Main image:", mainImage);
 
     // Guardrail: ensure the scraped content actually matches the requested BGG game page
@@ -290,11 +293,9 @@ IMPORTANT RULES:
    Use markdown formatting with headers (##), bold (**text**), and bullet points.
    Keep it CONCISE - aim for 150-200 words maximum. Players should be able to scan and understand quickly.
 
-3. For IMAGES - VERY SIMPLE RULES:
-   - You are given a SHORT list of official box art images
-   - For main_image: Use the FIRST image with "_itemrep" (box art) - this is the ONLY main image
-   - For gameplay_images: Leave as EMPTY ARRAY [] - we only want box art, no extra images
-   - DO NOT include any gameplay, component, or user-submitted photos
+3. For IMAGES:
+   - For main_image: Use the FIRST image with "_itemrep" (box art) - this is the primary image
+   - For gameplay_images: Include up to 3 high-quality component/gameplay photos (not duplicates of box art)
 
 4. For mechanics, extract actual game mechanics (e.g., "Worker Placement", "Set Collection", "Dice Rolling").
 
@@ -315,8 +316,9 @@ IMPORTANT RULES:
 
 TARGET PAGE (must match): ${url}
 
-AVAILABLE BOX ART IMAGE (use ONLY this for main_image, leave gameplay_images empty):
-${mainImage || "No image found"}
+AVAILABLE IMAGES (use first _itemrep for main_image, others for gameplay_images):
+Main: ${mainImage || "No main image found"}
+Additional: ${additionalScrapedImages.slice(0, 3).join(", ") || "None"}
 
 Page content:
 ${markdown.slice(0, 18000)}`,
@@ -560,20 +562,18 @@ ${markdown.slice(0, 18000)}`,
     const gameplayCandidates = extractedData.gameplay_images || extractedData.additional_images;
     let validGameplayImages = filterGameplayImages(gameplayCandidates);
 
-    // Fallback: if AI didn't pick gameplay images, derive them from the scraped image list.
-    if (validGameplayImages.length === 0) {
-      const fallbackGameplay = (sortedImageLinks || [])
+    // Fallback: if AI didn't pick gameplay images, use the pre-scraped additional images
+    if (validGameplayImages.length === 0 && additionalScrapedImages && additionalScrapedImages.length > 0) {
+      const fallbackGameplay = additionalScrapedImages
         .filter((img) => {
           if (!img || typeof img !== "string") return false;
+          // Exclude tiny thumbnails
           if (/crop100|square30|100x100|150x150|200x200|300x300|thumb/i.test(img)) return false;
-          if (/_itemrep/i.test(img)) return false; // avoid box-art reps
-          // Prefer full-size gallery photos
-          return /__imagepage\//i.test(img) || /\/pic\d+\./i.test(img);
+          return true;
         })
-        .slice(0, 6)
         .map((img) => sanitizeImageUrl(img));
 
-      validGameplayImages = [...new Set(fallbackGameplay)].slice(0, 6);
+      validGameplayImages = [...new Set(fallbackGameplay)].slice(0, 5);
     }
 
     if (validMainImage) validGameplayImages = validGameplayImages.filter((u) => u !== validMainImage);
