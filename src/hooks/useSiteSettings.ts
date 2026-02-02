@@ -76,19 +76,50 @@ export function useSiteSettings() {
         return convertDemoSettingsToSiteSettings(siteSettings, themeSettings);
       }
 
-      // Self-hosted mode: fetch from Express API
+      // Self-hosted mode with Supabase stack: use PostgREST directly via Kong
+      // The Express API doesn't exist in the Supabase self-hosted deployment
       if (isSelfHostedMode()) {
         try {
-          const settings = await apiClient.get<Record<string, string | null>>('/settings/public');
-          return settings as SiteSettings;
+          // Get runtime config for API URL
+          const runtimeConfig = (typeof window !== 'undefined' && (window as any).__RUNTIME_CONFIG__) || {};
+          const supabaseUrl = runtimeConfig.SUPABASE_URL || '';
+          const anonKey = runtimeConfig.SUPABASE_ANON_KEY || '';
+          
+          if (!supabaseUrl || !anonKey) {
+            console.warn('[Self-Hosted] No Supabase config in runtime config, using defaults');
+            return {
+              site_name: runtimeConfig.SITE_NAME || 'GameTaverns',
+              site_description: runtimeConfig.SITE_DESCRIPTION || '',
+            };
+          }
+          
+          // Fetch from PostgREST via Kong gateway
+          const response = await fetch(`${supabaseUrl}/rest/v1/site_settings_public?select=key,value`, {
+            headers: {
+              'apikey': anonKey,
+              'Authorization': `Bearer ${anonKey}`,
+              'Accept': 'application/json',
+            },
+          });
+          
+          if (!response.ok) {
+            throw new Error(`PostgREST error: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          const settings: SiteSettings = {};
+          data?.forEach((setting: { key: string; value: string | null }) => {
+            settings[setting.key as keyof SiteSettings] = setting.value || undefined;
+          });
+          
+          return settings;
         } catch (error) {
-          // If the settings table doesn't exist or API fails, return empty settings
-          // This allows the app to continue functioning without blocking on settings
-          console.warn('[Self-Hosted] Failed to fetch site settings from API:', error);
-          // Return minimal defaults so the app works without a settings table
+          // If the settings table doesn't exist or API fails, return runtime config defaults
+          console.warn('[Self-Hosted] Failed to fetch site settings from PostgREST:', error);
+          const runtimeConfig = (typeof window !== 'undefined' && (window as any).__RUNTIME_CONFIG__) || {};
           return {
-            site_name: 'GameTaverns',
-            // No turnstile_site_key = bypass verification
+            site_name: runtimeConfig.SITE_NAME || 'GameTaverns',
+            site_description: runtimeConfig.SITE_DESCRIPTION || '',
           };
         }
       }
