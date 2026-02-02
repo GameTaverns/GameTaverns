@@ -15,6 +15,7 @@ interface RuntimeConfig {
   SUPABASE_ANON_KEY?: string;
   API_BASE_URL?: string;
   SELF_HOSTED?: boolean;
+  IS_PRODUCTION?: boolean;
   SITE_NAME?: string;
   SITE_DESCRIPTION?: string;
   SITE_AUTHOR?: string;
@@ -163,4 +164,41 @@ export function getApiBaseUrl(): string {
 export function getRuntimeFeatureFlag(feature: keyof NonNullable<RuntimeConfig['FEATURES']>): boolean | undefined {
   const runtime = getRuntimeConfig();
   return runtime.FEATURES?.[feature];
+}
+
+/**
+ * Check if this is a production deployment (hide testing banners)
+ * Returns true if:
+ * 1. IS_PRODUCTION is explicitly set to true in runtime config
+ * 2. Running on a custom domain (not lovable.app or lovableproject.com)
+ */
+export function isProductionDeployment(): boolean {
+  const runtime = getRuntimeConfig();
+  
+  // Explicit runtime flag takes priority
+  if (runtime.IS_PRODUCTION === true) {
+    return true;
+  }
+  
+  // Check hostname - production if NOT on Lovable domains
+  try {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname.toLowerCase();
+      if (
+        host.endsWith(".lovableproject.com") ||
+        host.endsWith(".lovable.app") ||
+        host === "lovable.app" ||
+        host === "lovableproject.com" ||
+        host === "localhost"
+      ) {
+        return false;
+      }
+      // Custom domain = production
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  
+  return false;
 }
