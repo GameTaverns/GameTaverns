@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Reset Supabase internal user passwords
+# Reset Supabase internal user passwords for Game Haven Standalone
+# Version: 2.3.1 - Gateway Container Fixes
 # Run this after docker compose up if services can't connect to DB
 #
 
@@ -12,11 +13,13 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Navigate to script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
 # Load environment
 if [ -f .env ]; then
     source .env
-elif [ -f ../.env ]; then
-    source ../.env
 else
     echo -e "${RED}Error: .env file not found${NC}"
     exit 1
@@ -96,7 +99,9 @@ echo -e "${GREEN}✓${NC} Passwords reset successfully"
 echo ""
 echo -e "${YELLOW}Restarting services to apply changes...${NC}"
 
-docker restart gamehaven-auth gamehaven-rest gamehaven-realtime
+# Restart using correct container names (gamehaven-gateway NOT gamehaven-kong)
+docker restart gamehaven-auth gamehaven-rest gamehaven-realtime gamehaven-gateway 2>/dev/null || \
+docker restart gamehaven-auth gamehaven-rest gamehaven-realtime 2>/dev/null || true
 
 echo ""
 echo -e "${GREEN}✓${NC} Services restarted"

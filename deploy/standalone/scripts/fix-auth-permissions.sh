@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Fix Auth Permissions
+# Fix Auth Permissions for Game Haven Standalone
+# Version: 2.3.1 - Gateway Container Fixes
 # Run this if you get "Database error checking email" errors
 # Grants proper access to auth schema tables created by GoTrue
 #
@@ -13,10 +14,12 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Navigate to script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
 # Load environment
-if [ -f ../.env ]; then
-    source ../.env
-elif [ -f .env ]; then
+if [ -f .env ]; then
     source .env
 else
     echo -e "${RED}Error: .env file not found${NC}"
@@ -25,7 +28,7 @@ fi
 
 echo -e "${YELLOW}Fixing auth schema permissions...${NC}"
 
-docker exec -i gamehaven-db psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres << 'EOSQL'
+docker exec -i gamehaven-db psql -h localhost -v ON_ERROR_STOP=1 -U supabase_admin -d postgres << 'EOSQL'
 -- Grant schema access
 GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
 GRANT ALL ON SCHEMA auth TO supabase_admin;
@@ -70,7 +73,8 @@ echo -e "${GREEN}✓${NC} Auth permissions fixed"
 echo ""
 
 echo -e "${YELLOW}Restarting auth + gateway to ensure permissions are picked up...${NC}"
-docker restart gamehaven-auth gamehaven-kong >/dev/null 2>&1 || true
+# Use correct container name: gamehaven-gateway (NOT gamehaven-kong)
+docker restart gamehaven-auth gamehaven-gateway >/dev/null 2>&1 || true
 
 echo ""
 echo -e "Now try running: ${YELLOW}./scripts/create-admin.sh${NC}"

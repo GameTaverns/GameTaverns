@@ -966,11 +966,33 @@ if [ -z "$USER_ID" ]; then
     exit 1
 fi
 
+# Create user profile (for admin display name)
+echo -e "${CYAN}Creating user profile...${NC}"
+
+docker exec -i gamehaven-db psql -h localhost -v ON_ERROR_STOP=1 -U postgres -d postgres << EOF
+-- Create user_profiles table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL UNIQUE,
+    display_name text,
+    avatar_url text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Insert profile for admin user
+INSERT INTO public.user_profiles (user_id, display_name)
+VALUES ('${USER_ID}', split_part('${ADMIN_EMAIL}', '@', 1))
+ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;
+EOF
+
+echo -e "${GREEN}✓${NC} User profile created"
+
 # Assign admin role
 echo -e "${CYAN}Assigning admin role...${NC}"
 
 # Use a superuser role to avoid RLS/privilege issues and verify the insert.
-docker exec -i gamehaven-db psql -v ON_ERROR_STOP=1 -U postgres -d postgres << EOF
+docker exec -i gamehaven-db psql -h localhost -v ON_ERROR_STOP=1 -U postgres -d postgres << EOF
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('${USER_ID}', 'admin'::public.app_role)
 ON CONFLICT (user_id, role) DO NOTHING;

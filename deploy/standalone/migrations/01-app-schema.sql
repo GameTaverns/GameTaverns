@@ -1,5 +1,6 @@
 -- ============================================
 -- Game Haven Application Schema
+-- Version: 2.3.1 - User Profiles + Admin Fixes
 -- Creates all tables, views, functions, and RLS policies
 -- ============================================
 -- Create extensions schema if it doesn't exist (standalone deployments)
@@ -142,6 +143,19 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- ==========================================
+-- USER_PROFILES TABLE (for admin display names)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL UNIQUE,
+    display_name text,
+    avatar_url text,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
 
 -- ==========================================
 -- USER_ROLES TABLE (created early for has_role function)
@@ -365,6 +379,7 @@ GROUP BY game_id;
 -- ENABLE RLS
 -- ==========================================
 
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.publishers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mechanics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.games ENABLE ROW LEVEL SECURITY;
@@ -376,6 +391,19 @@ ALTER TABLE public.game_session_players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.game_wishlist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================
+-- RLS POLICIES - User Profiles
+-- ==========================================
+
+DROP POLICY IF EXISTS "User profiles are viewable by everyone" ON public.user_profiles;
+CREATE POLICY "User profiles are viewable by everyone" ON public.user_profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
+CREATE POLICY "Users can update own profile" ON public.user_profiles FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.user_profiles;
+CREATE POLICY "Admins can manage all profiles" ON public.user_profiles FOR ALL USING (has_role(auth.uid(), 'admin'::app_role));
 
 -- ==========================================
 -- RLS POLICIES
