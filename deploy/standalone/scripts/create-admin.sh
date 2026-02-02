@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Create Admin User for Game Haven
+# Create Admin User for Game Haven (Standalone Stack)
+# Version: 2.3.1 - Gateway Container Fixes
 # Can be run standalone or credentials passed via environment
 #
 # Usage:
@@ -14,34 +15,23 @@ set -e
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-RED='\033[0;31m'
+RED='\033[0m'
 NC='\033[0m'
 
+# Navigate to script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
 # Load environment
-if [ -f ../.env ]; then
-    source ../.env
-elif [ -f .env ]; then
+if [ -f .env ]; then
     source .env
 else
     echo -e "${RED}Error: .env file not found${NC}"
     exit 1
 fi
 
-# ==========================================
-# Sanity checks
-# ==========================================
-
-# Kong declarative config does NOT support env var substitution.
-# However, docker-compose.yml now uses kong-render-config.sh to generate
-# kong.generated.yml at runtime with real keys substituted.
-# We only warn here (not error) since the source kong.yml intentionally has placeholders.
-KONG_YML_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/kong.yml"
-# Check if the GENERATED config exists inside the running container (meaning rendering worked)
-KONG_RENDERED_CHECK=$(docker exec gamehaven-kong sh -c 'test -f /home/kong/kong.generated.yml && echo "yes" || echo "no"' 2>/dev/null || echo "unknown")
-if [ "$KONG_RENDERED_CHECK" = "no" ]; then
-    echo -e "${YELLOW}Warning:${NC} Kong rendered config not found. Key-auth may fail."
-    echo -e "Try restarting Kong: ${YELLOW}docker compose restart kong${NC}"
-fi
+# Use GATEWAY_PORT (not KONG_HTTP_PORT which is deprecated)
+GATEWAY_PORT="${GATEWAY_PORT:-8000}"
 
 echo ""
 echo -e "${BLUE}━━━ Create Admin User ━━━${NC}"
@@ -51,7 +41,7 @@ echo ""
 # Helper Functions
 # ==========================================
 
-AUTH_HEALTH_URL="http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health"
+AUTH_HEALTH_URL="http://localhost:${GATEWAY_PORT}/auth/v1/health"
 
 is_auth_ready() {
     curl -fsS --max-time 2 "$AUTH_HEALTH_URL" >/dev/null 2>&1
@@ -89,7 +79,7 @@ sync_db_passwords() {
     # Escape single quotes in password for SQL
     ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
     
-    docker exec -i gamehaven-db psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres << EOSQL
+    docker exec -i gamehaven-db psql -h localhost -v ON_ERROR_STOP=1 -U supabase_admin -d postgres << EOSQL
 DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
@@ -142,14 +132,14 @@ else
     sync_db_passwords
     
     echo -e "${YELLOW}Restarting services...${NC}"
-    # Restart kong too since the health check is routed through it.
-    docker restart gamehaven-auth gamehaven-rest gamehaven-realtime gamehaven-kong >/dev/null 2>&1 || true
+    # Restart gateway (NOT kong - we use nginx gateway)
+    docker restart gamehaven-auth gamehaven-rest gamehaven-realtime gamehaven-gateway >/dev/null 2>&1 || true
     
     echo -e "${YELLOW}Waiting for services to initialize...${NC}"
     if ! wait_for_auth 120; then
         echo -e "${RED}Error: Auth service failed to start${NC}"
         print_auth_failure_diagnostics
-        echo -e "${YELLOW}Also check Kong logs:${NC} ${YELLOW}docker logs gamehaven-kong --tail=80${NC}"
+        echo -e "${YELLOW}Also check Gateway logs:${NC} ${YELLOW}docker logs gamehaven-gateway --tail=80${NC}"
         echo -e "${YELLOW}And service list:${NC} ${YELLOW}docker compose ps${NC}"
         exit 1
     fi
@@ -191,7 +181,7 @@ fi
 echo ""
 echo -e "${YELLOW}Creating admin user...${NC}"
 
-# Get service key (install.sh uses SERVICE_ROLE_KEY)
+# Get service key
 ADMIN_API_KEY="${SERVICE_ROLE_KEY:-${SUPABASE_SERVICE_KEY}}"
 
 if [ -z "$ADMIN_API_KEY" ]; then
@@ -200,44 +190,12 @@ if [ -z "$ADMIN_API_KEY" ]; then
     exit 1
 fi
 
-# If kong.yml exists, ensure the API key we're about to use matches what Kong was configured with.
-# (Kong key-auth compares the literal apikey header value against the baked key in kong.yml.)
-if [ -f "$KONG_YML_PATH" ]; then
-    # NOTE: It's not enough for the key to exist *somewhere* in kong.yml — it must be the key
-    # for the `service_role` consumer specifically.
-    SERVICE_ROLE_BLOCK=$(awk '
-      /^consumers:/ {in_consumers=1}
-      in_consumers && /^services:/ {exit}
-      {print}
-    ' "$KONG_YML_PATH" | awk '
-      /- username: service_role/ {in_block=1}
-      in_block {print}
-      in_block && /- username:/ && $0 !~ /- username: service_role/ {exit}
-    ')
-
-    if ! echo "$SERVICE_ROLE_BLOCK" | grep -Fq "$ADMIN_API_KEY"; then
-        echo -e "${RED}Error:${NC} Service key mismatch between .env and kong.yml (service_role consumer). Kong will return Unauthorized."
-        echo ""
-        echo -e "Loaded from .env: ${YELLOW}SERVICE_ROLE_KEY${NC} (starts with: ${ADMIN_API_KEY:0:16}...)"
-        echo -e "But kong.yml's service_role consumer does not contain that key."
-        echo ""
-        echo -e "Fix options:"
-        echo -e "  1) If you want to KEEP the current DB volume, re-run installer and choose reuse existing secrets:"
-        echo -e "     ${YELLOW}cd deploy/standalone && ./install.sh && docker compose up -d${NC}"
-        echo -e "  2) If you want a FULL fresh reset, remove the DB volume first (this deletes all data), then re-run install:"
-        echo -e "     ${YELLOW}docker compose down -v${NC}"
-        echo -e "     ${YELLOW}./install.sh && docker compose up -d${NC}"
-        echo ""
-        exit 1
-    fi
-fi
-
 # Sanity check (service keys are JWTs)
 if ! echo "$ADMIN_API_KEY" | grep -q '\.'; then
     echo -e "${YELLOW}Warning:${NC} Service key doesn't look like a JWT"
 fi
 
-RESPONSE=$(curl -s -X POST "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
+RESPONSE=$(curl -s -X POST "http://localhost:${GATEWAY_PORT}/auth/v1/admin/users" \
     -H "Content-Type: application/json" \
     -H "apikey: ${ADMIN_API_KEY}" \
     -H "Authorization: Bearer ${ADMIN_API_KEY}" \
@@ -253,28 +211,15 @@ USER_ID=$(echo $RESPONSE | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
 if [ -z "$USER_ID" ]; then
     # Check for common errors
     if echo "$RESPONSE" | grep -q '"message"\s*:\s*"Unauthorized"'; then
-        echo -e "${RED}Unauthorized:${NC} The request was rejected before a user id was returned."
-        echo -e "This almost always means Kong's key-auth did not accept the apikey you sent."
+        echo -e "${RED}Unauthorized:${NC} The request was rejected."
+        echo -e "This may indicate a JWT_SECRET mismatch or gateway issue."
         echo ""
         echo -e "${YELLOW}Debug info:${NC}"
-        echo -e "- Using KONG_HTTP_PORT: ${KONG_HTTP_PORT:-8000}"
+        echo -e "- Using GATEWAY_PORT: ${GATEWAY_PORT}"
         echo -e "- SERVICE_ROLE_KEY starts with: ${ADMIN_API_KEY:0:16}..."
-        if [ -f "$KONG_YML_PATH" ]; then
-            echo -e "- kong.yml path: $KONG_YML_PATH"
-            echo -e "- service_role consumer snippet (keys hidden):"
-            echo "$SERVICE_ROLE_BLOCK" | sed -E 's/(key:\s*).+$/\1<redacted>/' | sed -n '1,12p'
-        else
-            echo -e "- kong.yml not found at: $KONG_YML_PATH"
-        fi
         echo ""
-        echo -e "${YELLOW}Quick isolation test (bypass Kong, hit auth container directly):${NC}"
-        echo -e "Run this (it will NOT print your key):"
-        echo -e "  ${YELLOW}docker exec -i gamehaven-kong sh -lc 'curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer <SERVICE_ROLE_KEY>" -H "Content-Type: application/json" http://auth:9999/admin/users'${NC}"
-        echo -e "If that returns 401/403 too, then auth itself is rejecting the token (JWT_SECRET mismatch)."
-        echo -e "If that returns 200/405/etc but Kong route returns 401, it's definitely a Kong key-auth / kong.yml key mismatch."
-        echo ""
-        echo -e "${YELLOW}Kong logs (last 80 lines):${NC}"
-        docker logs gamehaven-kong --tail=80 || true
+        echo -e "${YELLOW}Gateway logs (last 80 lines):${NC}"
+        docker logs gamehaven-gateway --tail=80 || true
         echo ""
         exit 1
     fi
@@ -283,11 +228,17 @@ if [ -z "$USER_ID" ]; then
         echo -e "${YELLOW}User already exists. Attempting to find user ID...${NC}"
         
         # Try to get user by email
-        USER_RESPONSE=$(curl -s "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
+        USER_RESPONSE=$(curl -s "http://localhost:${GATEWAY_PORT}/auth/v1/admin/users" \
             -H "apikey: ${ADMIN_API_KEY}" \
             -H "Authorization: Bearer ${ADMIN_API_KEY}")
         
         USER_ID=$(echo "$USER_RESPONSE" | grep -o "\"id\":\"[^\"]*\".*\"email\":\"${ADMIN_EMAIL}\"" | head -1 | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+        
+        if [ -z "$USER_ID" ]; then
+            # Fallback: query database directly
+            USER_ID=$(docker exec -i gamehaven-db psql -h localhost -U supabase_admin -d postgres -tAc \
+                "SELECT id FROM auth.users WHERE email = '${ADMIN_EMAIL}' LIMIT 1;" 2>/dev/null | tr -d '[:space:]')
+        fi
         
         if [ -z "$USER_ID" ]; then
             echo -e "${RED}Could not find existing user. Response:${NC}"
@@ -306,13 +257,38 @@ else
 fi
 
 # ==========================================
-# Step 4: Assign admin role
+# Step 4: Create user profile (if needed)
+# ==========================================
+
+echo -e "${YELLOW}Ensuring user profile exists...${NC}"
+
+# Check if user_profiles table exists and insert profile
+docker exec -i gamehaven-db psql -h localhost -v ON_ERROR_STOP=1 -U supabase_admin -d postgres << EOF
+-- Create user_profiles table if it doesn't exist (standalone mode)
+CREATE TABLE IF NOT EXISTS public.user_profiles (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL UNIQUE,
+    display_name text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Insert profile for admin user
+INSERT INTO public.user_profiles (user_id, display_name)
+VALUES ('${USER_ID}', split_part('${ADMIN_EMAIL}', '@', 1))
+ON CONFLICT (user_id) DO NOTHING;
+EOF
+
+echo -e "${GREEN}✓${NC} User profile ready"
+
+# ==========================================
+# Step 5: Assign admin role
 # ==========================================
 
 echo -e "${YELLOW}Assigning admin role...${NC}"
 
 # Use a superuser role to avoid RLS/privilege issues and verify the insert.
-docker exec -i gamehaven-db psql -v ON_ERROR_STOP=1 -U postgres -d postgres << EOF
+docker exec -i gamehaven-db psql -h localhost -v ON_ERROR_STOP=1 -U postgres -d postgres << EOF
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('${USER_ID}', 'admin'::public.app_role)
 ON CONFLICT (user_id, role) DO NOTHING;
