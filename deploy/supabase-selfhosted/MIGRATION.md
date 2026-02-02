@@ -1,8 +1,8 @@
 # GameTaverns: Migration Guide
 
-**Version:** 2.2.0 - 5-Tier Role Hierarchy  
-**Last Updated:** 2026-01-31
-**Last Audit:** 2026-01-31
+**Version:** 2.3.2 - Schema Parity Audit  
+**Last Updated:** 2026-02-02
+**Last Audit:** 2026-02-02
 
 This guide covers migrating from existing deployments to the new self-hosted Supabase stack.
 

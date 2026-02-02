@@ -1,7 +1,7 @@
 # GameTaverns Self-Hosted: Deployment Checklist
 
-**Version:** 2.3.0 - 2FA & Security Hardening  
-**Last Audit:** 2026-02-01
+**Version:** 2.3.2 - Schema Parity Audit  
+**Last Audit:** 2026-02-02
 
 Use this checklist before deploying to ensure everything is ready.
 
@@ -17,7 +17,7 @@ Use this checklist before deploying to ensure everything is ready.
 
 **Note:** T4 Moderators have limited abilities within their assigned communities (run polls, remove users, set up events).
 
-## Pre-Deployment Audit (Completed: 2026-02-01)
+## Pre-Deployment Audit (Completed: 2026-02-02)
 
 ### ✅ Database Migrations (15 files)
 

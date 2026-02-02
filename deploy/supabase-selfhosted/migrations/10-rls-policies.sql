@@ -1,7 +1,7 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Row Level Security Policies
 -- Complete 1:1 parity with Lovable Cloud schema
--- Version: 2.2.0 - 5-Tier Role Hierarchy
+-- Version: 2.3.2 - Schema Parity Audit
 -- IMPORTANT: Uses DROP POLICY IF EXISTS for idempotent re-runs
 -- =============================================================================
 

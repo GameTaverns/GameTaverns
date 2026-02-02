@@ -1,7 +1,7 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Core Tables
--- Order matters for foreign key dependencies
--- Version: 2.2.0 - 5-Tier Role Hierarchy
+-- Version: 2.3.2 - Schema Parity Audit
+-- Audited: 2026-02-02
 -- =============================================================================
 
 -- ===========================================
