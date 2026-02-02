@@ -1,6 +1,6 @@
 # Game Haven - Complete Self-Hosted Stack
-# Includes: Frontend App + Supabase (Postgres, Auth, REST API, Realtime)
-#
+# Version: 2.3.2 - Schema Parity Audit (2026-02-02)
+# Includes: Frontend App + Supabase (Postgres, Auth, REST API, Realtime, Edge Functions)
 # Usage:
 #   1. Run ./install.sh to generate .env with your settings
 #   2. docker compose up -d

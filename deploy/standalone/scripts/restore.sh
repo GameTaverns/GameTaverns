@@ -36,7 +36,7 @@ fi
 
 echo -e "${YELLOW}Restoring from $BACKUP_FILE...${NC}"
 
-# Decompress and restore
-gunzip -c "$BACKUP_FILE" | docker exec -i gamehaven-db psql -U postgres -d postgres
+# Decompress and restore (use supabase_admin which is the default superuser)
+gunzip -c "$BACKUP_FILE" | docker exec -i gamehaven-db psql -h localhost -U supabase_admin -d postgres
 
 echo -e "${GREEN}✓${NC} Database restored successfully!"

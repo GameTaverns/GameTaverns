@@ -778,7 +778,7 @@ echo ""
 echo -e "${BOLD}━━━ Starting Application Services ━━━${NC}"
 echo ""
 
-echo -e "${CYAN}Starting auth, rest, realtime, kong, app...${NC}"
+echo -e "${CYAN}Starting auth, rest, realtime, gateway, functions, app...${NC}"
 docker compose up -d
 
 # ==========================================

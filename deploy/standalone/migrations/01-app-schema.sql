@@ -1,6 +1,7 @@
 -- ============================================
 -- Game Haven Application Schema
--- Version: 2.3.1 - User Profiles + Admin Fixes
+-- Version: 2.3.2 - Schema Parity Audit
+-- Audited: 2026-02-02
 -- Creates all tables, views, functions, and RLS policies
 -- ============================================
 -- Create extensions schema if it doesn't exist (standalone deployments)
@@ -221,8 +222,10 @@ CREATE TABLE IF NOT EXISTS public.games (
     bgg_id text,
     bgg_url text,
     slug text,
+    genre text,
     is_coming_soon boolean NOT NULL DEFAULT false,
     is_for_sale boolean NOT NULL DEFAULT false,
+    is_favorite boolean NOT NULL DEFAULT false,
     sale_price numeric,
     sale_condition public.sale_condition,
     is_expansion boolean NOT NULL DEFAULT false,
@@ -349,15 +352,16 @@ CREATE TRIGGER update_site_settings_updated_at
 -- VIEWS
 -- ==========================================
 
--- Public games view (excludes admin-only fields)
+-- Public games view (excludes admin-only fields like is_favorite)
 CREATE OR REPLACE VIEW public.games_public AS
 SELECT
     id, title, description, image_url, additional_images, youtube_videos,
     difficulty, game_type, play_time, min_players, max_players,
-    suggested_age, publisher_id, bgg_id, bgg_url, slug,
+    suggested_age, publisher_id, bgg_id, bgg_url, slug, genre,
     is_coming_soon, is_for_sale, sale_price, sale_condition,
     is_expansion, parent_game_id, sleeved, upgraded_components,
-    crowdfunded, in_base_game_box, created_at, updated_at
+    crowdfunded, in_base_game_box, inserts, location_room,
+    location_shelf, location_misc, created_at, updated_at
 FROM public.games;
 
 -- Public site settings view (for unauthenticated access)

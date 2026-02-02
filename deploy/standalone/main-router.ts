@@ -1,17 +1,39 @@
 // Self-hosted router - mounted over supabase/functions/main/index.ts at runtime
 // This file contains static imports that work in edge-runtime but would fail in Lovable Cloud bundling
+// Version: 2.3.1 - Complete function registry
 
 import bggImportHandler from "../bgg-import/index.ts";
 import bggLookupHandler from "../bgg-lookup/index.ts";
 import bulkImportHandler from "../bulk-import/index.ts";
 import condenseDescriptionsHandler from "../condense-descriptions/index.ts";
 import decryptMessagesHandler from "../decrypt-messages/index.ts";
+import discordConfigHandler from "../discord-config/index.ts";
+import discordCreateEventHandler from "../discord-create-event/index.ts";
+import discordDeleteThreadHandler from "../discord-delete-thread/index.ts";
+import discordForumPostHandler from "../discord-forum-post/index.ts";
+import discordNotifyHandler from "../discord-notify/index.ts";
+import discordOauthCallbackHandler from "../discord-oauth-callback/index.ts";
+import discordSendDmHandler from "../discord-send-dm/index.ts";
+import discordUnlinkHandler from "../discord-unlink/index.ts";
 import gameImportHandler from "../game-import/index.ts";
+import gameRecommendationsHandler from "../game-recommendations/index.ts";
 import imageProxyHandler from "../image-proxy/index.ts";
+import manageAccountHandler from "../manage-account/index.ts";
 import manageUsersHandler from "../manage-users/index.ts";
 import rateGameHandler from "../rate-game/index.ts";
+import refreshImagesHandler from "../refresh-images/index.ts";
+import resolveUsernameHandler from "../resolve-username/index.ts";
+import sendAuthEmailHandler from "../send-auth-email/index.ts";
 import sendEmailHandler from "../send-email/index.ts";
 import sendMessageHandler from "../send-message/index.ts";
+import signupHandler from "../signup/index.ts";
+import syncAchievementsHandler from "../sync-achievements/index.ts";
+import totpDisableHandler from "../totp-disable/index.ts";
+import totpSetupHandler from "../totp-setup/index.ts";
+import totpStatusHandler from "../totp-status/index.ts";
+import totpVerifyHandler from "../totp-verify/index.ts";
+import verifyEmailHandler from "../verify-email/index.ts";
+import verifyResetTokenHandler from "../verify-reset-token/index.ts";
 import wishlistHandler from "../wishlist/index.ts";
 
 const corsHeaders = {
@@ -21,18 +43,52 @@ const corsHeaders = {
 
 // Route map for self-hosted function routing
 const functionHandlers: Record<string, (req: Request) => Promise<Response>> = {
+  // BGG Import
   "bgg-import": bggImportHandler,
   "bgg-lookup": bggLookupHandler,
   "bulk-import": bulkImportHandler,
+  
+  // Game management
   "condense-descriptions": condenseDescriptionsHandler,
-  "decrypt-messages": decryptMessagesHandler,
   "game-import": gameImportHandler,
-  "image-proxy": imageProxyHandler,
-  "manage-users": manageUsersHandler,
-  "rate-game": rateGameHandler,
+  "game-recommendations": gameRecommendationsHandler,
+  "refresh-images": refreshImagesHandler,
+  
+  // Discord integration
+  "discord-config": discordConfigHandler,
+  "discord-create-event": discordCreateEventHandler,
+  "discord-delete-thread": discordDeleteThreadHandler,
+  "discord-forum-post": discordForumPostHandler,
+  "discord-notify": discordNotifyHandler,
+  "discord-oauth-callback": discordOauthCallbackHandler,
+  "discord-send-dm": discordSendDmHandler,
+  "discord-unlink": discordUnlinkHandler,
+  
+  // Messaging
+  "decrypt-messages": decryptMessagesHandler,
   "send-email": sendEmailHandler,
   "send-message": sendMessageHandler,
+  "send-auth-email": sendAuthEmailHandler,
+  
+  // User management
+  "manage-account": manageAccountHandler,
+  "manage-users": manageUsersHandler,
+  "resolve-username": resolveUsernameHandler,
+  "signup": signupHandler,
+  "verify-email": verifyEmailHandler,
+  "verify-reset-token": verifyResetTokenHandler,
+  
+  // TOTP 2FA
+  "totp-disable": totpDisableHandler,
+  "totp-setup": totpSetupHandler,
+  "totp-status": totpStatusHandler,
+  "totp-verify": totpVerifyHandler,
+  
+  // Game features
+  "image-proxy": imageProxyHandler,
+  "rate-game": rateGameHandler,
   "wishlist": wishlistHandler,
+  "sync-achievements": syncAchievementsHandler,
 };
 
 const AVAILABLE_FUNCTIONS = Object.keys(functionHandlers);
@@ -65,7 +121,11 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!functionName) {
     return new Response(
-      JSON.stringify({ error: "Function name required", available: AVAILABLE_FUNCTIONS }),
+      JSON.stringify({ 
+        error: "Function name required", 
+        available: AVAILABLE_FUNCTIONS,
+        version: "2.3.1"
+      }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -74,7 +134,11 @@ export default async function handler(req: Request): Promise<Response> {
   
   if (!fnHandler) {
     return new Response(
-      JSON.stringify({ error: `Unknown function: ${functionName}`, available: AVAILABLE_FUNCTIONS }),
+      JSON.stringify({ 
+        error: `Unknown function: ${functionName}`, 
+        available: AVAILABLE_FUNCTIONS,
+        version: "2.3.1"
+      }),
       { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
