@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { TotpSetup } from "@/components/auth/TotpSetup";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 
 /**

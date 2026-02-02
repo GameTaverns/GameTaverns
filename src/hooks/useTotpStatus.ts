@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 
 interface TotpStatus {
