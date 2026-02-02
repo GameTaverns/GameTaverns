@@ -4,8 +4,8 @@ Complete self-hosted stack using official Supabase Docker images for 1:1 feature
 
 **Domain:** `gametaverns.com` (hardcoded)  
 **Tenant Libraries:** `*.gametaverns.com` (e.g., `tzolak.gametaverns.com`)  
-**Version:** 2.3.1 - Admin Profile Fix  
-**Last Audit:** 2026-02-02
+**Version:** 2.3.2 - Schema Parity Audit  
+**Audited:** 2026-02-02
 
 ## ⚠️ Database Isolation
 

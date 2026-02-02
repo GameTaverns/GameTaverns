@@ -1,7 +1,8 @@
 #!/bin/bash
 #
 # Reset Supabase internal user passwords for Game Haven Standalone
-# Version: 2.3.1 - Gateway Container Fixes
+# Version: 2.3.2 - Schema Parity Audit
+# Audited: 2026-02-02
 # Run this after docker compose up if services can't connect to DB
 #
 

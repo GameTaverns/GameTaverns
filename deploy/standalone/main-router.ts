@@ -1,6 +1,7 @@
 // Self-hosted router - mounted over supabase/functions/main/index.ts at runtime
 // This file contains static imports that work in edge-runtime but would fail in Lovable Cloud bundling
-// Version: 2.3.1 - Complete function registry
+// Version: 2.3.2 - Schema Parity Audit
+// Audited: 2026-02-02
 
 import bggImportHandler from "../bgg-import/index.ts";
 import bggLookupHandler from "../bgg-lookup/index.ts";
@@ -124,7 +125,11 @@ export default async function handler(req: Request): Promise<Response> {
       JSON.stringify({ 
         error: "Function name required", 
         available: AVAILABLE_FUNCTIONS,
-        version: "2.3.1"
+        version: "2.3.2"
+      }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
       }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -137,8 +142,11 @@ export default async function handler(req: Request): Promise<Response> {
       JSON.stringify({ 
         error: `Unknown function: ${functionName}`, 
         available: AVAILABLE_FUNCTIONS,
-        version: "2.3.1"
+        version: "2.3.2"
       }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
       { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
