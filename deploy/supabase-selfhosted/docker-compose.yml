@@ -36,11 +36,14 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
+    # NOTE: Some upstream images don't ship with curl/wget consistently,
+    # which can make healthchecks flaky and block dependent services.
+    # Kong can start as soon as its upstream services are started.
     depends_on:
       auth:
-        condition: service_healthy
+        condition: service_started
       rest:
-        condition: service_healthy
+        condition: service_started
     networks:
       - gametaverns
 
@@ -146,7 +149,7 @@ services:
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/ready || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ready >/dev/null 2>&1 || curl -sf http://localhost:3000/ready >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 15
@@ -307,7 +310,7 @@ services:
       db:
         condition: service_healthy
       kong:
-        condition: service_healthy
+        condition: service_started
     networks:
       - gametaverns
 
@@ -363,7 +366,7 @@ services:
       meta:
         condition: service_healthy
       kong:
-        condition: service_healthy
+        condition: service_started
     networks:
       - gametaverns
 
@@ -385,7 +388,7 @@ services:
       SITE_DESCRIPTION: "${SITE_DESCRIPTION:-Browse and discover our collection of board games}"
     depends_on:
       kong:
-        condition: service_healthy
+        condition: service_started
     networks:
       - gametaverns
 
