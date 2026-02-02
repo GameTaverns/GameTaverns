@@ -148,13 +148,14 @@ else
     WARNINGS=$((WARNINGS + 1))
 fi
 
-# Get public IP
+# Get public IP (informational only - doesn't affect installation)
 PUBLIC_IP=$(curl -s --max-time 5 ifconfig.me 2>/dev/null || curl -s --max-time 5 icanhazip.com 2>/dev/null || echo "unknown")
 if [[ "$PUBLIC_IP" != "unknown" && "$PUBLIC_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     check_pass "Public IP: ${PUBLIC_IP}"
 else
-    check_warn "Could not detect public IP"
-    WARNINGS=$((WARNINGS + 1))
+    # Not a warning - just informational, doesn't affect installation
+    echo -e "${YELLOW}?${NC} Could not detect public IP (this is OK)"
+    PUBLIC_IP="(not detected)"
 fi
 
 # Check ports
@@ -183,11 +184,28 @@ fi
 if [[ $WARNINGS -gt 0 ]]; then
     echo -e "${YELLOW}Pre-flight completed with $WARNINGS warning(s).${NC}"
     echo ""
-    read -p "Continue anyway? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Cancelled."
-        exit 1
+    # Handle both interactive and piped execution (curl | bash)
+    if [[ -t 0 ]]; then
+        # Interactive terminal - ask for confirmation
+        read -p "Continue anyway? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Cancelled."
+            exit 1
+        fi
+    else
+        # Piped execution - try to read from /dev/tty, or auto-continue with notice
+        if [[ -e /dev/tty ]]; then
+            echo -n "Continue anyway? (y/n) "
+            read -n 1 -r REPLY < /dev/tty
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Cancelled."
+                exit 1
+            fi
+        else
+            echo -e "${YELLOW}Running in non-interactive mode - continuing with warnings...${NC}"
+        fi
     fi
 else
     echo -e "${GREEN}All pre-flight checks passed!${NC}"
