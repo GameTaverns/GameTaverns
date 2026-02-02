@@ -12,7 +12,8 @@
 # - PM2 process manager
 # - Nginx reverse proxy
 # - Postfix + Dovecot mail server (send & receive)
-# - SOGo webmail interface
+# - Roundcube webmail interface
+# - Cockpit server management console
 #
 
 set -eE  # Exit on error, inherit ERR trap
@@ -1139,6 +1140,18 @@ configure_api_keys() {
     fi
     echo ""
     
+    # BoardGameGeek API Token
+    echo -e "${BOLD}BoardGameGeek API Token (Collection Imports)${NC}"
+    echo "Optional token for more reliable BGG API access"
+    read -p "BGG API Token (press Enter to skip): " BGG_API_TOKEN
+    if [[ -n "$BGG_API_TOKEN" ]]; then
+        save_credential "BGG_API_TOKEN" "$BGG_API_TOKEN"
+        log_success "BGG API token configured"
+    else
+        log_info "Skipping BGG token (built-in access will be used)"
+    fi
+    echo ""
+    
     # Discord
     echo -e "${BOLD}Discord Integration (Bot Notifications)${NC}"
     echo "Create app at: https://discord.com/developers/applications"
@@ -1251,6 +1264,12 @@ PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
 
 # Get Firecrawl key: https://firecrawl.dev/
 FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+
+# ════════════════════════════════════════════════════════════════
+# BOARDGAMEGEEK API
+# ════════════════════════════════════════════════════════════════
+BGG_API_URL=https://boardgamegeek.com/xmlapi2
+BGG_API_TOKEN=${BGG_API_TOKEN:-}
 
 # ════════════════════════════════════════════════════════════════
 # DISCORD INTEGRATION
@@ -1859,9 +1878,9 @@ print_summary() {
     echo "  Login with your server's root/sudo credentials"
     echo "  Features: System monitoring, terminal, logs, services, storage"
     echo ""
-    echo -e "${BOLD}Groupware (SOGo):${NC}"
+    echo -e "${BOLD}Webmail (Roundcube):${NC}"
     echo "  URL: https://mail.${MAIL_DOMAIN}"
-    echo "  Features: Webmail, Calendar, Contacts, ActiveSync"
+    echo "  Features: Webmail, address book, filters"
     echo ""
     echo -e "${BOLD}${CYAN}═══ CREDENTIALS ═══${NC}"
     echo -e "${YELLOW}IMPORTANT: Save these credentials securely!${NC}"
@@ -1893,6 +1912,11 @@ print_summary() {
         echo -e "  ${GREEN}✓${NC} Firecrawl: Configured"
     else
         echo -e "  ${YELLOW}○${NC} Firecrawl: Not configured (optional)"
+    fi
+    if [[ -n "$BGG_API_TOKEN" ]]; then
+        echo -e "  ${GREEN}✓${NC} BoardGameGeek API: Token configured"
+    else
+        echo -e "  ${GREEN}✓${NC} BoardGameGeek API: Using built-in access"
     fi
     if [[ -n "$DISCORD_BOT_TOKEN" ]]; then
         echo -e "  ${GREEN}✓${NC} Discord: Configured"
@@ -1954,7 +1978,7 @@ main() {
     echo "  • Node.js 22 + PM2 process manager"
     echo "  • Nginx reverse proxy"
     echo "  • Postfix + Dovecot mail server"
-    echo "  • SOGo groupware (webmail, calendar, contacts)"
+    echo "  • Roundcube webmail"
     echo "  • Cockpit web console (server management GUI)"
     echo "  • GameTaverns application"
     echo ""

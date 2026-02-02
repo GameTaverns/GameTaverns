@@ -16,7 +16,7 @@ This document outlines everything needed to replicate the Lovable Cloud platform
 | **Frontend** | React SPA | Vite build → Nginx |
 | **File Storage** | Uploads (logos, etc.) | Local filesystem + Nginx |
 | **Email (Transactional)** | Verification, password reset | Postfix (localhost SMTP) |
-| **Email (Mailboxes)** | Staff accounts | Dovecot (IMAP) + SOGo (Webmail + Groupware) |
+| **Email (Mailboxes)** | Staff accounts | Dovecot (IMAP) + Roundcube (Webmail) |
 | **Reverse Proxy** | SSL, routing | Nginx |
 | **Process Manager** | Keep services running | PM2 |
 | **Server Management** | GUI dashboard | Cockpit (port 9090) |
@@ -174,14 +174,14 @@ Full PostgreSQL schema in `deploy/native/migrations/01-schema.sql`:
 - Sends verification emails, password resets, notifications
 - SPF/DKIM records for deliverability
 
-### Staff Mailboxes (Dovecot + SOGo)
+### Staff Mailboxes (Dovecot + Roundcube)
 - Virtual mailbox accounts (no system users)
 - IMAP access via any mail client
-- SOGo groupware at `mail.yourdomain.com`:
-  - Webmail with modern interface
-  - Calendar (CalDAV) with event sharing
-  - Contacts (CardDAV) address book
-  - ActiveSync for mobile devices
+- Roundcube webmail at `mail.yourdomain.com`:
+  - Modern responsive webmail interface
+  - Address book management
+  - Email filters (Sieve)
+  - Archive and search
 
 ### Recommended Accounts
 ```bash
