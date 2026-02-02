@@ -148,12 +148,11 @@ services:
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
+    # The upstream postgrest image does not reliably ship curl/wget across tags,
+    # causing false-negative healthchecks (and blocking dependent services).
+    # We treat the service as ready once the container is started.
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ready >/dev/null 2>&1 || curl -sf http://localhost:3000/ready >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-      start_period: 10s
+      disable: true
     depends_on:
       db:
         condition: service_healthy
@@ -230,7 +229,7 @@ services:
       db:
         condition: service_healthy
       rest:
-        condition: service_healthy
+        condition: service_started
     networks:
       - gametaverns
 
