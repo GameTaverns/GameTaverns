@@ -57,7 +57,6 @@ The installer handles:
 |------------|-------------|----------|
 | [supabase-selfhosted](supabase-selfhosted/) | Full Supabase stack with Docker | **Recommended** - Production |
 | [native](native/) | Direct PostgreSQL + PM2 | Minimal resources |
-| [standalone](standalone/) | Docker with MariaDB | Legacy support |
 | [multitenant](multitenant/) | Multi-tenant Docker | Service providers |
 | [cloudron](cloudron/) | Cloudron package | Cloudron users |
 

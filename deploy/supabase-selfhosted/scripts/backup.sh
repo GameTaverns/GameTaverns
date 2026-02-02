@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
 # Backup Script for GameTaverns Self-Hosted
-# Version: 2.2.0 - 5-Tier Role Hierarchy
-# Last Audit: 2026-01-31
+# Version: 2.3.2 - Schema Parity Audit
+# Audited: 2026-02-02
 # =============================================================================
 
 set -e

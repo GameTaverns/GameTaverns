@@ -11,7 +11,7 @@
 #   chmod +x bootstrap.sh
 #   sudo ./bootstrap.sh
 #
-# Version: 2.2.0
+# Version: 2.3.2 - Schema Parity Audit
 # =============================================================================
 
 set -euo pipefail

@@ -1,6 +1,6 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Database Functions & Triggers
--- Version: 2.2.0 - 5-Tier Role Hierarchy
+-- Version: 2.3.2 - Schema Parity Audit
 -- Complete 1:1 parity with Lovable Cloud schema
 -- =============================================================================
 

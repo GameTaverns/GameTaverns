@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # Update Script for GameTaverns Self-Hosted
-# Version: 2.2.0 - 5-Tier Role Hierarchy
+# Version: 2.3.2 - Schema Parity Audit
 # =============================================================================
 
 set -e

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Mail server entrypoint
-# Version: 2.1.0
+# Version: 2.3.2 - Schema Parity Audit
 
 set -e
 
