@@ -152,21 +152,241 @@ EOF
         echo ""
         echo -e "${GREEN}[OK]${NC} Wildcard certificate obtained for ${DOMAIN} and *.${DOMAIN}"
         
-        # Configure nginx to use the wildcard cert
         CERT_PATH="/etc/letsencrypt/live/${DOMAIN}"
         
-        # Update nginx SSL config if needed
-        if [[ -f /etc/nginx/sites-available/gametaverns ]]; then
-            # Check if SSL is already configured
-            if ! grep -q "ssl_certificate" /etc/nginx/sites-available/gametaverns; then
-                echo -e "${YELLOW}[INFO]${NC} Configuring nginx to use SSL certificates..."
-                # The nginx config should already have SSL blocks, just need to reload
-            fi
-        fi
+        # Create proper HTTPS nginx configuration
+        echo -e "${YELLOW}[INFO]${NC} Creating HTTPS nginx configuration..."
         
-        # Reload nginx to apply
-        nginx -t && systemctl reload nginx
-        echo -e "${GREEN}[OK]${NC} Nginx reloaded with SSL configuration"
+        # Get PHP version for Roundcube
+        PHP_VERSION=$(php -v 2>/dev/null | head -n1 | cut -d' ' -f2 | cut -d'.' -f1,2 || echo "8.3")
+        
+        # Backup existing configs
+        cp /etc/nginx/sites-available/gametaverns /etc/nginx/sites-available/gametaverns.http-backup 2>/dev/null || true
+        cp /etc/nginx/sites-available/roundcube /etc/nginx/sites-available/roundcube.http-backup 2>/dev/null || true
+        
+        # Create main gametaverns HTTPS config
+        cat > /etc/nginx/sites-available/gametaverns << NGINX_EOF
+# ════════════════════════════════════════════════════════════════
+# GameTaverns - Nginx HTTPS Configuration
+# Handles multi-tenant subdomain routing with SSL
+# Generated: $(date)
+# ════════════════════════════════════════════════════════════════
+
+# Rate limiting zones
+limit_req_zone \$binary_remote_addr zone=api_limit:10m rate=10r/s;
+limit_req_zone \$binary_remote_addr zone=login_limit:10m rate=5r/m;
+limit_req_zone \$binary_remote_addr zone=general:10m rate=30r/s;
+limit_conn_zone \$binary_remote_addr zone=conn_limit:10m;
+
+# Upstream for API
+upstream gametaverns_api {
+    server 127.0.0.1:3001;
+    keepalive 64;
+}
+
+# HTTP → HTTPS redirect (all domains except mail)
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN} *.${DOMAIN};
+    
+    # Exclude mail subdomain (handled separately)
+    if (\$host = mail.${DOMAIN}) {
+        return 444;
+    }
+    
+    return 301 https://\$host\$request_uri;
+}
+
+# Main HTTPS server (handles root and all tenant subdomains)
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${DOMAIN} *.${DOMAIN};
+    
+    # Exclude mail subdomain (handled in roundcube config)
+    if (\$host = mail.${DOMAIN}) {
+        return 444;
+    }
+
+    # SSL Configuration
+    ssl_certificate ${CERT_PATH}/fullchain.pem;
+    ssl_certificate_key ${CERT_PATH}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # Connection limits
+    limit_conn conn_limit 20;
+
+    # Logging
+    access_log /var/log/nginx/gametaverns-access.log;
+    error_log /var/log/nginx/gametaverns-error.log;
+
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
+
+    # API routes
+    location /api/ {
+        limit_req zone=api_limit burst=20 nodelay;
+        
+        proxy_pass http://gametaverns_api;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 75s;
+        
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+    }
+
+    # Rate-limited auth endpoints
+    location /api/auth/login {
+        limit_req zone=login_limit burst=3 nodelay;
+        
+        proxy_pass http://gametaverns_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location /api/auth/signup {
+        limit_req zone=login_limit burst=3 nodelay;
+        
+        proxy_pass http://gametaverns_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Health check
+    location /health {
+        proxy_pass http://gametaverns_api/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+    }
+
+    # User uploads
+    location /uploads/ {
+        alias /opt/gametaverns/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files \$uri =404;
+    }
+
+    # Static frontend files
+    location / {
+        limit_req zone=general burst=50 nodelay;
+        
+        root /opt/gametaverns/app;
+        index index.html;
+        try_files \$uri \$uri/ /index.html;
+        
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)\$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        location ~* \.html\$ {
+            expires -1;
+            add_header Cache-Control "no-store, no-cache, must-revalidate";
+        }
+    }
+}
+NGINX_EOF
+
+        # Create Roundcube HTTPS config (separate server block for mail subdomain)
+        cat > /etc/nginx/sites-available/roundcube << NGINX_EOF
+# Roundcube Webmail - HTTPS
+# HTTP redirect
+server {
+    listen 80;
+    listen [::]:80;
+    server_name mail.${DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+
+# HTTPS server
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name mail.${DOMAIN};
+
+    ssl_certificate ${CERT_PATH}/fullchain.pem;
+    ssl_certificate_key ${CERT_PATH}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    root /var/lib/roundcube/public_html;
+    index index.php;
+
+    access_log /var/log/nginx/roundcube-access.log;
+    error_log /var/log/nginx/roundcube-error.log;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location ~ \.php\$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\. { deny all; }
+    location ~ ^/(README|INSTALL|LICENSE|CHANGELOG|UPGRADING)\$ { deny all; }
+    location ~ ^/(bin|SQL|config|temp|logs)/ { deny all; }
+}
+NGINX_EOF
+
+        # Ensure symlinks exist
+        ln -sf /etc/nginx/sites-available/gametaverns /etc/nginx/sites-enabled/
+        ln -sf /etc/nginx/sites-available/roundcube /etc/nginx/sites-enabled/
+        rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+
+        # Test and reload nginx
+        if nginx -t; then
+            systemctl reload nginx
+            echo -e "${GREEN}[OK]${NC} Nginx configured with HTTPS"
+        else
+            echo -e "${RED}[ERROR]${NC} Nginx configuration test failed"
+            echo "Restoring backup..."
+            cp /etc/nginx/sites-available/gametaverns.http-backup /etc/nginx/sites-available/gametaverns 2>/dev/null || true
+            cp /etc/nginx/sites-available/roundcube.http-backup /etc/nginx/sites-available/roundcube 2>/dev/null || true
+            nginx -t && systemctl reload nginx
+            exit 1
+        fi
         
     else
         echo ""
@@ -201,18 +421,10 @@ else
     fi
 fi
 
-# Request mail subdomain certificate separately (uses HTTP challenge)
+# NOTE: Mail subdomain is already covered by the wildcard certificate *.${DOMAIN}
+# No need for a separate certificate - requesting one would overwrite nginx config
 echo ""
-echo -e "${YELLOW}[INFO]${NC} Attempting mail subdomain certificate..."
-if certbot --nginx \
-    --non-interactive \
-    --agree-tos \
-    --email "${EMAIL}" \
-    -d "mail.${DOMAIN}" 2>/dev/null; then
-    echo -e "${GREEN}[OK]${NC} Mail subdomain certificate installed"
-else
-    echo -e "${YELLOW}[WARN]${NC} Mail cert skipped (subdomain may not be configured yet)"
-fi
+echo -e "${GREEN}[OK]${NC} Mail subdomain covered by wildcard certificate (*.${DOMAIN})"
 
 # Verify auto-renewal is set up
 echo ""
