@@ -3,7 +3,7 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.3.0 - 2FA & Security Hardening
+# Version: 2.3.1 - Admin Profile Fix
 # 
 # This script handles EVERYTHING:
 #   ✓ Docker verification
@@ -686,9 +686,15 @@ if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
     if [ -n "$USER_ID" ]; then
         success "User created: $USER_ID"
         
+        # Create user profile (trigger may not have fired if auth.users was created internally)
+        docker compose exec -T db psql -U supabase_admin -d postgres -c \
+            "INSERT INTO public.user_profiles (user_id, display_name) VALUES ('$USER_ID', '$ADMIN_DISPLAY_NAME') ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;" 2>/dev/null || true
+        
+        success "User profile created"
+        
         # Add admin role
         docker compose exec -T db psql -U supabase_admin -d postgres -c \
-            "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT DO NOTHING;" 2>/dev/null || true
+            "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING;" 2>/dev/null || true
         
         success "Admin role assigned"
     else

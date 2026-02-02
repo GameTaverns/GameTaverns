@@ -2,7 +2,7 @@
 # =============================================================================
 # Create Admin User for GameTaverns
 # Domain: gametaverns.com
-# Version: 2.2.0 - 5-Tier Role Hierarchy
+# Version: 2.3.1 - Admin Profile Fix
 # Roles: admin (T1), staff (T2), owner (T3), moderator (T4), user (T5)
 # =============================================================================
 
@@ -144,6 +144,20 @@ if [ -z "$USER_ID" ]; then
 fi
 
 echo -e "${GREEN}✓ User created with ID: $USER_ID${NC}"
+
+# Create user profile (trigger may not have fired if auth.users was created internally by API)
+echo -e "${BLUE}Creating user profile...${NC}"
+
+PROFILE_CHECK=$(docker compose exec -T db psql -U supabase_admin -d postgres -tAc \
+    "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_profiles');" 2>&1)
+
+if [ "$PROFILE_CHECK" = "t" ]; then
+    docker compose exec -T db psql -U supabase_admin -d postgres -c \
+        "INSERT INTO public.user_profiles (user_id, display_name) VALUES ('$USER_ID', '$DISPLAY_NAME') ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;" 2>/dev/null || true
+    echo -e "${GREEN}✓ User profile created${NC}"
+else
+    echo -e "${YELLOW}Warning: user_profiles table does not exist yet. Run migrations first.${NC}"
+fi
 
 # Add admin role
 echo -e "${BLUE}Adding admin role...${NC}"
