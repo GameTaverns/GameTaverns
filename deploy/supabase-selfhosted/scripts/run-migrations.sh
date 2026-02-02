@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
 # Run Database Migrations for GameTaverns Self-Hosted
-# Version: 2.3.0 - With 2FA & Security Hardening
-# Last Audit: 2026-02-01
+# Version: 2.3.2 - Schema Parity Audit
+# Audited: 2026-02-02
 # =============================================================================
 
 set -e

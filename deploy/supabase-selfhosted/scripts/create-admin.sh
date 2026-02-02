@@ -2,7 +2,8 @@
 # =============================================================================
 # Create Admin User for GameTaverns
 # Domain: gametaverns.com
-# Version: 2.3.1 - Admin Profile Fix
+# Version: 2.3.2 - Schema Parity Audit
+# Audited: 2026-02-02
 # Roles: admin (T1), staff (T2), owner (T3), moderator (T4), user (T5)
 # =============================================================================
 

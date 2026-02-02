@@ -1,7 +1,9 @@
 #!/bin/bash
 # =============================================================================
 # GameTaverns Self-Hosted: Fix Database Role Passwords
-# 
+# Version: 2.3.2 - Schema Parity Audit
+# Audited: 2026-02-02
+#
 # This script sets passwords for all Supabase internal roles to match
 # POSTGRES_PASSWORD from .env. Run this if services (PostgREST, Auth, Storage)
 # fail to connect to the database with "password authentication failed" errors.

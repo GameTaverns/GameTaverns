@@ -3,7 +3,8 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.3.1 - Admin Profile Fix
+# Version: 2.3.2 - Schema Parity Audit
+# Audited: 2026-02-02
 # 
 # This script handles EVERYTHING:
 #   ✓ Docker verification

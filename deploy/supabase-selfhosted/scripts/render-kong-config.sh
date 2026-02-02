@@ -1,9 +1,14 @@
 #!/bin/bash
 # =============================================================================
 # Kong Configuration Renderer
-# Substitutes environment variables in kong.yml
-# Version: 2.2.0 - 5-Tier Role Hierarchy
-# Last Audit: 2026-01-31
+# Substitutes placeholder API keys in kong.yml
+# Version: 2.3.2 - Schema Parity Audit
+# Audited: 2026-02-02
+# =============================================================================
+# 
+# This script is generally NOT needed - install.sh directly substitutes the
+# placeholders in kong.yml. This utility is for manually re-rendering the
+# config after key rotation.
 # =============================================================================
 
 set -e
@@ -17,9 +22,19 @@ fi
 
 source "$INSTALL_DIR/.env"
 
-# Substitute variables in kong.yml
-sed -e "s|{{ANON_KEY}}|${ANON_KEY}|g" \
-    -e "s|{{SERVICE_ROLE_KEY}}|${SERVICE_ROLE_KEY}|g" \
-    "$INSTALL_DIR/kong.yml.template" > "$INSTALL_DIR/kong.yml"
+if [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ]; then
+    echo "Error: ANON_KEY or SERVICE_ROLE_KEY not set in .env"
+    exit 1
+fi
+
+# Substitute placeholder keys in kong.yml (matches install.sh format)
+# install.sh uses ANON_KEY_PLACEHOLDER and SERVICE_ROLE_KEY_PLACEHOLDER
+sed -i \
+    -e "s|ANON_KEY_PLACEHOLDER|${ANON_KEY}|g" \
+    -e "s|SERVICE_ROLE_KEY_PLACEHOLDER|${SERVICE_ROLE_KEY}|g" \
+    "$INSTALL_DIR/kong.yml"
 
 echo "Kong configuration rendered with API keys"
+echo ""
+echo "Verify keys were substituted:"
+echo "  grep -q 'PLACEHOLDER' $INSTALL_DIR/kong.yml && echo 'KEYS NOT SET' || echo 'Keys configured'"
