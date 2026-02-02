@@ -422,7 +422,7 @@ services:
   # Lightweight webmail client for email access
   # ===========================================
   roundcube:
-    image: roundcube/roundcubemail:1.6-apache
+    image: roundcube/roundcubemail:1.6.9-apache
     container_name: gametaverns-roundcube
     restart: unless-stopped
     ports:
