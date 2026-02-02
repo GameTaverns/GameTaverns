@@ -95,18 +95,19 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     const siteKey = useTurnstileSiteKey();
     const settingsLoaded = useSiteSettingsLoaded();
 
-    // Safety timeout: if settings haven't loaded in 5 seconds, bypass
+    // Safety timeout: if settings haven't loaded, show an error.
+    // IMPORTANT: Never bypass Turnstile on real deployments.
     useEffect(() => {
       if (settingsLoaded || bypassReason) return;
       
       const timeout = setTimeout(() => {
         if (!settingsLoaded && !bypassReason) {
-          console.warn('[TurnstileWidget] Settings timeout - bypassing verification');
-          setBypassReason("settings timeout");
+          console.warn('[TurnstileWidget] Settings timeout - cannot load verification config');
+          setHasError(true);
           setIsLoading(false);
-          onVerify("TURNSTILE_BYPASS_TOKEN");
+          onError?.();
         }
-      }, 5000);
+      }, 8000);
       
       return () => clearTimeout(timeout);
     }, [settingsLoaded, bypassReason, onVerify]);
@@ -126,18 +127,18 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       // Don't make other bypass decisions until settings are loaded
       if (!settingsLoaded) return;
       
-      // If no site key is configured after settings loaded, bypass
+      // If no site key is configured after settings loaded, do NOT bypass.
       if (!siteKey) {
         setBypassReason("no site key configured");
+        setHasError(true);
         setIsLoading(false);
-        const timer = setTimeout(() => {
-          onVerify("TURNSTILE_BYPASS_TOKEN");
-        }, 300);
-        return () => clearTimeout(timer);
+        onError?.();
+        return;
       }
       
       // Site key exists - proceed with real Turnstile
       setBypassReason(null);
+      setHasError(false);
     }, [settingsLoaded, siteKey, onVerify]);
 
     const handleVerify = useCallback((token: string) => {
@@ -220,14 +221,28 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       );
     }
 
-    // Bypass mode: show a simple indicator
-    if (bypassReason) {
+    // Preview bypass: show a simple indicator
+    if (bypassReason === "preview mode") {
       return (
         <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
           <CheckCircle2 className="h-4 w-4 text-primary" />
           <span className="text-sm text-muted-foreground">
             Verification bypassed ({bypassReason})
           </span>
+        </div>
+      );
+    }
+
+    // Missing key or settings issue
+    if (hasError && !isLoading) {
+      return (
+        <div className="w-full">
+          <div className="w-[300px] mx-auto">
+            <Skeleton className="h-[65px] rounded" />
+            <p className="mt-2 text-xs text-muted-foreground text-center">
+              Verification is not available right now. Please try again shortly.
+            </p>
+          </div>
         </div>
       );
     }
