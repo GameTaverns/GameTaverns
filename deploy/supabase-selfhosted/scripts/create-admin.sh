@@ -92,8 +92,12 @@ while [ "$AUTH_READY" = "false" ]; do
         exit 1
     fi
     
-    # Try the health endpoint first (simpler)
-    if curl -sf "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; then
+# Try the health endpoint first (requires apikey header)
+    # GoTrue /auth/v1/health expects an API key header; without it you'll get
+    # {"message":"No API key found in request"} and this loop will never succeed.
+    if curl -sf \
+        -H "apikey: ${ANON_KEY}" \
+        "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; then
         AUTH_READY=true
     else
         echo "  Waiting for auth service... ($RETRY_COUNT/$MAX_RETRIES)"
