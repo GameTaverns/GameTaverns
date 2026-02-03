@@ -4,7 +4,7 @@ Complete self-hosted stack using official Supabase Docker images for 1:1 feature
 
 **Domain:** `gametaverns.com` (hardcoded)  
 **Tenant Libraries:** `*.gametaverns.com` (e.g., `tzolak.gametaverns.com`)  
-**Version:** 2.3.3 - Mailcow Integration  
+**Version:** 2.7.1 - Connection Fix Edition  
 **Audited:** 2026-02-03
 
 ---
@@ -20,6 +20,8 @@ This guide incorporates all lessons learned and prevents common issues like:
 - Docker network subnet overlaps
 - Nginx routing misconfigurations
 - JWT key signing problems
+- **Frontend/API connection issues** (API_EXTERNAL_URL misconfiguration)
+- **Self-hosted mode detection** (SELF_HOSTED flag confusion)
 
 ---
 
@@ -122,19 +124,24 @@ docker compose restart functions
 
 ## Architecture
 
+**Same-Origin API Routing** (no CORS issues):
+- Frontend at `https://gametaverns.com`
+- API at `https://gametaverns.com/auth/`, `/rest/`, `/functions/`, `/storage/`
+- Host Nginx proxies these paths to Kong gateway (port 8000)
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         Nginx (443/80)                       │
-│                    SSL + Subdomain Routing                   │
+│                     Host Nginx (443/80)                      │
+│           SSL Termination + Path-Based Routing               │
+├─────────────────────────────────────────────────────────────┤
+│  /auth/*     → Kong:8000 → GoTrue (Auth)                     │
+│  /rest/*     → Kong:8000 → PostgREST (Database)              │
+│  /functions/* → Kong:8000 → Edge-Runtime (Deno)              │
+│  /storage/*  → Kong:8000 → Storage-API                       │
+│  /           → Frontend:3000 (React SPA)                     │
+│  studio.*    → Studio:3001 (Database Admin)                  │
+│  mail.*      → Mailcow:8443 (Webmail)                        │
 └─────────────────────────────────────────────────────────────┘
-                              │
-         ┌────────────────────┼────────────────────┐
-         ▼                    ▼                    ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│   Frontend      │  │   Kong Gateway  │  │   Roundcube     │
-│   (Static)      │  │   (Port 8000)   │  │   Webmail       │
-│   Port 3000     │  │                 │  │   Port 9001     │
-└─────────────────┘  └────────┬────────┘  └─────────────────┘
                               │
     ┌──────────┬──────────┬───┴───┬──────────┬──────────┐
     ▼          ▼          ▼       ▼          ▼          ▼
@@ -150,6 +157,10 @@ docker compose restart functions
                     │     (Port 5432)     │
                     └─────────────────────┘
 ```
+
+**Key Configuration:**
+- `API_EXTERNAL_URL = https://gametaverns.com` (same as SITE_URL)
+- `SELF_HOSTED: false` in runtime-config.js (uses Supabase client, not Express API)
 
 ## Services
 

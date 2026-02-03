@@ -1,8 +1,14 @@
 # GameTaverns - Self-Hosted Supabase Stack
 # Based on official Supabase self-hosted configuration
 # https://supabase.com/docs/guides/self-hosting/docker
-# Version: 2.3.2 - Schema Parity Audit
-# Audited: 2026-02-02
+# Version: 2.7.1 - Connection Fix Edition
+# Audited: 2026-02-03
+#
+# ARCHITECTURE:
+#   - Host Nginx terminates SSL and routes traffic
+#   - API paths (/auth/, /rest/, /functions/, /storage/) go to Kong (port 8000)
+#   - Frontend accesses Supabase via same-origin (no CORS issues)
+#   - API_EXTERNAL_URL == SITE_URL for same-origin routing
 #
 # Usage:
 #   1. Run ./install.sh to generate .env
@@ -381,10 +387,14 @@ services:
     ports:
       - "${APP_PORT:-3000}:80"
     environment:
+      # CRITICAL: SUPABASE_URL must match the main domain for same-origin API access
+      # Frontend will access /auth/, /rest/, /functions/ on this URL
+      # Host Nginx proxies these paths to Kong (port 8000)
       SUPABASE_URL: "${API_EXTERNAL_URL}"
       SUPABASE_ANON_KEY: "${ANON_KEY}"
       SITE_NAME: "${SITE_NAME:-GameTaverns}"
       SITE_DESCRIPTION: "${SITE_DESCRIPTION:-Browse and discover our collection of board games}"
+      SITE_URL: "${SITE_URL}"
     depends_on:
       kong:
         condition: service_started
