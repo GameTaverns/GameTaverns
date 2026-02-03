@@ -293,10 +293,12 @@ for domain in $CERT_DOMAINS; do
     log_cleaned "SSL cert: $domain"
 done
 
-# Also check for wildcard certs
-for cert_dir in /etc/letsencrypt/live/*gametaverns* /etc/letsencrypt/archive/*gametaverns* 2>/dev/null; do
-    [ -d "$cert_dir" ] && rm -rf "$cert_dir" 2>/dev/null || true
+# Also check for wildcard certs (avoid bash syntax errors when globs don't match)
+shopt -s nullglob
+for cert_dir in /etc/letsencrypt/live/*gametaverns* /etc/letsencrypt/archive/*gametaverns*; do
+    rm -rf "$cert_dir" 2>/dev/null || true
 done
+shopt -u nullglob
 
 echo -e "${GREEN}✓ SSL certificates removed${NC}"
 
