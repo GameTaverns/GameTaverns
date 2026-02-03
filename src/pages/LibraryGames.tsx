@@ -60,20 +60,21 @@ export default function LibraryGames() {
       }
 
       // Cloud mode: use Supabase Edge Function
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-      
-      if (!token) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to refresh images",
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Process in batches until no more remaining
       while (remaining > 0) {
+        // Refresh session on each iteration to prevent JWT expiration during long operations
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        
+        if (!token) {
+          toast({
+            title: "Authentication required",
+            description: "Please log in to refresh images",
+            variant: "destructive",
+          });
+          return;
+        }
+
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refresh-images`,
           {
