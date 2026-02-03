@@ -1,14 +1,24 @@
 #!/bin/bash
 # =============================================================================
 # Update Script for GameTaverns Self-Hosted
-# Version: 2.3.2 - Schema Parity Audit
+# Version: 2.7.4 - Single .env Edition
+# Audited: 2026-02-03
 # =============================================================================
 
 set -e
 
+# ===========================================
+# Configuration - SINGLE .ENV ARCHITECTURE
+# ===========================================
 INSTALL_DIR="/opt/gametaverns"
+COMPOSE_FILE="$INSTALL_DIR/deploy/supabase-selfhosted/docker-compose.yml"
+ENV_FILE="$INSTALL_DIR/.env"
 BACKUP_BEFORE_UPDATE=true
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Helper function: Run docker compose with explicit paths
+dcp() {
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -29,8 +39,8 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Verify installation directory
-if [ ! -f "$INSTALL_DIR/.env" ]; then
-    echo -e "${RED}Error: .env file not found at $INSTALL_DIR${NC}"
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "${RED}Error: .env file not found at $ENV_FILE${NC}"
     exit 1
 fi
 
@@ -39,8 +49,8 @@ cd "$INSTALL_DIR"
 # Create backup first
 if [ "$BACKUP_BEFORE_UPDATE" = true ]; then
     echo "Creating backup before update..."
-    if [ -f "$INSTALL_DIR/scripts/backup.sh" ]; then
-        bash "$INSTALL_DIR/scripts/backup.sh" || echo -e "${YELLOW}Warning: Backup failed, continuing anyway${NC}"
+    if [ -f "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/backup.sh" ]; then
+        bash "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/backup.sh" || echo -e "${YELLOW}Warning: Backup failed, continuing anyway${NC}"
     fi
 fi
 
@@ -74,17 +84,17 @@ fi
 
 echo ""
 echo "Rebuilding frontend container..."
-docker compose build --no-cache app
+dcp build --no-cache app
 
 echo ""
 echo "Applying database migrations..."
-if [ -f "$INSTALL_DIR/scripts/run-migrations.sh" ]; then
-    bash "$INSTALL_DIR/scripts/run-migrations.sh" || echo -e "${YELLOW}Migration warnings (often OK)${NC}"
+if [ -f "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/run-migrations.sh" ]; then
+    bash "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/run-migrations.sh" || echo -e "${YELLOW}Migration warnings (often OK)${NC}"
 fi
 
 echo ""
 echo "Restarting services..."
-docker compose up -d
+dcp up -d
 
 # Wait for services to stabilize
 echo ""
@@ -98,7 +108,7 @@ echo -e "${GREEN}  Update Complete!${NC}"
 echo "=============================================="
 echo ""
 echo "Service Status:"
-docker compose ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || docker compose ps
+dcp ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || dcp ps
 echo ""
-echo "Check logs: docker compose logs -f"
+echo "Check logs: source $INSTALL_DIR/deploy/supabase-selfhosted/scripts/compose.sh && gt_logs"
 echo ""

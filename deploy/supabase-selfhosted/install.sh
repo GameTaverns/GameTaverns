@@ -3,17 +3,24 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.7.3 - Correct Install Order Edition
+# Version: 2.7.4 - Single .env Edition
 # Audited: 2026-02-03
 # 
 # ISSUES ADDRESSED IN THIS VERSION:
-#   1. Config collection order - Admin/API keys collected AFTER services running
-#   2. Database/admin/user setup order - DB fully ready before admin creation
-#   3. Turnstile setup not holding - Key inserted into database
-#   4. SSL cert conflicts - Mail uses wildcard, not Mailcow internal certs
-#   5. Self-hosted flag issues - Frontend properly configured for Supabase mode
-#   6. Database to frontend linkage - Proper API URL injection
-#   7. Connection issues - API_EXTERNAL_URL == SITE_URL for same-origin routing
+#   1. SINGLE .ENV FILE - All config in /opt/gametaverns/.env ONLY
+#   2. Config collection order - Admin/API keys collected AFTER services running
+#   3. Database/admin/user setup order - DB fully ready before admin creation
+#   4. Turnstile setup not holding - Key inserted into database
+#   5. SSL cert conflicts - Mail uses wildcard, not Mailcow internal certs
+#   6. Self-hosted flag issues - Frontend properly configured for Supabase mode
+#   7. Database to frontend linkage - Proper API URL injection
+#   8. Connection issues - API_EXTERNAL_URL == SITE_URL for same-origin routing
+#
+# SINGLE .ENV ARCHITECTURE (CRITICAL):
+#   - /opt/gametaverns/.env is the ONLY configuration file
+#   - ALL docker compose commands use --env-file /opt/gametaverns/.env explicitly
+#   - NEVER copy .env to deploy/supabase-selfhosted/ (causes sync issues)
+#   - kong.yml uses placeholders rendered ONCE at install time
 #
 # ARCHITECTURE:
 #   - Host Nginx terminates SSL and routes traffic
@@ -55,9 +62,17 @@
 set -euo pipefail
 
 # ===========================================
-# Configuration
+# Configuration - SINGLE .ENV ARCHITECTURE
 # ===========================================
 INSTALL_DIR="/opt/gametaverns"
+COMPOSE_FILE="$INSTALL_DIR/deploy/supabase-selfhosted/docker-compose.yml"
+ENV_FILE="$INSTALL_DIR/.env"
+
+# Helper function: Run docker compose with explicit paths
+# This ensures we ALWAYS use the single .env file, regardless of CWD
+dcp() {
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="/var/log/gametaverns-install.log"
 CREDS_FILE="/root/gametaverns-credentials.txt"
@@ -503,8 +518,8 @@ success "Configuration files generated"
 # ===========================================
 step "5/14" "Pulling Docker Images"
 
-cd "$INSTALL_DIR"
-docker compose pull 2>&1 | tee -a "$LOG_FILE"
+# NOTE: dcp() requires ENV_FILE to exist, but we just created it above
+dcp pull 2>&1 | tee -a "$LOG_FILE"
 
 success "Docker images pulled"
 
@@ -513,7 +528,7 @@ success "Docker images pulled"
 # ===========================================
 step "6/14" "Building Frontend"
 
-docker compose build app 2>&1 | tee -a "$LOG_FILE"
+dcp build app 2>&1 | tee -a "$LOG_FILE"
 
 success "Frontend built"
 
@@ -523,20 +538,20 @@ success "Frontend built"
 step "7/14" "Starting Database & Initializing Schema"
 
 # CRITICAL: Stop any existing containers to ensure clean state
-docker compose down 2>/dev/null || true
+dcp down 2>/dev/null || true
 
 # CRITICAL: Start ONLY the database first to run all setup before other services connect
-docker compose up -d db 2>&1 | tee -a "$LOG_FILE"
+dcp up -d db 2>&1 | tee -a "$LOG_FILE"
 
 # Wait for database to be ready using postgres user (always exists)
 info "Waiting for PostgreSQL to be ready..."
 MAX_RETRIES=60
 RETRY_COUNT=0
 
-while ! docker compose exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; do
+while ! dcp exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        error "Database failed to start. Check: docker compose logs db"
+        error "Database failed to start. Check: dcp logs db"
     fi
     echo "  Waiting for database... ($RETRY_COUNT/$MAX_RETRIES)"
     sleep 3
@@ -559,7 +574,7 @@ ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 # The POSTGRES_PASSWORD env var sets this user's password
 # Then we create/update supabase_admin and other roles
 set +e
-ROLE_OUTPUT=$(docker compose exec -T db psql -U postgres -d postgres 2>&1 << EOSQL
+ROLE_OUTPUT=$(dcp exec -T db psql -U postgres -d postgres 2>&1 << EOSQL
 -- =====================================================
 -- CRITICAL: Create ALL roles before any service connects
 -- Version: 2.7.3 - Connect as postgres superuser
@@ -645,7 +660,7 @@ set +e
 # IMPORTANT: Use 'postgres' for bootstrap operations.
 # Running `psql -U supabase_admin` here can fail because the container has no TTY
 # to prompt for a password, and PGPASSWORD is not set.
-SCHEMA_OUTPUT=$(docker compose exec -T db psql -U postgres -d postgres 2>&1 << 'EOSQL'
+SCHEMA_OUTPUT=$(dcp exec -T db psql -U postgres -d postgres 2>&1 << 'EOSQL'
 -- =====================================================
 -- Create schemas BEFORE services start
 -- Version: 2.7.1 - Error-visible schema setup
@@ -751,7 +766,7 @@ MIGRATION_FILES=(
 for migration in "${MIGRATION_FILES[@]}"; do
     if [ -f "$INSTALL_DIR/migrations/$migration" ]; then
         echo -n "  $migration ... "
-        if docker compose exec -T db psql -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" >> "$LOG_FILE" 2>&1; then
+        if dcp exec -T db psql -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" >> "$LOG_FILE" 2>&1; then
             echo -e "${GREEN}✓${NC}"
         else
             echo -e "${YELLOW}⚠${NC}"
@@ -767,7 +782,7 @@ success "Database migrations complete"
 info "Granting table permissions..."
 
 set +e
-PERMS_OUTPUT=$(docker compose exec -T db psql -U postgres -d postgres 2>&1 << 'EOSQL'
+PERMS_OUTPUT=$(dcp exec -T db psql -U postgres -d postgres 2>&1 << 'EOSQL'
 -- Grant permissions on all public tables
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
@@ -807,7 +822,7 @@ fi
 step "9/15" "Starting Remaining Services"
 
 info "Database is fully initialized. Starting remaining services..."
-docker compose up -d 2>&1 | tee -a "$LOG_FILE"
+dcp up -d 2>&1 | tee -a "$LOG_FILE"
 
 # Wait for auth service to be healthy
 info "Waiting for auth service to initialize..."
@@ -1239,13 +1254,13 @@ if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
                 success "User created: $USER_ID"
                 
                 # CRITICAL: Create user profile FIRST (required for admin panel access)
-                docker compose exec -T db psql -U postgres -d postgres -c \
+                dcp exec -T db psql -U postgres -d postgres -c \
                     "INSERT INTO public.user_profiles (user_id, display_name) VALUES ('$USER_ID', '$ADMIN_DISPLAY_NAME') ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;" 2>/dev/null || true
                 
                 success "User profile created"
                 
                 # Add admin role (MUST be after profile creation)
-                docker compose exec -T db psql -U postgres -d postgres -c \
+                dcp exec -T db psql -U postgres -d postgres -c \
                     "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING;" 2>/dev/null || true
                 
                 success "Admin role assigned"
@@ -1263,7 +1278,7 @@ fi
 # ===========================================
 info "Securing database admin roles..."
 
-docker compose exec -T db psql -U postgres -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
+dcp exec -T db psql -U postgres -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
 -- =====================================================
 -- SECURITY: Ensure proper role hierarchy and permissions
 -- This prevents privilege escalation attacks
@@ -1380,7 +1395,7 @@ if [ -n "$TURNSTILE_SITE_KEY" ]; then
     info "Inserting Turnstile site key into database..."
     ESCAPED_TURNSTILE_KEY=$(printf '%s' "$TURNSTILE_SITE_KEY" | sed "s/'/''/g")
     
-    docker compose exec -T db psql -U postgres -d postgres << EOSQL >> "$LOG_FILE" 2>&1
+    dcp exec -T db psql -U postgres -d postgres << EOSQL >> "$LOG_FILE" 2>&1
 -- Insert Turnstile site key into site_settings
 INSERT INTO public.site_settings (key, value)
 VALUES ('turnstile_site_key', '${ESCAPED_TURNSTILE_KEY}')
@@ -1395,7 +1410,7 @@ fi
 # Restart edge-runtime to pick up new API keys
 if [ -n "$PERPLEXITY_API_KEY" ] || [ -n "$FIRECRAWL_API_KEY" ] || [ -n "$DISCORD_BOT_TOKEN" ]; then
     info "Restarting edge functions to apply API keys..."
-    docker compose restart edge-runtime 2>/dev/null || true
+    dcp restart functions 2>/dev/null || true
     sleep 5
 fi
 
@@ -1440,12 +1455,12 @@ if [ "$MAILCOW_INSTALLED" = "yes" ]; then
         
         # Restart auth to pick up new SMTP settings
         info "Restarting auth service to apply email settings..."
-        docker compose restart auth 2>/dev/null || true
+        dcp restart auth 2>/dev/null || true
         sleep 5
         success "Auth service restarted"
     else
         info "You can configure email later by editing $INSTALL_DIR/.env"
-        info "After editing, run: cd $INSTALL_DIR && docker compose restart auth"
+        info "After editing, run: dcp restart auth (or use the compose wrapper)"
     fi
 else
     echo ""
@@ -1474,7 +1489,7 @@ info "Running health checks..."
 HEALTH_ISSUES=0
 
 # Check database
-if docker compose exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; then
+if dcp exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; then
     echo -e "  ${GREEN}✓${NC} Database is healthy"
 else
     echo -e "  ${RED}✗${NC} Database not responding"
@@ -1521,7 +1536,7 @@ else
 fi
 
 # Verify admin user exists
-ADMIN_CHECK=$(docker compose exec -T db psql -U postgres -d postgres -t -c \
+ADMIN_CHECK=$(dcp exec -T db psql -U postgres -d postgres -t -c \
     "SELECT COUNT(*) FROM public.user_roles WHERE role = 'admin';" 2>/dev/null | tr -d ' ')
 
 if [ "$ADMIN_CHECK" -gt 0 ] 2>/dev/null; then
@@ -1531,7 +1546,7 @@ else
 fi
 
 # Check Turnstile key in database
-TURNSTILE_CHECK=$(docker compose exec -T db psql -U postgres -d postgres -t -c \
+TURNSTILE_CHECK=$(dcp exec -T db psql -U postgres -d postgres -t -c \
     "SELECT value FROM public.site_settings WHERE key = 'turnstile_site_key';" 2>/dev/null | tr -d ' ')
 
 if [ -n "$TURNSTILE_CHECK" ]; then
@@ -1545,7 +1560,7 @@ echo ""
 if [ $HEALTH_ISSUES -eq 0 ]; then
     success "All health checks passed!"
 else
-    warn "$HEALTH_ISSUES health check(s) failed. Check logs: docker compose logs"
+    warn "$HEALTH_ISSUES health check(s) failed. Check logs: dcp logs"
 fi
 
 # ===========================================
@@ -1579,10 +1594,10 @@ echo -e "${BLUE}API Keys Status:${NC}"
 echo ""
 echo -e "${BLUE}Credentials saved to:${NC} $CREDS_FILE"
 echo ""
-echo -e "${BLUE}Useful commands:${NC}"
-echo "  View logs:     cd $INSTALL_DIR && docker compose logs -f"
-echo "  Check status:  cd $INSTALL_DIR && docker compose ps"
-echo "  Restart:       cd $INSTALL_DIR && docker compose restart"
+echo -e "${BLUE}Useful commands (use dcp wrapper for correct env):${NC}"
+echo "  View logs:     source $INSTALL_DIR/deploy/supabase-selfhosted/scripts/compose.sh && gt_logs"
+echo "  Check status:  source $INSTALL_DIR/deploy/supabase-selfhosted/scripts/compose.sh && gt_ps"
+echo "  Restart:       source $INSTALL_DIR/deploy/supabase-selfhosted/scripts/compose.sh && gt_restart"
 echo "  Backup:        $INSTALL_DIR/scripts/backup.sh"
 echo ""
 echo -e "${YELLOW}Security Notes:${NC}"
