@@ -418,6 +418,274 @@ async function handleTotpDisable(req: Request): Promise<Response> {
 }
 
 // ============================================================================
+// MANAGE-USERS HANDLER (Admin user management)
+// ============================================================================
+async function handleManageUsers(req: Request): Promise<Response> {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if user is admin
+    const { data: isAdmin, error: roleError } = await userClient.rpc("has_role", {
+      _user_id: user.id,
+      _role: "admin",
+    });
+
+    if (roleError || !isAdmin) {
+      return new Response(
+        JSON.stringify({ error: "Only admins can manage users" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const { action, email, password, role, userId, duration, reason } = body;
+    
+    if (!action) {
+      return new Response(
+        JSON.stringify({ error: "Missing 'action' field in request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    switch (action) {
+      case "create": {
+        if (!email || !password) {
+          return new Response(
+            JSON.stringify({ error: "Email and password are required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+        });
+
+        if (createError) {
+          return new Response(
+            JSON.stringify({ error: createError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (role && role !== "user" && newUser.user) {
+          await adminClient.from("user_roles").insert({ user_id: newUser.user.id, role });
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, user: { id: newUser.user?.id, email: newUser.user?.email } }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "delete": {
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: "User ID is required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (userId === user.id) {
+          return new Response(
+            JSON.stringify({ error: "Cannot delete your own account" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await adminClient.from("user_roles").delete().eq("user_id", userId);
+        const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+
+        if (deleteError) {
+          return new Response(
+            JSON.stringify({ error: deleteError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "list": {
+        const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
+
+        if (listError) {
+          return new Response(
+            JSON.stringify({ error: listError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: roles } = await adminClient.from("user_roles").select("user_id, role");
+        const { data: profiles } = await adminClient.from("user_profiles").select("user_id, display_name, username");
+        const { data: libraryOwners } = await adminClient.from("libraries").select("owner_id");
+        const libraryOwnerSet = new Set(libraryOwners?.map((l) => l.owner_id) || []);
+
+        const { data: libraryModerators } = await adminClient
+          .from("library_members")
+          .select("user_id")
+          .eq("role", "moderator");
+        const libraryModeratorSet = new Set(libraryModerators?.map((m) => m.user_id) || []);
+
+        const roleMap = new Map(roles?.map((r) => [r.user_id, r.role]) || []);
+        const profileMap = new Map(profiles?.map((p) => [p.user_id, { display_name: p.display_name, username: p.username }]) || []);
+        
+        const usersWithRoles = users.map((u) => {
+          let effectiveRole = roleMap.get(u.id) || null;
+          if (!effectiveRole && libraryOwnerSet.has(u.id)) {
+            effectiveRole = "owner";
+          } else if (!effectiveRole && libraryModeratorSet.has(u.id)) {
+            effectiveRole = "moderator";
+          }
+          
+          return {
+            id: u.id,
+            email: u.email,
+            created_at: u.created_at,
+            last_sign_in_at: u.last_sign_in_at,
+            role: effectiveRole,
+            display_name: profileMap.get(u.id)?.display_name || null,
+            username: profileMap.get(u.id)?.username || null,
+            is_banned: u.banned_until ? new Date(u.banned_until) > new Date() : false,
+            banned_until: u.banned_until,
+            is_library_owner: libraryOwnerSet.has(u.id),
+            is_library_moderator: libraryModeratorSet.has(u.id),
+          };
+        });
+
+        return new Response(
+          JSON.stringify({ users: usersWithRoles }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "suspend": {
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: "User ID is required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (userId === user.id) {
+          return new Response(
+            JSON.stringify({ error: "Cannot suspend your own account" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        let banDuration: string;
+        if (duration === "permanent") {
+          banDuration = "876000h";
+        } else if (duration === "7d") {
+          banDuration = "168h";
+        } else if (duration === "30d") {
+          banDuration = "720h";
+        } else if (duration === "90d") {
+          banDuration = "2160h";
+        } else {
+          banDuration = "168h";
+        }
+
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
+          ban_duration: banDuration,
+          user_metadata: reason ? { suspension_reason: reason } : undefined,
+        });
+
+        if (updateError) {
+          return new Response(
+            JSON.stringify({ error: updateError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "unsuspend": {
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: "User ID is required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { error: updateError } = await adminClient.auth.admin.updateUserById(userId, {
+          ban_duration: "none",
+        });
+
+        if (updateError) {
+          return new Response(
+            JSON.stringify({ error: updateError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      default:
+        return new Response(
+          JSON.stringify({ error: "Invalid action" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+    }
+  } catch (error: unknown) {
+    console.error("Error in manage-users:", error);
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ============================================================================
 // MAIN ROUTER
 // ============================================================================
 const AVAILABLE_FUNCTIONS = [
@@ -440,7 +708,7 @@ Deno.serve(async (req) => {
   const pathParts = url.pathname.split("/").filter(Boolean);
   const functionName = pathParts[0];
 
-  // Route TOTP functions (inlined)
+  // Route inlined functions
   if (functionName === "totp-status") {
     return handleTotpStatus(req);
   }
@@ -453,14 +721,17 @@ Deno.serve(async (req) => {
   if (functionName === "totp-disable") {
     return handleTotpDisable(req);
   }
+  if (functionName === "manage-users") {
+    return handleManageUsers(req);
+  }
 
   // For other functions, return info (they need to be accessed via Lovable Cloud or added here)
   if (!functionName || functionName === "main") {
     return new Response(
       JSON.stringify({
         message: "Edge function router (self-hosted)",
-        note: "TOTP functions are inlined. Other functions require Lovable Cloud or must be added to this router.",
-        inlined: ["totp-status", "totp-setup", "totp-verify", "totp-disable"],
+        note: "Some functions are inlined for self-hosted. Others require Lovable Cloud or must be added to this router.",
+        inlined: ["totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users"],
         available: AVAILABLE_FUNCTIONS,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
