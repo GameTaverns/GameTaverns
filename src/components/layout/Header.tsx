@@ -9,6 +9,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useLibrary";
 import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
+import { isProductionDeployment } from "@/config/runtime";
 // Social media icons as inline SVGs for consistency with site styling
 const TwitterIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -187,8 +188,8 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
               <span className="hidden sm:inline">{profile?.display_name || (user as any)?.user_metadata?.display_name}</span>
             </span>
           )}
-          {/* Only show Demo link if demo mode is enabled and we're not already in demo */}
-          {demoModeEnabled && !isDemoMode && (
+          {/* Only show Demo link if demo mode is enabled, not in production, and not already in demo */}
+          {demoModeEnabled && !isDemoMode && !isProductionDeployment() && (
             <Link to="/?demo=true" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
               Demo
             </Link>
