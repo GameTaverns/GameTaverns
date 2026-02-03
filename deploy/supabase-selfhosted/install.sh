@@ -3,7 +3,7 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.7.5 - Kong Key Verification Edition
+# Version: 2.7.6 - Lovable Cloud .env Isolation Edition
 # Audited: 2026-02-03
 # 
 # ISSUES ADDRESSED IN THIS VERSION:
@@ -15,7 +15,8 @@
 #   6. Self-hosted flag issues - Frontend properly configured for Supabase mode
 #   7. Database to frontend linkage - Proper API URL injection
 #   8. Connection issues - API_EXTERNAL_URL == SITE_URL for same-origin routing
-#   9. **NEW** Kong key caching - Verify Kong has fresh keys before admin creation
+#   9. Kong key caching - Verify Kong has fresh keys before admin creation
+#  10. **NEW** Lovable Cloud .env isolation - Detects and removes cloud .env before install
 #
 # SINGLE .ENV ARCHITECTURE (CRITICAL):
 #   - /opt/gametaverns/.env is the ONLY configuration file
@@ -122,6 +123,25 @@ fi
 # Ensure script is run from correct location
 if [[ ! -f "$SCRIPT_DIR/docker-compose.yml" ]]; then
     error "This script must be run from the deploy/supabase-selfhosted directory"
+fi
+
+# ===========================================
+# CRITICAL: Clean up Lovable Cloud .env if present
+# The git repo may contain a .env with Lovable Cloud config (VITE_SUPABASE_*)
+# This MUST be removed before generating self-hosted config
+# ===========================================
+if [ -f "$INSTALL_DIR/.env" ]; then
+    if grep -q "VITE_SUPABASE_PROJECT_ID" "$INSTALL_DIR/.env" 2>/dev/null; then
+        warn "Found Lovable Cloud .env - removing (self-hosted uses different config)"
+        rm -f "$INSTALL_DIR/.env"
+    fi
+fi
+
+# Prevent git from ever overwriting our generated .env
+if [ -d "$INSTALL_DIR/.git" ]; then
+    cd "$INSTALL_DIR"
+    git update-index --skip-worktree .env 2>/dev/null || true
+    cd "$SCRIPT_DIR"
 fi
 
 # Check Docker
