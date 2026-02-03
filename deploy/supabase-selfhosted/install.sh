@@ -3,33 +3,36 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.5.0 - Fixed Order of Operations (DB First, then Services)
+# Version: 2.7.0 - Complete Deployment Sweep Edition
 # Audited: 2026-02-03
 # 
+# ISSUES ADDRESSED IN THIS VERSION:
+#   1. Database/admin/user setup order - DB fully ready before services
+#   2. Turnstile setup not holding - Key inserted into database
+#   3. SSL cert conflicts - Mail uses wildcard, not Mailcow internal certs
+#   4. Self-hosted flag issues - Frontend properly configured for Supabase mode
+#   5. Database to frontend linkage - Proper API URL injection
+#
 # ORDER OF OPERATIONS (CRITICAL FOR SUCCESS):
-#   1. Pull images & build frontend
-#   2. Start ONLY database container first
-#   3. Create all roles, schemas, and auth prerequisites
-#   4. Run application migrations
-#   5. Grant table permissions
-#   6. THEN start remaining services (auth, rest, storage, kong, app)
-#   7. Configure nginx and SSL
-#   8. Create admin user
-#
-# This ensures no service tries to connect before the database is ready.
-#   ✓ Docker verification
-#   ✓ Optional Mailcow installation (mail server)
-#   ✓ Security key generation
-#   ✓ API key configuration (Discord, Perplexity, Turnstile, etc.)
-#   ✓ Database setup & migrations
-#   ✓ Frontend build
-#   ✓ SSL certificate setup (Let's Encrypt / Cloudflare)
-#   ✓ Host Nginx configuration
-#   ✓ Admin user creation
-#
-# Pre-requisites:
-#   Run bootstrap.sh first to install Docker, Nginx, etc.
-#   Or run: curl -fsSL https://...bootstrap.sh | sudo bash
+#   Step 0:  Optional Mailcow installation
+#   Step 1:  Collect all configuration (admin, SMTP, API keys, Turnstile)
+#   Step 2:  Generate security keys (JWT, Supabase)
+#   Step 3:  Setup directory structure
+#   Step 4:  Generate .env configuration
+#   Step 5:  Pull Docker images
+#   Step 6:  Build frontend (with proper env vars baked in)
+#   Step 7:  Start ONLY database, wait for ready
+#   Step 7a: Create roles BEFORE any service connects
+#   Step 7b: Create schemas and auth enum prerequisites
+#   Step 8:  Run application migrations
+#   Step 8a: Grant table permissions
+#   Step 8b: Insert Turnstile key into database
+#   Step 9:  Start remaining services
+#   Step 10: Configure host Nginx (with proper API routing)
+#   Step 11: SSL setup (Cloudflare wildcards, proper cert ordering)
+#   Step 12: Create admin user (profile FIRST, then role)
+#   Step 13: Email/mailbox configuration
+#   Step 14: Full verification
 #
 # =============================================================================
 
@@ -73,8 +76,8 @@ step() { echo -e "\n${CYAN}[$1] $2${NC}" | tee -a "$LOG_FILE"; }
 # ===========================================
 echo ""
 echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║         GameTaverns Self-Hosted Installer v2.4.0                  ║${NC}"
-echo -e "${CYAN}║         Complete Setup - Mailcow → Database → SSL → Admin        ║${NC}"
+echo -e "${CYAN}║         GameTaverns Self-Hosted Installer v2.7.0                  ║${NC}"
+echo -e "${CYAN}║         Complete Deployment Sweep Edition                         ║${NC}"
 echo -e "${CYAN}║         Domain: $DOMAIN                                  ║${NC}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -159,13 +162,18 @@ mail.$DOMAIN
 $TIMEZONE
 EOF
             
-            # Configure non-conflicting ports
+            # CRITICAL: Configure non-conflicting ports
+            # Mailcow should NOT use 80/443 - host Nginx handles those
             sed -i "s/^HTTP_PORT=.*/HTTP_PORT=8080/" mailcow.conf
             sed -i "s/^HTTPS_PORT=.*/HTTPS_PORT=8443/" mailcow.conf
             sed -i "s/^HTTP_BIND=.*/HTTP_BIND=127.0.0.1/" mailcow.conf
             sed -i "s/^HTTPS_BIND=.*/HTTPS_BIND=127.0.0.1/" mailcow.conf
             
-            # Fix network subnet
+            # CRITICAL: Disable Mailcow's internal ACME (SSL)
+            # We use host Nginx with wildcard certs instead
+            sed -i "s/^SKIP_LETS_ENCRYPT=.*/SKIP_LETS_ENCRYPT=y/" mailcow.conf
+            
+            # Fix network subnet to avoid conflicts
             cat > docker-compose.override.yml << 'MCEOF'
 networks:
   mailcow-network:
@@ -247,6 +255,7 @@ BGG_API_TOKEN=${BGG_API_TOKEN:-}
 echo ""
 echo -e "${BLUE}=== Cloudflare Turnstile (Bot Protection) ===${NC}"
 echo "Get keys at: https://dash.cloudflare.com/?to=/:account/turnstile"
+echo -e "${YELLOW}IMPORTANT: Add your domain to the allowed hostnames in Cloudflare!${NC}"
 read -p "Turnstile Site Key: " TURNSTILE_SITE_KEY
 TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
 read -p "Turnstile Secret Key: " TURNSTILE_SECRET_KEY
@@ -386,17 +395,25 @@ success "Directory structure created at $INSTALL_DIR"
 # ===========================================
 step "4/14" "Generating Configuration"
 
+# CRITICAL: API_EXTERNAL_URL must match what frontend uses
+# Frontend talks to Kong via https://$DOMAIN (not api.$DOMAIN)
+# The host Nginx proxies /auth/, /rest/, /functions/ to Kong
+
 cat > "$INSTALL_DIR/.env" << EOF
 ############################################################
 # GameTaverns Self-Hosted Configuration
 # Generated: $(date)
 # Domain: $DOMAIN
+# Version: 2.7.0
 ############################################################
 
 # Domain & URLs
 DOMAIN=$DOMAIN
 SITE_URL=https://$DOMAIN
-API_EXTERNAL_URL=https://api.$DOMAIN
+# CRITICAL: API_EXTERNAL_URL is the PUBLIC URL for Supabase services
+# Frontend will access Kong via https://$DOMAIN/auth/, /rest/, /functions/
+# Host Nginx proxies these paths to Kong on port 8000
+API_EXTERNAL_URL=https://$DOMAIN
 STUDIO_URL=https://studio.$DOMAIN
 MAIL_DOMAIN=$DOMAIN
 LIBRARY_SUBDOMAIN_PATTERN=*.$DOMAIN
@@ -429,7 +446,7 @@ JWT_EXPIRY=3600
 ADDITIONAL_REDIRECT_URLS=
 
 # SMTP Configuration
-SMTP_HOST=${EXT_SMTP_HOST:-mail}
+SMTP_HOST=${EXT_SMTP_HOST:-mail.$DOMAIN}
 SMTP_PORT=${EXT_SMTP_PORT:-587}
 SMTP_USER=${EXT_SMTP_USER:-}
 SMTP_PASS=${EXT_SMTP_PASS:-}
@@ -453,6 +470,7 @@ FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
 BGG_API_TOKEN=${BGG_API_TOKEN:-}
 
 # Bot Protection (Cloudflare Turnstile)
+# CRITICAL: These must be valid - site key goes to database too
 TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
 TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
 EOF
@@ -480,9 +498,11 @@ Anon Key: $ANON_KEY
 Service Role Key: $SERVICE_ROLE_KEY
 PII Encryption Key: $PII_ENCRYPTION_KEY
 
+Turnstile Site Key: ${TURNSTILE_SITE_KEY:-not configured}
+
 URLs:
   Main Site: https://$DOMAIN
-  API: https://api.$DOMAIN
+  API: https://$DOMAIN (via /auth/, /rest/, /functions/ paths)
   Studio: https://studio.$DOMAIN
   Webmail: https://mail.$DOMAIN
 
@@ -524,6 +544,9 @@ success "Frontend built"
 # ===========================================
 step "7/14" "Starting Database & Initializing Schema"
 
+# CRITICAL: Stop any existing containers to ensure clean state
+docker compose down 2>/dev/null || true
+
 # CRITICAL: Start ONLY the database first to run all setup before other services connect
 docker compose up -d db 2>&1 | tee -a "$LOG_FILE"
 
@@ -557,6 +580,7 @@ ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 docker compose exec -T db psql -U supabase_admin -d postgres << EOSQL >> "$LOG_FILE" 2>&1
 -- =====================================================
 -- CRITICAL: Create ALL roles before any service connects
+-- Version: 2.7.0 - Complete role setup
 -- =====================================================
 
 -- Create postgres role (GoTrue migrations require this)
@@ -623,6 +647,7 @@ info "Pre-creating schemas and auth prerequisites..."
 docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
 -- =====================================================
 -- Create schemas BEFORE services start
+-- Version: 2.7.0 - Complete schema setup
 -- =====================================================
 CREATE SCHEMA IF NOT EXISTS auth;
 ALTER SCHEMA auth OWNER TO supabase_admin;
@@ -749,6 +774,38 @@ EOSQL
 success "Table permissions granted"
 
 # ===========================================
+# STEP 8b: Insert Turnstile Site Key into Database
+# ===========================================
+if [ -n "${TURNSTILE_SITE_KEY:-}" ]; then
+    info "Inserting Turnstile site key into database..."
+    
+    # Escape single quotes
+    ESCAPED_TURNSTILE_KEY=$(printf '%s' "$TURNSTILE_SITE_KEY" | sed "s/'/''/g")
+    
+    docker compose exec -T db psql -U supabase_admin -d postgres << EOSQL >> "$LOG_FILE" 2>&1
+-- Insert Turnstile site key into site_settings
+-- This is read by the frontend to initialize the Turnstile widget
+INSERT INTO public.site_settings (key, value)
+VALUES ('turnstile_site_key', '${ESCAPED_TURNSTILE_KEY}')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+
+-- Also ensure it's in the public view
+-- Check if site_settings_public view exists and has the key
+DO \$\$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'site_settings_public') THEN
+    RAISE NOTICE 'Turnstile key inserted, will be visible via site_settings_public view';
+  END IF;
+END
+\$\$;
+EOSQL
+
+    success "Turnstile site key inserted into database"
+else
+    warn "No Turnstile site key provided. Bot protection will use bypass mode."
+fi
+
+# ===========================================
 # STEP 9: Start Remaining Services (NOW safe to connect)
 # ===========================================
 step "9/14" "Starting Remaining Services"
@@ -769,11 +826,22 @@ NGINX_CONF="/etc/nginx/sites-available/gametaverns"
 
 info "Creating host nginx configuration..."
 
+# CRITICAL: This nginx config handles ALL SSL termination
+# It proxies /auth/, /rest/, /functions/, /storage/ to Kong
+# Frontend accesses Supabase via same-origin paths (no CORS issues)
+
 cat > "$NGINX_CONF" << 'NGINX_EOF'
 # ===========================================
 # GameTaverns - Main Site & API
 # Domain: gametaverns.com
+# Version: 2.7.0 - Complete Deployment Sweep
 # Generated by install.sh
+#
+# ARCHITECTURE:
+#   - Host Nginx terminates SSL for all domains
+#   - Same-origin API access: /auth/, /rest/, /functions/, /storage/
+#   - Kong gateway on port 8000 (internal only)
+#   - Mailcow on port 8443 (internal only)
 # ===========================================
 
 # HTTP redirect
@@ -792,8 +860,10 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers off;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
 
     # CRITICAL: API routes must go to Kong Gateway, NOT frontend
+    # These paths allow same-origin API access from the frontend
     location /auth/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
@@ -806,6 +876,7 @@ server {
 
     location /rest/ {
         proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -814,6 +885,7 @@ server {
 
     location /functions/ {
         proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -823,6 +895,7 @@ server {
 
     location /storage/ {
         proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -867,9 +940,10 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
 
-    # API routes for tenant libraries
+    # API routes for tenant libraries (same-origin access)
     location /auth/ {
         proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -878,6 +952,7 @@ server {
 
     location /rest/ {
         proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -886,6 +961,7 @@ server {
 
     location /functions/ {
         proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -894,6 +970,7 @@ server {
 
     location /storage/ {
         proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -915,7 +992,7 @@ server {
     }
 }
 
-# API subdomain
+# API subdomain (legacy, redirects to main domain paths)
 server {
     listen 443 ssl http2;
     server_name api.gametaverns.com;
@@ -959,43 +1036,44 @@ server {
     }
 }
 
-# Mailcow webmail (proxied through Nginx)
+# Mail subdomain - proxied through host Nginx with WILDCARD cert
+# CRITICAL: Uses the wildcard cert from main domain, NOT Mailcow's internal cert
 server {
     listen 443 ssl http2;
     server_name mail.gametaverns.com autodiscover.gametaverns.com autoconfig.gametaverns.com;
 
+    # Use the WILDCARD certificate from main domain
     ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
 
     location / {
+        # Proxy to Mailcow's internal HTTPS (self-signed is OK here)
         proxy_pass https://127.0.0.1:8443;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Accept Mailcow's self-signed cert on backend
         proxy_ssl_verify off;
     }
 }
 NGINX_EOF
 
-ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/gametaverns /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
-success "Host Nginx configuration created"
+success "Nginx configuration created"
 
 # ===========================================
-# STEP 11: Setup SSL Certificates
+# STEP 11: SSL Certificate Setup
 # ===========================================
-step "11/14" "Setting Up SSL"
+step "11/14" "Setting Up SSL Certificates"
 
-# Check if certbot is available
 if command -v certbot &> /dev/null; then
-    echo ""
-    echo "SSL certificates can be obtained via Let's Encrypt."
-    echo "This requires DNS to be configured and ports 80/443 open."
-    echo ""
-    read -p "Configure SSL now? (Y/n): " SETUP_SSL
+    read -p "Setup SSL certificates now? (Y/n): " SETUP_SSL
     
     if [[ ! "$SETUP_SSL" =~ ^[Nn]$ ]]; then
         echo ""
@@ -1152,10 +1230,10 @@ docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL' >> "$LOG
 -- =====================================================
 -- SECURITY: Ensure proper role hierarchy and permissions
 -- This prevents privilege escalation attacks
+-- Version: 2.7.0
 -- =====================================================
 
 -- 1. Ensure user_roles table uses app_role enum (not plain text)
--- Already done in migrations, but verify
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN
@@ -1328,6 +1406,16 @@ else
     echo -e "  ${YELLOW}⚠${NC} No admin users found - run ./scripts/create-admin.sh"
 fi
 
+# Check Turnstile key in database
+TURNSTILE_CHECK=$(docker compose exec -T db psql -U supabase_admin -d postgres -t -c \
+    "SELECT value FROM public.site_settings WHERE key = 'turnstile_site_key';" 2>/dev/null | tr -d ' ')
+
+if [ -n "$TURNSTILE_CHECK" ]; then
+    echo -e "  ${GREEN}✓${NC} Turnstile site key in database"
+else
+    echo -e "  ${YELLOW}⚠${NC} Turnstile site key not found - bot protection may use bypass"
+fi
+
 echo ""
 
 if [ $HEALTH_ISSUES -eq 0 ]; then
@@ -1348,7 +1436,7 @@ echo -e "${GREEN}Your GameTaverns instance is now running!${NC}"
 echo ""
 echo -e "${BLUE}URLs:${NC}"
 echo "  Main Site:  https://$DOMAIN"
-echo "  API:        https://api.$DOMAIN"
+echo "  API:        https://$DOMAIN (via /auth/, /rest/, /functions/ paths)"
 echo "  Studio:     https://studio.$DOMAIN"
 echo "  Webmail:    https://mail.$DOMAIN"
 echo "  Libraries:  https://{slug}.$DOMAIN"
@@ -1377,6 +1465,7 @@ echo -e "${YELLOW}Security Notes:${NC}"
 echo "  • Admin roles are stored in user_roles table (NOT user_profiles)"
 echo "  • Authenticated users cannot self-assign admin roles (INSERT revoked)"
 echo "  • Use service_role or ./scripts/create-admin.sh to add admins"
+echo "  • Turnstile site key is stored in database for frontend access"
 echo ""
 echo -e "${GREEN}Happy gaming! 🎲${NC}"
 echo ""
