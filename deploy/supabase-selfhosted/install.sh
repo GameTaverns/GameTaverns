@@ -527,12 +527,12 @@ docker compose down 2>/dev/null || true
 # CRITICAL: Start ONLY the database first to run all setup before other services connect
 docker compose up -d db 2>&1 | tee -a "$LOG_FILE"
 
-# Wait for database to be ready
+# Wait for database to be ready using postgres user (always exists)
 info "Waiting for PostgreSQL to be ready..."
 MAX_RETRIES=60
 RETRY_COUNT=0
 
-while ! docker compose exec -T db pg_isready -U supabase_admin -d postgres > /dev/null 2>&1; do
+while ! docker compose exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         error "Database failed to start. Check: docker compose logs db"
@@ -554,21 +554,22 @@ info "Creating database roles..."
 # Escape single quotes in password for SQL
 ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 
-# CRITICAL: Use set +e to prevent silent exit on SQL errors
-# Then capture output and show errors to user
+# CRITICAL: Use 'postgres' user for initial setup (supabase/postgres image creates this)
+# The POSTGRES_PASSWORD env var sets this user's password
+# Then we create/update supabase_admin and other roles
 set +e
-ROLE_OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres 2>&1 << EOSQL
+ROLE_OUTPUT=$(docker compose exec -T db psql -U postgres -d postgres 2>&1 << EOSQL
 -- =====================================================
 -- CRITICAL: Create ALL roles before any service connects
--- Version: 2.7.1 - Error-visible role setup
+-- Version: 2.7.3 - Connect as postgres superuser
 -- =====================================================
 
--- Create postgres role (GoTrue migrations require this)
+-- Create supabase_admin role (main admin for the platform)
 DO \$\$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
-    CREATE ROLE postgres WITH LOGIN SUPERUSER;
-    RAISE NOTICE 'Created postgres role for GoTrue compatibility';
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+    CREATE ROLE supabase_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE PASSWORD '${ESCAPED_PW}';
+    RAISE NOTICE 'Created supabase_admin role';
   END IF;
 END \$\$;
 
@@ -605,6 +606,7 @@ ALTER ROLE authenticator WITH LOGIN PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_auth_admin WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_storage_admin WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_admin WITH PASSWORD '${ESCAPED_PW}';
+ALTER ROLE postgres WITH PASSWORD '${ESCAPED_PW}';
 
 -- Grant role switching to authenticator
 GRANT anon TO authenticator;
