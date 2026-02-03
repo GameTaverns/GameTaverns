@@ -216,7 +216,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             signal: controller.signal,
           });
 
-          if (!res.ok) return false;
+          // If RLS blocks direct access to user_roles, allow fallback to the
+          // SECURITY DEFINER has_role() RPC instead of incorrectly marking false.
+          if (!res.ok) return null;
           const json = (await res.json().catch(() => [])) as Array<{ role: string }>;
           return Array.isArray(json) && json.length > 0;
         } catch {
