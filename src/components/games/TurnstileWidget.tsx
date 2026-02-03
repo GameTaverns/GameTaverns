@@ -92,16 +92,37 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
     const [bypassReason, setBypassReason] = useState<string | null>(null);
+    
+    // Check for Lovable preview FIRST, before any other logic
+    const isPreviewMode = isLovablePreview();
+    
+    // Only use site settings if NOT in preview mode
     const siteKey = useTurnstileSiteKey();
     const settingsLoaded = useSiteSettingsLoaded();
 
-    // Safety timeout: if settings haven't loaded, show an error.
-    // IMPORTANT: Never bypass Turnstile on real deployments.
+    // Lovable preview bypass - runs once on mount, takes priority over everything
     useEffect(() => {
-      if (settingsLoaded || bypassReason) return;
+      if (!isPreviewMode) return;
+      
+      // Immediately set bypass state
+      setBypassReason("preview mode");
+      setIsLoading(false);
+      setHasError(false);
+      
+      // Call onVerify with bypass token after a short delay
+      const timer = setTimeout(() => {
+        onVerify("TURNSTILE_BYPASS_TOKEN");
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }, [isPreviewMode, onVerify]);
+
+    // Safety timeout: if settings haven't loaded after 8s and NOT in preview, show error
+    useEffect(() => {
+      if (isPreviewMode || settingsLoaded || bypassReason) return;
       
       const timeout = setTimeout(() => {
-        if (!settingsLoaded && !bypassReason) {
+        if (!settingsLoaded && !bypassReason && !isPreviewMode) {
           console.warn('[TurnstileWidget] Settings timeout - cannot load verification config');
           setHasError(true);
           setIsLoading(false);
@@ -110,25 +131,19 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       }, 8000);
       
       return () => clearTimeout(timeout);
-    }, [settingsLoaded, bypassReason, onVerify]);
+    }, [settingsLoaded, bypassReason, isPreviewMode, onError]);
 
-    // Check for bypass conditions AFTER settings are loaded
+    // Handle site key availability (only for non-preview environments)
     useEffect(() => {
-      // Lovable preview domains - always bypass immediately (don't wait for settings)
-      if (isLovablePreview()) {
-        setBypassReason("preview mode");
-        setIsLoading(false);
-        const timer = setTimeout(() => {
-          onVerify("TURNSTILE_BYPASS_TOKEN");
-        }, 300);
-        return () => clearTimeout(timer);
-      }
+      // Skip if in preview mode - already handled above
+      if (isPreviewMode) return;
 
-      // Don't make other bypass decisions until settings are loaded
+      // Don't make decisions until settings are loaded
       if (!settingsLoaded) return;
       
-      // If no site key is configured after settings loaded, do NOT bypass.
+      // If no site key is configured after settings loaded, show error
       if (!siteKey) {
+        console.warn('[TurnstileWidget] No Turnstile site key configured in database');
         setBypassReason("no site key configured");
         setHasError(true);
         setIsLoading(false);
@@ -139,7 +154,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       // Site key exists - proceed with real Turnstile
       setBypassReason(null);
       setHasError(false);
-    }, [settingsLoaded, siteKey, onVerify]);
+    }, [settingsLoaded, siteKey, isPreviewMode, onError]);
 
     const handleVerify = useCallback((token: string) => {
       setIsLoading(false);
@@ -177,8 +192,8 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     }, [handleVerify, onExpire, handleError, siteKey]);
 
     useEffect(() => {
-      // Don't load Turnstile until we know we need it
-      if (!settingsLoaded || !siteKey || isLovablePreview()) return;
+      // Don't load Turnstile if in preview mode or no site key
+      if (isPreviewMode || !settingsLoaded || !siteKey) return;
 
       setIsLoading(true);
       setHasError(false);
@@ -207,7 +222,19 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
           widgetIdRef.current = null;
         }
       };
-    }, [renderWidget, settingsLoaded, siteKey]);
+    }, [renderWidget, settingsLoaded, siteKey, isPreviewMode]);
+
+    // Preview bypass: show a simple indicator (check FIRST, before settings loading)
+    if (isPreviewMode || bypassReason === "preview mode") {
+      return (
+        <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          <span className="text-sm text-muted-foreground">
+            Verification bypassed (preview mode)
+          </span>
+        </div>
+      );
+    }
 
     // Still loading settings - show loading state
     if (!settingsLoaded) {
@@ -217,18 +244,6 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-sm">Loading verification...</span>
           </div>
-        </div>
-      );
-    }
-
-    // Preview bypass: show a simple indicator
-    if (bypassReason === "preview mode") {
-      return (
-        <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
-          <span className="text-sm text-muted-foreground">
-            Verification bypassed ({bypassReason})
-          </span>
         </div>
       );
     }
