@@ -177,6 +177,37 @@ else
     echo -e "${GREEN}✓ Docker installed: $(docker --version)${NC}"
 fi
 
+# ===========================================
+# Docker Hub Authentication (avoid rate limits)
+# ===========================================
+echo ""
+echo -e "${BLUE}Docker Hub Authentication${NC}"
+echo ""
+echo "Docker Hub has rate limits for unauthenticated pulls (100 pulls/6 hours)."
+echo "Logging in with a free Docker Hub account increases this to 200 pulls/6 hours."
+echo ""
+read -p "Do you have a Docker Hub account and want to log in? (y/N): " DOCKER_LOGIN
+
+if [[ "$DOCKER_LOGIN" =~ ^[Yy]$ ]]; then
+    echo ""
+    echo "Please enter your Docker Hub credentials:"
+    read -p "Docker Hub Username: " DOCKER_USER
+    read -s -p "Docker Hub Password/Token: " DOCKER_PASS
+    echo ""
+    
+    if echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin 2>/dev/null; then
+        echo -e "${GREEN}✓ Successfully logged in to Docker Hub${NC}"
+    else
+        echo -e "${YELLOW}⚠ Docker login failed. Continuing without authentication.${NC}"
+        echo "  You can try again later with: docker login"
+    fi
+else
+    echo ""
+    echo -e "${YELLOW}Continuing without Docker Hub authentication.${NC}"
+    echo "If you hit rate limits, create a free account at https://hub.docker.com"
+    echo "Then run: docker login"
+fi
+
 # Verify Docker Compose
 if docker compose version &> /dev/null; then
     echo -e "${GREEN}✓ Docker Compose: $(docker compose version --short)${NC}"
