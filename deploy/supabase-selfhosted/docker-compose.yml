@@ -322,25 +322,29 @@ services:
       - gametaverns
 
   # ===========================================
-  # Postgres Meta (for Studio)
+  # Postgres Meta (for Studio) - OPTIONAL
+  # Used for Supabase Studio if enabled
   # ===========================================
   meta:
     image: supabase/postgres-meta:v0.83.2
     container_name: gametaverns-meta
     restart: unless-stopped
+    profiles:
+      - studio  # Only starts when --profile studio is passed
     environment:
       PG_META_PORT: 8080
       PG_META_DB_HOST: db
       PG_META_DB_PORT: 5432
       PG_META_DB_NAME: postgres
-      PG_META_DB_USER: supabase_admin
+      # Use postgres superuser since supabase_admin may not have password set
+      PG_META_DB_USER: postgres
       PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 15
-      start_period: 10s
+      start_period: 15s
     depends_on:
       db:
         condition: service_healthy
