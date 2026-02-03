@@ -588,10 +588,13 @@ info "Creating database roles..."
 # Escape single quotes in password for SQL
 ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 
-docker compose exec -T db psql -U supabase_admin -d postgres << EOSQL >> "$LOG_FILE" 2>&1
+# CRITICAL: Use set +e to prevent silent exit on SQL errors
+# Then capture output and show errors to user
+set +e
+ROLE_OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres 2>&1 << EOSQL
 -- =====================================================
 -- CRITICAL: Create ALL roles before any service connects
--- Version: 2.7.0 - Complete role setup
+-- Version: 2.7.1 - Error-visible role setup
 -- =====================================================
 
 -- Create postgres role (GoTrue migrations require this)
@@ -646,7 +649,21 @@ GRANT service_role TO authenticator;
 GRANT anon TO supabase_admin;
 GRANT authenticated TO supabase_admin;
 GRANT service_role TO supabase_admin;
+
+SELECT 'ROLES_CREATED_OK' as status;
 EOSQL
+)
+ROLE_EXIT_CODE=$?
+set -e
+
+echo "$ROLE_OUTPUT" >> "$LOG_FILE"
+
+# Check for success
+if [ $ROLE_EXIT_CODE -ne 0 ] || echo "$ROLE_OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
+    echo -e "${RED}Database role creation failed:${NC}"
+    echo "$ROLE_OUTPUT" | grep -iE "^ERROR:|^FATAL:|^psql:" || echo "$ROLE_OUTPUT"
+    error "Failed to create database roles. Check logs: $LOG_FILE"
+fi
 
 success "Database roles created"
 
@@ -655,10 +672,11 @@ success "Database roles created"
 # ===========================================
 info "Pre-creating schemas and auth prerequisites..."
 
-docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
+set +e
+SCHEMA_OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres 2>&1 << 'EOSQL'
 -- =====================================================
 -- Create schemas BEFORE services start
--- Version: 2.7.0 - Complete schema setup
+-- Version: 2.7.1 - Error-visible schema setup
 -- =====================================================
 CREATE SCHEMA IF NOT EXISTS auth;
 ALTER SCHEMA auth OWNER TO supabase_admin;
@@ -716,7 +734,21 @@ GRANT ALL ON SCHEMA public TO supabase_auth_admin, supabase_storage_admin;
 
 -- Grant database connection permissions
 GRANT CONNECT ON DATABASE postgres TO supabase_auth_admin, supabase_storage_admin, authenticator, anon, authenticated, service_role;
+
+SELECT 'SCHEMAS_CREATED_OK' as status;
 EOSQL
+)
+SCHEMA_EXIT_CODE=$?
+set -e
+
+echo "$SCHEMA_OUTPUT" >> "$LOG_FILE"
+
+# Check for success
+if [ $SCHEMA_EXIT_CODE -ne 0 ] || echo "$SCHEMA_OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
+    echo -e "${RED}Schema creation failed:${NC}"
+    echo "$SCHEMA_OUTPUT" | grep -iE "^ERROR:|^FATAL:|^psql:" || echo "$SCHEMA_OUTPUT"
+    error "Failed to create schemas. Check logs: $LOG_FILE"
+fi
 
 success "Schemas and auth prerequisites created"
 
@@ -762,7 +794,8 @@ success "Database migrations complete"
 # ===========================================
 info "Granting table permissions..."
 
-docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
+set +e
+PERMS_OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres 2>&1 << 'EOSQL'
 -- Grant permissions on all public tables
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
@@ -780,9 +813,21 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO anon, auth
 -- Grant storage schema permissions for storage-api
 GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
 GRANT ALL PRIVILEGES ON DATABASE postgres TO supabase_storage_admin;
-EOSQL
 
-success "Table permissions granted"
+SELECT 'PERMISSIONS_GRANTED_OK' as status;
+EOSQL
+)
+PERMS_EXIT_CODE=$?
+set -e
+
+echo "$PERMS_OUTPUT" >> "$LOG_FILE"
+
+# Check for success (non-fatal if some permissions fail)
+if [ $PERMS_EXIT_CODE -ne 0 ] || echo "$PERMS_OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
+    warn "Some permissions may have failed (check log for details)"
+else
+    success "Table permissions granted"
+fi
 
 # ===========================================
 # STEP 8b: Insert Turnstile Site Key into Database
