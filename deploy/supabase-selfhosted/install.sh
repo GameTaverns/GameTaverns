@@ -300,18 +300,20 @@ SECRET_KEY_BASE=${SECRET_KEY_BASE:-"$(gen_secret 64 64)"}
 PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY:-"$(gen_secret 32 32)"}
 
 # Generate Supabase JWT tokens
+# CRITICAL: Use 'openssl base64 -A' for single-line output to prevent .env corruption
 generate_jwt() {
     local role=$1
     local now=$(date +%s)
     local exp=$((now + 157680000)) # 5 years
     
     local header='{"alg":"HS256","typ":"JWT"}'
-    local header_b64=$(echo -n "$header" | openssl base64 -e | tr -d '\n=' | tr '+/' '-_')
+    # -A flag outputs base64 on a single line (no newlines every 64 chars)
+    local header_b64=$(echo -n "$header" | openssl base64 -A | tr -d '=' | tr '+/' '-_')
     
     local payload="{\"role\":\"$role\",\"iss\":\"supabase\",\"iat\":$now,\"exp\":$exp}"
-    local payload_b64=$(echo -n "$payload" | openssl base64 -e | tr -d '\n=' | tr '+/' '-_')
+    local payload_b64=$(echo -n "$payload" | openssl base64 -A | tr -d '=' | tr '+/' '-_')
     
-    local sig=$(echo -n "${header_b64}.${payload_b64}" | openssl dgst -sha256 -hmac "$JWT_SECRET" -binary | openssl base64 -e | tr -d '\n=' | tr '+/' '-_')
+    local sig=$(echo -n "${header_b64}.${payload_b64}" | openssl dgst -sha256 -hmac "$JWT_SECRET" -binary | openssl base64 -A | tr -d '=' | tr '+/' '-_')
     
     echo "${header_b64}.${payload_b64}.${sig}"
 }
