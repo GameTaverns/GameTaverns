@@ -173,7 +173,13 @@ SMTP Password: (the password you set in Mailcow)
 
 ### Step 5: Post-Install Database Fixes (5 minutes)
 
-**Critical: These fixes address GoTrue and Storage initialization issues.**
+**Critical: These fixes address GoTrue, Storage, and PostgREST initialization issues.**
+
+This step resolves ALL known database initialization failures we've encountered:
+- GoTrue "identities table does not exist" errors
+- Storage "permission denied" errors  
+- PostgREST authentication failures
+- MFA enum type missing errors
 
 ```bash
 cd /opt/gametaverns
@@ -183,48 +189,116 @@ source .env
 
 # Apply critical database fixes
 docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL'
--- Fix auth schema for GoTrue
+-- ===========================================
+-- FIX 1: Auth schema and search_path for GoTrue
+-- Without this, GoTrue can't find/create the identities table
+-- ===========================================
 CREATE SCHEMA IF NOT EXISTS auth;
+CREATE SCHEMA IF NOT EXISTS storage;
+CREATE SCHEMA IF NOT EXISTS extensions;
+
 GRANT USAGE ON SCHEMA auth TO supabase_auth_admin;
+GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
 ALTER ROLE supabase_auth_admin SET search_path TO auth, public, extensions;
 
--- Create MFA enum types that GoTrue expects
+-- ===========================================
+-- FIX 2: MFA enum types that GoTrue expects
+-- These MUST exist before GoTrue runs migrations
+-- ===========================================
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'aal_level') THEN
+  -- AAL (Authenticator Assurance Level)
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'aal_level' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
     CREATE TYPE auth.aal_level AS ENUM ('aal1', 'aal2', 'aal3');
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'factor_type') THEN
-    CREATE TYPE auth.factor_type AS ENUM ('totp', 'webauthn');
+  
+  -- Factor types for MFA
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'factor_type' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
+    CREATE TYPE auth.factor_type AS ENUM ('totp', 'webauthn', 'phone');
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'factor_status') THEN
+  
+  -- Factor status
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'factor_status' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
     CREATE TYPE auth.factor_status AS ENUM ('unverified', 'verified');
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'code_challenge_method') THEN
+  
+  -- Code challenge method for PKCE
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'code_challenge_method' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
     CREATE TYPE auth.code_challenge_method AS ENUM ('s256', 'plain');
+  END IF;
+  
+  -- One-time token type
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'one_time_token_type' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
+    CREATE TYPE auth.one_time_token_type AS ENUM (
+      'confirmation_token',
+      'reauthentication_token',
+      'recovery_token',
+      'email_change_token_new',
+      'email_change_token_current',
+      'phone_change_token'
+    );
   END IF;
 END
 $$;
 
--- Fix storage admin permissions
+-- ===========================================
+-- FIX 3: Storage admin permissions
+-- Without these, storage migrations fail
+-- ===========================================
 GRANT CONNECT ON DATABASE postgres TO supabase_storage_admin;
 GRANT ALL PRIVILEGES ON DATABASE postgres TO supabase_storage_admin;
 GRANT USAGE ON SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
 GRANT USAGE ON SCHEMA public TO supabase_storage_admin;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO supabase_storage_admin;
 
--- Ensure authenticator can access public schema
+-- ===========================================
+-- FIX 4: PostgREST authenticator role permissions
+-- Without these, API calls fail with 403
+-- ===========================================
 GRANT USAGE ON SCHEMA public TO authenticator;
 GRANT USAGE ON SCHEMA public TO anon;
 GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO service_role;
+
+-- Grant table permissions
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+
+-- Grant sequence permissions (for inserts with auto-generated IDs)
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+-- Grant execute on all functions
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO service_role;
+
+-- ===========================================
+-- FIX 5: Ensure extensions schema access
+-- ===========================================
+GRANT USAGE ON SCHEMA extensions TO PUBLIC;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO PUBLIC;
 EOSQL
+
+echo "Database fixes applied. Restarting services..."
 
 # Restart services to pick up fixes
 docker compose restart auth storage rest
-sleep 10
+sleep 15
+
+# Verify services are healthy
+echo "Checking service health..."
+curl -sf http://localhost:8000/auth/v1/health && echo " Auth: OK" || echo " Auth: FAILED"
+curl -sf http://localhost:8000/rest/v1/ -H "apikey: $ANON_KEY" > /dev/null && echo " REST: OK" || echo " REST: FAILED"
+```
+
+If auth still shows errors, check the logs:
+```bash
+docker compose logs auth | tail -50
 ```
 
 ### Step 6: Configure Host Nginx (5 minutes)
