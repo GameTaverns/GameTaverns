@@ -54,9 +54,13 @@ Deno.serve(async (req) => {
     try {
       const stateData = JSON.parse(atob(state));
       userId = stateData.user_id;
-      returnUrl = stateData.return_url || "/settings";
+      // Always redirect to /settings after Discord link - the original path might not exist
+      // or could cause routing issues with library slugs, etc.
+      returnUrl = "/settings";
       appOrigin = stateData.app_origin;
-    } catch {
+      console.log("Discord OAuth state parsed:", { userId, returnUrl, appOrigin, originalReturnUrl: stateData.return_url });
+    } catch (parseError) {
+      console.error("Failed to parse state:", parseError);
       return redirectWithError("Invalid state parameter", undefined);
     }
 
