@@ -24,6 +24,7 @@ import {
   Users,
   Globe
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -152,6 +153,8 @@ export default function Dashboard() {
           </Link>
           
           <div className="flex items-center gap-4">
+            <ThemeToggle />
+            
             <NotificationsDropdown variant="dashboard" />
             
             <Link 
@@ -191,12 +194,18 @@ export default function Dashboard() {
         </h1>
         
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="mb-8 bg-wood-medium/30 flex-wrap">
-            <TabsTrigger value="personal" className="gap-2">
+          <TabsList className="mb-8 bg-wood-dark/60 border border-wood-medium/40 flex-wrap">
+            <TabsTrigger 
+              value="personal" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
               <User className="h-4 w-4" />
               Personal
             </TabsTrigger>
-            <TabsTrigger value="library" className="gap-2">
+            <TabsTrigger 
+              value="library" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
               <Library className="h-4 w-4" />
               Library
               {library && (pendingLoanRequests > 0 || unreadCount > 0) && (
@@ -205,7 +214,10 @@ export default function Dashboard() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="danger" className="gap-2">
+            <TabsTrigger 
+              value="danger" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
               <AlertTriangle className="h-4 w-4" />
               Danger Zone
             </TabsTrigger>
