@@ -303,10 +303,10 @@ services:
       - ./supabase/functions:/home/deno/functions:ro
     command:
       - start
-      # Serve ALL functions in /home/deno/functions so /functions/v1/{name} works
-      # (Required for TOTP + admin tooling parity)
+      # Point to main/ directory which contains the router (index.ts)
+      # The router handles routing to all other functions
       - --main-service
-      - /home/deno/functions
+      - /home/deno/functions/main
       - --port
       - "9000"
     healthcheck:
