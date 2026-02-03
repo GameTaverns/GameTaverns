@@ -116,8 +116,9 @@ echo -e "${GREEN}✓ Mailcow cloned${NC}"
 # ===========================================
 echo -e "${BLUE}[4/6] Generating Mailcow configuration...${NC}"
 
-# Get timezone
-TIMEZONE=$(cat /etc/timezone 2>/dev/null || echo "UTC")
+# Get timezone - prefer timedatectl (more reliable than /etc/timezone)
+TIMEZONE=$(timedatectl show --property=Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || echo "UTC")
+echo -e "${GREEN}✓ Detected timezone: $TIMEZONE${NC}"
 
 # Generate config non-interactively
 export MAILCOW_HOSTNAME="$MAIL_HOSTNAME"
@@ -158,6 +159,11 @@ sed -i '/^#*\s*HTTP_BIND=/d' mailcow.conf
 sed -i '/^#*\s*HTTPS_BIND=/d' mailcow.conf
 
 # Append the correct settings
+# Also force-set the timezone (generate_config.sh sometimes ignores it)
+sed -i '/^TZ=/d' mailcow.conf
+echo "TZ=$TIMEZONE" >> mailcow.conf
+echo -e "${GREEN}✓ Timezone set to: $TIMEZONE${NC}"
+
 cat >> mailcow.conf << PORTCONF
 
 # GameTaverns: Use non-standard ports to avoid conflict with host nginx
