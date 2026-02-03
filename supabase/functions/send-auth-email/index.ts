@@ -98,12 +98,15 @@ export default async function handler(req: Request): Promise<Response> {
       const baseUrl = redirectUrl || 'https://gametaverns.com';
       const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-      // Create SMTP client - use TLS for port 465
+      // Create SMTP client
+      // Port 465 = implicit TLS, Port 587 = STARTTLS
       const client = new SMTPClient({
         connection: {
           hostname: smtpHost,
           port: smtpPort,
           tls: smtpPort === 465,
+          // For port 587, we need STARTTLS (not implicit TLS)
+          ...(smtpPort === 587 ? { starttls: true } : {}),
           auth: {
             username: smtpUser,
             password: smtpPass,
@@ -233,11 +236,13 @@ export default async function handler(req: Request): Promise<Response> {
       const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
 
       // Create SMTP client
+      // Port 465 = implicit TLS, Port 587 = STARTTLS
       const client = new SMTPClient({
         connection: {
           hostname: smtpHost,
           port: smtpPort,
           tls: smtpPort === 465,
+          ...(smtpPort === 587 ? { starttls: true } : {}),
           auth: {
             username: smtpUser,
             password: smtpPass,
@@ -329,13 +334,22 @@ export default async function handler(req: Request): Promise<Response> {
   } catch (error: any) {
     console.error("Auth email error:", error);
 
-    // Helpful hint for the common SMTP TLS error we’re seeing
     const msg = String(error?.message || error);
+    
+    // Helpful hints for common SMTP TLS errors
     if (msg.includes("NotValidForName")) {
       return new Response(
         JSON.stringify({
-          error:
-            "SMTP TLS certificate name mismatch (NotValidForName). Update SMTP_HOST to the exact hostname on the SMTP server's TLS certificate (CN/SAN), not an IP/alias. If you can't change that, switch to an email API provider.",
+          error: "SMTP TLS certificate name mismatch. Update SMTP_HOST to match the server's TLS certificate hostname.",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    
+    if (msg.includes("CaUsedAsEndEntity")) {
+      return new Response(
+        JSON.stringify({
+          error: "SMTP server TLS certificate issue (CA used as end entity). The mail server's certificate chain may be misconfigured.",
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
