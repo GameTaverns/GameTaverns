@@ -123,18 +123,29 @@ TIMEZONE=$(cat /etc/timezone 2>/dev/null || echo "UTC")
 export MAILCOW_HOSTNAME="$MAIL_HOSTNAME"
 export MAILCOW_TZ="$TIMEZONE"
 
-# Run generate_config.sh with answers piped in
-# Prompts in order:
-#   1. Mail server hostname (mail.gametaverns.com)
-#   2. Timezone (from /etc/timezone)
-#   3. Branch selection (1 = master, default)
-#   4. Docker daemon.json creation (y = yes)
-./generate_config.sh << EOF
-$MAIL_HOSTNAME
-$TIMEZONE
-1
-y
-EOF
+# Run generate_config.sh with answers piped in.
+#
+# Mailcow occasionally adds extra prompts (e.g. Spamhaus DQS key, “press enter to confirm”).
+# We feed a few leading blank lines to accept defaults/skip optional inputs, then provide
+# the required answers.
+#
+# Expected (typical) prompts in order:
+#   - (optional) Spamhaus DQS API key (blank = skip)
+#   - (optional) “Press enter to confirm detected value” (blank)
+#   1) Mail server hostname
+#   2) Timezone
+#   3) Branch selection (1 = master)
+#   4) Create docker daemon.json (y = yes)
+{
+  # Optional/variable prompts: send a few blank lines to accept defaults.
+  printf "\n\n\n";
+
+  # Required prompts.
+  printf "%s\n" "$MAIL_HOSTNAME";
+  printf "%s\n" "$TIMEZONE";
+  printf "1\n";
+  printf "y\n";
+} | ./generate_config.sh
 
 # Modify mailcow.conf for non-conflicting ports
 # Use more robust sed patterns that handle comments and spaces
