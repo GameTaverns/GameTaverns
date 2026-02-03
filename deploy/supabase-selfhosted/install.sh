@@ -1203,39 +1203,57 @@ if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
     
     # Create user via Supabase Auth API
     info "Creating admin account..."
-    RESPONSE=$(curl -s -X POST \
-        "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
-        -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-        -H "apikey: $SERVICE_ROLE_KEY" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"email\": \"$ADMIN_EMAIL\",
-            \"password\": \"$ADMIN_PASSWORD\",
-            \"email_confirm\": true,
-            \"user_metadata\": {
-                \"display_name\": \"$ADMIN_DISPLAY_NAME\"
-            }
-        }" 2>&1)
     
-    USER_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-    
-    if [ -n "$USER_ID" ]; then
-        success "User created: $USER_ID"
-        
-        # CRITICAL: Create user profile FIRST (required for admin panel access)
-            docker compose exec -T db psql -U postgres -d postgres -c \
-            "INSERT INTO public.user_profiles (user_id, display_name) VALUES ('$USER_ID', '$ADMIN_DISPLAY_NAME') ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;" 2>/dev/null || true
-        
-        success "User profile created"
-        
-        # Add admin role (MUST be after profile creation)
-            docker compose exec -T db psql -U postgres -d postgres -c \
-            "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING;" 2>/dev/null || true
-        
-        success "Admin role assigned"
+    # Debug: verify SERVICE_ROLE_KEY is set
+    if [ -z "$SERVICE_ROLE_KEY" ]; then
+        warn "SERVICE_ROLE_KEY is not set. Cannot create admin via API."
+        warn "Run manually after install: ./scripts/create-admin.sh"
     else
-        warn "Could not create admin user automatically. Run: ./scripts/create-admin.sh"
-        echo "Response: $RESPONSE" >> "$LOG_FILE"
+        RESPONSE=$(curl -s -X POST \
+            "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
+            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+            -H "apikey: $SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"email\": \"$ADMIN_EMAIL\",
+                \"password\": \"$ADMIN_PASSWORD\",
+                \"email_confirm\": true,
+                \"user_metadata\": {
+                    \"display_name\": \"$ADMIN_DISPLAY_NAME\"
+                }
+            }" 2>&1)
+        
+        # Log the response for debugging
+        echo "Auth API response: $RESPONSE" >> "$LOG_FILE"
+        
+        # Check for error in response
+        if echo "$RESPONSE" | grep -qE '"error"|"code":'; then
+            ERROR_MSG=$(echo "$RESPONSE" | grep -oE '"(message|msg|error)"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+            warn "Auth API error: ${ERROR_MSG:-$RESPONSE}"
+            warn "Run manually: ./scripts/create-admin.sh"
+        else
+            USER_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+            
+            if [ -n "$USER_ID" ]; then
+                success "User created: $USER_ID"
+                
+                # CRITICAL: Create user profile FIRST (required for admin panel access)
+                docker compose exec -T db psql -U postgres -d postgres -c \
+                    "INSERT INTO public.user_profiles (user_id, display_name) VALUES ('$USER_ID', '$ADMIN_DISPLAY_NAME') ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;" 2>/dev/null || true
+                
+                success "User profile created"
+                
+                # Add admin role (MUST be after profile creation)
+                docker compose exec -T db psql -U postgres -d postgres -c \
+                    "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING;" 2>/dev/null || true
+                
+                success "Admin role assigned"
+            else
+                warn "Could not extract user ID from response."
+                warn "Run manually: ./scripts/create-admin.sh"
+                echo "Full response: $RESPONSE" >> "$LOG_FILE"
+            fi
+        fi
     fi
 fi
 
