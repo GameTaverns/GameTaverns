@@ -413,6 +413,27 @@ const parseNum = (val: string | undefined): number | undefined => {
   return isNaN(n) ? undefined : n;
 };
 
+const parsePrice = (val: string | undefined): number | undefined => {
+  if (!val) return undefined;
+  // Remove currency symbols and commas, then parse as float
+  const cleaned = val.replace(/[^0-9.,]/g, '').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? undefined : n;
+};
+
+const parseDate = (val: string | undefined): string | undefined => {
+  if (!val) return undefined;
+  // BGG uses YYYY-MM-DD format
+  const dateMatch = val.match(/^\d{4}-\d{2}-\d{2}$/);
+  if (dateMatch) return val;
+  // Try to parse other formats
+  const date = new Date(val);
+  if (!isNaN(date.getTime())) {
+    return date.toISOString().split('T')[0];
+  }
+  return undefined;
+};
+
 const mapWeightToDifficulty = (weight: string | undefined): string | undefined => {
   if (!weight) return undefined;
   const w = parseFloat(weight);
@@ -463,6 +484,9 @@ type GameToImport = {
   inserts?: boolean;
   in_base_game_box?: boolean;
   description?: string;
+  // Admin data from BGG CSV
+  purchase_date?: string;
+  purchase_price?: number;
 };
 
 // Export handler for self-hosted router
@@ -613,6 +637,9 @@ export default async function handler(req: Request): Promise<Response> {
             inserts: parseBool(row.inserts),
             in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
             description: buildDescription(row.description, row.privatecomment),
+            // Map BGG CSV admin data fields
+            purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
+            purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
           };
           
           gamesToImport.push(gameData);
@@ -727,6 +754,8 @@ export default async function handler(req: Request): Promise<Response> {
               crowdfunded?: boolean;
               inserts?: boolean;
               in_base_game_box?: boolean;
+              purchase_date?: string;
+              purchase_price?: number;
             } = { 
               title: gameInput.title,
               bgg_id: gameInput.bgg_id,
@@ -754,6 +783,8 @@ export default async function handler(req: Request): Promise<Response> {
               crowdfunded: gameInput.crowdfunded,
               inserts: gameInput.inserts,
               in_base_game_box: gameInput.in_base_game_box,
+              purchase_date: gameInput.purchase_date,
+              purchase_price: gameInput.purchase_price,
             };
 
             // Send progress update before BGG enhancement
@@ -955,6 +986,23 @@ export default async function handler(req: Request): Promise<Response> {
               await supabaseAdmin.from("game_mechanics").insert(
                 mechanicIds.map(mid => ({ game_id: newGame.id, mechanic_id: mid }))
               );
+            }
+
+            // Create admin data if purchase info exists (from BGG CSV acquisitiondate/pricepaid fields)
+            if (gameData.purchase_date || gameData.purchase_price) {
+              const { error: adminError } = await supabaseAdmin
+                .from("game_admin_data")
+                .insert({
+                  game_id: newGame.id,
+                  purchase_date: gameData.purchase_date || null,
+                  purchase_price: gameData.purchase_price || null,
+                });
+              
+              if (adminError) {
+                console.warn(`Failed to create admin data for "${gameData.title}": ${adminError.message}`);
+              } else {
+                console.log(`Created admin data for "${gameData.title}": date=${gameData.purchase_date}, price=${gameData.purchase_price}`);
+              }
             }
 
             imported++;
