@@ -33,6 +33,17 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
+# Parse arguments
+PRESERVE_MAILCOW=false
+for arg in "$@"; do
+    case $arg in
+        --preserve-mailcow)
+            PRESERVE_MAILCOW=true
+            shift
+            ;;
+    esac
+done
+
 # Track what was cleaned
 CLEANED_ITEMS=()
 
@@ -48,6 +59,11 @@ echo -e "${RED}║  This will revert your server to a FRESH UBUNTU state.       
 echo -e "${RED}║  ALL DATA WILL BE PERMANENTLY DESTROYED.                             ║${NC}"
 echo -e "${RED}╚═══════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
+
+if [ "$PRESERVE_MAILCOW" = true ]; then
+    echo -e "${GREEN}🐄 --preserve-mailcow flag detected: Mailcow will NOT be touched${NC}"
+    echo ""
+fi
 
 # Check root
 if [ "$EUID" -ne 0 ]; then
@@ -128,16 +144,20 @@ if [ -d /opt/gametaverns ]; then
     log_cleaned "GameTaverns Docker stack"
 fi
 
-if [ -d /opt/mailcow-dockerized ]; then
-    cd /opt/mailcow-dockerized
-    docker compose down --remove-orphans --volumes 2>/dev/null || true
-    log_cleaned "Mailcow Docker stack"
-fi
+if [ "$PRESERVE_MAILCOW" = false ]; then
+    if [ -d /opt/mailcow-dockerized ]; then
+        cd /opt/mailcow-dockerized
+        docker compose down --remove-orphans --volumes 2>/dev/null || true
+        log_cleaned "Mailcow Docker stack"
+    fi
 
-if [ -d /opt/mailcow ]; then
-    cd /opt/mailcow
-    docker compose down --remove-orphans --volumes 2>/dev/null || true
-    log_cleaned "Mailcow Docker stack (alt location)"
+    if [ -d /opt/mailcow ]; then
+        cd /opt/mailcow
+        docker compose down --remove-orphans --volumes 2>/dev/null || true
+        log_cleaned "Mailcow Docker stack (alt location)"
+    fi
+else
+    echo -e "${YELLOW}  Skipping Mailcow stacks (--preserve-mailcow)${NC}"
 fi
 
 echo -e "${GREEN}✓ Docker stacks stopped${NC}"
@@ -256,14 +276,19 @@ echo -e "${CYAN}[8/14] Removing Nginx configurations...${NC}"
 # Remove site configs
 rm -f /etc/nginx/sites-enabled/gametaverns* 2>/dev/null || true
 rm -f /etc/nginx/sites-available/gametaverns* 2>/dev/null || true
-rm -f /etc/nginx/sites-enabled/mailcow* 2>/dev/null || true
-rm -f /etc/nginx/sites-available/mailcow* 2>/dev/null || true
-rm -f /etc/nginx/sites-enabled/mail.* 2>/dev/null || true
-rm -f /etc/nginx/sites-available/mail.* 2>/dev/null || true
+
+if [ "$PRESERVE_MAILCOW" = false ]; then
+    rm -f /etc/nginx/sites-enabled/mailcow* 2>/dev/null || true
+    rm -f /etc/nginx/sites-available/mailcow* 2>/dev/null || true
+    rm -f /etc/nginx/sites-enabled/mail.* 2>/dev/null || true
+    rm -f /etc/nginx/sites-available/mail.* 2>/dev/null || true
+    rm -f /etc/nginx/conf.d/mailcow* 2>/dev/null || true
+else
+    echo -e "${YELLOW}  Skipping Mailcow Nginx configs (--preserve-mailcow)${NC}"
+fi
 
 # Remove any custom conf.d entries
 rm -f /etc/nginx/conf.d/gametaverns* 2>/dev/null || true
-rm -f /etc/nginx/conf.d/mailcow* 2>/dev/null || true
 
 # Restore default site
 if [ -f /etc/nginx/sites-available/default ] && [ ! -f /etc/nginx/sites-enabled/default ]; then
@@ -283,8 +308,14 @@ echo -e "${GREEN}✓ Nginx configurations removed${NC}"
 # ===========================================
 echo -e "${CYAN}[9/14] Removing SSL certificates...${NC}"
 
-# Find and remove all project-related certificates
-CERT_DOMAINS=$(ls /etc/letsencrypt/live/ 2>/dev/null | grep -E "(gametaverns|mailcow)" || true)
+# Find and remove project-related certificates
+if [ "$PRESERVE_MAILCOW" = false ]; then
+    CERT_DOMAINS=$(ls /etc/letsencrypt/live/ 2>/dev/null | grep -E "(gametaverns|mailcow)" || true)
+else
+    CERT_DOMAINS=$(ls /etc/letsencrypt/live/ 2>/dev/null | grep -E "gametaverns" || true)
+    echo -e "${YELLOW}  Skipping Mailcow SSL certs (--preserve-mailcow)${NC}"
+fi
+
 for domain in $CERT_DOMAINS; do
     certbot delete --cert-name "$domain" --non-interactive 2>/dev/null || true
     rm -rf "/etc/letsencrypt/live/$domain" 2>/dev/null || true
@@ -309,13 +340,17 @@ echo -e "${CYAN}[10/14] Removing project directories...${NC}"
 
 # Main project directories
 rm -rf /opt/gametaverns 2>/dev/null && log_cleaned "/opt/gametaverns" || true
-rm -rf /opt/mailcow 2>/dev/null && log_cleaned "/opt/mailcow" || true
-rm -rf /opt/mailcow-dockerized 2>/dev/null && log_cleaned "/opt/mailcow-dockerized" || true
+
+if [ "$PRESERVE_MAILCOW" = false ]; then
+    rm -rf /opt/mailcow 2>/dev/null && log_cleaned "/opt/mailcow" || true
+    rm -rf /opt/mailcow-dockerized 2>/dev/null && log_cleaned "/opt/mailcow-dockerized" || true
+    rm -rf /var/lib/mailcow 2>/dev/null && log_cleaned "/var/lib/mailcow" || true
+else
+    echo -e "${YELLOW}  Skipping Mailcow directories (--preserve-mailcow)${NC}"
+fi
 
 # Data directories that might exist outside /opt
 rm -rf /var/lib/gametaverns 2>/dev/null && log_cleaned "/var/lib/gametaverns" || true
-rm -rf /var/lib/mailcow 2>/dev/null && log_cleaned "/var/lib/mailcow" || true
-
 echo -e "${GREEN}✓ Project directories removed${NC}"
 
 # ===========================================
@@ -326,7 +361,14 @@ echo -e "${CYAN}[11/14] Removing credentials and configuration files...${NC}"
 # Root directory credentials
 rm -f /root/gametaverns-credentials.txt 2>/dev/null && log_cleaned "GameTaverns credentials" || true
 rm -f /root/gametaverns-credentials-backup-*.txt 2>/dev/null || true
-rm -f /root/mailcow-credentials.txt 2>/dev/null && log_cleaned "Mailcow credentials" || true
+
+if [ "$PRESERVE_MAILCOW" = false ]; then
+    rm -f /root/mailcow-credentials.txt 2>/dev/null && log_cleaned "Mailcow credentials" || true
+else
+    echo -e "${YELLOW}  Skipping Mailcow credentials (--preserve-mailcow)${NC}"
+fi
+
+rm -f /root/.gametaverns* 2>/dev/null || true
 rm -f /root/.gametaverns* 2>/dev/null || true
 
 # Backup files
@@ -346,8 +388,11 @@ echo -e "${CYAN}[12/14] Cleaning up log files...${NC}"
 
 rm -f /var/log/gametaverns*.log 2>/dev/null && log_cleaned "GameTaverns logs" || true
 rm -rf /var/log/gametaverns/ 2>/dev/null || true
-rm -f /var/log/mailcow*.log 2>/dev/null || true
-rm -rf /var/log/mailcow/ 2>/dev/null || true
+
+if [ "$PRESERVE_MAILCOW" = false ]; then
+    rm -f /var/log/mailcow*.log 2>/dev/null || true
+    rm -rf /var/log/mailcow/ 2>/dev/null || true
+fi
 
 # Rotate remaining logs to free space
 logrotate -f /etc/logrotate.conf 2>/dev/null || true
