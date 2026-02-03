@@ -3,8 +3,8 @@
 # SSL Setup with Certbot for GameTaverns
 # Domain: gametaverns.com (hardcoded)
 # Includes wildcard certificate for *.gametaverns.com (tenant libraries)
-# Version: 2.3.2 - Schema Parity Audit
-# Audited: 2026-02-02
+# Version: 2.3.3 - Email Prompt Fix
+# Audited: 2026-02-03
 # =============================================================================
 
 set -e
@@ -36,13 +36,35 @@ set +a
 
 echo ""
 echo "=============================================="
-echo "  SSL Certificate Setup"
+echo "  SSL Certificate Setup v2.3.3"
 echo "  Domain: $DOMAIN"
 echo "  Includes: *.${DOMAIN} (tenant subdomains)"
 echo "=============================================="
 echo ""
 
+# ===========================================
+# Get admin email for ACME registration
+# ===========================================
+ACME_EMAIL="${SMTP_ADMIN_EMAIL:-}"
+
+# If no email in .env, prompt for one
+if [ -z "$ACME_EMAIL" ] || [ "$ACME_EMAIL" = "_" ]; then
+    echo -e "${YELLOW}No admin email found in configuration.${NC}"
+    echo "Let's Encrypt requires a valid email for certificate notifications."
+    echo ""
+    read -p "Enter your email address for SSL certificates: " ACME_EMAIL
+    
+    # Validate email format (basic check)
+    if [[ ! "$ACME_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        echo -e "${RED}Error: Invalid email format. Please run the script again with a valid email.${NC}"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}✓ Using email: $ACME_EMAIL${NC}"
+fi
+
 # Pre-flight DNS check
+echo ""
 echo -e "${BLUE}Checking DNS resolution...${NC}"
 if command -v host &>/dev/null; then
     if ! host "$DOMAIN" > /dev/null 2>&1; then
@@ -101,7 +123,7 @@ EOF
         -d "*.$DOMAIN" \
         --non-interactive \
         --agree-tos \
-        --email "${SMTP_ADMIN_EMAIL:-admin@$DOMAIN}"
+        --email "$ACME_EMAIL"
 else
     # Manual DNS validation
     echo ""
@@ -114,7 +136,7 @@ else
         -d "$DOMAIN" \
         -d "*.$DOMAIN" \
         --agree-tos \
-        --email "${SMTP_ADMIN_EMAIL:-admin@$DOMAIN}"
+        --email "$ACME_EMAIL"
 fi
 
 # ===========================================
