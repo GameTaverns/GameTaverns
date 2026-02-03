@@ -4,8 +4,24 @@ Complete self-hosted stack using official Supabase Docker images for 1:1 feature
 
 **Domain:** `gametaverns.com` (hardcoded)  
 **Tenant Libraries:** `*.gametaverns.com` (e.g., `tzolak.gametaverns.com`)  
-**Version:** 2.3.2 - Schema Parity Audit  
-**Audited:** 2026-02-02
+**Version:** 2.3.3 - Mailcow Integration  
+**Audited:** 2026-02-03
+
+---
+
+## 🚀 Fresh Install? Start Here!
+
+**For new installations, use the comprehensive guide:**
+
+📖 **[FRESH_INSTALL.md](FRESH_INSTALL.md)** - Complete step-by-step guide with Mailcow integration
+
+This guide incorporates all lessons learned and prevents common issues like:
+- Port 993 conflicts between mail services
+- Docker network subnet overlaps
+- Nginx routing misconfigurations
+- JWT key signing problems
+
+---
 
 ## ⚠️ Database Isolation
 
@@ -21,14 +37,26 @@ Complete self-hosted stack using official Supabase Docker images for 1:1 feature
 | Component | Minimum | Recommended |
 |-----------|---------|-------------|
 | OS | Ubuntu 22.04 LTS | Ubuntu 24.04 LTS |
-| RAM | 2GB | 4GB+ |
+| RAM | 4GB | 6GB+ (for Mailcow) |
 | Disk | 20GB | 50GB+ |
 | CPU | 1 vCPU | 2+ vCPU |
 
 **Network Requirements:**
 - Ports 80, 443 open (HTTPS)
-- Ports 25, 587, 993 open (optional, for mail)
+- Ports 25, 587, 993 open (for Mailcow)
 - DNS configured (see below)
+
+## Mail Server
+
+**This stack uses [Mailcow](https://mailcow.email/) for email services.**
+
+The bundled Postfix/Dovecot/Roundcube containers have been removed in favor of Mailcow, which provides:
+- Full mail stack (SMTP + IMAP)
+- Webmail via SOGo
+- Spam filtering (Rspamd)
+- Easy administration UI
+
+See [MAILCOW.md](MAILCOW.md) for integration details or [FRESH_INSTALL.md](FRESH_INSTALL.md) for complete setup instructions.
 
 ## DNS Configuration
 
@@ -43,55 +71,33 @@ Configure these DNS records pointing to your server **before** running the insta
 | A | studio | YOUR_SERVER_IP |
 | A | * | YOUR_SERVER_IP |
 | MX | @ | mail.gametaverns.com (priority 10) |
-| TXT | @ | v=spf1 mx a ~all |
+| TXT | @ | v=spf1 mx a:mail.gametaverns.com -all |
 
 The wildcard (`*`) record enables tenant subdomains like `tzolak.gametaverns.com`.
 
-## Quick Start (2 Steps)
+## Quick Start
 
-### Step 1: Bootstrap Server (Fresh Ubuntu Only)
+### Option A: Fresh Install (Recommended)
 
-Run this on a fresh Ubuntu server to install all prerequisites:
+Follow **[FRESH_INSTALL.md](FRESH_INSTALL.md)** for complete step-by-step instructions.
+
+### Option B: Quick Install (Experienced Users)
 
 ```bash
-# Option A: One-liner (downloads and runs bootstrap script)
+# 1. Bootstrap server
 curl -fsSL https://raw.githubusercontent.com/GameTaverns/GameTaverns/main/deploy/supabase-selfhosted/bootstrap.sh | sudo bash
 
-# Option B: Manual download
-wget https://raw.githubusercontent.com/GameTaverns/GameTaverns/main/deploy/supabase-selfhosted/bootstrap.sh
-chmod +x bootstrap.sh
-sudo ./bootstrap.sh
-```
+# 2. Install Mailcow FIRST
+cd /opt && git clone https://github.com/mailcow/mailcow-dockerized mailcow
+cd mailcow && ./generate_config.sh
+# Edit mailcow.conf: HTTP_PORT=8080, HTTPS_PORT=8443
+docker compose up -d
 
-**Bootstrap installs:**
-- Docker & Docker Compose
-- Nginx (reverse proxy)
-- Certbot (SSL certificates)
-- UFW Firewall (configured)
-- Fail2ban (security)
-- Git, curl, jq, and utilities
-
-### Step 2: Install GameTaverns
-
-```bash
-# Clone repository
+# 3. Install GameTaverns
 git clone https://github.com/GameTaverns/GameTaverns.git /opt/gametaverns
-
-# Make installer executable and run
 cd /opt/gametaverns/deploy/supabase-selfhosted
-chmod +x install.sh
 sudo ./install.sh
 ```
-
-**The installer handles:**
-- ✓ Docker image pulls
-- ✓ Security key generation (JWT, encryption, etc.)
-- ✓ API key configuration (Discord, Perplexity, Turnstile, etc.)
-- ✓ Database setup & all 15 migrations
-- ✓ Frontend build
-- ✓ Mail server (Postfix + Dovecot + Roundcube)
-- ✓ SSL certificate setup (Let's Encrypt or Cloudflare)
-- ✓ Admin user creation
 
 After completion, visit: **https://gametaverns.com**
 
