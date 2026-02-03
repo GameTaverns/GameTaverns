@@ -738,11 +738,22 @@ export default async function handler(req: Request): Promise<Response> {
               console.log(`Enhancing with BGG data: ${gameInput.bgg_id}`);
               const bggData = await fetchBGGData(gameInput.bgg_id, firecrawlKey);
               if (bggData) {
+                // Merge BGG data with CSV data - prefer CSV values when present, fall back to BGG
                 gameData = {
                   ...bggData,
                   ...gameData,
+                  // Explicitly handle fields where we want BGG data as fallback
                   bgg_id: gameData.bgg_id || bggData.bgg_id,
                   image_url: gameData.image_url || bggData.image_url,
+                  description: gameData.description || bggData.description,
+                  difficulty: gameData.difficulty || bggData.difficulty,
+                  play_time: gameData.play_time || bggData.play_time,
+                  game_type: gameData.game_type || bggData.game_type,
+                  min_players: gameData.min_players ?? bggData.min_players,
+                  max_players: gameData.max_players ?? bggData.max_players,
+                  suggested_age: gameData.suggested_age || bggData.suggested_age,
+                  mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
+                  publisher: gameData.publisher || bggData.publisher,
                 };
                 if (!gameData.title && gameInput.bgg_url) {
                   const pathParts = gameInput.bgg_url.split("/").filter(Boolean);
@@ -758,10 +769,21 @@ export default async function handler(req: Request): Promise<Response> {
               console.log(`Looking up BGG by title: ${gameData.title}`);
               const bggData = await lookupBGGByTitle(gameData.title, firecrawlKey);
               if (bggData) {
+                // Merge BGG data with CSV data - prefer CSV values when present, fall back to BGG
                 gameData = {
                   ...bggData,
                   ...gameData,
+                  bgg_id: gameData.bgg_id || bggData.bgg_id,
                   image_url: gameData.image_url || bggData.image_url,
+                  description: gameData.description || bggData.description,
+                  difficulty: gameData.difficulty || bggData.difficulty,
+                  play_time: gameData.play_time || bggData.play_time,
+                  game_type: gameData.game_type || bggData.game_type,
+                  min_players: gameData.min_players ?? bggData.min_players,
+                  max_players: gameData.max_players ?? bggData.max_players,
+                  suggested_age: gameData.suggested_age || bggData.suggested_age,
+                  mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
+                  publisher: gameData.publisher || bggData.publisher,
                 };
               }
             }
