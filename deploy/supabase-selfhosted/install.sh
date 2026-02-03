@@ -1165,7 +1165,9 @@ info "Waiting for auth service..."
 MAX_RETRIES=90
 RETRY_COUNT=0
 
-while ! curl -sf "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; do
+while ! curl -sf \
+    -H "apikey: ${ANON_KEY}" \
+    "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         warn "Auth service not ready. Create admin manually: ./scripts/create-admin.sh"
@@ -1461,7 +1463,7 @@ else
 fi
 
 # Check auth service
-if curl -sf "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; then
+if curl -sf -H "apikey: ${ANON_KEY}" "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; then
     echo -e "  ${GREEN}✓${NC} Auth service (GoTrue) is healthy"
 else
     echo -e "  ${RED}✗${NC} Auth service not responding"
