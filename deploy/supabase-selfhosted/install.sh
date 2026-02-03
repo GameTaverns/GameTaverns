@@ -854,6 +854,14 @@ while true; do
     
     # Get container health status
     AUTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' gametaverns-auth 2>/dev/null || echo "unknown")
+
+    # If Docker marks the container healthy, trust it and proceed.
+    # (The auth container port 9999 is not always published to the host, so host-level
+    # curl checks can fail even when the service is ready.)
+    if [ "$AUTH_STATUS" = "healthy" ]; then
+        AUTH_HEALTHY=true
+        break
+    fi
     
     # Check logs for migration progress (only once)
     if [ "$MIGRATIONS_DETECTED" = "false" ]; then
@@ -873,14 +881,8 @@ while true; do
         fi
     fi
     
-    # Check if auth is responding via direct port
-    if curl -sf http://127.0.0.1:9999/health >/dev/null 2>&1; then
-        AUTH_HEALTHY=true
-        break
-    fi
-    
-    # Also check via Kong if direct fails
-    if [ "$AUTH_HEALTHY" = "false" ] && curl -sf -H "apikey: ${ANON_KEY}" \
+    # Fallback health check via Kong (requires apikey)
+    if curl -sf -H "apikey: ${ANON_KEY}" \
         "http://127.0.0.1:${KONG_HTTP_PORT:-8000}/auth/v1/health" >/dev/null 2>&1; then
         AUTH_HEALTHY=true
         break
@@ -909,8 +911,9 @@ else
         docker restart gametaverns-auth
         sleep 30
         
-        # One more quick check
-        if curl -sf http://127.0.0.1:9999/health >/dev/null 2>&1; then
+        # One more quick check via Kong
+        if curl -sf -H "apikey: ${ANON_KEY}" \
+            "http://127.0.0.1:${KONG_HTTP_PORT:-8000}/auth/v1/health" >/dev/null 2>&1; then
             success "Auth service recovered after restart"
             AUTH_HEALTHY=true
         fi
@@ -1298,8 +1301,9 @@ while true; do
         break
     fi
     
-    # Try direct GoTrue port first (fastest)
-    if curl -sf http://127.0.0.1:9999/health >/dev/null 2>&1; then
+    # Trust Docker health if available
+    AUTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' gametaverns-auth 2>/dev/null || echo "unknown")
+    if [ "$AUTH_STATUS" = "healthy" ]; then
         AUTH_READY=true
         break
     fi
