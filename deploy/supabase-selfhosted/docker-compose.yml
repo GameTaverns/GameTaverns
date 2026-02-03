@@ -1,7 +1,7 @@
 # GameTaverns - Self-Hosted Supabase Stack
 # Based on official Supabase self-hosted configuration
 # https://supabase.com/docs/guides/self-hosting/docker
-# Version: 2.7.1 - Connection Fix Edition
+# Version: 2.7.4 - Single .env Edition
 # Audited: 2026-02-03
 #
 # ARCHITECTURE:
@@ -10,9 +10,15 @@
 #   - Frontend accesses Supabase via same-origin (no CORS issues)
 #   - API_EXTERNAL_URL == SITE_URL for same-origin routing
 #
+# SINGLE .ENV DESIGN:
+#   - All configuration lives in /opt/gametaverns/.env (NEVER duplicate!)
+#   - This file uses env_file to reference the canonical .env
+#   - Scripts ONLY write to /opt/gametaverns/.env
+#   - Kong config uses placeholders rendered at install time
+#
 # Usage:
-#   1. Run ./install.sh to generate .env
-#   2. docker compose up -d
+#   1. Run ./install.sh to generate /opt/gametaverns/.env
+#   2. docker compose --env-file /opt/gametaverns/.env up -d
 #   3. Access at https://yourdomain.com
 
 name: gametaverns

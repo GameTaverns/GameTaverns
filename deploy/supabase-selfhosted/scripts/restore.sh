@@ -1,15 +1,24 @@
 #!/bin/bash
 # =============================================================================
 # Restore Script for GameTaverns Self-Hosted
-# Version: 2.3.2 - Schema Parity Audit
-# Audited: 2026-02-02
+# Version: 2.7.4 - Single .env Edition
+# Audited: 2026-02-03
 # =============================================================================
 
 set -e
 
+# ===========================================
+# Configuration - SINGLE .ENV ARCHITECTURE
+# ===========================================
 INSTALL_DIR="/opt/gametaverns"
-BACKUP_DIR="/opt/gametaverns/backups"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE_FILE="$INSTALL_DIR/deploy/supabase-selfhosted/docker-compose.yml"
+ENV_FILE="$INSTALL_DIR/.env"
+BACKUP_DIR="$INSTALL_DIR/backups"
+
+# Helper function: Run docker compose with explicit paths
+dcp() {
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -23,14 +32,14 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-if [ ! -f "$INSTALL_DIR/.env" ]; then
-    echo -e "${RED}Error: .env file not found${NC}"
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "${RED}Error: .env file not found at $ENV_FILE${NC}"
     exit 1
 fi
 
 # Source the .env file
 set -a
-source "$INSTALL_DIR/.env"
+source "$ENV_FILE"
 set +a
 
 echo ""
@@ -81,21 +90,19 @@ if [ "$CONFIRM" != "yes" ]; then
     exit 0
 fi
 
-cd "$INSTALL_DIR"
-
 echo ""
 echo "Stopping application services..."
-docker compose stop app functions studio 2>/dev/null || true
+dcp stop app functions studio 2>/dev/null || true
 
 echo ""
 echo "Restoring database..."
 
 # Drop existing connections first
-docker compose exec -T db psql -U supabase_admin -d postgres -c \
+dcp exec -T db psql -U supabase_admin -d postgres -c \
     "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'postgres' AND pid <> pg_backend_pid();" 2>/dev/null || true
 
 # Restore database
-if gunzip -c "$DB_BACKUP" | docker compose exec -T db psql -U supabase_admin -d postgres; then
+if gunzip -c "$DB_BACKUP" | dcp exec -T db psql -U supabase_admin -d postgres; then
     echo -e "${GREEN}  ✓ Database restored${NC}"
 else
     echo -e "${RED}  ✗ Database restore failed${NC}"
@@ -106,7 +113,7 @@ fi
 if [ -f "$STORAGE_BACKUP" ]; then
     echo ""
     echo "Restoring storage..."
-    docker compose stop storage imgproxy 2>/dev/null || true
+    dcp stop storage imgproxy 2>/dev/null || true
     
     STORAGE_VOLUME="gametaverns_storage-data"
     if docker volume inspect "$STORAGE_VOLUME" > /dev/null 2>&1; then
@@ -127,7 +134,7 @@ fi
 if [ -f "$MAIL_BACKUP" ]; then
     echo ""
     echo "Restoring mail data..."
-    docker compose stop mail roundcube 2>/dev/null || true
+    dcp stop mail roundcube 2>/dev/null || true
     
     MAIL_VOLUME="gametaverns_mail-data"
     if docker volume inspect "$MAIL_VOLUME" > /dev/null 2>&1; then
@@ -146,7 +153,7 @@ fi
 
 echo ""
 echo "Starting all services..."
-docker compose up -d
+dcp up -d
 
 # Wait for services to be healthy
 echo "Waiting for services to start..."
@@ -158,8 +165,8 @@ echo -e "${GREEN}  Restore Complete!${NC}"
 echo "=============================================="
 echo ""
 echo "Services are starting. Check status with:"
-echo "  docker compose ps"
+echo "  source $INSTALL_DIR/deploy/supabase-selfhosted/scripts/compose.sh && gt_ps"
 echo ""
 echo "View logs:"
-echo "  docker compose logs -f"
+echo "  source $INSTALL_DIR/deploy/supabase-selfhosted/scripts/compose.sh && gt_logs"
 echo ""

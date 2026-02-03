@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
 # Backup Script for GameTaverns Self-Hosted
-# Version: 2.3.2 - Schema Parity Audit
-# Audited: 2026-02-02
+# Version: 2.7.4 - Single .env Edition
+# Audited: 2026-02-03
 # =============================================================================
 
 set -e
@@ -13,25 +13,34 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# ===========================================
+# Configuration - SINGLE .ENV ARCHITECTURE
+# ===========================================
 INSTALL_DIR="/opt/gametaverns"
-BACKUP_DIR="/opt/gametaverns/backups"
+COMPOSE_FILE="$INSTALL_DIR/deploy/supabase-selfhosted/docker-compose.yml"
+ENV_FILE="$INSTALL_DIR/.env"
+BACKUP_DIR="$INSTALL_DIR/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=${1:-7}  # Allow override via argument
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Helper function: Run docker compose with explicit paths
+dcp() {
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+}
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-if [ ! -f "$INSTALL_DIR/.env" ]; then
-    echo -e "${RED}Error: .env file not found${NC}"
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "${RED}Error: .env file not found at $ENV_FILE${NC}"
     exit 1
 fi
 
 # Source the .env file
 set -a
-source "$INSTALL_DIR/.env"
+source "$ENV_FILE"
 set +a
 
 mkdir -p "$BACKUP_DIR"
@@ -43,17 +52,15 @@ echo "  Date: $(date)"
 echo "=============================================="
 echo ""
 
-cd "$INSTALL_DIR"
-
 # Check if docker compose is running
-if ! docker compose ps --status running 2>/dev/null | grep -q "db"; then
+if ! dcp ps --status running 2>/dev/null | grep -q "db"; then
     echo -e "${YELLOW}Warning: Database container may not be running${NC}"
     echo "Attempting backup anyway..."
 fi
 
 # Database backup
 echo "Backing up database..."
-if docker compose exec -T db pg_dump -U supabase_admin -d postgres \
+if dcp exec -T db pg_dump -U supabase_admin -d postgres \
     --no-owner --no-privileges --clean --if-exists 2>/dev/null \
     | gzip > "$BACKUP_DIR/database_${DATE}.sql.gz"; then
     
