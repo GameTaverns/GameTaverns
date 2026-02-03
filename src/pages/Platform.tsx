@@ -87,6 +87,15 @@ export default function Platform() {
           >
             {authLoading ? "Loading..." : isAuthenticated ? (myLibrary ? "Go to My Library" : "Create Your Library") : "Start Free"}
           </Button>
+          <Link to="/features">
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="border-cream/30 text-cream hover:bg-wood-medium/50 text-lg px-8 py-6"
+            >
+              Explore Features
+            </Button>
+          </Link>
         </div>
         
         {/* Stats */}
