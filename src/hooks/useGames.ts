@@ -204,10 +204,15 @@ function groupExpansions(allGames: GameWithRelations[]): GameWithRelations[] {
   const expansionMap = new Map<string, GameWithRelations[]>();
 
   allGames.forEach((game) => {
-    if (game.is_expansion && game.parent_game_id) {
-      const expansions = expansionMap.get(game.parent_game_id) || [];
-      expansions.push(game);
-      expansionMap.set(game.parent_game_id, expansions);
+    if (game.is_expansion) {
+      // All expansions are grouped - either under their parent or as orphans
+      if (game.parent_game_id) {
+        const expansions = expansionMap.get(game.parent_game_id) || [];
+        expansions.push(game);
+        expansionMap.set(game.parent_game_id, expansions);
+      }
+      // Orphan expansions (is_expansion=true but no parent_game_id) are excluded from baseGames
+      // They can still be accessed via direct URL or search, but won't clutter the main grid
     } else {
       baseGames.push(game);
     }
