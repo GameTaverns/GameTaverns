@@ -60,14 +60,16 @@ else
     # Configure git safe directory (for root execution)
     git config --global --add safe.directory "$INSTALL_DIR" 2>/dev/null || true
     
-    # Stash local changes if any
-    if ! git diff --quiet 2>/dev/null; then
-        echo "Stashing local changes..."
-        git stash push -m "Auto-stash before update $(date +%Y%m%d_%H%M%S)"
-    fi
+    # Discard ALL local changes to prevent merge conflicts
+    echo "Resetting local changes..."
+    git reset --hard HEAD
+    git fetch --all
     
-    git fetch origin
-    git pull origin main || git pull origin master
+    # Force sync to remote (main or master)
+    BRANCH=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
+    BRANCH=${BRANCH:-main}
+    echo "Syncing to origin/$BRANCH..."
+    git reset --hard origin/$BRANCH
 fi
 
 echo ""
