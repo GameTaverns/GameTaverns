@@ -298,9 +298,9 @@ services:
       SITE_URL: "${SITE_URL:-https://gametaverns.com}"
       SITE_NAME: "${SITE_NAME:-GameTaverns}"
     volumes:
-      # Note: This path is resolved from the repo root during docker build
-      # The install.sh copies the functions to /opt/gametaverns/supabase/functions
-      - ./supabase/functions:/home/deno/functions:ro
+      # Use absolute path since docker-compose is in deploy/supabase-selfhosted/
+      # but functions are at the repo root /opt/gametaverns/supabase/functions
+      - /opt/gametaverns/supabase/functions:/home/deno/functions:ro
     command:
       - start
       # Point to main/ directory which contains the router (index.ts)
