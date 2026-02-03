@@ -3,10 +3,20 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.4.0 - Unified Installer with Mailcow + SSL
+# Version: 2.5.0 - Fixed Order of Operations (DB First, then Services)
 # Audited: 2026-02-03
 # 
-# This script handles EVERYTHING:
+# ORDER OF OPERATIONS (CRITICAL FOR SUCCESS):
+#   1. Pull images & build frontend
+#   2. Start ONLY database container first
+#   3. Create all roles, schemas, and auth prerequisites
+#   4. Run application migrations
+#   5. Grant table permissions
+#   6. THEN start remaining services (auth, rest, storage, kong, app)
+#   7. Configure nginx and SSL
+#   8. Create admin user
+#
+# This ensures no service tries to connect before the database is ready.
 #   ✓ Docker verification
 #   ✓ Optional Mailcow installation (mail server)
 #   ✓ Security key generation
@@ -510,14 +520,15 @@ docker compose build app 2>&1 | tee -a "$LOG_FILE"
 success "Frontend built"
 
 # ===========================================
-# STEP 7: Start Services
+# STEP 7: Start Database FIRST (before other services)
 # ===========================================
-step "7/11" "Starting Services"
+step "7/11" "Starting Database & Initializing Schema"
 
-docker compose up -d 2>&1 | tee -a "$LOG_FILE"
+# CRITICAL: Start ONLY the database first to run all setup before other services connect
+docker compose up -d db 2>&1 | tee -a "$LOG_FILE"
 
-# Wait for database
-info "Waiting for database to be ready..."
+# Wait for database to be ready
+info "Waiting for PostgreSQL to be ready..."
 MAX_RETRIES=60
 RETRY_COUNT=0
 
@@ -532,23 +543,36 @@ done
 
 success "Database is ready"
 
-# Give PostgreSQL time to fully initialize
+# Give PostgreSQL a moment to fully initialize
 sleep 5
 
 # ===========================================
-# CRITICAL: Fix role passwords before other services connect
+# STEP 7a: Create all required roles BEFORE anything connects
 # ===========================================
-info "Setting up database role passwords..."
+info "Creating database roles..."
 
 # Escape single quotes in password for SQL
 ESCAPED_PW=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 
 docker compose exec -T db psql -U supabase_admin -d postgres << EOSQL >> "$LOG_FILE" 2>&1
--- Create roles if they don't exist
+-- =====================================================
+-- CRITICAL: Create ALL roles before any service connects
+-- =====================================================
+
+-- Create postgres role (GoTrue migrations require this)
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+    CREATE ROLE postgres WITH LOGIN SUPERUSER;
+    RAISE NOTICE 'Created postgres role for GoTrue compatibility';
+  END IF;
+END \$\$;
+
+-- Create API roles
 DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
-    CREATE ROLE authenticator WITH LOGIN NOINHERIT;
+    CREATE ROLE authenticator WITH LOGIN NOINHERIT PASSWORD '${ESCAPED_PW}';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
     CREATE ROLE anon NOLOGIN;
@@ -559,49 +583,113 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
     CREATE ROLE service_role NOLOGIN BYPASSRLS;
   END IF;
+END \$\$;
+
+-- Create admin roles for Supabase services
+DO \$\$
+BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-    CREATE ROLE supabase_auth_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE;
+    CREATE ROLE supabase_auth_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE PASSWORD '${ESCAPED_PW}';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
-    CREATE ROLE supabase_storage_admin WITH LOGIN CREATEDB CREATEROLE;
+    CREATE ROLE supabase_storage_admin WITH LOGIN CREATEDB CREATEROLE PASSWORD '${ESCAPED_PW}';
   END IF;
-END
-\$\$;
+END \$\$;
 
--- Set passwords for all login roles
+-- Set passwords for all login roles (in case they existed with different passwords)
 ALTER ROLE authenticator WITH LOGIN PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_auth_admin WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_storage_admin WITH PASSWORD '${ESCAPED_PW}';
 ALTER ROLE supabase_admin WITH PASSWORD '${ESCAPED_PW}';
 
--- Grant role switching permissions
+-- Grant role switching to authenticator
 GRANT anon TO authenticator;
 GRANT authenticated TO authenticator;
 GRANT service_role TO authenticator;
+
+-- Grant roles to supabase_admin for convenience
 GRANT anon TO supabase_admin;
 GRANT authenticated TO supabase_admin;
 GRANT service_role TO supabase_admin;
-
--- Grant schema usage
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON SCHEMA public TO supabase_auth_admin;
-GRANT ALL ON SCHEMA public TO supabase_storage_admin;
-
--- Ensure supabase_auth_admin has necessary permissions for GoTrue migrations
-ALTER ROLE supabase_auth_admin WITH SUPERUSER CREATEDB CREATEROLE;
 EOSQL
 
-success "Database role passwords configured"
-
-# Wait for other services now that DB roles are configured
-info "Waiting for services to connect..."
-sleep 10
+success "Database roles created"
 
 # ===========================================
-# STEP 8: Run Database Migrations
+# STEP 7b: Create schemas and auth prerequisites BEFORE GoTrue starts
+# ===========================================
+info "Pre-creating schemas and auth prerequisites..."
+
+docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
+-- =====================================================
+-- Create schemas BEFORE services start
+-- =====================================================
+CREATE SCHEMA IF NOT EXISTS auth;
+ALTER SCHEMA auth OWNER TO supabase_admin;
+GRANT ALL ON SCHEMA auth TO supabase_auth_admin;
+GRANT USAGE ON SCHEMA auth TO authenticator, anon, authenticated, service_role;
+
+CREATE SCHEMA IF NOT EXISTS storage;
+ALTER SCHEMA storage OWNER TO supabase_admin;
+GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
+GRANT USAGE ON SCHEMA storage TO authenticator, anon, authenticated, service_role;
+
+CREATE SCHEMA IF NOT EXISTS extensions;
+ALTER SCHEMA extensions OWNER TO supabase_admin;
+
+-- Install required extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS "unaccent" WITH SCHEMA extensions;
+
+-- Grant extensions usage to all roles
+GRANT USAGE ON SCHEMA extensions TO postgres, anon, authenticated, service_role, supabase_admin, supabase_auth_admin, supabase_storage_admin, authenticator;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA extensions TO postgres, anon, authenticated, service_role, supabase_admin, supabase_auth_admin, supabase_storage_admin, authenticator;
+ALTER DEFAULT PRIVILEGES IN SCHEMA extensions GRANT EXECUTE ON FUNCTIONS TO postgres, anon, authenticated, service_role;
+
+-- =====================================================
+-- CRITICAL: Pre-create auth enum types that GoTrue expects
+-- GoTrue migrations will fail if these don't exist
+-- =====================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'aal_level' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
+    CREATE TYPE auth.aal_level AS ENUM ('aal1', 'aal2', 'aal3');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'code_challenge_method' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
+    CREATE TYPE auth.code_challenge_method AS ENUM ('s256', 'plain');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'factor_status' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
+    CREATE TYPE auth.factor_status AS ENUM ('unverified', 'verified');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'factor_type' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
+    CREATE TYPE auth.factor_type AS ENUM ('totp', 'webauthn', 'phone');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'one_time_token_type' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'auth')) THEN
+    CREATE TYPE auth.one_time_token_type AS ENUM ('confirmation_token', 'reauthentication_token', 'recovery_token', 'email_change_token_new', 'email_change_token_current', 'phone_change_token');
+  END IF;
+END
+$$;
+
+-- Set correct search_path for supabase_auth_admin (GoTrue uses this role)
+ALTER ROLE supabase_auth_admin SET search_path TO auth, public, extensions;
+
+-- Grant public schema permissions
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;
+GRANT ALL ON SCHEMA public TO supabase_auth_admin, supabase_storage_admin;
+
+-- Grant database connection permissions
+GRANT CONNECT ON DATABASE postgres TO supabase_auth_admin, supabase_storage_admin, authenticator, anon, authenticated, service_role;
+EOSQL
+
+success "Schemas and auth prerequisites created"
+
+# ===========================================
+# STEP 8: Run Application Migrations (BEFORE services start)
 # ===========================================
 step "8/11" "Running Database Migrations"
 
+# Run migrations in order - this populates public schema
 MIGRATION_FILES=(
     "01-extensions.sql"
     "02-enums.sql"
@@ -634,9 +722,48 @@ done
 success "Database migrations complete"
 
 # ===========================================
-# STEP 9: Configure Host Nginx
+# STEP 8a: Grant table permissions AFTER migrations created tables
 # ===========================================
-step "9/11" "Configuring Host Nginx"
+info "Granting table permissions..."
+
+docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
+-- Grant permissions on all public tables
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+
+-- Grant sequence usage
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+
+-- Set default privileges for future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO anon, authenticated, service_role;
+
+-- Grant storage schema permissions for storage-api
+GRANT ALL ON SCHEMA storage TO supabase_storage_admin;
+GRANT ALL PRIVILEGES ON DATABASE postgres TO supabase_storage_admin;
+EOSQL
+
+success "Table permissions granted"
+
+# ===========================================
+# STEP 9: Start Remaining Services (NOW safe to connect)
+# ===========================================
+step "9/11" "Starting Remaining Services"
+
+info "Database is fully initialized. Starting remaining services..."
+docker compose up -d 2>&1 | tee -a "$LOG_FILE"
+
+# Wait for auth service to be healthy
+info "Waiting for auth service to initialize..."
+sleep 15
+
+# ===========================================
+# STEP 10: Configure Host Nginx
+# ===========================================
+step "10/12" "Configuring Host Nginx"
 
 NGINX_CONF="/etc/nginx/sites-available/gametaverns"
 
@@ -858,9 +985,9 @@ rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 success "Host Nginx configuration created"
 
 # ===========================================
-# STEP 10: Setup SSL Certificates
+# STEP 11: Setup SSL Certificates
 # ===========================================
-step "10/11" "Setting Up SSL"
+step "11/12" "Setting Up SSL"
 
 # Check if certbot is available
 if command -v certbot &> /dev/null; then
@@ -956,9 +1083,9 @@ fi
 success "SSL configuration complete"
 
 # ===========================================
-# STEP 11: Create Admin User
+# STEP 12: Create Admin User
 # ===========================================
-step "11/11" "Creating Admin User"
+step "12/12" "Creating Admin User"
 
 # Wait for auth service
 info "Waiting for auth service..."
