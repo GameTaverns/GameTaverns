@@ -237,27 +237,48 @@ async function fetchBGGData(
       messages: [
         {
           role: "system",
-          content: `Extract board game data. Use EXACT enum values:
-- difficulty: ${DIFFICULTY_LEVELS.join(", ")}
-- play_time: ${PLAY_TIME_OPTIONS.join(", ")}
-- game_type: ${GAME_TYPE_OPTIONS.join(", ")}
+          content: `You are a board game data extraction expert. Extract detailed, structured game information from the provided content.
 
-Keep description CONCISE (100-150 words). Include brief overview and Quick Gameplay bullet points.`,
+IMPORTANT RULES:
+
+1. For enum fields, you MUST use these EXACT values:
+   - difficulty: ${DIFFICULTY_LEVELS.map(d => `"${d}"`).join(", ")}
+   - play_time: ${PLAY_TIME_OPTIONS.map(p => `"${p}"`).join(", ")}
+   - game_type: ${GAME_TYPE_OPTIONS.map(t => `"${t}"`).join(", ")}
+
+2. For the DESCRIPTION field, create a COMPREHENSIVE description that includes:
+   - An engaging overview paragraph about the game
+   - A "## Quick Gameplay Overview" section with:
+     - **Goal:** What players are trying to achieve
+     - **On Your Turn:** The main actions players can take
+     - **Scoring:** How points are earned
+     - **End Game:** When and how the game ends
+   
+   Use markdown formatting. Aim for 200-400 words.
+
+3. For mechanics, extract actual game mechanics (e.g., "Worker Placement", "Set Collection", "Dice Rolling").
+
+4. For publisher, extract the publisher company name.`,
         },
         {
           role: "user",
-          content: `Extract game data from: ${markdown.slice(0, 12000)}`,
+          content: `Extract comprehensive board game data from this BoardGameGeek page content:
+
+${markdown.slice(0, 15000)}`,
         },
       ],
       tools: [{
         type: "function",
         function: {
           name: "extract_game",
-          description: "Extract structured board game data",
+          description: "Extract structured board game data including a detailed description",
           parameters: {
             type: "object",
             properties: {
-              description: { type: "string" },
+              description: { 
+                type: "string",
+                description: "Comprehensive game description with markdown formatting. Include overview, Quick Gameplay Overview section, and key details. Aim for 200-400 words."
+              },
               difficulty: { type: "string", enum: DIFFICULTY_LEVELS },
               play_time: { type: "string", enum: PLAY_TIME_OPTIONS },
               game_type: { type: "string", enum: GAME_TYPE_OPTIONS },
@@ -267,6 +288,7 @@ Keep description CONCISE (100-150 words). Include brief overview and Quick Gamep
               mechanics: { type: "array", items: { type: "string" } },
               publisher: { type: "string" },
             },
+            required: ["description"],
           },
         },
       }],
@@ -274,13 +296,25 @@ Keep description CONCISE (100-150 words). Include brief overview and Quick Gamep
     });
     
     if (!aiResult.success || !aiResult.toolCallArguments) {
+      console.error("AI extraction failed:", aiResult.error);
       return { bgg_id: bggId, image_url: mainImage ?? undefined };
     }
+    
+    const extractedData = aiResult.toolCallArguments as Record<string, unknown>;
+    console.log(`Extracted description length: ${(extractedData.description as string)?.length || 0} chars`);
     
     return {
       bgg_id: bggId,
       image_url: mainImage || undefined,
-      ...aiResult.toolCallArguments,
+      description: extractedData.description as string | undefined,
+      difficulty: extractedData.difficulty as string | undefined,
+      play_time: extractedData.play_time as string | undefined,
+      game_type: extractedData.game_type as string | undefined,
+      min_players: extractedData.min_players as number | undefined,
+      max_players: extractedData.max_players as number | undefined,
+      suggested_age: extractedData.suggested_age as string | undefined,
+      mechanics: extractedData.mechanics as string[] | undefined,
+      publisher: extractedData.publisher as string | undefined,
     };
   } catch (e) {
     console.error("fetchBGGData error:", e);
