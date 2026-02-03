@@ -3,17 +3,18 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.3.2 - Schema Parity Audit
-# Audited: 2026-02-02
+# Version: 2.4.0 - Unified Installer with Mailcow + SSL
+# Audited: 2026-02-03
 # 
 # This script handles EVERYTHING:
 #   ✓ Docker verification
+#   ✓ Optional Mailcow installation (mail server)
 #   ✓ Security key generation
 #   ✓ API key configuration (Discord, Perplexity, Turnstile, etc.)
 #   ✓ Database setup & migrations
 #   ✓ Frontend build
-#   ✓ Mail server configuration
-#   ✓ SSL certificate setup
+#   ✓ SSL certificate setup (Let's Encrypt / Cloudflare)
+#   ✓ Host Nginx configuration
 #   ✓ Admin user creation
 #
 # Pre-requisites:
@@ -62,8 +63,8 @@ step() { echo -e "\n${CYAN}[$1] $2${NC}" | tee -a "$LOG_FILE"; }
 # ===========================================
 echo ""
 echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║         GameTaverns Self-Hosted Installer                         ║${NC}"
-echo -e "${CYAN}║         Complete Setup - Database to Admin                        ║${NC}"
+echo -e "${CYAN}║         GameTaverns Self-Hosted Installer v2.4.0                  ║${NC}"
+echo -e "${CYAN}║         Complete Setup - Mailcow → Database → SSL → Admin        ║${NC}"
 echo -e "${CYAN}║         Domain: $DOMAIN                                  ║${NC}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -103,9 +104,89 @@ if [ "$FREE_DISK_GB" -lt 10 ]; then
 fi
 
 # ===========================================
+# STEP 0: Optional Mailcow Installation
+# ===========================================
+step "0/11" "Mail Server Setup (Optional)"
+
+MAILCOW_INSTALLED="no"
+if [ -d "/opt/mailcow" ]; then
+    if docker compose -f /opt/mailcow/docker-compose.yml ps 2>/dev/null | grep -q "running"; then
+        info "Mailcow is already running. Skipping installation."
+        MAILCOW_INSTALLED="yes"
+    else
+        warn "Mailcow directory exists but not running."
+        read -p "Start existing Mailcow? (y/N): " START_MAILCOW
+        if [[ "$START_MAILCOW" =~ ^[Yy]$ ]]; then
+            cd /opt/mailcow && docker compose up -d
+            MAILCOW_INSTALLED="yes"
+            cd "$SCRIPT_DIR"
+        fi
+    fi
+else
+    echo ""
+    echo "Mailcow provides a complete mail server (SMTP, IMAP, Webmail)."
+    echo "This is RECOMMENDED for sending confirmation emails and notifications."
+    echo ""
+    read -p "Install Mailcow mail server now? (Y/n): " INSTALL_MAILCOW
+    
+    if [[ ! "$INSTALL_MAILCOW" =~ ^[Nn]$ ]]; then
+        info "Installing Mailcow..."
+        
+        # Check for script or inline install
+        if [ -f "$SCRIPT_DIR/scripts/setup-mailcow.sh" ]; then
+            chmod +x "$SCRIPT_DIR/scripts/setup-mailcow.sh"
+            "$SCRIPT_DIR/scripts/setup-mailcow.sh"
+            MAILCOW_INSTALLED="yes"
+        else
+            # Inline Mailcow setup
+            cd /opt
+            git clone https://github.com/mailcow/mailcow-dockerized mailcow
+            cd mailcow
+            
+            TIMEZONE=$(cat /etc/timezone 2>/dev/null || echo "UTC")
+            ./generate_config.sh << EOF
+mail.$DOMAIN
+$TIMEZONE
+EOF
+            
+            # Configure non-conflicting ports
+            sed -i "s/^HTTP_PORT=.*/HTTP_PORT=8080/" mailcow.conf
+            sed -i "s/^HTTPS_PORT=.*/HTTPS_PORT=8443/" mailcow.conf
+            sed -i "s/^HTTP_BIND=.*/HTTP_BIND=127.0.0.1/" mailcow.conf
+            sed -i "s/^HTTPS_BIND=.*/HTTPS_BIND=127.0.0.1/" mailcow.conf
+            
+            # Fix network subnet
+            cat > docker-compose.override.yml << 'MCEOF'
+networks:
+  mailcow-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-mailcow
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.29.0.0/16
+MCEOF
+            
+            docker compose pull
+            docker compose up -d
+            
+            echo "Waiting for Mailcow to initialize (90 seconds)..."
+            sleep 90
+            
+            MAILCOW_INSTALLED="yes"
+            success "Mailcow installed and running"
+            cd "$SCRIPT_DIR"
+        fi
+    else
+        info "Skipping Mailcow installation. You can use an external SMTP server."
+    fi
+fi
+
+# ===========================================
 # STEP 1: Collect All Configuration
 # ===========================================
-step "1/10" "Collecting Configuration"
+step "1/11" "Collecting Configuration"
 
 echo ""
 echo -e "${BLUE}=== Admin Configuration ===${NC}"
@@ -183,7 +264,7 @@ success "Configuration collected"
 # ===========================================
 # STEP 2: Generate Security Keys
 # ===========================================
-step "2/10" "Generating Security Keys"
+step "2/11" "Generating Security Keys"
 
 # IMPORTANT:
 # If this installer is re-run on an existing installation, we must *not* rotate
@@ -236,7 +317,7 @@ success "Security keys generated"
 # ===========================================
 # STEP 3: Setup Directory Structure
 # ===========================================
-step "3/10" "Setting Up Directories"
+step "3/11" "Setting Up Directories"
 
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR/logs"
@@ -293,7 +374,7 @@ success "Directory structure created at $INSTALL_DIR"
 # ===========================================
 # STEP 4: Generate Configuration Files
 # ===========================================
-step "4/10" "Generating Configuration"
+step "4/11" "Generating Configuration"
 
 cat > "$INSTALL_DIR/.env" << EOF
 ############################################################
@@ -412,7 +493,7 @@ success "Configuration files generated"
 # ===========================================
 # STEP 5: Pull Docker Images
 # ===========================================
-step "5/10" "Pulling Docker Images"
+step "5/11" "Pulling Docker Images"
 
 cd "$INSTALL_DIR"
 docker compose pull 2>&1 | tee -a "$LOG_FILE"
@@ -422,7 +503,7 @@ success "Docker images pulled"
 # ===========================================
 # STEP 6: Build Frontend
 # ===========================================
-step "6/10" "Building Frontend"
+step "6/11" "Building Frontend"
 
 docker compose build app 2>&1 | tee -a "$LOG_FILE"
 
@@ -431,7 +512,7 @@ success "Frontend built"
 # ===========================================
 # STEP 7: Start Services
 # ===========================================
-step "7/10" "Starting Services"
+step "7/11" "Starting Services"
 
 docker compose up -d 2>&1 | tee -a "$LOG_FILE"
 
@@ -519,7 +600,7 @@ sleep 10
 # ===========================================
 # STEP 8: Run Database Migrations
 # ===========================================
-step "8/10" "Running Database Migrations"
+step "8/11" "Running Database Migrations"
 
 MIGRATION_FILES=(
     "01-extensions.sql"
@@ -553,9 +634,233 @@ done
 success "Database migrations complete"
 
 # ===========================================
-# STEP 9: Setup SSL Certificates
+# STEP 9: Configure Host Nginx
 # ===========================================
-step "9/10" "Setting Up SSL"
+step "9/11" "Configuring Host Nginx"
+
+NGINX_CONF="/etc/nginx/sites-available/gametaverns"
+
+info "Creating host nginx configuration..."
+
+cat > "$NGINX_CONF" << 'NGINX_EOF'
+# ===========================================
+# GameTaverns - Main Site & API
+# Domain: gametaverns.com
+# Generated by install.sh
+# ===========================================
+
+# HTTP redirect
+server {
+    listen 80;
+    server_name gametaverns.com www.gametaverns.com *.gametaverns.com;
+    return 301 https://$host$request_uri;
+}
+
+# Main site (HTTPS)
+server {
+    listen 443 ssl http2;
+    server_name gametaverns.com www.gametaverns.com;
+
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    # CRITICAL: API routes must go to Kong Gateway, NOT frontend
+    location /auth/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    location /rest/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /functions/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+    }
+
+    location /storage/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 50M;
+    }
+
+    location /realtime/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+    }
+
+    # Frontend → App container
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# Wildcard: Tenant Library Subdomains
+server {
+    listen 443 ssl http2;
+    server_name ~^(?<tenant>[a-z0-9-]+)\.gametaverns\.com$;
+
+    # Skip reserved subdomains
+    if ($tenant ~* ^(www|api|mail|studio|admin|dashboard)$) {
+        return 404;
+    }
+
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # API routes for tenant libraries
+    location /auth/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /rest/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /functions/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /storage/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 50M;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Tenant-Slug $tenant;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# API subdomain
+server {
+    listen 443 ssl http2;
+    server_name api.gametaverns.com;
+
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        client_max_body_size 50M;
+    }
+}
+
+# Studio subdomain
+server {
+    listen 443 ssl http2;
+    server_name studio.gametaverns.com;
+
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Mailcow webmail (proxied through Nginx)
+server {
+    listen 443 ssl http2;
+    server_name mail.gametaverns.com autodiscover.gametaverns.com autoconfig.gametaverns.com;
+
+    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass https://127.0.0.1:8443;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_ssl_verify off;
+    }
+}
+NGINX_EOF
+
+ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+
+success "Host Nginx configuration created"
+
+# ===========================================
+# STEP 10: Setup SSL Certificates
+# ===========================================
+step "10/11" "Setting Up SSL"
 
 # Check if certbot is available
 if command -v certbot &> /dev/null; then
@@ -563,90 +868,97 @@ if command -v certbot &> /dev/null; then
     echo "SSL certificates can be obtained via Let's Encrypt."
     echo "This requires DNS to be configured and ports 80/443 open."
     echo ""
-    read -p "Configure SSL now? (y/N): " SETUP_SSL
+    read -p "Configure SSL now? (Y/n): " SETUP_SSL
     
-    if [[ "$SETUP_SSL" =~ ^[Yy]$ ]]; then
-        # Check for Cloudflare DNS plugin for wildcard support
-        if [ -f /etc/letsencrypt/cloudflare.ini ] || command -v certbot &> /dev/null; then
-            echo ""
-            echo "For wildcard certificates (*.${DOMAIN}), you need Cloudflare DNS."
-            read -p "Use Cloudflare DNS for wildcards? (y/N): " USE_CLOUDFLARE
+    if [[ ! "$SETUP_SSL" =~ ^[Nn]$ ]]; then
+        echo ""
+        echo "For wildcard certificates (*.${DOMAIN}), you need Cloudflare DNS."
+        echo "Wildcard certs are REQUIRED for tenant library subdomains."
+        read -p "Use Cloudflare DNS for wildcards? (Y/n): " USE_CLOUDFLARE
+        
+        if [[ ! "$USE_CLOUDFLARE" =~ ^[Nn]$ ]]; then
+            # Install Cloudflare plugin if not present
+            apt-get install -y python3-certbot-dns-cloudflare 2>/dev/null || pip3 install certbot-dns-cloudflare
             
-            if [[ "$USE_CLOUDFLARE" =~ ^[Yy]$ ]]; then
-                # Install Cloudflare plugin if not present
-                apt-get install -y python3-certbot-dns-cloudflare 2>/dev/null || pip3 install certbot-dns-cloudflare
-                
+            if [ ! -f /etc/letsencrypt/cloudflare.ini ]; then
                 read -p "Enter Cloudflare API Token: " CF_API_TOKEN
                 mkdir -p /etc/letsencrypt
                 cat > /etc/letsencrypt/cloudflare.ini << EOF
 dns_cloudflare_api_token = $CF_API_TOKEN
 EOF
                 chmod 600 /etc/letsencrypt/cloudflare.ini
-                
-                # Get wildcard cert
-                certbot certonly \
-                    --dns-cloudflare \
-                    --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
-                    -d "$DOMAIN" \
-                    -d "*.$DOMAIN" \
-                    --email "$ADMIN_EMAIL" \
-                    --agree-tos \
-                    --non-interactive
-                
-                # Copy certs to nginx
-                cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem "$INSTALL_DIR/nginx/ssl/"
-                cp /etc/letsencrypt/live/$DOMAIN/privkey.pem "$INSTALL_DIR/nginx/ssl/"
-                
-                success "Wildcard SSL certificates obtained"
             else
-                # Standard certs (no wildcard)
-                certbot certonly --nginx \
-                    -d "$DOMAIN" \
-                    -d "www.$DOMAIN" \
-                    -d "api.$DOMAIN" \
-                    -d "mail.$DOMAIN" \
-                    -d "studio.$DOMAIN" \
-                    --email "$ADMIN_EMAIL" \
-                    --agree-tos \
-                    --non-interactive
-                
-                cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem "$INSTALL_DIR/nginx/ssl/"
-                cp /etc/letsencrypt/live/$DOMAIN/privkey.pem "$INSTALL_DIR/nginx/ssl/"
-                
+                info "Using existing Cloudflare credentials"
+            fi
+            
+            # Get wildcard cert
+            certbot certonly \
+                --dns-cloudflare \
+                --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
+                -d "$DOMAIN" \
+                -d "*.$DOMAIN" \
+                --email "$ADMIN_EMAIL" \
+                --agree-tos \
+                --non-interactive || warn "Certbot failed - may need to retry manually"
+            
+            if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+                success "Wildcard SSL certificates obtained"
+            fi
+        else
+            # Standard certs (no wildcard)
+            certbot certonly --standalone \
+                -d "$DOMAIN" \
+                -d "www.$DOMAIN" \
+                -d "api.$DOMAIN" \
+                -d "mail.$DOMAIN" \
+                -d "studio.$DOMAIN" \
+                --email "$ADMIN_EMAIL" \
+                --agree-tos \
+                --non-interactive || warn "Certbot failed - may need to retry manually"
+            
+            if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
                 success "SSL certificates obtained"
             fi
         fi
     else
-        # Create self-signed for now
-        info "Creating temporary self-signed certificate..."
-        openssl req -x509 -nodes -newkey rsa:4096 \
-            -days 365 \
-            -keyout "$INSTALL_DIR/nginx/ssl/privkey.pem" \
-            -out "$INSTALL_DIR/nginx/ssl/fullchain.pem" \
-            -subj "/CN=$DOMAIN"
-        
-        warn "Using self-signed certificate. Run ./scripts/setup-ssl.sh later for Let's Encrypt."
+        info "Skipping SSL setup. Run ./scripts/setup-ssl.sh later."
     fi
 else
-    warn "Certbot not found. Install with: apt install certbot python3-certbot-nginx"
-    
-    # Create self-signed
+    warn "Certbot not found. Install with: apt install certbot python3-certbot-dns-cloudflare"
+fi
+
+# Create self-signed as fallback if no Let's Encrypt cert
+if [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+    info "Creating temporary self-signed certificate..."
+    mkdir -p "$INSTALL_DIR/nginx/ssl"
     openssl req -x509 -nodes -newkey rsa:4096 \
         -days 365 \
         -keyout "$INSTALL_DIR/nginx/ssl/privkey.pem" \
         -out "$INSTALL_DIR/nginx/ssl/fullchain.pem" \
         -subj "/CN=$DOMAIN"
+    
+    # Create symlink for nginx config to find it
+    mkdir -p "/etc/letsencrypt/live/$DOMAIN"
+    ln -sf "$INSTALL_DIR/nginx/ssl/fullchain.pem" "/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+    ln -sf "$INSTALL_DIR/nginx/ssl/privkey.pem" "/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+    
+    warn "Using self-signed certificate. Run ./scripts/setup-ssl.sh later for Let's Encrypt."
 fi
 
-# Restart nginx to pick up certs
-systemctl reload nginx 2>/dev/null || true
+# Test and reload nginx
+if nginx -t 2>/dev/null; then
+    systemctl reload nginx 2>/dev/null || systemctl start nginx
+    success "Nginx configured and reloaded"
+else
+    warn "Nginx config test failed. Check: nginx -t"
+fi
 
 success "SSL configuration complete"
 
 # ===========================================
-# STEP 10: Create Admin User
+# STEP 11: Create Admin User
 # ===========================================
-step "10/10" "Creating Admin User"
+step "11/11" "Creating Admin User"
 
 # Wait for auth service
 info "Waiting for auth service..."

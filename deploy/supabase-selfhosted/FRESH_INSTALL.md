@@ -1,9 +1,15 @@
 # GameTaverns - Complete Fresh Installation Guide
 
 **One-Shot Installation for Ubuntu 24.04 with Mailcow**
-**Version: 2.4.0 - Bulletproof Edition**
+**Version: 2.5.0 - Unified Installer Edition**
 
-This guide incorporates ALL lessons learned from multiple deployment attempts. Every known issue has been addressed.
+The `install.sh` script now handles **everything** in one run:
+- ✅ Mailcow mail server installation (optional, automated)
+- ✅ Security key generation
+- ✅ Database setup & migrations
+- ✅ Host Nginx configuration (with proper API routing)
+- ✅ SSL certificates (Cloudflare wildcard support)
+- ✅ Admin user creation
 
 ---
 
@@ -57,9 +63,9 @@ dig +short mail.gametaverns.com
 
 ---
 
-## 📋 Installation Steps
+## 📋 Installation Steps (Simplified!)
 
-### Step 1: Clean Environment (5 minutes)
+### Step 1: Clean Environment (2 minutes)
 
 **Critical: Run this even on a "fresh" server to prevent conflicts.**
 
@@ -70,12 +76,6 @@ chmod +x /tmp/clean-install.sh
 sudo /tmp/clean-install.sh
 ```
 
-This script:
-- Stops and removes any existing mail containers
-- Disables host-level Postfix/Dovecot
-- Prunes Docker networks
-- Removes conflicting GameTaverns installations
-
 ### Step 2: Bootstrap Server (5 minutes)
 
 ```bash
@@ -84,65 +84,9 @@ chmod +x /tmp/bootstrap.sh
 sudo /tmp/bootstrap.sh
 ```
 
-### Step 3: Install Mailcow FIRST (15 minutes)
+### Step 3: Clone and Run Unified Installer (30 minutes)
 
-**Critical: Install Mailcow before GameTaverns to claim mail ports.**
-
-```bash
-cd /opt
-git clone https://github.com/mailcow/mailcow-dockerized mailcow
-cd mailcow
-
-# Generate config (answer: mail.gametaverns.com for hostname)
-./generate_config.sh
-```
-
-Edit `mailcow.conf` to avoid port conflicts:
-```bash
-nano mailcow.conf
-```
-
-Change these lines:
-```bash
-HTTP_PORT=8080
-HTTPS_PORT=8443
-HTTP_BIND=127.0.0.1
-HTTPS_BIND=127.0.0.1
-```
-
-**Fix network subnet overlap** (critical!):
-```bash
-cat > docker-compose.override.yml << 'EOF'
-networks:
-  mailcow-network:
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: br-mailcow
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.29.0.0/16
-EOF
-```
-
-Start Mailcow:
-```bash
-docker compose pull
-docker compose up -d
-
-# Wait 2-3 minutes for full initialization
-sleep 180
-docker compose ps
-```
-
-**Verify Mailcow is healthy before continuing:**
-```bash
-# All containers should show "Up" or "healthy"
-docker compose ps | grep -E "(Up|healthy)" | wc -l
-# Should show 15+ containers running
-```
-
-### Step 4: Clone and Install GameTaverns (20 minutes)
+**This is the main step - it handles Mailcow, SSL, and everything else!**
 
 ```bash
 # Clone repository
@@ -152,28 +96,23 @@ cd /opt/gametaverns/deploy/supabase-selfhosted
 # Make scripts executable
 chmod +x install.sh scripts/*.sh
 
-# Run installer
+# Run the unified installer
 sudo ./install.sh
 ```
 
 The installer will prompt for:
-- Admin email and password
-- Discord credentials (optional)
-- Perplexity API key (recommended for AI features)
-- Turnstile keys (recommended for bot protection)
-- SMTP settings → **Enter Mailcow SMTP details here**
 
-When prompted for SMTP:
-```
-External SMTP Host: mail.gametaverns.com
-SMTP Port: 587
-SMTP User: noreply@gametaverns.com  (create this in Mailcow first!)
-SMTP Password: (the password you set in Mailcow)
-```
+1. **Admin credentials** - Email, password, display name
+2. **Mailcow installation** - Say "Y" for full mail server (recommended)
+3. **Discord credentials** - Bot token, client ID/secret (optional)
+4. **Perplexity API key** - Powers all AI features (recommended)
+5. **Turnstile keys** - Bot protection (recommended)
+6. **External SMTP** - Leave empty if using Mailcow
+7. **SSL setup** - Say "Y" for Cloudflare wildcard certificates
 
-### Step 5: Post-Install Database Fixes (5 minutes)
+### Step 4: Post-Install Database Fixes (5 minutes)
 
-**Critical: These fixes address GoTrue, Storage, and PostgREST initialization issues.**
+**Critical: Run these fixes to ensure all services initialize correctly.**
 
 This step resolves ALL known database initialization failures we've encountered:
 - GoTrue "identities table does not exist" errors
@@ -301,186 +240,9 @@ If auth still shows errors, check the logs:
 docker compose logs auth | tail -50
 ```
 
-### Step 6: Configure Host Nginx (5 minutes)
+### Step 5: Configure Mailcow (5 minutes)
 
-Create the main Nginx config:
-
-```bash
-sudo nano /etc/nginx/sites-available/gametaverns
-```
-
-Paste this configuration:
-
-```nginx
-# GameTaverns - Main Site
-server {
-    listen 80;
-    server_name gametaverns.com www.gametaverns.com *.gametaverns.com;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name gametaverns.com www.gametaverns.com *.gametaverns.com;
-
-    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
-    ssl_prefer_server_ciphers off;
-
-    # CRITICAL: API routes must go to Kong Gateway, NOT frontend
-    location /auth/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 60s;
-        proxy_send_timeout 60s;
-    }
-
-    location /rest/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /functions/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 120s;
-    }
-
-    location /storage/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        client_max_body_size 50M;
-    }
-
-    location /realtime/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_read_timeout 86400;
-    }
-
-    # Frontend → App container
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-# API subdomain
-server {
-    listen 443 ssl http2;
-    server_name api.gametaverns.com;
-
-    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        client_max_body_size 50M;
-    }
-}
-
-# Studio subdomain
-server {
-    listen 443 ssl http2;
-    server_name studio.gametaverns.com;
-
-    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:3001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-# Mailcow webmail
-server {
-    listen 443 ssl http2;
-    server_name mail.gametaverns.com autodiscover.gametaverns.com autoconfig.gametaverns.com;
-
-    ssl_certificate /etc/letsencrypt/live/gametaverns.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/gametaverns.com/privkey.pem;
-
-    location / {
-        proxy_pass https://127.0.0.1:8443;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_ssl_verify off;
-    }
-}
-```
-
-Enable and test:
-```bash
-sudo ln -sf /etc/nginx/sites-available/gametaverns /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-### Step 7: Get SSL Certificates (5 minutes)
-
-```bash
-# Install Cloudflare DNS plugin for wildcards
-sudo apt install -y python3-certbot-dns-cloudflare
-
-# Create Cloudflare credentials
-sudo mkdir -p /etc/letsencrypt
-sudo nano /etc/letsencrypt/cloudflare.ini
-```
-
-Add your Cloudflare API token:
-```
-dns_cloudflare_api_token = YOUR_CLOUDFLARE_API_TOKEN
-```
-
-Secure and get certs:
-```bash
-sudo chmod 600 /etc/letsencrypt/cloudflare.ini
-
-sudo certbot certonly \
-  --dns-cloudflare \
-  --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
-  -d gametaverns.com \
-  -d "*.gametaverns.com" \
-  --email admin@gametaverns.com \
-  --agree-tos \
-  --non-interactive
-
-# Reload nginx with real certs
-sudo systemctl reload nginx
-```
-
-### Step 8: Create Mailcow Mailbox (2 minutes)
+**If you installed Mailcow, set up your mail domain and accounts:**
 
 1. Access Mailcow admin: `https://mail.gametaverns.com`
 2. Login with default: `admin` / `moohoo`
@@ -490,6 +252,40 @@ sudo systemctl reload nginx
    - `noreply@gametaverns.com` (for system emails)
    - `postmaster@gametaverns.com` (required)
 6. Copy the DKIM record from **Configuration → ARC/DKIM Keys** and add to DNS
+
+Then update the GameTaverns environment:
+```bash
+cd /opt/gametaverns
+nano .env
+```
+
+Update SMTP settings:
+```bash
+SMTP_HOST=mail.gametaverns.com
+SMTP_PORT=587
+SMTP_USER=noreply@gametaverns.com
+SMTP_PASS=your-mailbox-password
+```
+
+Restart auth to pick up SMTP settings:
+```bash
+docker compose restart auth
+```
+
+---
+
+## ✅ What the Installer Now Does Automatically
+
+The unified `install.sh` now handles these steps that were previously manual:
+
+| Step | What | Previously |
+|------|------|-----------|
+| **Mailcow Install** | Clones, configures ports, sets subnet | Manual, 15 minutes |
+| **Host Nginx** | Creates `/etc/nginx/sites-available/gametaverns` with all API routing | Manual, 5 minutes |
+| **SSL Certificates** | Cloudflare wildcard via certbot | Manual, 5 minutes |
+| **Self-signed Fallback** | Creates and symlinks certs if certbot fails | Manual |
+
+---
 
 ---
 
