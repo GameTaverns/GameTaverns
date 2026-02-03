@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS public.library_settings (
     discord_notifications JSONB DEFAULT '{"game_added": true, "poll_closed": true, "poll_created": true, "wishlist_vote": true, "message_received": true}'::jsonb,
     
     -- Lending
-    allow_lending BOOLEAN NOT NULL DEFAULT false,
+    allow_lending BOOLEAN NOT NULL DEFAULT true,
     lending_terms TEXT,
     
     -- Discovery
