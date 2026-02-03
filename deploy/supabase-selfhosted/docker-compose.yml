@@ -1,7 +1,7 @@
 # GameTaverns - Self-Hosted Supabase Stack
 # Based on official Supabase self-hosted configuration
 # https://supabase.com/docs/guides/self-hosting/docker
-# Version: 2.7.4 - Single .env Edition
+# Version: 2.7.5 - Kong Path Fix Edition
 # Audited: 2026-02-03
 #
 # ARCHITECTURE:
@@ -42,7 +42,8 @@ services:
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
     volumes:
-      - ./kong.yml:/var/lib/kong/kong.yml:ro
+      # CRITICAL: Use absolute path - install.sh edits /opt/gametaverns/kong.yml
+      - /opt/gametaverns/kong.yml:/var/lib/kong/kong.yml:ro
     healthcheck:
       test: ["CMD", "kong", "health"]
       interval: 10s
