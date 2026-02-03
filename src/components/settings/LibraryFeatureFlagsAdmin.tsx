@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,7 +21,8 @@ import {
   Star,
   Calendar,
   Trophy,
-  BookOpen
+  BookOpen,
+  Info
 } from "lucide-react";
 
 interface LibraryFeatureFlags {
@@ -68,8 +70,11 @@ const FEATURE_FLAG_DESCRIPTIONS: Record<keyof LibraryFeatureFlags, string> = {
   ratings: "Allow visitors to rate games (5-star system)",
   events: "Show upcoming events and calendar to visitors",
   achievements: "Show achievements and badges for library engagement",
-  lending: "Allow registered users to request game loans",
+  lending: "Allow registered users to request game loans. When enabled, your library will appear in the public directory under 'Lending Libraries'.",
 };
+
+// Features that affect directory visibility
+const DIRECTORY_VISIBLE_FEATURES: Array<keyof LibraryFeatureFlags> = ["lending"];
 
 const FEATURE_FLAG_DB_KEYS: Record<keyof LibraryFeatureFlags, string> = {
   playLogs: "feature_play_logs",
@@ -216,6 +221,13 @@ export function LibraryFeatureFlagsAdmin() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Directory Visibility:</strong> Some features (like Game Lending) make your library discoverable in the public directory when enabled. 
+            To hide your library from the directory entirely, visit the <strong>General</strong> tab and disable "Show in Directory".
+          </AlertDescription>
+        </Alert>
         {(Object.keys(FEATURE_FLAG_ICONS) as Array<keyof LibraryFeatureFlags>).map((flagKey) => {
           const Icon = FEATURE_FLAG_ICONS[flagKey];
           
