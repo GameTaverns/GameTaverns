@@ -109,10 +109,17 @@ echo -e "${GREEN}✓ Auth service is ready${NC}"
 
 # Create user via Supabase Auth API
 echo -e "${BLUE}Creating user account...${NC}"
-RESPONSE=$(curl -s -X POST \
-    "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
+
+# IMPORTANT:
+# - Kong key-auth accepts either ANON_KEY or SERVICE_ROLE_KEY as the apikey.
+# - GoTrue admin endpoints require a service_role JWT in Authorization.
+# Using apikey=ANON_KEY keeps the request shape consistent with other health checks.
+AUTH_ADMIN_URL="http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users"
+
+# Capture both body and status code for actionable debugging.
+HTTP_RESPONSE=$(curl -sS -X POST "$AUTH_ADMIN_URL" \
     -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-    -H "apikey: $SERVICE_ROLE_KEY" \
+    -H "apikey: $ANON_KEY" \
     -H "Content-Type: application/json" \
     -d "{
         \"email\": \"$ADMIN_EMAIL\",
@@ -121,7 +128,34 @@ RESPONSE=$(curl -s -X POST \
         \"user_metadata\": {
             \"display_name\": \"$DISPLAY_NAME\"
         }
-    }" 2>&1)
+    }" \
+    -w "\n__HTTP_STATUS__:%{http_code}\n" 2>&1)
+
+HTTP_STATUS=$(echo "$HTTP_RESPONSE" | sed -n 's/^__HTTP_STATUS__:\([0-9][0-9][0-9]\)$/\1/p' | tail -1)
+RESPONSE=$(echo "$HTTP_RESPONSE" | sed '/^__HTTP_STATUS__:/d')
+
+# If we didn't get a status code, curl likely failed (connection reset, DNS, etc.)
+if [ -z "$HTTP_STATUS" ]; then
+    echo -e "${RED}Error creating user: request failed before receiving a response${NC}"
+    echo ""
+    echo "Raw output:"
+    echo "$HTTP_RESPONSE"
+    echo ""
+    echo "Try: docker compose logs --tail=200 kong auth"
+    exit 1
+fi
+
+# Non-2xx: show status + body
+if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+    echo -e "${RED}Error creating user (HTTP $HTTP_STATUS)${NC}"
+    echo "Response: $RESPONSE"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Confirm Kong keys injected: grep -q 'PLACEHOLDER' $INSTALL_DIR/kong.yml && echo 'KEYS NOT SET' || echo 'Keys configured'"
+    echo "  2. Confirm JWT secret/key match: grep -E '^(JWT_SECRET|SERVICE_ROLE_KEY|ANON_KEY)=' $INSTALL_DIR/.env"
+    echo "  3. Check logs: docker compose logs --tail=200 kong auth"
+    exit 1
+fi
 
 # Check for error in response
 if echo "$RESPONSE" | grep -qE '"error"|"code":'; then
