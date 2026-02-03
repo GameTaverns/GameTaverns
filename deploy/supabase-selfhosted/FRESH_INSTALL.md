@@ -1,7 +1,7 @@
 # GameTaverns - Complete Fresh Installation Guide
 
 **One-Shot Installation for Ubuntu 24.04 with Mailcow**
-**Version: 2.7.0 - Complete Deployment Sweep Edition**
+**Version: 2.7.1 - Connection Fix Edition**
 
 The `install.sh` script now handles **everything** in one run (14 automated steps):
 - ✅ Mailcow mail server installation (optional, automated)
@@ -20,13 +20,14 @@ The `install.sh` script now handles **everything** in one run (14 automated step
 
 ## 🔐 Issues Addressed in This Version
 
-| Issue | Root Cause | Solution in v2.7.0 |
+| Issue | Root Cause | Solution in v2.7.1 |
 |-------|-----------|-------------------|
 | **Database/admin setup fails** | Services connect before DB ready | Step 7: DB-only startup with `pg_isready` wait |
 | **Turnstile bypass mode** | Site key not in database | Step 8b: Explicit INSERT into `site_settings` |
 | **Mail cert overrides primary** | Mailcow uses own SSL | Mailcow `SKIP_LETS_ENCRYPT=y` + host Nginx termination |
-| **Self-hosted flag issues** | Frontend uses wrong API mode | `SELF_HOSTED: false` in runtime config |
-| **Frontend can't reach API** | Wrong API URL | Same-origin routing via `/auth/`, `/rest/`, `/functions/` |
+| **Self-hosted flag issues** | Frontend uses wrong API mode | `SELF_HOSTED: false` in runtime config (uses Supabase client) |
+| **Frontend can't reach API** | Wrong API_EXTERNAL_URL | Same-origin routing: `API_EXTERNAL_URL == SITE_URL` |
+| **Auth/signup fails** | API routing to wrong backend | Path-based routing `/auth/` → Kong:8000 → GoTrue |
 
 ---
 
@@ -50,9 +51,12 @@ The `install.sh` script now handles **everything** in one run (14 automated step
 
 **Key Design Decisions:**
 1. **Same-origin API**: Frontend accesses APIs via path-based routing, not subdomains
+   - `API_EXTERNAL_URL = https://gametaverns.com` (NOT `https://api.gametaverns.com`)
+   - No CORS issues because browser sees same origin
 2. **SSL at host level**: All SSL termination happens at host Nginx, not in containers
 3. **Mailcow isolated**: Mailcow uses internal ports (8080/8443), proxied through host Nginx
-4. **SELF_HOSTED=false**: Frontend uses Supabase client, not Express API
+4. **SELF_HOSTED: false**: Frontend uses Supabase client (not legacy Express /api/* mode)
+   - This self-hosted Supabase stack IS a real Supabase environment, just containerized
 
 ---
 
@@ -200,6 +204,42 @@ sudo lsof -i :993 | head -5   # Should show only Mailcow dovecot
 
 ## 🔧 Troubleshooting
 
+### Login/Signup Fails with Network Error
+
+**Symptoms**: "Failed to fetch", "Network error", or empty response
+
+```bash
+# 1. Verify Kong is receiving requests
+docker compose logs kong | tail -20
+
+# 2. Test auth endpoint directly
+curl -s https://gametaverns.com/auth/v1/health
+
+# 3. If returns HTML (index.html), Nginx isn't routing correctly
+# Check nginx config:
+grep -A5 "location /auth/" /etc/nginx/sites-enabled/gametaverns
+
+# Should show: proxy_pass http://127.0.0.1:8000;
+```
+
+### Frontend Shows Empty Libraries/Games
+
+**Symptoms**: Page loads but no data appears
+
+```bash
+# 1. Check if PostgREST is responding
+source /opt/gametaverns/.env
+curl -s "https://gametaverns.com/rest/v1/libraries_public" \
+  -H "apikey: $ANON_KEY" | head -100
+
+# 2. Check runtime config
+curl -s https://gametaverns.com/runtime-config.js | grep SUPABASE_URL
+
+# Should show: SUPABASE_URL: "https://gametaverns.com"
+# NOT: SUPABASE_URL: "" (empty)
+# NOT: SUPABASE_URL: "https://api.gametaverns.com" (wrong subdomain)
+```
+
 ### API Returns 404 or HTML
 
 This means Nginx is routing to frontend instead of Kong:
@@ -210,6 +250,10 @@ sudo nginx -t
 grep -A5 "location /auth/" /etc/nginx/sites-enabled/gametaverns
 
 # Should show: proxy_pass http://127.0.0.1:8000;
+
+# Regenerate nginx config if needed
+sudo ./scripts/rebuild-config.sh  # If exists
+# Or re-run relevant step from install.sh
 ```
 
 ### Turnstile Shows "No Site Key"
@@ -235,6 +279,29 @@ curl -s https://gametaverns.com/runtime-config.js | head -20
 # Should show:
 # IS_PRODUCTION: true,
 # SELF_HOSTED: false,
+
+# If not, rebuild frontend
+docker compose build app
+docker compose up -d app
+```
+
+### Wrong API Mode (Express /api/* Instead of Supabase)
+
+**Symptoms**: Console shows requests to `/api/auth/me`, not `/auth/v1/token`
+
+```bash
+# 1. Check runtime config
+curl -s https://gametaverns.com/runtime-config.js | grep SELF_HOSTED
+
+# Should show: SELF_HOSTED: false
+# If shows: SELF_HOSTED: true, frontend is in wrong mode
+
+# 2. Verify inject-config.sh is setting it correctly
+cat /opt/gametaverns/scripts/inject-config.sh | grep "SELF_HOSTED:"
+
+# 3. Rebuild frontend to rerun inject-config
+docker compose build app --no-cache
+docker compose up -d app
 ```
 
 ### Mail SSL Certificate Error
@@ -258,6 +325,34 @@ docker compose logs auth | tail -50
 docker compose exec -T db psql -U supabase_admin -d postgres -c \
   "ALTER ROLE supabase_auth_admin SET search_path TO auth, public, extensions;"
 docker compose restart auth
+```
+
+### Debug API Connectivity
+
+```bash
+# Run this comprehensive check
+echo "=== API Health Check ==="
+echo ""
+echo "1. Kong Gateway:"
+curl -s http://localhost:8000/ | head -c 50
+echo ""
+echo ""
+echo "2. Auth Service (via Kong):"
+curl -s http://localhost:8000/auth/v1/health
+echo ""
+echo ""
+echo "3. REST API (via Kong):"
+source /opt/gametaverns/.env
+curl -s "http://localhost:8000/rest/v1/" -H "apikey: $ANON_KEY" | head -c 100
+echo ""
+echo ""
+echo "4. Same endpoint via HTTPS (public):"
+curl -s "https://gametaverns.com/rest/v1/" -H "apikey: $ANON_KEY" | head -c 100
+echo ""
+echo ""
+echo "5. Runtime config:"
+curl -s https://gametaverns.com/runtime-config.js | grep -E "(SUPABASE_URL|SELF_HOSTED)"
+echo ""
 ```
 
 ---

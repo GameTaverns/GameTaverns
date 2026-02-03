@@ -3,7 +3,7 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.7.0 - Complete Deployment Sweep Edition
+# Version: 2.7.1 - Connection Fix Edition
 # Audited: 2026-02-03
 # 
 # ISSUES ADDRESSED IN THIS VERSION:
@@ -12,13 +12,20 @@
 #   3. SSL cert conflicts - Mail uses wildcard, not Mailcow internal certs
 #   4. Self-hosted flag issues - Frontend properly configured for Supabase mode
 #   5. Database to frontend linkage - Proper API URL injection
+#   6. Connection issues - API_EXTERNAL_URL == SITE_URL for same-origin routing
+#
+# ARCHITECTURE:
+#   - Host Nginx terminates SSL and routes traffic
+#   - API paths (/auth/, /rest/, /functions/, /storage/) go to Kong (port 8000)
+#   - Frontend accesses Supabase via same-origin (no CORS issues)
+#   - SELF_HOSTED: false = Use Supabase client, NOT Express API
 #
 # ORDER OF OPERATIONS (CRITICAL FOR SUCCESS):
 #   Step 0:  Optional Mailcow installation
 #   Step 1:  Collect all configuration (admin, SMTP, API keys, Turnstile)
 #   Step 2:  Generate security keys (JWT, Supabase)
 #   Step 3:  Setup directory structure
-#   Step 4:  Generate .env configuration
+#   Step 4:  Generate .env configuration (API_EXTERNAL_URL == SITE_URL)
 #   Step 5:  Pull Docker images
 #   Step 6:  Build frontend (with proper env vars baked in)
 #   Step 7:  Start ONLY database, wait for ready
@@ -76,8 +83,8 @@ step() { echo -e "\n${CYAN}[$1] $2${NC}" | tee -a "$LOG_FILE"; }
 # ===========================================
 echo ""
 echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║         GameTaverns Self-Hosted Installer v2.7.0                  ║${NC}"
-echo -e "${CYAN}║         Complete Deployment Sweep Edition                         ║${NC}"
+echo -e "${CYAN}║         GameTaverns Self-Hosted Installer v2.7.1                  ║${NC}"
+echo -e "${CYAN}║         Connection Fix Edition                                    ║${NC}"
 echo -e "${CYAN}║         Domain: $DOMAIN                                  ║${NC}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -395,25 +402,29 @@ success "Directory structure created at $INSTALL_DIR"
 # ===========================================
 step "4/14" "Generating Configuration"
 
-# CRITICAL: API_EXTERNAL_URL must match what frontend uses
-# Frontend talks to Kong via https://$DOMAIN (not api.$DOMAIN)
-# The host Nginx proxies /auth/, /rest/, /functions/ to Kong
+# CRITICAL: API_EXTERNAL_URL must match SITE_URL for same-origin API access
+# Frontend talks to Kong via https://$DOMAIN/auth/, /rest/, /functions/
+# Host Nginx proxies these paths to Kong on port 8000
+# Using a separate api subdomain would cause CORS issues
 
 cat > "$INSTALL_DIR/.env" << EOF
 ############################################################
 # GameTaverns Self-Hosted Configuration
 # Generated: $(date)
 # Domain: $DOMAIN
-# Version: 2.7.0
+# Version: 2.7.1 - Connection Fix Edition
 ############################################################
 
 # Domain & URLs
 DOMAIN=$DOMAIN
 SITE_URL=https://$DOMAIN
-# CRITICAL: API_EXTERNAL_URL is the PUBLIC URL for Supabase services
-# Frontend will access Kong via https://$DOMAIN/auth/, /rest/, /functions/
+
+# CRITICAL: API_EXTERNAL_URL must match SITE_URL for same-origin routing
+# Frontend accesses Kong via https://$DOMAIN/auth/, /rest/, /functions/
 # Host Nginx proxies these paths to Kong on port 8000
+# Do NOT use a separate api subdomain - it causes CORS issues
 API_EXTERNAL_URL=https://$DOMAIN
+
 STUDIO_URL=https://studio.$DOMAIN
 MAIL_DOMAIN=$DOMAIN
 LIBRARY_SUBDOMAIN_PATTERN=*.$DOMAIN

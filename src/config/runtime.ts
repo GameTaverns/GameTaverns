@@ -1,15 +1,28 @@
 /**
  * Runtime Configuration Helper
+ * Version: 2.7.1 - Connection Fix Edition
  * 
- * Supports three deployment modes:
+ * Supports THREE deployment modes:
+ * 
  * 1. Lovable Cloud: Uses Supabase directly via import.meta.env.VITE_* variables
- * 2. Self-Hosted (Native): Uses Express API backend, no Supabase
- * 3. Cloudron: Uses window.__RUNTIME_CONFIG__ (injected at container start)
+ *    - VITE_SUPABASE_URL = https://xxx.supabase.co
+ *    - Standard Supabase client handles all API calls
+ * 
+ * 2. Self-Hosted Supabase Stack: Uses window.__RUNTIME_CONFIG__ (injected by inject-config.sh)
+ *    - SELF_HOSTED = false (uses Supabase client, NOT Express API)
+ *    - SUPABASE_URL = https://gametaverns.com (same-origin)
+ *    - Host Nginx proxies /auth/, /rest/, /functions/ to Kong gateway
+ *    - This IS a real Supabase environment, just containerized
+ * 
+ * 3. Express API Mode (LEGACY): Uses /api/* endpoints with Express backend
+ *    - SELF_HOSTED = true (in runtime config)
+ *    - No Supabase URL available
+ *    - This mode is DEPRECATED and not supported in deploy/supabase-selfhosted
  * 
  * Priority: Runtime Config → Vite Env → Defaults
  */
 
-// Type for runtime config injected by Cloudron's start.sh or self-hosted
+// Type for runtime config injected by inject-config.sh or self-hosted
 interface RuntimeConfig {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
@@ -39,31 +52,44 @@ declare global {
   }
 }
 
-// Get runtime config (Cloudron/self-hosted) or empty object
+// Get runtime config (self-hosted Supabase or legacy Express) or empty object
 function getRuntimeConfig(): RuntimeConfig {
   return (typeof window !== 'undefined' && window.__RUNTIME_CONFIG__) || {};
 }
 
 /**
- * Detect if running in self-hosted mode
+ * Detect if running in EXPRESS API self-hosted mode (LEGACY)
  * 
- * Self-hosted is detected when:
- * 1. Explicitly set via runtime config
+ * This is DIFFERENT from self-hosted Supabase stack!
+ * 
+ * EXPRESS API mode is detected when:
+ * 1. Explicitly set via runtime config SELF_HOSTED: true
  * 2. No Supabase URL is available (neither from runtime nor VITE env)
- * 3. Running on a known self-hosted domain pattern
+ * 
+ * Self-hosted Supabase stack uses:
+ * - SELF_HOSTED: false (uses Supabase client)
+ * - SUPABASE_URL: https://yourdomain.com (same-origin routing)
+ * 
+ * Returns TRUE only for legacy Express API mode, not self-hosted Supabase
  */
 export function isSelfHostedMode(): boolean {
   const runtime = getRuntimeConfig();
   
-  // 1. Explicit runtime flag takes priority (for Cloudron/containerized deployments)
+  // 1. Explicit runtime flag takes priority
+  // SELF_HOSTED: true = Legacy Express API mode
+  // SELF_HOSTED: false = Use Supabase client (cloud OR self-hosted Supabase stack)
   if (runtime.SELF_HOSTED === true) {
     return true;
   }
+  
+  // If runtime config explicitly says SELF_HOSTED: false, use Supabase mode
+  // This is the case for self-hosted Supabase stack (inject-config.sh sets this)
+  if (runtime.SELF_HOSTED === false) {
+    return false;
+  }
 
-  // 1b. Hard override for Lovable environments.
-  // In Lovable preview/published apps, there is no self-hosted /api backend available.
-  // If we mis-detect self-hosted mode here, the app will start requesting /api/* and
-  // appear "empty" (no libraries/games) and auth will fail.
+  // 2. Hard override for Lovable environments
+  // In Lovable preview/published apps, there is no Express /api backend available
   try {
     if (typeof window !== "undefined") {
       const host = window.location.hostname.toLowerCase();
@@ -80,8 +106,8 @@ export function isSelfHostedMode(): boolean {
     // ignore
   }
   
-  // 2. Check if Supabase URL is available - this is the PRIMARY check
-  // IMPORTANT: Check VITE env DIRECTLY, not through getConfig which might recurse
+  // 3. Check if Supabase URL is available - this is the PRIMARY check
+  // IMPORTANT: Check runtime config FIRST (for self-hosted Supabase)
   const runtimeSupabaseUrl = runtime.SUPABASE_URL;
   const viteSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   
@@ -89,14 +115,12 @@ export function isSelfHostedMode(): boolean {
     (runtimeSupabaseUrl && runtimeSupabaseUrl !== '') ||
     (viteSupabaseUrl && viteSupabaseUrl !== '');
   
-  // If Supabase URL is available, we're in CLOUD mode - NOT self-hosted
-  // This check happens BEFORE any localStorage checks to prevent pollution
+  // If Supabase URL is available, we're in SUPABASE mode - NOT Express API
   if (hasSupabaseUrl) {
     return false;
   }
   
-  // 3. No Supabase URL available - we're in self-hosted mode
-  // The auth_token check is now secondary confirmation, not primary
+  // 4. No Supabase URL available and no explicit config - assume Express API mode
   return true;
 }
 

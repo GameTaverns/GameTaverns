@@ -1,7 +1,7 @@
 #!/bin/sh
 # Inject runtime configuration into the frontend
 # This runs at container start to inject environment-specific values
-# Version: 2.7.0 - Complete Deployment Sweep Edition
+# Version: 2.7.1 - Connection Fix Edition
 # Audited: 2026-02-03
 # Supports: Docker, Alpine, GNU/Linux
 #
@@ -9,6 +9,7 @@
 #   - SELF_HOSTED: false ensures we use Supabase client, NOT /api/* endpoints
 #   - SUPABASE_URL points to the PUBLIC domain (same-origin)
 #   - IS_PRODUCTION: true hides testing banner
+#   - API_EXTERNAL_URL == SITE_URL for same-origin routing
 
 set -e
 
@@ -17,7 +18,7 @@ INDEX_FILE="/usr/share/nginx/html/index.html"
 
 echo "=============================================="
 echo "  Injecting Runtime Configuration"
-echo "  Version: 2.7.0"
+echo "  Version: 2.7.1"
 echo "=============================================="
 echo ""
 echo "  SUPABASE_URL: ${SUPABASE_URL:-not set}"
@@ -39,7 +40,15 @@ ESCAPED_SITE_DESC=$(escape_js "${SITE_DESCRIPTION:-Browse and discover our colle
 # host Nginx proxies /auth/, /rest/, /functions/ to Kong on port 8000
 SUPABASE_URL_VALUE="${SUPABASE_URL:-}"
 
-# If SUPABASE_URL is not set but we have a SITE_URL, derive it
+# PRIORITY 1: If SUPABASE_URL is not set but we have API_EXTERNAL_URL, use it
+# (This is the correct self-hosted Supabase config)
+if [ -z "$SUPABASE_URL_VALUE" ] && [ -n "${API_EXTERNAL_URL:-}" ]; then
+    SUPABASE_URL_VALUE="$API_EXTERNAL_URL"
+    echo "  Derived SUPABASE_URL from API_EXTERNAL_URL: $SUPABASE_URL_VALUE"
+fi
+
+# PRIORITY 2: If still not set but we have SITE_URL, use that
+# (Frontend uses same-origin paths for API access)
 if [ -z "$SUPABASE_URL_VALUE" ] && [ -n "${SITE_URL:-}" ]; then
     SUPABASE_URL_VALUE="$SITE_URL"
     echo "  Derived SUPABASE_URL from SITE_URL: $SUPABASE_URL_VALUE"
@@ -59,8 +68,15 @@ ESCAPED_ANON_KEY=$(escape_js "${SUPABASE_ANON_KEY:-}")
 cat > "$CONFIG_FILE" << EOF
 // Runtime configuration - injected at container start
 // Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-// Version: 2.7.0
+// Version: 2.7.1
 // DO NOT EDIT - this file is auto-generated
+//
+// ARCHITECTURE:
+//   - SELF_HOSTED: false means "use Supabase client" (not Express API)
+//   - This self-hosted Supabase stack IS a real Supabase environment
+//   - Frontend accesses /auth/, /rest/, /functions/ on same domain
+//   - Host Nginx proxies these paths to Kong gateway on port 8000
+//
 (function() {
   'use strict';
   try {
@@ -75,6 +91,7 @@ cat > "$CONFIG_FILE" << EOF
       // CRITICAL: The PUBLIC URL for Supabase services
       // Browser accesses /auth/, /rest/, /functions/ on this domain
       // Host Nginx proxies these to Kong on port 8000
+      // Must match the domain in browser address bar (same-origin)
       SUPABASE_URL: "${ESCAPED_SUPABASE_URL}",
       SUPABASE_ANON_KEY: "${ESCAPED_ANON_KEY}",
       
@@ -89,12 +106,14 @@ cat > "$CONFIG_FILE" << EOF
       BUILD_TIME: "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     };
     
-    // Log for debugging
+    // Comprehensive logging for debugging
     if (window.__RUNTIME_CONFIG__.SUPABASE_URL) {
       console.log('[GameTaverns] Runtime config loaded: Production Supabase Mode');
       console.log('[GameTaverns] API URL:', window.__RUNTIME_CONFIG__.SUPABASE_URL);
+      console.log('[GameTaverns] Same-origin API paths: /auth/, /rest/, /functions/, /storage/');
     } else {
       console.warn('[GameTaverns] No SUPABASE_URL configured - API calls may fail');
+      console.warn('[GameTaverns] Check that API_EXTERNAL_URL or SITE_URL is set in .env');
     }
   } catch (e) {
     console.error('[GameTaverns] Failed to load runtime config:', e);
@@ -147,7 +166,8 @@ echo ""
 echo "Runtime config injection complete"
 echo ""
 echo "Configuration Summary:"
-echo "  SELF_HOSTED: false (using Supabase client)"
+echo "  SELF_HOSTED: false (using Supabase client, NOT Express API)"
 echo "  IS_PRODUCTION: true (no testing banner)"
 echo "  SUPABASE_URL: ${SUPABASE_URL_VALUE:-not set}"
+echo "  Same-origin API: /auth/, /rest/, /functions/, /storage/"
 echo ""
