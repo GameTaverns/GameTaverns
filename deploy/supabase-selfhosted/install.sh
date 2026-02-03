@@ -3,7 +3,7 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.7.4 - Single .env Edition
+# Version: 2.7.5 - Kong Key Verification Edition
 # Audited: 2026-02-03
 # 
 # ISSUES ADDRESSED IN THIS VERSION:
@@ -15,6 +15,7 @@
 #   6. Self-hosted flag issues - Frontend properly configured for Supabase mode
 #   7. Database to frontend linkage - Proper API URL injection
 #   8. Connection issues - API_EXTERNAL_URL == SITE_URL for same-origin routing
+#   9. **NEW** Kong key caching - Verify Kong has fresh keys before admin creation
 #
 # SINGLE .ENV ARCHITECTURE (CRITICAL):
 #   - /opt/gametaverns/.env is the ONLY configuration file
@@ -933,6 +934,42 @@ while [ $KONG_ATTEMPT -lt $KONG_MAX_ATTEMPTS ]; do
     fi
     sleep 3
 done
+
+# ===========================================
+# CRITICAL: Verify Kong has correct API keys loaded
+# If keys are stale/placeholder, admin creation will fail with 401
+# ===========================================
+info "Verifying Kong API keys are configured correctly..."
+
+# Test with ANON_KEY - if this fails, Kong has stale config
+KONG_KEY_TEST=$(curl -s -o /dev/null -w "%{http_code}" \
+    -H "apikey: ${ANON_KEY}" \
+    "http://127.0.0.1:${KONG_HTTP_PORT:-8000}/auth/v1/health" 2>/dev/null || echo "000")
+
+if [ "$KONG_KEY_TEST" = "401" ] || [ "$KONG_KEY_TEST" = "000" ]; then
+    warn "Kong has stale API keys (HTTP $KONG_KEY_TEST). Reloading Kong with fresh config..."
+    
+    # Force Kong to reload declarative config
+    docker restart gametaverns-kong 2>/dev/null || true
+    
+    # Wait for Kong to come back
+    sleep 10
+    
+    # Verify again
+    KONG_KEY_RETEST=$(curl -s -o /dev/null -w "%{http_code}" \
+        -H "apikey: ${ANON_KEY}" \
+        "http://127.0.0.1:${KONG_HTTP_PORT:-8000}/auth/v1/health" 2>/dev/null || echo "000")
+    
+    if [ "$KONG_KEY_RETEST" = "401" ] || [ "$KONG_KEY_RETEST" = "000" ]; then
+        warn "Kong still returning $KONG_KEY_RETEST after restart."
+        warn "Check that kong.yml has correct keys: grep 'key:' $INSTALL_DIR/kong.yml"
+        warn "Admin creation may fail - run ./scripts/create-admin.sh after fixing."
+    else
+        success "Kong API keys verified after reload (HTTP $KONG_KEY_RETEST)"
+    fi
+else
+    success "Kong API keys verified (HTTP $KONG_KEY_TEST)"
+fi
 
 # ===========================================
 # STEP 10: Configure Host Nginx
