@@ -772,23 +772,31 @@ export default async function handler(req: Request): Promise<Response> {
               console.log(`Enhancing with BGG data: ${gameInput.bgg_id}`);
               const bggData = await fetchBGGData(gameInput.bgg_id, firecrawlKey);
               if (bggData) {
-                // Merge BGG data with CSV data - prefer CSV values when present, fall back to BGG
+                // Helper to check if a value is "empty" (undefined, null, or empty string)
+                const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
+                
+                // Merge BGG data with CSV data - prefer CSV values when present and non-empty, fall back to BGG
+                // IMPORTANT: For descriptions especially, BGG CSV exports do NOT include descriptions,
+                // so we need to pull them from BGG page scraping
                 gameData = {
                   ...bggData,
                   ...gameData,
-                  // Explicitly handle fields where we want BGG data as fallback
+                  // Explicitly handle fields where we want BGG data as fallback when CSV is empty
                   bgg_id: gameData.bgg_id || bggData.bgg_id,
-                  image_url: gameData.image_url || bggData.image_url,
-                  description: gameData.description || bggData.description,
-                  difficulty: gameData.difficulty || bggData.difficulty,
-                  play_time: gameData.play_time || bggData.play_time,
-                  game_type: gameData.game_type || bggData.game_type,
+                  image_url: isEmpty(gameData.image_url) ? bggData.image_url : gameData.image_url,
+                  description: isEmpty(gameData.description) ? bggData.description : gameData.description,
+                  difficulty: isEmpty(gameData.difficulty) ? bggData.difficulty : gameData.difficulty,
+                  play_time: isEmpty(gameData.play_time) ? bggData.play_time : gameData.play_time,
+                  game_type: isEmpty(gameData.game_type) ? bggData.game_type : gameData.game_type,
                   min_players: gameData.min_players ?? bggData.min_players,
                   max_players: gameData.max_players ?? bggData.max_players,
-                  suggested_age: gameData.suggested_age || bggData.suggested_age,
+                  suggested_age: isEmpty(gameData.suggested_age) ? bggData.suggested_age : gameData.suggested_age,
                   mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
-                  publisher: gameData.publisher || bggData.publisher,
+                  publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
                 };
+                
+                console.log(`BGG merge for "${gameData.title}": description=${(gameData.description?.length || 0)} chars, bggDesc=${(bggData.description?.length || 0)} chars`);
+                
                 if (!gameData.title && gameInput.bgg_url) {
                   const pathParts = gameInput.bgg_url.split("/").filter(Boolean);
                   const slugPart = pathParts[pathParts.length - 1];
