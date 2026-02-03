@@ -78,7 +78,12 @@ const Login = () => {
       }
 
       // Check if user has 2FA enabled
+      // Wait a moment for session to be fully established
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const { data: { session } } = await supabase.auth.getSession();
+      console.log("[Login] Checking 2FA status, session:", !!session?.access_token);
+      
       if (session?.access_token) {
         try {
           const response = await fetch(`${apiUrl}/functions/v1/totp-status`, {
@@ -90,24 +95,33 @@ const Login = () => {
             },
           });
 
+          console.log("[Login] totp-status response:", response.status);
+          
           if (response.ok) {
             const data = await response.json();
+            console.log("[Login] totp-status data:", data);
             
             if (data.isEnabled) {
               // User has 2FA enabled - show verification screen
+              console.log("[Login] 2FA is enabled, showing verification");
               setPendingAccessToken(session.access_token);
               setRequires2FA(true);
               return;
             } else if (data.requiresSetup) {
               // User needs to set up 2FA (required for all users)
+              console.log("[Login] 2FA requires setup, redirecting");
               navigate("/setup-2fa", { replace: true });
               return;
             }
+          } else {
+            console.error("[Login] totp-status failed:", response.status, await response.text());
           }
         } catch (e) {
-          console.error("Failed to check 2FA status:", e);
+          console.error("[Login] Failed to check 2FA status:", e);
           // Continue to dashboard if 2FA check fails
         }
+      } else {
+        console.warn("[Login] No session access_token available after sign in");
       }
 
       toast({ title: "Welcome back!" });
