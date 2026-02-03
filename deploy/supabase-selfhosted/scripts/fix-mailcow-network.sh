@@ -45,17 +45,11 @@ MAILCOW_DIR="/opt/mailcow"
 if [ -d "$MAILCOW_DIR" ]; then
     echo -e "${BLUE}Creating Mailcow network override...${NC}"
     
-    cat > "$MAILCOW_DIR/docker-compose.override.yml" << 'EOF'
-# Network override to avoid subnet conflicts
-# This uses a specific subnet that won't overlap with other Docker networks
-
-networks:
-  mailcow-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.29.0.0/16
-EOF
+    # Mailcow containers have hardcoded IPs in the 172.22.x.x range.
+    # We MUST NOT override the subnet, or containers will fail with
+    # "no configured subnet contains IP address 172.22.1.254".
+    # Instead, remove any override and let Mailcow use its default network.
+    rm -f "$MAILCOW_DIR/docker-compose.override.yml"
     
     echo -e "${GREEN}✓ Created docker-compose.override.yml with subnet 172.29.0.0/16${NC}"
 fi

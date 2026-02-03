@@ -170,25 +170,19 @@ PORTCONF
 echo -e "${GREEN}✓ Ports configured: HTTP=$MAILCOW_HTTP_PORT, HTTPS=$MAILCOW_HTTPS_PORT${NC}"
 
 # ===========================================
-# Step 4: Fix Docker Network Overlap
+# Step 4: Docker Network Configuration
 # ===========================================
-echo -e "${BLUE}[5/6] Configuring dedicated Docker network...${NC}"
+echo -e "${BLUE}[5/6] Configuring Docker network...${NC}"
 
-cat > docker-compose.override.yml << EOF
-# Custom network to avoid subnet conflicts with GameTaverns
-# Using dedicated subnet: $MAILCOW_SUBNET
-networks:
-  mailcow-network:
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: br-mailcow
-    ipam:
-      driver: default
-      config:
-        - subnet: $MAILCOW_SUBNET
-EOF
+# Mailcow has hardcoded container IPs in the 172.22.x.x range.
+# We must NOT override the subnet, or containers will fail to start.
+# Instead, we let Mailcow manage its own network and ensure GameTaverns
+# uses a non-conflicting range (it defaults to 172.18.x.x or similar).
+#
+# If a docker-compose.override.yml exists from a previous attempt, remove it.
+rm -f docker-compose.override.yml
 
-echo -e "${GREEN}✓ Docker network configured with subnet $MAILCOW_SUBNET${NC}"
+echo -e "${GREEN}✓ Using Mailcow's default network configuration${NC}"
 
 # ===========================================
 # Step 5: Start Mailcow
