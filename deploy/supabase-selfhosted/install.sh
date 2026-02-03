@@ -109,8 +109,8 @@ step() { echo -e "\n${CYAN}[$1] $2${NC}" | tee -a "$LOG_FILE"; }
 # ===========================================
 echo ""
 echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║         GameTaverns Self-Hosted Installer v2.7.2                  ║${NC}"
-echo -e "${CYAN}║         Proper Install Order Edition                              ║${NC}"
+echo -e "${CYAN}║         GameTaverns Self-Hosted Installer v2.7.7                  ║${NC}"
+echo -e "${CYAN}║         JWT Quoting Fix Edition                                   ║${NC}"
 echo -e "${CYAN}║         Domain: $DOMAIN                                  ║${NC}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -434,12 +434,13 @@ MAIL_DOMAIN=$DOMAIN
 LIBRARY_SUBDOMAIN_PATTERN=*.$DOMAIN
 
 # Security Keys (DO NOT SHARE)
-POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-JWT_SECRET=$JWT_SECRET
-ANON_KEY=$ANON_KEY
-SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY
-SECRET_KEY_BASE=$SECRET_KEY_BASE
-PII_ENCRYPTION_KEY=$PII_ENCRYPTION_KEY
+# CRITICAL: Quote all secrets to prevent shell interpretation issues
+POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
+JWT_SECRET="$JWT_SECRET"
+ANON_KEY="$ANON_KEY"
+SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+SECRET_KEY_BASE="$SECRET_KEY_BASE"
+PII_ENCRYPTION_KEY="$PII_ENCRYPTION_KEY"
 
 # Site Branding
 # IMPORTANT: Quote any values that may contain spaces to keep .env sourceable
