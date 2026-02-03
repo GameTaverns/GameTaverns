@@ -303,8 +303,10 @@ services:
       - ./supabase/functions:/home/deno/functions:ro
     command:
       - start
+      # Serve ALL functions in /home/deno/functions so /functions/v1/{name} works
+      # (Required for TOTP + admin tooling parity)
       - --main-service
-      - /home/deno/functions/main
+      - /home/deno/functions
       - --port
       - "9000"
     healthcheck:
