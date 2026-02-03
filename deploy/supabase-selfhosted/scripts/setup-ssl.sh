@@ -45,22 +45,43 @@ echo ""
 # ===========================================
 # Get admin email for ACME registration
 # ===========================================
-ACME_EMAIL="${SMTP_ADMIN_EMAIL:-}"
+normalize_email() {
+    # Trim leading/trailing whitespace
+    local e
+    e="$(echo "${1:-}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
 
-# If no email in .env, prompt for one
-if [ -z "$ACME_EMAIL" ] || [ "$ACME_EMAIL" = "_" ]; then
-    echo -e "${YELLOW}No admin email found in configuration.${NC}"
+    # Strip surrounding single/double quotes (common when .env wraps values)
+    e="${e%\"}"
+    e="${e#\"}"
+    e="${e%\'}"
+    e="${e#\'}"
+
+    echo "$e"
+}
+
+is_valid_email() {
+    [[ "${1:-}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]
+}
+
+ACME_EMAIL="$(normalize_email "${SMTP_ADMIN_EMAIL:-}")"
+
+# If missing/placeholder/invalid, prompt until valid
+if [ -z "$ACME_EMAIL" ] || [ "$ACME_EMAIL" = "_" ] || ! is_valid_email "$ACME_EMAIL"; then
+    echo -e "${YELLOW}No valid admin email found in configuration.${NC}"
     echo "Let's Encrypt requires a valid email for certificate notifications."
     echo ""
-    read -p "Enter your email address for SSL certificates: " ACME_EMAIL
-    
-    # Validate email format (basic check)
-    if [[ ! "$ACME_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-        echo -e "${RED}Error: Invalid email format. Please run the script again with a valid email.${NC}"
-        exit 1
-    fi
-    
-    echo -e "${GREEN}✓ Using email: $ACME_EMAIL${NC}"
+
+    while true; do
+        read -p "Enter your email address for SSL certificates: " ACME_EMAIL
+        ACME_EMAIL="$(normalize_email "$ACME_EMAIL")"
+
+        if is_valid_email "$ACME_EMAIL"; then
+            echo -e "${GREEN}✓ Using email: $ACME_EMAIL${NC}"
+            break
+        fi
+
+        echo -e "${RED}Error: Invalid email format. Please try again.${NC}"
+    done
 fi
 
 # Pre-flight DNS check
