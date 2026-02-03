@@ -156,7 +156,7 @@ export default function Directory() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Back to Dashboard */}
         {user && (
-          <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
+          <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </Link>
