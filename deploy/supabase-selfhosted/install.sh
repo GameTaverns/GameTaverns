@@ -824,9 +824,65 @@ step "9/15" "Starting Remaining Services"
 info "Database is fully initialized. Starting remaining services..."
 dcp up -d 2>&1 | tee -a "$LOG_FILE"
 
-# Wait for auth service to be healthy
-info "Waiting for auth service to initialize..."
-sleep 15
+# Wait for auth service to be healthy with proper retry logic
+info "Waiting for auth service to initialize (this may take 2-3 minutes)..."
+
+AUTH_MAX_ATTEMPTS=30
+AUTH_ATTEMPT=0
+AUTH_HEALTHY=false
+
+while [ $AUTH_ATTEMPT -lt $AUTH_MAX_ATTEMPTS ]; do
+    AUTH_ATTEMPT=$((AUTH_ATTEMPT + 1))
+    
+    # Check if auth container is healthy
+    AUTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' gametaverns-auth 2>/dev/null || echo "not_found")
+    
+    if [ "$AUTH_STATUS" = "healthy" ]; then
+        AUTH_HEALTHY=true
+        break
+    fi
+    
+    # Also try direct health endpoint
+    if curl -sf http://127.0.0.1:9999/health >/dev/null 2>&1; then
+        AUTH_HEALTHY=true
+        break
+    fi
+    
+    # Show progress every 5 attempts
+    if [ $((AUTH_ATTEMPT % 5)) -eq 0 ]; then
+        info "Auth service status: $AUTH_STATUS (attempt $AUTH_ATTEMPT/$AUTH_MAX_ATTEMPTS)..."
+    fi
+    
+    sleep 5
+done
+
+if [ "$AUTH_HEALTHY" = "true" ]; then
+    success "Auth service is healthy"
+else
+    warn "Auth service may not be fully ready. Checking logs..."
+    docker logs gametaverns-auth --tail 50 2>&1 | tee -a "$LOG_FILE"
+    
+    # Check if it's a database connection issue
+    if docker logs gametaverns-auth 2>&1 | grep -qi "database\|connection\|postgres"; then
+        warn "Auth service may have database connection issues. Restarting..."
+        docker restart gametaverns-auth
+        sleep 30
+    fi
+fi
+
+# Also wait for Kong to be ready (depends on auth)
+info "Verifying Kong gateway..."
+KONG_MAX_ATTEMPTS=15
+KONG_ATTEMPT=0
+while [ $KONG_ATTEMPT -lt $KONG_MAX_ATTEMPTS ]; do
+    KONG_ATTEMPT=$((KONG_ATTEMPT + 1))
+    if curl -sf http://127.0.0.1:8000/ >/dev/null 2>&1 || \
+       docker inspect --format='{{.State.Health.Status}}' gametaverns-kong 2>/dev/null | grep -q "healthy"; then
+        success "Kong gateway is ready"
+        break
+    fi
+    sleep 3
+done
 
 # ===========================================
 # STEP 10: Configure Host Nginx
