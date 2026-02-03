@@ -352,12 +352,15 @@ services:
       - gametaverns
 
   # ===========================================
-  # Supabase Studio
+  # Supabase Studio - OPTIONAL
+  # Only starts when --profile studio is passed
   # ===========================================
   studio:
     image: supabase/studio:20240729-ce42139
     container_name: gametaverns-studio
     restart: unless-stopped
+    profiles:
+      - studio  # Only starts when --profile studio is passed
     ports:
       - "${STUDIO_PORT:-3001}:3000"
     environment:
