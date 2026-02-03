@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useSiteSettings } from "./useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
-import { getRuntimeFeatureFlag } from "@/config/runtime";
+import { getRuntimeFeatureFlag, isProductionDeployment } from "@/config/runtime";
 
 /**
  * Feature Flags System
@@ -25,18 +25,19 @@ export interface FeatureFlags {
 }
 
 // Default values when nothing is configured
-const DEFAULT_FLAGS: FeatureFlags = {
+// Note: demoMode is disabled by default in production deployments
+const getDefaultFlags = (): FeatureFlags => ({
   playLogs: true,
   wishlist: true,
   forSale: true,
   messaging: true,
   comingSoon: true,
-  demoMode: true,
+  demoMode: !isProductionDeployment(), // Disabled in production by default
   ratings: true,
   events: true,
   achievements: true,
   lending: true,
-};
+});
 
 // Get flag from runtime config (Cloudron) or env var (Vite)
 function getConfigFlag(runtimeKey: 'PLAY_LOGS' | 'WISHLIST' | 'FOR_SALE' | 'MESSAGING' | 'COMING_SOON' | 'DEMO_MODE' | 'RATINGS' | 'EVENTS' | 'ACHIEVEMENTS' | 'LENDING', envKey: string): boolean | undefined {
@@ -93,17 +94,19 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
   const { isDemoMode, demoFeatureFlags } = useDemoMode();
   
   const flags = useMemo(() => {
+    const defaultFlags = getDefaultFlags();
+    
     // In demo mode, use demo-specific feature flags (demoMode flag is always true in demo)
     if (isDemoMode && demoFeatureFlags) {
       return {
-        ...DEFAULT_FLAGS, // Start with defaults to ensure all flags exist
+        ...defaultFlags, // Start with defaults to ensure all flags exist
         ...demoFeatureFlags,
         demoMode: true, // Always true when already in demo mode
       };
     }
     
     // Start with defaults
-    const result = { ...DEFAULT_FLAGS };
+    const result = { ...defaultFlags };
     
     // Apply admin settings (from database)
     if (siteSettings) {
