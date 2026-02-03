@@ -24,6 +24,7 @@ const Login = () => {
   const [turnstileKey, setTurnstileKey] = useState(0);
   const [requires2FA, setRequires2FA] = useState(false);
   const [pendingAccessToken, setPendingAccessToken] = useState<string | null>(null);
+  const [authGate, setAuthGate] = useState<"idle" | "checking_2fa" | "needs_2fa">("idle");
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -47,11 +48,11 @@ const Login = () => {
     // IMPORTANT: During an active sign-in attempt we intentionally suppress
     // this auto-redirect so we can run the mandatory 2FA status check first.
     // Also skip if 2FA verification is pending.
-    if (!loading && isAuthenticated && !hasCheckedAuth && !isLoading && !requires2FA) {
+    if (!loading && isAuthenticated && !hasCheckedAuth && !isLoading && !requires2FA && authGate === "idle") {
       setHasCheckedAuth(true);
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, loading, navigate, hasCheckedAuth, isLoading, requires2FA]);
+  }, [isAuthenticated, loading, navigate, hasCheckedAuth, isLoading, requires2FA, authGate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +67,7 @@ const Login = () => {
     }
     
     setIsLoading(true);
+    setAuthGate("checking_2fa");
     // Prevent the auth-change useEffect above from redirecting to /dashboard
     // before we can run the 2FA gate checks.
     setHasCheckedAuth(true);
@@ -113,6 +115,7 @@ const Login = () => {
               console.log("[Login] 2FA is enabled, showing verification");
               setPendingAccessToken(session.access_token);
               setRequires2FA(true);
+              setAuthGate("needs_2fa");
               return;
             } else if (data.requiresSetup) {
               // User needs to set up 2FA (required for all users)
@@ -135,12 +138,14 @@ const Login = () => {
       navigate("/dashboard", { replace: true });
     } finally {
       setIsLoading(false);
+      setAuthGate("idle");
     }
   };
 
   const handle2FASuccess = () => {
     setRequires2FA(false);
     setPendingAccessToken(null);
+    setAuthGate("idle");
     toast({ title: "Welcome back!" });
     navigate("/dashboard", { replace: true });
   };
@@ -150,6 +155,7 @@ const Login = () => {
     await supabase.auth.signOut();
     setRequires2FA(false);
     setPendingAccessToken(null);
+    setAuthGate("idle");
     resetTurnstile();
   };
 
@@ -199,7 +205,8 @@ const Login = () => {
   }
 
   // Already authenticated, will redirect
-  if (isAuthenticated && !requires2FA) {
+  // If we are authenticated but still checking/awaiting 2FA, don't blank the screen.
+  if (isAuthenticated && !requires2FA && authGate === "idle") {
     return null;
   }
 
