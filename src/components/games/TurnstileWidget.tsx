@@ -39,6 +39,23 @@ function isLovablePreview(): boolean {
   return host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app");
 }
 
+/**
+ * Detect if we're running in the self-hosted Supabase stack (same-origin Kong).
+ * In this deployment, we should fail open (with a short safety delay) if
+ * site settings can't be fetched / the Turnstile key isn't available.
+ */
+function isSelfHostedSupabaseStack(): boolean {
+  if (typeof window === "undefined") return false;
+  const runtime = (window as any).__RUNTIME_CONFIG__ as
+    | { SUPABASE_URL?: string; SUPABASE_ANON_KEY?: string; SELF_HOSTED?: boolean }
+    | undefined;
+
+  // The self-hosted Supabase stack explicitly sets SELF_HOSTED: false.
+  if (!runtime) return false;
+  if (runtime.SELF_HOSTED !== false) return false;
+  return Boolean(runtime.SUPABASE_URL && runtime.SUPABASE_ANON_KEY);
+}
+
 let turnstileLoadPromise: Promise<void> | null = null;
 
 function loadTurnstileScript(): Promise<void> {
@@ -143,6 +160,21 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       
       // If no site key is configured after settings loaded, show error
       if (!siteKey) {
+        // Self-hosted safety fallback: allow login/signup to work even if
+        // the settings table/view is missing or the API is temporarily down.
+        if (isSelfHostedSupabaseStack()) {
+          console.warn('[TurnstileWidget] Self-hosted fallback: missing Turnstile site key, bypassing after safety delay');
+          setBypassReason("self-hosted safety fallback");
+          setHasError(false);
+          setIsLoading(false);
+
+          const timer = setTimeout(() => {
+            onVerify("TURNSTILE_BYPASS_TOKEN");
+          }, 5000);
+
+          return () => clearTimeout(timer);
+        }
+
         console.warn('[TurnstileWidget] No Turnstile site key configured in database');
         setBypassReason("no site key configured");
         setHasError(true);
@@ -154,7 +186,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       // Site key exists - proceed with real Turnstile
       setBypassReason(null);
       setHasError(false);
-    }, [settingsLoaded, siteKey, isPreviewMode, onError]);
+    }, [settingsLoaded, siteKey, isPreviewMode, onError, onVerify]);
 
     const handleVerify = useCallback((token: string) => {
       setIsLoading(false);
@@ -231,6 +263,18 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
           <CheckCircle2 className="h-4 w-4 text-primary" />
           <span className="text-sm text-muted-foreground">
             Verification bypassed (preview mode)
+          </span>
+        </div>
+      );
+    }
+
+    // Self-hosted safety fallback: show indicator while we bypass.
+    if (bypassReason === "self-hosted safety fallback") {
+      return (
+        <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          <span className="text-sm text-muted-foreground">
+            Verification bypassed (self-hosted safety fallback)
           </span>
         </div>
       );
