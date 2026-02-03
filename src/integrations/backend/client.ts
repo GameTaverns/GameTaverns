@@ -44,6 +44,13 @@ function getOrCreateSupabaseClient(): SupabaseClient<Database> {
         persistSession: true,
         autoRefreshToken: true,
       },
+      global: {
+        headers: {
+          // Kong gateway requires apikey header for all requests
+          // This is ADDED to existing headers (Authorization, etc.), not replacing them
+          apikey: anonKey,
+        },
+      },
     });
     _isRealClient = true;
     return _supabaseClient;
