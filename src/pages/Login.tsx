@@ -44,11 +44,13 @@ const Login = () => {
 
   useEffect(() => {
     // Only redirect once auth loading is complete and user is authenticated
-    if (!loading && isAuthenticated && !hasCheckedAuth) {
+    // IMPORTANT: During an active sign-in attempt we intentionally suppress
+    // this auto-redirect so we can run the mandatory 2FA status check first.
+    if (!loading && isAuthenticated && !hasCheckedAuth && !isLoading) {
       setHasCheckedAuth(true);
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, loading, navigate, hasCheckedAuth]);
+  }, [isAuthenticated, loading, navigate, hasCheckedAuth, isLoading]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +65,9 @@ const Login = () => {
     }
     
     setIsLoading(true);
+    // Prevent the auth-change useEffect above from redirecting to /dashboard
+    // before we can run the 2FA gate checks.
+    setHasCheckedAuth(true);
 
     try {
       const { error } = await signIn(emailOrUsername, password);
@@ -73,6 +78,7 @@ const Login = () => {
           description: error.message,
           variant: "destructive",
         });
+        setHasCheckedAuth(false);
         resetTurnstile();
         return;
       }
