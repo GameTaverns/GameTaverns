@@ -1360,49 +1360,60 @@ if [ "$AUTH_READY" = "true" ]; then
         warn "SERVICE_ROLE_KEY is not set. Cannot create admin via API."
         warn "Run manually after install: ./scripts/create-admin.sh"
     else
-        RESPONSE=$(curl -s -X POST \
-            "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
+        AUTH_ADMIN_URL="http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users"
+
+        # IMPORTANT:
+        # - This curl can fail transiently (Kong reload, container restart, network hiccup).
+        # - With `set -e`, a non-zero curl exit would terminate the installer silently.
+        # So we capture both body + HTTP status and handle failures explicitly.
+        set +e
+        HTTP_RESPONSE=$(curl -sS -X POST "$AUTH_ADMIN_URL" \
             -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-            -H "apikey: $SERVICE_ROLE_KEY" \
+            -H "apikey: $ANON_KEY" \
             -H "Content-Type: application/json" \
-            -d "{
-                \"email\": \"$ADMIN_EMAIL\",
-                \"password\": \"$ADMIN_PASSWORD\",
-                \"email_confirm\": true,
-                \"user_metadata\": {
-                    \"display_name\": \"$ADMIN_DISPLAY_NAME\"
-                }
-            }" 2>&1)
-        
-        # Log the response for debugging
-        echo "Auth API response: $RESPONSE" >> "$LOG_FILE"
-        
-        # Check for error in response
-        if echo "$RESPONSE" | grep -qE '"error"|"code":'; then
+            -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\",\"email_confirm\":true,\"user_metadata\":{\"display_name\":\"$ADMIN_DISPLAY_NAME\"}}" \
+            -w "\n__HTTP_STATUS__:%{http_code}\n" 2>&1)
+        CURL_EXIT=$?
+        set -e
+
+        HTTP_STATUS=$(echo "$HTTP_RESPONSE" | sed -n 's/^__HTTP_STATUS__:\([0-9][0-9][0-9]\)$/\1/p' | tail -1)
+        RESPONSE=$(echo "$HTTP_RESPONSE" | sed '/^__HTTP_STATUS__:/d')
+
+        # Log full raw output for postmortem
+        {
+            echo "Auth API curl exit: $CURL_EXIT"
+            echo "Auth API status: ${HTTP_STATUS:-<none>}"
+            echo "Auth API response: $RESPONSE"
+        } >> "$LOG_FILE"
+
+        if [ $CURL_EXIT -ne 0 ] || [ -z "${HTTP_STATUS:-}" ]; then
+            warn "Admin creation request failed before receiving a valid HTTP response."
+            warn "Raw output: ${HTTP_RESPONSE}"
+            warn "You can run it manually after install: cd $INSTALL_DIR && sudo ./scripts/create-admin.sh"
+        elif [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
             ERROR_MSG=$(echo "$RESPONSE" | grep -oE '"(message|msg|error)"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
-            warn "Auth API error: ${ERROR_MSG:-$RESPONSE}"
-            warn "Run manually: ./scripts/create-admin.sh"
+            warn "Auth API error (HTTP $HTTP_STATUS): ${ERROR_MSG:-$RESPONSE}"
+            warn "You can run it manually after install: cd $INSTALL_DIR && sudo ./scripts/create-admin.sh"
         else
             USER_ID=$(echo "$RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-            
+
             if [ -n "$USER_ID" ]; then
                 success "User created: $USER_ID"
-                
+
                 # CRITICAL: Create user profile FIRST (required for admin panel access)
                 dcp exec -T db psql -U postgres -d postgres -c \
                     "INSERT INTO public.user_profiles (user_id, display_name) VALUES ('$USER_ID', '$ADMIN_DISPLAY_NAME') ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;" 2>/dev/null || true
-                
+
                 success "User profile created"
-                
+
                 # Add admin role (MUST be after profile creation)
                 dcp exec -T db psql -U postgres -d postgres -c \
                     "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING;" 2>/dev/null || true
-                
+
                 success "Admin role assigned"
             else
-                warn "Could not extract user ID from response."
-                warn "Run manually: ./scripts/create-admin.sh"
-                echo "Full response: $RESPONSE" >> "$LOG_FILE"
+                warn "Could not extract user ID from successful response (HTTP $HTTP_STATUS)."
+                warn "You can run it manually after install: cd $INSTALL_DIR && sudo ./scripts/create-admin.sh"
             fi
         fi
     fi
