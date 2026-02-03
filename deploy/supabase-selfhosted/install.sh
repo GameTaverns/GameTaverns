@@ -3,12 +3,12 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.7.2 - Proper Install Order Edition
+# Version: 2.7.3 - Correct Install Order Edition
 # Audited: 2026-02-03
 # 
 # ISSUES ADDRESSED IN THIS VERSION:
-#   1. Config collection order - Essential config first, optional keys AFTER services running
-#   2. Database/admin/user setup order - DB fully ready before services
+#   1. Config collection order - Admin/API keys collected AFTER services running
+#   2. Database/admin/user setup order - DB fully ready before admin creation
 #   3. Turnstile setup not holding - Key inserted into database
 #   4. SSL cert conflicts - Mail uses wildcard, not Mailcow internal certs
 #   5. Self-hosted flag issues - Frontend properly configured for Supabase mode
@@ -22,9 +22,9 @@
 #   - SELF_HOSTED: false = Use Supabase client, NOT Express API
 #
 # ORDER OF OPERATIONS (CRITICAL FOR SUCCESS):
-#   Phase 1 - ESSENTIAL CONFIG (required for services to start):
+#   Phase 1 - INFRASTRUCTURE CONFIG:
 #     Step 0:  Optional Mailcow installation
-#     Step 1:  Collect ESSENTIAL config only (admin email/pass, SMTP)
+#     Step 1:  Collect BASIC config only (timezone, SMTP)
 #     Step 2:  Generate security keys (JWT, Supabase)
 #     Step 3:  Setup directory structure
 #     Step 4:  Generate .env configuration (API_EXTERNAL_URL == SITE_URL)
@@ -44,7 +44,7 @@
 #     Step 11: SSL setup (Cloudflare wildcards, proper cert ordering)
 #
 #   Phase 4 - POST-INSTALL CONFIG (after everything running):
-#     Step 12: Create admin user (profile FIRST, then role)
+#     Step 12: Collect admin credentials & create admin user (DB must be ready!)
 #     Step 13: Collect & configure OPTIONAL API keys (Discord, Perplexity, etc)
 #     Step 13b: Insert Turnstile key into database
 #     Step 14: Email/mailbox configuration
@@ -213,24 +213,9 @@ fi
 step "1/15" "Collecting Essential Configuration"
 
 echo ""
-echo -e "${BLUE}=== Admin Configuration ===${NC}"
-echo -e "${YELLOW}(Only essential config now - optional API keys collected after services are running)${NC}"
+echo -e "${BLUE}=== Basic Configuration ===${NC}"
+echo -e "${YELLOW}(Admin account & API keys will be configured AFTER database is ready)${NC}"
 echo ""
-
-read -p "Admin email [admin@$DOMAIN]: " ADMIN_EMAIL
-ADMIN_EMAIL=${ADMIN_EMAIL:-admin@$DOMAIN}
-
-while true; do
-    read -s -p "Admin password (min 8 chars): " ADMIN_PASSWORD
-    echo ""
-    if [ ${#ADMIN_PASSWORD} -ge 8 ]; then
-        break
-    fi
-    echo -e "${RED}Password must be at least 8 characters${NC}"
-done
-
-read -p "Admin display name [Admin]: " ADMIN_DISPLAY_NAME
-ADMIN_DISPLAY_NAME=${ADMIN_DISPLAY_NAME:-Admin}
 
 read -p "Timezone [America/New_York]: " TIMEZONE
 TIMEZONE=${TIMEZONE:-America/New_York}
@@ -252,7 +237,10 @@ else
     EXT_SMTP_PASS=""
 fi
 
-# Initialize optional API keys as empty (will be collected later in Step 13)
+# Initialize optional values as empty (will be collected later)
+ADMIN_EMAIL=""
+ADMIN_PASSWORD=""
+ADMIN_DISPLAY_NAME=""
 DISCORD_BOT_TOKEN=""
 DISCORD_CLIENT_ID=""
 DISCORD_CLIENT_SECRET=""
@@ -263,7 +251,7 @@ TURNSTILE_SITE_KEY=""
 TURNSTILE_SECRET_KEY=""
 
 success "Essential configuration collected"
-info "Optional API keys (Discord, AI, Turnstile) will be configured after services are running"
+info "Admin account & optional API keys will be configured after database is ready"
 
 # ===========================================
 # STEP 2: Generate Security Keys
@@ -1184,6 +1172,27 @@ done
 
 if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
     success "Auth service ready"
+    
+    # NOW collect admin credentials (after database is ready)
+    echo ""
+    echo -e "${BLUE}=== Admin Account Setup ===${NC}"
+    echo -e "${GREEN}Database is ready! Now let's create your admin account.${NC}"
+    echo ""
+    
+    read -p "Admin email [admin@$DOMAIN]: " ADMIN_EMAIL
+    ADMIN_EMAIL=${ADMIN_EMAIL:-admin@$DOMAIN}
+    
+    while true; do
+        read -s -p "Admin password (min 8 chars): " ADMIN_PASSWORD
+        echo ""
+        if [ ${#ADMIN_PASSWORD} -ge 8 ]; then
+            break
+        fi
+        echo -e "${RED}Password must be at least 8 characters${NC}"
+    done
+    
+    read -p "Admin display name [Admin]: " ADMIN_DISPLAY_NAME
+    ADMIN_DISPLAY_NAME=${ADMIN_DISPLAY_NAME:-Admin}
     
     # Create user via Supabase Auth API
     info "Creating admin account..."
