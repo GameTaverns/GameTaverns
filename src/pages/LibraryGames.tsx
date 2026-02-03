@@ -187,7 +187,7 @@ export default function LibraryGames() {
             <h1 className="text-3xl font-display font-bold">Manage Games</h1>
             <p className="text-muted-foreground">Add, import, and organize your collection</p>
           </div>
-          <Link to={`/?tenant=${tenantSlug}&path=/admin/add`}>
+          <Link to={`/?tenant=${tenantSlug}&path=/add`}>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               Add Game Manually
