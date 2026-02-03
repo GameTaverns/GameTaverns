@@ -138,9 +138,9 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9999/health || curl -sf http://localhost:9999/health || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 15
-      start_period: 45s
+      timeout: 10s
+      retries: 30
+      start_period: 90s
     depends_on:
       db:
         condition: service_healthy
