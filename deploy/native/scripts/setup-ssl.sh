@@ -1,11 +1,14 @@
 #!/bin/bash
 #
 # GameTaverns SSL Setup Script
-# Configures Let's Encrypt wildcard certificates using Cloudflare DNS
+# Configures SSL certificates using Let's Encrypt or Cloudflare Origin Certificates
 #
 # Usage: 
-#   ./setup-ssl.sh                    # Interactive setup
-#   ./setup-ssl.sh --skip-wildcard    # Only root + www (not recommended)
+#   ./setup-ssl.sh                    # Interactive setup (choose method)
+#   ./setup-ssl.sh --letsencrypt      # Use Let's Encrypt (default)
+#   ./setup-ssl.sh --cloudflare       # Use Cloudflare Origin Certificate
+#   ./setup-ssl.sh --skip-wildcard    # Let's Encrypt: Only root + www
+#   ./setup-ssl.sh --verify           # Verify current SSL setup
 #
 
 set -e
@@ -13,6 +16,7 @@ set -e
 INSTALL_DIR="/opt/gametaverns"
 CREDENTIALS_FILE="/root/gametaverns-credentials.txt"
 CLOUDFLARE_CREDS="/root/.cloudflare.ini"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Colors
 RED='\033[0;31m'
@@ -21,14 +25,10 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo ""
-echo "╔═══════════════════════════════════════════════════════════════════╗"
-echo "║          GameTaverns - SSL Certificate Setup                      ║"
-echo "╚═══════════════════════════════════════════════════════════════════╝"
-echo ""
-
 # Parse arguments
 SKIP_WILDCARD=false
+USE_CLOUDFLARE_ORIGIN=false
+VERIFY_ONLY=false
 DOMAIN=""
 
 for arg in "$@"; do
@@ -36,11 +36,79 @@ for arg in "$@"; do
         --skip-wildcard)
             SKIP_WILDCARD=true
             ;;
+        --cloudflare|--cloudflare-origin|--origin)
+            USE_CLOUDFLARE_ORIGIN=true
+            ;;
+        --letsencrypt|--le)
+            USE_CLOUDFLARE_ORIGIN=false
+            ;;
+        --verify)
+            VERIFY_ONLY=true
+            ;;
         *)
             DOMAIN="$arg"
             ;;
     esac
 done
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════════╗"
+echo "║          GameTaverns - SSL Certificate Setup                      ║"
+echo "╚═══════════════════════════════════════════════════════════════════╝"
+echo ""
+
+# Handle verify-only mode
+if [[ "$VERIFY_ONLY" == "true" ]]; then
+    if [[ -x "${INSTALL_DIR}/scripts/verify-ssl.sh" ]]; then
+        exec "${INSTALL_DIR}/scripts/verify-ssl.sh" "$DOMAIN"
+    else
+        echo -e "${RED}[ERROR]${NC} Verification script not found. Run SSL setup first."
+        exit 1
+    fi
+fi
+
+# Redirect to Cloudflare Origin script if requested
+if [[ "$USE_CLOUDFLARE_ORIGIN" == "true" ]]; then
+    if [[ -x "${SCRIPT_DIR}/setup-ssl-cloudflare-origin.sh" ]]; then
+        exec "${SCRIPT_DIR}/setup-ssl-cloudflare-origin.sh" "$DOMAIN"
+    else
+        echo -e "${RED}[ERROR]${NC} Cloudflare origin script not found."
+        exit 1
+    fi
+fi
+
+# Interactive method selection if no flag provided
+if [[ "$USE_CLOUDFLARE_ORIGIN" == "false" ]] && [[ "$SKIP_WILDCARD" == "false" ]]; then
+    echo "Choose SSL certificate method:"
+    echo ""
+    echo "  1) Let's Encrypt (ACME)"
+    echo "     - Free, auto-renewing certificates"
+    echo "     - Rate limit: 5 certs per domain per week"
+    echo "     - Requires Cloudflare API token for DNS validation"
+    echo ""
+    echo "  2) Cloudflare Origin Certificate"
+    echo "     - No rate limits (bypasses Let's Encrypt)"
+    echo "     - Valid up to 15 years"
+    echo "     - Requires Cloudflare Proxy (Orange Cloud) enabled"
+    echo ""
+    read -p "Select method [1/2]: " SSL_METHOD
+    
+    case "$SSL_METHOD" in
+        2)
+            if [[ -x "${SCRIPT_DIR}/setup-ssl-cloudflare-origin.sh" ]]; then
+                exec "${SCRIPT_DIR}/setup-ssl-cloudflare-origin.sh" "$DOMAIN"
+            else
+                echo -e "${RED}[ERROR]${NC} Cloudflare origin script not found."
+                exit 1
+            fi
+            ;;
+        *)
+            echo ""
+            echo -e "${CYAN}Using Let's Encrypt...${NC}"
+            echo ""
+            ;;
+    esac
+fi
 
 # Get domain from credentials if not provided
 if [[ -z "$DOMAIN" ]] && [[ -f "$CREDENTIALS_FILE" ]]; then
