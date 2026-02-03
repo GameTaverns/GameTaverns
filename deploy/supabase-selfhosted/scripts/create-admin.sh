@@ -72,37 +72,65 @@ echo -e "${BLUE}Creating admin user...${NC}"
 
 cd "$INSTALL_DIR"
 
-# Wait for Kong and Auth to be ready
-MAX_RETRIES=90
-RETRY_COUNT=0
+# Smart auth service check with migration awareness
+AUTH_MAX_WAIT=300  # 5 minutes total
+AUTH_START_TIME=$(date +%s)
 AUTH_READY=false
 
 echo -e "${BLUE}Waiting for auth service...${NC}"
+echo -e "${YELLOW}(GoTrue applies ~50 migrations on first start - this can take 1-3 minutes)${NC}"
+echo ""
 
-while [ "$AUTH_READY" = "false" ]; do
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        echo -e "${RED}Error: Auth service not responding after $MAX_RETRIES attempts.${NC}"
+while true; do
+    ELAPSED=$(($(date +%s) - AUTH_START_TIME))
+    
+    if [ $ELAPSED -ge $AUTH_MAX_WAIT ]; then
+        echo -e "${RED}Error: Auth service not responding after $AUTH_MAX_WAIT seconds.${NC}"
         echo ""
         echo "Troubleshooting steps:"
         echo "  1. Check container status: docker compose ps"
-        echo "  2. Check auth logs: docker compose logs auth"
-        echo "  3. Check kong logs: docker compose logs kong"
-        echo "  4. Restart services: docker compose restart"
+        echo "  2. Check auth logs: docker compose logs auth --tail 100"
+        echo "  3. Look for migration progress: docker compose logs auth | grep -E 'migrations|Successfully'"
+        echo "  4. Restart services: docker compose restart auth kong"
         exit 1
     fi
     
-# Try the health endpoint first (requires apikey header)
-    # GoTrue /auth/v1/health expects an API key header; without it you'll get
-    # {"message":"No API key found in request"} and this loop will never succeed.
+    # Check if container exists
+    if ! docker ps --format '{{.Names}}' | grep -q "gametaverns-auth"; then
+        echo "  [$ELAPSED s] Auth container not running..."
+        sleep 5
+        continue
+    fi
+    
+    # Check for ongoing migrations (informational)
+    if [ $((ELAPSED % 20)) -eq 0 ] && [ $ELAPSED -gt 0 ]; then
+        MIGRATION_STATUS=$(docker logs gametaverns-auth 2>&1 | tail -20)
+        if echo "$MIGRATION_STATUS" | grep -q "Successfully applied"; then
+            APPLIED=$(echo "$MIGRATION_STATUS" | grep "Successfully applied" | tail -1)
+            echo "  [$ELAPSED s] $APPLIED"
+        elif echo "$MIGRATION_STATUS" | grep -qE "^> "; then
+            MIGRATION_COUNT=$(docker logs gametaverns-auth 2>&1 | grep -c "^> " || echo "?")
+            echo "  [$ELAPSED s] Migrations in progress (~$MIGRATION_COUNT applied)..."
+        else
+            echo "  [$ELAPSED s] Waiting for auth service..."
+        fi
+    fi
+    
+    # Try direct GoTrue port first (faster)
+    if curl -sf http://127.0.0.1:9999/health >/dev/null 2>&1; then
+        AUTH_READY=true
+        break
+    fi
+    
+    # Try via Kong gateway with apikey header
     if curl -sf \
         -H "apikey: ${ANON_KEY}" \
         "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; then
         AUTH_READY=true
-    else
-        echo "  Waiting for auth service... ($RETRY_COUNT/$MAX_RETRIES)"
-        sleep 3
+        break
     fi
+    
+    sleep 3
 done
 
 echo -e "${GREEN}✓ Auth service is ready${NC}"

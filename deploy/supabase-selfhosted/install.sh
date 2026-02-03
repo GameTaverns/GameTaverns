@@ -824,49 +824,94 @@ step "9/15" "Starting Remaining Services"
 info "Database is fully initialized. Starting remaining services..."
 dcp up -d 2>&1 | tee -a "$LOG_FILE"
 
-# Wait for auth service to be healthy with proper retry logic
-info "Waiting for auth service to initialize (this may take 2-3 minutes)..."
+# Wait for auth service to be healthy with MIGRATION-AWARE retry logic
+# GoTrue applies ~50 migrations on first start which can take 30-90 seconds
+info "Waiting for auth service to initialize..."
+info "(GoTrue applies ~50 migrations on first start - this can take 1-3 minutes)"
 
-AUTH_MAX_ATTEMPTS=30
-AUTH_ATTEMPT=0
+AUTH_MAX_WAIT=300  # 5 minutes total max wait
+AUTH_START_TIME=$(date +%s)
 AUTH_HEALTHY=false
+LAST_STATUS=""
+MIGRATIONS_DETECTED=false
 
-while [ $AUTH_ATTEMPT -lt $AUTH_MAX_ATTEMPTS ]; do
-    AUTH_ATTEMPT=$((AUTH_ATTEMPT + 1))
+while true; do
+    ELAPSED=$(($(date +%s) - AUTH_START_TIME))
     
-    # Check if auth container is healthy
-    AUTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' gametaverns-auth 2>/dev/null || echo "not_found")
-    
-    if [ "$AUTH_STATUS" = "healthy" ]; then
-        AUTH_HEALTHY=true
+    if [ $ELAPSED -ge $AUTH_MAX_WAIT ]; then
+        warn "Auth service did not become healthy within ${AUTH_MAX_WAIT}s"
         break
     fi
     
-    # Also try direct health endpoint
+    # Check if container exists and is running
+    if ! docker ps --format '{{.Names}}' | grep -q "gametaverns-auth"; then
+        info "[$ELAPSED s] Auth container not yet running..."
+        sleep 5
+        continue
+    fi
+    
+    # Get container health status
+    AUTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' gametaverns-auth 2>/dev/null || echo "unknown")
+    
+    # Check logs for migration progress (only once)
+    if [ "$MIGRATIONS_DETECTED" = "false" ]; then
+        if docker logs gametaverns-auth 2>&1 | grep -q "Successfully applied"; then
+            MIGRATIONS_COMPLETE=$(docker logs gametaverns-auth 2>&1 | grep "Successfully applied" | tail -1)
+            info "[$ELAPSED s] $MIGRATIONS_COMPLETE"
+            MIGRATIONS_DETECTED=true
+        elif docker logs gametaverns-auth 2>&1 | grep -q "Migrations already up to date"; then
+            info "[$ELAPSED s] Migrations already up to date"
+            MIGRATIONS_DETECTED=true
+        elif docker logs gametaverns-auth 2>&1 | grep -q "^> " | head -1 >/dev/null 2>&1; then
+            # Migrations are running
+            MIGRATION_COUNT=$(docker logs gametaverns-auth 2>&1 | grep -c "^> " || echo "0")
+            if [ "$MIGRATION_COUNT" -gt 0 ]; then
+                info "[$ELAPSED s] Migrations in progress ($MIGRATION_COUNT applied so far)..."
+            fi
+        fi
+    fi
+    
+    # Check if auth is responding via direct port
     if curl -sf http://127.0.0.1:9999/health >/dev/null 2>&1; then
         AUTH_HEALTHY=true
         break
     fi
     
-    # Show progress every 5 attempts
-    if [ $((AUTH_ATTEMPT % 5)) -eq 0 ]; then
-        info "Auth service status: $AUTH_STATUS (attempt $AUTH_ATTEMPT/$AUTH_MAX_ATTEMPTS)..."
+    # Also check via Kong if direct fails
+    if [ "$AUTH_HEALTHY" = "false" ] && curl -sf -H "apikey: ${ANON_KEY}" \
+        "http://127.0.0.1:${KONG_HTTP_PORT:-8000}/auth/v1/health" >/dev/null 2>&1; then
+        AUTH_HEALTHY=true
+        break
     fi
     
-    sleep 5
+    # Report status changes
+    if [ "$AUTH_STATUS" != "$LAST_STATUS" ]; then
+        info "[$ELAPSED s] Auth container status: $AUTH_STATUS"
+        LAST_STATUS="$AUTH_STATUS"
+    elif [ $((ELAPSED % 30)) -eq 0 ] && [ $ELAPSED -gt 0 ]; then
+        info "[$ELAPSED s] Still waiting for auth service (status: $AUTH_STATUS)..."
+    fi
+    
+    sleep 3
 done
 
 if [ "$AUTH_HEALTHY" = "true" ]; then
-    success "Auth service is healthy"
+    success "Auth service is healthy (took ~${ELAPSED}s)"
 else
     warn "Auth service may not be fully ready. Checking logs..."
-    docker logs gametaverns-auth --tail 50 2>&1 | tee -a "$LOG_FILE"
+    docker logs gametaverns-auth --tail 30 2>&1 | tee -a "$LOG_FILE"
     
-    # Check if it's a database connection issue
-    if docker logs gametaverns-auth 2>&1 | grep -qi "database\|connection\|postgres"; then
-        warn "Auth service may have database connection issues. Restarting..."
+    # Check for specific errors
+    if docker logs gametaverns-auth 2>&1 | grep -qiE "FATAL|panic|error.*database"; then
+        warn "Auth service has database errors. Attempting restart..."
         docker restart gametaverns-auth
         sleep 30
+        
+        # One more quick check
+        if curl -sf http://127.0.0.1:9999/health >/dev/null 2>&1; then
+            success "Auth service recovered after restart"
+            AUTH_HEALTHY=true
+        fi
     fi
 fi
 
@@ -1232,25 +1277,53 @@ success "SSL configuration complete"
 # ===========================================
 step "12/15" "Creating Admin User & Securing Database Roles"
 
-# Wait for auth service
-info "Waiting for auth service..."
-MAX_RETRIES=90
-RETRY_COUNT=0
+# Smart auth service check - try multiple endpoints with progress feedback
+info "Verifying auth service is ready for admin creation..."
 
-while ! curl -sf \
-    -H "apikey: ${ANON_KEY}" \
-    "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; do
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        warn "Auth service not ready. Create admin manually: ./scripts/create-admin.sh"
+AUTH_READY=false
+ADMIN_AUTH_MAX_WAIT=180  # 3 minutes max for this phase (services should already be up)
+ADMIN_AUTH_START=$(date +%s)
+
+while true; do
+    ELAPSED=$(($(date +%s) - ADMIN_AUTH_START))
+    
+    if [ $ELAPSED -ge $ADMIN_AUTH_MAX_WAIT ]; then
+        warn "Auth service not responding after ${ADMIN_AUTH_MAX_WAIT}s."
+        echo ""
+        echo -e "${YELLOW}You can create the admin manually after install:${NC}"
+        echo "  cd $INSTALL_DIR && sudo ./scripts/create-admin.sh"
+        echo ""
         break
     fi
-    echo "  Waiting for auth... ($RETRY_COUNT/$MAX_RETRIES)"
+    
+    # Try direct GoTrue port first (fastest)
+    if curl -sf http://127.0.0.1:9999/health >/dev/null 2>&1; then
+        AUTH_READY=true
+        break
+    fi
+    
+    # Try via Kong with apikey
+    if curl -sf -H "apikey: ${ANON_KEY}" \
+        "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" >/dev/null 2>&1; then
+        AUTH_READY=true
+        break
+    fi
+    
+    # Show progress every 15 seconds
+    if [ $((ELAPSED % 15)) -eq 0 ] && [ $ELAPSED -gt 0 ]; then
+        # Check if migrations are still running
+        if docker logs gametaverns-auth 2>&1 | tail -5 | grep -qE "^> |migrations"; then
+            info "[$ELAPSED s] Auth migrations still in progress..."
+        else
+            info "[$ELAPSED s] Waiting for auth service..."
+        fi
+    fi
+    
     sleep 3
 done
 
-if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-    success "Auth service ready"
+if [ "$AUTH_READY" = "true" ]; then
+    success "Auth service ready for admin creation"
     
     # NOW collect admin credentials (after database is ready)
     echo ""
