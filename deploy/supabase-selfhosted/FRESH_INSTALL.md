@@ -1,15 +1,39 @@
 # GameTaverns - Complete Fresh Installation Guide
 
 **One-Shot Installation for Ubuntu 24.04 with Mailcow**
-**Version: 2.5.0 - Unified Installer Edition**
+**Version: 2.6.0 - Enhanced Admin & Security Edition**
 
-The `install.sh` script now handles **everything** in one run:
+The `install.sh` script now handles **everything** in one run (14 automated steps):
 - ✅ Mailcow mail server installation (optional, automated)
-- ✅ Security key generation
-- ✅ Database setup & migrations
+- ✅ Security key generation (properly signed JWTs)
+- ✅ Database setup with correct order of operations
+- ✅ Database migrations
 - ✅ Host Nginx configuration (with proper API routing)
 - ✅ SSL certificates (Cloudflare wildcard support)
-- ✅ Admin user creation
+- ✅ Admin user creation with proper role assignment
+- ✅ Database admin role hardening (prevents privilege escalation)
+- ✅ Email/mailbox configuration
+- ✅ Full health check verification
+
+---
+
+## 🔐 Security: Database Admin Role Handling
+
+**Why this matters:** Previous deployments failed because:
+1. GoTrue and PostgREST need specific roles to exist BEFORE they start
+2. The `authenticator` role must be able to switch to `anon`, `authenticated`, and `service_role`
+3. User roles must be stored in a separate `user_roles` table (NOT in `user_profiles`)
+4. Authenticated users should NOT be able to self-assign admin roles
+
+**How the installer solves this:**
+
+| Issue | Solution in install.sh |
+|-------|----------------------|
+| Services connect before DB is ready | Start ONLY `db` container first, wait for ready |
+| Missing auth schema/enums | Pre-create `auth` schema and all MFA enum types BEFORE GoTrue starts |
+| Role password mismatch | Set all role passwords from `$POSTGRES_PASSWORD` before starting services |
+| Missing role grants | Grant `anon`, `authenticated`, `service_role` to `authenticator` |
+| Admin privilege escalation | Revoke INSERT/UPDATE/DELETE on `user_roles` from `authenticated` role |
 
 ---
 
@@ -21,10 +45,11 @@ The `install.sh` script now handles **everything** in one run:
 | Docker network overlap | Multiple stacks claim same subnet | Mailcow gets dedicated subnet |
 | Nginx 405 errors | API routes going to frontend | Explicit `/auth/`, `/rest/`, `/functions/` location blocks |
 | JWT signature invalid | Keys not signed with JWT_SECRET | Installer regenerates properly signed keys |
-| GoTrue won't start | Missing `auth` schema/enums | Migration script pre-creates them |
+| GoTrue won't start | Missing `auth` schema/enums | Pre-created BEFORE services start |
 | PostgREST healthcheck fails | Image lacks curl/wget | Healthcheck disabled in compose |
 | Storage migrations fail | Missing role permissions | Installer grants permissions |
 | .env formatting errors | Unquoted values with spaces | All values properly quoted |
+| Admin can't access panel | Profile not created before role | Profile created FIRST, then role |
 
 ---
 
@@ -109,6 +134,13 @@ The installer will prompt for:
 5. **Turnstile keys** - Bot protection (recommended)
 6. **External SMTP** - Leave empty if using Mailcow
 7. **SSL setup** - Say "Y" for Cloudflare wildcard certificates
+8. **Mailbox configuration** - Enter password for noreply@domain
+
+The installer now runs **14 steps** including:
+- Step 7: Database-first startup (prevents connection race conditions)
+- Step 12: Admin user creation with proper role assignment
+- Step 13: Email/mailbox configuration
+- Step 14: Full health verification
 
 ### Step 4: Post-Install Database Fixes (5 minutes)
 

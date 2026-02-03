@@ -116,7 +116,7 @@ fi
 # ===========================================
 # STEP 0: Optional Mailcow Installation
 # ===========================================
-step "0/11" "Mail Server Setup (Optional)"
+step "0/14" "Mail Server Setup (Optional)"
 
 MAILCOW_INSTALLED="no"
 if [ -d "/opt/mailcow" ]; then
@@ -196,7 +196,7 @@ fi
 # ===========================================
 # STEP 1: Collect All Configuration
 # ===========================================
-step "1/11" "Collecting Configuration"
+step "1/14" "Collecting Configuration"
 
 echo ""
 echo -e "${BLUE}=== Admin Configuration ===${NC}"
@@ -274,7 +274,7 @@ success "Configuration collected"
 # ===========================================
 # STEP 2: Generate Security Keys
 # ===========================================
-step "2/11" "Generating Security Keys"
+step "2/14" "Generating Security Keys"
 
 # IMPORTANT:
 # If this installer is re-run on an existing installation, we must *not* rotate
@@ -327,7 +327,7 @@ success "Security keys generated"
 # ===========================================
 # STEP 3: Setup Directory Structure
 # ===========================================
-step "3/11" "Setting Up Directories"
+step "3/14" "Setting Up Directories"
 
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR/logs"
@@ -384,7 +384,7 @@ success "Directory structure created at $INSTALL_DIR"
 # ===========================================
 # STEP 4: Generate Configuration Files
 # ===========================================
-step "4/11" "Generating Configuration"
+step "4/14" "Generating Configuration"
 
 cat > "$INSTALL_DIR/.env" << EOF
 ############################################################
@@ -503,7 +503,7 @@ success "Configuration files generated"
 # ===========================================
 # STEP 5: Pull Docker Images
 # ===========================================
-step "5/11" "Pulling Docker Images"
+step "5/14" "Pulling Docker Images"
 
 cd "$INSTALL_DIR"
 docker compose pull 2>&1 | tee -a "$LOG_FILE"
@@ -513,7 +513,7 @@ success "Docker images pulled"
 # ===========================================
 # STEP 6: Build Frontend
 # ===========================================
-step "6/11" "Building Frontend"
+step "6/14" "Building Frontend"
 
 docker compose build app 2>&1 | tee -a "$LOG_FILE"
 
@@ -522,7 +522,7 @@ success "Frontend built"
 # ===========================================
 # STEP 7: Start Database FIRST (before other services)
 # ===========================================
-step "7/11" "Starting Database & Initializing Schema"
+step "7/14" "Starting Database & Initializing Schema"
 
 # CRITICAL: Start ONLY the database first to run all setup before other services connect
 docker compose up -d db 2>&1 | tee -a "$LOG_FILE"
@@ -687,7 +687,7 @@ success "Schemas and auth prerequisites created"
 # ===========================================
 # STEP 8: Run Application Migrations (BEFORE services start)
 # ===========================================
-step "8/11" "Running Database Migrations"
+step "8/14" "Running Database Migrations"
 
 # Run migrations in order - this populates public schema
 MIGRATION_FILES=(
@@ -751,7 +751,7 @@ success "Table permissions granted"
 # ===========================================
 # STEP 9: Start Remaining Services (NOW safe to connect)
 # ===========================================
-step "9/11" "Starting Remaining Services"
+step "9/14" "Starting Remaining Services"
 
 info "Database is fully initialized. Starting remaining services..."
 docker compose up -d 2>&1 | tee -a "$LOG_FILE"
@@ -763,7 +763,7 @@ sleep 15
 # ===========================================
 # STEP 10: Configure Host Nginx
 # ===========================================
-step "10/12" "Configuring Host Nginx"
+step "10/14" "Configuring Host Nginx"
 
 NGINX_CONF="/etc/nginx/sites-available/gametaverns"
 
@@ -987,7 +987,7 @@ success "Host Nginx configuration created"
 # ===========================================
 # STEP 11: Setup SSL Certificates
 # ===========================================
-step "11/12" "Setting Up SSL"
+step "11/14" "Setting Up SSL"
 
 # Check if certbot is available
 if command -v certbot &> /dev/null; then
@@ -1083,9 +1083,9 @@ fi
 success "SSL configuration complete"
 
 # ===========================================
-# STEP 12: Create Admin User
+# STEP 12: Create Admin User & Database Admin Role
 # ===========================================
-step "12/12" "Creating Admin User"
+step "12/14" "Creating Admin User & Securing Database Roles"
 
 # Wait for auth service
 info "Waiting for auth service..."
@@ -1126,13 +1126,13 @@ if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
     if [ -n "$USER_ID" ]; then
         success "User created: $USER_ID"
         
-        # Create user profile (trigger may not have fired if auth.users was created internally)
+        # CRITICAL: Create user profile FIRST (required for admin panel access)
         docker compose exec -T db psql -U supabase_admin -d postgres -c \
             "INSERT INTO public.user_profiles (user_id, display_name) VALUES ('$USER_ID', '$ADMIN_DISPLAY_NAME') ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;" 2>/dev/null || true
         
         success "User profile created"
         
-        # Add admin role
+        # Add admin role (MUST be after profile creation)
         docker compose exec -T db psql -U supabase_admin -d postgres -c \
             "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING;" 2>/dev/null || true
         
@@ -1141,6 +1141,199 @@ if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
         warn "Could not create admin user automatically. Run: ./scripts/create-admin.sh"
         echo "Response: $RESPONSE" >> "$LOG_FILE"
     fi
+fi
+
+# ===========================================
+# Harden Database Admin Roles
+# ===========================================
+info "Securing database admin roles..."
+
+docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
+-- =====================================================
+-- SECURITY: Ensure proper role hierarchy and permissions
+-- This prevents privilege escalation attacks
+-- =====================================================
+
+-- 1. Ensure user_roles table uses app_role enum (not plain text)
+-- Already done in migrations, but verify
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN
+    CREATE TYPE public.app_role AS ENUM ('admin', 'staff', 'owner', 'moderator', 'user');
+  END IF;
+END $$;
+
+-- 2. Ensure has_role function exists and is secure
+CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = _user_id AND role = _role
+  )
+$$;
+
+-- 3. Grant execute to authenticated users (for RLS policies)
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, app_role) TO anon;
+
+-- 4. Revoke direct INSERT on user_roles from authenticated
+-- Only allow via admin APIs or service_role
+REVOKE INSERT ON public.user_roles FROM authenticated;
+REVOKE UPDATE ON public.user_roles FROM authenticated;
+REVOKE DELETE ON public.user_roles FROM authenticated;
+
+-- Service role and admins can still manage roles via functions
+GRANT ALL ON public.user_roles TO service_role;
+
+-- 5. Ensure PostgREST (authenticator) can switch to proper roles
+GRANT anon, authenticated, service_role TO authenticator;
+
+-- 6. Log successful hardening
+DO $$ BEGIN RAISE NOTICE 'Database admin roles secured'; END $$;
+EOSQL
+
+success "Database admin roles secured"
+
+# ===========================================
+# STEP 13: Setup Email / Mailbox
+# ===========================================
+step "13/14" "Configuring Email System"
+
+if [ "$MAILCOW_INSTALLED" = "yes" ]; then
+    echo ""
+    echo "Mailcow is running. You need to create a mailbox for system emails."
+    echo ""
+    echo -e "${BLUE}To complete email setup:${NC}"
+    echo "  1. Open https://mail.$DOMAIN in your browser"
+    echo "  2. Login with Mailcow admin credentials (set during Mailcow install)"
+    echo "  3. Go to: Configuration → Domains → Add domain: $DOMAIN"
+    echo "  4. Go to: Configuration → Mailboxes → Add mailbox:"
+    echo "     - Username: noreply"
+    echo "     - Domain: $DOMAIN"
+    echo "     - Password: (generate secure password)"
+    echo "  5. Update $INSTALL_DIR/.env with SMTP credentials:"
+    echo "     SMTP_HOST=mail.$DOMAIN"
+    echo "     SMTP_PORT=587"
+    echo "     SMTP_USER=noreply@$DOMAIN"
+    echo "     SMTP_PASS=(mailbox password)"
+    echo ""
+    
+    read -p "Have you completed the Mailcow mailbox setup? (y/N): " MAILBOX_DONE
+    
+    if [[ "$MAILBOX_DONE" =~ ^[Yy]$ ]]; then
+        read -p "Enter mailbox password for noreply@$DOMAIN: " MAILBOX_PASSWORD
+        
+        # Update .env file with SMTP credentials
+        sed -i "s|^SMTP_HOST=.*|SMTP_HOST=mail.$DOMAIN|" "$INSTALL_DIR/.env"
+        sed -i "s|^SMTP_PORT=.*|SMTP_PORT=587|" "$INSTALL_DIR/.env"
+        sed -i "s|^SMTP_USER=.*|SMTP_USER=noreply@$DOMAIN|" "$INSTALL_DIR/.env"
+        sed -i "s|^SMTP_PASS=.*|SMTP_PASS=$MAILBOX_PASSWORD|" "$INSTALL_DIR/.env"
+        
+        success "SMTP credentials updated in .env"
+        
+        # Restart auth to pick up new SMTP settings
+        info "Restarting auth service to apply email settings..."
+        docker compose restart auth 2>/dev/null || true
+        sleep 5
+        success "Auth service restarted"
+    else
+        info "You can configure email later by editing $INSTALL_DIR/.env"
+        info "After editing, run: cd $INSTALL_DIR && docker compose restart auth"
+    fi
+else
+    echo ""
+    echo "No local mail server detected."
+    echo "Make sure your external SMTP settings are configured in .env"
+    echo ""
+    
+    if [ -n "$EXT_SMTP_HOST" ]; then
+        success "External SMTP configured: $EXT_SMTP_HOST"
+    else
+        warn "No SMTP configured. Email features will not work."
+        echo "  Edit $INSTALL_DIR/.env and set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS"
+    fi
+fi
+
+success "Email configuration complete"
+
+# ===========================================
+# STEP 14: Verify Installation
+# ===========================================
+step "14/14" "Verifying Installation"
+
+echo ""
+info "Running health checks..."
+
+HEALTH_ISSUES=0
+
+# Check database
+if docker compose exec -T db pg_isready -U supabase_admin -d postgres > /dev/null 2>&1; then
+    echo -e "  ${GREEN}✓${NC} Database is healthy"
+else
+    echo -e "  ${RED}✗${NC} Database not responding"
+    HEALTH_ISSUES=$((HEALTH_ISSUES + 1))
+fi
+
+# Check auth service
+if curl -sf "http://localhost:${KONG_HTTP_PORT:-8000}/auth/v1/health" > /dev/null 2>&1; then
+    echo -e "  ${GREEN}✓${NC} Auth service (GoTrue) is healthy"
+else
+    echo -e "  ${RED}✗${NC} Auth service not responding"
+    HEALTH_ISSUES=$((HEALTH_ISSUES + 1))
+fi
+
+# Check REST API
+if curl -sf "http://localhost:${KONG_HTTP_PORT:-8000}/rest/v1/" -H "apikey: $ANON_KEY" > /dev/null 2>&1; then
+    echo -e "  ${GREEN}✓${NC} REST API (PostgREST) is healthy"
+else
+    echo -e "  ${RED}✗${NC} REST API not responding"
+    HEALTH_ISSUES=$((HEALTH_ISSUES + 1))
+fi
+
+# Check frontend
+if curl -sf "http://localhost:${APP_PORT:-3000}/" > /dev/null 2>&1; then
+    echo -e "  ${GREEN}✓${NC} Frontend app is healthy"
+else
+    echo -e "  ${RED}✗${NC} Frontend not responding"
+    HEALTH_ISSUES=$((HEALTH_ISSUES + 1))
+fi
+
+# Check Kong gateway
+if curl -sf "http://localhost:${KONG_HTTP_PORT:-8000}/" > /dev/null 2>&1; then
+    echo -e "  ${GREEN}✓${NC} API Gateway (Kong) is healthy"
+else
+    echo -e "  ${YELLOW}⚠${NC} API Gateway may still be starting"
+fi
+
+# Check Nginx
+if nginx -t 2>/dev/null; then
+    echo -e "  ${GREEN}✓${NC} Nginx configuration valid"
+else
+    echo -e "  ${RED}✗${NC} Nginx configuration invalid"
+    HEALTH_ISSUES=$((HEALTH_ISSUES + 1))
+fi
+
+# Verify admin user exists
+ADMIN_CHECK=$(docker compose exec -T db psql -U supabase_admin -d postgres -t -c \
+    "SELECT COUNT(*) FROM public.user_roles WHERE role = 'admin';" 2>/dev/null | tr -d ' ')
+
+if [ "$ADMIN_CHECK" -gt 0 ] 2>/dev/null; then
+    echo -e "  ${GREEN}✓${NC} Admin user configured ($ADMIN_CHECK admin role(s))"
+else
+    echo -e "  ${YELLOW}⚠${NC} No admin users found - run ./scripts/create-admin.sh"
+fi
+
+echo ""
+
+if [ $HEALTH_ISSUES -eq 0 ]; then
+    success "All health checks passed!"
+else
+    warn "$HEALTH_ISSUES health check(s) failed. Check logs: docker compose logs"
 fi
 
 # ===========================================
@@ -1179,6 +1372,11 @@ echo "  View logs:     cd $INSTALL_DIR && docker compose logs -f"
 echo "  Check status:  cd $INSTALL_DIR && docker compose ps"
 echo "  Restart:       cd $INSTALL_DIR && docker compose restart"
 echo "  Backup:        $INSTALL_DIR/scripts/backup.sh"
+echo ""
+echo -e "${YELLOW}Security Notes:${NC}"
+echo "  • Admin roles are stored in user_roles table (NOT user_profiles)"
+echo "  • Authenticated users cannot self-assign admin roles (INSERT revoked)"
+echo "  • Use service_role or ./scripts/create-admin.sh to add admins"
 echo ""
 echo -e "${GREEN}Happy gaming! 🎲${NC}"
 echo ""
