@@ -404,8 +404,9 @@ SECRET_KEY_BASE=$SECRET_KEY_BASE
 PII_ENCRYPTION_KEY=$PII_ENCRYPTION_KEY
 
 # Site Branding
-SITE_NAME=$SITE_NAME
-SITE_DESCRIPTION=Browse and discover our collection of board games
+# IMPORTANT: Quote any values that may contain spaces to keep .env sourceable
+SITE_NAME="$SITE_NAME"
+SITE_DESCRIPTION="Browse and discover our collection of board games"
 
 # Ports
 APP_PORT=3000
@@ -428,7 +429,7 @@ SMTP_PORT=${EXT_SMTP_PORT:-587}
 SMTP_USER=${EXT_SMTP_USER:-}
 SMTP_PASS=${EXT_SMTP_PASS:-}
 SMTP_ADMIN_EMAIL=$ADMIN_EMAIL
-SMTP_SENDER_NAME=$SITE_NAME
+SMTP_SENDER_NAME="$SITE_NAME"
 SMTP_FROM=noreply@$DOMAIN
 
 # Timezone
