@@ -1,8 +1,24 @@
 # GameTaverns - Complete Fresh Installation Guide
 
 **One-Shot Installation for Ubuntu 24.04 with Mailcow**
+**Version: 2.4.0 - Bulletproof Edition**
 
-This guide incorporates ALL lessons learned from deployment testing. Follow it exactly for a smooth installation.
+This guide incorporates ALL lessons learned from multiple deployment attempts. Every known issue has been addressed.
+
+---
+
+## 📋 Known Issues Addressed in This Guide
+
+| Issue | Root Cause | Solution |
+|-------|------------|----------|
+| Port 993 conflicts | Old mail containers or host Dovecot | Clean-install script removes them |
+| Docker network overlap | Multiple stacks claim same subnet | Mailcow gets dedicated subnet |
+| Nginx 405 errors | API routes going to frontend | Explicit `/auth/`, `/rest/`, `/functions/` location blocks |
+| JWT signature invalid | Keys not signed with JWT_SECRET | Installer regenerates properly signed keys |
+| GoTrue won't start | Missing `auth` schema/enums | Migration script pre-creates them |
+| PostgREST healthcheck fails | Image lacks curl/wget | Healthcheck disabled in compose |
+| Storage migrations fail | Missing role permissions | Installer grants permissions |
+| .env formatting errors | Unquoted values with spaces | All values properly quoted |
 
 ---
 
@@ -13,7 +29,7 @@ Before you begin, verify:
 | Requirement | Minimum | Check Command |
 |-------------|---------|---------------|
 | Ubuntu | 24.04 LTS | `lsb_release -a` |
-| RAM | 4GB (6GB+ for Mailcow+ClamAV) | `free -h` |
+| RAM | 4GB (6GB+ with Mailcow) | `free -h` |
 | Disk | 30GB free | `df -h /` |
 | Ports | 25, 80, 443, 587, 993 unblocked | Contact VPS provider |
 
@@ -43,18 +59,34 @@ dig +short mail.gametaverns.com
 
 ## 📋 Installation Steps
 
-### Step 1: Bootstrap Server (5 minutes)
+### Step 1: Clean Environment (5 minutes)
+
+**Critical: Run this even on a "fresh" server to prevent conflicts.**
 
 ```bash
-# Download and run bootstrap
+# Download clean-install script
+curl -fsSL https://raw.githubusercontent.com/GameTaverns/GameTaverns/main/deploy/supabase-selfhosted/scripts/clean-install.sh -o /tmp/clean-install.sh
+chmod +x /tmp/clean-install.sh
+sudo /tmp/clean-install.sh
+```
+
+This script:
+- Stops and removes any existing mail containers
+- Disables host-level Postfix/Dovecot
+- Prunes Docker networks
+- Removes conflicting GameTaverns installations
+
+### Step 2: Bootstrap Server (5 minutes)
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/GameTaverns/GameTaverns/main/deploy/supabase-selfhosted/bootstrap.sh -o /tmp/bootstrap.sh
 chmod +x /tmp/bootstrap.sh
 sudo /tmp/bootstrap.sh
 ```
 
-### Step 2: Install Mailcow FIRST (15 minutes)
+### Step 3: Install Mailcow FIRST (15 minutes)
 
-**Critical: Install Mailcow before GameTaverns to avoid port conflicts.**
+**Critical: Install Mailcow before GameTaverns to claim mail ports.**
 
 ```bash
 cd /opt
@@ -65,7 +97,7 @@ cd mailcow
 ./generate_config.sh
 ```
 
-Edit `mailcow.conf` to avoid port conflicts with host Nginx:
+Edit `mailcow.conf` to avoid port conflicts:
 ```bash
 nano mailcow.conf
 ```
@@ -78,22 +110,39 @@ HTTP_BIND=127.0.0.1
 HTTPS_BIND=127.0.0.1
 ```
 
+**Fix network subnet overlap** (critical!):
+```bash
+cat > docker-compose.override.yml << 'EOF'
+networks:
+  mailcow-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-mailcow
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.29.0.0/16
+EOF
+```
+
 Start Mailcow:
 ```bash
 docker compose pull
 docker compose up -d
 
-# Wait for it to fully initialize (2-3 minutes)
+# Wait 2-3 minutes for full initialization
+sleep 180
 docker compose ps
 ```
 
 **Verify Mailcow is healthy before continuing:**
 ```bash
 # All containers should show "Up" or "healthy"
-docker compose ps | grep -E "(Up|healthy)"
+docker compose ps | grep -E "(Up|healthy)" | wc -l
+# Should show 15+ containers running
 ```
 
-### Step 3: Clone and Install GameTaverns (20 minutes)
+### Step 4: Clone and Install GameTaverns (20 minutes)
 
 ```bash
 # Clone repository
@@ -122,7 +171,63 @@ SMTP User: noreply@gametaverns.com  (create this in Mailcow first!)
 SMTP Password: (the password you set in Mailcow)
 ```
 
-### Step 4: Configure Host Nginx (5 minutes)
+### Step 5: Post-Install Database Fixes (5 minutes)
+
+**Critical: These fixes address GoTrue and Storage initialization issues.**
+
+```bash
+cd /opt/gametaverns
+
+# Load environment
+source .env
+
+# Apply critical database fixes
+docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL'
+-- Fix auth schema for GoTrue
+CREATE SCHEMA IF NOT EXISTS auth;
+GRANT USAGE ON SCHEMA auth TO supabase_auth_admin;
+ALTER ROLE supabase_auth_admin SET search_path TO auth, public, extensions;
+
+-- Create MFA enum types that GoTrue expects
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'aal_level') THEN
+    CREATE TYPE auth.aal_level AS ENUM ('aal1', 'aal2', 'aal3');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'factor_type') THEN
+    CREATE TYPE auth.factor_type AS ENUM ('totp', 'webauthn');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'factor_status') THEN
+    CREATE TYPE auth.factor_status AS ENUM ('unverified', 'verified');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'code_challenge_method') THEN
+    CREATE TYPE auth.code_challenge_method AS ENUM ('s256', 'plain');
+  END IF;
+END
+$$;
+
+-- Fix storage admin permissions
+GRANT CONNECT ON DATABASE postgres TO supabase_storage_admin;
+GRANT ALL PRIVILEGES ON DATABASE postgres TO supabase_storage_admin;
+GRANT USAGE ON SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;
+GRANT USAGE ON SCHEMA public TO supabase_storage_admin;
+
+-- Ensure authenticator can access public schema
+GRANT USAGE ON SCHEMA public TO authenticator;
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+EOSQL
+
+# Restart services to pick up fixes
+docker compose restart auth storage rest
+sleep 10
+```
+
+### Step 6: Configure Host Nginx (5 minutes)
 
 Create the main Nginx config:
 
@@ -150,13 +255,15 @@ server {
     ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
     ssl_prefer_server_ciphers off;
 
-    # API routes → Kong Gateway
+    # CRITICAL: API routes must go to Kong Gateway, NOT frontend
     location /auth/ {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
     }
 
     location /rest/ {
@@ -173,6 +280,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
     }
 
     location /storage/ {
@@ -190,6 +298,7 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_read_timeout 86400;
     }
 
     # Frontend → App container
@@ -264,7 +373,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### Step 5: Get SSL Certificates (5 minutes)
+### Step 7: Get SSL Certificates (5 minutes)
 
 ```bash
 # Install Cloudflare DNS plugin for wildcards
@@ -297,9 +406,9 @@ sudo certbot certonly \
 sudo systemctl reload nginx
 ```
 
-### Step 6: Create Mailcow Mailbox (2 minutes)
+### Step 8: Create Mailcow Mailbox (2 minutes)
 
-1. Access Mailcow admin: `https://mail.gametaverns.com` (or `https://YOUR_IP:8443`)
+1. Access Mailcow admin: `https://mail.gametaverns.com`
 2. Login with default: `admin` / `moohoo`
 3. **Change admin password immediately!**
 4. Go to **Configuration → Mail Setup → Domains** → Add `gametaverns.com`
@@ -315,20 +424,23 @@ sudo systemctl reload nginx
 Run these commands to verify everything is working:
 
 ```bash
-# 1. Check all GameTaverns containers
+# 1. Check all GameTaverns containers (should be 9-10 running)
 cd /opt/gametaverns && docker compose ps
 
-# 2. Check all Mailcow containers
+# 2. Check all Mailcow containers (should be 15+ running)
 cd /opt/mailcow && docker compose ps
 
 # 3. Test API health
-curl -s https://gametaverns.com/auth/v1/health | jq
+curl -s https://gametaverns.com/auth/v1/health | head -c 100
 
-# 4. Test frontend
+# 4. Test PostgREST
+curl -s https://gametaverns.com/rest/v1/ -H "apikey: $(grep ANON_KEY /opt/gametaverns/.env | cut -d= -f2)" | head -c 100
+
+# 5. Test frontend (should return 200)
 curl -s -o /dev/null -w "%{http_code}" https://gametaverns.com
 
-# 5. Test mail (send test email)
-# Login to https://gametaverns.com, try password reset
+# 6. Verify no port conflicts
+sudo lsof -i :993 | head -5   # Should show only Mailcow dovecot
 ```
 
 ---
@@ -345,8 +457,8 @@ sudo lsof -i :993
 docker stop gametaverns-mail gametaverns-roundcube 2>/dev/null
 docker rm gametaverns-mail gametaverns-roundcube 2>/dev/null
 
-# If it's Mailcow's dovecot (expected)
-cd /opt/mailcow && docker compose ps dovecot-mailcow
+# If Mailcow can't bind, restart it after cleanup
+cd /opt/mailcow && docker compose down && docker compose up -d
 ```
 
 ### Docker Network Overlap
@@ -360,7 +472,7 @@ docker network prune -f
 
 # Start Mailcow first (it claims subnets first)
 cd /opt/mailcow && docker compose up -d
-sleep 30
+sleep 60
 
 # Then GameTaverns
 cd /opt/gametaverns && docker compose up -d
@@ -371,9 +483,11 @@ cd /opt/gametaverns && docker compose up -d
 This means Nginx is routing `/auth/` to the frontend instead of Kong:
 
 ```bash
-# Verify nginx config has the location blocks for /auth/, /rest/, /functions/
+# Verify nginx config has the location blocks
 sudo nginx -t
 sudo cat /etc/nginx/sites-enabled/gametaverns | grep -A5 "location /auth"
+
+# If missing, re-apply the nginx config from Step 6
 ```
 
 ### JWT Signature Invalid
@@ -381,11 +495,12 @@ sudo cat /etc/nginx/sites-enabled/gametaverns | grep -A5 "location /auth"
 ```bash
 cd /opt/gametaverns
 
-# Regenerate keys (DESTRUCTIVE - existing sessions will be invalidated)
-source .env
+# Regenerate keys (DESTRUCTIVE - existing sessions invalidated)
+JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n=' | head -c 64)
+
 node -e "
 const crypto = require('crypto');
-const jwtSecret = crypto.randomBytes(64).toString('base64').slice(0, 64);
+const jwtSecret = '$JWT_SECRET';
 
 function makeJwt(role) {
   const header = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
@@ -399,12 +514,18 @@ console.log('JWT_SECRET=' + jwtSecret);
 console.log('ANON_KEY=' + makeJwt('anon'));
 console.log('SERVICE_ROLE_KEY=' + makeJwt('service_role'));
 "
+
+# Update .env with new values, then restart
+docker compose down && docker compose up -d
 ```
 
-Update `.env` with new values, then:
+### GoTrue Fails to Start
+
 ```bash
-docker compose down
-docker compose up -d
+# Check auth logs
+docker compose logs auth | tail -50
+
+# If "relation does not exist" errors, run the Step 5 database fixes again
 ```
 
 ---
