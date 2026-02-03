@@ -3,16 +3,17 @@
 # GameTaverns - Complete Self-Hosted Installation Script
 # Ubuntu 22.04 / 24.04 LTS
 # Domain: gametaverns.com (hardcoded)
-# Version: 2.7.1 - Connection Fix Edition
+# Version: 2.7.2 - Proper Install Order Edition
 # Audited: 2026-02-03
 # 
 # ISSUES ADDRESSED IN THIS VERSION:
-#   1. Database/admin/user setup order - DB fully ready before services
-#   2. Turnstile setup not holding - Key inserted into database
-#   3. SSL cert conflicts - Mail uses wildcard, not Mailcow internal certs
-#   4. Self-hosted flag issues - Frontend properly configured for Supabase mode
-#   5. Database to frontend linkage - Proper API URL injection
-#   6. Connection issues - API_EXTERNAL_URL == SITE_URL for same-origin routing
+#   1. Config collection order - Essential config first, optional keys AFTER services running
+#   2. Database/admin/user setup order - DB fully ready before services
+#   3. Turnstile setup not holding - Key inserted into database
+#   4. SSL cert conflicts - Mail uses wildcard, not Mailcow internal certs
+#   5. Self-hosted flag issues - Frontend properly configured for Supabase mode
+#   6. Database to frontend linkage - Proper API URL injection
+#   7. Connection issues - API_EXTERNAL_URL == SITE_URL for same-origin routing
 #
 # ARCHITECTURE:
 #   - Host Nginx terminates SSL and routes traffic
@@ -21,25 +22,33 @@
 #   - SELF_HOSTED: false = Use Supabase client, NOT Express API
 #
 # ORDER OF OPERATIONS (CRITICAL FOR SUCCESS):
-#   Step 0:  Optional Mailcow installation
-#   Step 1:  Collect all configuration (admin, SMTP, API keys, Turnstile)
-#   Step 2:  Generate security keys (JWT, Supabase)
-#   Step 3:  Setup directory structure
-#   Step 4:  Generate .env configuration (API_EXTERNAL_URL == SITE_URL)
-#   Step 5:  Pull Docker images
-#   Step 6:  Build frontend (with proper env vars baked in)
-#   Step 7:  Start ONLY database, wait for ready
-#   Step 7a: Create roles BEFORE any service connects
-#   Step 7b: Create schemas and auth enum prerequisites
-#   Step 8:  Run application migrations
-#   Step 8a: Grant table permissions
-#   Step 8b: Insert Turnstile key into database
-#   Step 9:  Start remaining services
-#   Step 10: Configure host Nginx (with proper API routing)
-#   Step 11: SSL setup (Cloudflare wildcards, proper cert ordering)
-#   Step 12: Create admin user (profile FIRST, then role)
-#   Step 13: Email/mailbox configuration
-#   Step 14: Full verification
+#   Phase 1 - ESSENTIAL CONFIG (required for services to start):
+#     Step 0:  Optional Mailcow installation
+#     Step 1:  Collect ESSENTIAL config only (admin email/pass, SMTP)
+#     Step 2:  Generate security keys (JWT, Supabase)
+#     Step 3:  Setup directory structure
+#     Step 4:  Generate .env configuration (API_EXTERNAL_URL == SITE_URL)
+#     Step 5:  Pull Docker images
+#     Step 6:  Build frontend (with proper env vars baked in)
+#
+#   Phase 2 - DATABASE SETUP:
+#     Step 7:  Start ONLY database, wait for ready
+#     Step 7a: Create roles BEFORE any service connects
+#     Step 7b: Create schemas and auth enum prerequisites
+#     Step 8:  Run application migrations
+#     Step 8a: Grant table permissions
+#
+#   Phase 3 - SERVICES:
+#     Step 9:  Start remaining services
+#     Step 10: Configure host Nginx (with proper API routing)
+#     Step 11: SSL setup (Cloudflare wildcards, proper cert ordering)
+#
+#   Phase 4 - POST-INSTALL CONFIG (after everything running):
+#     Step 12: Create admin user (profile FIRST, then role)
+#     Step 13: Collect & configure OPTIONAL API keys (Discord, Perplexity, etc)
+#     Step 13b: Insert Turnstile key into database
+#     Step 14: Email/mailbox configuration
+#     Step 15: Full verification
 #
 # =============================================================================
 
@@ -83,8 +92,8 @@ step() { echo -e "\n${CYAN}[$1] $2${NC}" | tee -a "$LOG_FILE"; }
 # ===========================================
 echo ""
 echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║         GameTaverns Self-Hosted Installer v2.7.1                  ║${NC}"
-echo -e "${CYAN}║         Connection Fix Edition                                    ║${NC}"
+echo -e "${CYAN}║         GameTaverns Self-Hosted Installer v2.7.2                  ║${NC}"
+echo -e "${CYAN}║         Proper Install Order Edition                              ║${NC}"
 echo -e "${CYAN}║         Domain: $DOMAIN                                  ║${NC}"
 echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
@@ -126,7 +135,7 @@ fi
 # ===========================================
 # STEP 0: Optional Mailcow Installation
 # ===========================================
-step "0/14" "Mail Server Setup (Optional)"
+step "0/15" "Mail Server Setup (Optional)"
 
 MAILCOW_INSTALLED="no"
 if [ -d "/opt/mailcow" ]; then
@@ -180,18 +189,8 @@ EOF
             # We use host Nginx with wildcard certs instead
             sed -i "s/^SKIP_LETS_ENCRYPT=.*/SKIP_LETS_ENCRYPT=y/" mailcow.conf
             
-            # Fix network subnet to avoid conflicts
-            cat > docker-compose.override.yml << 'MCEOF'
-networks:
-  mailcow-network:
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: br-mailcow
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.29.0.0/16
-MCEOF
+            # Fix network - let Mailcow use its default internal networking
+            # Do NOT override the network subnet
             
             docker compose pull
             docker compose up -d
@@ -209,12 +208,15 @@ MCEOF
 fi
 
 # ===========================================
-# STEP 1: Collect All Configuration
+# STEP 1: Collect ESSENTIAL Configuration Only
 # ===========================================
-step "1/14" "Collecting Configuration"
+step "1/15" "Collecting Essential Configuration"
 
 echo ""
 echo -e "${BLUE}=== Admin Configuration ===${NC}"
+echo -e "${YELLOW}(Only essential config now - optional API keys collected after services are running)${NC}"
+echo ""
+
 read -p "Admin email [admin@$DOMAIN]: " ADMIN_EMAIL
 ADMIN_EMAIL=${ADMIN_EMAIL:-admin@$DOMAIN}
 
@@ -234,43 +236,8 @@ read -p "Timezone [America/New_York]: " TIMEZONE
 TIMEZONE=${TIMEZONE:-America/New_York}
 
 echo ""
-echo -e "${BLUE}=== Discord Integration ===${NC}"
-echo "Create app at: https://discord.com/developers/applications"
-echo -e "${YELLOW}(Press Enter to skip optional keys)${NC}"
-read -p "Discord Bot Token: " DISCORD_BOT_TOKEN
-DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
-read -p "Discord Client ID: " DISCORD_CLIENT_ID
-DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
-read -p "Discord Client Secret: " DISCORD_CLIENT_SECRET
-DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
-
-echo ""
-echo -e "${BLUE}=== AI Services (Perplexity powers all AI features) ===${NC}"
-echo "Perplexity (https://www.perplexity.ai/settings/api) - RECOMMENDED for all AI"
-read -p "Perplexity API Key: " PERPLEXITY_API_KEY
-PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
-echo "Firecrawl (https://www.firecrawl.dev/) - for URL-based game imports"
-read -p "Firecrawl API Key: " FIRECRAWL_API_KEY
-FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
-
-echo ""
-echo -e "${BLUE}=== BoardGameGeek Integration ===${NC}"
-echo "BGG API Token (optional) - for authenticated collection imports"
-read -p "BGG API Token: " BGG_API_TOKEN
-BGG_API_TOKEN=${BGG_API_TOKEN:-}
-
-echo ""
-echo -e "${BLUE}=== Cloudflare Turnstile (Bot Protection) ===${NC}"
-echo "Get keys at: https://dash.cloudflare.com/?to=/:account/turnstile"
-echo -e "${YELLOW}IMPORTANT: Add your domain to the allowed hostnames in Cloudflare!${NC}"
-read -p "Turnstile Site Key: " TURNSTILE_SITE_KEY
-TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
-read -p "Turnstile Secret Key: " TURNSTILE_SECRET_KEY
-TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
-
-echo ""
 echo -e "${BLUE}=== External SMTP (optional) ===${NC}"
-echo "Leave empty to use built-in mail server"
+echo "Leave empty to use built-in mail server (Mailcow)"
 read -p "External SMTP Host: " EXT_SMTP_HOST
 EXT_SMTP_HOST=${EXT_SMTP_HOST:-}
 if [ -n "$EXT_SMTP_HOST" ]; then
@@ -285,7 +252,18 @@ else
     EXT_SMTP_PASS=""
 fi
 
-success "Configuration collected"
+# Initialize optional API keys as empty (will be collected later in Step 13)
+DISCORD_BOT_TOKEN=""
+DISCORD_CLIENT_ID=""
+DISCORD_CLIENT_SECRET=""
+PERPLEXITY_API_KEY=""
+FIRECRAWL_API_KEY=""
+BGG_API_TOKEN=""
+TURNSTILE_SITE_KEY=""
+TURNSTILE_SECRET_KEY=""
+
+success "Essential configuration collected"
+info "Optional API keys (Discord, AI, Turnstile) will be configured after services are running"
 
 # ===========================================
 # STEP 2: Generate Security Keys
@@ -830,41 +808,9 @@ else
 fi
 
 # ===========================================
-# STEP 8b: Insert Turnstile Site Key into Database
-# ===========================================
-if [ -n "${TURNSTILE_SITE_KEY:-}" ]; then
-    info "Inserting Turnstile site key into database..."
-    
-    # Escape single quotes
-    ESCAPED_TURNSTILE_KEY=$(printf '%s' "$TURNSTILE_SITE_KEY" | sed "s/'/''/g")
-    
-    docker compose exec -T db psql -U supabase_admin -d postgres << EOSQL >> "$LOG_FILE" 2>&1
--- Insert Turnstile site key into site_settings
--- This is read by the frontend to initialize the Turnstile widget
-INSERT INTO public.site_settings (key, value)
-VALUES ('turnstile_site_key', '${ESCAPED_TURNSTILE_KEY}')
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
-
--- Also ensure it's in the public view
--- Check if site_settings_public view exists and has the key
-DO \$\$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'site_settings_public') THEN
-    RAISE NOTICE 'Turnstile key inserted, will be visible via site_settings_public view';
-  END IF;
-END
-\$\$;
-EOSQL
-
-    success "Turnstile site key inserted into database"
-else
-    warn "No Turnstile site key provided. Bot protection will use bypass mode."
-fi
-
-# ===========================================
 # STEP 9: Start Remaining Services (NOW safe to connect)
 # ===========================================
-step "9/14" "Starting Remaining Services"
+step "9/15" "Starting Remaining Services"
 
 info "Database is fully initialized. Starting remaining services..."
 docker compose up -d 2>&1 | tee -a "$LOG_FILE"
@@ -876,7 +822,7 @@ sleep 15
 # ===========================================
 # STEP 10: Configure Host Nginx
 # ===========================================
-step "10/14" "Configuring Host Nginx"
+step "10/15" "Configuring Host Nginx"
 
 NGINX_CONF="/etc/nginx/sites-available/gametaverns"
 
@@ -1126,7 +1072,7 @@ success "Nginx configuration created"
 # ===========================================
 # STEP 11: SSL Certificate Setup
 # ===========================================
-step "11/14" "Setting Up SSL Certificates"
+step "11/15" "Setting Up SSL Certificates"
 
 if command -v certbot &> /dev/null; then
     read -p "Setup SSL certificates now? (Y/n): " SETUP_SSL
@@ -1219,7 +1165,7 @@ success "SSL configuration complete"
 # ===========================================
 # STEP 12: Create Admin User & Database Admin Role
 # ===========================================
-step "12/14" "Creating Admin User & Securing Database Roles"
+step "12/15" "Creating Admin User & Securing Database Roles"
 
 # Wait for auth service
 info "Waiting for auth service..."
@@ -1334,9 +1280,96 @@ EOSQL
 success "Database admin roles secured"
 
 # ===========================================
-# STEP 13: Setup Email / Mailbox
+# STEP 13: Collect Optional API Keys (NOW - after services running)
 # ===========================================
-step "13/14" "Configuring Email System"
+step "13/15" "Configuring Optional API Keys"
+
+echo ""
+echo -e "${BLUE}=== Optional API Keys (all optional - press Enter to skip) ===${NC}"
+echo -e "${YELLOW}These services enhance functionality but are not required.${NC}"
+echo ""
+
+echo -e "${BLUE}=== Discord Integration ===${NC}"
+echo "Create app at: https://discord.com/developers/applications"
+read -p "Discord Bot Token (press Enter to skip): " DISCORD_BOT_TOKEN
+DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+if [ -n "$DISCORD_BOT_TOKEN" ]; then
+    read -p "Discord Client ID: " DISCORD_CLIENT_ID
+    DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
+    read -p "Discord Client Secret: " DISCORD_CLIENT_SECRET
+    DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
+fi
+
+echo ""
+echo -e "${BLUE}=== AI Services ===${NC}"
+echo "Perplexity (https://www.perplexity.ai/settings/api) - Powers all AI features"
+read -p "Perplexity API Key (press Enter to skip): " PERPLEXITY_API_KEY
+PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY:-}
+
+echo "Firecrawl (https://www.firecrawl.dev/) - For URL-based game imports"
+read -p "Firecrawl API Key (press Enter to skip): " FIRECRAWL_API_KEY
+FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+
+echo ""
+echo -e "${BLUE}=== BoardGameGeek Integration ===${NC}"
+echo "BGG API Token (optional) - For authenticated collection imports"
+read -p "BGG API Token (press Enter to skip): " BGG_API_TOKEN
+BGG_API_TOKEN=${BGG_API_TOKEN:-}
+
+echo ""
+echo -e "${BLUE}=== Cloudflare Turnstile (Bot Protection) ===${NC}"
+echo "Get keys at: https://dash.cloudflare.com/?to=/:account/turnstile"
+echo -e "${YELLOW}IMPORTANT: Add your domain to the allowed hostnames in Cloudflare!${NC}"
+read -p "Turnstile Site Key (press Enter to skip): " TURNSTILE_SITE_KEY
+TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
+if [ -n "$TURNSTILE_SITE_KEY" ]; then
+    read -p "Turnstile Secret Key: " TURNSTILE_SECRET_KEY
+    TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY:-}
+fi
+
+# Update .env with the optional keys
+info "Updating configuration with optional API keys..."
+
+# Update .env file with collected keys
+sed -i "s|^DISCORD_BOT_TOKEN=.*|DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}|" "$INSTALL_DIR/.env"
+sed -i "s|^DISCORD_CLIENT_ID=.*|DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}|" "$INSTALL_DIR/.env"
+sed -i "s|^DISCORD_CLIENT_SECRET=.*|DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}|" "$INSTALL_DIR/.env"
+sed -i "s|^PERPLEXITY_API_KEY=.*|PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}|" "$INSTALL_DIR/.env"
+sed -i "s|^FIRECRAWL_API_KEY=.*|FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}|" "$INSTALL_DIR/.env"
+sed -i "s|^BGG_API_TOKEN=.*|BGG_API_TOKEN=${BGG_API_TOKEN}|" "$INSTALL_DIR/.env"
+sed -i "s|^TURNSTILE_SITE_KEY=.*|TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}|" "$INSTALL_DIR/.env"
+sed -i "s|^TURNSTILE_SECRET_KEY=.*|TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}|" "$INSTALL_DIR/.env"
+
+# Insert Turnstile site key into database if provided
+if [ -n "$TURNSTILE_SITE_KEY" ]; then
+    info "Inserting Turnstile site key into database..."
+    ESCAPED_TURNSTILE_KEY=$(printf '%s' "$TURNSTILE_SITE_KEY" | sed "s/'/''/g")
+    
+    docker compose exec -T db psql -U supabase_admin -d postgres << EOSQL >> "$LOG_FILE" 2>&1
+-- Insert Turnstile site key into site_settings
+INSERT INTO public.site_settings (key, value)
+VALUES ('turnstile_site_key', '${ESCAPED_TURNSTILE_KEY}')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+EOSQL
+    
+    success "Turnstile site key inserted into database"
+else
+    info "No Turnstile key provided - bot protection will use bypass mode"
+fi
+
+# Restart edge-runtime to pick up new API keys
+if [ -n "$PERPLEXITY_API_KEY" ] || [ -n "$FIRECRAWL_API_KEY" ] || [ -n "$DISCORD_BOT_TOKEN" ]; then
+    info "Restarting edge functions to apply API keys..."
+    docker compose restart edge-runtime 2>/dev/null || true
+    sleep 5
+fi
+
+success "Optional API keys configured"
+
+# ===========================================
+# STEP 14: Setup Email / Mailbox
+# ===========================================
+step "14/15" "Configuring Email System"
 
 if [ "$MAILCOW_INSTALLED" = "yes" ]; then
     echo ""
@@ -1398,7 +1431,7 @@ success "Email configuration complete"
 # ===========================================
 # STEP 14: Verify Installation
 # ===========================================
-step "14/14" "Verifying Installation"
+step "15/15" "Verifying Installation"
 
 echo ""
 info "Running health checks..."
