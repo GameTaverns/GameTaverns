@@ -391,8 +391,8 @@ services:
   # ===========================================
   app:
     build:
-      context: .
-      dockerfile: Dockerfile.app
+      context: ../..
+      dockerfile: deploy/supabase-selfhosted/Dockerfile.app
     container_name: gametaverns-app
     restart: unless-stopped
     ports:
