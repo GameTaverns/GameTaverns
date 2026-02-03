@@ -22,7 +22,9 @@ export function useMyLibrary() {
         .from("libraries")
         .select("*")
         .eq("owner_id", user.id)
-        .single();
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
       
       if (error && error.code !== "PGRST116") {
         throw error;
@@ -228,7 +230,7 @@ export function useUserProfile() {
         .from("user_profiles")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       
       if (error && error.code !== "PGRST116") {
         throw error;
