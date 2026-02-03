@@ -124,9 +124,16 @@ export MAILCOW_HOSTNAME="$MAIL_HOSTNAME"
 export MAILCOW_TZ="$TIMEZONE"
 
 # Run generate_config.sh with answers piped in
+# Prompts in order:
+#   1. Mail server hostname (mail.gametaverns.com)
+#   2. Timezone (from /etc/timezone)
+#   3. Branch selection (1 = master, default)
+#   4. Docker daemon.json creation (y = yes)
 ./generate_config.sh << EOF
 $MAIL_HOSTNAME
 $TIMEZONE
+1
+y
 EOF
 
 # Modify mailcow.conf for non-conflicting ports
