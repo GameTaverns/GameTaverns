@@ -46,11 +46,12 @@ const Login = () => {
     // Only redirect once auth loading is complete and user is authenticated
     // IMPORTANT: During an active sign-in attempt we intentionally suppress
     // this auto-redirect so we can run the mandatory 2FA status check first.
-    if (!loading && isAuthenticated && !hasCheckedAuth && !isLoading) {
+    // Also skip if 2FA verification is pending.
+    if (!loading && isAuthenticated && !hasCheckedAuth && !isLoading && !requires2FA) {
       setHasCheckedAuth(true);
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, loading, navigate, hasCheckedAuth, isLoading]);
+  }, [isAuthenticated, loading, navigate, hasCheckedAuth, isLoading, requires2FA]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
