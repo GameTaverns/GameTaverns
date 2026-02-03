@@ -10,8 +10,8 @@
 CREATE TABLE IF NOT EXISTS public.user_totp_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE,
-    encrypted_secret TEXT NOT NULL,
-    backup_codes_hash TEXT[], -- Hashed backup codes
+    totp_secret_encrypted TEXT NOT NULL,        -- Matches Cloud schema
+    backup_codes_encrypted TEXT,                 -- Matches Cloud schema (TEXT, not TEXT[])
     is_enabled BOOLEAN NOT NULL DEFAULT false,
     verified_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
