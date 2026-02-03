@@ -294,12 +294,8 @@ for domain in $CERT_DOMAINS; do
 done
 
 # Also check for wildcard certs
-for pattern in "*.gametaverns" "*gametaverns*"; do
-    for cert_dir in /etc/letsencrypt/live/$pattern 2>/dev/null; do
-        if [ -d "$cert_dir" ]; then
-            rm -rf "$cert_dir" 2>/dev/null || true
-        fi
-    done
+for cert_dir in /etc/letsencrypt/live/*gametaverns* /etc/letsencrypt/archive/*gametaverns* 2>/dev/null; do
+    [ -d "$cert_dir" ] && rm -rf "$cert_dir" 2>/dev/null || true
 done
 
 echo -e "${GREEN}✓ SSL certificates removed${NC}"
