@@ -641,7 +641,10 @@ success "Database roles created"
 info "Pre-creating schemas and auth prerequisites..."
 
 set +e
-SCHEMA_OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres 2>&1 << 'EOSQL'
+# IMPORTANT: Use 'postgres' for bootstrap operations.
+# Running `psql -U supabase_admin` here can fail because the container has no TTY
+# to prompt for a password, and PGPASSWORD is not set.
+SCHEMA_OUTPUT=$(docker compose exec -T db psql -U postgres -d postgres 2>&1 << 'EOSQL'
 -- =====================================================
 -- Create schemas BEFORE services start
 -- Version: 2.7.1 - Error-visible schema setup
@@ -747,7 +750,7 @@ MIGRATION_FILES=(
 for migration in "${MIGRATION_FILES[@]}"; do
     if [ -f "$INSTALL_DIR/migrations/$migration" ]; then
         echo -n "  $migration ... "
-        if docker compose exec -T db psql -U supabase_admin -d postgres -f "/docker-entrypoint-initdb.d/$migration" >> "$LOG_FILE" 2>&1; then
+        if docker compose exec -T db psql -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" >> "$LOG_FILE" 2>&1; then
             echo -e "${GREEN}✓${NC}"
         else
             echo -e "${YELLOW}⚠${NC}"
@@ -763,7 +766,7 @@ success "Database migrations complete"
 info "Granting table permissions..."
 
 set +e
-PERMS_OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres 2>&1 << 'EOSQL'
+PERMS_OUTPUT=$(docker compose exec -T db psql -U postgres -d postgres 2>&1 << 'EOSQL'
 -- Grant permissions on all public tables
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
@@ -1218,13 +1221,13 @@ if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
         success "User created: $USER_ID"
         
         # CRITICAL: Create user profile FIRST (required for admin panel access)
-        docker compose exec -T db psql -U supabase_admin -d postgres -c \
+            docker compose exec -T db psql -U postgres -d postgres -c \
             "INSERT INTO public.user_profiles (user_id, display_name) VALUES ('$USER_ID', '$ADMIN_DISPLAY_NAME') ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;" 2>/dev/null || true
         
         success "User profile created"
         
         # Add admin role (MUST be after profile creation)
-        docker compose exec -T db psql -U supabase_admin -d postgres -c \
+            docker compose exec -T db psql -U postgres -d postgres -c \
             "INSERT INTO public.user_roles (user_id, role) VALUES ('$USER_ID', 'admin') ON CONFLICT (user_id, role) DO NOTHING;" 2>/dev/null || true
         
         success "Admin role assigned"
@@ -1239,7 +1242,7 @@ fi
 # ===========================================
 info "Securing database admin roles..."
 
-docker compose exec -T db psql -U supabase_admin -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
+docker compose exec -T db psql -U postgres -d postgres << 'EOSQL' >> "$LOG_FILE" 2>&1
 -- =====================================================
 -- SECURITY: Ensure proper role hierarchy and permissions
 -- This prevents privilege escalation attacks
@@ -1356,7 +1359,7 @@ if [ -n "$TURNSTILE_SITE_KEY" ]; then
     info "Inserting Turnstile site key into database..."
     ESCAPED_TURNSTILE_KEY=$(printf '%s' "$TURNSTILE_SITE_KEY" | sed "s/'/''/g")
     
-    docker compose exec -T db psql -U supabase_admin -d postgres << EOSQL >> "$LOG_FILE" 2>&1
+    docker compose exec -T db psql -U postgres -d postgres << EOSQL >> "$LOG_FILE" 2>&1
 -- Insert Turnstile site key into site_settings
 INSERT INTO public.site_settings (key, value)
 VALUES ('turnstile_site_key', '${ESCAPED_TURNSTILE_KEY}')
@@ -1450,7 +1453,7 @@ info "Running health checks..."
 HEALTH_ISSUES=0
 
 # Check database
-if docker compose exec -T db pg_isready -U supabase_admin -d postgres > /dev/null 2>&1; then
+if docker compose exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; then
     echo -e "  ${GREEN}✓${NC} Database is healthy"
 else
     echo -e "  ${RED}✗${NC} Database not responding"
@@ -1497,7 +1500,7 @@ else
 fi
 
 # Verify admin user exists
-ADMIN_CHECK=$(docker compose exec -T db psql -U supabase_admin -d postgres -t -c \
+ADMIN_CHECK=$(docker compose exec -T db psql -U postgres -d postgres -t -c \
     "SELECT COUNT(*) FROM public.user_roles WHERE role = 'admin';" 2>/dev/null | tr -d ' ')
 
 if [ "$ADMIN_CHECK" -gt 0 ] 2>/dev/null; then
@@ -1507,7 +1510,7 @@ else
 fi
 
 # Check Turnstile key in database
-TURNSTILE_CHECK=$(docker compose exec -T db psql -U supabase_admin -d postgres -t -c \
+TURNSTILE_CHECK=$(docker compose exec -T db psql -U postgres -d postgres -t -c \
     "SELECT value FROM public.site_settings WHERE key = 'turnstile_site_key';" 2>/dev/null | tr -d ' ')
 
 if [ -n "$TURNSTILE_CHECK" ]; then

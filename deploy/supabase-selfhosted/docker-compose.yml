@@ -82,7 +82,9 @@ services:
       - -c
       - shared_buffers=256MB
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U supabase_admin -d postgres"]
+      # Use postgres for healthcheck: it always exists in the container, whereas
+      # supabase_admin may not be usable until our bootstrap SQL runs.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 30
