@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.game-recommendations]
 verify_jwt = false
+
+[functions.manage-users]
+verify_jwt = false
+
+[functions.main]
+verify_jwt = false
