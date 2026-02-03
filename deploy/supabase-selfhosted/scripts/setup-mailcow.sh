@@ -137,12 +137,24 @@ y
 EOF
 
 # Modify mailcow.conf for non-conflicting ports
+# Use more robust sed patterns that handle comments and spaces
 echo -e "${BLUE}Configuring ports to avoid conflicts with host nginx...${NC}"
 
-sed -i "s/^HTTP_PORT=.*/HTTP_PORT=$MAILCOW_HTTP_PORT/" mailcow.conf
-sed -i "s/^HTTPS_PORT=.*/HTTPS_PORT=$MAILCOW_HTTPS_PORT/" mailcow.conf
-sed -i "s/^HTTP_BIND=.*/HTTP_BIND=127.0.0.1/" mailcow.conf
-sed -i "s/^HTTPS_BIND=.*/HTTPS_BIND=127.0.0.1/" mailcow.conf
+# Remove any existing port/bind settings (commented or not) and append correct ones
+sed -i '/^#*\s*HTTP_PORT=/d' mailcow.conf
+sed -i '/^#*\s*HTTPS_PORT=/d' mailcow.conf
+sed -i '/^#*\s*HTTP_BIND=/d' mailcow.conf
+sed -i '/^#*\s*HTTPS_BIND=/d' mailcow.conf
+
+# Append the correct settings
+cat >> mailcow.conf << PORTCONF
+
+# GameTaverns: Use non-standard ports to avoid conflict with host nginx
+HTTP_PORT=$MAILCOW_HTTP_PORT
+HTTPS_PORT=$MAILCOW_HTTPS_PORT
+HTTP_BIND=127.0.0.1
+HTTPS_BIND=127.0.0.1
+PORTCONF
 
 echo -e "${GREEN}✓ Ports configured: HTTP=$MAILCOW_HTTP_PORT, HTTPS=$MAILCOW_HTTPS_PORT${NC}"
 
