@@ -159,7 +159,17 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             </Link>
           )}
           
-          {/* Home link - only shown outside tenant context OR in demo mode */}
+          {/* Home link for tenant subdomains - goes to the library's own home page */}
+          {tenantSlug && !isDemoMode && (
+            <a
+              href="/"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              Home
+            </a>
+          )}
+          
+          {/* Home link - shown outside tenant context OR in demo mode */}
           {(!tenantSlug || isDemoMode) && (
             <Link to={homeUrl} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
               Home
@@ -177,23 +187,24 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             </Link>
           )}
           
-          {/* Tenant subdomain navigation */}
-          {tenantSlug && !isDemoMode && (
-            isAuthenticated ? (
-              <a
-                href={getPlatformUrl("/dashboard")}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
-              >
-                Dashboard
-              </a>
-            ) : (
-              <a
-                href={getPlatformUrl("/login")}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
-              >
-                Sign In
-              </a>
-            )
+          {/* Tenant subdomain: Dashboard link for authenticated users */}
+          {tenantSlug && !isDemoMode && isAuthenticated && (
+            <a
+              href={getPlatformUrl("/dashboard")}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              Dashboard
+            </a>
+          )}
+          
+          {/* Tenant subdomain: Sign In link for anonymous users */}
+          {tenantSlug && !isDemoMode && !isAuthenticated && (
+            <a
+              href={getPlatformUrl("/login")}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              Sign In
+            </a>
           )}
           
           {/* User display name when viewing libraries */}
