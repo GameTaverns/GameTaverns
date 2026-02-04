@@ -951,7 +951,82 @@ async function handleRateGame(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { game_id, rating, guest_identifier, device_fingerprint } = await req.json();
+    // GET: Fetch user's own ratings by guestIdentifier
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      const guestIdentifier = url.searchParams.get("guestIdentifier");
+      
+      if (!guestIdentifier) {
+        return new Response(
+          JSON.stringify({ error: "Missing guestIdentifier" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      const { data, error } = await supabase
+        .from("game_ratings")
+        .select("game_id, rating")
+        .eq("guest_identifier", guestIdentifier);
+      
+      if (error) {
+        console.error("Error fetching user ratings:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch ratings" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ ratings: data || [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // DELETE: Remove a rating
+    if (req.method === "DELETE") {
+      const { gameId, guestIdentifier } = await req.json();
+
+      if (!gameId || !guestIdentifier) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { error } = await supabase
+        .from("game_ratings")
+        .delete()
+        .eq("game_id", gameId)
+        .eq("guest_identifier", guestIdentifier);
+
+      if (error) {
+        console.error("Error deleting rating:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to delete rating" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // POST: Submit or update a rating
+    if (req.method !== "POST") {
+      return new Response(
+        JSON.stringify({ error: "Method not allowed" }),
+        { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const body = await req.json();
+    // Support both camelCase (frontend) and snake_case (legacy)
+    const game_id = body.game_id || body.gameId;
+    const rating = body.rating;
+    const guest_identifier = body.guest_identifier || body.guestIdentifier;
+    const device_fingerprint = body.device_fingerprint || body.deviceFingerprint || req.headers.get("x-device-fingerprint");
 
     if (!game_id || !rating || !guest_identifier) {
       return new Response(
@@ -973,23 +1048,32 @@ async function handleRateGame(req: Request): Promise<Response> {
                      req.headers.get("cf-connecting-ip") ||
                      null;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("game_ratings")
       .upsert(
         {
           game_id,
-          rating,
+          rating: Math.round(rating),
           guest_identifier,
           device_fingerprint: device_fingerprint || null,
           ip_address: clientIp,
+          updated_at: new Date().toISOString(),
         },
         { onConflict: "game_id,guest_identifier" }
-      );
+      )
+      .select()
+      .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error upserting rating:", error);
+      return new Response(
+        JSON.stringify({ error: "Failed to save rating" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, rating: data }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
@@ -1435,28 +1519,33 @@ async function handleRefreshImages(req: Request): Promise<Response> {
     const libraryId = body.library_id || library.id;
     const limit = body.limit || 50;
 
+    // Find games with missing images (null OR empty string)
     const { data: games, error: gamesError } = await supabaseAdmin
       .from("games")
-      .select("id, title, bgg_url")
+      .select("id, title, bgg_url, image_url")
       .eq("library_id", libraryId)
       .not("bgg_url", "is", null)
-      .is("image_url", null)
       .limit(limit);
+    
+    // Filter client-side to catch both null and empty strings
+    const gamesNeedingImages = (games || []).filter(g => 
+      !g.image_url || g.image_url.trim() === "" || g.image_url === "null"
+    );
 
     if (gamesError) {
       return new Response(JSON.stringify({ success: false, error: gamesError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (!games || games.length === 0) {
+    if (gamesNeedingImages.length === 0) {
       return new Response(JSON.stringify({ success: true, message: "No games need image refresh", updated: 0, remaining: 0 }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    console.log(`[RefreshImages] Processing ${games.length} games`);
+    console.log(`[RefreshImages] Processing ${gamesNeedingImages.length} games needing images`);
     let updated = 0, failed = 0;
 
-    for (const game of games) {
+    for (const game of gamesNeedingImages) {
       if (!game.bgg_url) continue;
       const imageUrl = await fetchBGGImageDirect(game.bgg_url);
       if (imageUrl) {
@@ -1467,14 +1556,18 @@ async function handleRefreshImages(req: Request): Promise<Response> {
       await new Promise(r => setTimeout(r, 200));
     }
 
-    const { count: remaining } = await supabaseAdmin
+    // Count remaining games with missing images
+    const { data: allGamesWithBgg } = await supabaseAdmin
       .from("games")
-      .select("id", { count: "exact", head: true })
+      .select("id, image_url")
       .eq("library_id", libraryId)
-      .not("bgg_url", "is", null)
-      .is("image_url", null);
+      .not("bgg_url", "is", null);
+    
+    const remaining = (allGamesWithBgg || []).filter(g => 
+      !g.image_url || g.image_url.trim() === "" || g.image_url === "null"
+    ).length;
 
-    return new Response(JSON.stringify({ success: true, updated, failed, processed: games.length, remaining: remaining || 0 }),
+    return new Response(JSON.stringify({ success: true, updated, failed, processed: gamesNeedingImages.length, remaining }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("[RefreshImages] Error:", e);
