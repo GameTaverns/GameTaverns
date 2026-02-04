@@ -57,6 +57,19 @@ export function UserManagement() {
     queryKey: ["current-user-role", currentUser?.id],
     queryFn: async () => {
       if (!currentUser?.id) return null;
+      
+      if (isSelfHostedMode()) {
+        // Self-hosted: get role from /auth/me endpoint which includes roles array
+        try {
+          const data = await apiClient.get<{ roles: string[] }>("/auth/me");
+          // Return the first (highest) role, or null
+          return (data.roles?.[0] as AppRole) || null;
+        } catch {
+          return null;
+        }
+      }
+      
+      // Cloud: use Supabase
       const { data } = await supabase
         .from("user_roles")
         .select("role")
