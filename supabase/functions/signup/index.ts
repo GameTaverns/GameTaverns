@@ -37,6 +37,8 @@ function getSmtpClient() {
       hostname: smtpHost,
       port: smtpPort,
       tls: smtpPort === 465,
+      // For port 587, use STARTTLS (not implicit TLS)
+      ...(smtpPort === 587 ? { starttls: true } : {}),
       auth: {
         username: smtpUser,
         password: smtpPass,
@@ -149,15 +151,28 @@ async function handler(req: Request): Promise<Response> {
       // Check if username is already taken
       const { data: existingUsername } = await supabase
         .from("user_profiles")
-        .select("id")
+        .select("user_id")
         .eq("username", username.toLowerCase())
         .maybeSingle();
 
       if (existingUsername) {
+        // If the profile row exists but the auth user does not (orphan), free the username.
+        // This can happen if a deletion partially succeeded in a self-hosted setup.
+        const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(
+          existingUsername.user_id,
+        );
+
+        if (authUserError || !authUser?.user) {
+          console.warn(
+            `Orphaned username detected (${username.toLowerCase()}) for user_id=${existingUsername.user_id}. Deleting stale profile row.`,
+          );
+          await supabase.from("user_profiles").delete().eq("user_id", existingUsername.user_id);
+        } else {
         return new Response(JSON.stringify({ error: "Username is already taken" }), {
           status: 409,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+        }
       }
     }
 
