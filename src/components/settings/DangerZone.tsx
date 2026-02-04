@@ -88,30 +88,61 @@ export function DangerZone() {
 
     setIsProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("Not authenticated");
+      let response: { success?: boolean; message?: string; error?: string };
+
+      if (isSelfHostedMode()) {
+        // Self-hosted mode: use API client
+        const token = localStorage.getItem("auth_token");
+        if (!token) {
+          throw new Error("Not authenticated");
+        }
+
+        const res = await fetch("/api/account", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: currentAction,
+            libraryId: library?.id,
+            confirmationText,
+          }),
+        });
+
+        response = await res.json();
+        if (!res.ok) {
+          throw new Error(response.error || "Action failed");
+        }
+      } else {
+        // Cloud mode: use Supabase edge function
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error("Not authenticated");
+        }
+
+        const edgeResponse = await supabase.functions.invoke("manage-account", {
+          body: {
+            action: currentAction,
+            libraryId: library?.id,
+            confirmationText,
+          },
+        });
+
+        if (edgeResponse.error) {
+          throw new Error(edgeResponse.error.message || "Action failed");
+        }
+
+        response = edgeResponse.data;
       }
 
-      const response = await supabase.functions.invoke("manage-account", {
-        body: {
-          action: currentAction,
-          libraryId: library?.id,
-          confirmationText,
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Action failed");
-      }
-
-      if (!response.data?.success) {
-        throw new Error(response.data?.error || "Action failed");
+      if (!response?.success) {
+        throw new Error(response?.error || "Action failed");
       }
 
       toast({
         title: "Success",
-        description: response.data.message,
+        description: response.message,
       });
 
       // Handle post-action navigation
