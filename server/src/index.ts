@@ -3,6 +3,7 @@ import { config, validateConfig } from './config.js';
 import { testConnection } from './services/db.js';
 import { initializeCoreDb, closeAllPools } from './services/mariadb.js';
 import { initializePostgres, closePool as closePostgresPool } from './services/postgres.js';
+import { verifySmtpConnection, isEmailConfigured } from './services/email.js';
 
 async function main() {
   console.log(`
@@ -48,6 +49,13 @@ async function main() {
     }
   }
   
+  // Verify SMTP connection (non-blocking, just logs status)
+  let smtpStatus = 'Not configured';
+  if (isEmailConfigured()) {
+    const smtpOk = await verifySmtpConnection();
+    smtpStatus = smtpOk ? '✓ Connected' : '✗ Connection failed (check logs)';
+  }
+  
   // Start server
   const server = app.listen(config.port, () => {
     console.log(`
@@ -55,6 +63,7 @@ async function main() {
   ✓ Environment: ${config.nodeEnv}
   ✓ Site: ${config.siteName}
   ✓ Database: ${config.isMariaDb ? 'MariaDB (multi-tenant)' : config.isStandalone ? 'PostgreSQL (standalone)' : 'Supabase'}
+  ✓ SMTP: ${smtpStatus}
   
   Features:
     • Play Logs: ${config.features.playLogs ? '✓' : '✗'}

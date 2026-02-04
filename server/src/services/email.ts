@@ -4,6 +4,9 @@ import { config } from '../config.js';
 // Email transporter (lazy init)
 let transporter: nodemailer.Transporter | null = null;
 
+// Timeout for SMTP operations (15 seconds)
+const SMTP_TIMEOUT_MS = 15000;
+
 function getTransporter(): nodemailer.Transporter {
   if (!transporter) {
     // Check if we're using local Postfix (no auth) or external SMTP (with auth)
@@ -15,6 +18,9 @@ function getTransporter(): nodemailer.Transporter {
         host: 'localhost',
         port: config.smtp.port || 25,
         secure: false,
+        connectionTimeout: SMTP_TIMEOUT_MS,
+        greetingTimeout: SMTP_TIMEOUT_MS,
+        socketTimeout: SMTP_TIMEOUT_MS,
         tls: {
           rejectUnauthorized: false,
         },
@@ -29,10 +35,16 @@ function getTransporter(): nodemailer.Transporter {
         host: config.smtp.host,
         port: config.smtp.port,
         secure: config.smtp.secure,
+        connectionTimeout: SMTP_TIMEOUT_MS,
+        greetingTimeout: SMTP_TIMEOUT_MS,
+        socketTimeout: SMTP_TIMEOUT_MS,
         auth: config.smtp.user ? {
           user: config.smtp.user,
           pass: config.smtp.pass,
         } : undefined,
+        // Enable debug logging for troubleshooting
+        logger: config.nodeEnv !== 'production',
+        debug: config.nodeEnv !== 'production',
       });
     }
   }
@@ -55,16 +67,56 @@ interface EmailOptions {
   replyTo?: string;
 }
 
+/**
+ * Verify SMTP connection is working
+ * Call this on startup to catch config issues early
+ */
+export async function verifySmtpConnection(): Promise<boolean> {
+  if (!isEmailConfigured()) {
+    console.log('SMTP not configured, skipping verification');
+    return false;
+  }
+  
+  try {
+    const transport = getTransporter();
+    await transport.verify();
+    console.log('✓ SMTP connection verified successfully');
+    return true;
+  } catch (error) {
+    console.error('✗ SMTP connection verification failed:', error);
+    return false;
+  }
+}
+
 export async function sendEmail(options: EmailOptions): Promise<void> {
   const transport = getTransporter();
   
-  await transport.sendMail({
-    from: options.from || config.smtp.from,
-    to: options.to,
-    subject: options.subject,
-    html: options.html,
-    replyTo: options.replyTo,
-  });
+  console.log(`Sending email to ${options.to}: "${options.subject}"`);
+  const startTime = Date.now();
+  
+  try {
+    const result = await transport.sendMail({
+      from: options.from || config.smtp.from,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      replyTo: options.replyTo,
+    });
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`✓ Email sent successfully in ${elapsed}ms. MessageId: ${result.messageId}`);
+  } catch (error: any) {
+    const elapsed = Date.now() - startTime;
+    console.error(`✗ Email failed after ${elapsed}ms:`, error.message);
+    
+    // Reset transporter on connection errors to force reconnect
+    if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED') {
+      console.log('Resetting SMTP transporter due to connection error');
+      transporter = null;
+    }
+    
+    throw error;
+  }
 }
 
 // =====================
