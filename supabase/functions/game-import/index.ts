@@ -6,17 +6,37 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Difficulty levels from the database enum
-const DIFFICULTY_LEVELS = [
+// ---------------------------------------------------------------------------
+// Enum compatibility
+// ---------------------------------------------------------------------------
+// Cloud + app UI historically used one enum set ("1 - Light", "Miniatures", "0-15 Minutes", ...)
+// Self-hosted schema (deploy/* migrations) uses a different enum set.
+// Detect the environment by SUPABASE_URL and normalize inputs accordingly.
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const IS_SELF_HOSTED =
+  SUPABASE_URL.startsWith("http://") ||
+  SUPABASE_URL.includes("kong") ||
+  SUPABASE_URL.includes("localhost") ||
+  SUPABASE_URL.includes("127.0.0.1");
+
+const CLOUD_DIFFICULTY_LEVELS = [
   "1 - Light",
   "2 - Medium Light",
   "3 - Medium",
   "4 - Medium Heavy",
   "5 - Heavy",
-];
+] as const;
 
-// Play time options from database enum
-const PLAY_TIME_OPTIONS = [
+const SELF_HOSTED_DIFFICULTY_LEVELS = [
+  "1 - Very Easy",
+  "2 - Easy",
+  "3 - Medium",
+  "4 - Hard",
+  "5 - Very Hard",
+] as const;
+
+const CLOUD_PLAY_TIME_OPTIONS = [
   "0-15 Minutes",
   "15-30 Minutes",
   "30-45 Minutes",
@@ -24,10 +44,19 @@ const PLAY_TIME_OPTIONS = [
   "60+ Minutes",
   "2+ Hours",
   "3+ Hours",
-];
+] as const;
 
-// Game type options from database enum
-const GAME_TYPE_OPTIONS = [
+const SELF_HOSTED_PLAY_TIME_OPTIONS = [
+  "Under 30 Minutes",
+  "30-45 Minutes",
+  "45-60 Minutes",
+  "60-90 Minutes",
+  "90-120 Minutes",
+  "2-3 Hours",
+  "3+ Hours",
+] as const;
+
+const CLOUD_GAME_TYPE_OPTIONS = [
   "Board Game",
   "Card Game",
   "Dice Game",
@@ -36,7 +65,131 @@ const GAME_TYPE_OPTIONS = [
   "Miniatures",
   "RPG",
   "Other",
-];
+] as const;
+
+const SELF_HOSTED_GAME_TYPE_OPTIONS = [
+  "Board Game",
+  "Card Game",
+  "Dice Game",
+  "Party Game",
+  "Strategy Game",
+  "Cooperative Game",
+  "Miniatures Game",
+  "Role-Playing Game",
+  "Deck Building",
+  "Area Control",
+  "Worker Placement",
+  "Other",
+] as const;
+
+// Active enum sets for validation + AI prompting
+const DIFFICULTY_LEVELS = (IS_SELF_HOSTED ? SELF_HOSTED_DIFFICULTY_LEVELS : CLOUD_DIFFICULTY_LEVELS) as readonly string[];
+const PLAY_TIME_OPTIONS = (IS_SELF_HOSTED ? SELF_HOSTED_PLAY_TIME_OPTIONS : CLOUD_PLAY_TIME_OPTIONS) as readonly string[];
+const GAME_TYPE_OPTIONS = (IS_SELF_HOSTED ? SELF_HOSTED_GAME_TYPE_OPTIONS : CLOUD_GAME_TYPE_OPTIONS) as readonly string[];
+
+// ---------------------------------------------------------------------------
+// Enum normalization helpers
+// ---------------------------------------------------------------------------
+const normalizeEnum = (value: string | undefined, allowed: readonly string[]): string | undefined => {
+  if (!value) return undefined;
+  const v = value.trim();
+  return allowed.includes(v) ? v : undefined;
+};
+
+const normalizeDifficulty = (difficulty: string | undefined): string | undefined => {
+  if (!difficulty) return undefined;
+
+  const d = difficulty.trim();
+
+  // If it's already valid for this environment, keep it.
+  const direct = normalizeEnum(d, DIFFICULTY_LEVELS);
+  if (direct) return direct;
+
+  // Cross-map between Cloud and Self-hosted vocab.
+  const cloudToSelf: Record<string, string> = {
+    "1 - Light": "1 - Very Easy",
+    "2 - Medium Light": "2 - Easy",
+    "3 - Medium": "3 - Medium",
+    "4 - Medium Heavy": "4 - Hard",
+    "5 - Heavy": "5 - Very Hard",
+  };
+  const selfToCloud: Record<string, string> = {
+    "1 - Very Easy": "1 - Light",
+    "2 - Easy": "2 - Medium Light",
+    "3 - Medium": "3 - Medium",
+    "4 - Hard": "4 - Medium Heavy",
+    "5 - Very Hard": "5 - Heavy",
+  };
+
+  const mapped = IS_SELF_HOSTED ? cloudToSelf[d] : selfToCloud[d];
+  return normalizeEnum(mapped, DIFFICULTY_LEVELS);
+};
+
+const normalizePlayTime = (playTime: string | undefined): string | undefined => {
+  if (!playTime) return undefined;
+
+  const p = playTime.trim();
+  const direct = normalizeEnum(p, PLAY_TIME_OPTIONS);
+  if (direct) return direct;
+
+  const cloudToSelf: Record<string, string> = {
+    "0-15 Minutes": "Under 30 Minutes",
+    "15-30 Minutes": "Under 30 Minutes",
+    "30-45 Minutes": "30-45 Minutes",
+    "45-60 Minutes": "45-60 Minutes",
+    "60+ Minutes": "60-90 Minutes",
+    "2+ Hours": "2-3 Hours",
+    "3+ Hours": "3+ Hours",
+  };
+  const selfToCloud: Record<string, string> = {
+    "Under 30 Minutes": "15-30 Minutes",
+    "30-45 Minutes": "30-45 Minutes",
+    "45-60 Minutes": "45-60 Minutes",
+    "60-90 Minutes": "60+ Minutes",
+    "90-120 Minutes": "2+ Hours",
+    "2-3 Hours": "2+ Hours",
+    "3+ Hours": "3+ Hours",
+  };
+
+  const mapped = IS_SELF_HOSTED ? cloudToSelf[p] : selfToCloud[p];
+  return normalizeEnum(mapped, PLAY_TIME_OPTIONS);
+};
+
+const normalizeGameType = (gameType: string | undefined): string | undefined => {
+  if (!gameType) return undefined;
+  const t = gameType.trim();
+
+  const direct = normalizeEnum(t, GAME_TYPE_OPTIONS);
+  if (direct) return direct;
+
+  const cloudToSelf: Record<string, string> = {
+    "Miniatures": "Miniatures Game",
+    "RPG": "Role-Playing Game",
+    "War Game": "Strategy Game",
+  };
+  const selfToCloud: Record<string, string> = {
+    "Miniatures Game": "Miniatures",
+    "Role-Playing Game": "RPG",
+    "Strategy Game": "Other",
+    "Cooperative Game": "Other",
+    "Deck Building": "Other",
+    "Area Control": "Other",
+    "Worker Placement": "Other",
+  };
+
+  const mapped = IS_SELF_HOSTED ? cloudToSelf[t] : selfToCloud[t];
+  return normalizeEnum(mapped, GAME_TYPE_OPTIONS);
+};
+
+const normalizeSaleCondition = (saleCondition: string | undefined): string | undefined => {
+  if (!saleCondition) return undefined;
+  const c = saleCondition.trim();
+  if (!IS_SELF_HOSTED) return c;
+
+  // self-hosted enum uses "New" (not "New/Sealed")
+  if (c === "New/Sealed") return "New";
+  return c;
+};
 
 // Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
@@ -628,14 +781,20 @@ ${markdown.slice(0, 18000)}`,
     if (validMainImage) validGameplayImages = validGameplayImages.filter((u) => u !== validMainImage);
 
     // Game data for games table (without admin fields like purchase_price/purchase_date)
+    // Normalize enum values to match the current environment's database schema
+    const normalizedDifficulty = normalizeDifficulty(extractedData.difficulty) || (IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium");
+    const normalizedGameType = normalizeGameType(extractedData.game_type) || "Board Game";
+    const normalizedPlayTime = normalizePlayTime(extractedData.play_time) || (IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes");
+    const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
+
     const gameData = {
       title: extractedData.title.slice(0, 500),
       description: extractedData.description?.slice(0, 10000) || null, // Increased limit for rich descriptions
       image_url: validMainImage,
       additional_images: validGameplayImages,
-      difficulty: extractedData.difficulty || "3 - Medium",
-      game_type: extractedData.game_type || "Board Game",
-      play_time: extractedData.play_time || "45-60 Minutes",
+      difficulty: normalizedDifficulty,
+      game_type: normalizedGameType,
+      play_time: normalizedPlayTime,
       min_players: extractedData.min_players || 1,
       max_players: extractedData.max_players || 4,
       suggested_age: extractedData.suggested_age || "10+",
@@ -644,7 +803,7 @@ ${markdown.slice(0, 18000)}`,
       is_coming_soon: is_coming_soon === true,
       is_for_sale: is_for_sale === true,
       sale_price: is_for_sale === true && sale_price ? Number(sale_price) : null,
-      sale_condition: is_for_sale === true && sale_condition ? sale_condition : null,
+      sale_condition: is_for_sale === true ? normalizedSaleCondition : null,
       // Use explicit is_expansion from request, OR auto-detect from AI
       is_expansion: is_expansion === true || aiDetectedExpansion === true,
       // Use explicit parent_game_id from request, OR auto-detected parent
