@@ -20,21 +20,25 @@ export default function ForgotPassword() {
     setIsLoading(true);
 
     try {
-      // Use custom email flow via edge function
-      const { data, error } = await supabase.functions.invoke('send-auth-email', {
-        body: {
-          type: 'password_reset',
-          email: email,
-          redirectUrl: window.location.origin,
-        },
-      });
-
-      if (error) throw error;
+      if (isSelfHostedMode()) {
+        // Self-hosted: use Express API
+        await apiClient.post('/auth/forgot-password', { email });
+      } else {
+        // Cloud mode: use Supabase edge function
+        const { error } = await supabase.functions.invoke('send-auth-email', {
+          body: {
+            type: 'password_reset',
+            email: email,
+            redirectUrl: window.location.origin,
+          },
+        });
+        if (error) throw error;
+      }
 
       setEmailSent(true);
       toast({
         title: "Check your email",
-        description: "We've sent you a password reset link from GameTaverns.",
+        description: "We've sent you a password reset link.",
       });
     } catch (error: any) {
       toast({
