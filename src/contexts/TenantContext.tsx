@@ -153,7 +153,7 @@ function resolveTenantSlug(): string | null {
   }
   
   // Skip reserved subdomains
-  if (slug && ["www", "api", "mail", "admin", "tavern"].includes(slug)) {
+  if (slug && ["www", "api", "mail", "admin", "tavern", "studio", "dashboard"].includes(slug)) {
     return null;
   }
   
