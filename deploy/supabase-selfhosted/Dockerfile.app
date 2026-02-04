@@ -51,10 +51,19 @@ ARG VITE_BUILD_DATE
 ENV VITE_BUILD_DATE=${VITE_BUILD_DATE:-unknown}
 ENV NODE_ENV=production
 
+# CRITICAL: Clear Lovable Cloud credentials so they are NOT baked into the build
+# The self-hosted app MUST use runtime config (window.__RUNTIME_CONFIG__) instead
+# of build-time env vars. If these are set, Vite bakes them into the JS bundle
+# and the app connects to the wrong database.
+ENV VITE_SUPABASE_URL=""
+ENV VITE_SUPABASE_PUBLISHABLE_KEY=""
+ENV VITE_SUPABASE_PROJECT_ID=""
+
 # Build the app with verbose error output and memory limits
 RUN echo "Building application..." && \
     echo "Node version: $(node --version)" && \
     echo "NPM version: $(npm --version)" && \
+    echo "VITE_SUPABASE_URL is intentionally empty: '$VITE_SUPABASE_URL'" && \
     NODE_OPTIONS="--max-old-space-size=2048" npm run build 2>&1 && \
     echo "Build completed successfully" && \
     ls -la dist/ && \
