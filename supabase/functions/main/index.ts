@@ -1373,6 +1373,316 @@ async function handleManageAccount(req: Request): Promise<Response> {
 }
 
 // ============================================================================
+// REFRESH-IMAGES HANDLER (Inlined for self-hosted)
+// ============================================================================
+async function fetchBGGImageDirect(bggUrl: string): Promise<string | null> {
+  try {
+    const pageRes = await fetch(bggUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
+    });
+    if (!pageRes.ok) return null;
+    const html = await pageRes.text();
+    
+    // Try og:image first
+    const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+    if (ogMatch?.[1]?.includes("cf.geekdo-images.com")) return ogMatch[1].trim();
+    
+    // Fallback: find images
+    const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
+    const images = html.match(imageRegex) || [];
+    const filtered = [...new Set(images)].filter((img: string) => 
+      !/crop100|square30|100x100|150x150|_thumb|_avatar|_micro/i.test(img)
+    );
+    filtered.sort((a: string, b: string) => {
+      const prio = (url: string) => /_itemrep/i.test(url) ? 0 : /_imagepage/i.test(url) ? 1 : 2;
+      return prio(a) - prio(b);
+    });
+    return filtered[0] || null;
+  } catch { return null; }
+}
+
+async function handleRefreshImages(req: Request): Promise<Response> {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ success: false, error: "Authentication required" }), 
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ success: false, error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: library } = await supabaseAdmin.from("libraries").select("id").eq("owner_id", user.id).maybeSingle();
+    if (!library) {
+      return new Response(JSON.stringify({ success: false, error: "You must own a library to refresh images" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const libraryId = body.library_id || library.id;
+    const limit = body.limit || 50;
+
+    const { data: games, error: gamesError } = await supabaseAdmin
+      .from("games")
+      .select("id, title, bgg_url")
+      .eq("library_id", libraryId)
+      .not("bgg_url", "is", null)
+      .is("image_url", null)
+      .limit(limit);
+
+    if (gamesError) {
+      return new Response(JSON.stringify({ success: false, error: gamesError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (!games || games.length === 0) {
+      return new Response(JSON.stringify({ success: true, message: "No games need image refresh", updated: 0, remaining: 0 }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    console.log(`[RefreshImages] Processing ${games.length} games`);
+    let updated = 0, failed = 0;
+
+    for (const game of games) {
+      if (!game.bgg_url) continue;
+      const imageUrl = await fetchBGGImageDirect(game.bgg_url);
+      if (imageUrl) {
+        const { error } = await supabaseAdmin.from("games").update({ image_url: imageUrl }).eq("id", game.id);
+        if (!error) { updated++; console.log(`[RefreshImages] Updated: ${game.title}`); }
+        else { failed++; }
+      } else { failed++; }
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    const { count: remaining } = await supabaseAdmin
+      .from("games")
+      .select("id", { count: "exact", head: true })
+      .eq("library_id", libraryId)
+      .not("bgg_url", "is", null)
+      .is("image_url", null);
+
+    return new Response(JSON.stringify({ success: true, updated, failed, processed: games.length, remaining: remaining || 0 }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (e) {
+    console.error("[RefreshImages] Error:", e);
+    return new Response(JSON.stringify({ success: false, error: e instanceof Error ? e.message : "Failed to refresh images" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+}
+
+// ============================================================================
+// BGG ENRICHMENT HELPERS (for bulk-import)
+// ============================================================================
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+async function fetchBGGXMLData(bggId: string): Promise<{
+  bgg_id: string;
+  description?: string;
+  image_url?: string;
+  min_players?: number;
+  max_players?: number;
+  suggested_age?: string;
+  play_time?: string;
+  difficulty?: string;
+  mechanics?: string[];
+  publisher?: string;
+} | null> {
+  try {
+    const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`, {
+      headers: { "User-Agent": "GameTaverns/1.0 (Bulk Import)" },
+    });
+    if (!res.ok) return { bgg_id: bggId };
+    const xml = await res.text();
+    
+    const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+    const descMatch = xml.match(/<description>([^<]*)<\/description>/);
+    const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
+    const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
+    const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
+    const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
+    const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
+    const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
+    const mechanics = [...mechanicsMatches].map(m => m[1]);
+    const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
+    
+    let difficulty: string | undefined;
+    if (weightMatch) {
+      const w = parseFloat(weightMatch[1]);
+      if (w > 0) {
+        if (w < 1.5) difficulty = "1 - Very Easy";
+        else if (w < 2.25) difficulty = "2 - Easy";
+        else if (w < 3.0) difficulty = "3 - Medium";
+        else if (w < 3.75) difficulty = "4 - Hard";
+        else difficulty = "5 - Very Hard";
+      }
+    }
+    
+    let play_time: string | undefined;
+    if (playTimeMatch) {
+      const minutes = parseInt(playTimeMatch[1], 10);
+      if (minutes <= 30) play_time = "Under 30 Minutes";
+      else if (minutes <= 45) play_time = "30-45 Minutes";
+      else if (minutes <= 60) play_time = "45-60 Minutes";
+      else if (minutes <= 90) play_time = "60-90 Minutes";
+      else if (minutes <= 120) play_time = "90-120 Minutes";
+      else if (minutes <= 180) play_time = "2-3 Hours";
+      else play_time = "3+ Hours";
+    }
+    
+    let description = descMatch?.[1];
+    if (description) {
+      description = description.replace(/&#10;/g, "\n").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").slice(0, 2000);
+    }
+    
+    return {
+      bgg_id: bggId,
+      image_url: imageMatch?.[1],
+      description,
+      min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
+      max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
+      suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
+      play_time,
+      difficulty,
+      mechanics: mechanics.length > 0 ? mechanics : undefined,
+      publisher: publisherMatch?.[1],
+    };
+  } catch (e) {
+    console.error("[BulkImport] BGG XML fallback error:", e);
+    return { bgg_id: bggId };
+  }
+}
+
+async function fetchBGGDataWithFirecrawl(bggId: string, firecrawlKey: string, maxRetries = 2): Promise<{
+  bgg_id: string;
+  description?: string;
+  image_url?: string;
+  min_players?: number;
+  max_players?: number;
+  suggested_age?: string;
+  play_time?: string;
+  difficulty?: string;
+  game_type?: string;
+  mechanics?: string[];
+  publisher?: string;
+} | null> {
+  const pageUrl = `https://boardgamegeek.com/boardgame/${bggId}`;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 1) await sleep(Math.min(1000 * Math.pow(2, attempt - 1), 4000));
+      
+      const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url: pageUrl, formats: ["markdown", "rawHtml"], onlyMainContent: true }),
+      });
+      
+      if (!scrapeRes.ok) {
+        if (scrapeRes.status === 429) await sleep(5000);
+        continue;
+      }
+      
+      const raw = await scrapeRes.text();
+      if (!raw || raw.trim().length === 0) continue;
+      
+      let scrapeData: any;
+      try { scrapeData = JSON.parse(raw); } catch { continue; }
+      
+      const markdown = scrapeData.data?.markdown || scrapeData.markdown || "";
+      const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
+      if (!markdown && !rawHtml) continue;
+      
+      // Extract image
+      const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
+      const images: string[] = rawHtml.match(imageRegex) || [];
+      const uniqueImages = [...new Set(images)] as string[];
+      const filtered = uniqueImages.filter((img) => !/crop100|square30|100x100|_thumb|_avatar/i.test(img));
+      filtered.sort((a, b) => {
+        const prio = (url: string) => /_itemrep/i.test(url) ? 0 : /_imagepage/i.test(url) ? 1 : 2;
+        return prio(a) - prio(b);
+      });
+      const mainImage: string | undefined = filtered[0] || undefined;
+      
+      // Try AI extraction if configured
+      if (!isAIConfigured()) return { bgg_id: bggId, image_url: mainImage };
+      
+      try {
+        const aiResult = await aiComplete({
+          messages: [
+            { role: "system", content: `Extract board game data. Use EXACT enum values:
+- difficulty: "1 - Very Easy", "2 - Easy", "3 - Medium", "4 - Hard", "5 - Very Hard"
+- play_time: "Under 30 Minutes", "30-45 Minutes", "45-60 Minutes", "60-90 Minutes", "90-120 Minutes", "2-3 Hours", "3+ Hours"
+- game_type: "Board Game", "Card Game", "Dice Game", "Party Game", "Strategy Game", "Cooperative Game", "Miniatures Game", "Role-Playing Game", "Deck Building", "Area Control", "Worker Placement", "Other"
+Create a comprehensive description (200-400 words) with overview and Quick Gameplay Overview section.` },
+            { role: "user", content: `Extract data from:\n\n${markdown.slice(0, 12000)}` },
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "extract_game",
+              description: "Extract board game data",
+              parameters: {
+                type: "object",
+                properties: {
+                  description: { type: "string" },
+                  difficulty: { type: "string", enum: DIFFICULTY_LEVELS },
+                  play_time: { type: "string", enum: PLAY_TIME_OPTIONS },
+                  game_type: { type: "string", enum: GAME_TYPE_OPTIONS },
+                  min_players: { type: "number" },
+                  max_players: { type: "number" },
+                  suggested_age: { type: "string" },
+                  mechanics: { type: "array", items: { type: "string" } },
+                  publisher: { type: "string" },
+                },
+                required: ["description"],
+              },
+            },
+          }],
+        });
+        
+        if (aiResult?.success && aiResult.toolCallArguments) {
+          const data = aiResult.toolCallArguments as Record<string, unknown>;
+          return {
+            bgg_id: bggId,
+            image_url: mainImage,
+            description: data.description as string | undefined,
+            difficulty: data.difficulty as string | undefined,
+            play_time: data.play_time as string | undefined,
+            game_type: data.game_type as string | undefined,
+            min_players: data.min_players as number | undefined,
+            max_players: data.max_players as number | undefined,
+            suggested_age: data.suggested_age as string | undefined,
+            mechanics: data.mechanics as string[] | undefined,
+            publisher: data.publisher as string | undefined,
+          };
+        }
+      } catch { /* AI failed, return with image only */ }
+      
+      return { bgg_id: bggId, image_url: mainImage };
+    } catch (e) {
+      console.warn(`[BulkImport] Firecrawl attempt ${attempt} failed:`, e);
+    }
+  }
+  
+  // Fallback to BGG XML API
+  console.log(`[BulkImport] Firecrawl failed, using BGG XML fallback for ${bggId}`);
+  return await fetchBGGXMLData(bggId);
+}
+
+// ============================================================================
 // BULK-IMPORT HANDLER (Inlined for self-hosted)
 // ============================================================================
 // NOTE: Self-hosted schema enums differ from Cloud/UI enums.
@@ -1649,8 +1959,10 @@ async function handleBulkImport(req: Request): Promise<Response> {
       );
     }
 
-    const { mode, library_id, csv_data, default_options } = body;
+    const { mode, library_id, csv_data, default_options, enhance_with_bgg } = body;
+    const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     console.log("[BulkImport] Mode:", mode, "library_id:", library_id, "csv_data length:", csv_data?.length);
+    console.log("[BulkImport] enhance_with_bgg:", enhance_with_bgg, "firecrawlKey present:", !!firecrawlKey, "AI configured:", isAIConfigured());
     const targetLibraryId = library_id || libraryData?.id;
     if (!targetLibraryId) {
       console.log("[BulkImport] FAIL: No library specified");
@@ -1755,25 +2067,71 @@ async function handleBulkImport(req: Request): Promise<Response> {
           const gameInput = gamesToImport[i];
           console.log(`[BulkImport] Processing game ${i + 1}/${totalGames}: ${gameInput.title}`);
           try {
-            sendProgress({ type: "progress", current: i + 1, total: totalGames, imported, failed, currentGame: gameInput.title, phase: "importing" });
-            if (!gameInput.title) { 
+            // Check if we need enrichment
+            const hasCompleteData = !!(gameInput.description && gameInput.description.length > 50);
+            const shouldEnrich = enhance_with_bgg && gameInput.bgg_id && !hasCompleteData;
+            
+            sendProgress({ 
+              type: "progress", 
+              current: i + 1, 
+              total: totalGames, 
+              imported, 
+              failed, 
+              currentGame: gameInput.title || `BGG ID: ${gameInput.bgg_id}`, 
+              phase: shouldEnrich ? "enhancing" : "importing" 
+            });
+            
+            // Enrich with BGG data if needed
+            let enrichedData: typeof gameInput = { ...gameInput };
+            if (shouldEnrich && gameInput.bgg_id) {
+              console.log(`[BulkImport] Enriching with BGG: ${gameInput.bgg_id}`);
+              try {
+                let bggData: Awaited<ReturnType<typeof fetchBGGDataWithFirecrawl>> | null = null;
+                if (firecrawlKey) {
+                  bggData = await fetchBGGDataWithFirecrawl(gameInput.bgg_id, firecrawlKey);
+                } else {
+                  bggData = await fetchBGGXMLData(gameInput.bgg_id);
+                }
+                if (bggData) {
+                  const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
+                  enrichedData = {
+                    ...gameInput,
+                    image_url: isEmpty(gameInput.image_url) ? bggData.image_url : gameInput.image_url,
+                    description: isEmpty(gameInput.description) ? bggData.description : gameInput.description,
+                    difficulty: isEmpty(gameInput.difficulty) ? bggData.difficulty : gameInput.difficulty,
+                    play_time: isEmpty(gameInput.play_time) ? bggData.play_time : gameInput.play_time,
+                    type: isEmpty(gameInput.type) ? bggData.game_type : gameInput.type,
+                    min_players: gameInput.min_players ?? bggData.min_players,
+                    max_players: gameInput.max_players ?? bggData.max_players,
+                    suggested_age: isEmpty(gameInput.suggested_age) ? bggData.suggested_age : gameInput.suggested_age,
+                    mechanics: gameInput.mechanics?.length ? gameInput.mechanics : bggData.mechanics,
+                    publisher: isEmpty(gameInput.publisher) ? bggData.publisher : gameInput.publisher,
+                  };
+                  console.log(`[BulkImport] Enriched ${gameInput.title}: image=${!!enrichedData.image_url}, desc=${enrichedData.description?.length || 0} chars`);
+                }
+              } catch (e) {
+                console.warn(`[BulkImport] Enrichment failed for ${gameInput.bgg_id}:`, e);
+              }
+            }
+            
+            if (!enrichedData.title) { 
               failed++; 
               failureBreakdown.missing_title++;
               errors.push(`Could not determine title for game`); 
               continue; 
             }
 
-            const { data: existing } = await supabaseAdmin.from("games").select("id, title").eq("title", gameInput.title).eq("library_id", targetLibraryId).maybeSingle();
+            const { data: existing } = await supabaseAdmin.from("games").select("id, title").eq("title", enrichedData.title).eq("library_id", targetLibraryId).maybeSingle();
             if (existing) { 
               failed++; 
               failureBreakdown.already_exists++;
-              errors.push(`"${gameInput.title}" already exists`); 
+              errors.push(`"${enrichedData.title}" already exists`); 
               continue; 
             }
 
             const mechanicIds: string[] = [];
-            if (gameInput.mechanics?.length) {
-              for (const name of gameInput.mechanics) {
+            if (enrichedData.mechanics?.length) {
+              for (const name of enrichedData.mechanics) {
                 const { data: em } = await supabaseAdmin.from("mechanics").select("id").eq("name", name).maybeSingle();
                 if (em) { mechanicIds.push(em.id); }
                 else {
@@ -1784,62 +2142,62 @@ async function handleBulkImport(req: Request): Promise<Response> {
             }
 
             let publisherId: string | null = null;
-            if (gameInput.publisher) {
-              const { data: ep } = await supabaseAdmin.from("publishers").select("id").eq("name", gameInput.publisher).maybeSingle();
+            if (enrichedData.publisher) {
+              const { data: ep } = await supabaseAdmin.from("publishers").select("id").eq("name", enrichedData.publisher).maybeSingle();
               if (ep) { publisherId = ep.id; }
               else {
-                const { data: np } = await supabaseAdmin.from("publishers").insert({ name: gameInput.publisher }).select("id").single();
+                const { data: np } = await supabaseAdmin.from("publishers").insert({ name: enrichedData.publisher }).select("id").single();
                 if (np) publisherId = np.id;
               }
             }
 
             let parentGameId: string | null = null;
-            if (gameInput.is_expansion && gameInput.parent_game) {
-              const { data: pg } = await supabaseAdmin.from("games").select("id").eq("title", gameInput.parent_game).eq("library_id", targetLibraryId).maybeSingle();
+            if (enrichedData.is_expansion && enrichedData.parent_game) {
+              const { data: pg } = await supabaseAdmin.from("games").select("id").eq("title", enrichedData.parent_game).eq("library_id", targetLibraryId).maybeSingle();
               if (pg) { parentGameId = pg.id; }
             }
 
              // Normalize enums to match self-hosted DB enum values
-             const normalizedDifficulty = normalizeDifficulty(gameInput.difficulty) || "3 - Medium";
-             const normalizedPlayTime = normalizePlayTime(gameInput.play_time) || "45-60 Minutes";
-             const normalizedGameType = normalizeGameType(gameInput.type) || "Board Game";
-             const normalizedSaleCondition = normalizeSaleCondition(gameInput.sale_condition);
+             const normalizedDifficulty = normalizeDifficulty(enrichedData.difficulty) || "3 - Medium";
+             const normalizedPlayTime = normalizePlayTime(enrichedData.play_time) || "45-60 Minutes";
+             const normalizedGameType = normalizeGameType(enrichedData.type) || "Board Game";
+             const normalizedSaleCondition = normalizeSaleCondition(enrichedData.sale_condition);
 
              const { data: newGame, error: gameError } = await supabaseAdmin.from("games").insert({
               library_id: targetLibraryId,
-              title: gameInput.title,
-              description: gameInput.description || null,
-              image_url: gameInput.image_url || null,
-              bgg_id: gameInput.bgg_id || null,
-              bgg_url: gameInput.bgg_url || null,
-              min_players: gameInput.min_players ?? 2,
-              max_players: gameInput.max_players ?? 4,
-              suggested_age: gameInput.suggested_age || null,
+              title: enrichedData.title,
+              description: enrichedData.description || null,
+              image_url: enrichedData.image_url || null,
+              bgg_id: enrichedData.bgg_id || null,
+              bgg_url: enrichedData.bgg_url || null,
+              min_players: enrichedData.min_players ?? 2,
+              max_players: enrichedData.max_players ?? 4,
+              suggested_age: enrichedData.suggested_age || null,
                play_time: normalizedPlayTime,
                difficulty: normalizedDifficulty,
                game_type: normalizedGameType,
               publisher_id: publisherId,
-              is_expansion: gameInput.is_expansion ?? false,
+              is_expansion: enrichedData.is_expansion ?? false,
               parent_game_id: parentGameId,
-              is_coming_soon: gameInput.is_coming_soon ?? default_options?.is_coming_soon ?? false,
-              is_for_sale: gameInput.is_for_sale ?? default_options?.is_for_sale ?? false,
-              sale_price: gameInput.sale_price ?? default_options?.sale_price ?? null,
+              is_coming_soon: enrichedData.is_coming_soon ?? default_options?.is_coming_soon ?? false,
+              is_for_sale: enrichedData.is_for_sale ?? default_options?.is_for_sale ?? false,
+              sale_price: enrichedData.sale_price ?? default_options?.sale_price ?? null,
                sale_condition: normalizedSaleCondition ?? default_options?.sale_condition ?? null,
-              location_room: gameInput.location_room ?? default_options?.location_room ?? null,
-              location_shelf: gameInput.location_shelf ?? default_options?.location_shelf ?? null,
-              location_misc: gameInput.location_misc ?? default_options?.location_misc ?? null,
-              sleeved: gameInput.sleeved ?? default_options?.sleeved ?? false,
-              upgraded_components: gameInput.upgraded_components ?? default_options?.upgraded_components ?? false,
-              crowdfunded: gameInput.crowdfunded ?? default_options?.crowdfunded ?? false,
-              inserts: gameInput.inserts ?? default_options?.inserts ?? false,
-              in_base_game_box: gameInput.in_base_game_box ?? false,
+              location_room: enrichedData.location_room ?? default_options?.location_room ?? null,
+              location_shelf: enrichedData.location_shelf ?? default_options?.location_shelf ?? null,
+              location_misc: enrichedData.location_misc ?? default_options?.location_misc ?? null,
+              sleeved: enrichedData.sleeved ?? default_options?.sleeved ?? false,
+              upgraded_components: enrichedData.upgraded_components ?? default_options?.upgraded_components ?? false,
+              crowdfunded: enrichedData.crowdfunded ?? default_options?.crowdfunded ?? false,
+              inserts: enrichedData.inserts ?? default_options?.inserts ?? false,
+              in_base_game_box: enrichedData.in_base_game_box ?? false,
             }).select("id, title").single();
 
             if (gameError || !newGame) { 
               failed++; 
               failureBreakdown.create_failed++;
-              errors.push(`Failed to create "${gameInput.title}": ${gameError?.message}`); 
-              console.log(`[BulkImport] Failed to create game: ${gameInput.title} - ${gameError?.message}`);
+              errors.push(`Failed to create "${enrichedData.title}": ${gameError?.message}`); 
+              console.log(`[BulkImport] Failed to create game: ${enrichedData.title} - ${gameError?.message}`);
               continue; 
             }
 
@@ -1893,7 +2251,7 @@ const AVAILABLE_FUNCTIONS = [
 
 const INLINED_FUNCTIONS = [
   "totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users", "manage-account",
-  "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy", "bulk-import",
+  "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy", "bulk-import", "refresh-images",
 ];
 
 // NOTE: In self-hosted deployments, the edge-runtime process itself binds to the
@@ -1945,6 +2303,8 @@ Deno.serve(async (req) => {
       return handleManageAccount(req);
     case "bulk-import":
       return handleBulkImport(req);
+    case "refresh-images":
+      return handleRefreshImages(req);
   }
 
   // For other functions, return info
