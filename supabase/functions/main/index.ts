@@ -2365,6 +2365,8 @@ function getSmtpClient() {
       hostname: smtpHost,
       port: smtpPort,
       tls: smtpPort === 465,
+      // For port 587, use STARTTLS (not implicit TLS)
+      ...(smtpPort === 587 ? { starttls: true } : {}),
       auth: {
         username: smtpUser,
         password: smtpPass,
@@ -2477,15 +2479,26 @@ async function handleSignup(req: Request): Promise<Response> {
       // Check if username is already taken
       const { data: existingUsername } = await supabase
         .from("user_profiles")
-        .select("id")
+        .select("user_id")
         .eq("username", username.toLowerCase())
         .maybeSingle();
 
       if (existingUsername) {
+        // If the profile row exists but the auth user does not (orphan), free the username.
+        const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(
+          existingUsername.user_id,
+        );
+        if (authUserError || !authUser?.user) {
+          console.warn(
+            `Orphaned username detected (${username.toLowerCase()}) for user_id=${existingUsername.user_id}. Deleting stale profile row.`,
+          );
+          await supabase.from("user_profiles").delete().eq("user_id", existingUsername.user_id);
+        } else {
         return new Response(JSON.stringify({ error: "Username is already taken" }), {
           status: 409,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+        }
       }
     }
 
@@ -2551,10 +2564,18 @@ async function handleSignup(req: Request): Promise<Response> {
 
     const baseUrl = redirectUrl || "https://gametaverns.com";
     const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
-    await sendConfirmationEmail({ email, confirmUrl });
+    // Fire-and-forget email sending so SMTP issues can't 504 the signup request
+    ;(async () => {
+      try {
+        await sendConfirmationEmail({ email, confirmUrl });
+        console.log(`Confirmation email sent successfully to ${email}`);
+      } catch (emailError) {
+        console.error(`Failed to send confirmation email to ${email}:`, emailError);
+      }
+    })();
 
     return new Response(
-      JSON.stringify({ success: true, message: "Confirmation email sent" }),
+      JSON.stringify({ success: true, message: "Account created. Check your email to confirm." }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {
