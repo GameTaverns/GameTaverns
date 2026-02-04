@@ -1609,7 +1609,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
             title,
             bgg_id: bggId,
             bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || row["bgg url"] || row.url || undefined),
-            type: row.type || row["game type"] || undefined,
+            type: row.type || row["game type"] || row.game_type || undefined,
             difficulty,
             play_time: playTime,
             min_players: parseNum(minPlayersRaw),

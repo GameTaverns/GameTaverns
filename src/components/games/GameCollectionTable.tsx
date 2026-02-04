@@ -166,21 +166,98 @@ export function GameCollectionTable() {
       return;
     }
 
-    const headers = ["Title", "Type", "Difficulty", "Min Players", "Max Players", "Rating", "BGG ID", "Publisher"];
+    // Comprehensive export headers - all fields needed for a complete re-import
+    const headers = [
+      // Core identification
+      "title",
+      "bgg_id",
+      "bgg_url",
+      "image_url",
+      // Metadata
+      "description",
+      "game_type",
+      "difficulty",
+      "play_time",
+      "min_players",
+      "max_players",
+      "suggested_age",
+      "publisher",
+      "mechanics",
+      // Location
+      "location_room",
+      "location_shelf",
+      "location_misc",
+      // Condition & extras
+      "sleeved",
+      "upgraded_components",
+      "crowdfunded",
+      "inserts",
+      // Sale info
+      "is_for_sale",
+      "sale_price",
+      "sale_condition",
+      // Expansion linking
+      "is_expansion",
+      "parent_game",
+      "in_base_game_box",
+      // Status
+      "is_coming_soon",
+      // Rating (read-only, for reference)
+      "rating",
+    ];
+
+    // Helper to find parent game title for expansion linking
+    const getParentTitle = (parentId: string | null): string => {
+      if (!parentId) return "";
+      const parent = allGames.find((g) => g.id === parentId);
+      return parent?.title || "";
+    };
+
     const rows = filteredAndSortedGames.map((game) => [
+      // Core identification
       game.title,
+      game.bgg_id || "",
+      game.bgg_url || "",
+      game.image_url || "",
+      // Metadata - description may contain newlines/commas, will be quoted
+      game.description || "",
       game.game_type || "",
       game.difficulty || "",
+      game.play_time || "",
       game.min_players?.toString() || "",
       game.max_players?.toString() || "",
-      getRating(game.id)?.toFixed(1) || "",
-      game.bgg_id || "",
+      game.suggested_age || "",
       game.publisher?.name || "",
+      // Mechanics as semicolon-separated list
+      game.mechanics?.map((m) => m.name).join(";") || "",
+      // Location
+      game.location_room || "",
+      game.location_shelf || "",
+      game.location_misc || "",
+      // Condition & extras
+      game.sleeved ? "true" : "",
+      game.upgraded_components ? "true" : "",
+      game.crowdfunded ? "true" : "",
+      game.inserts ? "true" : "",
+      // Sale info
+      game.is_for_sale ? "true" : "",
+      game.sale_price?.toString() || "",
+      game.sale_condition || "",
+      // Expansion linking
+      game.is_expansion ? "true" : "",
+      getParentTitle(game.parent_game_id),
+      game.in_base_game_box ? "true" : "",
+      // Status
+      game.is_coming_soon ? "true" : "",
+      // Rating (for reference only)
+      getRating(game.id)?.toFixed(1) || "",
     ]);
 
     const csvContent = [
       headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")),
+      ...rows.map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+      ),
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -191,7 +268,7 @@ export function GameCollectionTable() {
 
     toast({
       title: "Export complete",
-      description: `Exported ${filteredAndSortedGames.length} games to CSV.`,
+      description: `Exported ${filteredAndSortedGames.length} games to CSV with full data.`,
     });
   };
 
