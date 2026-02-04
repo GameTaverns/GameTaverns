@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,6 +47,8 @@ export function UserManagement() {
   const queryClient = useQueryClient();
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [suspendDialog, setSuspendDialog] = useState<{ open: boolean; user: UserWithDetails | null }>({ open: false, user: null });
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: UserWithDetails | null }>({ open: false, user: null });
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [suspendDuration, setSuspendDuration] = useState<string>("7d");
   const [suspendReason, setSuspendReason] = useState("");
 
@@ -186,6 +189,31 @@ export function UserManagement() {
     onError: (error) => {
       console.error("Failed to unsuspend user:", error);
       toast.error("Failed to unsuspend user");
+    },
+  });
+
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      if (isSelfHostedMode()) {
+        await apiClient.delete(`/admin/users/${userId}`);
+        return { success: true };
+      }
+      const { data, error } = await supabase.functions.invoke("manage-users", {
+        body: { action: "delete", userId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+      toast.success("User deleted permanently");
+      setDeleteDialog({ open: false, user: null });
+      setDeleteConfirmText("");
+    },
+    onError: (error) => {
+      console.error("Failed to delete user:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete user");
     },
   });
 
@@ -430,15 +458,26 @@ export function UserManagement() {
                           )}
                         </Button>
                       ) : user.id !== currentUser?.id && canModify ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs border-red-500/30 text-red-400 hover:bg-red-500/20"
-                          onClick={() => setSuspendDialog({ open: true, user })}
-                        >
-                          <Ban className="w-3 h-3 mr-1" />
-                          Suspend
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs border-red-500/30 text-red-400 hover:bg-red-500/20"
+                            onClick={() => setSuspendDialog({ open: true, user })}
+                          >
+                            <Ban className="w-3 h-3 mr-1" />
+                            Suspend
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs border-destructive/50 text-destructive hover:bg-destructive/20"
+                            onClick={() => setDeleteDialog({ open: true, user })}
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Delete
+                          </Button>
+                        </>
                       ) : null}
                     </div>
                   </TableCell>
@@ -519,6 +558,79 @@ export function UserManagement() {
                 <Ban className="w-4 h-4 mr-2" />
               )}
               Suspend User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog open={deleteDialog.open} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteDialog({ open: false, user: null });
+          setDeleteConfirmText("");
+        }
+      }}>
+        <DialogContent className="bg-sidebar border-wood-medium/50">
+          <DialogHeader>
+            <DialogTitle className="text-cream flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-destructive" />
+              Delete User Permanently
+            </DialogTitle>
+            <DialogDescription className="text-cream/70">
+              This will permanently delete <span className="font-medium text-cream">{deleteDialog.user?.display_name || deleteDialog.user?.email}</span> and all their data.
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+              <p className="text-sm text-destructive font-medium">Warning:</p>
+              <ul className="text-xs text-cream/70 mt-1 list-disc list-inside space-y-1">
+                <li>User's profile and account will be deleted</li>
+                <li>Any libraries they own will be orphaned</li>
+                <li>Their roles and memberships will be removed</li>
+              </ul>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-cream/80">Type the user's email to confirm:</Label>
+              <p className="text-xs font-mono text-cream/60 bg-wood-medium/30 px-2 py-1 rounded">
+                {deleteDialog.user?.email}
+              </p>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Type email to confirm..."
+                className="bg-wood-medium/30 border-wood-medium/50 text-cream placeholder:text-cream/40 font-mono"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialog({ open: false, user: null });
+                setDeleteConfirmText("");
+              }}
+              className="border-wood-medium/50 text-cream"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteDialog.user && deleteUserMutation.mutate(deleteDialog.user.id)}
+              disabled={
+                deleteUserMutation.isPending ||
+                deleteConfirmText.toLowerCase() !== deleteDialog.user?.email?.toLowerCase()
+              }
+            >
+              {deleteUserMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              Delete Permanently
             </Button>
           </DialogFooter>
         </DialogContent>

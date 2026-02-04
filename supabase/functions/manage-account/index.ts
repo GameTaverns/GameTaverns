@@ -220,6 +220,21 @@ Deno.serve(async (req) => {
 
       case 'delete_account': {
         // User is already verified from earlier in the function
+        // Check if user is an admin - admins cannot delete their own accounts
+        const { data: adminRole } = await adminClient
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+
+        if (adminRole) {
+          return new Response(JSON.stringify({ error: 'Administrators cannot delete their own accounts. Please have another admin remove your admin role first.' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
         // Verify confirmation text matches email
         if (confirmationText?.toLowerCase() !== user.email?.toLowerCase()) {
           return new Response(JSON.stringify({ error: 'Confirmation text does not match email address' }), {
