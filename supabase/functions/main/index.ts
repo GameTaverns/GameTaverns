@@ -1053,7 +1053,9 @@ async function handleManageAccount(req: Request): Promise<Response> {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user }, error: userError } = await userClient.auth.getUser(token);
+    // supabase-js v2 reads the JWT from the Authorization header.
+    // Passing the token as an argument can fail depending on the runtime/build.
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
@@ -1062,8 +1064,30 @@ async function handleManageAccount(req: Request): Promise<Response> {
     }
 
     const userId = user.id;
-    const body = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { action, libraryId, confirmationText } = body;
+
+    if (!action) {
+      return new Response(
+        JSON.stringify({ error: "Missing 'action' field" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action !== "delete_account" && !libraryId) {
+      return new Response(
+        JSON.stringify({ error: "Missing 'libraryId' field" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get user's library to verify ownership
     const { data: library, error: libraryError } = await userClient
@@ -1290,8 +1314,6 @@ Deno.serve(async (req) => {
     case "manage-account":
       return handleManageAccount(req);
     // Note: bulk-import is NOT inlined here - use the dedicated function or Cloud
-    case "manage-account":
-      return handleManageAccount(req);
   }
 
   // For other functions, return info
