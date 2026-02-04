@@ -23,6 +23,8 @@ import eventsRoutes from './routes/events.js';
 import profilesRoutes from './routes/profiles.js';
 import uploadsRoutes from './routes/uploads.js';
 import aiRoutes from './routes/ai.js';
+import bulkImportRoutes from './routes/bulkImport.js';
+import manageAccountRoutes from './routes/manageAccount.js';
 
 export const app = express();
 
@@ -168,6 +170,8 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/profiles', profilesRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/games/bulk-import', bulkImportRoutes);
+app.use('/api/account', manageAccountRoutes);
 
 // Catch-all for unknown API routes
 app.use('/api/*', (req, res) => {
