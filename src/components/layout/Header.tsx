@@ -12,18 +12,18 @@ import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
 import { isProductionDeployment } from "@/config/runtime";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 
-// Get the base platform URL (main domain, not subdomain)
-function getBaseUrl(): string {
+// Get the base platform URL for a specific path (main domain, not subdomain)
+function getPlatformUrl(path: string = "/dashboard"): string {
   const hostname = window.location.hostname;
   const protocol = window.location.protocol;
   
   // For subdomains like tzolaks-tavern.gametaverns.com, go to gametaverns.com
   if (hostname.endsWith(".gametaverns.com")) {
-    return `${protocol}//gametaverns.com/dashboard`;
+    return `${protocol}//gametaverns.com${path}`;
   }
   
-  // For localhost or preview, just use /dashboard
-  return "/dashboard";
+  // For localhost or preview, just use the path
+  return path;
 }
 // Social media icons as inline SVGs for consistency with site styling
 const TwitterIcon = ({ className }: { className?: string }) => (
@@ -159,9 +159,12 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             </Link>
           )}
           
-          <Link to={homeUrl} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
-            Home
-          </Link>
+          {/* Home link - only shown outside tenant context OR in demo mode */}
+          {(!tenantSlug || isDemoMode) && (
+            <Link to={homeUrl} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
+              Home
+            </Link>
+          )}
           
           {/* Browse Libraries - show when not in tenant mode and not in demo */}
           {!tenantSlug && !isDemoMode && (
@@ -174,18 +177,18 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             </Link>
           )}
           
-          {/* Dashboard link for logged in users, or landing page for anonymous */}
+          {/* Tenant subdomain navigation */}
           {tenantSlug && !isDemoMode && (
             isAuthenticated ? (
               <a
-                href={getBaseUrl()}
+                href={getPlatformUrl("/dashboard")}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 Dashboard
               </a>
             ) : (
               <a
-                href={getBaseUrl()}
+                href={getPlatformUrl("/login")}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 Sign In
