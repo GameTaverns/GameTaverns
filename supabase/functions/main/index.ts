@@ -6,6 +6,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as OTPAuth from "https://esm.sh/otpauth@9.4.0";
 
+// Self-hosted router delegates many functions to their regular implementations.
+// These modules must guard `Deno.serve(...)` behind `import.meta.main`.
+import bggImportHandler from "../bgg-import/index.ts";
+import bggLookupHandler from "../bgg-lookup/index.ts";
+import gameImportHandler from "../game-import/index.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -1787,6 +1793,12 @@ Deno.serve(async (req) => {
 
   // Route inlined functions
   switch (functionName) {
+    case "bgg-import":
+      return bggImportHandler(req);
+    case "bgg-lookup":
+      return bggLookupHandler(req);
+    case "game-import":
+      return gameImportHandler(req);
     case "totp-status":
       return handleTotpStatus(req);
     case "totp-setup":

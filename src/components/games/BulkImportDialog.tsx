@@ -275,19 +275,11 @@ export function BulkImportDialog({
       abortControllerRef.current = new AbortController();
 
       const { url: apiUrl, anonKey } = getSupabaseConfig();
-      // Self-hosted Supabase stack runs a single Edge Runtime router at /functions/v1/main
-      // Cloud mode exposes each function directly at /functions/v1/<function>
-      const isCloudSupabaseHost = (() => {
-        try {
-          return new URL(apiUrl).hostname.endsWith(".supabase.co");
-        } catch {
-          return false;
-        }
-      })();
 
-      const bulkImportPath = isCloudSupabaseHost
-        ? "bulk-import"
-        : "main/bulk-import";
+      // Self-hosted Edge Runtime uses a router as the main service, and Kong
+      // already strips `/functions/v1/` before forwarding to the runtime.
+      // So we always call `/functions/v1/bulk-import` (NOT `/main/bulk-import`).
+      const bulkImportPath = "bulk-import";
 
       // Use streaming fetch
       const response = await fetch(

@@ -60,17 +60,17 @@ export default async function handler(req: Request): Promise<Response> {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify the user token
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    // Verify the user token (use getUser() for compatibility with self-hosted)
+    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !userData?.user) {
+      console.error("[GameImport] Auth error:", userError?.message);
       return new Response(
         JSON.stringify({ success: false, error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = userData.user.id;
 
     // Create admin client with service role
     const supabaseAdmin = createClient(
@@ -729,4 +729,7 @@ ${markdown.slice(0, 18000)}`,
 }
 
 // For Lovable Cloud deployment (direct function invocation)
-Deno.serve(handler);
+// Guard so this module can be imported by the self-hosted main router.
+if (import.meta.main) {
+  Deno.serve(handler);
+}
