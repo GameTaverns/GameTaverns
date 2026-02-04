@@ -162,10 +162,34 @@ export function getSupabaseConfig() {
     return { url: '', anonKey: '' };
   }
 
-  return {
-    url: getConfig('SUPABASE_URL', 'VITE_SUPABASE_URL', ''),
-    anonKey: getConfig('SUPABASE_ANON_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY', ''),
-  };
+  const url = getConfig('SUPABASE_URL', 'VITE_SUPABASE_URL', '');
+  const anonKey = getConfig('SUPABASE_ANON_KEY', 'VITE_SUPABASE_PUBLISHABLE_KEY', '');
+
+  // IMPORTANT (Self-hosted multi-tenant same-origin routing):
+  // In the self-hosted stack we often set SUPABASE_URL to the platform domain
+  // (e.g. https://gametaverns.com) to route /auth,/rest,/functions via host Nginx.
+  // But when a user is browsing a tenant subdomain (e.g. https://foo.gametaverns.com)
+  // we MUST use the *current* origin; otherwise requests become cross-origin and can
+  // be blocked by the site's Content-Security-Policy connect-src 'self'.
+  //
+  // So: if we're on a gametaverns.com subdomain and the configured URL points at
+  // the apex domain, force same-origin.
+  try {
+    if (typeof window !== 'undefined' && url) {
+      const host = window.location.hostname.toLowerCase();
+      const isGametavernsHost = host === 'gametaverns.com' || host.endsWith('.gametaverns.com');
+      if (isGametavernsHost && host !== 'gametaverns.com') {
+        const configuredHost = new URL(url).hostname.toLowerCase();
+        if (configuredHost === 'gametaverns.com') {
+          return { url: window.location.origin, anonKey };
+        }
+      }
+    }
+  } catch {
+    // If URL parsing fails, fall back to provided values.
+  }
+
+  return { url, anonKey };
 }
 
 /**
