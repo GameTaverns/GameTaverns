@@ -207,8 +207,22 @@ async function fetchBGGData(
     });
     
     if (!scrapeRes.ok) return { bgg_id: bggId };
-    
-    const scrapeData = await scrapeRes.json();
+
+    // Defensive JSON parsing: Firecrawl can occasionally return an empty/truncated
+    // body (network hiccup, proxy reset, rate limiting) which would otherwise crash
+    // the whole import with `Unexpected end of JSON input`.
+    let scrapeData: any;
+    try {
+      const raw = await scrapeRes.text();
+      if (!raw || raw.trim().length === 0) {
+        console.warn("[BulkImport] Firecrawl returned empty body for", pageUrl);
+        return { bgg_id: bggId };
+      }
+      scrapeData = JSON.parse(raw);
+    } catch (e) {
+      console.warn("[BulkImport] Firecrawl returned invalid JSON for", pageUrl, e);
+      return { bgg_id: bggId };
+    }
     const markdown = scrapeData.data?.markdown || scrapeData.markdown || "";
     const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
     
