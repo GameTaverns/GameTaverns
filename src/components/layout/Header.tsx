@@ -11,6 +11,20 @@ import { useUserProfile } from "@/hooks/useLibrary";
 import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
 import { isProductionDeployment } from "@/config/runtime";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
+
+// Get the base platform URL (main domain, not subdomain)
+function getBaseUrl(): string {
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  
+  // For subdomains like tzolaks-tavern.gametaverns.com, go to gametaverns.com
+  if (hostname.endsWith(".gametaverns.com")) {
+    return `${protocol}//gametaverns.com/dashboard`;
+  }
+  
+  // For localhost or preview, just use /dashboard
+  return "/dashboard";
+}
 // Social media icons as inline SVGs for consistency with site styling
 const TwitterIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -163,22 +177,18 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           {/* Dashboard link for logged in users, or landing page for anonymous */}
           {tenantSlug && !isDemoMode && (
             isAuthenticated ? (
-              <Link
-                to="/dashboard"
+              <a
+                href={getBaseUrl()}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 Dashboard
-              </Link>
+              </a>
             ) : (
               <a
-                href="/"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.location.href = window.location.origin;
-                }}
+                href={getBaseUrl()}
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
-                Platform Home
+                Sign In
               </a>
             )
           )}
