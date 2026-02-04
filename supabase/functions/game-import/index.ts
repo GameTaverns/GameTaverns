@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { aiComplete, isAIConfigured, getAIProviderName } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -251,28 +252,21 @@ export default async function handler(req: Request): Promise<Response> {
     console.log("Scraped content length:", markdown.length);
 
     // Step 2: Use AI to extract structured game data
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableKey) {
-      console.error("Lovable AI API key not configured");
+    if (!isAIConfigured()) {
+      console.error("No AI provider configured (set PERPLEXITY_API_KEY or LOVABLE_API_KEY)");
       return new Response(
-        JSON.stringify({ success: false, error: "Import service temporarily unavailable. Please try again later." }),
+        JSON.stringify({ success: false, error: "AI service not configured. Set PERPLEXITY_API_KEY in your environment." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Extracting game data with AI...");
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a board game data extraction expert. Extract detailed, structured game information from the provided content.
+    console.log("Extracting game data with AI using:", getAIProviderName());
+    
+    const aiResult = await aiComplete({
+      messages: [
+        {
+          role: "system",
+          content: `You are a board game data extraction expert. Extract detailed, structured game information from the provided content.
 
 IMPORTANT RULES:
 
@@ -308,11 +302,30 @@ IMPORTANT RULES:
      - BoardGameGeek categorizes it as an expansion
    - If it's an expansion, set is_expansion to true
    - Extract the BASE GAME TITLE (exactly as it appears) into base_game_title field
-   - Example: "Wingspan: European Expansion" → is_expansion: true, base_game_title: "Wingspan"`,
-          },
-          {
-            role: "user",
-            content: `Extract comprehensive board game data from this page content.
+   - Example: "Wingspan: European Expansion" → is_expansion: true, base_game_title: "Wingspan"
+
+RESPOND WITH VALID JSON ONLY. Example format:
+{
+  "title": "Game Name",
+  "description": "Description text...",
+  "difficulty": "3 - Medium",
+  "play_time": "45-60 Minutes",
+  "game_type": "Board Game",
+  "min_players": 2,
+  "max_players": 4,
+  "suggested_age": "10+",
+  "mechanics": ["Worker Placement", "Set Collection"],
+  "publisher": "Publisher Name",
+  "main_image": "https://...",
+  "gameplay_images": ["https://..."],
+  "bgg_url": "https://boardgamegeek.com/...",
+  "is_expansion": false,
+  "base_game_title": null
+}`,
+        },
+        {
+          role: "user",
+          content: `Extract comprehensive board game data from this page content.
 
 TARGET PAGE (must match): ${url}
 
@@ -322,72 +335,69 @@ Additional: ${additionalScrapedImages.slice(0, 3).join(", ") || "None"}
 
 Page content:
 ${markdown.slice(0, 18000)}`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_game_data",
-              description: "Extract structured game data from page content",
-              parameters: {
-                type: "object",
-                properties: {
-                  title: { type: "string", description: "The game title" },
-                  description: { 
-                    type: "string", 
-                    description: "Concise game description with markdown formatting. Include brief overview, Quick Gameplay Overview section with bullet points for Goal/Actions/End Game/Winner. Keep to 150-200 words max." 
-                  },
-                  difficulty: { 
-                    type: "string", 
-                    enum: DIFFICULTY_LEVELS,
-                    description: "Difficulty level" 
-                  },
-                  play_time: { 
-                    type: "string", 
-                    enum: PLAY_TIME_OPTIONS,
-                    description: "Play time category" 
-                  },
-                  game_type: { 
-                    type: "string", 
-                    enum: GAME_TYPE_OPTIONS,
-                    description: "Type of game" 
-                  },
-                  min_players: { type: "number", description: "Minimum player count" },
-                  max_players: { type: "number", description: "Maximum player count" },
-                  suggested_age: { type: "string", description: "Suggested age (e.g., '10+')" },
-                  mechanics: { 
-                    type: "array", 
-                    items: { type: "string" },
-                    description: "Game mechanics like Worker Placement, Set Collection, etc." 
-                  },
-                  publisher: { type: "string", description: "Publisher name" },
-                  main_image: { type: "string", description: "Primary box art/cover image URL - the main, high-quality game image" },
-                  gameplay_images: { 
-                    type: "array", 
-                    items: { type: "string" },
-                    description: "1-2 gameplay/component images only. No thumbnails, no duplicates of main image." 
-                  },
-                  bgg_url: { type: "string", description: "BoardGameGeek URL if available" },
-                  is_expansion: { type: "boolean", description: "True if this is an expansion/promo/pack that requires a base game" },
-                  base_game_title: { type: "string", description: "If is_expansion is true, the exact title of the base game this expands (e.g., 'Wingspan' for 'Wingspan: European Expansion')" },
+        },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "extract_game_data",
+            description: "Extract structured game data from page content",
+            parameters: {
+              type: "object",
+              properties: {
+                title: { type: "string", description: "The game title" },
+                description: { 
+                  type: "string", 
+                  description: "Concise game description with markdown formatting. Include brief overview, Quick Gameplay Overview section with bullet points for Goal/Actions/End Game/Winner. Keep to 150-200 words max." 
                 },
-                required: ["title"],
-                additionalProperties: false,
+                difficulty: { 
+                  type: "string", 
+                  enum: DIFFICULTY_LEVELS,
+                  description: "Difficulty level" 
+                },
+                play_time: { 
+                  type: "string", 
+                  enum: PLAY_TIME_OPTIONS,
+                  description: "Play time category" 
+                },
+                game_type: { 
+                  type: "string", 
+                  enum: GAME_TYPE_OPTIONS,
+                  description: "Type of game" 
+                },
+                min_players: { type: "number", description: "Minimum player count" },
+                max_players: { type: "number", description: "Maximum player count" },
+                suggested_age: { type: "string", description: "Suggested age (e.g., '10+')" },
+                mechanics: { 
+                  type: "array", 
+                  items: { type: "string" },
+                  description: "Game mechanics like Worker Placement, Set Collection, etc." 
+                },
+                publisher: { type: "string", description: "Publisher name" },
+                main_image: { type: "string", description: "Primary box art/cover image URL - the main, high-quality game image" },
+                gameplay_images: { 
+                  type: "array", 
+                  items: { type: "string" },
+                  description: "1-2 gameplay/component images only. No thumbnails, no duplicates of main image." 
+                },
+                bgg_url: { type: "string", description: "BoardGameGeek URL if available" },
+                is_expansion: { type: "boolean", description: "True if this is an expansion/promo/pack that requires a base game" },
+                base_game_title: { type: "string", description: "If is_expansion is true, the exact title of the base game this expands (e.g., 'Wingspan' for 'Wingspan: European Expansion')" },
               },
+              required: ["title"],
+              additionalProperties: false,
             },
           },
-        ],
-        tool_choice: { type: "function", function: { name: "extract_game_data" } },
-      }),
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "extract_game_data" } },
     });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("AI extraction error:", aiResponse.status, errorText);
+    if (!aiResult.success) {
+      console.error("AI extraction error:", aiResult.error);
       
-      if (aiResponse.status === 429 || aiResponse.status === 402) {
-        console.error("AI service limit reached:", aiResponse.status);
+      if (aiResult.rateLimited) {
         return new Response(
           JSON.stringify({ success: false, error: "Service temporarily busy. Please try again in a moment." }),
           { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -400,19 +410,58 @@ ${markdown.slice(0, 18000)}`,
       );
     }
 
-    const aiData = await aiResponse.json();
-    console.log("AI response:", JSON.stringify(aiData, null, 2));
+    console.log("AI result:", JSON.stringify(aiResult, null, 2));
 
-    // Extract the tool call result
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
+    // Define expected structure for extracted data
+    interface ExtractedGameData {
+      title?: string;
+      description?: string;
+      difficulty?: string;
+      play_time?: string;
+      game_type?: string;
+      min_players?: number;
+      max_players?: number;
+      suggested_age?: string;
+      mechanics?: string[];
+      publisher?: string;
+      main_image?: string;
+      image_url?: string;
+      gameplay_images?: string[];
+      additional_images?: string[];
+      bgg_url?: string;
+      is_expansion?: boolean;
+      base_game_title?: string;
+    }
+
+    // Extract data from tool call or parse from content
+    let extractedData: ExtractedGameData;
+    
+    if (aiResult.toolCallArguments) {
+      extractedData = aiResult.toolCallArguments as ExtractedGameData;
+    } else if (aiResult.content) {
+      // Try to parse JSON from content (for providers that don't support tools)
+      try {
+        // Find JSON in the response
+        const jsonMatch = aiResult.content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          extractedData = JSON.parse(jsonMatch[0]) as ExtractedGameData;
+        } else {
+          throw new Error("No JSON found in response");
+        }
+      } catch (parseErr) {
+        console.error("Failed to parse AI content as JSON:", parseErr);
+        return new Response(
+          JSON.stringify({ success: false, error: "Could not parse game data from page" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
       return new Response(
         JSON.stringify({ success: false, error: "Could not parse game data from page" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const extractedData = JSON.parse(toolCall.function.arguments);
     console.log("Extracted data:", JSON.stringify(extractedData, null, 2));
 
     if (!extractedData.title) {
