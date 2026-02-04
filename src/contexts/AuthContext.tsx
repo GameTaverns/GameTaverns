@@ -44,7 +44,7 @@ interface AuthContextType {
   isAdmin: boolean;
   roleLoading: boolean;
   signIn: (emailOrUsername: string, password: string) => Promise<{ error: { message: string } | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: { message: string } | null }>;
+  signUp: (email: string, password: string, options?: { username?: string; displayName?: string }) => Promise<{ error: { message: string } | null }>;
   signOut: () => Promise<{ error: any }>;
 }
 
@@ -563,13 +563,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [apiUrl, anonKey, authStorageKey]);
 
-  const signUp = useCallback(async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string, options?: { username?: string; displayName?: string }) => {
+    const displayName = options?.displayName || email.split("@")[0];
+    const username = options?.username;
+
     if (isSelfHostedMode()) {
       try {
         await apiClient.post("/auth/register", {
           email,
           password,
-          displayName: email.split("@")[0],
+          displayName,
+          username,
         });
         return { error: null };
       } catch (e: any) {
@@ -587,8 +591,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           email,
           password,
+          username,
+          displayName,
           redirectUrl: window.location.origin,
-          displayName: email.split("@")[0],
         }),
       });
 

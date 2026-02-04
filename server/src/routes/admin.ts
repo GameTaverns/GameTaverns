@@ -110,6 +110,7 @@ router.put('/users/:id/role', async (req: Request, res: Response) => {
 router.delete('/users/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    console.log(`[Admin] Deleting user ${id}`);
     
     // Prevent self-deletion
     if (id === req.user!.sub) {
@@ -121,18 +122,36 @@ router.delete('/users/:id', async (req: Request, res: Response) => {
     // In the supabase-selfhosted schema, user_profiles.user_id may not be a FK to users,
     // so deleting from users does NOT necessarily remove the profile row. That can leave
     // UNIQUE(username) stuck and block re-signups.
+    console.log(`[Admin] Deleting user_roles for ${id}`);
     await pool.query('DELETE FROM user_roles WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM library_members WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM library_followers WHERE follower_user_id = $1', [id]);
-    await pool.query('DELETE FROM notification_preferences WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM user_totp_settings WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [id]);
-
-    // Finally delete the user
-    await pool.query('DELETE FROM users WHERE id = $1', [id]);
     
+    console.log(`[Admin] Deleting library_members for ${id}`);
+    await pool.query('DELETE FROM library_members WHERE user_id = $1', [id]);
+    
+    console.log(`[Admin] Deleting library_followers for ${id}`);
+    await pool.query('DELETE FROM library_followers WHERE follower_user_id = $1', [id]);
+    
+    console.log(`[Admin] Deleting notification_preferences for ${id}`);
+    await pool.query('DELETE FROM notification_preferences WHERE user_id = $1', [id]);
+    
+    console.log(`[Admin] Deleting user_totp_settings for ${id}`);
+    await pool.query('DELETE FROM user_totp_settings WHERE user_id = $1', [id]);
+    
+    console.log(`[Admin] Deleting email_confirmation_tokens for ${id}`);
+    await pool.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [id]);
+    
+    console.log(`[Admin] Deleting password_reset_tokens for ${id}`);
+    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [id]);
+    
+    console.log(`[Admin] Deleting user_profiles for ${id}`);
+    const profileResult = await pool.query('DELETE FROM user_profiles WHERE user_id = $1 RETURNING username', [id]);
+    console.log(`[Admin] Deleted profile rows:`, profileResult.rowCount, profileResult.rows);
+
+    console.log(`[Admin] Deleting users row for ${id}`);
+    const userResult = await pool.query('DELETE FROM users WHERE id = $1 RETURNING email', [id]);
+    console.log(`[Admin] Deleted user rows:`, userResult.rowCount, userResult.rows);
+    
+    console.log(`[Admin] User ${id} deleted successfully`);
     res.json({ success: true });
   } catch (error) {
     console.error('Delete user error:', error);
