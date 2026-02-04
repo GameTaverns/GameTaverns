@@ -673,7 +673,7 @@ export function BulkImportDialog({
     onOpenChange(false);
   };
 
-  const progressPercent = progress ? Math.round((progress.current / progress.total) * 100) : 0;
+  const progressPercent = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
