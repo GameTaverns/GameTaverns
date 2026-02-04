@@ -686,6 +686,344 @@ async function handleManageUsers(req: Request): Promise<Response> {
 }
 
 // ============================================================================
+// WISHLIST HANDLER
+// ============================================================================
+interface WishlistRequest {
+  action: "add" | "remove" | "list";
+  game_id?: string;
+  guest_name?: string;
+  guest_identifier: string;
+}
+
+async function handleWishlist(req: Request): Promise<Response> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const body: WishlistRequest = await req.json();
+    const { action, game_id, guest_name, guest_identifier } = body;
+
+    // Validate guest_identifier
+    if (!guest_identifier || guest_identifier.length < 8 || guest_identifier.length > 64) {
+      return new Response(
+        JSON.stringify({ error: "Invalid guest identifier" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate guest_name if provided (max 50 chars, no HTML)
+    const sanitizedName = guest_name 
+      ? guest_name.trim().slice(0, 50).replace(/<[^>]*>/g, '')
+      : null;
+
+    if (action === "add") {
+      if (!game_id || !/^[0-9a-f-]{36}$/i.test(game_id)) {
+        return new Response(
+          JSON.stringify({ error: "Invalid game ID" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { error } = await supabase
+        .from("game_wishlist")
+        .upsert(
+          {
+            game_id,
+            guest_name: sanitizedName,
+            guest_identifier,
+          },
+          { onConflict: "game_id,guest_identifier" }
+        );
+
+      if (error) throw error;
+
+      // Fire Discord notification (fire-and-forget)
+      try {
+        const { data: game } = await supabase
+          .from("games")
+          .select("title, image_url, library_id")
+          .eq("id", game_id)
+          .single();
+
+        if (game?.library_id) {
+          const { count } = await supabase
+            .from("game_wishlist")
+            .select("*", { count: "exact", head: true })
+            .eq("game_id", game_id);
+
+          fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              library_id: game.library_id,
+              event_type: "wishlist_vote",
+              data: {
+                game_title: game.title,
+                image_url: game.image_url,
+                vote_count: count || 1,
+                voter_name: sanitizedName,
+              },
+            }),
+          }).catch(err => console.error("Discord notify failed:", err));
+        }
+      } catch (notifyError) {
+        console.error("Failed to send Discord notification:", notifyError);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Vote added" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "remove") {
+      if (!game_id || !/^[0-9a-f-]{36}$/i.test(game_id)) {
+        return new Response(
+          JSON.stringify({ error: "Invalid game ID" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { error } = await supabase
+        .from("game_wishlist")
+        .delete()
+        .eq("game_id", game_id)
+        .eq("guest_identifier", guest_identifier);
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Vote removed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "list") {
+      const { data, error } = await supabase
+        .from("game_wishlist")
+        .select("game_id")
+        .eq("guest_identifier", guest_identifier);
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ votes: data?.map(v => v.game_id) || [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ error: "Invalid action" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
+    console.error("Wishlist error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ============================================================================
+// RATE-GAME HANDLER
+// ============================================================================
+async function handleRateGame(req: Request): Promise<Response> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { game_id, rating, guest_identifier, device_fingerprint } = await req.json();
+
+    if (!game_id || !rating || !guest_identifier) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (rating < 1 || rating > 5) {
+      return new Response(
+        JSON.stringify({ error: "Rating must be between 1 and 5" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get client IP from various headers
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                     req.headers.get("x-real-ip") ||
+                     req.headers.get("cf-connecting-ip") ||
+                     null;
+
+    const { error } = await supabase
+      .from("game_ratings")
+      .upsert(
+        {
+          game_id,
+          rating,
+          guest_identifier,
+          device_fingerprint: device_fingerprint || null,
+          ip_address: clientIp,
+        },
+        { onConflict: "game_id,guest_identifier" }
+      );
+
+    if (error) throw error;
+
+    return new Response(
+      JSON.stringify({ success: true }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
+    console.error("Rate game error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ============================================================================
+// DISCORD-CONFIG HANDLER
+// ============================================================================
+async function handleDiscordConfig(_req: Request): Promise<Response> {
+  try {
+    const clientId = Deno.env.get("DISCORD_CLIENT_ID");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+
+    if (!clientId) {
+      return new Response(
+        JSON.stringify({ error: "Discord integration not configured" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({
+        client_id: clientId,
+        redirect_uri: `${supabaseUrl}/functions/v1/discord-oauth-callback`,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Discord config error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ============================================================================
+// DISCORD-UNLINK HANDLER
+// ============================================================================
+async function handleDiscordUnlink(req: Request): Promise<Response> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { error: updateError } = await supabase
+      .from("user_profiles")
+      .update({ discord_user_id: null })
+      .eq("user_id", user.id);
+
+    if (updateError) {
+      return new Response(
+        JSON.stringify({ error: "Failed to unlink Discord account" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ success: true }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Discord unlink error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ============================================================================
+// IMAGE-PROXY HANDLER
+// ============================================================================
+async function handleImageProxy(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const imageUrl = url.searchParams.get("url");
+
+  if (!imageUrl) {
+    return new Response("Missing 'url' parameter", { status: 400, headers: corsHeaders });
+  }
+
+  try {
+    const decodedUrl = decodeURIComponent(imageUrl);
+    
+    // Security: Only allow specific domains
+    const allowedDomains = [
+      "cf.geekdo-images.com",
+      "images.unsplash.com",
+    ];
+
+    const urlObj = new URL(decodedUrl);
+    if (!allowedDomains.some(d => urlObj.hostname.endsWith(d))) {
+      return new Response("Domain not allowed", { status: 403, headers: corsHeaders });
+    }
+
+    const response = await fetch(decodedUrl, {
+      headers: { "User-Agent": "GameTaverns/1.0" },
+    });
+
+    if (!response.ok) {
+      return new Response("Failed to fetch image", { status: response.status, headers: corsHeaders });
+    }
+
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const imageData = await response.arrayBuffer();
+
+    return new Response(imageData, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=86400",
+      },
+    });
+  } catch (error) {
+    console.error("Image proxy error:", error);
+    return new Response("Failed to proxy image", { status: 500, headers: corsHeaders });
+  }
+}
+
+// ============================================================================
 // MAIN ROUTER
 // ============================================================================
 const AVAILABLE_FUNCTIONS = [
@@ -696,6 +1034,11 @@ const AVAILABLE_FUNCTIONS = [
   "rate-game", "refresh-images", "resolve-username", "send-auth-email", "send-email",
   "send-message", "signup", "sync-achievements", "totp-disable", "totp-setup", "totp-status",
   "totp-verify", "verify-email", "verify-reset-token", "wishlist",
+];
+
+const INLINED_FUNCTIONS = [
+  "totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users",
+  "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy",
 ];
 
 Deno.serve(async (req) => {
@@ -709,29 +1052,36 @@ Deno.serve(async (req) => {
   const functionName = pathParts[0];
 
   // Route inlined functions
-  if (functionName === "totp-status") {
-    return handleTotpStatus(req);
-  }
-  if (functionName === "totp-setup") {
-    return handleTotpSetup(req);
-  }
-  if (functionName === "totp-verify") {
-    return handleTotpVerify(req);
-  }
-  if (functionName === "totp-disable") {
-    return handleTotpDisable(req);
-  }
-  if (functionName === "manage-users") {
-    return handleManageUsers(req);
+  switch (functionName) {
+    case "totp-status":
+      return handleTotpStatus(req);
+    case "totp-setup":
+      return handleTotpSetup(req);
+    case "totp-verify":
+      return handleTotpVerify(req);
+    case "totp-disable":
+      return handleTotpDisable(req);
+    case "manage-users":
+      return handleManageUsers(req);
+    case "wishlist":
+      return handleWishlist(req);
+    case "rate-game":
+      return handleRateGame(req);
+    case "discord-config":
+      return handleDiscordConfig(req);
+    case "discord-unlink":
+      return handleDiscordUnlink(req);
+    case "image-proxy":
+      return handleImageProxy(req);
   }
 
-  // For other functions, return info (they need to be accessed via Lovable Cloud or added here)
+  // For other functions, return info
   if (!functionName || functionName === "main") {
     return new Response(
       JSON.stringify({
         message: "Edge function router (self-hosted)",
         note: "Some functions are inlined for self-hosted. Others require Lovable Cloud or must be added to this router.",
-        inlined: ["totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users"],
+        inlined: INLINED_FUNCTIONS,
         available: AVAILABLE_FUNCTIONS,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
