@@ -49,6 +49,7 @@ import { NotificationsDropdown } from "@/components/notifications/NotificationsD
 import { useLending } from "@/hooks/useLending";
 import { useMyMemberships, useLibraryMembership } from "@/hooks/useLibraryMembership";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -133,9 +134,11 @@ export default function Dashboard() {
     return null;
   }
   
-  const gamesUrl = library ? `/?tenant=${library.slug}&path=/games` : null;
-  const settingsUrl = library ? `/?tenant=${library.slug}&path=/settings` : null;
-  const libraryUrl = library ? `/?tenant=${library.slug}` : null;
+  // Generate proper URLs - uses subdomains in production, query params in preview
+  const gamesUrl = library ? getLibraryUrl(library.slug, "/games") : null;
+  const settingsUrl = library ? getLibraryUrl(library.slug, "/settings") : null;
+  const libraryUrl = library ? getLibraryUrl(library.slug, "/") : null;
+  const messagesUrl = library ? getLibraryUrl(library.slug, "/messages") : null;
 
   const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
   
@@ -269,7 +272,7 @@ export default function Dashboard() {
                       {myMemberships.slice(0, 3).map((membership) => (
                         <a 
                           key={membership.id}
-                          href={`/?tenant=${membership.library?.slug}`}
+                          href={membership.library?.slug ? getLibraryUrl(membership.library.slug, "/") : "#"}
                           className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
                         >
                           <span className="text-sm font-medium truncate">
@@ -486,7 +489,7 @@ export default function Dashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-end">
-                    <a href={`/?tenant=${library.slug}&path=/messages`}>
+                    <a href={messagesUrl!}>
                       <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                         <Mail className="h-4 w-4 mr-2" />
                         View Messages

@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import logoImage from "@/assets/logo.png";
 
 interface FeatureDetailProps {
@@ -81,11 +82,11 @@ export default function Features() {
                   </Button>
                 </Link>
                 {myLibrary && (
-                  <Link to={`/?tenant=${myLibrary.slug}`}>
+                  <a href={getLibraryUrl(myLibrary.slug, "/")}>
                     <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
                       My Library
                     </Button>
-                  </Link>
+                  </a>
                 )}
               </>
             ) : (
@@ -333,11 +334,11 @@ export default function Features() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isAuthenticated ? (
               myLibrary ? (
-                <Link to={`/?tenant=${myLibrary.slug}`}>
+                <a href={getLibraryUrl(myLibrary.slug, "/")}>
                   <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-8">
                     Go to My Library
                   </Button>
-                </Link>
+                </a>
               ) : (
                 <Link to="/create-library">
                   <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-8">

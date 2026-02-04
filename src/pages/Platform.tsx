@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
 import { usePlatformStats, formatStatNumber } from "@/hooks/usePlatformStats";
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import logoImage from "@/assets/logo.png";
 
 
@@ -17,7 +18,7 @@ export default function Platform() {
   const handleGetStarted = () => {
     if (isAuthenticated) {
       if (myLibrary) {
-        navigate(`/?tenant=${myLibrary.slug}`);
+        window.location.href = getLibraryUrl(myLibrary.slug, "/");
       } else {
         navigate("/create-library");
       }
@@ -48,11 +49,11 @@ export default function Platform() {
                   </Button>
                 </Link>
                 {myLibrary && (
-                  <Link to={`/?tenant=${myLibrary.slug}`}>
+                  <a href={getLibraryUrl(myLibrary.slug, "/")}>
                     <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
                       My Library
                     </Button>
-                  </Link>
+                  </a>
                 )}
               </>
             ) : (

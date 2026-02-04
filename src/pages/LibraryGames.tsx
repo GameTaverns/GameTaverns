@@ -13,6 +13,7 @@ import { CategoryManager } from "@/components/games/CategoryManager";
 import { GameCollectionTable } from "@/components/games/GameCollectionTable";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { useTenantUrl } from "@/hooks/useTenantUrl";
 
 type ImportMode = "csv" | "bgg_collection" | "bgg_links";
 
@@ -20,6 +21,7 @@ export default function LibraryGames() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { library, settings, isLoading, isOwner, tenantSlug } = useTenant();
+  const { buildUrl } = useTenantUrl();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("add");
   const [showBulkImport, setShowBulkImport] = useState(false);
@@ -163,9 +165,9 @@ export default function LibraryGames() {
           <p className="text-muted-foreground mb-6">
             You don't have permission to manage this library's games.
           </p>
-          <Link to={`/?tenant=${tenantSlug}`}>
+          <a href={buildUrl("/")}>
             <Button>Back to Library</Button>
-          </Link>
+          </a>
         </div>
       </Layout>
     );
@@ -188,12 +190,12 @@ export default function LibraryGames() {
             <h1 className="text-3xl font-display font-bold">Manage Games</h1>
             <p className="text-muted-foreground">Add, import, and organize your collection</p>
           </div>
-          <Link to={`/?tenant=${tenantSlug}&path=/add`}>
+          <a href={buildUrl("/add")}>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               Add Game Manually
             </Button>
-          </Link>
+          </a>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
