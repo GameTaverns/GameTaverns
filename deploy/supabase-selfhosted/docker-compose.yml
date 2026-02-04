@@ -319,13 +319,11 @@ services:
       - /home/deno/functions/main
       - --port
       - "9000"
+    # NOTE: The edge-runtime image does not include curl/wget, so traditional
+    # HTTP healthchecks fail. We disable the healthcheck here; Kong handles
+    # upstream availability and Docker's restart policy recovers crashes.
     healthcheck:
-      # edge-runtime exposes /health; the root path may be 404 even when healthy.
-      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || wget -qO- http://localhost:9000/health || exit 1"]
-      interval: 20s
-      timeout: 10s
-      retries: 20
-      start_period: 45s
+      disable: true
     depends_on:
       db:
         condition: service_healthy
