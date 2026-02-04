@@ -1543,7 +1543,27 @@ async function handleBulkImport(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ success: false, error: "You must own a library to import games" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const body = await req.json();
+    // Defensive JSON parsing - handle empty/truncated request bodies.
+    // This fixes intermittent `Unexpected end of JSON input` crashes in edge-runtime.
+    let body: any;
+    try {
+      const rawBody = await req.text();
+      if (!rawBody || rawBody.trim().length === 0) {
+        console.log("[BulkImport] FAIL: Empty request body");
+        return new Response(
+          JSON.stringify({ success: false, error: "Empty request body" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      body = JSON.parse(rawBody);
+    } catch (parseError) {
+      console.log("[BulkImport] FAIL: Invalid JSON body", parseError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid JSON in request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { mode, library_id, csv_data, default_options } = body;
     console.log("[BulkImport] Mode:", mode, "library_id:", library_id, "csv_data length:", csv_data?.length);
     const targetLibraryId = library_id || libraryData?.id;
