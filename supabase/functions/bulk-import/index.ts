@@ -196,7 +196,8 @@ type BulkImportRequest = {
   csv_data?: string;
   bgg_username?: string;
   bgg_links?: string[];
-  enhance_with_bgg?: boolean;
+  enhance_with_bgg?: boolean;      // Use fast BGG XML API for images/basic data (default: true)
+  enhance_with_ai?: boolean;       // Use slow Firecrawl+AI for rich descriptions (default: false)
   default_options?: {
     is_coming_soon?: boolean;
     is_for_sale?: boolean;
@@ -333,7 +334,33 @@ async function lookupBGGByTitle(
 // Helper: sleep for ms
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Fetch basic game data from BGG XML API (fallback when Firecrawl fails)
+// Concurrency limiter for parallel operations
+async function parallelLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = [];
+  const executing: Promise<void>[] = [];
+  
+  for (const item of items) {
+    const p = fn(item).then((result) => {
+      results.push(result);
+    });
+    executing.push(p);
+    
+    if (executing.length >= limit) {
+      await Promise.race(executing);
+      // Remove completed promises
+      executing.splice(0, executing.findIndex(() => true) + 1);
+    }
+  }
+  
+  await Promise.all(executing);
+  return results;
+}
+
+// Fetch basic game data from BGG XML API (PRIMARY fast method)
 async function fetchBGGXMLData(bggId: string): Promise<{
   bgg_id: string;
   description?: string;
@@ -893,7 +920,7 @@ export default async function handler(req: Request): Promise<Response> {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const { mode, library_id, csv_data, bgg_username, bgg_links, enhance_with_bgg, default_options } = body;
+    const { mode, library_id, csv_data, bgg_username, bgg_links, enhance_with_bgg, enhance_with_ai, default_options } = body;
 
     const targetLibraryId = library_id || libraryData?.id;
     if (!targetLibraryId) {
@@ -1157,45 +1184,37 @@ export default async function handler(req: Request): Promise<Response> {
               imported,
               failed,
               currentGame: gameData.title || `BGG ID: ${gameInput.bgg_id}`,
-              phase: enhance_with_bgg && firecrawlKey ? "enhancing" : "importing"
+              phase: enhance_with_ai ? "ai_enhancing" : (enhance_with_bgg !== false ? "fetching" : "importing")
             });
 
             // BGG enhancement - SKIP if description already exists (complete data from export)
-            // This allows re-importing a GameTaverns export without hitting Firecrawl/AI
+            // This allows re-importing a GameTaverns export without hitting external APIs
             const hasCompleteData = !!(gameData.description && gameData.description.length > 50);
             
             if (hasCompleteData) {
               console.log(`[BulkImport] Skipping enrichment for "${gameData.title}" - description already present (${gameData.description?.length} chars)`);
-            } else if (gameInput.bgg_id && enhance_with_bgg && firecrawlKey) {
-              console.log(`Enhancing with BGG data: ${gameInput.bgg_id}`);
-              let bggData: Awaited<ReturnType<typeof fetchBGGData>> | null = null;
+            } else if (gameInput.bgg_id && enhance_with_bgg !== false) {
+              // FAST PATH: Use BGG XML API (default behavior)
+              // This is ~10x faster than Firecrawl+AI
+              console.log(`[BulkImport] Fetching BGG XML data for: ${gameInput.bgg_id}`);
+              let bggData: Awaited<ReturnType<typeof fetchBGGXMLData>> | null = null;
               try {
-                bggData = await fetchBGGData(gameInput.bgg_id, firecrawlKey);
+                bggData = await fetchBGGXMLData(gameInput.bgg_id);
               } catch (e) {
-                console.warn(
-                  "[BulkImport] fetchBGGData threw (skipping enrichment) for",
-                  gameInput.bgg_id,
-                  e
-                );
+                console.warn(`[BulkImport] BGG XML fetch failed for ${gameInput.bgg_id}:`, e);
                 bggData = null;
               }
+              
               if (bggData) {
-                // Helper to check if a value is "empty" (undefined, null, or empty string)
                 const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
                 
-                // Merge BGG data with CSV data - prefer CSV values when present and non-empty, fall back to BGG
-                // IMPORTANT: For descriptions especially, BGG CSV exports do NOT include descriptions,
-                // so we need to pull them from BGG page scraping
                 gameData = {
-                  ...bggData,
                   ...gameData,
-                  // Explicitly handle fields where we want BGG data as fallback when CSV is empty
                   bgg_id: gameData.bgg_id || bggData.bgg_id,
                   image_url: isEmpty(gameData.image_url) ? bggData.image_url : gameData.image_url,
                   description: isEmpty(gameData.description) ? bggData.description : gameData.description,
                   difficulty: isEmpty(gameData.difficulty) ? bggData.difficulty : gameData.difficulty,
                   play_time: isEmpty(gameData.play_time) ? bggData.play_time : gameData.play_time,
-                  game_type: isEmpty(gameData.game_type) ? bggData.game_type : gameData.game_type,
                   min_players: gameData.min_players ?? bggData.min_players,
                   max_players: gameData.max_players ?? bggData.max_players,
                   suggested_age: isEmpty(gameData.suggested_age) ? bggData.suggested_age : gameData.suggested_age,
@@ -1203,48 +1222,55 @@ export default async function handler(req: Request): Promise<Response> {
                   publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
                 };
                 
-                console.log(`BGG merge for "${gameData.title}": description=${(gameData.description?.length || 0)} chars, bggDesc=${(bggData.description?.length || 0)} chars`);
-                
-                if (!gameData.title && gameInput.bgg_url) {
-                  const pathParts = gameInput.bgg_url.split("/").filter(Boolean);
-                  const slugPart = pathParts[pathParts.length - 1];
-                  if (slugPart && !/^\d+$/.test(slugPart)) {
-                    gameData.title = slugPart.replace(/-/g, " ").split(" ")
-                      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-                      .join(" ");
+                console.log(`[BulkImport] XML enriched "${gameData.title}": description=${(gameData.description?.length || 0)} chars, image=${!!gameData.image_url}`);
+              }
+              
+              // SLOW PATH: Optionally use Firecrawl+AI for rich descriptions
+              // Only when explicitly requested via enhance_with_ai=true
+              if (enhance_with_ai && firecrawlKey && (!gameData.description || gameData.description.length < 100)) {
+                console.log(`[BulkImport] AI enrichment for: ${gameInput.bgg_id}`);
+                try {
+                  const aiData = await fetchBGGData(gameInput.bgg_id, firecrawlKey);
+                  if (aiData?.description && aiData.description.length > (gameData.description?.length || 0)) {
+                    gameData.description = aiData.description;
+                    console.log(`[BulkImport] AI enhanced description: ${aiData.description.length} chars`);
                   }
+                } catch (e) {
+                  console.warn(`[BulkImport] AI enrichment failed for ${gameInput.bgg_id}:`, e);
                 }
               }
-            } else if (enhance_with_bgg && firecrawlKey && gameData.title && !hasCompleteData) {
-              console.log(`Looking up BGG by title: ${gameData.title}`);
-              let bggData: Awaited<ReturnType<typeof lookupBGGByTitle>> | null = null;
+            } else if (enhance_with_bgg !== false && gameData.title && !hasCompleteData) {
+              // No BGG ID - try to look up by title using XML search
+              console.log(`[BulkImport] Looking up BGG by title: ${gameData.title}`);
               try {
-                bggData = await lookupBGGByTitle(gameData.title, firecrawlKey);
+                const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(gameData.title)}&type=boardgame&exact=1`;
+                const searchRes = await fetch(searchUrl);
+                if (searchRes.ok) {
+                  const xml = await searchRes.text();
+                  const idMatch = xml.match(/<item[^>]*id="(\d+)"/);
+                  if (idMatch) {
+                    const foundId = idMatch[1];
+                    const bggData = await fetchBGGXMLData(foundId);
+                    if (bggData) {
+                      const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
+                      gameData = {
+                        ...gameData,
+                        bgg_id: foundId,
+                        image_url: isEmpty(gameData.image_url) ? bggData.image_url : gameData.image_url,
+                        description: isEmpty(gameData.description) ? bggData.description : gameData.description,
+                        difficulty: isEmpty(gameData.difficulty) ? bggData.difficulty : gameData.difficulty,
+                        play_time: isEmpty(gameData.play_time) ? bggData.play_time : gameData.play_time,
+                        min_players: gameData.min_players ?? bggData.min_players,
+                        max_players: gameData.max_players ?? bggData.max_players,
+                        suggested_age: isEmpty(gameData.suggested_age) ? bggData.suggested_age : gameData.suggested_age,
+                        mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
+                        publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
+                      };
+                    }
+                  }
+                }
               } catch (e) {
-                console.warn(
-                  "[BulkImport] lookupBGGByTitle threw (skipping enrichment) for",
-                  gameData.title,
-                  e
-                );
-                bggData = null;
-              }
-              if (bggData) {
-                // Merge BGG data with CSV data - prefer CSV values when present, fall back to BGG
-                gameData = {
-                  ...bggData,
-                  ...gameData,
-                  bgg_id: gameData.bgg_id || bggData.bgg_id,
-                  image_url: gameData.image_url || bggData.image_url,
-                  description: gameData.description || bggData.description,
-                  difficulty: gameData.difficulty || bggData.difficulty,
-                  play_time: gameData.play_time || bggData.play_time,
-                  game_type: gameData.game_type || bggData.game_type,
-                  min_players: gameData.min_players ?? bggData.min_players,
-                  max_players: gameData.max_players ?? bggData.max_players,
-                  suggested_age: gameData.suggested_age || bggData.suggested_age,
-                  mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
-                  publisher: gameData.publisher || bggData.publisher,
-                };
+                console.warn(`[BulkImport] Title lookup failed for "${gameData.title}":`, e);
               }
             }
 
@@ -1426,9 +1452,9 @@ export default async function handler(req: Request): Promise<Response> {
               phase: "imported"
             });
 
-            // Small delay to avoid rate limits
-            if (enhance_with_bgg) {
-              await new Promise(r => setTimeout(r, 300));
+            // Small delay to avoid BGG rate limits (only when doing AI enrichment which is slow anyway)
+            if (enhance_with_ai) {
+              await new Promise(r => setTimeout(r, 200));
             }
           } catch (e) {
             console.error("Game import error:", e);
