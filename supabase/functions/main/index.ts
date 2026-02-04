@@ -1781,7 +1781,13 @@ const INLINED_FUNCTIONS = [
   "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy", "bulk-import",
 ];
 
-Deno.serve(async (req) => {
+// IMPORTANT (self-hosted): edge-runtime may run this service on a non-default port.
+// If we don't bind to the provided PORT, Docker healthchecks (hitting :9000) will fail
+// and the container will be repeatedly SIGTERM'd/restarted.
+const PORT = Number(Deno.env.get("PORT") || 9000);
+console.log(`[MainRouter] Starting on port ${PORT}`);
+
+Deno.serve({ port: PORT }, async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
