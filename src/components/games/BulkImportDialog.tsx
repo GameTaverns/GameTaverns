@@ -304,13 +304,20 @@ export function BulkImportDialog({
         }
       );
 
+      console.log("[BulkImport] Response status:", response.status, "ok:", response.ok);
+      console.log("[BulkImport] Response headers:", [...response.headers.entries()]);
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorText = await response.text();
+        console.error("[BulkImport] Error response:", errorText);
+        let errorData: any = {};
+        try { errorData = JSON.parse(errorText); } catch { /* ignore */ }
         throw new Error(errorData.error || "Import failed");
       }
 
       // Check if it's a streaming response
       const contentType = response.headers.get("Content-Type");
+      console.log("[BulkImport] Content-Type:", contentType);
       if (contentType?.includes("text/event-stream")) {
         // Handle SSE stream
         const reader = response.body?.getReader();
