@@ -5,6 +5,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as OTPAuth from "https://esm.sh/otpauth@9.4.0";
+import handleBulkImport from "../bulk-import/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1039,6 +1040,7 @@ const AVAILABLE_FUNCTIONS = [
 const INLINED_FUNCTIONS = [
   "totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users",
   "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy",
+  "bulk-import",
 ];
 
 Deno.serve(async (req) => {
@@ -1073,6 +1075,8 @@ Deno.serve(async (req) => {
       return handleDiscordUnlink(req);
     case "image-proxy":
       return handleImageProxy(req);
+    case "bulk-import":
+      return handleBulkImport(req);
   }
 
   // For other functions, return info
