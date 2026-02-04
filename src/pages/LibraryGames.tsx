@@ -125,17 +125,43 @@ export default function LibraryGames() {
     }
   };
 
-  // Redirect if not authenticated or not owner
-  if (!authLoading && !isAuthenticated) {
-    navigate("/login");
-    return null;
-  }
+  // Platform URL helper (main domain, not tenant subdomain)
+  const getPlatformUrl = (path: string = "/dashboard"): string => {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+
+    if (hostname.endsWith(".gametaverns.com")) {
+      return `${protocol}//gametaverns.com${path}`;
+    }
+
+    return path;
+  };
 
   if (isLoading || authLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
+  // IMPORTANT: Don't client-side navigate() to /login inside tenant routes.
+  // During cross-subdomain session hydration, isAuthenticated can be false briefly.
+  // If we navigate to /login and then auth becomes true, Login.tsx returns null while
+  // it redirects to /dashboard (which isn't a tenant route), producing a blank screen.
+  if (!isAuthenticated) {
+    return (
+      <Layout>
+        <div className="text-center py-16">
+          <h1 className="text-2xl font-display font-bold mb-4">Sign in required</h1>
+          <p className="text-muted-foreground mb-6">
+            Please sign in on the main site to manage this library.
+          </p>
+          <a href={getPlatformUrl("/login")}>
+            <Button>Sign In</Button>
+          </a>
         </div>
       </Layout>
     );
@@ -172,18 +198,6 @@ export default function LibraryGames() {
       </Layout>
     );
   }
-
-  // Get the base platform URL for dashboard link
-  const getPlatformUrl = (path: string = "/dashboard"): string => {
-    const hostname = window.location.hostname;
-    const protocol = window.location.protocol;
-    
-    if (hostname.endsWith(".gametaverns.com")) {
-      return `${protocol}//gametaverns.com${path}`;
-    }
-    
-    return path;
-  };
 
   return (
     <Layout>
