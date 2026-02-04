@@ -5,6 +5,7 @@ import {
   isSelfHostedMode as checkSelfHostedMode,
   getApiBaseUrl,
 } from "@/config/runtime";
+import { computeAuthStorageKey } from "@/lib/authStorageKey";
 
 /**
  * Runtime-configurable Supabase client.
@@ -30,6 +31,8 @@ function getOrCreateSupabaseClient(): SupabaseClient<Database> {
   const { url, anonKey } = getSupabaseConfig();
   
   if (url && anonKey) {
+    const storageKey = computeAuthStorageKey(url);
+
     // IMPORTANT:
     // Do NOT import the auto-generated client at module scope.
     // In self-hosted builds, VITE_SUPABASE_URL may be empty, and the
@@ -41,6 +44,7 @@ function getOrCreateSupabaseClient(): SupabaseClient<Database> {
     _supabaseClient = createClient<Database>(url, anonKey, {
       auth: {
         storage: localStorage,
+        storageKey,
         persistSession: true,
         autoRefreshToken: true,
       },
