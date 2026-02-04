@@ -535,4 +535,7 @@ ${markdown.slice(0, 18000)}`,
 }
 
 // For Lovable Cloud deployment (direct function invocation)
-Deno.serve(handler);
+// Guard so this module can be imported by the self-hosted main router.
+if (import.meta.main) {
+  Deno.serve(handler);
+}
