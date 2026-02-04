@@ -215,10 +215,13 @@ export function getRuntimeFeatureFlag(feature: keyof NonNullable<RuntimeConfig['
 }
 
 /**
- * Check if this is a production deployment (hide testing banners)
- * Returns true if:
+ * Check if this is a production deployment that supports subdomain routing
+ * Returns true ONLY if:
  * 1. IS_PRODUCTION is explicitly set to true in runtime config
- * 2. Running on a custom domain (not lovable.app or lovableproject.com)
+ * 2. Running on gametaverns.com or a subdomain of it
+ * 
+ * Other custom domains (e.g., tavern.tzolak.com) return false
+ * because they can't handle wildcard subdomains and should use query-param routing
  */
 export function isProductionDeployment(): boolean {
   const runtime = getRuntimeConfig();
@@ -228,21 +231,20 @@ export function isProductionDeployment(): boolean {
     return true;
   }
   
-  // Check hostname - production if NOT on Lovable domains
+  // Check hostname
   try {
     if (typeof window !== "undefined") {
       const host = window.location.hostname.toLowerCase();
-      if (
-        host.endsWith(".lovableproject.com") ||
-        host.endsWith(".lovable.app") ||
-        host === "lovable.app" ||
-        host === "lovableproject.com" ||
-        host === "localhost"
-      ) {
-        return false;
+      
+      // ONLY gametaverns.com supports subdomain routing
+      // All other domains (including custom domains like tavern.tzolak.com)
+      // should use query-param routing like Lovable preview
+      if (host === "gametaverns.com" || host.endsWith(".gametaverns.com")) {
+        return true;
       }
-      // Custom domain = production
-      return true;
+      
+      // All other domains use query-param routing
+      return false;
     }
   } catch {
     // ignore
