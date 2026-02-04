@@ -43,21 +43,11 @@ export function useUnreadMessageCount(libraryId?: string) {
     queryFn: async (): Promise<number> => {
       if (!libraryId) return 0;
       
-      // Get game IDs for this library first
-      const { data: games, error: gamesError } = await supabase
-        .from("games")
-        .select("id")
-        .eq("library_id", libraryId);
-      
-      if (gamesError) throw gamesError;
-      if (!games || games.length === 0) return 0;
-      
-      const gameIds = games.map(g => g.id);
-      
+      // Use join filtering to avoid long URL with game IDs
       const { count, error } = await supabase
         .from("game_messages")
-        .select("*", { count: "exact", head: true })
-        .in("game_id", gameIds)
+        .select("*, games!inner(library_id)", { count: "exact", head: true })
+        .eq("games.library_id", libraryId)
         .eq("is_read", false);
 
       if (error) throw error;
