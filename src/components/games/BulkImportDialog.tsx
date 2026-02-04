@@ -39,6 +39,16 @@ type ImportResult = {
   games: { title: string; id?: string }[];
 };
 
+function normalizeImportResult(data: any): ImportResult {
+  return {
+    success: Boolean(data?.success),
+    imported: Number(data?.imported ?? 0),
+    failed: Number(data?.failed ?? 0),
+    errors: Array.isArray(data?.errors) ? data.errors : [],
+    games: Array.isArray(data?.games) ? data.games : [],
+  };
+}
+
 type ProgressData = {
   type: "start" | "progress" | "complete";
   jobId?: string;
@@ -217,7 +227,8 @@ export function BulkImportDialog({
 
         // For self-hosted, use simple POST (no streaming for now)
         try {
-          const result = await apiClient.post<ImportResult>("/games/bulk-import", payload);
+          const raw = await apiClient.post<any>("/games/bulk-import", payload);
+          const result = normalizeImportResult(raw);
           setResult(result);
 
           if (result.imported > 0) {
@@ -370,8 +381,9 @@ export function BulkImportDialog({
         }
       } else {
         // Handle regular JSON response (fallback)
-        const data = await response.json();
-        setResult(data as ImportResult);
+        const raw = await response.json();
+        const data = normalizeImportResult(raw);
+        setResult(data);
 
         if (data.imported > 0) {
           toast({
@@ -896,29 +908,29 @@ https://boardgamegeek.com/boardgame/9209/ticket-to-ride`}
                     )}
                   </div>
 
-                  {result.errors.length > 0 && (
+                  {(result.errors?.length ?? 0) > 0 && (
                     <div className="bg-muted rounded p-3 max-h-32 overflow-y-auto">
                       <p className="text-xs font-medium mb-2">Errors:</p>
                       <ul className="text-xs text-muted-foreground space-y-1">
                         {result.errors.slice(0, 10).map((err, i) => (
                           <li key={i}>• {err}</li>
                         ))}
-                        {result.errors.length > 10 && (
-                          <li>...and {result.errors.length - 10} more</li>
+                        {(result.errors?.length ?? 0) > 10 && (
+                          <li>...and {(result.errors?.length ?? 0) - 10} more</li>
                         )}
                       </ul>
                     </div>
                   )}
 
-                  {result.games.length > 0 && (
+                  {(result.games?.length ?? 0) > 0 && (
                     <div className="bg-muted rounded p-3 max-h-32 overflow-y-auto">
                       <p className="text-xs font-medium mb-2">Imported games:</p>
                       <ul className="text-xs text-muted-foreground space-y-1">
                         {result.games.slice(0, 10).map((g, i) => (
                           <li key={i}>• {g.title}</li>
                         ))}
-                        {result.games.length > 10 && (
-                          <li>...and {result.games.length - 10} more</li>
+                        {(result.games?.length ?? 0) > 10 && (
+                          <li>...and {(result.games?.length ?? 0) - 10} more</li>
                         )}
                       </ul>
                     </div>
