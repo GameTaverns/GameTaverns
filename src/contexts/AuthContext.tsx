@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useMemo, useCallback, type ReactNode } from "react";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
+import { computeAuthStorageKey } from "@/lib/authStorageKey";
 import type { User, Session } from "@supabase/supabase-js";
 
 type SelfHostedMe = {
@@ -61,19 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const { url: apiUrl, anonKey } = getSupabaseConfig();
   
-  const authStorageKey = useMemo(() => {
-    try {
-      const baseUrl = new URL(apiUrl);
-      const hostedMatch = baseUrl.host.match(/^([a-z0-9-]+)\.supabase\.co$/i);
-      if (hostedMatch?.[1]) {
-        return `sb-${hostedMatch[1]}-auth-token`;
-      }
-      const ns = baseUrl.host.replace(/[^a-z0-9]/gi, "_");
-      return `sb-${ns}-auth-token`;
-    } catch {
-      return "sb-local-auth-token";
-    }
-  }, [apiUrl]);
+  const authStorageKey = useMemo(() => computeAuthStorageKey(apiUrl), [apiUrl]);
 
   const getAllAuthTokenKeys = useCallback((): string[] => {
     if (typeof window === "undefined" || !window.localStorage) return [authStorageKey];
@@ -521,7 +510,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user: (json as any)?.user,
         };
         localStorage.setItem(authStorageKey, JSON.stringify(sessionToPersist));
-        window.location.assign("/settings");
+        // If setSession() fails (often due to storage contention), we still
+        // persist the session and continue the normal post-login flow.
         return { error: null };
       }
 
