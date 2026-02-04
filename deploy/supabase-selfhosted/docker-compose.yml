@@ -160,7 +160,10 @@ services:
       PGRST_DB_SCHEMAS: public,storage,graphql_public
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
-      PGRST_DB_USE_LEGACY_GUCS: "false"
+      # CRITICAL: Supabase's auth helpers (e.g. auth.uid()) rely on legacy GUCs
+      # like request.jwt.claim.sub. If this is false, auth.uid() returns NULL
+      # and ALL RLS policies using auth.uid() will fail.
+      PGRST_DB_USE_LEGACY_GUCS: "true"
       PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
     # The upstream postgrest image does not reliably ship curl/wget across tags,
