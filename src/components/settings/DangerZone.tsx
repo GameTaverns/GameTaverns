@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { AlertTriangle, Trash2, Database, UserX } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Trash2, Database, UserX, ShieldAlert } from "lucide-react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,28 @@ export function DangerZone() {
   const [confirmStep, setConfirmStep] = useState<1 | 2>(1);
   const [confirmationText, setConfirmationText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Check if current user is an admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ["user-is-admin", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return false;
+      
+      if (isSelfHostedMode()) {
+        // In self-hosted mode, check from the auth context (user_metadata or roles)
+        return (user as any).isAdmin === true;
+      }
+      
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: !!user?.id,
+  });
 
   const getRequiredText = () => {
     if (currentAction === "delete_account") {
@@ -246,6 +268,12 @@ export function DangerZone() {
               <p className="text-sm text-muted-foreground">
                 Permanently delete your account and all associated data.
               </p>
+              {isAdmin && (
+                <p className="text-xs text-amber-500 mt-1 flex items-center gap-1">
+                  <ShieldAlert className="h-3 w-3" />
+                  Admins cannot delete their own accounts
+                </p>
+              )}
             </div>
             <Button
               variant="destructive"
@@ -253,6 +281,7 @@ export function DangerZone() {
                 setCurrentAction("delete_account");
                 setConfirmStep(1);
               }}
+              disabled={isAdmin}
             >
               <UserX className="h-4 w-4 mr-2" />
               Delete Account

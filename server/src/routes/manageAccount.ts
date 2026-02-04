@@ -133,6 +133,20 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       }
 
       case 'delete_account': {
+        // Check if user is an admin - admins cannot delete their own accounts
+        const adminCheck = await pool.query(
+          "SELECT role FROM user_roles WHERE user_id = $1 AND role = 'admin'",
+          [userId]
+        );
+
+        if (adminCheck.rows.length > 0) {
+          res.status(403).json({ 
+            success: false, 
+            error: 'Administrators cannot delete their own accounts. Please have another admin remove your admin role first.' 
+          });
+          return;
+        }
+
         // Verify confirmation text matches email
         if (confirmationText.toLowerCase() !== userEmail.toLowerCase()) {
           res.status(400).json({ success: false, error: 'Confirmation text does not match email address' });
