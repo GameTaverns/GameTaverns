@@ -83,7 +83,7 @@ function AppRoutes() {
         <MobileAppShell>
           <MaintenanceGuard>
             <Suspense fallback={<PageLoader />}>
-              <TenantRouteHandler isDemoMode={isDemoMode} tenantSlug={tenantSlug} />
+              <TenantRouteHandler isDemoMode={isDemoMode} tenantSlugFromParam={tenantSlug} />
             </Suspense>
           </MaintenanceGuard>
           
@@ -96,32 +96,36 @@ function AppRoutes() {
 }
 
 // Handle routing based on tenant state
-function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; tenantSlug: string | null }) {
+function TenantRouteHandler({ isDemoMode, tenantSlugFromParam }: { isDemoMode: boolean; tenantSlugFromParam: string | null }) {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
   const pathParam = searchParams.get("path");
   const tabParam = searchParams.get("tab");
-  const { isLoading, isSuspended, suspendedLibraryName, suspensionReason } = useTenant();
+  
+  // CRITICAL: Use the tenant slug from TenantContext which handles BOTH:
+  // 1. Query param (?tenant=slug) for Lovable preview
+  // 2. Subdomain detection (slug.gametaverns.com) for production
+  const { isLoading, isSuspended, suspendedLibraryName, suspensionReason, tenantSlug, isTenantMode } = useTenant();
   
   // Handle path parameter navigation within tenant context
   // Do this synchronously before rendering to avoid flash
   useEffect(() => {
-    if (tenantSlug && pathParam && location.pathname === "/") {
+    if (tenantSlugFromParam && pathParam && location.pathname === "/") {
       // Build the new URL params without the path parameter
       const newParams = new URLSearchParams();
-      newParams.set("tenant", tenantSlug);
+      newParams.set("tenant", tenantSlugFromParam);
       if (tabParam) {
         newParams.set("tab", tabParam);
       }
       // Navigate to the actual path (client-side) to avoid white flicker
       navigate(`${pathParam}?${newParams.toString()}`, { replace: true });
     }
-  }, [tenantSlug, pathParam, tabParam, location.pathname, navigate]);
+  }, [tenantSlugFromParam, pathParam, tabParam, location.pathname, navigate]);
   
   // Show loading while redirect is in progress
   // IMPORTANT: For platform mode (no tenant), don't wait for tenant loading
-  if (tenantSlug && pathParam && location.pathname === "/") {
+  if (tenantSlugFromParam && pathParam && location.pathname === "/") {
     return (
       <div className="min-h-screen parchment-texture flex items-center justify-center animate-fade-in">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -130,7 +134,7 @@ function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; t
   }
   
   // Only show loading spinner for tenant mode while tenant data loads
-  if (tenantSlug && isLoading) {
+  if (isTenantMode && isLoading) {
     return (
       <div className="min-h-screen parchment-texture flex items-center justify-center animate-fade-in">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -139,12 +143,12 @@ function TenantRouteHandler({ isDemoMode, tenantSlug }: { isDemoMode: boolean; t
   }
   
   // If library is suspended, show the suspended page
-  if (tenantSlug && isSuspended) {
+  if (isTenantMode && isSuspended) {
     return <LibrarySuspended libraryName={suspendedLibraryName || undefined} suspensionReason={suspensionReason} />;
   }
   
-  // If tenant slug is in URL, show library routes
-  if (tenantSlug) {
+  // If tenant detected (via subdomain OR query param), show library routes
+  if (isTenantMode) {
     return <LibraryRoutes isDemoMode={isDemoMode} />;
   }
   
