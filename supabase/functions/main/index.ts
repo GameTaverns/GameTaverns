@@ -5,7 +5,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as OTPAuth from "https://esm.sh/otpauth@9.4.0";
-import handleBulkImport from "../bulk-import/index.ts";
+// Note: bulk-import is NOT inlined here due to AI dependencies - it runs independently in Cloud
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1025,6 +1025,219 @@ async function handleImageProxy(req: Request): Promise<Response> {
 }
 
 // ============================================================================
+// MANAGE-ACCOUNT HANDLER (Clear library, delete library, delete account)
+// ============================================================================
+async function handleManageAccount(req: Request): Promise<Response> {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.slice("Bearer ".length).trim();
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser(token);
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const userId = user.id;
+    const body = await req.json();
+    const { action, libraryId, confirmationText } = body;
+
+    // Get user's library to verify ownership
+    const { data: library, error: libraryError } = await userClient
+      .from("libraries")
+      .select("id, name, slug, owner_id")
+      .eq("id", libraryId)
+      .single();
+
+    if (libraryError && action !== "delete_account") {
+      return new Response(
+        JSON.stringify({ error: "Library not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify ownership (except for account deletion)
+    if (action !== "delete_account" && library?.owner_id !== userId) {
+      return new Response(
+        JSON.stringify({ error: "Not authorized" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    switch (action) {
+      case "clear_library": {
+        if (!library) {
+          return new Response(
+            JSON.stringify({ error: "Library not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (confirmationText?.toLowerCase() !== library.name.toLowerCase()) {
+          return new Response(
+            JSON.stringify({ error: "Confirmation text does not match library name" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { error: gamesError } = await adminClient
+          .from("games")
+          .delete()
+          .eq("library_id", libraryId);
+
+        if (gamesError) {
+          console.error("Error clearing games:", gamesError);
+          return new Response(
+            JSON.stringify({ error: "Failed to clear library games" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await adminClient.from("import_jobs").delete().eq("library_id", libraryId);
+
+        return new Response(
+          JSON.stringify({ success: true, message: "Library games cleared successfully" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "delete_library": {
+        if (!library) {
+          return new Response(
+            JSON.stringify({ error: "Library not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (confirmationText?.toLowerCase() !== library.name.toLowerCase()) {
+          return new Response(
+            JSON.stringify({ error: "Confirmation text does not match library name" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        await adminClient.from("library_settings").delete().eq("library_id", libraryId);
+        await adminClient.from("library_suspensions").delete().eq("library_id", libraryId);
+        await adminClient.from("import_jobs").delete().eq("library_id", libraryId);
+        await adminClient.from("games").delete().eq("library_id", libraryId);
+
+        const { error: deleteError } = await adminClient
+          .from("libraries")
+          .delete()
+          .eq("id", libraryId);
+
+        if (deleteError) {
+          console.error("Error deleting library:", deleteError);
+          return new Response(
+            JSON.stringify({ error: "Failed to delete library" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        try {
+          const { data: files } = await adminClient.storage.from("library-logos").list(libraryId);
+          if (files && files.length > 0) {
+            const filePaths = files.map((f) => `${libraryId}/${f.name}`);
+            await adminClient.storage.from("library-logos").remove(filePaths);
+          }
+        } catch { /* non-fatal */ }
+
+        return new Response(
+          JSON.stringify({ success: true, message: "Library deleted successfully" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "delete_account": {
+        if (confirmationText?.toLowerCase() !== user.email?.toLowerCase()) {
+          return new Response(
+            JSON.stringify({ error: "Confirmation text does not match email address" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: userLibraries } = await adminClient
+          .from("libraries")
+          .select("id")
+          .eq("owner_id", userId);
+
+        if (userLibraries) {
+          for (const lib of userLibraries) {
+            await adminClient.from("library_settings").delete().eq("library_id", lib.id);
+            await adminClient.from("library_suspensions").delete().eq("library_id", lib.id);
+            await adminClient.from("import_jobs").delete().eq("library_id", lib.id);
+            await adminClient.from("games").delete().eq("library_id", lib.id);
+            await adminClient.from("libraries").delete().eq("id", lib.id);
+
+            try {
+              const { data: files } = await adminClient.storage.from("library-logos").list(lib.id);
+              if (files && files.length > 0) {
+                const filePaths = files.map((f) => `${lib.id}/${f.name}`);
+                await adminClient.storage.from("library-logos").remove(filePaths);
+              }
+            } catch { /* non-fatal */ }
+          }
+        }
+
+        await adminClient.from("user_roles").delete().eq("user_id", userId);
+        await adminClient.from("user_profiles").delete().eq("user_id", userId);
+
+        const { error: deleteUserError } = await adminClient.auth.admin.deleteUser(userId);
+        if (deleteUserError) {
+          console.error("Error deleting user:", deleteUserError);
+          return new Response(
+            JSON.stringify({ error: "Failed to delete account" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, message: "Account deleted successfully" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      default:
+        return new Response(
+          JSON.stringify({ error: "Invalid action" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+    }
+  } catch (error) {
+    console.error("Manage account error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ============================================================================
 // MAIN ROUTER
 // ============================================================================
 const AVAILABLE_FUNCTIONS = [
@@ -1038,9 +1251,8 @@ const AVAILABLE_FUNCTIONS = [
 ];
 
 const INLINED_FUNCTIONS = [
-  "totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users",
+  "totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users", "manage-account",
   "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy",
-  "bulk-import",
 ];
 
 Deno.serve(async (req) => {
@@ -1075,8 +1287,11 @@ Deno.serve(async (req) => {
       return handleDiscordUnlink(req);
     case "image-proxy":
       return handleImageProxy(req);
-    case "bulk-import":
-      return handleBulkImport(req);
+    case "manage-account":
+      return handleManageAccount(req);
+    // Note: bulk-import is NOT inlined here - use the dedicated function or Cloud
+    case "manage-account":
+      return handleManageAccount(req);
   }
 
   // For other functions, return info
