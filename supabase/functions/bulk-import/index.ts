@@ -247,11 +247,23 @@ async function fetchBGGData(
     }
     
     console.log(`Using AI provider for extraction: ${getAIProviderName()}`);
-    const aiResult = await aiComplete({
-      messages: [
-        {
-          role: "system",
-          content: `You are a board game data extraction expert. Extract detailed, structured game information from the provided content.
+
+    // aiComplete can occasionally throw if the upstream provider returns an empty/truncated
+    // body (seen as `Unexpected end of JSON input`). Never let that crash the whole import.
+    let aiResult:
+      | {
+          success: boolean;
+          error?: string;
+          toolCallArguments?: unknown;
+        }
+      | undefined;
+
+    try {
+      aiResult = await aiComplete({
+        messages: [
+          {
+            role: "system",
+            content: `You are a board game data extraction expert. Extract detailed, structured game information from the provided content.
 
 IMPORTANT RULES:
 
@@ -273,43 +285,51 @@ IMPORTANT RULES:
 3. For mechanics, extract actual game mechanics (e.g., "Worker Placement", "Set Collection", "Dice Rolling").
 
 4. For publisher, extract the publisher company name.`,
-        },
-        {
-          role: "user",
-          content: `Extract comprehensive board game data from this BoardGameGeek page content:
+          },
+          {
+            role: "user",
+            content: `Extract comprehensive board game data from this BoardGameGeek page content:
 
 ${markdown.slice(0, 15000)}`,
-        },
-      ],
-      tools: [{
-        type: "function",
-        function: {
-          name: "extract_game",
-          description: "Extract structured board game data including a detailed description",
-          parameters: {
-            type: "object",
-            properties: {
-              description: { 
-                type: "string",
-                description: "Comprehensive game description with markdown formatting. Include overview, Quick Gameplay Overview section, and key details. Aim for 200-400 words."
-              },
-              difficulty: { type: "string", enum: DIFFICULTY_LEVELS },
-              play_time: { type: "string", enum: PLAY_TIME_OPTIONS },
-              game_type: { type: "string", enum: GAME_TYPE_OPTIONS },
-              min_players: { type: "number" },
-              max_players: { type: "number" },
-              suggested_age: { type: "string" },
-              mechanics: { type: "array", items: { type: "string" } },
-              publisher: { type: "string" },
-            },
-            required: ["description"],
           },
-        },
-      }],
-      tool_choice: { type: "function", function: { name: "extract_game" } },
-    });
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "extract_game",
+            description: "Extract structured board game data including a detailed description",
+            parameters: {
+              type: "object",
+              properties: {
+                description: {
+                  type: "string",
+                  description: "Comprehensive game description with markdown formatting. Include overview, Quick Gameplay Overview section, and key details. Aim for 200-400 words."
+                },
+                difficulty: { type: "string", enum: DIFFICULTY_LEVELS },
+                play_time: { type: "string", enum: PLAY_TIME_OPTIONS },
+                game_type: { type: "string", enum: GAME_TYPE_OPTIONS },
+                min_players: { type: "number" },
+                max_players: { type: "number" },
+                suggested_age: { type: "string" },
+                mechanics: { type: "array", items: { type: "string" } },
+                publisher: { type: "string" },
+              },
+              required: ["description"],
+            },
+          },
+        }],
+        tool_choice: { type: "function", function: { name: "extract_game" } },
+      });
+    } catch (e) {
+      console.warn(
+        "[BulkImport] AI extraction threw (skipping enrichment) for",
+        pageUrl,
+        e
+      );
+      return { bgg_id: bggId, image_url: mainImage ?? undefined };
+    }
     
-    if (!aiResult.success || !aiResult.toolCallArguments) {
+    if (!aiResult?.success || !aiResult.toolCallArguments) {
       console.error("AI extraction failed:", aiResult.error);
       return { bgg_id: bggId, image_url: mainImage ?? undefined };
     }
@@ -833,7 +853,17 @@ export default async function handler(req: Request): Promise<Response> {
             // BGG enhancement
             if (gameInput.bgg_id && enhance_with_bgg && firecrawlKey) {
               console.log(`Enhancing with BGG data: ${gameInput.bgg_id}`);
-              const bggData = await fetchBGGData(gameInput.bgg_id, firecrawlKey);
+              let bggData: Awaited<ReturnType<typeof fetchBGGData>> | null = null;
+              try {
+                bggData = await fetchBGGData(gameInput.bgg_id, firecrawlKey);
+              } catch (e) {
+                console.warn(
+                  "[BulkImport] fetchBGGData threw (skipping enrichment) for",
+                  gameInput.bgg_id,
+                  e
+                );
+                bggData = null;
+              }
               if (bggData) {
                 // Helper to check if a value is "empty" (undefined, null, or empty string)
                 const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
@@ -872,7 +902,17 @@ export default async function handler(req: Request): Promise<Response> {
               }
             } else if (enhance_with_bgg && firecrawlKey && gameData.title) {
               console.log(`Looking up BGG by title: ${gameData.title}`);
-              const bggData = await lookupBGGByTitle(gameData.title, firecrawlKey);
+              let bggData: Awaited<ReturnType<typeof lookupBGGByTitle>> | null = null;
+              try {
+                bggData = await lookupBGGByTitle(gameData.title, firecrawlKey);
+              } catch (e) {
+                console.warn(
+                  "[BulkImport] lookupBGGByTitle threw (skipping enrichment) for",
+                  gameData.title,
+                  e
+                );
+                bggData = null;
+              }
               if (bggData) {
                 // Merge BGG data with CSV data - prefer CSV values when present, fall back to BGG
                 gameData = {
