@@ -1,7 +1,7 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Extensions & Prerequisites
 -- This is a FRESH database - completely isolated from Lovable Cloud
--- Version: 2.3.3 - GoTrue Compatibility Fix
+-- Version: 2.3.4 - GoTrue search_path + Storage role fix
 -- =============================================================================
 
 -- =============================================================================
@@ -17,6 +17,13 @@ BEGIN
         RAISE NOTICE 'Created postgres role for GoTrue compatibility';
     END IF;
 END $$;
+
+-- =============================================================================
+-- CRITICAL: Set default search_path for supabase_admin
+-- GoTrue runs as supabase_admin and expects 'public' in search_path
+-- Without this, CREATE TABLE fails with "no schema has been selected"
+-- =============================================================================
+ALTER ROLE supabase_admin SET search_path TO public, auth, extensions;
 
 -- Create auth schema for GoTrue (must exist before auth container starts)
 CREATE SCHEMA IF NOT EXISTS auth;
@@ -39,6 +46,18 @@ CREATE EXTENSION IF NOT EXISTS "unaccent" WITH SCHEMA extensions;
 -- Grant database-level permissions to service roles
 GRANT CONNECT, TEMP ON DATABASE postgres TO supabase_auth_admin, supabase_storage_admin;
 GRANT USAGE, CREATE ON SCHEMA public TO supabase_auth_admin, supabase_storage_admin;
+
+-- =============================================================================
+-- CRITICAL: Allow storage admin to assume service_role
+-- Storage API needs to SET ROLE service_role for RLS bypass
+-- =============================================================================
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        GRANT service_role TO supabase_storage_admin;
+        RAISE NOTICE 'Granted service_role to supabase_storage_admin';
+    END IF;
+END $$;
 
 -- Grant extensions usage to all roles that exist in Supabase
 DO $$ 
