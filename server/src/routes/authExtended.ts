@@ -109,44 +109,70 @@ router.post('/register', loginLimiter, async (req: Request, res: Response) => {
     
     const user = result.rows[0];
     
-    // Update display name in profile if provided
-    if (displayName) {
-      await pool.query(
-        'UPDATE user_profiles SET display_name = $1 WHERE user_id = $2',
-        [displayName, user.id]
-      );
-    }
+    // Rollback helper - deletes user and all related data on failure
+    const rollbackUser = async () => {
+      console.error(`Rolling back user ${user.id} due to registration failure`);
+      try {
+        await pool.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [user.id]);
+        await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [user.id]);
+        await pool.query('DELETE FROM user_roles WHERE user_id = $1', [user.id]);
+        await pool.query('DELETE FROM users WHERE id = $1', [user.id]);
+      } catch (rollbackError) {
+        console.error('Rollback failed:', rollbackError);
+      }
+    };
     
-    // Send verification email if SMTP is configured
-    if (isEmailConfigured()) {
-      const token = generateToken();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-      
+    try {
+      // Create user profile
+      const profileDisplayName = displayName || email.split('@')[0];
       await pool.query(
-        `INSERT INTO email_confirmation_tokens (user_id, email, token, expires_at)
-         VALUES ($1, $2, $3, $4)`,
-        [user.id, normalizedEmail, token, expiresAt]
+        'INSERT INTO user_profiles (user_id, display_name) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET display_name = $2',
+        [user.id, profileDisplayName]
       );
       
-      const emailContent = buildVerificationEmail(normalizedEmail, token);
-      await sendEmail({
-        to: normalizedEmail,
-        subject: emailContent.subject,
-        html: emailContent.html,
-      });
-      
-      res.status(201).json({
-        message: 'Registration successful. Please check your email to verify your account.',
-        requiresVerification: true,
-      });
-    } else {
-      // No email configured - auto-login
-      const token = signToken({ sub: user.id, email: user.email });
-      res.status(201).json({
-        user: { id: user.id, email: user.email },
-        token,
-        requiresVerification: false,
-      });
+      // Send verification email if SMTP is configured
+      if (isEmailConfigured()) {
+        const token = generateToken();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        
+        await pool.query(
+          `INSERT INTO email_confirmation_tokens (user_id, email, token, expires_at)
+           VALUES ($1, $2, $3, $4)`,
+          [user.id, normalizedEmail, token, expiresAt]
+        );
+        
+        try {
+          const emailContent = buildVerificationEmail(normalizedEmail, token);
+          await sendEmail({
+            to: normalizedEmail,
+            subject: emailContent.subject,
+            html: emailContent.html,
+          });
+        } catch (emailError) {
+          console.error('Email sending failed:', emailError);
+          // Rollback the user since email failed
+          await rollbackUser();
+          res.status(500).json({ error: 'Failed to send confirmation email. Please try again.' });
+          return;
+        }
+        
+        res.status(201).json({
+          message: 'Registration successful. Please check your email to verify your account.',
+          requiresVerification: true,
+        });
+      } else {
+        // No email configured - auto-login
+        const token = signToken({ sub: user.id, email: user.email });
+        res.status(201).json({
+          user: { id: user.id, email: user.email },
+          token,
+          requiresVerification: false,
+        });
+      }
+    } catch (innerError) {
+      console.error('Registration inner error:', innerError);
+      await rollbackUser();
+      throw innerError;
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
