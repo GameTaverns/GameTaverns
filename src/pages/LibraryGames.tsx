@@ -174,21 +174,21 @@ export default function LibraryGames() {
   }
 
   // Get the base platform URL for dashboard link
-  const getBaseUrl = (): string => {
+  const getPlatformUrl = (path: string = "/dashboard"): string => {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
     
     if (hostname.endsWith(".gametaverns.com")) {
-      return `${protocol}//gametaverns.com/dashboard`;
+      return `${protocol}//gametaverns.com${path}`;
     }
     
-    return "/dashboard";
+    return path;
   };
 
   return (
     <Layout>
       <div className="max-w-5xl mx-auto">
-        <a href={getBaseUrl()}>
+        <a href={getPlatformUrl("/dashboard")}>
           <Button
             variant="ghost"
             className="mb-6 -ml-2"
