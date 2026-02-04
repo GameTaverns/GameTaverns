@@ -548,7 +548,25 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const body: BulkImportRequest = await req.json();
+    // Defensive JSON parsing - handle empty/truncated request bodies
+    let body: BulkImportRequest;
+    try {
+      const rawBody = await req.text();
+      if (!rawBody || rawBody.trim().length === 0) {
+        console.error("[BulkImport] Empty request body received");
+        return new Response(
+          JSON.stringify({ success: false, error: "Empty request body" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      body = JSON.parse(rawBody);
+    } catch (parseError) {
+      console.error("[BulkImport] Failed to parse request body:", parseError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid JSON in request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const { mode, library_id, csv_data, bgg_username, bgg_links, enhance_with_bgg, default_options } = body;
 
     const targetLibraryId = library_id || libraryData?.id;
