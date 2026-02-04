@@ -1375,9 +1375,88 @@ async function handleManageAccount(req: Request): Promise<Response> {
 // ============================================================================
 // BULK-IMPORT HANDLER (Inlined for self-hosted)
 // ============================================================================
-const DIFFICULTY_LEVELS = ["1 - Light", "2 - Medium Light", "3 - Medium", "4 - Medium Heavy", "5 - Heavy"];
-const PLAY_TIME_OPTIONS = ["0-15 Minutes", "15-30 Minutes", "30-45 Minutes", "45-60 Minutes", "60+ Minutes", "2+ Hours", "3+ Hours"];
-const GAME_TYPE_OPTIONS = ["Board Game", "Card Game", "Dice Game", "Party Game", "War Game", "Miniatures", "RPG", "Other"];
+// NOTE: Self-hosted schema enums differ from Cloud/UI enums.
+// These values match deploy/supabase-selfhosted/migrations/02-enums.sql.
+const DIFFICULTY_LEVELS = ["1 - Very Easy", "2 - Easy", "3 - Medium", "4 - Hard", "5 - Very Hard"];
+const PLAY_TIME_OPTIONS = ["Under 30 Minutes", "30-45 Minutes", "45-60 Minutes", "60-90 Minutes", "90-120 Minutes", "2-3 Hours", "3+ Hours"];
+const GAME_TYPE_OPTIONS = [
+  "Board Game",
+  "Card Game",
+  "Dice Game",
+  "Party Game",
+  "Strategy Game",
+  "Cooperative Game",
+  "Miniatures Game",
+  "Role-Playing Game",
+  "Deck Building",
+  "Area Control",
+  "Worker Placement",
+  "Other",
+];
+
+const normalizeEnum = (value: string | undefined, allowed: readonly string[]): string | undefined => {
+  if (!value) return undefined;
+  const v = value.trim();
+  return allowed.includes(v) ? v : undefined;
+};
+
+const normalizeDifficulty = (difficulty: string | undefined): string | undefined => {
+  if (!difficulty) return undefined;
+  const d = difficulty.trim();
+  const direct = normalizeEnum(d, DIFFICULTY_LEVELS);
+  if (direct) return direct;
+
+  // Map Cloud/UI difficulty values into self-hosted enum
+  const cloudToSelf: Record<string, string> = {
+    "1 - Light": "1 - Very Easy",
+    "2 - Medium Light": "2 - Easy",
+    "3 - Medium": "3 - Medium",
+    "4 - Medium Heavy": "4 - Hard",
+    "5 - Heavy": "5 - Very Hard",
+  };
+  return normalizeEnum(cloudToSelf[d], DIFFICULTY_LEVELS);
+};
+
+const normalizePlayTime = (playTime: string | undefined): string | undefined => {
+  if (!playTime) return undefined;
+  const p = playTime.trim();
+  const direct = normalizeEnum(p, PLAY_TIME_OPTIONS);
+  if (direct) return direct;
+
+  // Map Cloud/UI play time values into self-hosted enum
+  const cloudToSelf: Record<string, string> = {
+    "0-15 Minutes": "Under 30 Minutes",
+    "15-30 Minutes": "Under 30 Minutes",
+    "30-45 Minutes": "30-45 Minutes",
+    "45-60 Minutes": "45-60 Minutes",
+    "60+ Minutes": "60-90 Minutes",
+    "2+ Hours": "2-3 Hours",
+    "3+ Hours": "3+ Hours",
+  };
+  return normalizeEnum(cloudToSelf[p], PLAY_TIME_OPTIONS);
+};
+
+const normalizeGameType = (gameType: string | undefined): string | undefined => {
+  if (!gameType) return undefined;
+  const t = gameType.trim();
+  const direct = normalizeEnum(t, GAME_TYPE_OPTIONS);
+  if (direct) return direct;
+
+  // Map common Cloud/UI values into self-hosted enum
+  const cloudToSelf: Record<string, string> = {
+    "Miniatures": "Miniatures Game",
+    "RPG": "Role-Playing Game",
+    "War Game": "Strategy Game",
+  };
+  return normalizeEnum(cloudToSelf[t], GAME_TYPE_OPTIONS);
+};
+
+const normalizeSaleCondition = (saleCondition: string | undefined): string | undefined => {
+  if (!saleCondition) return undefined;
+  const c = saleCondition.trim();
+  if (c === "New/Sealed") return "New";
+  return c;
+};
 
 function parseCSV(csvData: string): Record<string, string>[] {
   const rows: string[][] = [];
@@ -1456,21 +1535,21 @@ const mapWeightToDifficulty = (weight: string | undefined): string | undefined =
   if (!weight) return undefined;
   const w = parseFloat(weight);
   if (isNaN(w) || w === 0) return undefined;
-  if (w < 1.5) return "1 - Light";
-  if (w < 2.25) return "2 - Medium Light";
+  if (w < 1.5) return "1 - Very Easy";
+  if (w < 2.25) return "2 - Easy";
   if (w < 3.0) return "3 - Medium";
-  if (w < 3.75) return "4 - Medium Heavy";
-  return "5 - Heavy";
+  if (w < 3.75) return "4 - Hard";
+  return "5 - Very Hard";
 };
 
 const mapPlayTimeToEnum = (minutes: number | undefined): string | undefined => {
   if (!minutes) return undefined;
-  if (minutes <= 15) return "0-15 Minutes";
-  if (minutes <= 30) return "15-30 Minutes";
+  if (minutes <= 30) return "Under 30 Minutes";
   if (minutes <= 45) return "30-45 Minutes";
   if (minutes <= 60) return "45-60 Minutes";
-  if (minutes <= 120) return "60+ Minutes";
-  if (minutes <= 180) return "2+ Hours";
+  if (minutes <= 90) return "60-90 Minutes";
+  if (minutes <= 120) return "90-120 Minutes";
+  if (minutes <= 180) return "2-3 Hours";
   return "3+ Hours";
 };
 
@@ -1720,7 +1799,13 @@ async function handleBulkImport(req: Request): Promise<Response> {
               if (pg) { parentGameId = pg.id; }
             }
 
-            const { data: newGame, error: gameError } = await supabaseAdmin.from("games").insert({
+             // Normalize enums to match self-hosted DB enum values
+             const normalizedDifficulty = normalizeDifficulty(gameInput.difficulty) || "3 - Medium";
+             const normalizedPlayTime = normalizePlayTime(gameInput.play_time) || "45-60 Minutes";
+             const normalizedGameType = normalizeGameType(gameInput.type) || "Board Game";
+             const normalizedSaleCondition = normalizeSaleCondition(gameInput.sale_condition);
+
+             const { data: newGame, error: gameError } = await supabaseAdmin.from("games").insert({
               library_id: targetLibraryId,
               title: gameInput.title,
               description: gameInput.description || null,
@@ -1730,16 +1815,16 @@ async function handleBulkImport(req: Request): Promise<Response> {
               min_players: gameInput.min_players ?? 2,
               max_players: gameInput.max_players ?? 4,
               suggested_age: gameInput.suggested_age || null,
-              play_time: gameInput.play_time || "45-60 Minutes",
-              difficulty: gameInput.difficulty || "3 - Medium",
-              game_type: gameInput.type || "Board Game",
+               play_time: normalizedPlayTime,
+               difficulty: normalizedDifficulty,
+               game_type: normalizedGameType,
               publisher_id: publisherId,
               is_expansion: gameInput.is_expansion ?? false,
               parent_game_id: parentGameId,
               is_coming_soon: gameInput.is_coming_soon ?? default_options?.is_coming_soon ?? false,
               is_for_sale: gameInput.is_for_sale ?? default_options?.is_for_sale ?? false,
               sale_price: gameInput.sale_price ?? default_options?.sale_price ?? null,
-              sale_condition: gameInput.sale_condition ?? default_options?.sale_condition ?? null,
+               sale_condition: normalizedSaleCondition ?? default_options?.sale_condition ?? null,
               location_room: gameInput.location_room ?? default_options?.location_room ?? null,
               location_shelf: gameInput.location_shelf ?? default_options?.location_shelf ?? null,
               location_misc: gameInput.location_misc ?? default_options?.location_misc ?? null,
