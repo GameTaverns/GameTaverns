@@ -17,6 +17,9 @@ import { getSupabaseConfig } from "@/config/runtime";
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
+  const [signupUsername, setSignupUsername] = useState("");
+  const [signupDisplayName, setSignupDisplayName] = useState("");
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
@@ -180,11 +183,51 @@ const Login = () => {
       });
       return;
     }
+
+    if (password !== signupConfirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate username if provided
+    if (signupUsername && (signupUsername.length < 3 || signupUsername.length > 30)) {
+      toast({
+        title: "Invalid username",
+        description: "Username must be between 3 and 30 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (signupUsername && !/^[a-zA-Z0-9_]+$/.test(signupUsername)) {
+      toast({
+        title: "Invalid username",
+        description: "Username can only contain letters, numbers, and underscores",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsLoading(true);
 
     try {
-      const { error } = await signUp(signupEmail, password);
+      const { error } = await signUp(signupEmail, password, {
+        username: signupUsername.toLowerCase() || undefined,
+        displayName: signupDisplayName || signupEmail.split("@")[0],
+      });
 
       if (error) {
         toast({
@@ -315,6 +358,32 @@ const Login = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4 mt-4">
                 <div className="space-y-2">
+                  <Label htmlFor="signup-username" className="text-cream/80">
+                    Username <span className="text-muted-foreground text-xs">(optional, for login)</span>
+                  </Label>
+                  <Input
+                    id="signup-username"
+                    value={signupUsername}
+                    onChange={(e) => setSignupUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    placeholder="your_username"
+                    maxLength={30}
+                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground">3-30 characters, letters, numbers, underscores only</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-displayname" className="text-cream/80">
+                    Display Name <span className="text-muted-foreground text-xs">(optional)</span>
+                  </Label>
+                  <Input
+                    id="signup-displayname"
+                    value={signupDisplayName}
+                    onChange={(e) => setSignupDisplayName(e.target.value)}
+                    placeholder="Your name"
+                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="signup-email" className="text-cream/80">Email</Label>
                   <Input
                     id="signup-email"
@@ -332,6 +401,18 @@ const Login = () => {
                     id="signup-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                    minLength={6}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-confirm-password" className="text-cream/80">Confirm Password</Label>
+                  <PasswordInput
+                    id="signup-confirm-password"
+                    value={signupConfirmPassword}
+                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
                     placeholder="••••••••"
                     className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                     minLength={6}
