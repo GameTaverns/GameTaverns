@@ -201,5 +201,6 @@ CRITICAL RULES:
   }
 }
 
-// For Lovable Cloud deployment (direct function invocation)
-Deno.serve(handler);
+if (import.meta.main) {
+  Deno.serve(handler);
+}

@@ -12,6 +12,15 @@ import bggImportHandler from "../bgg-import/index.ts";
 import bggLookupHandler from "../bgg-lookup/index.ts";
 import gameImportHandler from "../game-import/index.ts";
 
+// Import handlers from functions that already export them
+import verifyEmailHandler from "../verify-email/index.ts";
+import verifyResetTokenHandler from "../verify-reset-token/index.ts";
+import sendAuthEmailHandler from "../send-auth-email/index.ts";
+import sendEmailHandler from "../send-email/index.ts";
+import sendMessageHandler from "../send-message/index.ts";
+import condenseDescriptionsHandler from "../condense-descriptions/index.ts";
+import decryptMessagesHandler from "../decrypt-messages/index.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -2558,6 +2567,737 @@ async function handleSignup(req: Request): Promise<Response> {
 }
 
 // ============================================================================
+// GAME RECOMMENDATIONS HANDLER
+// ============================================================================
+async function handleGameRecommendations(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { game_id, library_id, limit = 5 } = await req.json();
+
+    if (!game_id || !library_id) {
+      return new Response(
+        JSON.stringify({ error: "game_id and library_id are required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const aiConfig = getAIConfig();
+    if (!aiConfig) {
+      return new Response(
+        JSON.stringify({ error: "AI service not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch the source game
+    const { data: sourceGame, error: sourceError } = await supabase
+      .from("games")
+      .select(`id, title, description, difficulty, play_time, game_type, min_players, max_players, game_mechanics(mechanic:mechanics(name))`)
+      .eq("id", game_id)
+      .single();
+
+    if (sourceError || !sourceGame) {
+      return new Response(
+        JSON.stringify({ error: "Game not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const sourceMechanics = ((sourceGame as any).game_mechanics || [])
+      .map((gm: any) => gm.mechanic?.name)
+      .filter(Boolean);
+
+    // Fetch all other games in the library
+    const { data: libraryGames, error: libraryError } = await supabase
+      .from("games")
+      .select(`id, title, description, difficulty, play_time, game_type, min_players, max_players, slug, image_url, game_mechanics(mechanic:mechanics(name))`)
+      .eq("library_id", library_id)
+      .neq("id", game_id)
+      .eq("is_expansion", false)
+      .limit(100);
+
+    if (libraryError) throw libraryError;
+
+    if (!libraryGames || libraryGames.length === 0) {
+      return new Response(
+        JSON.stringify({ recommendations: [], message: "No other games in library" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const gamesForAI = libraryGames.map((g: any) => ({
+      id: g.id, title: g.title, difficulty: g.difficulty, play_time: g.play_time, game_type: g.game_type,
+      min_players: g.min_players, max_players: g.max_players,
+      mechanics: (g.game_mechanics || []).map((gm: any) => gm.mechanic?.name).filter(Boolean),
+    }));
+
+    const systemPrompt = `You are a board game recommendation expert. Given a source game and a list of available games, recommend the most similar games based on:
+- Game mechanics overlap
+- Similar player counts
+- Similar play time
+- Similar difficulty/complexity
+- Similar game type/category
+
+Return ONLY a JSON array of game IDs, ordered by relevance (most similar first). Include a brief reason for each recommendation.`;
+
+    const userPrompt = `Source game to find recommendations for:
+Title: ${(sourceGame as any).title}
+Type: ${(sourceGame as any).game_type || "Unknown"}
+Difficulty: ${(sourceGame as any).difficulty || "Unknown"}
+Play Time: ${(sourceGame as any).play_time || "Unknown"}
+Players: ${(sourceGame as any).min_players || 1}-${(sourceGame as any).max_players || 4}
+Mechanics: ${sourceMechanics.join(", ") || "None listed"}
+
+Available games in the library:
+${JSON.stringify(gamesForAI, null, 2)}
+
+Return the top ${limit} most similar games as a JSON array with format:
+[{"id": "game-uuid", "reason": "brief explanation"}]`;
+
+    const aiResult = await aiComplete({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 1000,
+    });
+
+    if (!aiResult.success) {
+      if (aiResult.rateLimited) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded, please try again later" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw new Error(aiResult.error || "AI request failed");
+    }
+
+    let recommendations: { id: string; reason: string }[] = [];
+    try {
+      const jsonMatch = (aiResult.content || "").match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        recommendations = JSON.parse(jsonMatch[0]);
+      }
+    } catch {
+      // Fallback: return games sorted by mechanic overlap
+      recommendations = gamesForAI
+        .map((g: any) => ({ id: g.id, reason: "Similar game in your collection", score: g.mechanics.filter((m: string) => sourceMechanics.includes(m)).length }))
+        .sort((a: any, b: any) => b.score - a.score)
+        .slice(0, limit)
+        .map(({ id, reason }: any) => ({ id, reason }));
+    }
+
+    const enrichedRecommendations = recommendations
+      .map((rec) => {
+        const game = libraryGames.find((g: any) => g.id === rec.id);
+        if (!game) return null;
+        return { id: (game as any).id, title: (game as any).title, slug: (game as any).slug, image_url: (game as any).image_url, difficulty: (game as any).difficulty, play_time: (game as any).play_time, min_players: (game as any).min_players, max_players: (game as any).max_players, reason: rec.reason || "Similar game" };
+      })
+      .filter(Boolean);
+
+    return new Response(
+      JSON.stringify({ recommendations: enrichedRecommendations }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Recommendations error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Failed to get recommendations" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ============================================================================
+// RESOLVE USERNAME HANDLER
+// ============================================================================
+async function handleResolveUsername(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { username } = await req.json();
+    if (!username) {
+      return new Response(JSON.stringify({ error: "Username required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("user_id")
+      .eq("username", username.toLowerCase())
+      .maybeSingle();
+
+    if (!profile?.user_id) {
+      return new Response(JSON.stringify({ email: null }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: userData } = await supabase.auth.admin.getUserById(profile.user_id);
+
+    return new Response(JSON.stringify({ email: userData?.user?.email || null }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Resolve username error:", error);
+    return new Response(JSON.stringify({ email: null }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+}
+
+// ============================================================================
+// SYNC ACHIEVEMENTS HANDLER
+// ============================================================================
+async function handleSyncAchievements(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "No authorization header" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: library } = await supabaseAdmin.from("libraries").select("id").eq("owner_id", user.id).single();
+    if (!library) {
+      return new Response(JSON.stringify({ error: "No library found", awarded: [] }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Calculate progress
+    const { count: gamesCount } = await supabaseAdmin.from("games").select("*", { count: "exact", head: true }).eq("library_id", library.id).eq("is_expansion", false);
+    const { count: sessionsCount } = await supabaseAdmin.from("game_sessions").select("*, games!inner(library_id)", { count: "exact", head: true }).eq("games.library_id", library.id);
+    const { count: loansCount } = await supabaseAdmin.from("game_loans").select("*", { count: "exact", head: true }).eq("lender_user_id", user.id).eq("status", "returned");
+    const { count: followersCount } = await supabaseAdmin.from("library_followers").select("*", { count: "exact", head: true }).eq("library_id", library.id);
+    const { count: wishlistCount } = await supabaseAdmin.from("game_wishlist").select("*, games!inner(library_id)", { count: "exact", head: true }).eq("games.library_id", library.id);
+    const { count: ratingsCount } = await supabaseAdmin.from("game_ratings").select("*, games!inner(library_id)", { count: "exact", head: true }).eq("games.library_id", library.id);
+    const { data: gameTypes } = await supabaseAdmin.from("games").select("game_type").eq("library_id", library.id).eq("is_expansion", false).not("game_type", "is", null);
+    const uniqueTypes = new Set(gameTypes?.map(g => g.game_type) || []);
+
+    const progress = {
+      games_owned: gamesCount || 0,
+      sessions_logged: sessionsCount || 0,
+      loans_completed: loansCount || 0,
+      followers_gained: followersCount || 0,
+      wishlist_votes: wishlistCount || 0,
+      ratings_given: ratingsCount || 0,
+      unique_game_types: uniqueTypes.size,
+    };
+
+    const { data: achievements } = await supabaseAdmin.from("achievements").select("id, requirement_type, requirement_value");
+    const { data: earnedAchievements } = await supabaseAdmin.from("user_achievements").select("achievement_id").eq("user_id", user.id);
+    const earnedIds = new Set(earnedAchievements?.map(a => a.achievement_id) || []);
+
+    const toAward: string[] = [];
+    for (const achievement of (achievements || [])) {
+      if (earnedIds.has(achievement.id)) continue;
+      const currentValue = progress[achievement.requirement_type as keyof typeof progress] || 0;
+      if (currentValue >= achievement.requirement_value) {
+        toAward.push(achievement.id);
+      }
+    }
+
+    const awarded: string[] = [];
+    for (const achievementId of toAward) {
+      const { error: insertError } = await supabaseAdmin.from("user_achievements").insert({
+        user_id: user.id, achievement_id: achievementId,
+        progress: progress[(achievements?.find(a => a.id === achievementId)?.requirement_type || "games_owned") as keyof typeof progress] || 0,
+        notified: false,
+      });
+      if (!insertError) awarded.push(achievementId);
+    }
+
+    let awardedNames: string[] = [];
+    if (awarded.length > 0) {
+      const { data: awardedAchievements } = await supabaseAdmin.from("achievements").select("name").in("id", awarded);
+      awardedNames = awardedAchievements?.map(a => a.name) || [];
+    }
+
+    return new Response(
+      JSON.stringify({ success: true, progress, newAchievements: awarded.length, awarded: awardedNames }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error syncing achievements:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// ============================================================================
+// DISCORD NOTIFY HANDLER
+// ============================================================================
+const DISCORD_COLORS = { game_added: 0x22c55e, wishlist_vote: 0xf59e0b, message_received: 0x3b82f6, poll_created: 0x8b5cf6, poll_closed: 0x6366f1 };
+
+function buildDiscordEmbed(eventType: string, data: Record<string, unknown>): Record<string, unknown> {
+  const embed: Record<string, unknown> = { color: DISCORD_COLORS[eventType as keyof typeof DISCORD_COLORS] || 0x6b7280, timestamp: new Date().toISOString() };
+
+  switch (eventType) {
+    case "game_added":
+      embed.title = "🎲 New Game Added!";
+      embed.description = `**${data.title}** has been added to the library.`;
+      if (data.image_url) embed.thumbnail = { url: data.image_url };
+      embed.fields = [];
+      if (data.player_count) (embed.fields as any[]).push({ name: "Players", value: data.player_count, inline: true });
+      if (data.play_time) (embed.fields as any[]).push({ name: "Play Time", value: data.play_time, inline: true });
+      if (data.game_url) embed.url = data.game_url;
+      break;
+    case "wishlist_vote":
+      embed.title = "❤️ Wishlist Vote";
+      embed.description = `Someone wants to play **${data.game_title}**!`;
+      if (data.image_url) embed.thumbnail = { url: data.image_url };
+      embed.fields = [{ name: "Total Votes", value: String(data.vote_count || 1), inline: true }];
+      if (data.voter_name) (embed.fields as any[]).push({ name: "Voter", value: data.voter_name, inline: true });
+      break;
+    case "message_received":
+      embed.title = "💬 New Message";
+      embed.description = `You received a message about **${data.game_title}**.`;
+      if (data.sender_name) embed.fields = [{ name: "From", value: data.sender_name, inline: true }];
+      embed.footer = { text: "Check your messages in the dashboard" };
+      break;
+    case "poll_created":
+      embed.title = "🗳️ New Poll Created";
+      embed.description = `**${data.poll_title}**`;
+      embed.fields = [];
+      if (data.game_count) (embed.fields as any[]).push({ name: "Games", value: `${data.game_count} options`, inline: true });
+      if (data.poll_type) (embed.fields as any[]).push({ name: "Type", value: data.poll_type === "game_night" ? "Game Night" : "Quick Vote", inline: true });
+      if (data.poll_url) { embed.url = data.poll_url; embed.footer = { text: "Click to vote!" }; }
+      break;
+    case "poll_closed":
+      embed.title = "📊 Poll Results";
+      embed.description = `**${data.poll_title}** has closed!`;
+      embed.fields = [];
+      if (data.winner_title) (embed.fields as any[]).push({ name: "🏆 Winner", value: data.winner_title, inline: false });
+      if (data.total_votes) (embed.fields as any[]).push({ name: "Total Votes", value: String(data.total_votes), inline: true });
+      break;
+    default:
+      embed.title = "📢 Notification";
+      embed.description = JSON.stringify(data);
+  }
+  return embed;
+}
+
+async function handleDiscordNotify(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    const { library_id, event_type, data } = await req.json();
+    if (!library_id || !event_type) {
+      return new Response(JSON.stringify({ error: "Missing library_id or event_type" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { data: library } = await supabase.from("libraries").select("owner_id").eq("id", library_id).maybeSingle();
+    if (!library) {
+      return new Response(JSON.stringify({ error: "Library not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { data: settings } = await supabase.from("library_settings").select("discord_webhook_url, discord_notifications").eq("library_id", library_id).maybeSingle();
+    const notifications = (settings?.discord_notifications as Record<string, boolean>) || {};
+    if (notifications[event_type] === false) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "Notification type disabled" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const embed = buildDiscordEmbed(event_type, data);
+    const isPrivateEvent = event_type === "message_received";
+
+    if (isPrivateEvent) {
+      // Send DM to library owner via discord-send-dm (internal call)
+      try {
+        const dmResponse = await fetch(`${supabaseUrl}/functions/v1/discord-send-dm`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: library.owner_id, embed }),
+        });
+        if (!dmResponse.ok) console.error("DM send failed:", await dmResponse.text());
+      } catch (e) { console.error("DM send error:", e); }
+      return new Response(JSON.stringify({ success: true, method: "dm" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (!settings?.discord_webhook_url) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "No webhook configured" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const discordResponse = await fetch(settings.discord_webhook_url, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ embeds: [embed] }),
+    });
+
+    if (!discordResponse.ok) {
+      const errorText = await discordResponse.text();
+      return new Response(JSON.stringify({ error: "Failed to send Discord notification", details: errorText }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    return new Response(JSON.stringify({ success: true, method: "webhook" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (error) {
+    console.error("Discord notify error:", error);
+    return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+}
+
+// ============================================================================
+// DISCORD CREATE EVENT HANDLER
+// ============================================================================
+const DISCORD_API = "https://discord.com/api/v10";
+
+async function getGuildIdFromWebhook(webhookUrl: string): Promise<string | null> {
+  try {
+    const match = webhookUrl.match(/webhooks\/(\d+)\//);
+    if (!match) return null;
+    const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
+    if (!botToken) return null;
+    const response = await fetch(`${DISCORD_API}/webhooks/${match[1]}`, { headers: { Authorization: `Bot ${botToken}` } });
+    if (!response.ok) return null;
+    const webhook = await response.json();
+    return webhook.guild_id || null;
+  } catch { return null; }
+}
+
+async function handleDiscordCreateEvent(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
+
+    const { library_id, poll_id, name, description, scheduled_start_time, scheduled_end_time, location, poll_url } = await req.json();
+
+    if (!library_id || !poll_id || !name || !scheduled_start_time) {
+      return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { data: settings } = await supabase.from("library_settings").select("discord_webhook_url, discord_notifications").eq("library_id", library_id).maybeSingle();
+    if (!settings?.discord_webhook_url) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "No webhook configured" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const notifications = (settings.discord_notifications as Record<string, boolean>) || {};
+    if (notifications.poll_created === false) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "Poll notifications disabled" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const guildId = await getGuildIdFromWebhook(settings.discord_webhook_url);
+    if (!guildId) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "Could not determine Discord server from webhook" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    let eventDescription = description || "";
+    if (poll_url) eventDescription += eventDescription ? `\n\n🗳️ Vote here: ${poll_url}` : `🗳️ Vote here: ${poll_url}`;
+
+    const payload = {
+      name, privacy_level: 2, scheduled_start_time,
+      scheduled_end_time: scheduled_end_time || new Date(new Date(scheduled_start_time).getTime() + 3 * 60 * 60 * 1000).toISOString(),
+      description: eventDescription || undefined, entity_type: 3,
+      entity_metadata: { location: location || "Game Night Location TBD" },
+    };
+
+    const response = await fetch(`${DISCORD_API}/guilds/${guildId}/scheduled-events`, {
+      method: "POST", headers: { Authorization: `Bot ${botToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return new Response(JSON.stringify({ success: false, error: "Failed to create Discord event. Ensure bot has 'Manage Events' permission." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const discordEvent = await response.json();
+    return new Response(JSON.stringify({ success: true, event_id: discordEvent.id, guild_id: guildId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (error) {
+    console.error("Discord create-event error:", error);
+    return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+}
+
+// ============================================================================
+// DISCORD FORUM POST HANDLER
+// ============================================================================
+async function handleDiscordForumPost(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
+
+    const { library_id, title, description, event_date, event_location, poll_url, event_type, event_id } = await req.json();
+
+    if (!library_id || !title) {
+      return new Response(JSON.stringify({ error: "Missing required fields: library_id, title" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { data: settings } = await supabase.from("library_settings").select("discord_events_channel_id, discord_notifications").eq("library_id", library_id).maybeSingle();
+    if (!settings?.discord_events_channel_id) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "No events forum channel configured" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const notifications = (settings.discord_notifications as Record<string, boolean>) || {};
+    if (event_type === "poll" && notifications.poll_created === false) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "Poll notifications disabled" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const embed: Record<string, unknown> = { title, color: event_type === "poll" ? 0x8b5cf6 : 0x06b6d4, timestamp: new Date().toISOString() };
+    let descText = description || "";
+    if (poll_url) descText += descText ? `\n\n🗳️ **Vote here:** ${poll_url}` : `🗳️ **Vote here:** ${poll_url}`;
+    if (descText) embed.description = descText;
+    const fields: any[] = [];
+    if (event_date) {
+      const eventDate = new Date(event_date);
+      fields.push({ name: "📅 Date & Time", value: eventDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }), inline: true });
+    }
+    if (event_location) fields.push({ name: "📍 Location", value: event_location, inline: true });
+    if (fields.length > 0) embed.fields = fields;
+
+    const payload = { name: title.substring(0, 100), message: { embeds: [embed] }, auto_archive_duration: 1440 };
+
+    const response = await fetch(`${DISCORD_API}/channels/${settings.discord_events_channel_id}/threads`, {
+      method: "POST", headers: { Authorization: `Bot ${botToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return new Response(JSON.stringify({ success: false, error: `Discord API error: ${response.status} - ${errorText}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const thread = await response.json();
+
+    if (event_type === "standalone" && event_id && thread.id) {
+      await supabase.from("library_events").update({ discord_thread_id: thread.id }).eq("id", event_id);
+    }
+
+    return new Response(JSON.stringify({ success: true, thread_id: thread.id, event_id: event_id || null }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (error) {
+    console.error("Discord forum post error:", error);
+    return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+}
+
+// ============================================================================
+// DISCORD DELETE THREAD HANDLER
+// ============================================================================
+async function handleDiscordDeleteThread(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
+
+    const { library_id, thread_id } = await req.json();
+
+    if (!library_id || !thread_id) {
+      return new Response(JSON.stringify({ error: "Missing required fields: library_id, thread_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const { data: library } = await supabase.from("libraries").select("id").eq("id", library_id).maybeSingle();
+    if (!library) {
+      return new Response(JSON.stringify({ error: "Library not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const response = await fetch(`${DISCORD_API}/channels/${thread_id}`, {
+      method: "DELETE", headers: { Authorization: `Bot ${botToken}` },
+    });
+
+    if (!response.ok && response.status !== 404) {
+      const errorText = await response.text();
+      return new Response(JSON.stringify({ success: false, error: `Discord API error: ${response.status} - ${errorText}` }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (error) {
+    console.error("Discord delete thread error:", error);
+    return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+}
+
+// ============================================================================
+// DISCORD OAUTH CALLBACK HANDLER
+// ============================================================================
+async function handleDiscordOAuthCallback(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(req.url);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    const error = url.searchParams.get("error");
+
+    const redirectWithError = (message: string, appOrigin: string | undefined): Response => {
+      const encodedMessage = encodeURIComponent(message);
+      if (appOrigin) return new Response(null, { status: 302, headers: { Location: `${appOrigin}/settings?discord_error=${encodedMessage}` } });
+      return new Response(`Discord connection failed: ${message}. Please close this tab and try again.`, { status: 400, headers: { "Content-Type": "text/plain" } });
+    };
+
+    if (error) return redirectWithError("Discord authorization was denied", undefined);
+    if (!code || !state) return redirectWithError("Missing authorization code or state", undefined);
+
+    const clientId = Deno.env.get("DISCORD_CLIENT_ID")!;
+    const clientSecret = Deno.env.get("DISCORD_CLIENT_SECRET")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    let userId: string, appOrigin: string;
+    try {
+      const stateData = JSON.parse(atob(state));
+      userId = stateData.user_id;
+      appOrigin = stateData.app_origin;
+    } catch {
+      return redirectWithError("Invalid state parameter", undefined);
+    }
+
+    if (!userId || !appOrigin) return redirectWithError("Missing user ID or app origin in state", appOrigin);
+
+    const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, grant_type: "authorization_code", code, redirect_uri: `${supabaseUrl}/functions/v1/discord-oauth-callback` }),
+    });
+
+    if (!tokenResponse.ok) return redirectWithError("Failed to exchange authorization code", appOrigin);
+
+    const tokens = await tokenResponse.json();
+
+    const userResponse = await fetch("https://discord.com/api/users/@me", { headers: { Authorization: `Bearer ${tokens.access_token}` } });
+    if (!userResponse.ok) return redirectWithError("Failed to fetch Discord user info", appOrigin);
+
+    const discordUser = await userResponse.json();
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const { data: existingProfile } = await supabase.from("user_profiles").select("id").eq("user_id", userId).maybeSingle();
+
+    let upsertError;
+    if (existingProfile) {
+      const { error } = await supabase.from("user_profiles").update({ discord_user_id: discordUser.id }).eq("user_id", userId);
+      upsertError = error;
+    } else {
+      const { error } = await supabase.from("user_profiles").insert({ user_id: userId, discord_user_id: discordUser.id });
+      upsertError = error;
+    }
+
+    if (upsertError) return redirectWithError("Failed to link Discord account", appOrigin);
+
+    return new Response(null, { status: 302, headers: { Location: `${appOrigin}/settings?discord_linked=true` } });
+  } catch (error) {
+    console.error("Discord OAuth callback error:", error);
+    return new Response(`Discord connection failed: ${(error as Error).message}. Please close this tab and try again.`, { status: 400, headers: { "Content-Type": "text/plain" } });
+  }
+}
+
+// ============================================================================
+// DISCORD SEND DM HANDLER
+// ============================================================================
+async function handleDiscordSendDM(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const botToken = Deno.env.get("DISCORD_BOT_TOKEN")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const { user_id, embed } = await req.json();
+    if (!user_id || !embed) {
+      return new Response(JSON.stringify({ error: "Missing user_id or embed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const { data: profile } = await supabase.from("user_profiles").select("discord_user_id").eq("user_id", user_id).maybeSingle();
+
+    if (!profile?.discord_user_id) {
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "No Discord account linked" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const channelResponse = await fetch("https://discord.com/api/v10/users/@me/channels", {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bot ${botToken}` },
+      body: JSON.stringify({ recipient_id: profile.discord_user_id }),
+    });
+
+    if (!channelResponse.ok) {
+      if (channelResponse.status === 403) {
+        return new Response(JSON.stringify({ success: true, skipped: true, reason: "User has DMs disabled" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: "Failed to create DM channel" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const channel = await channelResponse.json();
+
+    const messageResponse = await fetch(`https://discord.com/api/v10/channels/${channel.id}/messages`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bot ${botToken}` },
+      body: JSON.stringify({ embeds: [embed] }),
+    });
+
+    if (!messageResponse.ok) {
+      try {
+        const parsed = await messageResponse.json();
+        if (parsed?.code === 50007) {
+          return new Response(JSON.stringify({ success: true, skipped: true, reason: "Cannot send messages to this user (Discord code 50007)" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      } catch {}
+      return new Response(JSON.stringify({ error: "Failed to send DM" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (error) {
+    console.error("Discord DM error:", error);
+    return new Response(JSON.stringify({ error: (error as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+}
+
+// ============================================================================
 // MAIN ROUTER
 // ============================================================================
 const AVAILABLE_FUNCTIONS = [
@@ -2573,7 +3313,10 @@ const AVAILABLE_FUNCTIONS = [
 const INLINED_FUNCTIONS = [
   "totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users", "manage-account",
   "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy", "bulk-import", "refresh-images",
-  "signup",
+  "signup", "game-recommendations", "verify-email", "verify-reset-token", "send-auth-email", "send-email",
+  "send-message", "condense-descriptions", "decrypt-messages", "resolve-username", "sync-achievements",
+  "discord-notify", "discord-create-event", "discord-forum-post", "discord-delete-thread",
+  "discord-oauth-callback", "discord-send-dm",
 ];
 
 // NOTE: In self-hosted deployments, the edge-runtime process itself binds to the
@@ -2629,6 +3372,40 @@ Deno.serve(async (req) => {
       return handleRefreshImages(req);
     case "signup":
       return handleSignup(req);
+    // Imported handlers
+    case "verify-email":
+      return verifyEmailHandler(req);
+    case "verify-reset-token":
+      return verifyResetTokenHandler(req);
+    case "send-auth-email":
+      return sendAuthEmailHandler(req);
+    case "send-email":
+      return sendEmailHandler(req);
+    case "send-message":
+      return sendMessageHandler(req);
+    case "condense-descriptions":
+      return condenseDescriptionsHandler(req);
+    case "decrypt-messages":
+      return decryptMessagesHandler(req);
+    // Inlined handlers for remaining functions
+    case "game-recommendations":
+      return handleGameRecommendations(req);
+    case "resolve-username":
+      return handleResolveUsername(req);
+    case "sync-achievements":
+      return handleSyncAchievements(req);
+    case "discord-notify":
+      return handleDiscordNotify(req);
+    case "discord-create-event":
+      return handleDiscordCreateEvent(req);
+    case "discord-forum-post":
+      return handleDiscordForumPost(req);
+    case "discord-delete-thread":
+      return handleDiscordDeleteThread(req);
+    case "discord-oauth-callback":
+      return handleDiscordOAuthCallback(req);
+    case "discord-send-dm":
+      return handleDiscordSendDM(req);
   }
 
   // For other functions, return info
