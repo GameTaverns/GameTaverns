@@ -145,7 +145,9 @@ function parseCSV(csvData: string): Record<string, string>[] {
   
   if (rows.length < 2) return [];
   
-  const headers = rows[0].map(h => h.toLowerCase().trim());
+  // Normalize headers: lowercase, trim, replace spaces with underscores
+  // This ensures compatibility with both exported CSVs ("Play Time") and BGG exports ("playingtime")
+  const headers = rows[0].map(h => h.toLowerCase().trim().replace(/\s+/g, '_'));
   
   const result: Record<string, string>[] = [];
   for (let i = 1; i < rows.length; i++) {
@@ -273,7 +275,8 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       console.log(`CSV format detected: ${isBGGExport ? 'BGG Export' : 'Standard'}`);
       
       for (const row of rows) {
-        const title = row.title || row.name || row.game || row["game name"] || row["game title"] || row.objectname;
+        // Headers are normalized to lowercase with underscores, so "Game Name" -> "game_name"
+        const title = row.title || row.name || row.game || row.game_name || row.game_title || row.objectname;
         
         if (isBGGExport && row.own !== "1") {
           continue;
@@ -286,12 +289,12 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             .map((m: string) => m.trim())
             .filter((m: string) => m.length > 0);
           
-          const bggId = row.bgg_id || row["bgg id"] || row.objectid || undefined;
-          const minPlayersRaw = row.min_players || row["min players"] || row.minplayers;
-          const maxPlayersRaw = row.max_players || row["max players"] || row.maxplayers;
-          const playTimeRaw = row.play_time || row["play time"] || row.playtime || row.playingtime;
+          const bggId = row.bgg_id || row.objectid || undefined;
+          const minPlayersRaw = row.min_players || row.minplayers;
+          const maxPlayersRaw = row.max_players || row.maxplayers;
+          const playTimeRaw = row.play_time || row.playtime || row.playingtime;
           
-          const isExpansion = parseBool(row.is_expansion || row["is expansion"]) || 
+          const isExpansion = parseBool(row.is_expansion) || 
                              row.itemtype === "expansion" || 
                              row.objecttype === "expansion";
           
@@ -300,20 +303,20 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             difficulty = mapWeightToDifficulty(row.avgweight || row.weight);
           }
           
-          let playTime: string | undefined = row.play_time || row["play time"];
+          let playTime: string | undefined = row.play_time;
           if (!playTime && playTimeRaw) {
             const playTimeNum = parseNum(playTimeRaw);
             playTime = mapPlayTimeToEnum(playTimeNum);
           }
           
-          const suggestedAge = row.suggested_age || row["suggested age"] || row.age || row.bggrecagerange || undefined;
-          const isForSale = parseBool(row.is_for_sale || row["is for sale"] || row.fortrade);
+          const suggestedAge = row.suggested_age || row.age || row.bggrecagerange || undefined;
+          const isForSale = parseBool(row.is_for_sale || row.fortrade);
           
           const gameData: GameToImport = { 
             title,
             bgg_id: bggId,
-            bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || row["bgg url"] || row.url || undefined),
-            type: row.type || row["game type"] || undefined,
+            bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || row.url || undefined),
+            type: row.type || row.game_type || undefined,
             difficulty,
             play_time: playTime,
             min_players: parseNum(minPlayersRaw),
@@ -322,21 +325,21 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             publisher: row.publisher || undefined,
             mechanics: mechanics.length > 0 ? mechanics : undefined,
             is_expansion: isExpansion,
-            parent_game: row.parent_game || row["parent game"] || undefined,
-            is_coming_soon: parseBool(row.is_coming_soon || row["is coming soon"]),
+            parent_game: row.parent_game || undefined,
+            is_coming_soon: parseBool(row.is_coming_soon),
             is_for_sale: isForSale,
-            sale_price: parseNum(row.sale_price || row["sale price"]),
-            sale_condition: row.sale_condition || row["sale condition"] || undefined,
-            location_room: row.location_room || row["location room"] || undefined,
-            location_shelf: row.location_shelf || row["location shelf"] || row.invlocation || undefined,
-            location_misc: row.location_misc || row["location misc"] || undefined,
+            sale_price: parseNum(row.sale_price),
+            sale_condition: row.sale_condition || undefined,
+            location_room: row.location_room || undefined,
+            location_shelf: row.location_shelf || row.invlocation || undefined,
+            location_misc: row.location_misc || undefined,
             sleeved: parseBool(row.sleeved),
-            upgraded_components: parseBool(row.upgraded_components || row["upgraded components"]),
+            upgraded_components: parseBool(row.upgraded_components),
             crowdfunded: parseBool(row.crowdfunded),
             inserts: parseBool(row.inserts),
-            in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
+            in_base_game_box: parseBool(row.in_base_game_box),
             description: buildDescription(row.description, row.privatecomment),
-            image_url: row.image_url || row["image url"] || row.imageurl || undefined,
+            image_url: row.image_url || row.imageurl || undefined,
             purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
             purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
           };
