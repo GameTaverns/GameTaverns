@@ -402,7 +402,9 @@ services:
   # ===========================================
   app:
     build:
-      context: ../..
+      # CRITICAL: Use absolute path - the install copies everything to /opt/gametaverns
+      # Context is the project root where src/, public/, package.json live
+      context: /opt/gametaverns
       dockerfile: deploy/supabase-selfhosted/Dockerfile.app
     container_name: gametaverns-app
     restart: unless-stopped
