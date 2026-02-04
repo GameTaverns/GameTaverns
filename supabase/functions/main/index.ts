@@ -1781,13 +1781,10 @@ const INLINED_FUNCTIONS = [
   "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy", "bulk-import",
 ];
 
-// IMPORTANT (self-hosted): edge-runtime may run this service on a non-default port.
-// If we don't bind to the provided PORT, Docker healthchecks (hitting :9000) will fail
-// and the container will be repeatedly SIGTERM'd/restarted.
-const PORT = Number(Deno.env.get("PORT") || 9000);
-console.log(`[MainRouter] Starting on port ${PORT}`);
-
-Deno.serve({ port: PORT }, async (req) => {
+// NOTE: In self-hosted deployments, the edge-runtime process itself binds to the
+// container port (e.g. 9000) and forwards requests into this handler.
+// We should NOT try to bind our own listener port here.
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -1795,7 +1792,11 @@ Deno.serve({ port: PORT }, async (req) => {
   // Extract function name from URL path
   const url = new URL(req.url);
   const pathParts = url.pathname.split("/").filter(Boolean);
-  const functionName = pathParts[0];
+
+  // Compatibility: older clients call /functions/v1/main/<function>
+  // Kong strips /functions/v1, so we receive /main/<function> here.
+  // In that case, we should dispatch to <function>.
+  const functionName = pathParts[0] === "main" ? pathParts[1] : pathParts[0];
 
   // Route inlined functions
   switch (functionName) {

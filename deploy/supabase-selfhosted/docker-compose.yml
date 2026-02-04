@@ -320,7 +320,8 @@ services:
       - --port
       - "9000"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9000/ || wget -qO- http://localhost:9000/ || exit 1"]
+      # edge-runtime exposes /health; the root path may be 404 even when healthy.
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || wget -qO- http://localhost:9000/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 20
