@@ -8,6 +8,7 @@ import { Library, ArrowRight, Loader2 } from "lucide-react";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { toast } from "sonner";
 import { useMobileLibrary } from "@/hooks/useCapacitor";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 
 interface MobileLibrarySelectorProps {
   onLibrarySelected?: (slug: string) => void;
@@ -60,8 +61,8 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
       if (onLibrarySelected) {
         onLibrarySelected(slug);
       } else {
-        // Navigate with tenant parameter
-        navigate(`/?tenant=${slug}`);
+        // Navigate to tenant subdomain
+        window.location.href = getLibraryUrl(slug, "/");
       }
     } catch (err) {
       console.error('Error checking library:', err);

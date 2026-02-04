@@ -44,6 +44,7 @@ import { siteConfig } from "@/config/site";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenant, useTenantSettings } from "@/contexts/TenantContext";
+import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useUpcomingEvents } from "@/hooks/useLibraryEvents";
 import { Badge } from "@/components/ui/badge";
 import { TenantLogoImage } from "@/components/tenant/TenantLogoImage";
@@ -156,9 +157,10 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const { toast } = useToast();
   const { tenantSlug, library, isTenantMode } = useTenant();
   const tenantSettings = useTenantSettings();
+  const { buildUrl } = useTenantUrl();
 
   // Build the base library URL based on mode
-  const libraryBaseUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
+  const libraryBaseUrl = isDemoMode ? "/?demo=true" : buildUrl("/");
 
   // Use demo data for mechanics/publishers when in demo mode
   // Dedupe by name since imported games may have different IDs for the same mechanic

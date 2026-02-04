@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { useLibraryDirectory } from "@/hooks/useLibraryDirectory";
 import { useAuth } from "@/hooks/useAuth";
-import { useTenantUrl } from "@/hooks/useTenantUrl";
+import { useTenantUrl, getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,13 +113,13 @@ export default function Directory() {
             )}
           </div>
           
-          <Link 
-            to={`/?tenant=${library.slug}`}
+          <a 
+            href={getLibraryUrl(library.slug, "/")}
             className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
           >
             Visit Library
             <ExternalLink className="h-3 w-3" />
-          </Link>
+          </a>
         </CardContent>
       </Card>
     );

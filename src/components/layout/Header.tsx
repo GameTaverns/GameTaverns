@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useLibrary";
 import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
 import { isProductionDeployment } from "@/config/runtime";
+import { useTenantUrl } from "@/hooks/useTenantUrl";
 // Social media icons as inline SVGs for consistency with site styling
 const TwitterIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -49,9 +50,10 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
   const location = useLocation();
   const { isAuthenticated, user } = useAuth();
   const { data: profile } = useUserProfile();
+  const { buildUrl } = useTenantUrl();
   
   // Build tenant-aware home URL
-  const homeUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
+  const homeUrl = isDemoMode ? "/?demo=true" : buildUrl("/");
   
   const socialLinks = [
     { url: settings?.twitter_handle, icon: TwitterIcon, label: "Twitter/X", isHandle: true },

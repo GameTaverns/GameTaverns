@@ -12,6 +12,7 @@ import { Loader2, ExternalLink, Crown, Library, Ban, CheckCircle, History, Alert
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 
 interface LibraryWithOwner {
   id: string;
@@ -329,7 +330,7 @@ export function LibraryManagement() {
                       className="text-cream/70 hover:text-cream"
                       asChild
                     >
-                      <a href={`/?tenant=${library.slug}`} target="_blank" rel="noopener noreferrer">
+                      <a href={getLibraryUrl(library.slug, "/")} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="w-4 h-4 mr-1" />
                         View
                       </a>
