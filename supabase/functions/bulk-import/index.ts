@@ -173,10 +173,115 @@ async function lookupBGGByTitle(
   }
 }
 
-// Fetch full BGG data using Firecrawl + AI
+// Helper: sleep for ms
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Fetch basic game data from BGG XML API (fallback when Firecrawl fails)
+async function fetchBGGXMLData(bggId: string): Promise<{
+  bgg_id: string;
+  description?: string;
+  image_url?: string;
+  min_players?: number;
+  max_players?: number;
+  suggested_age?: string;
+  play_time?: string;
+  difficulty?: string;
+  mechanics?: string[];
+  publisher?: string;
+} | null> {
+  try {
+    const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
+    const res = await fetch(xmlUrl, {
+      headers: { "User-Agent": "GameTaverns/1.0 (Bulk Import)" },
+    });
+    
+    if (!res.ok) {
+      console.warn(`[BulkImport] BGG XML API returned ${res.status} for ${bggId}`);
+      return { bgg_id: bggId };
+    }
+    
+    const xml = await res.text();
+    
+    // Extract data using regex (simple parsing for XML)
+    const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+    const descMatch = xml.match(/<description>([^<]*)<\/description>/);
+    const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
+    const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
+    const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
+    const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
+    const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
+    
+    // Extract mechanics
+    const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
+    const mechanics = [...mechanicsMatches].map(m => m[1]);
+    
+    // Extract publisher (first one)
+    const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
+    
+    // Map weight to difficulty
+    let difficulty: string | undefined;
+    if (weightMatch) {
+      const w = parseFloat(weightMatch[1]);
+      if (w > 0) {
+        if (w < 1.5) difficulty = "1 - Light";
+        else if (w < 2.25) difficulty = "2 - Medium Light";
+        else if (w < 3.0) difficulty = "3 - Medium";
+        else if (w < 3.75) difficulty = "4 - Medium Heavy";
+        else difficulty = "5 - Heavy";
+      }
+    }
+    
+    // Map play time to enum
+    let play_time: string | undefined;
+    if (playTimeMatch) {
+      const minutes = parseInt(playTimeMatch[1], 10);
+      if (minutes <= 15) play_time = "0-15 Minutes";
+      else if (minutes <= 30) play_time = "15-30 Minutes";
+      else if (minutes <= 45) play_time = "30-45 Minutes";
+      else if (minutes <= 60) play_time = "45-60 Minutes";
+      else if (minutes <= 120) play_time = "60+ Minutes";
+      else if (minutes <= 180) play_time = "2+ Hours";
+      else play_time = "3+ Hours";
+    }
+    
+    // Decode HTML entities in description
+    let description = descMatch?.[1];
+    if (description) {
+      description = description
+        .replace(/&#10;/g, "\n")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .slice(0, 2000); // Limit length
+    }
+    
+    console.log(`[BulkImport] BGG XML fallback extracted data for ${bggId}`);
+    
+    return {
+      bgg_id: bggId,
+      image_url: imageMatch?.[1],
+      description,
+      min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
+      max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
+      suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
+      play_time,
+      difficulty,
+      mechanics: mechanics.length > 0 ? mechanics : undefined,
+      publisher: publisherMatch?.[1],
+    };
+  } catch (e) {
+    console.error("[BulkImport] BGG XML fallback error:", e);
+    return { bgg_id: bggId };
+  }
+}
+
+// Fetch full BGG data using Firecrawl + AI with retry logic
 async function fetchBGGData(
   bggId: string,
-  firecrawlKey: string
+  firecrawlKey: string,
+  maxRetries = 3
 ): Promise<{
   bgg_id: string;
   description?: string;
@@ -192,78 +297,101 @@ async function fetchBGGData(
 } | null> {
   const pageUrl = `https://boardgamegeek.com/boardgame/${bggId}`;
   
-  try {
-    const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${firecrawlKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url: pageUrl,
-        formats: ["markdown", "rawHtml"],
-        onlyMainContent: true,
-      }),
-    });
-    
-    if (!scrapeRes.ok) return { bgg_id: bggId };
-
-    // Defensive JSON parsing: Firecrawl can occasionally return an empty/truncated
-    // body (network hiccup, proxy reset, rate limiting) which would otherwise crash
-    // the whole import with `Unexpected end of JSON input`.
-    let scrapeData: any;
+  // Try Firecrawl with retries
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
+      // Add delay between retries (exponential backoff)
+      if (attempt > 1) {
+        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 8000);
+        console.log(`[BulkImport] Retry ${attempt}/${maxRetries} for ${bggId} after ${delayMs}ms`);
+        await sleep(delayMs);
+      }
+      
+      const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${firecrawlKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: pageUrl,
+          formats: ["markdown", "rawHtml"],
+          onlyMainContent: true,
+        }),
+      });
+      
+      if (!scrapeRes.ok) {
+        console.warn(`[BulkImport] Firecrawl returned ${scrapeRes.status} for ${pageUrl} (attempt ${attempt})`);
+        if (scrapeRes.status === 429) {
+          // Rate limited - wait longer
+          await sleep(5000);
+        }
+        continue;
+      }
+
+      // Defensive JSON parsing
+      let scrapeData: any;
       const raw = await scrapeRes.text();
       if (!raw || raw.trim().length === 0) {
-        console.warn("[BulkImport] Firecrawl returned empty body for", pageUrl);
-        return { bgg_id: bggId };
+        console.warn(`[BulkImport] Firecrawl returned empty body for ${pageUrl} (attempt ${attempt})`);
+        continue;
       }
-      scrapeData = JSON.parse(raw);
-    } catch (e) {
-      console.warn("[BulkImport] Firecrawl returned invalid JSON for", pageUrl, e);
-      return { bgg_id: bggId };
-    }
-    const markdown = scrapeData.data?.markdown || scrapeData.markdown || "";
-    const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
-    
-    const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
-    const images = rawHtml.match(imageRegex) || [];
-    const uniqueImages = [...new Set(images)] as string[];
-    const filtered = uniqueImages.filter((img: string) => 
-      !/crop100|square30|100x100|150x150|_thumb|_avatar|_micro/i.test(img)
-    );
-    filtered.sort((a: string, b: string) => {
-      const prio = (url: string) => {
-        if (/_itemrep/i.test(url)) return 0;
-        if (/_imagepage/i.test(url)) return 1;
-        return 2;
-      };
-      return prio(a) - prio(b);
-    });
-    const mainImage: string | null = filtered[0] || null;
-    
-    if (!isAIConfigured()) {
-      return { bgg_id: bggId, image_url: mainImage ?? undefined };
-    }
-    
-    console.log(`Using AI provider for extraction: ${getAIProviderName()}`);
+      
+      try {
+        scrapeData = JSON.parse(raw);
+      } catch (e) {
+        console.warn(`[BulkImport] Firecrawl returned invalid JSON for ${pageUrl} (attempt ${attempt})`);
+        continue;
+      }
+      
+      const markdown = scrapeData.data?.markdown || scrapeData.markdown || "";
+      const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
+      
+      // If we got empty content, retry
+      if (!markdown && !rawHtml) {
+        console.warn(`[BulkImport] Firecrawl returned empty content for ${pageUrl} (attempt ${attempt})`);
+        continue;
+      }
 
-    // aiComplete can occasionally throw if the upstream provider returns an empty/truncated
-    // body (seen as `Unexpected end of JSON input`). Never let that crash the whole import.
-    let aiResult:
-      | {
-          success: boolean;
-          error?: string;
-          toolCallArguments?: unknown;
-        }
-      | undefined;
+      const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
+      const images = rawHtml.match(imageRegex) || [];
+      const uniqueImages = [...new Set(images)] as string[];
+      const filtered = uniqueImages.filter((img: string) => 
+        !/crop100|square30|100x100|150x150|_thumb|_avatar|_micro/i.test(img)
+      );
+      filtered.sort((a: string, b: string) => {
+        const prio = (url: string) => {
+          if (/_itemrep/i.test(url)) return 0;
+          if (/_imagepage/i.test(url)) return 1;
+          return 2;
+        };
+        return prio(a) - prio(b);
+      });
+      const mainImage: string | null = filtered[0] || null;
+      
+      if (!isAIConfigured()) {
+        return { bgg_id: bggId, image_url: mainImage ?? undefined };
+      }
+      
+      console.log(`Using AI provider for extraction: ${getAIProviderName()}`);
 
-    try {
-      aiResult = await aiComplete({
-        messages: [
-          {
-            role: "system",
-            content: `You are a board game data extraction expert. Extract detailed, structured game information from the provided content.
+      // aiComplete can occasionally throw if the upstream provider returns an empty/truncated
+      // body (seen as `Unexpected end of JSON input`). Never let that crash the whole import.
+      let aiResult:
+        | {
+            success: boolean;
+            error?: string;
+            toolCallArguments?: unknown;
+          }
+        | undefined;
+
+      try {
+        aiResult = await aiComplete({
+          messages: [
+            {
+              role: "system",
+              content: `You are a board game data extraction expert. Extract detailed, structured game information from the provided content.
 
 IMPORTANT RULES:
 
@@ -285,75 +413,80 @@ IMPORTANT RULES:
 3. For mechanics, extract actual game mechanics (e.g., "Worker Placement", "Set Collection", "Dice Rolling").
 
 4. For publisher, extract the publisher company name.`,
-          },
-          {
-            role: "user",
-            content: `Extract comprehensive board game data from this BoardGameGeek page content:
+            },
+            {
+              role: "user",
+              content: `Extract comprehensive board game data from this BoardGameGeek page content:
 
 ${markdown.slice(0, 15000)}`,
-          },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "extract_game",
-            description: "Extract structured board game data including a detailed description",
-            parameters: {
-              type: "object",
-              properties: {
-                description: {
-                  type: "string",
-                  description: "Comprehensive game description with markdown formatting. Include overview, Quick Gameplay Overview section, and key details. Aim for 200-400 words."
-                },
-                difficulty: { type: "string", enum: DIFFICULTY_LEVELS },
-                play_time: { type: "string", enum: PLAY_TIME_OPTIONS },
-                game_type: { type: "string", enum: GAME_TYPE_OPTIONS },
-                min_players: { type: "number" },
-                max_players: { type: "number" },
-                suggested_age: { type: "string" },
-                mechanics: { type: "array", items: { type: "string" } },
-                publisher: { type: "string" },
-              },
-              required: ["description"],
             },
-          },
-        }],
-        tool_choice: { type: "function", function: { name: "extract_game" } },
-      });
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "extract_game",
+              description: "Extract structured board game data including a detailed description",
+              parameters: {
+                type: "object",
+                properties: {
+                  description: {
+                    type: "string",
+                    description: "Comprehensive game description with markdown formatting. Include overview, Quick Gameplay Overview section, and key details. Aim for 200-400 words."
+                  },
+                  difficulty: { type: "string", enum: DIFFICULTY_LEVELS },
+                  play_time: { type: "string", enum: PLAY_TIME_OPTIONS },
+                  game_type: { type: "string", enum: GAME_TYPE_OPTIONS },
+                  min_players: { type: "number" },
+                  max_players: { type: "number" },
+                  suggested_age: { type: "string" },
+                  mechanics: { type: "array", items: { type: "string" } },
+                  publisher: { type: "string" },
+                },
+                required: ["description"],
+              },
+            },
+          }],
+          tool_choice: { type: "function", function: { name: "extract_game" } },
+        });
+      } catch (e) {
+        console.warn(
+          "[BulkImport] AI extraction threw (skipping enrichment) for",
+          pageUrl,
+          e
+        );
+        return { bgg_id: bggId, image_url: mainImage ?? undefined };
+      }
+      
+      if (!aiResult?.success || !aiResult.toolCallArguments) {
+        console.error("AI extraction failed:", aiResult?.error);
+        return { bgg_id: bggId, image_url: mainImage ?? undefined };
+      }
+      
+      const extractedData = aiResult.toolCallArguments as Record<string, unknown>;
+      console.log(`Extracted description length: ${(extractedData.description as string)?.length || 0} chars`);
+      
+      return {
+        bgg_id: bggId,
+        image_url: mainImage || undefined,
+        description: extractedData.description as string | undefined,
+        difficulty: extractedData.difficulty as string | undefined,
+        play_time: extractedData.play_time as string | undefined,
+        game_type: extractedData.game_type as string | undefined,
+        min_players: extractedData.min_players as number | undefined,
+        max_players: extractedData.max_players as number | undefined,
+        suggested_age: extractedData.suggested_age as string | undefined,
+        mechanics: extractedData.mechanics as string[] | undefined,
+        publisher: extractedData.publisher as string | undefined,
+      };
     } catch (e) {
-      console.warn(
-        "[BulkImport] AI extraction threw (skipping enrichment) for",
-        pageUrl,
-        e
-      );
-      return { bgg_id: bggId, image_url: mainImage ?? undefined };
+      lastError = e instanceof Error ? e : new Error(String(e));
+      console.warn(`[BulkImport] Firecrawl attempt ${attempt} failed for ${bggId}:`, e);
     }
-    
-    if (!aiResult?.success || !aiResult.toolCallArguments) {
-      console.error("AI extraction failed:", aiResult.error);
-      return { bgg_id: bggId, image_url: mainImage ?? undefined };
-    }
-    
-    const extractedData = aiResult.toolCallArguments as Record<string, unknown>;
-    console.log(`Extracted description length: ${(extractedData.description as string)?.length || 0} chars`);
-    
-    return {
-      bgg_id: bggId,
-      image_url: mainImage || undefined,
-      description: extractedData.description as string | undefined,
-      difficulty: extractedData.difficulty as string | undefined,
-      play_time: extractedData.play_time as string | undefined,
-      game_type: extractedData.game_type as string | undefined,
-      min_players: extractedData.min_players as number | undefined,
-      max_players: extractedData.max_players as number | undefined,
-      suggested_age: extractedData.suggested_age as string | undefined,
-      mechanics: extractedData.mechanics as string[] | undefined,
-      publisher: extractedData.publisher as string | undefined,
-    };
-  } catch (e) {
-    console.error("fetchBGGData error:", e);
-    return { bgg_id: bggId };
   }
+  
+  // All Firecrawl retries failed - fallback to BGG XML API
+  console.log(`[BulkImport] Firecrawl failed after ${maxRetries} attempts, using BGG XML fallback for ${bggId}`);
+  return await fetchBGGXMLData(bggId);
 }
 
 // Fetch BGG collection for a user
