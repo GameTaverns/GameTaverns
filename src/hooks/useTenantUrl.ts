@@ -5,6 +5,10 @@ import { isProductionDeployment } from "@/config/runtime";
 /**
  * Detects the base domain for subdomain URL generation
  * Returns null if we can't determine the base domain (use query params instead)
+ * 
+ * IMPORTANT: Only gametaverns.com supports wildcard subdomain routing.
+ * All other domains (custom domains, Lovable preview, localhost) must use
+ * query-parameter routing (?tenant=slug) because they can't handle subdomains.
  */
 function getBaseDomain(): string | null {
   try {
@@ -23,18 +27,15 @@ function getBaseDomain(): string | null {
       return null;
     }
     
-    // Production domain: gametaverns.com or subdomain.gametaverns.com
+    // ONLY gametaverns.com supports wildcard subdomain routing
+    // All other custom domains (e.g., tavern.tzolak.com) cannot handle
+    // wildcard subdomains and must use query-param routing
     if (hostname.endsWith(".gametaverns.com") || hostname === "gametaverns.com") {
       return "gametaverns.com";
     }
     
-    // For other custom domains, extract base domain
-    // e.g., library.example.com -> example.com
-    const parts = hostname.split(".");
-    if (parts.length >= 2) {
-      return parts.slice(-2).join(".");
-    }
-    
+    // For all other domains (custom domains like tavern.tzolak.com),
+    // return null to force query-param routing
     return null;
   } catch {
     return null;
