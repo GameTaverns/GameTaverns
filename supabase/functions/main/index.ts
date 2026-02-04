@@ -5,13 +5,118 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as OTPAuth from "https://esm.sh/otpauth@9.4.0";
-// Note: bulk-import is NOT inlined here due to AI dependencies - it runs independently in Cloud
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// ============================================================================
+// INLINED AI CLIENT (from _shared/ai-client.ts)
+// ============================================================================
+interface AIMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface AITool {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+interface AIRequestOptions {
+  messages: AIMessage[];
+  model?: string;
+  max_tokens?: number;
+  tools?: AITool[];
+  tool_choice?: { type: "function"; function: { name: string } };
+}
+
+interface AIResponse {
+  success: boolean;
+  content?: string;
+  toolCallArguments?: Record<string, unknown>;
+  error?: string;
+  rateLimited?: boolean;
+}
+
+function getAIConfig(): { endpoint: string; apiKey: string; model: string; provider: string } | null {
+  const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
+  if (perplexityKey) {
+    return { endpoint: "https://api.perplexity.ai/chat/completions", apiKey: perplexityKey, model: "sonar", provider: "perplexity" };
+  }
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (lovableKey) {
+    return { endpoint: "https://ai.gateway.lovable.dev/v1/chat/completions", apiKey: lovableKey, model: "google/gemini-2.5-flash", provider: "lovable" };
+  }
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (openaiKey) {
+    return { endpoint: "https://api.openai.com/v1/chat/completions", apiKey: openaiKey, model: "gpt-4o-mini", provider: "openai" };
+  }
+  return null;
+}
+
+function isAIConfigured(): boolean {
+  return getAIConfig() !== null;
+}
+
+function getAIProviderName(): string {
+  if (Deno.env.get("PERPLEXITY_API_KEY")) return "Perplexity";
+  if (Deno.env.get("LOVABLE_API_KEY")) return "Lovable AI";
+  if (Deno.env.get("OPENAI_API_KEY")) return "OpenAI";
+  return "None";
+}
+
+async function aiComplete(options: AIRequestOptions): Promise<AIResponse> {
+  const config = getAIConfig();
+  if (!config) {
+    return { success: false, error: "AI service not configured." };
+  }
+  try {
+    const requestBody: Record<string, unknown> = { model: options.model || config.model, messages: options.messages };
+    if (options.max_tokens) requestBody.max_tokens = options.max_tokens;
+    if (options.tools) requestBody.tools = options.tools;
+    if (options.tool_choice) requestBody.tool_choice = options.tool_choice;
+
+    const response = await fetch(config.endpoint, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`AI API error (${response.status}):`, errorText);
+      return { success: false, error: `AI request failed: ${response.status}`, rateLimited: response.status === 429 };
+    }
+    const data = await response.json();
+    const choices = data.choices as Array<Record<string, unknown>> | undefined;
+    const choice = choices?.[0];
+    if (!choice) return { success: false, error: "No response from AI" };
+    const message = choice.message as Record<string, unknown> | undefined;
+    const toolCalls = message?.tool_calls as Array<Record<string, unknown>> | undefined;
+    const toolCall = toolCalls?.[0];
+    if (toolCall) {
+      const func = toolCall.function as Record<string, unknown> | undefined;
+      if (func?.arguments) {
+        try {
+          const args = JSON.parse(func.arguments as string);
+          return { success: true, toolCallArguments: args };
+        } catch { return { success: false, error: "Failed to parse tool call arguments" }; }
+      }
+    }
+    const content = message?.content as string | undefined;
+    if (content) return { success: true, content };
+    return { success: false, error: "Empty response from AI" };
+  } catch (e) {
+    console.error("AI request error:", e);
+    return { success: false, error: e instanceof Error ? e.message : "AI request failed" };
+  }
+}
 
 // ============================================================================
 // TOTP STATUS HANDLER
@@ -1262,6 +1367,363 @@ async function handleManageAccount(req: Request): Promise<Response> {
 }
 
 // ============================================================================
+// BULK-IMPORT HANDLER (Inlined for self-hosted)
+// ============================================================================
+const DIFFICULTY_LEVELS = ["1 - Light", "2 - Medium Light", "3 - Medium", "4 - Medium Heavy", "5 - Heavy"];
+const PLAY_TIME_OPTIONS = ["0-15 Minutes", "15-30 Minutes", "30-45 Minutes", "45-60 Minutes", "60+ Minutes", "2+ Hours", "3+ Hours"];
+const GAME_TYPE_OPTIONS = ["Board Game", "Card Game", "Dice Game", "Party Game", "War Game", "Miniatures", "RPG", "Other"];
+
+function parseCSV(csvData: string): Record<string, string>[] {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = "";
+  let inQuotes = false;
+  for (let i = 0; i < csvData.length; i++) {
+    const char = csvData[i];
+    const nextChar = csvData[i + 1];
+    if (char === '"') {
+      if (!inQuotes) inQuotes = true;
+      else if (nextChar === '"') { currentField += '"'; i++; }
+      else inQuotes = false;
+    } else if (char === ',' && !inQuotes) {
+      currentRow.push(currentField.trim());
+      currentField = "";
+    } else if ((char === '\n' || (char === '\r' && nextChar === '\n')) && !inQuotes) {
+      if (char === '\r') i++;
+      currentRow.push(currentField.trim());
+      if (currentRow.some(f => f !== "")) rows.push(currentRow);
+      currentRow = [];
+      currentField = "";
+    } else if (char === '\r' && !inQuotes) {
+      currentRow.push(currentField.trim());
+      if (currentRow.some(f => f !== "")) rows.push(currentRow);
+      currentRow = [];
+      currentField = "";
+    } else {
+      currentField += char;
+    }
+  }
+  if (currentField || currentRow.length > 0) {
+    currentRow.push(currentField.trim());
+    if (currentRow.some(f => f !== "")) rows.push(currentRow);
+  }
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(h => h.toLowerCase().trim());
+  const result: Record<string, string>[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const values = rows[i];
+    const row: Record<string, string> = {};
+    headers.forEach((header, idx) => { row[header] = values[idx] || ""; });
+    result.push(row);
+  }
+  return result;
+}
+
+const parseBool = (val: string | undefined): boolean => {
+  if (!val) return false;
+  const v = val.toLowerCase().trim();
+  return v === "true" || v === "yes" || v === "1";
+};
+
+const parseNum = (val: string | undefined): number | undefined => {
+  if (!val) return undefined;
+  const n = parseInt(val, 10);
+  return isNaN(n) ? undefined : n;
+};
+
+const parsePrice = (val: string | undefined): number | undefined => {
+  if (!val) return undefined;
+  const cleaned = val.replace(/[^0-9.,]/g, '').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? undefined : n;
+};
+
+const parseDate = (val: string | undefined): string | undefined => {
+  if (!val) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  const date = new Date(val);
+  if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
+  return undefined;
+};
+
+const mapWeightToDifficulty = (weight: string | undefined): string | undefined => {
+  if (!weight) return undefined;
+  const w = parseFloat(weight);
+  if (isNaN(w) || w === 0) return undefined;
+  if (w < 1.5) return "1 - Light";
+  if (w < 2.25) return "2 - Medium Light";
+  if (w < 3.0) return "3 - Medium";
+  if (w < 3.75) return "4 - Medium Heavy";
+  return "5 - Heavy";
+};
+
+const mapPlayTimeToEnum = (minutes: number | undefined): string | undefined => {
+  if (!minutes) return undefined;
+  if (minutes <= 15) return "0-15 Minutes";
+  if (minutes <= 30) return "15-30 Minutes";
+  if (minutes <= 45) return "30-45 Minutes";
+  if (minutes <= 60) return "45-60 Minutes";
+  if (minutes <= 120) return "60+ Minutes";
+  if (minutes <= 180) return "2+ Hours";
+  return "3+ Hours";
+};
+
+const buildDescription = (description: string | undefined, privateComment: string | undefined): string | undefined => {
+  const desc = description?.trim();
+  const notes = privateComment?.trim();
+  if (!desc && !notes) return undefined;
+  if (!notes) return desc;
+  if (!desc) return `**Notes:** ${notes}`;
+  return `${desc}\n\n**Notes:** ${notes}`;
+};
+
+type GameToImport = {
+  title: string;
+  bgg_id?: string;
+  bgg_url?: string;
+  type?: string;
+  difficulty?: string;
+  play_time?: string;
+  min_players?: number;
+  max_players?: number;
+  suggested_age?: string;
+  publisher?: string;
+  mechanics?: string[];
+  is_expansion?: boolean;
+  parent_game?: string;
+  is_coming_soon?: boolean;
+  is_for_sale?: boolean;
+  sale_price?: number;
+  sale_condition?: string;
+  location_room?: string;
+  location_shelf?: string;
+  location_misc?: string;
+  sleeved?: boolean;
+  upgraded_components?: boolean;
+  crowdfunded?: boolean;
+  inserts?: boolean;
+  in_base_game_box?: boolean;
+  description?: string;
+  image_url?: string;
+  purchase_date?: string;
+  purchase_price?: number;
+};
+
+async function handleBulkImport(req: Request): Promise<Response> {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ success: false, error: "Authentication required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ success: false, error: "Invalid authentication" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const userId = user.id;
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: roleData } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
+    const { data: libraryData } = await supabaseAdmin.from("libraries").select("id").eq("owner_id", userId).maybeSingle();
+    if (!roleData && !libraryData) {
+      return new Response(JSON.stringify({ success: false, error: "You must own a library to import games" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const body = await req.json();
+    const { mode, library_id, csv_data, default_options } = body;
+    const targetLibraryId = library_id || libraryData?.id;
+    if (!targetLibraryId) {
+      return new Response(JSON.stringify({ success: false, error: "No library specified" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    let gamesToImport: GameToImport[] = [];
+
+    if (mode === "csv" && csv_data) {
+      const rows = parseCSV(csv_data);
+      const isBGGExport = rows.length > 0 && rows[0].objectname !== undefined;
+      for (const row of rows) {
+        const title = row.title || row.name || row.game || row["game name"] || row["game title"] || row.objectname;
+        if (isBGGExport && row.own !== "1") continue;
+        if (title) {
+          const mechanicsStr = row.mechanics || row.mechanic || "";
+          const mechanics = mechanicsStr.split(";").map((m: string) => m.trim()).filter((m: string) => m.length > 0);
+          const bggId = row.bgg_id || row["bgg id"] || row.objectid || undefined;
+          const minPlayersRaw = row.min_players || row["min players"] || row.minplayers;
+          const maxPlayersRaw = row.max_players || row["max players"] || row.maxplayers;
+          const playTimeRaw = row.play_time || row["play time"] || row.playtime || row.playingtime;
+          const isExpansion = parseBool(row.is_expansion || row["is expansion"]) || row.itemtype === "expansion" || row.objecttype === "expansion";
+          let difficulty: string | undefined = row.difficulty;
+          if (!difficulty) difficulty = mapWeightToDifficulty(row.avgweight || row.weight);
+          let playTime: string | undefined = row.play_time || row["play time"];
+          if (!playTime && playTimeRaw) {
+            const playTimeNum = parseNum(playTimeRaw);
+            playTime = mapPlayTimeToEnum(playTimeNum);
+          }
+          const suggestedAge = row.suggested_age || row["suggested age"] || row.age || row.bggrecagerange || undefined;
+          const isForSale = parseBool(row.is_for_sale || row["is for sale"] || row.fortrade);
+          gamesToImport.push({
+            title,
+            bgg_id: bggId,
+            bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || row["bgg url"] || row.url || undefined),
+            type: row.type || row["game type"] || undefined,
+            difficulty,
+            play_time: playTime,
+            min_players: parseNum(minPlayersRaw),
+            max_players: parseNum(maxPlayersRaw),
+            suggested_age: suggestedAge,
+            publisher: row.publisher || undefined,
+            mechanics: mechanics.length > 0 ? mechanics : undefined,
+            is_expansion: isExpansion,
+            parent_game: row.parent_game || row["parent game"] || undefined,
+            is_coming_soon: parseBool(row.is_coming_soon || row["is coming soon"]),
+            is_for_sale: isForSale,
+            sale_price: parseNum(row.sale_price || row["sale price"]),
+            sale_condition: row.sale_condition || row["sale condition"] || undefined,
+            location_room: row.location_room || row["location room"] || undefined,
+            location_shelf: row.location_shelf || row["location shelf"] || row.invlocation || undefined,
+            location_misc: row.location_misc || row["location misc"] || undefined,
+            sleeved: parseBool(row.sleeved),
+            upgraded_components: parseBool(row.upgraded_components || row["upgraded components"]),
+            crowdfunded: parseBool(row.crowdfunded),
+            inserts: parseBool(row.inserts),
+            in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
+            description: buildDescription(row.description, row.privatecomment),
+            image_url: row.image_url || row["image url"] || row.thumbnail || undefined,
+            purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
+            purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
+          });
+        }
+      }
+    } else {
+      return new Response(JSON.stringify({ success: false, error: "Only CSV mode is supported in self-hosted" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const totalGames = gamesToImport.length;
+    const { data: job, error: jobError } = await supabaseAdmin.from("import_jobs").insert({ library_id: targetLibraryId, status: "processing", total_items: totalGames, processed_items: 0, successful_items: 0, failed_items: 0 }).select("id").single();
+    if (jobError || !job) {
+      return new Response(JSON.stringify({ success: false, error: "Failed to create import job" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const jobId = job.id;
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const sendProgress = (data: Record<string, unknown>) => { controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`)); };
+        let imported = 0;
+        let failed = 0;
+        const errors: string[] = [];
+        const importedGames: { title: string; id?: string }[] = [];
+        sendProgress({ type: "start", jobId, total: totalGames });
+
+        for (let i = 0; i < gamesToImport.length; i++) {
+          const gameInput = gamesToImport[i];
+          try {
+            sendProgress({ type: "progress", current: i + 1, total: totalGames, imported, failed, currentGame: gameInput.title, phase: "importing" });
+            if (!gameInput.title) { failed++; errors.push(`Could not determine title for game`); continue; }
+
+            const { data: existing } = await supabaseAdmin.from("games").select("id, title").eq("title", gameInput.title).eq("library_id", targetLibraryId).maybeSingle();
+            if (existing) { failed++; errors.push(`"${gameInput.title}" already exists`); continue; }
+
+            const mechanicIds: string[] = [];
+            if (gameInput.mechanics?.length) {
+              for (const name of gameInput.mechanics) {
+                const { data: em } = await supabaseAdmin.from("mechanics").select("id").eq("name", name).maybeSingle();
+                if (em) { mechanicIds.push(em.id); }
+                else {
+                  const { data: nm } = await supabaseAdmin.from("mechanics").insert({ name }).select("id").single();
+                  if (nm) mechanicIds.push(nm.id);
+                }
+              }
+            }
+
+            let publisherId: string | null = null;
+            if (gameInput.publisher) {
+              const { data: ep } = await supabaseAdmin.from("publishers").select("id").eq("name", gameInput.publisher).maybeSingle();
+              if (ep) { publisherId = ep.id; }
+              else {
+                const { data: np } = await supabaseAdmin.from("publishers").insert({ name: gameInput.publisher }).select("id").single();
+                if (np) publisherId = np.id;
+              }
+            }
+
+            let parentGameId: string | null = null;
+            if (gameInput.is_expansion && gameInput.parent_game) {
+              const { data: pg } = await supabaseAdmin.from("games").select("id").eq("title", gameInput.parent_game).eq("library_id", targetLibraryId).maybeSingle();
+              if (pg) { parentGameId = pg.id; }
+            }
+
+            const { data: newGame, error: gameError } = await supabaseAdmin.from("games").insert({
+              library_id: targetLibraryId,
+              title: gameInput.title,
+              description: gameInput.description || null,
+              image_url: gameInput.image_url || null,
+              bgg_id: gameInput.bgg_id || null,
+              bgg_url: gameInput.bgg_url || null,
+              min_players: gameInput.min_players ?? 2,
+              max_players: gameInput.max_players ?? 4,
+              suggested_age: gameInput.suggested_age || null,
+              play_time: gameInput.play_time || "45-60 Minutes",
+              difficulty: gameInput.difficulty || "3 - Medium",
+              game_type: gameInput.type || "Board Game",
+              publisher_id: publisherId,
+              is_expansion: gameInput.is_expansion ?? false,
+              parent_game_id: parentGameId,
+              is_coming_soon: gameInput.is_coming_soon ?? default_options?.is_coming_soon ?? false,
+              is_for_sale: gameInput.is_for_sale ?? default_options?.is_for_sale ?? false,
+              sale_price: gameInput.sale_price ?? default_options?.sale_price ?? null,
+              sale_condition: gameInput.sale_condition ?? default_options?.sale_condition ?? null,
+              location_room: gameInput.location_room ?? default_options?.location_room ?? null,
+              location_shelf: gameInput.location_shelf ?? default_options?.location_shelf ?? null,
+              location_misc: gameInput.location_misc ?? default_options?.location_misc ?? null,
+              sleeved: gameInput.sleeved ?? default_options?.sleeved ?? false,
+              upgraded_components: gameInput.upgraded_components ?? default_options?.upgraded_components ?? false,
+              crowdfunded: gameInput.crowdfunded ?? default_options?.crowdfunded ?? false,
+              inserts: gameInput.inserts ?? default_options?.inserts ?? false,
+              in_base_game_box: gameInput.in_base_game_box ?? false,
+            }).select("id, title").single();
+
+            if (gameError || !newGame) { failed++; errors.push(`Failed to create "${gameInput.title}": ${gameError?.message}`); continue; }
+
+            if (mechanicIds.length > 0) {
+              await supabaseAdmin.from("game_mechanics").insert(mechanicIds.map(mid => ({ game_id: newGame.id, mechanic_id: mid })));
+            }
+
+            if (gameInput.purchase_date || gameInput.purchase_price) {
+              await supabaseAdmin.from("game_admin_data").insert({ game_id: newGame.id, purchase_date: gameInput.purchase_date || null, purchase_price: gameInput.purchase_price || null });
+            }
+
+            imported++;
+            importedGames.push({ title: newGame.title, id: newGame.id });
+            await supabaseAdmin.from("import_jobs").update({ processed_items: i + 1, successful_items: imported, failed_items: failed }).eq("id", jobId);
+            sendProgress({ type: "progress", current: i + 1, total: totalGames, imported, failed, currentGame: newGame.title, phase: "imported" });
+          } catch (e) {
+            console.error("Game import error:", e);
+            failed++;
+            errors.push(`Error importing "${gameInput.title}": ${e instanceof Error ? e.message : "Unknown error"}`);
+            sendProgress({ type: "progress", current: i + 1, total: totalGames, imported, failed, currentGame: gameInput.title, phase: "error" });
+          }
+        }
+
+        await supabaseAdmin.from("import_jobs").update({ status: "completed", processed_items: totalGames, successful_items: imported, failed_items: failed }).eq("id", jobId);
+        sendProgress({ type: "complete", success: true, imported, failed, errors: errors.slice(0, 20), games: importedGames });
+        controller.close();
+      },
+    });
+
+    return new Response(stream, { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" } });
+  } catch (e) {
+    console.error("Bulk import error:", e);
+    return new Response(JSON.stringify({ success: false, error: e instanceof Error ? e.message : "Bulk import failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+}
+
+// ============================================================================
 // MAIN ROUTER
 // ============================================================================
 const AVAILABLE_FUNCTIONS = [
@@ -1276,7 +1738,7 @@ const AVAILABLE_FUNCTIONS = [
 
 const INLINED_FUNCTIONS = [
   "totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users", "manage-account",
-  "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy",
+  "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy", "bulk-import",
 ];
 
 Deno.serve(async (req) => {
@@ -1313,7 +1775,8 @@ Deno.serve(async (req) => {
       return handleImageProxy(req);
     case "manage-account":
       return handleManageAccount(req);
-    // Note: bulk-import is NOT inlined here - use the dedicated function or Cloud
+    case "bulk-import":
+      return handleBulkImport(req);
   }
 
   // For other functions, return info
