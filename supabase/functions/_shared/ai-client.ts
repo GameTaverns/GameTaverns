@@ -167,33 +167,66 @@ export async function aiComplete(options: AIRequestOptions): Promise<AIResponse>
 
 /**
  * OpenAI-compatible completion (OpenAI, Perplexity, Lovable gateway)
+ * 
+ * IMPORTANT: Perplexity's sonar models do NOT support tool calling.
+ * When tools are requested with Perplexity, we convert to response_format with json_schema.
  */
 async function openaiCompatibleComplete(
-  config: { endpoint: string; apiKey: string; model: string },
+  config: { endpoint: string; apiKey: string; model: string; provider: string },
   options: AIRequestOptions
 ): Promise<AIResponse> {
+  const isPerplexity = config.provider === "perplexity";
+  
   const requestBody: Record<string, unknown> = {
     model: options.model || config.model,
-    messages: options.messages,
+    messages: [...options.messages],
   };
 
   if (options.max_tokens) {
     requestBody.max_tokens = options.max_tokens;
   }
 
-  if (options.tools) {
-    requestBody.tools = options.tools;
-  }
-
-  // Provider quirk: Perplexity's OpenAI-compatible endpoint expects tool_choice
-  // to be a STRING: 'none' | 'auto' | 'required' (not an object selector).
-  // If we only provide one tool (our typical pattern), 'required' is sufficient
-  // to force a tool call.
-  if (options.tool_choice) {
-    const isPerplexity = config.endpoint.includes("perplexity.ai");
-    if (isPerplexity) {
-      requestBody.tool_choice = "required";
+  // Perplexity doesn't support tool calling - convert to response_format with json_schema
+  if (isPerplexity && options.tools && options.tools.length > 0) {
+    const tool = options.tools[0];
+    const schema = tool.function.parameters;
+    
+    // Modify the system message to explicitly request JSON output
+    const messages = requestBody.messages as AIMessage[];
+    const systemIdx = messages.findIndex(m => m.role === "system");
+    const jsonInstruction = `\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no explanation, just the JSON object matching the schema.`;
+    
+    if (systemIdx >= 0) {
+      messages[systemIdx] = {
+        ...messages[systemIdx],
+        content: messages[systemIdx].content + jsonInstruction,
+      };
     } else {
+      messages.unshift({
+        role: "system",
+        content: `You are a data extraction assistant. ${jsonInstruction}`,
+      });
+    }
+    
+    requestBody.messages = messages;
+    
+    // Use Perplexity's response_format with json_schema
+    requestBody.response_format = {
+      type: "json_schema",
+      json_schema: {
+        name: tool.function.name,
+        schema: schema,
+      },
+    };
+    
+    console.log("Perplexity: Using response_format instead of tools for structured output");
+  } else {
+    // Standard tool calling for other providers
+    if (options.tools) {
+      requestBody.tools = options.tools;
+    }
+
+    if (options.tool_choice) {
       requestBody.tool_choice = options.tool_choice;
     }
   }
@@ -222,6 +255,12 @@ async function openaiCompatibleComplete(
       rateLimited: response.status === 429 || response.status === 402,
     };
   }
+  
+  // For Perplexity with response_format, parse content as JSON and return as toolCallArguments
+  if (isPerplexity && options.tools && options.tools.length > 0) {
+    return parsePerplexityJsonResponse(data);
+  }
+  
   return parseOpenAIResponse(data);
 }
 
@@ -374,6 +413,45 @@ function parseOpenAIResponse(data: Record<string, unknown>): AIResponse {
   }
 
   return { success: false, error: "Empty response from AI" };
+}
+
+/**
+ * Parse Perplexity response when using response_format (structured JSON output)
+ * Returns the parsed JSON as toolCallArguments for compatibility with existing code
+ */
+function parsePerplexityJsonResponse(data: Record<string, unknown>): AIResponse {
+  const choices = data.choices as Array<Record<string, unknown>> | undefined;
+  const choice = choices?.[0];
+  if (!choice) {
+    return { success: false, error: "No response from Perplexity" };
+  }
+
+  const message = choice.message as Record<string, unknown> | undefined;
+  const content = message?.content as string | undefined;
+  
+  if (!content) {
+    return { success: false, error: "Empty response from Perplexity" };
+  }
+
+  try {
+    // Parse the JSON content - Perplexity returns the JSON directly in content
+    const parsed = JSON.parse(content);
+    console.log("Perplexity structured output parsed successfully");
+    return { success: true, toolCallArguments: parsed };
+  } catch (e) {
+    console.error("Failed to parse Perplexity JSON response:", e, "Content:", content.slice(0, 500));
+    // Try to extract JSON from markdown code blocks if present
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1].trim());
+        return { success: true, toolCallArguments: parsed };
+      } catch {
+        // Fall through to error
+      }
+    }
+    return { success: false, error: "Failed to parse structured response from Perplexity" };
+  }
 }
 
 /**
