@@ -27,17 +27,34 @@ export default function ResetPassword() {
       // Check for custom token first
       if (token) {
         try {
-          const { data, error } = await supabase.functions.invoke('verify-reset-token', {
-            body: { token, action: 'verify' },
-          });
+          let valid = false;
+          let email = '';
+          
+          if (isSelfHostedMode()) {
+            // Self-hosted: use Express API
+            const result = await apiClient.post<{ valid: boolean; email?: string }>('/auth/verify-reset-token', { token });
+            valid = result.valid;
+            email = result.email || '';
+          } else {
+            // Cloud mode: use Supabase edge function
+            const { data, error } = await supabase.functions.invoke('verify-reset-token', {
+              body: { token, action: 'verify' },
+            });
+            if (error || !data?.valid) {
+              setIsValidToken(false);
+              return;
+            }
+            valid = data.valid;
+            email = data.email || '';
+          }
 
-          if (error || !data?.valid) {
+          if (!valid) {
             setIsValidToken(false);
             return;
           }
 
           setIsValidToken(true);
-          setTokenEmail(data.email || '');
+          setTokenEmail(email);
         } catch (err) {
           console.error('Token verification error:', err);
           setIsValidToken(false);
@@ -45,21 +62,27 @@ export default function ResetPassword() {
         return;
       }
 
-      // Fall back to Supabase recovery flow (for backwards compatibility)
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsValidToken(!!session);
+      // Fall back to Supabase recovery flow (for backwards compatibility - cloud only)
+      if (!isSelfHostedMode()) {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsValidToken(!!session);
+      } else {
+        // Self-hosted without token = invalid
+        setIsValidToken(false);
+      }
     };
 
     verifyToken();
 
-    // Listen for auth state changes (recovery link clicked - legacy flow)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setIsValidToken(true);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    // Listen for auth state changes (recovery link clicked - legacy flow, cloud only)
+    if (!isSelfHostedMode()) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setIsValidToken(true);
+        }
+      });
+      return () => subscription.unsubscribe();
+    }
   }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,8 +109,11 @@ export default function ResetPassword() {
     setIsLoading(true);
 
     try {
-      // Use custom token flow
-      if (token) {
+      if (isSelfHostedMode()) {
+        // Self-hosted: use Express API
+        await apiClient.post('/auth/reset-password', { token, newPassword: password });
+      } else if (token) {
+        // Cloud mode with custom token
         const { data, error } = await supabase.functions.invoke('verify-reset-token', {
           body: { token, action: 'reset', newPassword: password },
         });
@@ -95,7 +121,7 @@ export default function ResetPassword() {
         if (error) throw error;
         if (!data?.success) throw new Error(data?.error || 'Failed to reset password');
       } else {
-        // Legacy Supabase flow
+        // Legacy Supabase flow (cloud only)
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
       }
