@@ -635,6 +635,7 @@ type GameToImport = {
   title: string;
   bgg_id?: string;
   bgg_url?: string;
+  image_url?: string;
   type?: string;
   difficulty?: string;
   play_time?: string;
@@ -807,7 +808,8 @@ export default async function handler(req: Request): Promise<Response> {
             title,
             bgg_id: bggId,
             bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || row["bgg url"] || row.url || undefined),
-            type: row.type || row["game type"] || undefined,
+            image_url: row.image_url || row["image url"] || row.imageurl || undefined,
+            type: row.type || row["game type"] || row.game_type || undefined,
             difficulty,
             play_time: playTime,
             min_players: parseNum(minPlayersRaw),
@@ -969,6 +971,7 @@ export default async function handler(req: Request): Promise<Response> {
               title: gameInput.title,
               bgg_id: gameInput.bgg_id,
               bgg_url: gameInput.bgg_url,
+              image_url: gameInput.image_url,
               description: gameInput.description,
               min_players: gameInput.min_players,
               max_players: gameInput.max_players,
@@ -1007,8 +1010,13 @@ export default async function handler(req: Request): Promise<Response> {
               phase: enhance_with_bgg && firecrawlKey ? "enhancing" : "importing"
             });
 
-            // BGG enhancement
-            if (gameInput.bgg_id && enhance_with_bgg && firecrawlKey) {
+            // BGG enhancement - SKIP if description already exists (complete data from export)
+            // This allows re-importing a GameTaverns export without hitting Firecrawl/AI
+            const hasCompleteData = !!(gameData.description && gameData.description.length > 50);
+            
+            if (hasCompleteData) {
+              console.log(`[BulkImport] Skipping enrichment for "${gameData.title}" - description already present (${gameData.description?.length} chars)`);
+            } else if (gameInput.bgg_id && enhance_with_bgg && firecrawlKey) {
               console.log(`Enhancing with BGG data: ${gameInput.bgg_id}`);
               let bggData: Awaited<ReturnType<typeof fetchBGGData>> | null = null;
               try {
@@ -1057,7 +1065,7 @@ export default async function handler(req: Request): Promise<Response> {
                   }
                 }
               }
-            } else if (enhance_with_bgg && firecrawlKey && gameData.title) {
+            } else if (enhance_with_bgg && firecrawlKey && gameData.title && !hasCompleteData) {
               console.log(`Looking up BGG by title: ${gameData.title}`);
               let bggData: Awaited<ReturnType<typeof lookupBGGByTitle>> | null = null;
               try {
