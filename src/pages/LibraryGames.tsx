@@ -173,17 +173,30 @@ export default function LibraryGames() {
     );
   }
 
+  // Get the base platform URL for dashboard link
+  const getBaseUrl = (): string => {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    
+    if (hostname.endsWith(".gametaverns.com")) {
+      return `${protocol}//gametaverns.com/dashboard`;
+    }
+    
+    return "/dashboard";
+  };
+
   return (
     <Layout>
       <div className="max-w-5xl mx-auto">
-        <Button
-          variant="ghost"
-          className="mb-6 -ml-2"
-          onClick={() => navigate("/dashboard")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
+        <a href={getBaseUrl()}>
+          <Button
+            variant="ghost"
+            className="mb-6 -ml-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </a>
 
         <div className="flex items-center justify-between mb-6">
           <div>
