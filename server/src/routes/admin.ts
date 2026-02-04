@@ -117,6 +117,20 @@ router.delete('/users/:id', async (req: Request, res: Response) => {
       return;
     }
     
+    // Best-effort cleanup of dependent rows.
+    // In the supabase-selfhosted schema, user_profiles.user_id may not be a FK to users,
+    // so deleting from users does NOT necessarily remove the profile row. That can leave
+    // UNIQUE(username) stuck and block re-signups.
+    await pool.query('DELETE FROM user_roles WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM library_members WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM library_followers WHERE follower_user_id = $1', [id]);
+    await pool.query('DELETE FROM notification_preferences WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM user_totp_settings WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM user_profiles WHERE user_id = $1', [id]);
+
+    // Finally delete the user
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
     
     res.json({ success: true });
