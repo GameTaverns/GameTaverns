@@ -32,6 +32,20 @@ export interface AIResponse {
   rateLimited?: boolean;
 }
 
+async function safeReadJson(response: Response): Promise<any> {
+  const raw = await response.text();
+  if (!raw || raw.trim().length === 0) {
+    throw new Error(`Empty JSON response (status ${response.status})`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error(
+      `Invalid JSON response (status ${response.status}): ${e instanceof Error ? e.message : String(e)}`
+    );
+  }
+}
+
 /**
  * Get AI provider configuration
  * Priority: PERPLEXITY (recommended) > LOVABLE (cloud fallback) > OpenAI/Anthropic/Google (legacy)
@@ -187,7 +201,17 @@ async function openaiCompatibleComplete(
     return handleErrorResponse(response);
   }
 
-  const data = await response.json();
+  let data: any;
+  try {
+    data = await safeReadJson(response);
+  } catch (e) {
+    console.error("AI JSON parse error:", e);
+    return {
+      success: false,
+      error: "AI service returned an invalid response. Please retry.",
+      rateLimited: response.status === 429 || response.status === 402,
+    };
+  }
   return parseOpenAIResponse(data);
 }
 
@@ -229,7 +253,13 @@ async function anthropicComplete(
     return handleErrorResponse(response);
   }
 
-  const data = await response.json();
+  let data: any;
+  try {
+    data = await safeReadJson(response);
+  } catch (e) {
+    console.error("Anthropic JSON parse error:", e);
+    return { success: false, error: "AI service returned an invalid response. Please retry." };
+  }
   
   // Anthropic returns content as an array
   const content = data.content?.[0]?.text;
@@ -283,7 +313,13 @@ async function googleComplete(
     return handleErrorResponse(response);
   }
 
-  const data = await response.json();
+  let data: any;
+  try {
+    data = await safeReadJson(response);
+  } catch (e) {
+    console.error("Google AI JSON parse error:", e);
+    return { success: false, error: "AI service returned an invalid response. Please retry." };
+  }
   
   // Google returns candidates array
   const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
