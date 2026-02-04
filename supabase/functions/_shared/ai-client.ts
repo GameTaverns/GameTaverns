@@ -184,8 +184,18 @@ async function openaiCompatibleComplete(
   if (options.tools) {
     requestBody.tools = options.tools;
   }
+
+  // Provider quirk: Perplexity's OpenAI-compatible endpoint expects tool_choice
+  // to be a STRING: 'none' | 'auto' | 'required' (not an object selector).
+  // If we only provide one tool (our typical pattern), 'required' is sufficient
+  // to force a tool call.
   if (options.tool_choice) {
-    requestBody.tool_choice = options.tool_choice;
+    const isPerplexity = config.endpoint.includes("perplexity.ai");
+    if (isPerplexity) {
+      requestBody.tool_choice = "required";
+    } else {
+      requestBody.tool_choice = options.tool_choice;
+    }
   }
 
   const response = await fetch(config.endpoint, {
