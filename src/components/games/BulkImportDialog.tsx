@@ -417,6 +417,7 @@ export function BulkImportDialog({
     if (mode === "csv") {
       // Parse CSV (existing demo logic)
       const parseCSV = (data: string): Record<string, string>[] => {
+        if (!data || typeof data !== "string") return [];
         const rows: string[][] = [];
         let currentRow: string[] = [];
         let currentField = "";
@@ -482,7 +483,7 @@ export function BulkImportDialog({
         return result;
       };
       
-      const parsedRows = parseCSV(csvData);
+      const parsedRows = parseCSV(csvData || "");
       
       const parseBool = (val: string | undefined): boolean => {
         if (!val) return false;
