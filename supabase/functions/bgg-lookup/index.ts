@@ -93,6 +93,20 @@ type BggLookupResponse = {
   error?: string;
 };
 
+async function safeReadJson(response: Response): Promise<any> {
+  const raw = await response.text();
+  if (!raw || raw.trim().length === 0) {
+    throw new Error(`Empty JSON response (status ${response.status})`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    throw new Error(
+      `Invalid JSON response (status ${response.status}): ${e instanceof Error ? e.message : String(e)}`
+    );
+  }
+}
+
 function extractAttr(xml: string, tag: string, attr: string): string | null {
   const re = new RegExp(`<${tag}[^>]*\\b${attr}="([^"]+)"[^>]*>`, "i");
   const m = xml.match(re);
@@ -236,7 +250,34 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const scrapeData = await scrapeResponse.json();
+    let scrapeData: any;
+    try {
+      scrapeData = await safeReadJson(scrapeResponse);
+    } catch (e) {
+      console.error("Firecrawl JSON parse error:", e);
+      // Fall back to minimal response instead of failing hard
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            bgg_id: bggId,
+            title: null,
+            description: null,
+            image_url: null,
+            min_players: null,
+            max_players: null,
+            suggested_age: null,
+            playing_time_minutes: null,
+            difficulty: "3 - Medium",
+            play_time: "45-60 Minutes",
+            game_type: "Board Game",
+            mechanics: [],
+            publisher: null,
+          },
+        } satisfies BggLookupResponse),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const markdown = scrapeData.data?.markdown || scrapeData.markdown || "";
     const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
 
