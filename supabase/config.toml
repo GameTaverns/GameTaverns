@@ -44,3 +44,60 @@ verify_jwt = false
 
 [functions.main]
 verify_jwt = false
+
+[functions.bulk-import]
+verify_jwt = false
+
+[functions.manage-account]
+verify_jwt = false
+
+[functions.rate-game]
+verify_jwt = false
+
+[functions.wishlist]
+verify_jwt = false
+
+[functions.send-message]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.bgg-import]
+verify_jwt = false
+
+[functions.bgg-lookup]
+verify_jwt = false
+
+[functions.image-proxy]
+verify_jwt = false
+
+[functions.refresh-images]
+verify_jwt = false
+
+[functions.condense-descriptions]
+verify_jwt = false
+
+[functions.game-import]
+verify_jwt = false
+
+[functions.sync-achievements]
+verify_jwt = false
+
+[functions.decrypt-messages]
+verify_jwt = false
+
+[functions.resolve-username]
+verify_jwt = false
+
+[functions.totp-setup]
+verify_jwt = false
+
+[functions.totp-verify]
+verify_jwt = false
+
+[functions.totp-status]
+verify_jwt = false
+
+[functions.totp-disable]
+verify_jwt = false
