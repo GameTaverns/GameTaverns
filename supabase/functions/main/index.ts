@@ -1510,19 +1510,25 @@ type GameToImport = {
 };
 
 async function handleBulkImport(req: Request): Promise<Response> {
+  console.log("[BulkImport] Handler started");
   try {
     const authHeader = req.headers.get("Authorization");
+    console.log("[BulkImport] Auth header present:", !!authHeader);
     if (!authHeader?.startsWith("Bearer ")) {
+      console.log("[BulkImport] FAIL: No auth header");
       return new Response(JSON.stringify({ success: false, error: "Authentication required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    console.log("[BulkImport] Supabase URL:", supabaseUrl?.slice(0, 30) + "...");
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
     const { data: { user }, error: userError } = await userClient.auth.getUser();
+    console.log("[BulkImport] User:", user?.id, "Error:", userError?.message);
     if (userError || !user) {
+      console.log("[BulkImport] FAIL: Invalid auth, userError:", userError);
       return new Response(JSON.stringify({ success: false, error: "Invalid authentication" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const userId = user.id;
@@ -1531,14 +1537,18 @@ async function handleBulkImport(req: Request): Promise<Response> {
 
     const { data: roleData } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
     const { data: libraryData } = await supabaseAdmin.from("libraries").select("id").eq("owner_id", userId).maybeSingle();
+    console.log("[BulkImport] Role:", roleData, "Library:", libraryData);
     if (!roleData && !libraryData) {
+      console.log("[BulkImport] FAIL: No role and no library");
       return new Response(JSON.stringify({ success: false, error: "You must own a library to import games" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const body = await req.json();
     const { mode, library_id, csv_data, default_options } = body;
+    console.log("[BulkImport] Mode:", mode, "library_id:", library_id, "csv_data length:", csv_data?.length);
     const targetLibraryId = library_id || libraryData?.id;
     if (!targetLibraryId) {
+      console.log("[BulkImport] FAIL: No library specified");
       return new Response(JSON.stringify({ success: false, error: "No library specified" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -1546,7 +1556,9 @@ async function handleBulkImport(req: Request): Promise<Response> {
 
     if (mode === "csv" && csv_data) {
       const rows = parseCSV(csv_data);
+      console.log("[BulkImport] Parsed rows:", rows.length);
       const isBGGExport = rows.length > 0 && rows[0].objectname !== undefined;
+      console.log("[BulkImport] Is BGG export:", isBGGExport);
       for (const row of rows) {
         const title = row.title || row.name || row.game || row["game name"] || row["game title"] || row.objectname;
         if (isBGGExport && row.own !== "1") continue;
@@ -1600,7 +1612,9 @@ async function handleBulkImport(req: Request): Promise<Response> {
           });
         }
       }
+      console.log("[BulkImport] Games to import:", gamesToImport.length);
     } else {
+      console.log("[BulkImport] FAIL: Not CSV mode or no csv_data. mode=", mode, "csv_data present:", !!csv_data);
       return new Response(JSON.stringify({ success: false, error: "Only CSV mode is supported in self-hosted" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
