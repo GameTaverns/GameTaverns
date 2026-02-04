@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useMemo, useCallback, t
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 import { computeAuthStorageKey } from "@/lib/authStorageKey";
+import { readSharedAuthTokens, writeSharedAuthTokens, clearSharedAuthTokens } from "@/lib/sharedAuthCookie";
 import type { User, Session } from "@supabase/supabase-js";
 
 type SelfHostedMe = {
@@ -299,6 +300,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !nextSession)) {
         clearAuthStorage();
         adminRoleCache.clear();
+        clearSharedAuthTokens();
+      }
+
+      // Keep a minimal shared cookie in sync so auth can be carried across
+      // gametaverns.com <-> *.gametaverns.com.
+      if (nextSession?.access_token && nextSession?.refresh_token) {
+        writeSharedAuthTokens({
+          access_token: nextSession.access_token,
+          refresh_token: nextSession.refresh_token,
+          expires_at: (nextSession as any)?.expires_at ?? null,
+        });
+      } else if (event === "SIGNED_OUT") {
+        clearSharedAuthTokens();
       }
       applySession(nextSession);
     });
@@ -353,9 +367,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     if (typeof window !== "undefined") {
-      const storedSession = readStoredSession();
-      applySession(storedSession);
-      verifyUserExists(storedSession);
+      const bootstrap = async () => {
+        let storedSession = readStoredSession();
+
+        // If we don't have localStorage session on this subdomain, try to hydrate
+        // it from the shared cookie set on the apex domain.
+        if (!storedSession) {
+          const shared = readSharedAuthTokens();
+          if (shared?.access_token && shared?.refresh_token && !isTokenExpired(shared.access_token, shared.expires_at ?? null)) {
+            try {
+              await supabase.auth.setSession({
+                access_token: shared.access_token,
+                refresh_token: shared.refresh_token,
+              });
+              // onAuthStateChange will run applySession; still set a fallback read.
+              storedSession = readStoredSession();
+            } catch {
+              // Ignore and fall back to anonymous.
+            }
+          }
+        }
+
+        applySession(storedSession);
+        verifyUserExists(storedSession);
+      };
+
+      bootstrap();
     } else {
       setLoading(false);
     }
