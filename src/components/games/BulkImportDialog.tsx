@@ -127,6 +127,7 @@ export function BulkImportDialog({
 
   // Common options
   const [enhanceWithBgg, setEnhanceWithBgg] = useState(true);
+  const [enhanceWithAi, setEnhanceWithAi] = useState(false);
   const [locationRoom, setLocationRoom] = useState("");
   const [locationShelf, setLocationShelf] = useState("");
   const [locationMisc, setLocationMisc] = useState("");
@@ -157,6 +158,7 @@ export function BulkImportDialog({
     setLocationRoom("");
     setLocationShelf("");
     setLocationMisc("");
+    setEnhanceWithAi(false);
     setResult(null);
     setProgress(null);
   };
@@ -171,6 +173,7 @@ export function BulkImportDialog({
         mode,
         library_id: library?.id,
         enhance_with_bgg: enhanceWithBgg,
+        enhance_with_ai: enhanceWithAi,
         default_options: {
           location_room: locationRoom.trim() || null,
           location_shelf: locationShelf.trim() || null,
@@ -878,7 +881,19 @@ https://boardgamegeek.com/boardgame/9209/ticket-to-ride`}
                       disabled={isImporting}
                     />
                     <Label htmlFor="enhance-bgg" className="cursor-pointer">
-                      Enhance with BGG data (descriptions, images, player counts, etc.)
+                      Fetch images &amp; basic data from BGG (fast, recommended)
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="enhance-ai"
+                      checked={enhanceWithAi}
+                      onCheckedChange={(checked) => setEnhanceWithAi(!!checked)}
+                      disabled={isImporting || !enhanceWithBgg}
+                    />
+                    <Label htmlFor="enhance-ai" className={`cursor-pointer ${!enhanceWithBgg ? "text-muted-foreground" : ""}`}>
+                      Generate rich AI descriptions (slower, ~8s per game)
                     </Label>
                   </div>
 
