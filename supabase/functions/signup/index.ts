@@ -191,46 +191,82 @@ async function handler(req: Request): Promise<Response> {
       });
     }
 
-    // Best-effort profile row (non-fatal if it already exists)
-    await supabase.from("user_profiles").upsert({
-      user_id: userId,
-      display_name: displayName || email.split("@")[0],
-      username: username?.toLowerCase() || null,
-    }, { onConflict: "user_id" });
+    // Helper to rollback user on failure
+    const rollbackUser = async () => {
+      console.error(`Rolling back user ${userId} due to signup failure`);
+      await supabase.from("user_profiles").delete().eq("user_id", userId);
+      await supabase.from("email_confirmation_tokens").delete().eq("user_id", userId);
+      await supabase.auth.admin.deleteUser(userId);
+    };
 
-    // Store token and send email
-    const token = generateSecureToken();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-    await supabase
-      .from("email_confirmation_tokens")
-      .delete()
-      .eq("email", email.toLowerCase());
-
-    const { error: tokenError } = await supabase
-      .from("email_confirmation_tokens")
-      .insert({
+    try {
+      // Create profile row
+      const { error: profileError } = await supabase.from("user_profiles").upsert({
         user_id: userId,
-        email: email.toLowerCase(),
-        token,
-        expires_at: expiresAt.toISOString(),
-      });
+        display_name: displayName || email.split("@")[0],
+        username: username?.toLowerCase() || null,
+      }, { onConflict: "user_id" });
 
-    if (tokenError) {
-      return new Response(JSON.stringify({ error: "Failed to create confirmation token" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (profileError) {
+        console.error("Profile creation failed:", profileError);
+        await rollbackUser();
+        return new Response(JSON.stringify({ error: "Failed to create user profile" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Store token
+      const token = generateSecureToken();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await supabase
+        .from("email_confirmation_tokens")
+        .delete()
+        .eq("email", email.toLowerCase());
+
+      const { error: tokenError } = await supabase
+        .from("email_confirmation_tokens")
+        .insert({
+          user_id: userId,
+          email: email.toLowerCase(),
+          token,
+          expires_at: expiresAt.toISOString(),
+        });
+
+      if (tokenError) {
+        console.error("Token creation failed:", tokenError);
+        await rollbackUser();
+        return new Response(JSON.stringify({ error: "Failed to create confirmation token" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Send email
+      const baseUrl = redirectUrl || "https://gametaverns.com";
+      const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
+      
+      try {
+        await sendConfirmationEmail({ email, confirmUrl });
+      } catch (emailError) {
+        console.error("Email sending failed:", emailError);
+        await rollbackUser();
+        return new Response(JSON.stringify({ error: "Failed to send confirmation email. Please try again." }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Confirmation email sent" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    } catch (innerError) {
+      console.error("Signup inner error:", innerError);
+      await rollbackUser();
+      throw innerError;
     }
-
-    const baseUrl = redirectUrl || "https://gametaverns.com";
-    const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
-    await sendConfirmationEmail({ email, confirmUrl });
-
-    return new Response(
-      JSON.stringify({ success: true, message: "Confirmation email sent" }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
   } catch (error: any) {
     const msg = String(error?.message || error);
     return new Response(JSON.stringify({ error: msg }), {
