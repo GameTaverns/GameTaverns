@@ -36,6 +36,13 @@ type ImportResult = {
   imported: number;
   failed: number;
   errors: string[];
+  errorSummary?: string;
+  failureBreakdown?: {
+    already_exists: number;
+    missing_title: number;
+    create_failed: number;
+    exception: number;
+  };
   games: { title: string; id?: string }[];
 };
 
@@ -45,6 +52,10 @@ function normalizeImportResult(data: any): ImportResult {
     imported: Number(data?.imported ?? 0),
     failed: Number(data?.failed ?? 0),
     errors: Array.isArray(data?.errors) ? data.errors : [],
+    errorSummary: typeof data?.errorSummary === "string" ? data.errorSummary : undefined,
+    failureBreakdown: data?.failureBreakdown && typeof data.failureBreakdown === "object"
+      ? data.failureBreakdown
+      : undefined,
     games: Array.isArray(data?.games) ? data.games : [],
   };
 }
@@ -355,6 +366,8 @@ export function BulkImportDialog({
                     imported: data.imported || 0,
                     failed: data.failed || 0,
                     errors: data.errors || [],
+                    errorSummary: (data as any).errorSummary,
+                    failureBreakdown: (data as any).failureBreakdown,
                     games: data.games || [],
                   });
 
@@ -417,6 +430,32 @@ export function BulkImportDialog({
       setProgress(null);
       abortControllerRef.current = null;
     }
+  };
+
+  const renderFailureSummary = (r: ImportResult) => {
+    if (!r.failed) return null;
+    const b = r.failureBreakdown;
+    if (!b && !r.errorSummary) return null;
+
+    return (
+      <Alert className="mt-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Why some games failed</AlertTitle>
+        <AlertDescription>
+          {r.errorSummary ? (
+            <p className="text-sm">{r.errorSummary}</p>
+          ) : null}
+          {b ? (
+            <ul className="mt-2 list-disc pl-5 text-sm space-y-1">
+              <li>Already existed: {b.already_exists}</li>
+              <li>Missing title: {b.missing_title}</li>
+              <li>Create failed: {b.create_failed}</li>
+              <li>Exceptions: {b.exception}</li>
+            </ul>
+          ) : null}
+        </AlertDescription>
+      </Alert>
+    );
   };
 
   // Demo import handler (extracted for clarity)
@@ -906,6 +945,8 @@ https://boardgamegeek.com/boardgame/9209/ticket-to-ride`}
                       <span className="text-destructive">✕ {result.failed} failed</span>
                     )}
                   </div>
+
+                  {renderFailureSummary(result)}
 
                   {(result.errors?.length ?? 0) > 0 && (
                     <div className="bg-muted rounded p-3 max-h-32 overflow-y-auto">
