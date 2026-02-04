@@ -243,23 +243,26 @@ async function handler(req: Request): Promise<Response> {
         });
       }
 
-      // Send email
+      // Build confirmation URL
       const baseUrl = redirectUrl || "https://gametaverns.com";
       const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
       
-      try {
-        await sendConfirmationEmail({ email, confirmUrl });
-      } catch (emailError) {
-        console.error("Email sending failed:", emailError);
-        await rollbackUser();
-        return new Response(JSON.stringify({ error: "Failed to send confirmation email. Please try again." }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // Fire-and-forget email sending - don't block the response
+      // This prevents 504 timeouts when SMTP is slow or unreachable
+      (async () => {
+        try {
+          await sendConfirmationEmail({ email, confirmUrl });
+          console.log(`Confirmation email sent successfully to ${email}`);
+        } catch (emailError) {
+          // Log but don't rollback - user can request resend from login page
+          console.error(`Failed to send confirmation email to ${email}:`, emailError);
+        }
+      })();
 
+      // Return success immediately - user is created, token is stored
+      // Email delivery happens in background
       return new Response(
-        JSON.stringify({ success: true, message: "Confirmation email sent" }),
+        JSON.stringify({ success: true, message: "Account created. Check your email to confirm." }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     } catch (innerError) {
