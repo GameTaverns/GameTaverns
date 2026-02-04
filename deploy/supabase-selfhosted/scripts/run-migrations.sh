@@ -33,6 +33,13 @@ set -a
 source "$INSTALL_DIR/.env"
 set +a
 
+# Some Postgres images require password auth even for local socket connections.
+# The self-hosted stack stores the DB superuser password in POSTGRES_PASSWORD.
+# We pass it explicitly to avoid psql hanging on an interactive password prompt.
+if [ -n "${POSTGRES_PASSWORD:-}" ]; then
+    export PGPASSWORD="$POSTGRES_PASSWORD"
+fi
+
 echo ""
 echo "=============================================="
 echo "  Running Database Migrations"
@@ -100,8 +107,11 @@ for migration in "${MIGRATION_FILES[@]}"; do
         echo -n "Running: $migration ... "
         
         # Run migration and capture output and exit code
-        OUTPUT=$(docker compose exec -T db psql -U supabase_admin -d postgres -f "/docker-entrypoint-initdb.d/$migration" 2>&1) || true
+        set +e
+        OUTPUT=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+          psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres -f "/docker-entrypoint-initdb.d/$migration" 2>&1)
         EXIT_CODE=$?
+        set -e
         
         # Check for actual errors (not just notices) - case insensitive
         if echo "$OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
@@ -123,6 +133,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
                 ((WARNING_COUNT++))
             else
                 echo -e "${RED}✗ Error (exit code: $EXIT_CODE)${NC}"
+                echo "    $(echo "$OUTPUT" | tail -n 3 | tr '\n' ' ' | sed 's/  */ /g')"
                 ((ERROR_COUNT++))
             fi
         else
