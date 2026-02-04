@@ -134,10 +134,20 @@ export default async function handler(req: Request): Promise<Response> {
           );
         }
 
-        // Delete user roles first
+        // Best-effort cleanup of dependent rows.
+        // NOTE: In some self-hosted schemas user_profiles.user_id is not a FK to auth.users,
+        // so deleting auth.users may NOT cascade and the UNIQUE(username) can remain stuck.
+        // Explicitly deleting the profile row prevents "username already taken" on re-signup.
         await adminClient.from("user_roles").delete().eq("user_id", userId);
+        await adminClient.from("library_members").delete().eq("user_id", userId);
+        await adminClient.from("library_followers").delete().eq("follower_user_id", userId);
+        await adminClient.from("notification_preferences").delete().eq("user_id", userId);
+        await adminClient.from("user_totp_settings").delete().eq("user_id", userId);
+        await adminClient.from("email_confirmation_tokens").delete().eq("user_id", userId);
+        await adminClient.from("password_reset_tokens").delete().eq("user_id", userId);
+        await adminClient.from("user_profiles").delete().eq("user_id", userId);
 
-        // Delete the user
+        // Finally delete the auth user
         const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
 
         if (deleteError) {
