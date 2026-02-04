@@ -80,22 +80,15 @@ export default function Dashboard() {
     enabled: !!library?.id,
   });
   
-  const { data: playCount } = useQuery({
+const { data: playCount } = useQuery({
     queryKey: ["library-play-count", library?.id],
     queryFn: async () => {
       if (!library?.id) return 0;
-      const { data: games } = await supabase
-        .from("games")
-        .select("id")
-        .eq("library_id", library.id);
-      
-      if (!games || games.length === 0) return 0;
-      
-      const gameIds = games.map(g => g.id);
+      // Use join filtering to avoid long URL with game IDs
       const { count, error } = await supabase
         .from("game_sessions")
-        .select("*", { count: "exact", head: true })
-        .in("game_id", gameIds);
+        .select("*, games!inner(library_id)", { count: "exact", head: true })
+        .eq("games.library_id", library.id);
       
       if (error) throw error;
       return count || 0;

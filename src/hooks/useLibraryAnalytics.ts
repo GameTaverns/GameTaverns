@@ -31,7 +31,7 @@ export interface RatingDistribution {
 }
 
 export function useLibraryAnalytics(libraryId: string | null) {
-  // Summary stats
+  // Summary stats - uses join filtering to avoid long URL with game IDs
   const summaryQuery = useQuery({
     queryKey: ["library-analytics-summary", libraryId],
     queryFn: async (): Promise<LibraryAnalytics> => {
@@ -44,15 +44,7 @@ export function useLibraryAnalytics(libraryId: string | null) {
         .eq("library_id", libraryId)
         .eq("is_expansion", false);
 
-      // Get game IDs for this library
-      const { data: games } = await supabase
-        .from("games")
-        .select("id")
-        .eq("library_id", libraryId);
-
-      const gameIds = games?.map(g => g.id) || [];
-
-      if (gameIds.length === 0) {
+      if (!totalGames || totalGames === 0) {
         return {
           totalGames: 0,
           totalPlays: 0,
@@ -64,51 +56,61 @@ export function useLibraryAnalytics(libraryId: string | null) {
         };
       }
 
-      // Get play stats
-      const { data: sessions } = await supabase
+      // Get play count using join filtering
+      const { count: totalPlays } = await supabase
         .from("game_sessions")
-        .select("id")
-        .in("game_id", gameIds);
+        .select("*, games!inner(library_id)", { count: "exact", head: true })
+        .eq("games.library_id", libraryId);
 
-      const sessionIds = sessions?.map(s => s.id) || [];
+      // Get session IDs via join for player lookup (limit to recent for performance)
+      const { data: recentSessions } = await supabase
+        .from("game_sessions")
+        .select("id, games!inner(library_id)")
+        .eq("games.library_id", libraryId)
+        .order("played_at", { ascending: false })
+        .limit(1000);
 
-      // Get unique players
-      const { data: players } = await supabase
-        .from("game_session_players")
-        .select("player_name")
-        .in("session_id", sessionIds);
+      const sessionIds = recentSessions?.map(s => s.id) || [];
 
-      const uniquePlayerNames = new Set(players?.map(p => p.player_name) || []);
+      // Get unique players from sessions
+      let uniquePlayerNames = new Set<string>();
+      if (sessionIds.length > 0) {
+        const { data: players } = await supabase
+          .from("game_session_players")
+          .select("player_name")
+          .in("session_id", sessionIds);
+        uniquePlayerNames = new Set(players?.map(p => p.player_name) || []);
+      }
 
-      // Get ratings summary
+      // Get ratings summary using join filtering
       const { data: ratingsSummary } = await supabase
         .from("game_ratings_summary")
-        .select("*")
-        .in("game_id", gameIds);
+        .select("*, games!inner(library_id)")
+        .eq("games.library_id", libraryId);
 
       const totalRatings = ratingsSummary?.reduce((sum, r) => sum + (r.rating_count || 0), 0) || 0;
       const weightedSum = ratingsSummary?.reduce((sum, r) => 
         sum + ((r.average_rating || 0) * (r.rating_count || 0)), 0) || 0;
       const averageRating = totalRatings > 0 ? weightedSum / totalRatings : 0;
 
-      // Get wishlist votes
+      // Get wishlist votes using join filtering
       const { data: wishlistSummary } = await supabase
         .from("game_wishlist_summary")
-        .select("vote_count")
-        .in("game_id", gameIds);
+        .select("vote_count, games!inner(library_id)")
+        .eq("games.library_id", libraryId);
 
       const wishlistVotes = wishlistSummary?.reduce((sum, w) => sum + (Number(w.vote_count) || 0), 0) || 0;
 
-      // Get unread messages
+      // Get unread messages using join filtering
       const { count: unreadMessages } = await supabase
         .from("game_messages")
-        .select("*", { count: "exact", head: true })
-        .in("game_id", gameIds)
+        .select("*, games!inner(library_id)", { count: "exact", head: true })
+        .eq("games.library_id", libraryId)
         .eq("is_read", false);
 
       return {
         totalGames: totalGames || 0,
-        totalPlays: sessions?.length || 0,
+        totalPlays: totalPlays || 0,
         uniquePlayers: uniquePlayerNames.size,
         totalRatings,
         averageRating: Math.round(averageRating * 10) / 10,
@@ -119,7 +121,7 @@ export function useLibraryAnalytics(libraryId: string | null) {
     enabled: !!libraryId,
   });
 
-  // Play trends (last 30 days)
+  // Play trends (last 30 days) - uses join filtering
   const trendsQuery = useQuery({
     queryKey: ["library-analytics-trends", libraryId],
     queryFn: async (): Promise<PlayTrend[]> => {
@@ -127,22 +129,11 @@ export function useLibraryAnalytics(libraryId: string | null) {
 
       const thirtyDaysAgo = subDays(new Date(), 30);
 
-      // Get game IDs
-      const { data: games } = await supabase
-        .from("games")
-        .select("id")
-        .eq("library_id", libraryId);
-
-      const gameIds = games?.map(g => g.id) || [];
-
-      if (gameIds.length === 0) {
-        return [];
-      }
-
+      // Use join filtering to avoid long URL
       const { data: sessions } = await supabase
         .from("game_sessions")
-        .select("played_at")
-        .in("game_id", gameIds)
+        .select("played_at, games!inner(library_id)")
+        .eq("games.library_id", libraryId)
         .gte("played_at", thirtyDaysAgo.toISOString())
         .order("played_at", { ascending: true });
 
@@ -222,29 +213,17 @@ export function useLibraryAnalytics(libraryId: string | null) {
     enabled: !!libraryId,
   });
 
-  // Rating distribution
+  // Rating distribution - uses join filtering
   const ratingDistributionQuery = useQuery({
     queryKey: ["library-analytics-rating-distribution", libraryId],
     queryFn: async (): Promise<RatingDistribution[]> => {
       if (!libraryId) throw new Error("No library ID");
 
-      // Get game IDs
-      const { data: games } = await supabase
-        .from("games")
-        .select("id")
-        .eq("library_id", libraryId);
-
-      const gameIds = games?.map(g => g.id) || [];
-
-      if (gameIds.length === 0) {
-        return [1, 2, 3, 4, 5].map(rating => ({ rating, count: 0 }));
-      }
-
-      // Get all ratings for library games
+      // Use join filtering to avoid long URL
       const { data: ratings } = await supabase
         .from("game_ratings_library_view")
-        .select("rating")
-        .in("game_id", gameIds);
+        .select("rating, games!inner(library_id)")
+        .eq("games.library_id", libraryId);
 
       // Count by rating
       const distribution = new Map<number, number>();
