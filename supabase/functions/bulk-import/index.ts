@@ -62,6 +62,13 @@ type BulkImportRequest = {
   };
 };
 
+type FailureBreakdown = {
+  already_exists: number;
+  missing_title: number;
+  create_failed: number;
+  exception: number;
+};
+
 // Parse CSV data - handles multi-line quoted fields properly
 function parseCSV(csvData: string): Record<string, string>[] {
   const rows: string[][] = [];
@@ -900,6 +907,13 @@ export default async function handler(req: Request): Promise<Response> {
         const errors: string[] = [];
         const importedGames: { title: string; id?: string }[] = [];
 
+        const failureBreakdown: FailureBreakdown = {
+          already_exists: 0,
+          missing_title: 0,
+          create_failed: 0,
+          exception: 0,
+        };
+
         // Send initial progress
         sendProgress({ 
           type: "start", 
@@ -1069,6 +1083,7 @@ export default async function handler(req: Request): Promise<Response> {
 
             if (!gameData.title) {
               failed++;
+              failureBreakdown.missing_title++;
               errors.push(`Could not determine title for BGG ID: ${gameInput.bgg_id}`);
               continue;
             }
@@ -1083,6 +1098,7 @@ export default async function handler(req: Request): Promise<Response> {
 
             if (existing) {
               failed++;
+              failureBreakdown.already_exists++;
               errors.push(`"${gameData.title}" already exists`);
               continue;
             }
@@ -1183,6 +1199,7 @@ export default async function handler(req: Request): Promise<Response> {
 
             if (gameError || !newGame) {
               failed++;
+              failureBreakdown.create_failed++;
               errors.push(`Failed to create "${gameData.title}": ${gameError?.message}`);
               continue;
             }
@@ -1243,6 +1260,7 @@ export default async function handler(req: Request): Promise<Response> {
           } catch (e) {
             console.error("Game import error:", e);
             failed++;
+            failureBreakdown.exception++;
             errors.push(`Error importing "${gameInput.title || gameInput.bgg_id}": ${e instanceof Error ? e.message : "Unknown error"}`);
             
             // Update progress even on error
@@ -1270,12 +1288,26 @@ export default async function handler(req: Request): Promise<Response> {
           .eq("id", jobId);
 
         // Send final result
+        const summaryParts: string[] = [];
+        if (failureBreakdown.already_exists) summaryParts.push(`${failureBreakdown.already_exists} already existed`);
+        if (failureBreakdown.missing_title) summaryParts.push(`${failureBreakdown.missing_title} missing title`);
+        if (failureBreakdown.create_failed) summaryParts.push(`${failureBreakdown.create_failed} create failed`);
+        if (failureBreakdown.exception) summaryParts.push(`${failureBreakdown.exception} exceptions`);
+        const errorSummary = summaryParts.length ? summaryParts.join(", ") : "";
+
+        console.log(
+          `[BulkImport] Complete: imported=${imported} failed=${failed} breakdown=${JSON.stringify(failureBreakdown)}`
+        );
+
         sendProgress({ 
           type: "complete", 
           success: true,
           imported,
           failed,
-          errors: errors.slice(0, 20),
+          // Keep payload small for SSE, but give enough info for debugging.
+          errors: errors.slice(0, 50),
+          failureBreakdown,
+          errorSummary,
           games: importedGames,
         });
 
