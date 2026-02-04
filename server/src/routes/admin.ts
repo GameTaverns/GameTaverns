@@ -244,6 +244,56 @@ router.post('/condense', async (req: Request, res: Response) => {
   }
 });
 
+// Get platform analytics
+router.get('/analytics', async (req: Request, res: Response) => {
+  try {
+    // Get user counts
+    const totalUsersResult = await pool.query('SELECT COUNT(*) as count FROM user_profiles');
+    const totalUsers = parseInt(totalUsersResult.rows[0]?.count || '0', 10);
+
+    // Get users created in last 7 days
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const usersThisWeekResult = await pool.query(
+      'SELECT COUNT(*) as count FROM user_profiles WHERE created_at >= $1',
+      [weekAgo.toISOString()]
+    );
+    const usersThisWeek = parseInt(usersThisWeekResult.rows[0]?.count || '0', 10);
+
+    // Get library counts
+    const totalLibrariesResult = await pool.query('SELECT COUNT(*) as count FROM libraries');
+    const totalLibraries = parseInt(totalLibrariesResult.rows[0]?.count || '0', 10);
+
+    const activeLibrariesResult = await pool.query(
+      'SELECT COUNT(*) as count FROM libraries WHERE is_active = true'
+    );
+    const activeLibraries = parseInt(activeLibrariesResult.rows[0]?.count || '0', 10);
+
+    const premiumLibrariesResult = await pool.query(
+      'SELECT COUNT(*) as count FROM libraries WHERE is_premium = true'
+    );
+    const premiumLibraries = parseInt(premiumLibrariesResult.rows[0]?.count || '0', 10);
+
+    const librariesThisWeekResult = await pool.query(
+      'SELECT COUNT(*) as count FROM libraries WHERE created_at >= $1',
+      [weekAgo.toISOString()]
+    );
+    const librariesThisWeek = parseInt(librariesThisWeekResult.rows[0]?.count || '0', 10);
+
+    res.json({
+      totalUsers,
+      totalLibraries,
+      activeLibraries,
+      premiumLibraries,
+      usersThisWeek,
+      librariesThisWeek,
+    });
+  } catch (error) {
+    console.error('Get analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
 // Get site settings
 router.get('/settings', async (req: Request, res: Response) => {
   try {

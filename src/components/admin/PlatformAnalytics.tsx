@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Users, Library, Gamepad2, Star, TrendingUp } from "lucide-react";
 
@@ -16,6 +16,12 @@ export function PlatformAnalytics() {
   const { data: analytics, isLoading } = useQuery({
     queryKey: ["admin-analytics"],
     queryFn: async (): Promise<AnalyticsData> => {
+      // Self-hosted mode: use Express API
+      if (isSelfHostedMode()) {
+        return apiClient.get<AnalyticsData>('/admin/analytics');
+      }
+
+      // Cloud mode: query Supabase directly
       // Get user counts
       const { count: totalUsers } = await supabase
         .from("user_profiles")
