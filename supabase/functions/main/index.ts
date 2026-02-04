@@ -1645,11 +1645,16 @@ async function handleBulkImport(req: Request): Promise<Response> {
     }
 
     const totalGames = gamesToImport.length;
+    console.log("[BulkImport] Total games to process:", totalGames);
+    console.log("[BulkImport] Creating import job for library:", targetLibraryId);
+    
     const { data: job, error: jobError } = await supabaseAdmin.from("import_jobs").insert({ library_id: targetLibraryId, status: "processing", total_items: totalGames, processed_items: 0, successful_items: 0, failed_items: 0 }).select("id").single();
     if (jobError || !job) {
+      console.error("[BulkImport] Failed to create import job:", jobError);
       return new Response(JSON.stringify({ success: false, error: "Failed to create import job" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const jobId = job.id;
+    console.log("[BulkImport] Created job:", jobId, "- starting SSE stream");
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -1659,16 +1664,33 @@ async function handleBulkImport(req: Request): Promise<Response> {
         let failed = 0;
         const errors: string[] = [];
         const importedGames: { title: string; id?: string }[] = [];
+        
+        // Track failure reasons
+        const failureBreakdown = { already_exists: 0, missing_title: 0, create_failed: 0, exception: 0 };
+        
+        console.log("[BulkImport] Sending SSE start event");
         sendProgress({ type: "start", jobId, total: totalGames });
 
+        console.log("[BulkImport] Beginning game loop");
         for (let i = 0; i < gamesToImport.length; i++) {
           const gameInput = gamesToImport[i];
+          console.log(`[BulkImport] Processing game ${i + 1}/${totalGames}: ${gameInput.title}`);
           try {
             sendProgress({ type: "progress", current: i + 1, total: totalGames, imported, failed, currentGame: gameInput.title, phase: "importing" });
-            if (!gameInput.title) { failed++; errors.push(`Could not determine title for game`); continue; }
+            if (!gameInput.title) { 
+              failed++; 
+              failureBreakdown.missing_title++;
+              errors.push(`Could not determine title for game`); 
+              continue; 
+            }
 
             const { data: existing } = await supabaseAdmin.from("games").select("id, title").eq("title", gameInput.title).eq("library_id", targetLibraryId).maybeSingle();
-            if (existing) { failed++; errors.push(`"${gameInput.title}" already exists`); continue; }
+            if (existing) { 
+              failed++; 
+              failureBreakdown.already_exists++;
+              errors.push(`"${gameInput.title}" already exists`); 
+              continue; 
+            }
 
             const mechanicIds: string[] = [];
             if (gameInput.mechanics?.length) {
@@ -1728,7 +1750,13 @@ async function handleBulkImport(req: Request): Promise<Response> {
               in_base_game_box: gameInput.in_base_game_box ?? false,
             }).select("id, title").single();
 
-            if (gameError || !newGame) { failed++; errors.push(`Failed to create "${gameInput.title}": ${gameError?.message}`); continue; }
+            if (gameError || !newGame) { 
+              failed++; 
+              failureBreakdown.create_failed++;
+              errors.push(`Failed to create "${gameInput.title}": ${gameError?.message}`); 
+              console.log(`[BulkImport] Failed to create game: ${gameInput.title} - ${gameError?.message}`);
+              continue; 
+            }
 
             if (mechanicIds.length > 0) {
               await supabaseAdmin.from("game_mechanics").insert(mechanicIds.map(mid => ({ game_id: newGame.id, mechanic_id: mid })));
@@ -1743,22 +1771,24 @@ async function handleBulkImport(req: Request): Promise<Response> {
             await supabaseAdmin.from("import_jobs").update({ processed_items: i + 1, successful_items: imported, failed_items: failed }).eq("id", jobId);
             sendProgress({ type: "progress", current: i + 1, total: totalGames, imported, failed, currentGame: newGame.title, phase: "imported" });
           } catch (e) {
-            console.error("Game import error:", e);
+            console.error("[BulkImport] Game import exception:", e);
             failed++;
+            failureBreakdown.exception++;
             errors.push(`Error importing "${gameInput.title}": ${e instanceof Error ? e.message : "Unknown error"}`);
             sendProgress({ type: "progress", current: i + 1, total: totalGames, imported, failed, currentGame: gameInput.title, phase: "error" });
           }
         }
 
+        console.log("[BulkImport] Loop complete. Imported:", imported, "Failed:", failed, "Breakdown:", JSON.stringify(failureBreakdown));
         await supabaseAdmin.from("import_jobs").update({ status: "completed", processed_items: totalGames, successful_items: imported, failed_items: failed }).eq("id", jobId);
-        sendProgress({ type: "complete", success: true, imported, failed, errors: errors.slice(0, 20), games: importedGames });
+        sendProgress({ type: "complete", success: true, imported, failed, errors: errors.slice(0, 20), games: importedGames, failureBreakdown });
         controller.close();
       },
     });
 
     return new Response(stream, { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" } });
   } catch (e) {
-    console.error("Bulk import error:", e);
+    console.error("[BulkImport] Top-level error:", e);
     return new Response(JSON.stringify({ success: false, error: e instanceof Error ? e.message : "Bulk import failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 }

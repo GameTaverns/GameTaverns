@@ -869,9 +869,12 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const totalGames = gamesToImport.length;
-    console.log(`Processing ${totalGames} games...`);
+    console.log(`[BulkImport] Total games to process: ${totalGames}`);
+    console.log(`[BulkImport] Firecrawl key present: ${!!firecrawlKey}, Enhance with BGG: ${enhance_with_bgg}`);
+    console.log(`[BulkImport] AI configured: ${isAIConfigured()}, Provider: ${getAIProviderName()}`);
 
     // Create import job
+    console.log(`[BulkImport] Creating import job for library: ${targetLibraryId}`);
     const { data: job, error: jobError } = await supabaseAdmin
       .from("import_jobs")
       .insert({
@@ -886,6 +889,7 @@ export default async function handler(req: Request): Promise<Response> {
       .single();
 
     if (jobError || !job) {
+      console.error(`[BulkImport] Failed to create import job:`, jobError);
       return new Response(
         JSON.stringify({ success: false, error: "Failed to create import job" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -893,6 +897,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const jobId = job.id;
+    console.log(`[BulkImport] Created job ${jobId}, starting SSE stream`);
 
     // Use streaming response to keep connection alive
     const encoder = new TextEncoder();
@@ -915,6 +920,7 @@ export default async function handler(req: Request): Promise<Response> {
         };
 
         // Send initial progress
+        console.log(`[BulkImport] Sending SSE start event`);
         sendProgress({ 
           type: "start", 
           jobId, 
@@ -922,8 +928,11 @@ export default async function handler(req: Request): Promise<Response> {
         });
 
         // Process each game
+        console.log(`[BulkImport] Beginning game loop`);
         for (let i = 0; i < gamesToImport.length; i++) {
           const gameInput = gamesToImport[i];
+          console.log(`[BulkImport] Processing game ${i + 1}/${gamesToImport.length}: ${gameInput.title || gameInput.bgg_id}`);
+
           
           try {
             let gameData: {
