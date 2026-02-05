@@ -12,10 +12,37 @@ interface AuthEmailRequest {
   redirectUrl?: string;
 }
 
+const SMTP_SEND_TIMEOUT_MS = 8000;
+
 function generateSecureToken(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<T>((_resolve, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+async function sendEmailSafely(sendFn: () => Promise<void>) {
+  // Never block API responses on SMTP.
+  // We still attempt delivery in the background with a hard timeout.
+  (async () => {
+    try {
+      await withTimeout(sendFn(), SMTP_SEND_TIMEOUT_MS, "SMTP send");
+    } catch (e) {
+      console.error("SMTP send failed (non-blocking):", e);
+    }
+  })();
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -98,30 +125,29 @@ export default async function handler(req: Request): Promise<Response> {
       const baseUrl = redirectUrl || 'https://gametaverns.com';
       const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-      // Create SMTP client
-      // Port 465 = implicit TLS, Port 587 = STARTTLS
-      const client = new SMTPClient({
-        connection: {
-          hostname: smtpHost,
-          port: smtpPort,
-          tls: smtpPort === 465,
-          // For port 587, we need STARTTLS (not implicit TLS)
-          ...(smtpPort === 587 ? { starttls: true } : {}),
-          auth: {
-            username: smtpUser,
-            password: smtpPass,
+      await sendEmailSafely(async () => {
+        const client = new SMTPClient({
+          connection: {
+            hostname: smtpHost,
+            port: smtpPort,
+            tls: smtpPort === 465,
+            // Port 587 = STARTTLS
+            ...(smtpPort === 587 ? { starttls: true } : {}),
+            auth: {
+              username: smtpUser,
+              password: smtpPass,
+            },
           },
-        },
-      });
+        });
 
-      // Send email
-      const fromAddress = `GameTaverns <${smtpFrom}>`;
-      await client.send({
-        from: fromAddress,
-        to: email,
-        subject: "Reset Your GameTaverns Password",
-        content: `Reset your password by visiting: ${resetUrl}`,
-        html: `
+        try {
+          const fromAddress = `GameTaverns <${smtpFrom}>`;
+          await client.send({
+            from: fromAddress,
+            to: email,
+            subject: "Reset Your GameTaverns Password",
+            content: `Reset your password by visiting: ${resetUrl}`,
+            html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -179,10 +205,12 @@ export default async function handler(req: Request): Promise<Response> {
 </body>
 </html>
         `,
+          });
+          console.log(`Password reset email queued for ${email}`);
+        } finally {
+          await client.close();
+        }
       });
-
-      await client.close();
-      console.log(`Password reset email sent to ${email}`);
 
       return new Response(
         JSON.stringify({ success: true, message: "If an account exists, a reset email has been sent" }),
@@ -235,29 +263,28 @@ export default async function handler(req: Request): Promise<Response> {
       const baseUrl = redirectUrl || 'https://gametaverns.com';
       const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
 
-      // Create SMTP client
-      // Port 465 = implicit TLS, Port 587 = STARTTLS
-      const client = new SMTPClient({
-        connection: {
-          hostname: smtpHost,
-          port: smtpPort,
-          tls: smtpPort === 465,
-          ...(smtpPort === 587 ? { starttls: true } : {}),
-          auth: {
-            username: smtpUser,
-            password: smtpPass,
+      await sendEmailSafely(async () => {
+        const client = new SMTPClient({
+          connection: {
+            hostname: smtpHost,
+            port: smtpPort,
+            tls: smtpPort === 465,
+            ...(smtpPort === 587 ? { starttls: true } : {}),
+            auth: {
+              username: smtpUser,
+              password: smtpPass,
+            },
           },
-        },
-      });
+        });
 
-      // Send email
-      const fromAddress = `GameTaverns <${smtpFrom}>`;
-      await client.send({
-        from: fromAddress,
-        to: email,
-        subject: "Confirm Your GameTaverns Account",
-        content: `Confirm your email by visiting: ${confirmUrl}`,
-        html: `
+        try {
+          const fromAddress = `GameTaverns <${smtpFrom}>`;
+          await client.send({
+            from: fromAddress,
+            to: email,
+            subject: "Confirm Your GameTaverns Account",
+            content: `Confirm your email by visiting: ${confirmUrl}`,
+            html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -315,13 +342,15 @@ export default async function handler(req: Request): Promise<Response> {
 </body>
 </html>
         `,
+          });
+          console.log(`Email confirmation queued for ${email}`);
+        } finally {
+          await client.close();
+        }
       });
 
-      await client.close();
-      console.log(`Email confirmation sent to ${email}`);
-
       return new Response(
-        JSON.stringify({ success: true, message: "Confirmation email sent" }),
+        JSON.stringify({ success: true, message: "Confirmation email queued" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
