@@ -188,7 +188,7 @@ export default function Platform() {
             <p className="text-cream/50 text-sm">
               &copy; {new Date().getFullYear()} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
             </p>
-            <nav className="flex gap-6 text-sm">
+            <nav className="flex items-center gap-6 text-sm">
               <Link to="/privacy" className="text-cream/50 hover:text-cream transition-colors">
                 Privacy
               </Link>
@@ -201,6 +201,21 @@ export default function Platform() {
               <Link to="/legal" className="text-cream/50 hover:text-cream transition-colors">
                 Legal
               </Link>
+              {/* BGG Attribution - Required for API usage */}
+              <a 
+                href="https://boardgamegeek.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                title="Game data powered by BoardGameGeek"
+              >
+                <img 
+                  src="https://cf.geekdo-static.com/images/geekdo/bgg_logo.png" 
+                  alt="Powered by BoardGameGeek" 
+                  className="h-5"
+                />
+                <span className="text-xs text-cream/50">Powered by BGG</span>
+              </a>
             </nav>
           </div>
         </div>
