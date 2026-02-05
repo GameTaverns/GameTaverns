@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { Dices } from "lucide-react";
-import { proxiedImageUrl } from "@/lib/utils";
+import ltnLogo from "@/assets/ltn-logo.png";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t bg-card/50 pb-12">
+    <footer className="border-t bg-card/50">
       <div className="container py-8 px-4">
         <div className="grid gap-8 md:grid-cols-4">
           {/* Brand */}
@@ -81,13 +81,13 @@ export function Footer() {
                 href="https://lovethynerd.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="hover:opacity-80 transition-opacity"
                 title="Love Thy Nerd"
               >
                 <img 
-                  src="https://lovethynerd.com/wp-content/uploads/2023/06/LTN-shield-logo-1-1024x1024.png"
+                  src={ltnLogo}
                   alt="Love Thy Nerd" 
-                  className="h-8"
+                  className="h-8 w-8 object-contain"
                 />
               </a>
               
@@ -96,15 +96,10 @@ export function Footer() {
                 href="https://boardgamegeek.com" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity text-xs text-muted-foreground font-medium"
                 title="Game data powered by BoardGameGeek"
               >
-                <img 
-                  src={proxiedImageUrl("https://cf.geekdo-images.com/images/geekdo/bgg_logo.png") || "https://cf.geekdo-static.com/images/geekdo/bgg_logo.png"}
-                  alt="Powered by BoardGameGeek" 
-                  className="h-6"
-                />
-                <span className="text-xs text-muted-foreground">Powered by BGG</span>
+                <span>Powered by BGG</span>
               </a>
             </div>
           </div>
