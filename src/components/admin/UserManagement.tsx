@@ -220,6 +220,7 @@ export function UserManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+     queryClient.invalidateQueries({ queryKey: ["admin-analytics"] });
       toast.success("User deleted permanently");
       setDeleteDialog({ open: false, user: null });
       setDeleteConfirmText("");
