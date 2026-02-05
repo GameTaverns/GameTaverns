@@ -134,18 +134,43 @@ export default async function handler(req: Request): Promise<Response> {
           );
         }
 
-        // Best-effort cleanup of dependent rows.
-        // NOTE: In some self-hosted schemas user_profiles.user_id is not a FK to auth.users,
-        // so deleting auth.users may NOT cascade and the UNIQUE(username) can remain stuck.
-        // Explicitly deleting the profile row prevents "username already taken" on re-signup.
-        await adminClient.from("user_roles").delete().eq("user_id", userId);
-        await adminClient.from("library_members").delete().eq("user_id", userId);
-        await adminClient.from("library_followers").delete().eq("follower_user_id", userId);
-        await adminClient.from("notification_preferences").delete().eq("user_id", userId);
-        await adminClient.from("user_totp_settings").delete().eq("user_id", userId);
-        await adminClient.from("email_confirmation_tokens").delete().eq("user_id", userId);
-        await adminClient.from("password_reset_tokens").delete().eq("user_id", userId);
-        await adminClient.from("user_profiles").delete().eq("user_id", userId);
+        // Cleanup dependent rows with error logging.
+        // The service role key bypasses RLS, so these should all succeed.
+        console.log(`[manage-users] Deleting user ${userId} - starting cleanup...`);
+
+        const cleanupTables = [
+          { table: "user_roles", column: "user_id" },
+          { table: "library_members", column: "user_id" },
+          { table: "library_followers", column: "follower_user_id" },
+          { table: "notification_preferences", column: "user_id" },
+          { table: "user_totp_settings", column: "user_id" },
+          { table: "email_confirmation_tokens", column: "user_id" },
+          { table: "password_reset_tokens", column: "user_id" },
+        ];
+
+        for (const { table, column } of cleanupTables) {
+          const { error } = await adminClient.from(table).delete().eq(column, userId);
+          if (error) {
+            console.error(`[manage-users] Failed to delete from ${table}:`, error.message);
+          }
+        }
+
+        // Critical: Delete user_profiles to release the unique username constraint
+        const { error: profileError, count: profileCount } = await adminClient
+          .from("user_profiles")
+          .delete()
+          .eq("user_id", userId)
+          .select();
+        
+        if (profileError) {
+          console.error(`[manage-users] CRITICAL: Failed to delete user_profiles for ${userId}:`, profileError.message);
+          // Don't proceed if we can't delete the profile - username would remain stuck
+          return new Response(
+            JSON.stringify({ error: `Failed to delete user profile: ${profileError.message}` }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        console.log(`[manage-users] Deleted user_profiles record for ${userId}`);
 
         // Finally delete the auth user
         const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
