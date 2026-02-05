@@ -419,8 +419,13 @@ async function fetchBGGXMLData(bggId: string): Promise<{
 
       // Extract data using regex (simple parsing for XML)
       const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
-      // Description can contain HTML entities like &lt; and line breaks, so match everything until closing tag
-      const descMatch = xml.match(/<description>([\s\S]*?)<\/description>/);
+
+      // Description can be huge; it may be empty, or in rare cases the tag can be self-closing.
+      // We parse a few variants defensively.
+      const descMatch =
+        xml.match(/<description[^>]*>([\s\S]*?)<\/description>/i) ||
+        xml.match(/<description\s*\/>/i);
+
       const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
       const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
       const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
@@ -460,18 +465,29 @@ async function fetchBGGXMLData(bggId: string): Promise<{
         else play_time = "3+ Hours";
       }
 
-      // Decode HTML entities in description
-      let description = descMatch?.[1];
-      if (description) {
-        description = description
+      // Decode HTML entities in description.
+      // We keep this lightweight but robust enough for common BGG entity patterns.
+      const decodeEntities = (input: string) =>
+        input
           .replace(/&#10;/g, "\n")
           .replace(/&amp;/g, "&")
           .replace(/&lt;/g, "<")
           .replace(/&gt;/g, ">")
           .replace(/&quot;/g, '"')
           .replace(/&#39;/g, "'")
-          .slice(0, 2000); // Limit length
+          .replace(/&#(\d+);/g, (_m, code) => {
+            const n = Number(code);
+            return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+          });
+
+      let description: string | undefined;
+      if (descMatch && descMatch[1]) {
+        description = decodeEntities(descMatch[1]).trim();
+        if (description.length > 2000) description = description.slice(0, 2000);
       }
+
+      console.log(`[BulkImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars)`);
+
 
       console.log(`[BulkImport] BGG XML extracted data for ${bggId}`);
 
