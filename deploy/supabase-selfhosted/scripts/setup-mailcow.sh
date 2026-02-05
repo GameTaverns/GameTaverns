@@ -11,10 +11,11 @@
 #   ✓ Loopback binding (127.0.0.1:8080/8443) for host nginx proxy
 #
 # Usage:
-#   ./setup-mailcow.sh              # Interactive first-time setup
-#   ./setup-mailcow.sh --apply      # Non-interactive reconfigure + restart
-#   ./setup-mailcow.sh --status     # Just show status, no changes
-#   ./setup-mailcow.sh --nuke       # Remove Mailcow completely
+#   ./setup-mailcow.sh                # Interactive first-time setup
+#   ./setup-mailcow.sh --apply        # Non-interactive reconfigure + restart
+#   ./setup-mailcow.sh --status       # Just show status, no changes
+#   ./setup-mailcow.sh --nuke         # Remove Mailcow completely (keeps volumes)
+#   ./setup-mailcow.sh --nuke-all     # Remove Mailcow completely INCLUDING volumes
 #
 # =============================================================================
 
@@ -34,6 +35,9 @@ MAILCOW_DIR="/opt/mailcow"
 HTTP_PORT="8080"
 HTTPS_PORT="8443"
 TIMEZONE="${TZ:-America/New_York}"
+
+# Strict port policy: fail if these ports are busy (no auto-pick)
+STRICT_PORTS="true"
 
 # External SSL certificate paths (Cloudflare Origin or Let's Encrypt)
 SSL_CERT_DIR="/etc/ssl/cloudflare"
@@ -63,13 +67,15 @@ while [[ $# -gt 0 ]]; do
         --apply)  MODE="apply"; shift ;;
         --status) MODE="status"; shift ;;
         --nuke)   MODE="nuke"; shift ;;
+        --nuke-all) MODE="nuke-all"; shift ;;
         --regen-config) REGEN_CONFIG="true"; shift ;;
         -h|--help)
-            echo "Usage: $0 [--apply|--status|--nuke]"
+            echo "Usage: $0 [--apply|--status|--nuke|--nuke-all]"
             echo "  (no args)  Interactive first-time setup"
             echo "  --apply    Non-interactive reconfigure + restart"
             echo "  --status   Show current status only"
-            echo "  --nuke     Remove Mailcow completely"
+            echo "  --nuke     Remove Mailcow containers (keeps volumes)"
+            echo "  --nuke-all Remove Mailcow completely INCLUDING volumes"
             echo "  --regen-config  Force running ./generate_config.sh even if mailcow.conf exists"
             exit 0 ;;
         *) die "Unknown option: $1" ;;
@@ -130,19 +136,41 @@ if [[ "$MODE" == "status" ]]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Nuke mode
+# Nuke mode (containers only, keeps volumes)
 # ─────────────────────────────────────────────────────────────────────────────
 if [[ "$MODE" == "nuke" ]]; then
-    warn "This will COMPLETELY REMOVE Mailcow and all its data!"
+    warn "This will remove Mailcow containers and config but KEEP volumes (mail data)."
+    read -p "Type 'REMOVE' to confirm: " CONFIRM
+    [[ "$CONFIRM" == "REMOVE" ]] || die "Aborted"
+
+    if [[ -d "$MAILCOW_DIR" ]]; then
+        cd "$MAILCOW_DIR"
+        docker compose down --remove-orphans 2>/dev/null || true
+        cd /
+        rm -rf "$MAILCOW_DIR"
+        ok "Mailcow containers removed (volumes preserved)"
+    else
+        info "Mailcow not installed"
+    fi
+    exit 0
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Nuke-all mode (containers + volumes)
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ "$MODE" == "nuke-all" ]]; then
+    warn "This will COMPLETELY REMOVE Mailcow containers AND volumes (all mail data)!"
     read -p "Type 'DELETE' to confirm: " CONFIRM
     [[ "$CONFIRM" == "DELETE" ]] || die "Aborted"
 
     if [[ -d "$MAILCOW_DIR" ]]; then
         cd "$MAILCOW_DIR"
         docker compose down --volumes --remove-orphans 2>/dev/null || true
+        # Also remove any orphaned networks
+        docker network rm mailcowdockerized_mailcow-network 2>/dev/null || true
         cd /
         rm -rf "$MAILCOW_DIR"
-        ok "Mailcow removed"
+        ok "Mailcow completely removed (containers + volumes)"
     else
         info "Mailcow not installed"
     fi
@@ -160,6 +188,41 @@ echo ""
 
 command -v docker &>/dev/null || die "Docker not installed. Run bootstrap.sh first."
 command -v git &>/dev/null || die "Git not installed."
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STRICT PORT CHECK: Fail immediately if ports are busy
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ "$STRICT_PORTS" == "true" ]]; then
+    info "Checking if fixed ports $HTTP_PORT and $HTTPS_PORT are available on 127.0.0.1..."
+    
+    PORT_CONFLICT=false
+    for port in $HTTP_PORT $HTTPS_PORT; do
+        if ss -tlnp | grep -q "127.0.0.1:$port "; then
+            # Check if it's Mailcow's own nginx
+            OWNER=$(ss -tlnp | grep "127.0.0.1:$port " | awk '{print $NF}')
+            if [[ "$OWNER" != *"nginx-mailcow"* ]]; then
+                err "Port 127.0.0.1:$port is already in use by: $OWNER"
+                PORT_CONFLICT=true
+            fi
+        fi
+    done
+    
+    if [[ "$PORT_CONFLICT" == "true" ]]; then
+        echo ""
+        err "Cannot proceed: fixed loopback ports are busy."
+        echo ""
+        echo "Options:"
+        echo "  1. Free the ports by stopping the conflicting service"
+        echo "  2. Edit HTTP_PORT/HTTPS_PORT in this script to use different ports"
+        echo ""
+        echo "To find what's using the ports:"
+        echo "  ss -tlnp | grep -E ':$HTTP_PORT |:$HTTPS_PORT '"
+        echo ""
+        die "Port conflict detected. Fix manually before re-running."
+    fi
+    
+    ok "Ports 127.0.0.1:$HTTP_PORT and 127.0.0.1:$HTTPS_PORT are available"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FIX: Docker network overlap issue
