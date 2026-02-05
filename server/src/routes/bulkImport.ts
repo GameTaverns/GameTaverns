@@ -91,6 +91,13 @@ interface GameToImport {
   image_url?: string;
   purchase_date?: string;
   purchase_price?: number;
+
+  /**
+   * Internal import-only fields (not persisted directly).
+   * Used to decide whether to enrich from BGG when CSV has only notes.
+   */
+  _csv_description?: string;
+  _csv_notes?: string;
 }
 
 // Parse CSV data - handles multi-line quoted fields properly
@@ -215,24 +222,35 @@ const mapPlayTimeToEnum = (minutes: number | undefined): string | undefined => {
   return "3+ Hours";
 };
 
-const buildDescription = (
-  description: string | undefined,
+const buildNotes = (
   privateComment: string | undefined,
   comment: string | undefined,
 ): string | undefined => {
-  const desc = description?.trim();
   const notes = [comment, privateComment]
     .map((v) => v?.trim())
     .filter((v): v is string => Boolean(v));
 
-  const notesText = notes.length ? notes.join("\n\n") : undefined;
-  if (!desc && !notesText) return undefined;
-  if (!notesText) return desc;
-  if (!desc) return `**Notes:** ${notesText}`;
-  return `${desc}\n\n**Notes:** ${notesText}`;
+  return notes.length ? notes.join("\n\n") : undefined;
 };
 
-const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
+const buildDescriptionWithNotes = (
+  description: string | undefined,
+  notes: string | undefined,
+): string | undefined => {
+  const desc = description?.trim();
+  const n = notes?.trim();
+  if (!desc && !n) return undefined;
+  if (!n) return desc;
+  if (!desc) return `**Notes:** ${n}`;
+  return `${desc}\n\n**Notes:** ${n}`;
+};
+
+const isEmpty = (val: unknown): boolean => {
+  if (val === undefined || val === null) return true;
+  if (typeof val !== 'string') return false;
+  const v = val.trim();
+  return v === "" || v.toLowerCase() === "null";
+};
 
 // Helper: sleep for ms
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -457,6 +475,12 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
           const suggestedAge = row.suggested_age || row.age || row.bggrecagerange || undefined;
           const isForSale = parseBool(row.is_for_sale || row.fortrade);
           
+          const csvDesc = row.description?.trim() || "";
+          const csvNotes = buildNotes(
+            row.privatecomment || row.private_comment,
+            row.comment,
+          );
+
           const gameData: GameToImport = { 
             title,
             bgg_id: bggId,
@@ -483,11 +507,9 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             crowdfunded: parseBool(row.crowdfunded),
             inserts: parseBool(row.inserts),
             in_base_game_box: parseBool(row.in_base_game_box),
-            description: buildDescription(
-              row.description,
-              row.privatecomment || row.private_comment,
-              row.comment,
-            ),
+            _csv_description: csvDesc,
+            _csv_notes: csvNotes,
+            description: buildDescriptionWithNotes(csvDesc, csvNotes),
             image_url: row.image_url || row.imageurl || undefined,
             purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
             purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
@@ -529,28 +551,48 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       
       try {
         // BGG enrichment - fetch additional data from BGG XML API
-        // Skip if description already exists (means data was in CSV)
-        const hasCompleteData = !!(gameInput.description && gameInput.description.length > 50);
-        
+        // If the CSV has no real description (blank/empty), we fetch the BGG description
+        // and then append any CSV comments as "Notes:".
+        const csvDesc = (gameInput._csv_description || "").trim();
+        const hasCsvDescription = csvDesc.length > 0;
+        const hasCompleteData = hasCsvDescription && csvDesc.length > 50;
+
+        const mergeBggData = (bggData: Awaited<ReturnType<typeof fetchBGGXMLData>>): void => {
+          if (!bggData) return;
+
+          // Merge BGG data into game input (only fill missing fields)
+          if (!gameInput.title && bggData.title) gameInput.title = bggData.title;
+          if (isEmpty(gameInput.image_url)) gameInput.image_url = bggData.image_url;
+
+          // Description rules:
+          // - If CSV description is missing/blank, use BGG description and append notes.
+          // - If CSV description exists, keep it (but still allow notes).
+          if (!hasCsvDescription) {
+            const merged = buildDescriptionWithNotes(bggData.description, gameInput._csv_notes);
+            if (!isEmpty(merged)) gameInput.description = merged;
+          } else {
+            // Ensure notes are appended even when CSV provided description
+            gameInput.description = buildDescriptionWithNotes(csvDesc, gameInput._csv_notes);
+          }
+
+          if (isEmpty(gameInput.difficulty)) gameInput.difficulty = bggData.difficulty;
+          if (isEmpty(gameInput.play_time)) gameInput.play_time = bggData.play_time;
+          if (gameInput.min_players === undefined) gameInput.min_players = bggData.min_players;
+          if (gameInput.max_players === undefined) gameInput.max_players = bggData.max_players;
+          if (isEmpty(gameInput.suggested_age)) gameInput.suggested_age = bggData.suggested_age;
+          if (!gameInput.mechanics?.length && bggData.mechanics?.length) gameInput.mechanics = bggData.mechanics;
+          if (isEmpty(gameInput.publisher)) gameInput.publisher = bggData.publisher;
+
+          console.log(
+            `[BulkImport] Enriched "${gameInput.title}": image=${!!gameInput.image_url}, desc=${(gameInput.description?.length || 0)} chars (csvDesc=${csvDesc.length}, notes=${gameInput._csv_notes ? gameInput._csv_notes.length : 0})`,
+          );
+        };
+
         if (!hasCompleteData && gameInput.bgg_id && enhance_with_bgg !== false) {
           console.log(`[BulkImport] Fetching BGG data for: ${gameInput.bgg_id}`);
           try {
             const bggData = await fetchBGGXMLData(gameInput.bgg_id);
-            if (bggData) {
-              // Merge BGG data into game input (only fill missing fields)
-              if (!gameInput.title && bggData.title) gameInput.title = bggData.title;
-              if (isEmpty(gameInput.image_url)) gameInput.image_url = bggData.image_url;
-              if (isEmpty(gameInput.description)) gameInput.description = bggData.description;
-              if (isEmpty(gameInput.difficulty)) gameInput.difficulty = bggData.difficulty;
-              if (isEmpty(gameInput.play_time)) gameInput.play_time = bggData.play_time;
-              if (gameInput.min_players === undefined) gameInput.min_players = bggData.min_players;
-              if (gameInput.max_players === undefined) gameInput.max_players = bggData.max_players;
-              if (isEmpty(gameInput.suggested_age)) gameInput.suggested_age = bggData.suggested_age;
-              if (!gameInput.mechanics?.length && bggData.mechanics?.length) gameInput.mechanics = bggData.mechanics;
-              if (isEmpty(gameInput.publisher)) gameInput.publisher = bggData.publisher;
-              
-              console.log(`[BulkImport] Enriched "${gameInput.title}": image=${!!gameInput.image_url}, desc=${(gameInput.description?.length || 0)} chars`);
-            }
+            mergeBggData(bggData);
           } catch (e) {
             console.warn(`[BulkImport] BGG fetch failed for ${gameInput.bgg_id}:`, e);
           }
@@ -569,21 +611,9 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
                 const foundId = idMatch[1];
                 gameInput.bgg_id = foundId;
                 gameInput.bgg_url = `https://boardgamegeek.com/boardgame/${foundId}`;
-                
+
                 const bggData = await fetchBGGXMLData(foundId);
-                if (bggData) {
-                  if (isEmpty(gameInput.image_url)) gameInput.image_url = bggData.image_url;
-                  if (isEmpty(gameInput.description)) gameInput.description = bggData.description;
-                  if (isEmpty(gameInput.difficulty)) gameInput.difficulty = bggData.difficulty;
-                  if (isEmpty(gameInput.play_time)) gameInput.play_time = bggData.play_time;
-                  if (gameInput.min_players === undefined) gameInput.min_players = bggData.min_players;
-                  if (gameInput.max_players === undefined) gameInput.max_players = bggData.max_players;
-                  if (isEmpty(gameInput.suggested_age)) gameInput.suggested_age = bggData.suggested_age;
-                  if (!gameInput.mechanics?.length && bggData.mechanics?.length) gameInput.mechanics = bggData.mechanics;
-                  if (isEmpty(gameInput.publisher)) gameInput.publisher = bggData.publisher;
-                  
-                  console.log(`[BulkImport] Title lookup enriched "${gameInput.title}": desc=${(gameInput.description?.length || 0)} chars`);
-                }
+                mergeBggData(bggData);
               }
             }
           } catch (e) {
