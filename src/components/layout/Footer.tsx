@@ -75,21 +75,38 @@ export function Footer() {
             <p className="text-sm text-muted-foreground text-center md:text-left">
               © {currentYear} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
             </p>
-            {/* BGG Attribution - Required for API usage */}
-            <a 
-              href="https://boardgamegeek.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-              title="Game data powered by BoardGameGeek"
-            >
-              <img 
-                src={proxiedImageUrl("https://cf.geekdo-images.com/images/geekdo/bgg_logo.png") || "https://cf.geekdo-static.com/images/geekdo/bgg_logo.png"}
-                alt="Powered by BoardGameGeek" 
-                className="h-6"
-              />
-              <span className="text-xs text-muted-foreground">Powered by BGG</span>
-            </a>
+            <div className="flex items-center gap-6">
+              {/* Love Thy Nerd Attribution */}
+              <a 
+                href="https://lovethynerd.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                title="Love Thy Nerd"
+              >
+                <img 
+                  src="https://lovethynerd.com/wp-content/uploads/2023/06/LTN-shield-logo-1-1024x1024.png"
+                  alt="Love Thy Nerd" 
+                  className="h-8"
+                />
+              </a>
+              
+              {/* BGG Attribution - Required for API usage */}
+              <a 
+                href="https://boardgamegeek.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                title="Game data powered by BoardGameGeek"
+              >
+                <img 
+                  src={proxiedImageUrl("https://cf.geekdo-images.com/images/geekdo/bgg_logo.png") || "https://cf.geekdo-static.com/images/geekdo/bgg_logo.png"}
+                  alt="Powered by BoardGameGeek" 
+                  className="h-6"
+                />
+                <span className="text-xs text-muted-foreground">Powered by BGG</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>

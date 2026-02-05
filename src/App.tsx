@@ -216,8 +216,12 @@ function LibraryRoutes({ isDemoMode }: { isDemoMode: boolean }) {
       <Route path="/stats" element={<PlayStatsPage />} />
       <Route path="/poll/:token" element={<PollPage />} />
       
-      {/* Docs accessible from library too */}
+      {/* Docs & Legal pages accessible from library too */}
       <Route path="/docs" element={<Docs />} />
+      <Route path="/legal" element={<Legal />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/cookies" element={<Cookies />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
