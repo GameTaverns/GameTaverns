@@ -1,251 +1,338 @@
 #!/bin/bash
 # =============================================================================
-# Mailcow Automated Installation Script for GameTaverns
-# Domain: gametaverns.com (hardcoded)
-# Version: 1.0.0
-# 
-# This script automates the Mailcow installation with correct configuration:
-#   ✓ Clones Mailcow repository
-#   ✓ Generates config with correct hostname
-#   ✓ Configures non-conflicting ports (8080/8443)
-#   ✓ Sets dedicated Docker subnet to avoid overlap
-#   ✓ Starts Mailcow stack
+# Mailcow One-Command Setup Script for GameTaverns
+# Domain: gametaverns.com
+# Version: 2.0.0
 #
-# Prerequisites:
-#   - clean-install.sh or nuclear-reset.sh has been run
-#   - Docker and Docker Compose installed
-#   - DNS configured for mail.gametaverns.com
+# IDEMPOTENT: Safe to run multiple times. Handles:
+#   ✓ Fresh install (clone + configure + start)
+#   ✓ Reconfigure existing install (update config + restart)
+#   ✓ External SSL certs (Cloudflare Origin mounted from host)
+#   ✓ Loopback binding (127.0.0.1:8080/8443) for host nginx proxy
+#
+# Usage:
+#   ./setup-mailcow.sh              # Interactive first-time setup
+#   ./setup-mailcow.sh --apply      # Non-interactive reconfigure + restart
+#   ./setup-mailcow.sh --status     # Just show status, no changes
+#   ./setup-mailcow.sh --nuke       # Remove Mailcow completely
+#
 # =============================================================================
 
 set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
-# Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuration (edit these if needed)
+# ─────────────────────────────────────────────────────────────────────────────
 DOMAIN="gametaverns.com"
 MAIL_HOSTNAME="mail.$DOMAIN"
 MAILCOW_DIR="/opt/mailcow"
-MAILCOW_HTTP_PORT="8080"
-MAILCOW_HTTPS_PORT="8443"
-MAILCOW_SUBNET="172.29.0.0/16"
+HTTP_PORT="8080"
+HTTPS_PORT="8443"
+TIMEZONE="${TZ:-America/New_York}"
 
-echo ""
-echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║         Mailcow Automated Installation                            ║${NC}"
-echo -e "${CYAN}║         Domain: $MAIL_HOSTNAME                            ║${NC}"
-echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
-echo ""
+# External SSL certificate paths (Cloudflare Origin or Let's Encrypt)
+SSL_CERT_DIR="/etc/ssl/cloudflare"
+SSL_CERT_FILE="$SSL_CERT_DIR/origin.pem"
+SSL_KEY_FILE="$SSL_CERT_DIR/origin.key"
 
-# Check root
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Please run as root: sudo ./setup-mailcow.sh${NC}"
-    exit 1
-fi
+# ─────────────────────────────────────────────────────────────────────────────
+# Colors & helpers
+# ─────────────────────────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
 
-# Check Docker
-if ! command -v docker &> /dev/null; then
-    echo -e "${RED}Docker not installed. Run bootstrap.sh first.${NC}"
-    exit 1
-fi
+info()  { echo -e "${BLUE}[INFO]${NC} $*"; }
+ok()    { echo -e "${GREEN}[OK]${NC} $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
+err()   { echo -e "${RED}[ERROR]${NC} $*"; }
+die()   { err "$*"; exit 1; }
 
-# ===========================================
-# Step 1: Pre-flight checks
-# ===========================================
-echo -e "${BLUE}[1/6] Pre-flight checks...${NC}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Root check
+# ─────────────────────────────────────────────────────────────────────────────
+[[ "$EUID" -eq 0 ]] || die "Run as root: sudo $0"
 
-# Check if Mailcow already installed
-if [ -d "$MAILCOW_DIR" ]; then
-    echo -e "${YELLOW}Mailcow directory already exists at $MAILCOW_DIR${NC}"
-    read -p "Remove and reinstall? (y/N): " REINSTALL
-    if [[ "$REINSTALL" =~ ^[Yy]$ ]]; then
-        cd "$MAILCOW_DIR" && docker compose down --volumes 2>/dev/null || true
-        rm -rf "$MAILCOW_DIR"
-    else
-        echo "Skipping Mailcow installation. Directory preserved."
-        exit 0
-    fi
-fi
-
-# Check for port conflicts
-PORTS_TO_CHECK="25 587 993 995 4190"
-for port in $PORTS_TO_CHECK; do
-    if lsof -i :$port > /dev/null 2>&1; then
-        PROCESS=$(lsof -i :$port -t | head -1)
-        PNAME=$(ps -p $PROCESS -o comm= 2>/dev/null || echo "unknown")
-        echo -e "${RED}Port $port is in use by $PNAME (PID: $PROCESS)${NC}"
-        echo "Run clean-install.sh or nuclear-reset.sh first."
-        exit 1
-    fi
+# ─────────────────────────────────────────────────────────────────────────────
+# Parse arguments
+# ─────────────────────────────────────────────────────────────────────────────
+MODE="interactive"
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --apply)  MODE="apply"; shift ;;
+        --status) MODE="status"; shift ;;
+        --nuke)   MODE="nuke"; shift ;;
+        -h|--help)
+            echo "Usage: $0 [--apply|--status|--nuke]"
+            echo "  (no args)  Interactive first-time setup"
+            echo "  --apply    Non-interactive reconfigure + restart"
+            echo "  --status   Show current status only"
+            echo "  --nuke     Remove Mailcow completely"
+            exit 0 ;;
+        *) die "Unknown option: $1" ;;
+    esac
 done
 
-echo -e "${GREEN}✓ All mail ports available${NC}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Status mode
+# ─────────────────────────────────────────────────────────────────────────────
+show_status() {
+    echo ""
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}  Mailcow Status: $MAIL_HOSTNAME${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
+    echo ""
 
-# Check DNS
-echo -e "${BLUE}[2/6] Checking DNS...${NC}"
-if command -v host &>/dev/null; then
-    if host "$MAIL_HOSTNAME" > /dev/null 2>&1; then
-        RESOLVED_IP=$(host "$MAIL_HOSTNAME" | grep -oP '\d+\.\d+\.\d+\.\d+' | head -1)
-        echo -e "${GREEN}✓ $MAIL_HOSTNAME resolves to $RESOLVED_IP${NC}"
-    else
-        echo -e "${YELLOW}⚠ $MAIL_HOSTNAME does not resolve yet${NC}"
-        echo "Mailcow will work locally but SSL may fail."
-        read -p "Continue anyway? (y/N): " CONTINUE
-        [[ ! "$CONTINUE" =~ ^[Yy]$ ]] && exit 1
+    if [[ ! -d "$MAILCOW_DIR" ]]; then
+        warn "Mailcow not installed at $MAILCOW_DIR"
+        return 1
     fi
+
+    cd "$MAILCOW_DIR"
+
+    # Config summary
+    info "Configuration:"
+    grep -E "^(MAILCOW_HOSTNAME|TZ|HTTP_PORT|HTTPS_PORT|HTTP_BIND|HTTPS_BIND|SKIP_LETS_ENCRYPT)=" mailcow.conf 2>/dev/null | sed 's/^/  /'
+
+    echo ""
+    info "Containers:"
+    docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null | head -20
+
+    echo ""
+    info "Port bindings:"
+    docker compose ps --format "{{.Ports}}" 2>/dev/null | tr ',' '\n' | grep -E "^\d|^127" | sort -u | head -10
+
+    echo ""
+    info "SSL certificate status:"
+    if [[ -f "$SSL_CERT_FILE" ]]; then
+        EXPIRY=$(openssl x509 -enddate -noout -in "$SSL_CERT_FILE" 2>/dev/null | cut -d= -f2)
+        ok "External cert: $SSL_CERT_FILE (expires: $EXPIRY)"
+    else
+        warn "No external cert at $SSL_CERT_FILE"
+    fi
+
+    # Check if Mailcow's internal cert exists
+    if [[ -f "$MAILCOW_DIR/data/assets/ssl/cert.pem" ]]; then
+        INTERNAL_EXPIRY=$(openssl x509 -enddate -noout -in "$MAILCOW_DIR/data/assets/ssl/cert.pem" 2>/dev/null | cut -d= -f2)
+        info "Internal cert: $MAILCOW_DIR/data/assets/ssl/cert.pem (expires: $INTERNAL_EXPIRY)"
+    fi
+
+    echo ""
+    return 0
+}
+
+if [[ "$MODE" == "status" ]]; then
+    show_status
+    exit $?
 fi
 
-# ===========================================
-# Step 2: Clone Mailcow
-# ===========================================
-echo -e "${BLUE}[3/6] Cloning Mailcow...${NC}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Nuke mode
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ "$MODE" == "nuke" ]]; then
+    warn "This will COMPLETELY REMOVE Mailcow and all its data!"
+    read -p "Type 'DELETE' to confirm: " CONFIRM
+    [[ "$CONFIRM" == "DELETE" ]] || die "Aborted"
 
-cd /opt
-git clone https://github.com/mailcow/mailcow-dockerized "$MAILCOW_DIR"
+    if [[ -d "$MAILCOW_DIR" ]]; then
+        cd "$MAILCOW_DIR"
+        docker compose down --volumes --remove-orphans 2>/dev/null || true
+        cd /
+        rm -rf "$MAILCOW_DIR"
+        ok "Mailcow removed"
+    else
+        info "Mailcow not installed"
+    fi
+    exit 0
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pre-flight checks
+# ─────────────────────────────────────────────────────────────────────────────
+echo ""
+echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
+echo -e "${CYAN}  Mailcow Setup: $MAIL_HOSTNAME${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
+echo ""
+
+command -v docker &>/dev/null || die "Docker not installed. Run bootstrap.sh first."
+command -v git &>/dev/null || die "Git not installed."
+
+# Check mail ports (only if fresh install)
+if [[ ! -d "$MAILCOW_DIR" ]]; then
+    info "Checking mail ports..."
+    for port in 25 587 993 995 4190; do
+        if ss -tlnp | grep -q ":$port "; then
+            die "Port $port already in use. Stop conflicting service first."
+        fi
+    done
+    ok "All mail ports available"
+fi
+
+# Check external SSL certs
+if [[ -f "$SSL_CERT_FILE" && -f "$SSL_KEY_FILE" ]]; then
+    ok "External SSL certs found at $SSL_CERT_DIR"
+    USE_EXTERNAL_SSL=true
+else
+    warn "No external SSL certs at $SSL_CERT_DIR - Mailcow will use snake-oil certs"
+    USE_EXTERNAL_SSL=false
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Clone if needed
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ ! -d "$MAILCOW_DIR" ]]; then
+    info "Cloning Mailcow..."
+    git clone https://github.com/mailcow/mailcow-dockerized "$MAILCOW_DIR"
+    ok "Cloned to $MAILCOW_DIR"
+    FRESH_INSTALL=true
+else
+    info "Mailcow already installed at $MAILCOW_DIR"
+    FRESH_INSTALL=false
+fi
+
 cd "$MAILCOW_DIR"
 
-echo -e "${GREEN}✓ Mailcow cloned${NC}"
+# ─────────────────────────────────────────────────────────────────────────────
+# Generate or update config
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ "$FRESH_INSTALL" == true ]] || [[ ! -f mailcow.conf ]]; then
+    info "Generating initial Mailcow config..."
 
-# ===========================================
-# Step 3: Generate Configuration
-# ===========================================
-echo -e "${BLUE}[4/6] Generating Mailcow configuration...${NC}"
+    # Mailcow's generate_config.sh is interactive. We pipe answers.
+    # Order: hostname, timezone, branch (1=master), docker daemon.json (y)
+    {
+        echo "$MAIL_HOSTNAME"
+        echo "$TIMEZONE"
+        echo "1"
+        echo "y"
+    } | ./generate_config.sh || true
 
-# Get timezone - prefer timedatectl (more reliable than /etc/timezone)
-TIMEZONE=$(timedatectl show --property=Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || echo "UTC")
-echo -e "${GREEN}✓ Detected timezone: $TIMEZONE${NC}"
-
-# Generate config non-interactively
-export MAILCOW_HOSTNAME="$MAIL_HOSTNAME"
-export MAILCOW_TZ="$TIMEZONE"
-
-# Run generate_config.sh with answers piped in.
-#
-# Mailcow occasionally adds extra prompts (e.g. Spamhaus DQS key, “press enter to confirm”).
-# We feed a few leading blank lines to accept defaults/skip optional inputs, then provide
-# the required answers.
-#
-# Expected (typical) prompts in order:
-#   - (optional) Spamhaus DQS API key (blank = skip)
-#   - (optional) “Press enter to confirm detected value” (blank)
-#   1) Mail server hostname
-#   2) Timezone
-#   3) Branch selection (1 = master)
-#   4) Create docker daemon.json (y = yes)
-{
-  # Optional/variable prompts: send a few blank lines to accept defaults.
-  printf "\n\n\n";
-
-  # Required prompts.
-  printf "%s\n" "$MAIL_HOSTNAME";
-  printf "%s\n" "$TIMEZONE";
-  printf "1\n";
-  printf "y\n";
-} | ./generate_config.sh
-
-# Modify mailcow.conf for non-conflicting ports
-# Use more robust sed patterns that handle comments and spaces
-echo -e "${BLUE}Configuring ports to avoid conflicts with host nginx...${NC}"
-
-# Remove any existing port/bind settings (commented or not) and append correct ones
-sed -i '/^#*\s*HTTP_PORT=/d' mailcow.conf
-sed -i '/^#*\s*HTTPS_PORT=/d' mailcow.conf
-sed -i '/^#*\s*HTTP_BIND=/d' mailcow.conf
-sed -i '/^#*\s*HTTPS_BIND=/d' mailcow.conf
-
-# Append the correct settings
-# Also force-set the timezone (generate_config.sh sometimes ignores it)
-sed -i '/^TZ=/d' mailcow.conf
-echo "TZ=$TIMEZONE" >> mailcow.conf
-echo -e "${GREEN}✓ Timezone set to: $TIMEZONE${NC}"
-
-cat >> mailcow.conf << PORTCONF
-
-# GameTaverns: Use non-standard ports to avoid conflict with host nginx
-HTTP_PORT=$MAILCOW_HTTP_PORT
-HTTPS_PORT=$MAILCOW_HTTPS_PORT
-HTTP_BIND=127.0.0.1
-HTTPS_BIND=127.0.0.1
-PORTCONF
-
-echo -e "${GREEN}✓ Ports configured: HTTP=$MAILCOW_HTTP_PORT, HTTPS=$MAILCOW_HTTPS_PORT${NC}"
-
-# ===========================================
-# Step 4: Docker Network Configuration
-# ===========================================
-echo -e "${BLUE}[5/6] Configuring Docker network...${NC}"
-
-# Mailcow has hardcoded container IPs in the 172.22.x.x range.
-# We must NOT override the subnet, or containers will fail to start.
-# Instead, we let Mailcow manage its own network and ensure GameTaverns
-# uses a non-conflicting range (it defaults to 172.18.x.x or similar).
-#
-# If a docker-compose.override.yml exists from a previous attempt, remove it.
-rm -f docker-compose.override.yml
-
-echo -e "${GREEN}✓ Using Mailcow's default network configuration${NC}"
-
-# ===========================================
-# Step 5: Start Mailcow
-# ===========================================
-echo -e "${BLUE}[6/6] Starting Mailcow stack...${NC}"
-
-docker compose pull
-docker compose up -d
-
-echo ""
-echo -e "${YELLOW}Waiting for Mailcow to initialize (this takes 2-3 minutes)...${NC}"
-
-# Wait for containers to start
-sleep 30
-
-# Check container count
-RUNNING_CONTAINERS=$(docker compose ps --format "{{.State}}" | grep -c "running" || echo "0")
-TOTAL_CONTAINERS=$(docker compose ps --format "{{.Name}}" | wc -l)
-
-echo "Containers running: $RUNNING_CONTAINERS / $TOTAL_CONTAINERS"
-
-if [ "$RUNNING_CONTAINERS" -lt 10 ]; then
-    echo -e "${YELLOW}Some containers may still be starting. Waiting longer...${NC}"
-    sleep 60
+    ok "Initial config generated"
 fi
 
-# Final status
-docker compose ps
+# ─────────────────────────────────────────────────────────────────────────────
+# Apply idempotent configuration
+# ─────────────────────────────────────────────────────────────────────────────
+info "Applying configuration..."
+
+# Function to set a config value idempotently
+set_config() {
+    local key="$1"
+    local value="$2"
+    # Remove ALL existing lines for this key (commented or not)
+    sed -i "/^#*${key}=/d" mailcow.conf
+    # Append the new value
+    echo "${key}=${value}" >> mailcow.conf
+}
+
+# Core settings
+set_config "MAILCOW_HOSTNAME" "$MAIL_HOSTNAME"
+set_config "TZ" "$TIMEZONE"
+
+# Port bindings (loopback for nginx proxy)
+set_config "HTTP_PORT" "$HTTP_PORT"
+set_config "HTTPS_PORT" "$HTTPS_PORT"
+set_config "HTTP_BIND" "127.0.0.1"
+set_config "HTTPS_BIND" "127.0.0.1"
+
+# Disable Mailcow's internal ACME - we use external certs
+set_config "SKIP_LETS_ENCRYPT" "y"
+set_config "SKIP_SOGO" "n"
+set_config "SKIP_CLAMD" "n"
+
+# Secure the config file
+chmod 600 mailcow.conf
+
+ok "Config applied:"
+grep -E "^(MAILCOW_HOSTNAME|TZ|HTTP_PORT|HTTPS_PORT|HTTP_BIND|HTTPS_BIND|SKIP_LETS_ENCRYPT)=" mailcow.conf | sed 's/^/  /'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mount external SSL certs
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ "$USE_EXTERNAL_SSL" == true ]]; then
+    info "Installing external SSL certificates..."
+
+    mkdir -p "$MAILCOW_DIR/data/assets/ssl"
+
+    # Copy (not symlink) to avoid Docker mount issues
+    cp "$SSL_CERT_FILE" "$MAILCOW_DIR/data/assets/ssl/cert.pem"
+    cp "$SSL_KEY_FILE" "$MAILCOW_DIR/data/assets/ssl/key.pem"
+    chmod 600 "$MAILCOW_DIR/data/assets/ssl/key.pem"
+
+    ok "SSL certs installed to $MAILCOW_DIR/data/assets/ssl/"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Remove any docker-compose.override.yml (causes subnet issues)
+# ─────────────────────────────────────────────────────────────────────────────
+rm -f docker-compose.override.yml
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stop, pull, start
+# ─────────────────────────────────────────────────────────────────────────────
+info "Stopping existing containers..."
+docker compose down --remove-orphans 2>/dev/null || true
+
+info "Pulling latest images..."
+docker compose pull --quiet
+
+info "Starting Mailcow..."
+docker compose up -d
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Wait and verify
+# ─────────────────────────────────────────────────────────────────────────────
+info "Waiting for services to start (30s)..."
+sleep 30
 
 echo ""
-echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║         Mailcow Installation Complete!                            ║${NC}"
-echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════════╝${NC}"
+info "Container status:"
+docker compose ps --format "table {{.Name}}\t{{.Status}}" | head -20
+
+# Count healthy/running
+RUNNING=$(docker compose ps --format "{{.State}}" 2>/dev/null | grep -c "running" || echo "0")
+TOTAL=$(docker compose ps --format "{{.Name}}" 2>/dev/null | wc -l)
+
 echo ""
-echo -e "${GREEN}Mailcow is now running!${NC}"
+if [[ "$RUNNING" -ge 15 ]]; then
+    ok "Mailcow running: $RUNNING/$TOTAL containers"
+else
+    warn "Only $RUNNING/$TOTAL containers running. Some may still be starting."
+    info "Check with: cd $MAILCOW_DIR && docker compose ps"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Final summary
+# ─────────────────────────────────────────────────────────────────────────────
 echo ""
-echo -e "${BLUE}Access Points:${NC}"
-echo "  Admin UI:   https://$MAIL_HOSTNAME (proxied through host nginx)"
-echo "  Direct:     https://localhost:$MAILCOW_HTTPS_PORT"
+echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
+echo -e "${CYAN}  Mailcow Setup Complete!${NC}"
+echo -e "${CYAN}═══════════════════════════════════════════════════════════════════${NC}"
 echo ""
-echo -e "${BLUE}Default Login:${NC}"
-echo "  Username: admin"
-echo "  Password: moohoo"
+echo -e "${GREEN}Access:${NC}"
+echo "  Admin UI:  https://$MAIL_HOSTNAME  (via host nginx proxy)"
+echo "  Direct:    https://127.0.0.1:$HTTPS_PORT  (from server only)"
 echo ""
-echo -e "${RED}⚠ CHANGE THE ADMIN PASSWORD IMMEDIATELY!${NC}"
+echo -e "${GREEN}Default Login:${NC}"
+echo "  Username:  admin"
+echo "  Password:  moohoo  ${RED}<- CHANGE THIS IMMEDIATELY${NC}"
 echo ""
-echo -e "${BLUE}Next Steps:${NC}"
-echo "  1. Configure host nginx to proxy mail.$DOMAIN → localhost:$MAILCOW_HTTPS_PORT"
-echo "  2. Get SSL certificates (setup-ssl.sh)"
-echo "  3. Login to Mailcow admin and change password"
-echo "  4. Add domain: $DOMAIN"
-echo "  5. Create mailbox: noreply@$DOMAIN"
-echo "  6. Add DKIM TXT record to DNS"
+echo -e "${GREEN}SMTP Settings for GameTaverns:${NC}"
+echo "  Host:      $MAIL_HOSTNAME (or smtp.$DOMAIN)"
+echo "  Port:      587 (STARTTLS)"
+echo "  User:      noreply@$DOMAIN"
+echo "  Pass:      (create in Mailcow admin)"
 echo ""
-echo -e "${BLUE}SMTP Settings for GameTaverns:${NC}"
-echo "  Host: $MAIL_HOSTNAME"
-echo "  Port: 587"
-echo "  User: noreply@$DOMAIN"
-echo "  Pass: (set in Mailcow admin)"
+echo -e "${GREEN}Commands:${NC}"
+echo "  Status:    $0 --status"
+echo "  Reconfigure: $0 --apply"
+echo "  Logs:      cd $MAILCOW_DIR && docker compose logs -f"
+echo "  Remove:    $0 --nuke"
+echo ""
+echo -e "${YELLOW}Next steps:${NC}"
+echo "  1. Ensure host nginx proxies mail.$DOMAIN -> 127.0.0.1:$HTTPS_PORT"
+echo "  2. Login to Mailcow admin and change password"
+echo "  3. Add domain: $DOMAIN"
+echo "  4. Create mailbox: noreply@$DOMAIN"
+echo "  5. Copy DKIM key to DNS"
 echo ""
