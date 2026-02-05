@@ -20,6 +20,11 @@
 
 set -euo pipefail
 
+# Shared helpers (kept separate so this script can stay readable)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/mailcow/_lib.sh"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration (edit these if needed)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -36,16 +41,12 @@ SSL_CERT_FILE="$SSL_CERT_DIR/origin.pem"
 SSL_KEY_FILE="$SSL_CERT_DIR/origin.key"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Colors & helpers
-# ─────────────────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
-
-info()  { echo -e "${BLUE}[INFO]${NC} $*"; }
-ok()    { echo -e "${GREEN}[OK]${NC} $*"; }
-warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
-err()   { echo -e "${RED}[ERROR]${NC} $*"; }
-die()   { err "$*"; exit 1; }
+# Colors & helpers are sourced from mailcow/_lib.sh
+info()  { mc_info "$@"; }
+ok()    { mc_ok "$@"; }
+warn()  { mc_warn "$@"; }
+err()   { mc_err "$@"; }
+die()   { mc_die "$@"; }
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Root check
@@ -56,17 +57,20 @@ die()   { err "$*"; exit 1; }
 # Parse arguments
 # ─────────────────────────────────────────────────────────────────────────────
 MODE="interactive"
+REGEN_CONFIG="false"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --apply)  MODE="apply"; shift ;;
         --status) MODE="status"; shift ;;
         --nuke)   MODE="nuke"; shift ;;
+        --regen-config) REGEN_CONFIG="true"; shift ;;
         -h|--help)
             echo "Usage: $0 [--apply|--status|--nuke]"
             echo "  (no args)  Interactive first-time setup"
             echo "  --apply    Non-interactive reconfigure + restart"
             echo "  --status   Show current status only"
             echo "  --nuke     Remove Mailcow completely"
+            echo "  --regen-config  Force running ./generate_config.sh even if mailcow.conf exists"
             exit 0 ;;
         *) die "Unknown option: $1" ;;
     esac
@@ -195,19 +199,27 @@ cd "$MAILCOW_DIR"
 # ─────────────────────────────────────────────────────────────────────────────
 # Generate or update config
 # ─────────────────────────────────────────────────────────────────────────────
-if [[ "$FRESH_INSTALL" == true ]] || [[ ! -f mailcow.conf ]]; then
-    info "Generating initial Mailcow config..."
-
-    # Mailcow's generate_config.sh is interactive. We pipe answers.
-    # Order: hostname, timezone, branch (1=master), docker daemon.json (y)
+if [[ ! -f mailcow.conf ]]; then
+    info "mailcow.conf missing; generating initial Mailcow config..."
     {
         echo "$MAIL_HOSTNAME"
         echo "$TIMEZONE"
         echo "1"
         echo "y"
     } | ./generate_config.sh || true
-
     ok "Initial config generated"
+elif [[ "$REGEN_CONFIG" == "true" ]]; then
+    warn "Forcing config regeneration (--regen-config). This can overwrite tokens if you set them manually afterward."
+    mc_backup_file "mailcow.conf"
+    {
+        echo "$MAIL_HOSTNAME"
+        echo "$TIMEZONE"
+        echo "1"
+        echo "y"
+    } | ./generate_config.sh || true
+    ok "Config regenerated"
+else
+    info "mailcow.conf exists; skipping generate_config.sh to avoid wiping existing settings"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -215,36 +227,41 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 info "Applying configuration..."
 
-# Function to set a config value idempotently
-set_config() {
-    local key="$1"
-    local value="$2"
-    # Remove ALL existing lines for this key (commented or not)
-    sed -i "/^#*${key}=/d" mailcow.conf
-    # Append the new value
-    echo "${key}=${value}" >> mailcow.conf
-}
+mc_backup_file "mailcow.conf"
 
 # Core settings
-set_config "MAILCOW_HOSTNAME" "$MAIL_HOSTNAME"
-set_config "TZ" "$TIMEZONE"
+mc_set_config "mailcow.conf" "MAILCOW_HOSTNAME" "$MAIL_HOSTNAME"
+mc_set_config "mailcow.conf" "TZ" "$TIMEZONE"
 
-# Port bindings (loopback for nginx proxy)
-set_config "HTTP_PORT" "$HTTP_PORT"
-set_config "HTTPS_PORT" "$HTTPS_PORT"
-set_config "HTTP_BIND" "127.0.0.1"
-set_config "HTTPS_BIND" "127.0.0.1"
+# Port bindings (loopback for host nginx proxy)
+mc_set_config "mailcow.conf" "HTTP_PORT" "$HTTP_PORT"
+mc_set_config "mailcow.conf" "HTTPS_PORT" "$HTTPS_PORT"
+mc_set_config "mailcow.conf" "HTTP_BIND" "127.0.0.1"
+mc_set_config "mailcow.conf" "HTTPS_BIND" "127.0.0.1"
 
-# Disable Mailcow's internal ACME - we use external certs
-set_config "SKIP_LETS_ENCRYPT" "y"
-set_config "SKIP_SOGO" "n"
-set_config "SKIP_CLAMD" "n"
+# SSL behavior
+# If you have a Cloudflare Origin cert on the host, we keep Mailcow ACME disabled.
+# IMPORTANT: We do NOT run generate_config.sh by default anymore, so these values won't be "reset".
+mc_set_config "mailcow.conf" "SKIP_LETS_ENCRYPT" "y"
+
+# Preserve existing Cloudflare token settings if you previously configured DNS-01 in Mailcow.
+# We intentionally do NOT overwrite these to avoid the “rerun erased my token” loop.
+mc_set_config_if_missing "mailcow.conf" "DNS_CHALLENGE" "cloudflare"
+mc_set_config_if_missing "mailcow.conf" "CF_API_TOKEN" ""
+
+mc_set_config "mailcow.conf" "SKIP_SOGO" "n"
+mc_set_config "mailcow.conf" "SKIP_CLAMD" "n"
 
 # Secure the config file
 chmod 600 mailcow.conf
 
 ok "Config applied:"
 grep -E "^(MAILCOW_HOSTNAME|TZ|HTTP_PORT|HTTPS_PORT|HTTP_BIND|HTTPS_BIND|SKIP_LETS_ENCRYPT)=" mailcow.conf | sed 's/^/  /'
+
+# Make loopback web bindings sticky even if Mailcow regenerates docker-compose.yml later.
+info "Ensuring sticky loopback port bindings via docker-compose.override.yml..."
+mc_write_loopback_override "$MAILCOW_DIR" "$HTTP_PORT" "$HTTPS_PORT"
+ok "Override written: $MAILCOW_DIR/docker-compose.override.yml"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Mount external SSL certs
@@ -263,9 +280,8 @@ if [[ "$USE_EXTERNAL_SSL" == true ]]; then
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Remove any docker-compose.override.yml (causes subnet issues)
-# ─────────────────────────────────────────────────────────────────────────────
-rm -f docker-compose.override.yml
+# Keep docker-compose.override.yml (we use it to enforce loopback web bindings)
+# NOTE: We only write service ports in the override (no networks), so it won't create subnet overlap.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stop, pull, start
