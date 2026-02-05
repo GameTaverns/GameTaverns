@@ -381,6 +381,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
   difficulty?: string;
   mechanics?: string[];
   publisher?: string;
+  is_expansion?: boolean;
 } | null> {
   const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
 
@@ -447,6 +448,10 @@ async function fetchBGGXMLData(bggId: string): Promise<{
       const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
       const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
       const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
+      
+      // Detect expansion from item type attribute
+      const typeMatch = xml.match(/<item[^>]*type="([^"]+)"/);
+      const isExpansion = typeMatch?.[1] === "boardgameexpansion";
 
       // Extract mechanics
       const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
@@ -499,13 +504,11 @@ async function fetchBGGXMLData(bggId: string): Promise<{
       let description: string | undefined;
       if (descMatch && descMatch[1]) {
         description = decodeEntities(descMatch[1]).trim();
-        if (description.length > 2000) description = description.slice(0, 2000);
+        // Increased limit from 2000 to 5000 to match game-import function
+        if (description.length > 5000) description = description.slice(0, 5000);
       }
 
-      console.log(`[BulkImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars)`);
-
-
-      console.log(`[BulkImport] BGG XML extracted data for ${bggId}`);
+      console.log(`[BulkImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars, expansion=${isExpansion})`);
 
       return {
         bgg_id: bggId,
@@ -518,6 +521,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
         difficulty,
         mechanics: mechanics.length > 0 ? mechanics : undefined,
         publisher: publisherMatch?.[1],
+        is_expansion: isExpansion,
       };
     } catch (e) {
       console.error("[BulkImport] BGG XML error:", e);
@@ -1339,6 +1343,8 @@ export default async function handler(req: Request): Promise<Response> {
                   suggested_age: isEmpty(gameData.suggested_age) ? bggData.suggested_age : gameData.suggested_age,
                   mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
                   publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
+                  // Override is_expansion from BGG if not already set (BGG is authoritative)
+                  is_expansion: gameData.is_expansion || bggData.is_expansion,
                 };
 
                 // Ensure notes are appended after enrichment when CSV had notes.
@@ -1408,6 +1414,8 @@ export default async function handler(req: Request): Promise<Response> {
                         suggested_age: isEmpty(gameData.suggested_age) ? bggData.suggested_age : gameData.suggested_age,
                         mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
                         publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
+                        // Override is_expansion from BGG if not already set
+                        is_expansion: gameData.is_expansion || bggData.is_expansion,
                       };
                     }
                   }
