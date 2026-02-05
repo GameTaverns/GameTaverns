@@ -289,6 +289,8 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgresql://supabase_admin:${POSTGRES_PASSWORD}@db:5432/postgres
       VERIFY_JWT: "false"
+      # Trust Cloudflare Origin CA for SMTP TLS connections
+      DENO_CERT: /etc/ssl/certs/cloudflare-origin-ca.pem
       # External API keys (all quoted for safety with empty values)
       PII_ENCRYPTION_KEY: "${PII_ENCRYPTION_KEY:-}"
       PERPLEXITY_API_KEY: "${PERPLEXITY_API_KEY:-}"
@@ -300,7 +302,7 @@ services:
       TURNSTILE_SECRET_KEY: "${TURNSTILE_SECRET_KEY:-}"
       # SMTP for edge functions
       SMTP_HOST: "${SMTP_HOST:-mail}"
-      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_PORT: "${SMTP_PORT:-465}"
       SMTP_USER: "${SMTP_USER:-}"
       SMTP_PASS: "${SMTP_PASS:-}"
       SMTP_FROM: "${SMTP_FROM:-noreply@gametaverns.com}"
@@ -311,6 +313,8 @@ services:
       # Use absolute path since docker-compose is in deploy/supabase-selfhosted/
       # but functions are at the repo root /opt/gametaverns/supabase/functions
       - /opt/gametaverns/supabase/functions:/home/deno/functions:ro
+      # Mount Cloudflare Origin CA certificate for Deno TLS trust
+      - /opt/gametaverns/cloudflare-origin-ca.pem:/etc/ssl/certs/cloudflare-origin-ca.pem:ro
     command:
       - start
       # Point to main/ directory which contains the router (index.ts)
