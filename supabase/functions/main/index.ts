@@ -2570,12 +2570,13 @@ async function handleSignup(req: Request): Promise<Response> {
     const baseUrl = redirectUrl || "https://gametaverns.com";
     const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
     // Fire-and-forget email sending so SMTP issues can't 504 the signup request
+    console.log(`[Signup] Attempting confirmation email via SMTP ${Deno.env.get("SMTP_HOST")}:${Deno.env.get("SMTP_PORT") || "465"} for ${email}`);
     ;(async () => {
       try {
         await sendConfirmationEmail({ email, confirmUrl });
-        console.log(`Confirmation email sent successfully to ${email}`);
+        console.log(`[Signup] Confirmation email sent successfully to ${email}`);
       } catch (emailError) {
-        console.error(`Failed to send confirmation email to ${email}:`, emailError);
+        console.error(`[Signup] Failed to send confirmation email to ${email}:`, emailError);
       }
     })();
 
