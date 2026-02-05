@@ -50,6 +50,7 @@ import { useLending } from "@/hooks/useLending";
 import { useMyMemberships, useLibraryMembership } from "@/hooks/useLibraryMembership";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { Footer } from "@/components/layout/Footer";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -690,6 +691,8 @@ const { data: playCount } = useQuery({
           </div>
         )}
       </main>
+      
+      <Footer />
     </div>
   );
 }

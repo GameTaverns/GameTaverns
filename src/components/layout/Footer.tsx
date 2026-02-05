@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Dices } from "lucide-react";
+import { proxiedImageUrl } from "@/lib/utils";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -83,7 +84,7 @@ export function Footer() {
               title="Game data powered by BoardGameGeek"
             >
               <img 
-                src="https://cf.geekdo-static.com/images/geekdo/bgg_logo.png" 
+                src={proxiedImageUrl("https://cf.geekdo-images.com/images/geekdo/bgg_logo.png") || "https://cf.geekdo-static.com/images/geekdo/bgg_logo.png"}
                 alt="Powered by BoardGameGeek" 
                 className="h-6"
               />
