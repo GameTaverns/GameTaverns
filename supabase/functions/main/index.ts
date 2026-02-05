@@ -2396,13 +2396,12 @@ function getSmtpClient() {
   // Port 25 = plain SMTP relay (no TLS, no STARTTLS)
   // Port 465 = implicit TLS
   // Port 587 = STARTTLS
+  // NOTE: denomailer may attempt STARTTLS unless `starttls` is explicitly set.
   const connection: any = {
     hostname: smtpHost,
     port: smtpPort,
     tls: smtpPort === 465,
-    // Explicitly disable TLS for port 25 local relay
-    ...(smtpPort === 25 ? { tls: false } : {}),
-    ...(smtpPort === 587 ? { starttls: true } : {}),
+    starttls: smtpPort === 587,
   };
 
   if (requiresAuth) {
