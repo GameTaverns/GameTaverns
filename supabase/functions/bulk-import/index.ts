@@ -1335,8 +1335,23 @@ export default async function handler(req: Request): Promise<Response> {
                   return v === "" || v.toLowerCase() === "null";
                 };
 
+                // Format the BGG description with AI if available (Quick Gameplay Overview format)
+                let formattedDescription = bggData.description;
+                if (bggData.description && bggData.description.length > 100 && isAIConfigured()) {
+                  console.log(`[BulkImport] Formatting description with AI for: ${gameInput.bgg_id}`);
+                  try {
+                    const aiFormatted = await formatDescriptionWithAI(bggData.description, gameInput.bgg_id);
+                    if (aiFormatted) {
+                      formattedDescription = aiFormatted;
+                      console.log(`[BulkImport] AI formatted description: ${aiFormatted.length} chars`);
+                    }
+                  } catch (e) {
+                    console.warn(`[BulkImport] AI formatting failed for ${gameInput.bgg_id}, using raw BGG description:`, e);
+                  }
+                }
+
                 const mergedDescription = !hasCsvDescription
-                  ? buildDescriptionWithNotes(bggData.description, gameInput._csv_notes)
+                  ? buildDescriptionWithNotes(formattedDescription, gameInput._csv_notes)
                   : gameData.description;
 
                 gameData = {
@@ -1357,7 +1372,7 @@ export default async function handler(req: Request): Promise<Response> {
 
                 // Ensure notes are appended after enrichment when CSV had notes.
                 if (!hasCsvDescription) {
-                  gameData.description = buildDescriptionWithNotes(bggData.description, gameInput._csv_notes);
+                  gameData.description = buildDescriptionWithNotes(formattedDescription, gameInput._csv_notes);
                 }
 
                 console.log(`[BulkImport] XML enriched "${gameData.title}": description=${(gameData.description?.length || 0)} chars, image=${!!gameData.image_url}`);
@@ -1406,8 +1421,21 @@ export default async function handler(req: Request): Promise<Response> {
                         return v === "" || v.toLowerCase() === "null";
                       };
 
+                      // Format the BGG description with AI if available
+                      let formattedDescription = bggData.description;
+                      if (bggData.description && bggData.description.length > 100 && isAIConfigured()) {
+                        try {
+                          const aiFormatted = await formatDescriptionWithAI(bggData.description, foundId);
+                          if (aiFormatted) {
+                            formattedDescription = aiFormatted;
+                          }
+                        } catch (e) {
+                          console.warn(`[BulkImport] AI formatting failed for title lookup ${foundId}:`, e);
+                        }
+                      }
+
                       const mergedDescription = !hasCsvDescription
-                        ? buildDescriptionWithNotes(bggData.description, gameInput._csv_notes)
+                        ? buildDescriptionWithNotes(formattedDescription, gameInput._csv_notes)
                         : gameData.description;
 
                       gameData = {
