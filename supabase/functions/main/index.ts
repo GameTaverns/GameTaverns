@@ -2351,7 +2351,7 @@ function generateSecureToken(): string {
 
 function getSmtpClient() {
   const smtpHost = Deno.env.get("SMTP_HOST");
-  const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "587", 10);
+  const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465", 10);
   const smtpUser = Deno.env.get("SMTP_USER");
   const smtpPass = Deno.env.get("SMTP_PASS");
   const smtpFrom = Deno.env.get("SMTP_FROM");
