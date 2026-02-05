@@ -46,8 +46,16 @@ mc_remove_network() {
 mc_pin_subnet() {
   local conf="$1"
   local ipv4_net="$2"   # e.g. 172.29.0.0/24
-  mc_set_config "$conf" "IPV4_NETWORK" "${ipv4_net%/*}"
-  mc_ok "Pinned Mailcow IPv4 subnet to ${ipv4_net%/*} in mailcow.conf"
+  local base="${ipv4_net%/*}" # 172.29.0.0
+
+  # Mailcow expects IPV4_NETWORK as a /24 "prefix" without the last octet.
+  # It will append ".0/24" internally. If we set 172.29.0.0, it becomes 172.29.0.0.0/24 (invalid).
+  # Therefore: 172.29.0.0/24 -> IPV4_NETWORK=172.29.0
+  local prefix3
+  prefix3="$(echo "$base" | awk -F. '{print $1"."$2"."$3}')"
+
+  mc_set_config "$conf" "IPV4_NETWORK" "$prefix3"
+  mc_ok "Pinned Mailcow IPv4 subnet to ${prefix3}.0/24 via IPV4_NETWORK=${prefix3}"
 }
 
 #!/bin/bash
