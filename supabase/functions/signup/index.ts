@@ -15,10 +15,37 @@ interface SignupRequest {
   redirectUrl?: string;
 }
 
+const SMTP_SEND_TIMEOUT_MS = 8000;
+
 function generateSecureToken(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<T>((_resolve, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+function sendEmailSafely(sendFn: () => Promise<void>) {
+  // Never block API responses on SMTP.
+  // We still attempt delivery in the background with a hard timeout.
+  (async () => {
+    try {
+      await withTimeout(sendFn(), SMTP_SEND_TIMEOUT_MS, "SMTP send");
+    } catch (e) {
+      console.error("SMTP send failed (non-blocking):", e);
+    }
+  })();
 }
 
 function getSmtpClient() {
@@ -262,17 +289,13 @@ async function handler(req: Request): Promise<Response> {
       const baseUrl = redirectUrl || "https://gametaverns.com";
       const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
       
-      // Fire-and-forget email sending - don't block the response
-      // This prevents 504 timeouts when SMTP is slow or unreachable
-      (async () => {
-        try {
-          await sendConfirmationEmail({ email, confirmUrl });
-          console.log(`Confirmation email sent successfully to ${email}`);
-        } catch (emailError) {
-          // Log but don't rollback - user can request resend from login page
-          console.error(`Failed to send confirmation email to ${email}:`, emailError);
-        }
-      })();
+      // Fire-and-forget email sending - don't block the response.
+      // IMPORTANT: we also enforce a hard timeout so the function instance
+      // doesn't hang on a stuck SMTP connect and get killed by the platform.
+      sendEmailSafely(async () => {
+        await sendConfirmationEmail({ email, confirmUrl });
+        console.log(`Confirmation email queued for ${email}`);
+      });
 
       // Return success immediately - user is created, token is stored
       // Email delivery happens in background
