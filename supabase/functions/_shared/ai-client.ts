@@ -167,101 +167,143 @@ export async function aiComplete(options: AIRequestOptions): Promise<AIResponse>
 
 /**
  * OpenAI-compatible completion (OpenAI, Perplexity, Lovable gateway)
- * 
- * IMPORTANT: Perplexity's sonar models do NOT support tool calling.
- * When tools are requested with Perplexity, we convert to response_format with json_schema.
+ *
+ * IMPORTANT:
+ * - Perplexity's sonar models do NOT support tool calling.
+ * - Some gateway/provider model combos also reject tool calling.
+ *
+ * Strategy:
+ * 1) If tools are requested and provider is Perplexity, always convert to response_format (json_schema).
+ * 2) Otherwise, try tool-calling first; if the provider responds with a 400 indicating tools are unsupported,
+ *    retry once using response_format (json_schema) and parse the assistant message JSON.
  */
 async function openaiCompatibleComplete(
   config: { endpoint: string; apiKey: string; model: string; provider: string },
   options: AIRequestOptions
 ): Promise<AIResponse> {
+  const wantsStructuredOutput = Boolean(options.tools && options.tools.length > 0);
   const isPerplexity = config.provider === "perplexity";
-  
-  const requestBody: Record<string, unknown> = {
-    model: options.model || config.model,
-    messages: [...options.messages],
+
+  const buildRequestBody = ({ forceResponseFormat }: { forceResponseFormat: boolean }) => {
+    const requestBody: Record<string, unknown> = {
+      model: options.model || config.model,
+      messages: [...options.messages],
+    };
+
+    if (options.max_tokens) requestBody.max_tokens = options.max_tokens;
+
+    if (wantsStructuredOutput) {
+      if (isPerplexity || forceResponseFormat) {
+        const tool = options.tools![0];
+        const schema = tool.function.parameters;
+
+        // Ensure the model returns strict JSON when we cannot rely on tool calling.
+        const messages = requestBody.messages as AIMessage[];
+        const systemIdx = messages.findIndex((m) => m.role === "system");
+        const jsonInstruction =
+          "\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no explanation, just the JSON object matching the schema.";
+
+        if (systemIdx >= 0) {
+          messages[systemIdx] = {
+            ...messages[systemIdx],
+            content: messages[systemIdx].content + jsonInstruction,
+          };
+        } else {
+          messages.unshift({
+            role: "system",
+            content: `You are a data extraction assistant. ${jsonInstruction}`,
+          });
+        }
+
+        requestBody.messages = messages;
+        requestBody.response_format = {
+          type: "json_schema",
+          json_schema: {
+            name: tool.function.name,
+            schema,
+          },
+        };
+      } else {
+        // Standard tool calling path
+        requestBody.tools = options.tools;
+        if (options.tool_choice) requestBody.tool_choice = options.tool_choice;
+      }
+    } else {
+      // No structured output requested
+      // (tools/tool_choice omitted)
+    }
+
+    return requestBody;
   };
 
-  if (options.max_tokens) {
-    requestBody.max_tokens = options.max_tokens;
-  }
-
-  // Perplexity doesn't support tool calling - convert to response_format with json_schema
-  if (isPerplexity && options.tools && options.tools.length > 0) {
-    const tool = options.tools[0];
-    const schema = tool.function.parameters;
-    
-    // Modify the system message to explicitly request JSON output
-    const messages = requestBody.messages as AIMessage[];
-    const systemIdx = messages.findIndex(m => m.role === "system");
-    const jsonInstruction = `\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no explanation, just the JSON object matching the schema.`;
-    
-    if (systemIdx >= 0) {
-      messages[systemIdx] = {
-        ...messages[systemIdx],
-        content: messages[systemIdx].content + jsonInstruction,
-      };
-    } else {
-      messages.unshift({
-        role: "system",
-        content: `You are a data extraction assistant. ${jsonInstruction}`,
-      });
-    }
-    
-    requestBody.messages = messages;
-    
-    // Use Perplexity's response_format with json_schema
-    requestBody.response_format = {
-      type: "json_schema",
-      json_schema: {
-        name: tool.function.name,
-        schema: schema,
+  const doRequest = async (requestBody: Record<string, unknown>): Promise<{ ok: boolean; status: number; bodyText: string; json?: any }> => {
+    const response = await fetch(config.endpoint, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
       },
-    };
-    
-    console.log("Perplexity: Using response_format instead of tools for structured output");
-  } else {
-    // Standard tool calling for other providers
-    if (options.tools) {
-      requestBody.tools = options.tools;
+      body: JSON.stringify(requestBody),
+    });
+
+    const bodyText = await response.text();
+    if (!response.ok) {
+      return { ok: false, status: response.status, bodyText };
     }
 
-    if (options.tool_choice) {
-      requestBody.tool_choice = options.tool_choice;
+    try {
+      const json = JSON.parse(bodyText);
+      return { ok: true, status: response.status, bodyText, json };
+    } catch (e) {
+      console.error("AI JSON parse error:", e);
+      return { ok: false, status: response.status, bodyText: bodyText || "" };
     }
+  };
+
+  // First attempt
+  const firstBody = buildRequestBody({ forceResponseFormat: isPerplexity });
+  const first = await doRequest(firstBody);
+
+  // If tool-calling was attempted and the provider rejects it, retry with response_format.
+  const shouldRetryWithResponseFormat =
+    wantsStructuredOutput &&
+    !isPerplexity &&
+    !first.ok &&
+    first.status === 400 &&
+    /tool calling is not supported/i.test(first.bodyText);
+
+  if (shouldRetryWithResponseFormat) {
+    console.log("AI provider rejected tool calling; retrying with response_format json_schema");
+    const retryBody = buildRequestBody({ forceResponseFormat: true });
+    const retry = await doRequest(retryBody);
+    if (!retry.ok || !retry.json) {
+      // Preserve original error details
+      console.error(`AI API error (${retry.status || first.status}):`, retry.bodyText || first.bodyText);
+      return {
+        success: false,
+        error: `AI request failed: ${retry.status || first.status}`,
+        rateLimited: retry.status === 429 || retry.status === 402 || first.status === 429 || first.status === 402,
+      };
+    }
+
+    // With response_format we expect JSON inside message.content
+    return parsePerplexityJsonResponse(retry.json);
   }
 
-  const response = await fetch(config.endpoint, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  if (!response.ok) {
-    return handleErrorResponse(response);
+  if (!first.ok || !first.json) {
+    console.error(`AI API error (${first.status}):`, first.bodyText);
+    if (first.status === 429 || first.status === 402) {
+      return { success: false, error: "Rate limit exceeded. Please try again later.", rateLimited: true };
+    }
+    return { success: false, error: `AI request failed: ${first.status}` };
   }
 
-  let data: any;
-  try {
-    data = await safeReadJson(response);
-  } catch (e) {
-    console.error("AI JSON parse error:", e);
-    return {
-      success: false,
-      error: "AI service returned an invalid response. Please retry.",
-      rateLimited: response.status === 429 || response.status === 402,
-    };
+  // If we used response_format (Perplexity path), parse content as JSON.
+  if (wantsStructuredOutput && isPerplexity) {
+    return parsePerplexityJsonResponse(first.json);
   }
-  
-  // For Perplexity with response_format, parse content as JSON and return as toolCallArguments
-  if (isPerplexity && options.tools && options.tools.length > 0) {
-    return parsePerplexityJsonResponse(data);
-  }
-  
-  return parseOpenAIResponse(data);
+
+  return parseOpenAIResponse(first.json);
 }
 
 /**
