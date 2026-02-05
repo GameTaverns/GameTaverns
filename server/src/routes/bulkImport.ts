@@ -558,7 +558,12 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
         const hasCompleteData = hasCsvDescription && csvDesc.length > 50;
 
         const mergeBggData = (bggData: Awaited<ReturnType<typeof fetchBGGXMLData>>): void => {
-          if (!bggData) return;
+          if (!bggData) {
+            console.log(`[BulkImport] mergeBggData: bggData is null/undefined`);
+            return;
+          }
+
+          console.log(`[BulkImport] mergeBggData: Received BGG data with description length=${bggData.description?.length || 0}`);
 
           // Merge BGG data into game input (only fill missing fields)
           if (!gameInput.title && bggData.title) gameInput.title = bggData.title;
@@ -568,9 +573,17 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
           // - If CSV description is missing/blank, use BGG description and append notes.
           // - If CSV description exists, keep it (but still allow notes).
           if (!hasCsvDescription) {
+            console.log(`[BulkImport] No CSV description, using BGG description (${bggData.description?.length || 0} chars) + notes (${gameInput._csv_notes?.length || 0} chars)`);
             const merged = buildDescriptionWithNotes(bggData.description, gameInput._csv_notes);
-            if (!isEmpty(merged)) gameInput.description = merged;
+            console.log(`[BulkImport] Merged description length: ${merged?.length || 0}`);
+            if (!isEmpty(merged)) {
+              gameInput.description = merged;
+              console.log(`[BulkImport] Set gameInput.description to merged value (${gameInput.description.length} chars)`);
+            } else {
+              console.log(`[BulkImport] Merged description was empty, not setting gameInput.description`);
+            }
           } else {
+            console.log(`[BulkImport] CSV has description, keeping it`);
             // Ensure notes are appended even when CSV provided description
             gameInput.description = buildDescriptionWithNotes(csvDesc, gameInput._csv_notes);
           }
@@ -584,7 +597,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
           if (isEmpty(gameInput.publisher)) gameInput.publisher = bggData.publisher;
 
           console.log(
-            `[BulkImport] Enriched "${gameInput.title}": image=${!!gameInput.image_url}, desc=${(gameInput.description?.length || 0)} chars (csvDesc=${csvDesc.length}, notes=${gameInput._csv_notes ? gameInput._csv_notes.length : 0})`,
+            `[BulkImport] Enriched "${gameInput.title}": image=${!!gameInput.image_url}, desc=${(gameInput.description?.length || 0)} chars (BGG desc=${bggData.description?.length || 0}, notes=${gameInput._csv_notes?.length || 0})`,
           );
         };
 
