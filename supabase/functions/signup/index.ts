@@ -67,22 +67,34 @@ function getSmtpClient() {
     throw new Error("Email service not configured (missing SMTP_USER/SMTP_PASS)");
   }
 
-  // Port 25 = plain SMTP relay (no TLS, no STARTTLS)
-  // Port 465 = implicit TLS
-  // Port 587 = STARTTLS
-  // NOTE: denomailer may attempt STARTTLS unless `starttls` is explicitly set.
+  // denomailer behavior:
+  // - `connection.tls: true`  => implicit TLS (typically 465)
+  // - `connection.tls: false` => STARTTLS by default (typically 587)
+  // For our internal Docker relay on port 25 we need *plain SMTP* (no TLS, no STARTTLS),
+  // so we must set `debug.noStartTLS: true` and allow the unencrypted connection.
+  const isPlainRelay = smtpPort === 25;
+
   const connection: any = {
     hostname: smtpHost,
     port: smtpPort,
     tls: smtpPort === 465,
-    starttls: smtpPort === 587,
   };
 
   if (requiresAuth) {
     connection.auth = { username: smtpUser, password: smtpPass };
   }
 
-  const client = new SMTPClient({ connection });
+  const client = new SMTPClient({
+    connection,
+    ...(isPlainRelay
+      ? {
+          debug: {
+            allowUnsecure: true,
+            noStartTLS: true,
+          },
+        }
+      : {}),
+  });
 
   return { client, smtpFrom };
 }
