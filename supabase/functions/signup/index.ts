@@ -67,11 +67,15 @@ function getSmtpClient() {
     throw new Error("Email service not configured (missing SMTP_USER/SMTP_PASS)");
   }
 
+  // Port 25 = plain SMTP relay (no TLS, no STARTTLS)
+  // Port 465 = implicit TLS
+  // Port 587 = STARTTLS
   const connection: any = {
     hostname: smtpHost,
     port: smtpPort,
     tls: smtpPort === 465,
-    // For port 587, use STARTTLS (not implicit TLS)
+    // Explicitly disable TLS for port 25 local relay
+    ...(smtpPort === 25 ? { tls: false } : {}),
     ...(smtpPort === 587 ? { starttls: true } : {}),
   };
 
