@@ -32,8 +32,8 @@ source "${SCRIPT_DIR}/mailcow/_lib.sh"
 DOMAIN="gametaverns.com"
 MAIL_HOSTNAME="mail.$DOMAIN"
 MAILCOW_DIR="/opt/mailcow"
-HTTP_PORT="8080"
-HTTPS_PORT="8443"
+HTTP_PORT="18880"
+HTTPS_PORT="18443"
 TIMEZONE="${TZ:-America/New_York}"
 
 # Strict port policy: fail if these ports are busy (no auto-pick)
