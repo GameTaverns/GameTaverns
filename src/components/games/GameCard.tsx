@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Users, Clock, DollarSign } from "lucide-react";
+import { Users, Clock, DollarSign, Youtube } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExpansionList } from "./ExpansionList";
@@ -95,6 +95,12 @@ export function GameCard({ game, priority = false }: GameCardProps) {
                 {comingSoon && game.is_coming_soon && (
                   <Badge className="text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
                     Coming Soon
+                  </Badge>
+                )}
+                {game.youtube_videos && game.youtube_videos.length > 0 && (
+                  <Badge className="text-xs bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
+                    <Youtube className="h-3 w-3 mr-0.5" />
+                    {game.youtube_videos.length} Video{game.youtube_videos.length > 1 ? 's' : ''}
                   </Badge>
                 )}
                 <Badge variant="secondary" className="text-xs">
