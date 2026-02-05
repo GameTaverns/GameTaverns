@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Upload, Tag, Building, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ type ImportMode = "csv" | "bgg_collection" | "bgg_links";
 
 export default function LibraryGames() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { library, settings, isLoading, isOwner, tenantSlug } = useTenant();
   const { buildUrl } = useTenantUrl();
@@ -339,6 +341,8 @@ export default function LibraryGames() {
           onOpenChange={setShowBulkImport}
           defaultMode={bulkImportMode}
           onImportComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["games"] });
+            queryClient.invalidateQueries({ queryKey: ["games-flat"] });
             setShowBulkImport(false);
           }}
         />
