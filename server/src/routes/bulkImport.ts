@@ -226,6 +226,112 @@ const buildDescription = (description: string | undefined, privateComment: strin
 
 const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
 
+// Fetch game data from BGG XML API
+async function fetchBGGXMLData(bggId: string): Promise<{
+  bgg_id: string;
+  title?: string;
+  description?: string;
+  image_url?: string;
+  min_players?: number;
+  max_players?: number;
+  suggested_age?: string;
+  play_time?: string;
+  difficulty?: string;
+  mechanics?: string[];
+  publisher?: string;
+} | null> {
+  try {
+    const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
+    const res = await fetch(xmlUrl, {
+      headers: { "User-Agent": "GameTaverns/1.0 (Bulk Import)" },
+    });
+    
+    if (!res.ok) {
+      console.warn(`[BulkImport] BGG XML API returned ${res.status} for ${bggId}`);
+      return { bgg_id: bggId };
+    }
+    
+    const xml = await res.text();
+    
+    // Extract primary name
+    const nameMatch = xml.match(/<name[^>]*type="primary"[^>]*value="([^"]+)"/);
+    
+    // Extract data using regex (simple parsing for XML)
+    const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+    const descMatch = xml.match(/<description>([^<]*)<\/description>/);
+    const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
+    const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
+    const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
+    const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
+    const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
+    
+    // Extract mechanics
+    const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
+    const mechanics = [...mechanicsMatches].map(m => m[1]);
+    
+    // Extract publisher (first one)
+    const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
+    
+    // Map weight to difficulty
+    let difficulty: string | undefined;
+    if (weightMatch) {
+      const w = parseFloat(weightMatch[1]);
+      if (w > 0) {
+        if (w < 1.5) difficulty = "1 - Light";
+        else if (w < 2.25) difficulty = "2 - Medium Light";
+        else if (w < 3.0) difficulty = "3 - Medium";
+        else if (w < 3.75) difficulty = "4 - Medium Heavy";
+        else difficulty = "5 - Heavy";
+      }
+    }
+    
+    // Map play time to enum
+    let play_time: string | undefined;
+    if (playTimeMatch) {
+      const minutes = parseInt(playTimeMatch[1], 10);
+      if (minutes <= 15) play_time = "0-15 Minutes";
+      else if (minutes <= 30) play_time = "15-30 Minutes";
+      else if (minutes <= 45) play_time = "30-45 Minutes";
+      else if (minutes <= 60) play_time = "45-60 Minutes";
+      else if (minutes <= 120) play_time = "60+ Minutes";
+      else if (minutes <= 180) play_time = "2+ Hours";
+      else play_time = "3+ Hours";
+    }
+    
+    // Decode HTML entities in description
+    let description = descMatch?.[1];
+    if (description) {
+      description = description
+        .replace(/&#10;/g, "\n")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .slice(0, 2000); // Limit length
+    }
+    
+    console.log(`[BulkImport] BGG XML fetched data for ${bggId}: ${nameMatch?.[1] || 'unknown title'}`);
+    
+    return {
+      bgg_id: bggId,
+      title: nameMatch?.[1],
+      image_url: imageMatch?.[1],
+      description,
+      min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
+      max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
+      suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
+      play_time,
+      difficulty,
+      mechanics: mechanics.length > 0 ? mechanics : undefined,
+      publisher: publisherMatch?.[1],
+    };
+  } catch (e) {
+    console.error("[BulkImport] BGG XML fetch error:", e);
+    return { bgg_id: bggId };
+  }
+}
+
 const generateSlug = (title: string): string => {
   return title
     .toLowerCase()
@@ -348,12 +454,12 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
         }
       }
     } else if (mode === "bgg_links" && bgg_links && bgg_links.length > 0) {
-      // For BGG links, just extract the ID - no BGG enhancement in self-hosted mode for now
+      // For BGG links, extract the ID - will be enriched later in processing loop
       for (const link of bgg_links) {
         const idMatch = link.match(/boardgame\/(\d+)/);
         if (idMatch) {
           gamesToImport.push({
-            title: "",
+            title: "", // Will be fetched from BGG API during processing
             bgg_id: idMatch[1],
             bgg_url: link,
           });
@@ -366,6 +472,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
 
     const totalGames = gamesToImport.length;
     console.log(`Processing ${totalGames} games for import...`);
+    console.log(`[BulkImport] enhance_with_bgg: ${enhance_with_bgg}`);
 
     let imported = 0;
     let failed = 0;
@@ -373,9 +480,40 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
     const importedGames: { title: string; id?: string }[] = [];
 
     // Process each game
-    for (const gameInput of gamesToImport) {
+    for (let i = 0; i < gamesToImport.length; i++) {
+      const gameInput = gamesToImport[i];
+      console.log(`[BulkImport] Processing ${i + 1}/${totalGames}: ${gameInput.title || `BGG ID: ${gameInput.bgg_id}`}`);
+      
       try {
-        // Skip games without title (can happen with BGG links mode)
+        // BGG enrichment - fetch additional data from BGG XML API
+        // Skip if description already exists (means data was in CSV)
+        const hasCompleteData = !!(gameInput.description && gameInput.description.length > 50);
+        
+        if (!hasCompleteData && gameInput.bgg_id && enhance_with_bgg !== false) {
+          console.log(`[BulkImport] Fetching BGG data for: ${gameInput.bgg_id}`);
+          try {
+            const bggData = await fetchBGGXMLData(gameInput.bgg_id);
+            if (bggData) {
+              // Merge BGG data into game input (only fill missing fields)
+              if (!gameInput.title && bggData.title) gameInput.title = bggData.title;
+              if (isEmpty(gameInput.image_url)) gameInput.image_url = bggData.image_url;
+              if (isEmpty(gameInput.description)) gameInput.description = bggData.description;
+              if (isEmpty(gameInput.difficulty)) gameInput.difficulty = bggData.difficulty;
+              if (isEmpty(gameInput.play_time)) gameInput.play_time = bggData.play_time;
+              if (gameInput.min_players === undefined) gameInput.min_players = bggData.min_players;
+              if (gameInput.max_players === undefined) gameInput.max_players = bggData.max_players;
+              if (isEmpty(gameInput.suggested_age)) gameInput.suggested_age = bggData.suggested_age;
+              if (!gameInput.mechanics?.length && bggData.mechanics?.length) gameInput.mechanics = bggData.mechanics;
+              if (isEmpty(gameInput.publisher)) gameInput.publisher = bggData.publisher;
+              
+              console.log(`[BulkImport] Enriched "${gameInput.title}": image=${!!gameInput.image_url}, desc=${(gameInput.description?.length || 0)} chars`);
+            }
+          } catch (e) {
+            console.warn(`[BulkImport] BGG fetch failed for ${gameInput.bgg_id}:`, e);
+          }
+        }
+        
+        // Skip games without title (can happen with BGG links mode if fetch failed)
         if (!gameInput.title) {
           failed++;
           errors.push(`Could not determine title for BGG ID: ${gameInput.bgg_id}`);
