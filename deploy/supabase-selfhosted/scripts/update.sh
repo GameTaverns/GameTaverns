@@ -83,8 +83,8 @@ else
 fi
 
 echo ""
-echo "Rebuilding containers..."
-dcp build --no-cache app api
+echo "Rebuilding frontend..."
+dcp build --no-cache app
 
 echo ""
 echo "Applying database migrations..."
