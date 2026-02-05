@@ -1,3 +1,55 @@
+# Ensure Docker default-address-pools avoid common collision ranges.
+mc_configure_docker_address_pools() {
+  local daemon_json="/etc/docker/daemon.json"
+  mc_info "Configuring Docker default-address-pools in $daemon_json..."
+
+  if [[ ! -f "$daemon_json" ]]; then
+    # No file yet — create minimal one
+    cat > "$daemon_json" <<'ENDJSON'
+{
+  "default-address-pools": [
+    { "base": "172.24.0.0/13", "size": 24 }
+  ]
+}
+ENDJSON
+    mc_ok "Created $daemon_json with safe address pool"
+    return 0
+  fi
+
+  # File exists — check if default-address-pools already present
+  if grep -q '"default-address-pools"' "$daemon_json"; then
+    mc_info "default-address-pools already configured in $daemon_json"
+    return 0
+  fi
+
+  # Insert before the last closing brace
+  mc_backup_file "$daemon_json"
+  sed -i 's/}$/,\n  "default-address-pools": [\n    { "base": "172.24.0.0\/13", "size": 24 }\n  ]\n}/' "$daemon_json"
+  mc_ok "Appended default-address-pools to $daemon_json"
+}
+
+# Remove a specific Docker network (and any stale containers using it).
+mc_remove_network() {
+  local net="$1"
+  if docker network ls --format '{{.Name}}' | grep -q "^${net}$"; then
+    mc_info "Removing Docker network: $net"
+    # Disconnect any containers still attached
+    for cid in $(docker network inspect "$net" --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null); do
+      docker network disconnect -f "$net" "$cid" 2>/dev/null || true
+    done
+    docker network rm "$net" 2>/dev/null || true
+    mc_ok "Removed network: $net"
+  fi
+}
+
+# Pin Mailcow to an explicit subnet in mailcow.conf.
+mc_pin_subnet() {
+  local conf="$1"
+  local ipv4_net="$2"   # e.g. 172.29.0.0/24
+  mc_set_config "$conf" "IPV4_NETWORK" "${ipv4_net%/*}"
+  mc_ok "Pinned Mailcow IPv4 subnet to ${ipv4_net%/*} in mailcow.conf"
+}
+
 #!/bin/bash
 set -euo pipefail
 
