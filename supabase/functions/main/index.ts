@@ -3,8 +3,8 @@
 // all functions must be inlined here for self-hosted multi-function support.
 // For Lovable Cloud, each function is deployed independently.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as OTPAuth from "https://esm.sh/otpauth@9.4.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import * as OTPAuth from "npm:otpauth@9.4.0";
 
 // Self-hosted router delegates many functions to their regular implementations.
 // These modules must guard `Deno.serve(...)` behind `import.meta.main`.

@@ -1,5 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as OTPAuth from "https://esm.sh/otpauth@9.4.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import * as OTPAuth from "npm:otpauth@9.4.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
