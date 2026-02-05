@@ -373,93 +373,132 @@ async function fetchBGGXMLData(bggId: string): Promise<{
   mechanics?: string[];
   publisher?: string;
 } | null> {
-  try {
-    const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
-    const res = await fetch(xmlUrl, {
-      headers: { "User-Agent": "GameTaverns/1.0 (Bulk Import)" },
-    });
-    
-    if (!res.ok) {
-      console.warn(`[BulkImport] BGG XML API returned ${res.status} for ${bggId}`);
+  const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
+
+  // BGG XML API frequently returns HTTP 202 (Accepted) for heavy traffic.
+  // In that case, you must retry the same request after a short delay.
+  const maxAttempts = 6;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(xmlUrl, {
+        headers: { "User-Agent": "GameTaverns/1.0 (Bulk Import)" },
+      });
+
+      // If not ok, return minimal info but don't fail the import.
+      if (!res.ok) {
+        console.warn(`[BulkImport] BGG XML API returned ${res.status} for ${bggId}`);
+
+        // Treat 202 as retryable even if considered "ok" by some proxies.
+        if (res.status === 202 && attempt < maxAttempts) {
+          const backoffMs = Math.min(750 * attempt, 4000);
+          await sleep(backoffMs);
+          continue;
+        }
+
+        return { bgg_id: bggId };
+      }
+
+      const xml = await res.text();
+
+      // Retry conditions:
+      // - BGG 202 response body typically contains a <message> asking to retry
+      // - Some intermediate caches may return HTML or otherwise incomplete XML
+      const retryable =
+        xml.includes("Please try again later") ||
+        xml.includes("Your request has been accepted") ||
+        xml.includes("<message>") ||
+        !xml.includes("<item");
+
+      if (retryable && attempt < maxAttempts) {
+        const backoffMs = Math.min(750 * attempt, 4000);
+        console.log(`[BulkImport] BGG XML not ready for ${bggId}, retrying (${attempt}/${maxAttempts}) in ${backoffMs}ms`);
+        await sleep(backoffMs);
+        continue;
+      }
+
+      // Extract data using regex (simple parsing for XML)
+      const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+      // Description can contain HTML entities like &lt; and line breaks, so match everything until closing tag
+      const descMatch = xml.match(/<description>([\s\S]*?)<\/description>/);
+      const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
+      const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
+      const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
+      const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
+      const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
+
+      // Extract mechanics
+      const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
+      const mechanics = [...mechanicsMatches].map((m) => m[1]);
+
+      // Extract publisher (first one)
+      const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
+
+      // Map weight to difficulty
+      let difficulty: string | undefined;
+      if (weightMatch) {
+        const w = parseFloat(weightMatch[1]);
+        if (w > 0) {
+          if (w < 1.5) difficulty = "1 - Light";
+          else if (w < 2.25) difficulty = "2 - Medium Light";
+          else if (w < 3.0) difficulty = "3 - Medium";
+          else if (w < 3.75) difficulty = "4 - Medium Heavy";
+          else difficulty = "5 - Heavy";
+        }
+      }
+
+      // Map play time to enum
+      let play_time: string | undefined;
+      if (playTimeMatch) {
+        const minutes = parseInt(playTimeMatch[1], 10);
+        if (minutes <= 15) play_time = "0-15 Minutes";
+        else if (minutes <= 30) play_time = "15-30 Minutes";
+        else if (minutes <= 45) play_time = "30-45 Minutes";
+        else if (minutes <= 60) play_time = "45-60 Minutes";
+        else if (minutes <= 120) play_time = "60+ Minutes";
+        else if (minutes <= 180) play_time = "2+ Hours";
+        else play_time = "3+ Hours";
+      }
+
+      // Decode HTML entities in description
+      let description = descMatch?.[1];
+      if (description) {
+        description = description
+          .replace(/&#10;/g, "\n")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .slice(0, 2000); // Limit length
+      }
+
+      console.log(`[BulkImport] BGG XML extracted data for ${bggId}`);
+
+      return {
+        bgg_id: bggId,
+        image_url: imageMatch?.[1],
+        description,
+        min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
+        max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
+        suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
+        play_time,
+        difficulty,
+        mechanics: mechanics.length > 0 ? mechanics : undefined,
+        publisher: publisherMatch?.[1],
+      };
+    } catch (e) {
+      console.error("[BulkImport] BGG XML error:", e);
+      if (attempt < maxAttempts) {
+        const backoffMs = Math.min(750 * attempt, 4000);
+        await sleep(backoffMs);
+        continue;
+      }
       return { bgg_id: bggId };
     }
-    
-    const xml = await res.text();
-    
-    // Extract data using regex (simple parsing for XML)
-    const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
-    // Description can contain HTML entities like &lt; and line breaks, so match everything until closing tag
-    const descMatch = xml.match(/<description>([\s\S]*?)<\/description>/);
-    const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
-    const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
-    const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
-    const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
-    const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
-    
-    // Extract mechanics
-    const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
-    const mechanics = [...mechanicsMatches].map(m => m[1]);
-    
-    // Extract publisher (first one)
-    const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
-    
-    // Map weight to difficulty
-    let difficulty: string | undefined;
-    if (weightMatch) {
-      const w = parseFloat(weightMatch[1]);
-      if (w > 0) {
-        if (w < 1.5) difficulty = "1 - Light";
-        else if (w < 2.25) difficulty = "2 - Medium Light";
-        else if (w < 3.0) difficulty = "3 - Medium";
-        else if (w < 3.75) difficulty = "4 - Medium Heavy";
-        else difficulty = "5 - Heavy";
-      }
-    }
-    
-    // Map play time to enum
-    let play_time: string | undefined;
-    if (playTimeMatch) {
-      const minutes = parseInt(playTimeMatch[1], 10);
-      if (minutes <= 15) play_time = "0-15 Minutes";
-      else if (minutes <= 30) play_time = "15-30 Minutes";
-      else if (minutes <= 45) play_time = "30-45 Minutes";
-      else if (minutes <= 60) play_time = "45-60 Minutes";
-      else if (minutes <= 120) play_time = "60+ Minutes";
-      else if (minutes <= 180) play_time = "2+ Hours";
-      else play_time = "3+ Hours";
-    }
-    
-    // Decode HTML entities in description
-    let description = descMatch?.[1];
-    if (description) {
-      description = description
-        .replace(/&#10;/g, "\n")
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .slice(0, 2000); // Limit length
-    }
-    
-    console.log(`[BulkImport] BGG XML fallback extracted data for ${bggId}`);
-    
-    return {
-      bgg_id: bggId,
-      image_url: imageMatch?.[1],
-      description,
-      min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
-      max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
-      suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
-      play_time,
-      difficulty,
-      mechanics: mechanics.length > 0 ? mechanics : undefined,
-      publisher: publisherMatch?.[1],
-    };
-  } catch (e) {
-    console.error("[BulkImport] BGG XML fallback error:", e);
-    return { bgg_id: bggId };
   }
+
+  return { bgg_id: bggId };
 }
 
 // Fetch full BGG data using Firecrawl + AI with retry logic
@@ -750,13 +789,21 @@ const parseBool = (val: string | undefined): boolean => {
   return v === "true" || v === "yes" || v === "1";
 };
 
-const buildDescription = (description: string | undefined, privateComment: string | undefined): string | undefined => {
+const buildDescription = (
+  description: string | undefined,
+  privateComment: string | undefined,
+  comment: string | undefined,
+): string | undefined => {
   const desc = description?.trim();
-  const notes = privateComment?.trim();
-  if (!desc && !notes) return undefined;
-  if (!notes) return desc;
-  if (!desc) return `**Notes:** ${notes}`;
-  return `${desc}\n\n**Notes:** ${notes}`;
+  const notes = [comment, privateComment]
+    .map((v) => v?.trim())
+    .filter((v): v is string => Boolean(v));
+
+  const notesText = notes.length ? notes.join("\n\n") : undefined;
+  if (!desc && !notesText) return undefined;
+  if (!notesText) return desc;
+  if (!desc) return `**Notes:** ${notesText}`;
+  return `${desc}\n\n**Notes:** ${notesText}`;
 };
 
 const parseNum = (val: string | undefined): number | undefined => {
@@ -1009,7 +1056,7 @@ export default async function handler(req: Request): Promise<Response> {
             crowdfunded: parseBool(row.crowdfunded),
             inserts: parseBool(row.inserts),
             in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
-            description: buildDescription(row.description, row.privatecomment),
+            description: buildDescription(row.description, row.privatecomment, row.comment),
             // Map BGG CSV admin data fields
             purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
             purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
