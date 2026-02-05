@@ -554,6 +554,41 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
           } catch (e) {
             console.warn(`[BulkImport] BGG fetch failed for ${gameInput.bgg_id}:`, e);
           }
+        } else if (enhance_with_bgg !== false && gameInput.title && !hasCompleteData) {
+          // No BGG ID - try to look up by title using XML search
+          console.log(`[BulkImport] Looking up BGG by title: ${gameInput.title}`);
+          try {
+            const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(gameInput.title)}&type=boardgame&exact=1`;
+            const searchRes = await fetch(searchUrl, {
+              headers: { "User-Agent": "GameTaverns/1.0 (Bulk Import)" },
+            });
+            if (searchRes.ok) {
+              const xml = await searchRes.text();
+              const idMatch = xml.match(/<item[^>]*id="(\d+)"/);
+              if (idMatch) {
+                const foundId = idMatch[1];
+                gameInput.bgg_id = foundId;
+                gameInput.bgg_url = `https://boardgamegeek.com/boardgame/${foundId}`;
+                
+                const bggData = await fetchBGGXMLData(foundId);
+                if (bggData) {
+                  if (isEmpty(gameInput.image_url)) gameInput.image_url = bggData.image_url;
+                  if (isEmpty(gameInput.description)) gameInput.description = bggData.description;
+                  if (isEmpty(gameInput.difficulty)) gameInput.difficulty = bggData.difficulty;
+                  if (isEmpty(gameInput.play_time)) gameInput.play_time = bggData.play_time;
+                  if (gameInput.min_players === undefined) gameInput.min_players = bggData.min_players;
+                  if (gameInput.max_players === undefined) gameInput.max_players = bggData.max_players;
+                  if (isEmpty(gameInput.suggested_age)) gameInput.suggested_age = bggData.suggested_age;
+                  if (!gameInput.mechanics?.length && bggData.mechanics?.length) gameInput.mechanics = bggData.mechanics;
+                  if (isEmpty(gameInput.publisher)) gameInput.publisher = bggData.publisher;
+                  
+                  console.log(`[BulkImport] Title lookup enriched "${gameInput.title}": desc=${(gameInput.description?.length || 0)} chars`);
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`[BulkImport] Title lookup failed for "${gameInput.title}":`, e);
+          }
         }
         
         // Skip games without title (can happen with BGG links mode if fetch failed)
