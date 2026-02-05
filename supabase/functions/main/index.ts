@@ -1603,10 +1603,20 @@ async function fetchBGGXMLData(bggId: string): Promise<{
   publisher?: string;
 } | null> {
   try {
-    const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`, {
-      headers: { "User-Agent": "GameTaverns/1.0 (Bulk Import)" },
-    });
-    if (!res.ok) return { bgg_id: bggId };
+    // BGG now requires authentication
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN");
+    const headers: Record<string, string> = {
+      "User-Agent": "GameTaverns/1.0 (Bulk Import)",
+    };
+    if (bggApiToken) {
+      headers["Authorization"] = `Bearer ${bggApiToken}`;
+    }
+    
+    const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`, { headers });
+    if (!res.ok) {
+      console.warn(`[Main] BGG XML API returned ${res.status} for ${bggId}${!bggApiToken ? " (no BGG_API_TOKEN configured)" : ""}`);
+      return { bgg_id: bggId };
+    }
     const xml = await res.text();
     
     const imageMatch = xml.match(/<image>([^<]+)<\/image>/);

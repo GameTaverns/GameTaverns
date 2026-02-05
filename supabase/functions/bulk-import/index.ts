@@ -305,12 +305,21 @@ async function lookupBGGByTitle(
   publisher?: string;
 } | null> {
   try {
+    // BGG now requires authentication
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN");
+    const headers: Record<string, string> = {
+      "User-Agent": "GameTaverns/1.0 (Bulk Import)",
+    };
+    if (bggApiToken) {
+      headers["Authorization"] = `Bearer ${bggApiToken}`;
+    }
+
     const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(title)}&type=boardgame&exact=1`;
-    const searchRes = await fetch(searchUrl);
+    const searchRes = await fetch(searchUrl, { headers });
     
     if (!searchRes.ok) {
       const fuzzyUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(title)}&type=boardgame`;
-      const fuzzyRes = await fetch(fuzzyUrl);
+      const fuzzyRes = await fetch(fuzzyUrl, { headers });
       if (!fuzzyRes.ok) return null;
       
       const xml = await fuzzyRes.text();
@@ -379,15 +388,22 @@ async function fetchBGGXMLData(bggId: string): Promise<{
   // In that case, you must retry the same request after a short delay.
   const maxAttempts = 6;
 
+  // BGG now requires authentication - use BGG_API_TOKEN if available
+  const bggApiToken = Deno.env.get("BGG_API_TOKEN");
+  const headers: Record<string, string> = {
+    "User-Agent": "GameTaverns/1.0 (Bulk Import)",
+  };
+  if (bggApiToken) {
+    headers["Authorization"] = `Bearer ${bggApiToken}`;
+  }
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const res = await fetch(xmlUrl, {
-        headers: { "User-Agent": "GameTaverns/1.0 (Bulk Import)" },
-      });
+      const res = await fetch(xmlUrl, { headers });
 
       // If not ok, return minimal info but don't fail the import.
       if (!res.ok) {
-        console.warn(`[BulkImport] BGG XML API returned ${res.status} for ${bggId}`);
+        console.warn(`[BulkImport] BGG XML API returned ${res.status} for ${bggId}${!bggApiToken ? " (no BGG_API_TOKEN configured)" : ""}`);
 
         // Treat 202 as retryable even if considered "ok" by some proxies.
         if (res.status === 202 && attempt < maxAttempts) {
@@ -1351,8 +1367,17 @@ export default async function handler(req: Request): Promise<Response> {
               // No BGG ID - try to look up by title using XML search
               console.log(`[BulkImport] Looking up BGG by title: ${gameData.title}`);
               try {
+                // BGG now requires authentication
+                const bggApiToken = Deno.env.get("BGG_API_TOKEN");
+                const searchHeaders: Record<string, string> = {
+                  "User-Agent": "GameTaverns/1.0 (Bulk Import)",
+                };
+                if (bggApiToken) {
+                  searchHeaders["Authorization"] = `Bearer ${bggApiToken}`;
+                }
+                
                 const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(gameData.title)}&type=boardgame&exact=1`;
-                const searchRes = await fetch(searchUrl);
+                const searchRes = await fetch(searchUrl, { headers: searchHeaders });
                 if (searchRes.ok) {
                   const xml = await searchRes.text();
                   const idMatch = xml.match(/<item[^>]*id="(\d+)"/);
