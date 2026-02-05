@@ -2352,27 +2352,32 @@ function generateSecureToken(): string {
 function getSmtpClient() {
   const smtpHost = Deno.env.get("SMTP_HOST");
   const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465", 10);
-  const smtpUser = Deno.env.get("SMTP_USER");
-  const smtpPass = Deno.env.get("SMTP_PASS");
+  const smtpUser = Deno.env.get("SMTP_USER") || "";
+  const smtpPass = Deno.env.get("SMTP_PASS") || "";
   const smtpFrom = Deno.env.get("SMTP_FROM");
 
-  if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
-    throw new Error("Email service not configured");
+  const requiresAuth = smtpPort !== 25;
+
+  if (!smtpHost || !smtpFrom) {
+    throw new Error("Email service not configured (missing SMTP_HOST/SMTP_FROM)");
   }
 
-  const client = new SMTPClient({
-    connection: {
-      hostname: smtpHost,
-      port: smtpPort,
-      tls: smtpPort === 465,
-      // For port 587, use STARTTLS (not implicit TLS)
-      ...(smtpPort === 587 ? { starttls: true } : {}),
-      auth: {
-        username: smtpUser,
-        password: smtpPass,
-      },
-    },
-  });
+  if (requiresAuth && (!smtpUser || !smtpPass)) {
+    throw new Error("Email service not configured (missing SMTP_USER/SMTP_PASS)");
+  }
+
+  const connection: any = {
+    hostname: smtpHost,
+    port: smtpPort,
+    tls: smtpPort === 465,
+    ...(smtpPort === 587 ? { starttls: true } : {}),
+  };
+
+  if (requiresAuth) {
+    connection.auth = { username: smtpUser, password: smtpPass };
+  }
+
+  const client = new SMTPClient({ connection });
 
   return { client, smtpFrom };
 }
