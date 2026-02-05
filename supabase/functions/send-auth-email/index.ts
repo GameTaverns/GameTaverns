@@ -67,12 +67,22 @@ export default async function handler(req: Request): Promise<Response> {
     // SMTP Configuration
     const smtpHost = Deno.env.get("SMTP_HOST");
     const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465", 10);
-    const smtpUser = Deno.env.get("SMTP_USER");
-    const smtpPass = Deno.env.get("SMTP_PASS");
+    const smtpUser = Deno.env.get("SMTP_USER") || "";
+    const smtpPass = Deno.env.get("SMTP_PASS") || "";
     const smtpFrom = Deno.env.get("SMTP_FROM");
 
-    if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
-      console.error("Missing SMTP configuration");
+    const requiresAuth = smtpPort !== 25;
+
+    if (!smtpHost || !smtpFrom) {
+      console.error("Missing SMTP configuration (SMTP_HOST/SMTP_FROM)");
+      return new Response(
+        JSON.stringify({ error: "Email service not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (requiresAuth && (!smtpUser || !smtpPass)) {
+      console.error("Missing SMTP credentials (SMTP_USER/SMTP_PASS)");
       return new Response(
         JSON.stringify({ error: "Email service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -126,18 +136,20 @@ export default async function handler(req: Request): Promise<Response> {
       const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
       await sendEmailSafely(async () => {
+        const connection: any = {
+          hostname: smtpHost,
+          port: smtpPort,
+          tls: smtpPort === 465,
+          // Port 587 = STARTTLS
+          ...(smtpPort === 587 ? { starttls: true } : {}),
+        };
+
+        if (requiresAuth) {
+          connection.auth = { username: smtpUser, password: smtpPass };
+        }
+
         const client = new SMTPClient({
-          connection: {
-            hostname: smtpHost,
-            port: smtpPort,
-            tls: smtpPort === 465,
-            // Port 587 = STARTTLS
-            ...(smtpPort === 587 ? { starttls: true } : {}),
-            auth: {
-              username: smtpUser,
-              password: smtpPass,
-            },
-          },
+          connection,
         });
 
         try {

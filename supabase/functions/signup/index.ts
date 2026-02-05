@@ -51,27 +51,35 @@ function sendEmailSafely(sendFn: () => Promise<void>) {
 function getSmtpClient() {
   const smtpHost = Deno.env.get("SMTP_HOST");
   const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465", 10);
-  const smtpUser = Deno.env.get("SMTP_USER");
-  const smtpPass = Deno.env.get("SMTP_PASS");
+  const smtpUser = Deno.env.get("SMTP_USER") || "";
+  const smtpPass = Deno.env.get("SMTP_PASS") || "";
   const smtpFrom = Deno.env.get("SMTP_FROM");
 
-  if (!smtpHost || !smtpUser || !smtpPass || !smtpFrom) {
-    throw new Error("Email service not configured");
+  // Port 25 is commonly used for local, non-TLS relay on the same host.
+  // In that mode, many setups intentionally have no auth.
+  const requiresAuth = smtpPort !== 25;
+
+  if (!smtpHost || !smtpFrom) {
+    throw new Error("Email service not configured (missing SMTP_HOST/SMTP_FROM)");
   }
 
-  const client = new SMTPClient({
-    connection: {
-      hostname: smtpHost,
-      port: smtpPort,
-      tls: smtpPort === 465,
-      // For port 587, use STARTTLS (not implicit TLS)
-      ...(smtpPort === 587 ? { starttls: true } : {}),
-      auth: {
-        username: smtpUser,
-        password: smtpPass,
-      },
-    },
-  });
+  if (requiresAuth && (!smtpUser || !smtpPass)) {
+    throw new Error("Email service not configured (missing SMTP_USER/SMTP_PASS)");
+  }
+
+  const connection: any = {
+    hostname: smtpHost,
+    port: smtpPort,
+    tls: smtpPort === 465,
+    // For port 587, use STARTTLS (not implicit TLS)
+    ...(smtpPort === 587 ? { starttls: true } : {}),
+  };
+
+  if (requiresAuth) {
+    connection.auth = { username: smtpUser, password: smtpPass };
+  }
+
+  const client = new SMTPClient({ connection });
 
   return { client, smtpFrom };
 }
@@ -293,6 +301,7 @@ async function handler(req: Request): Promise<Response> {
       // IMPORTANT: we also enforce a hard timeout so the function instance
       // doesn't hang on a stuck SMTP connect and get killed by the platform.
       sendEmailSafely(async () => {
+        console.log(`[Signup] Attempting confirmation email via SMTP ${Deno.env.get("SMTP_HOST")}:${Deno.env.get("SMTP_PORT") || "465"}`);
         await sendConfirmationEmail({ email, confirmUrl });
         console.log(`Confirmation email queued for ${email}`);
       });
