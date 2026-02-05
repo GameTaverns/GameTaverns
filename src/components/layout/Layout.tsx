@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { Footer } from "./Footer";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
@@ -12,7 +13,7 @@ export function Layout({ children, hideSidebar = false }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen parchment-texture">
+    <div className="min-h-screen parchment-texture flex flex-col">
       {!hideSidebar && <Sidebar isOpen={sidebarOpen} />}
       
       {/* Mobile overlay */}
@@ -23,15 +24,16 @@ export function Layout({ children, hideSidebar = false }: LayoutProps) {
         />
       )}
 
-      <div className={cn(!hideSidebar && "lg:ml-72")}>
+      <div className={cn("flex-1 flex flex-col", !hideSidebar && "lg:ml-72")}>
         <Header
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           isSidebarOpen={sidebarOpen}
           hideSidebarToggle={hideSidebar}
         />
-        <main className="container py-8 px-4 lg:px-8 pb-16">
+        <main className="container py-8 px-4 lg:px-8 pb-16 flex-1">
           {children}
         </main>
+        <Footer />
       </div>
     </div>
   );
