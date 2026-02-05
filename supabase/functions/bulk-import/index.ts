@@ -1577,6 +1577,59 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
 
+        // Second pass: Link orphaned expansions to parent games
+        // BGG CSV doesn't have parent_game column, so we infer from title matching
+        console.log(`[BulkImport] Second pass: Linking orphaned expansions...`);
+        
+        const { data: expansions } = await supabaseAdmin
+          .from("games")
+          .select("id, title, is_expansion, parent_game_id")
+          .eq("library_id", targetLibraryId)
+          .eq("is_expansion", true)
+          .is("parent_game_id", null);
+
+        if (expansions && expansions.length > 0) {
+          const { data: baseGames } = await supabaseAdmin
+            .from("games")
+            .select("id, title")
+            .eq("library_id", targetLibraryId)
+            .eq("is_expansion", false);
+
+          if (baseGames && baseGames.length > 0) {
+            let linked = 0;
+            for (const expansion of expansions) {
+              // Try to find parent by title matching
+              // Common patterns: "Base Game – Expansion" or "Base Game: Expansion"
+              const expTitle = expansion.title;
+              
+              // Sort base games by title length descending to prefer longer (more specific) matches
+              const sortedBases = [...baseGames].sort((a, b) => b.title.length - a.title.length);
+              
+              for (const baseGame of sortedBases) {
+                // Check if expansion title starts with base game title
+                if (expTitle.toLowerCase().startsWith(baseGame.title.toLowerCase())) {
+                  // Verify there's a separator after the base name (-, :, –)
+                  const afterBase = expTitle.substring(baseGame.title.length).trim();
+                  if (afterBase.match(/^[–:\-–—]/)) {
+                    // Found a match!
+                    const { error: linkErr } = await supabaseAdmin
+                      .from("games")
+                      .update({ parent_game_id: baseGame.id })
+                      .eq("id", expansion.id);
+                    
+                    if (!linkErr) {
+                      linked++;
+                      console.log(`[BulkImport] Linked expansion "${expansion.title}" → "${baseGame.title}"`);
+                    }
+                    break;
+                  }
+                }
+              }
+            }
+            console.log(`[BulkImport] Linked ${linked} of ${expansions.length} orphaned expansions`);
+          }
+        }
+
         // Mark job as completed
         await supabaseAdmin
           .from("import_jobs")

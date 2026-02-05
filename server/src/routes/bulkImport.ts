@@ -780,6 +780,51 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       }
     }
 
+    // Second pass: Link orphaned expansions to parent games
+    // BGG CSV doesn't have parent_game column, so we infer from title matching
+    console.log(`[BulkImport] Second pass: Linking orphaned expansions...`);
+    
+    const expansionsResult = await pool.query(
+      'SELECT id, title FROM games WHERE library_id = $1 AND is_expansion = true AND parent_game_id IS NULL',
+      [targetLibraryId]
+    );
+
+    if (expansionsResult.rows.length > 0) {
+      const baseGamesResult = await pool.query(
+        'SELECT id, title FROM games WHERE library_id = $1 AND is_expansion = false',
+        [targetLibraryId]
+      );
+
+      if (baseGamesResult.rows.length > 0) {
+        let linked = 0;
+        // Sort base games by title length descending to prefer longer (more specific) matches
+        const sortedBases = [...baseGamesResult.rows].sort((a, b) => b.title.length - a.title.length);
+        
+        for (const expansion of expansionsResult.rows) {
+          const expTitle = expansion.title;
+          
+          for (const baseGame of sortedBases) {
+            // Check if expansion title starts with base game title
+            if (expTitle.toLowerCase().startsWith(baseGame.title.toLowerCase())) {
+              // Verify there's a separator after the base name (-, :, –)
+              const afterBase = expTitle.substring(baseGame.title.length).trim();
+              if (/^[–:\-–—]/.test(afterBase)) {
+                // Found a match!
+                await pool.query(
+                  'UPDATE games SET parent_game_id = $1 WHERE id = $2',
+                  [baseGame.id, expansion.id]
+                );
+                linked++;
+                console.log(`[BulkImport] Linked expansion "${expansion.title}" → "${baseGame.title}"`);
+                break;
+              }
+            }
+          }
+        }
+        console.log(`[BulkImport] Linked ${linked} of ${expansionsResult.rows.length} orphaned expansions`);
+      }
+    }
+
     res.json({
       success: imported > 0,
       imported,
