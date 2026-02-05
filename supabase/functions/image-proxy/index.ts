@@ -39,7 +39,7 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-const ALLOWED_HOSTS = new Set(["cf.geekdo-images.com"]);
+const ALLOWED_HOSTS = new Set(["cf.geekdo-images.com", "cf.geekdo-static.com"]);
 
 function browserLikeHeaders() {
   // BGG requires specific headers; sometimes changing them helps avoid 400s

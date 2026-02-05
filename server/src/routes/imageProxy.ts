@@ -3,7 +3,7 @@ import { imageLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 
-const ALLOWED_HOSTS = new Set(['cf.geekdo-images.com']);
+const ALLOWED_HOSTS = new Set(['cf.geekdo-images.com', 'cf.geekdo-static.com']);
 
 router.get('/', imageLimiter, async (req: Request, res: Response) => {
   try {

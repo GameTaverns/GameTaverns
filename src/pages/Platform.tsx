@@ -6,6 +6,7 @@ import { useMyLibrary } from "@/hooks/useLibrary";
 import { usePlatformStats, formatStatNumber } from "@/hooks/usePlatformStats";
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { Footer } from "@/components/layout/Footer";
 import logoImage from "@/assets/logo.png";
 
 
@@ -182,44 +183,7 @@ export default function Platform() {
       </section>
       
       {/* Footer */}
-      <footer className="border-t border-border/30 bg-wood-dark/50 py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-cream/50 text-sm">
-              &copy; {new Date().getFullYear()} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
-            </p>
-            <nav className="flex items-center gap-6 text-sm">
-              <Link to="/privacy" className="text-cream/50 hover:text-cream transition-colors">
-                Privacy
-              </Link>
-              <Link to="/terms" className="text-cream/50 hover:text-cream transition-colors">
-                Terms
-              </Link>
-              <Link to="/cookies" className="text-cream/50 hover:text-cream transition-colors">
-                Cookies
-              </Link>
-              <Link to="/legal" className="text-cream/50 hover:text-cream transition-colors">
-                Legal
-              </Link>
-              {/* BGG Attribution - Required for API usage */}
-              <a 
-                href="https://boardgamegeek.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                title="Game data powered by BoardGameGeek"
-              >
-                <img 
-                  src="https://cf.geekdo-static.com/images/geekdo/bgg_logo.png" 
-                  alt="Powered by BoardGameGeek" 
-                  className="h-5"
-                />
-                <span className="text-xs text-cream/50">Powered by BGG</span>
-              </a>
-            </nav>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

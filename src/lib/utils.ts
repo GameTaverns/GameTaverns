@@ -36,7 +36,7 @@ export function proxiedImageUrl(url: string | null | undefined): string | undefi
     const u = new URL(url);
     
     // Only proxy BGG images - other images (like Unsplash) work fine directly
-    if (u.hostname === "cf.geekdo-images.com") {
+    if (u.hostname === "cf.geekdo-images.com" || u.hostname === "cf.geekdo-static.com") {
       // In self-hosted mode, use local API proxy if available
       if (isSelfHostedMode()) {
         const normalized = cleanBggUrl(url);
@@ -65,7 +65,7 @@ export function isBggImage(url: string | null | undefined): boolean {
   if (!url) return false;
   try {
     const u = new URL(url);
-    return u.hostname === "cf.geekdo-images.com";
+    return u.hostname === "cf.geekdo-images.com" || u.hostname === "cf.geekdo-static.com";
   } catch {
     return false;
   }
