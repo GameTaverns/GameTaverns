@@ -161,6 +161,19 @@ echo ""
 command -v docker &>/dev/null || die "Docker not installed. Run bootstrap.sh first."
 command -v git &>/dev/null || die "Git not installed."
 
+# ─────────────────────────────────────────────────────────────────────────────
+# FIX: Docker network overlap issue
+# ─────────────────────────────────────────────────────────────────────────────
+info "Fixing Docker network overlap issue..."
+
+# 1. Configure Docker daemon with safe default address pools
+mc_configure_docker_address_pools
+systemctl restart docker 2>/dev/null || true
+sleep 3
+
+# 2. Remove the specific conflicting Mailcow network if it exists
+mc_remove_network "mailcowdockerized_mailcow-network"
+
 # Check mail ports (only if fresh install)
 if [[ ! -d "$MAILCOW_DIR" ]]; then
     info "Checking mail ports..."
@@ -251,6 +264,9 @@ mc_set_config_if_missing "mailcow.conf" "CF_API_TOKEN" ""
 
 mc_set_config "mailcow.conf" "SKIP_SOGO" "n"
 mc_set_config "mailcow.conf" "SKIP_CLAMD" "n"
+
+# Pin Mailcow to an explicit subnet to avoid future collisions
+mc_pin_subnet "mailcow.conf" "172.29.0.0/24"
 
 # Secure the config file
 chmod 600 mailcow.conf
