@@ -537,6 +537,96 @@ async function fetchBGGXMLData(bggId: string): Promise<{
   return { bgg_id: bggId };
 }
 
+// Format a BGG description into structured markdown using AI
+// Uses response_format instead of tool calling (Perplexity doesn't support tools)
+async function formatDescriptionWithAI(rawContent: string, bggId: string): Promise<string | null> {
+  if (!isAIConfigured()) {
+    console.log(`[BulkImport] AI not configured, skipping description formatting for ${bggId}`);
+    return null;
+  }
+
+  try {
+    const systemPrompt = `You are a board game description writer. Transform the provided game page content into a well-structured, engaging description.
+
+FORMAT YOUR RESPONSE AS A JSON OBJECT with a single "description" field containing markdown text.
+
+The description should follow this EXACT structure:
+1. Opening paragraph (2-3 sentences): What the game is about, theme, player count range
+2. "## Quick Gameplay Overview" header
+3. Bullet points with bold labels:
+   - **Goal:** One sentence about how to win
+   - **Each Round:** or **Gameplay:** 3-5 bullet points describing the main actions
+   - **End Game:** or **Winner:** One sentence about game end condition
+
+TOTAL: 150-250 words. Keep it scannable and engaging. Use markdown formatting.
+
+Example format:
+{
+  "description": "Game Name transports 1-4 players to... This game blends strategic X, Y, and Z for an engaging experience.\\n\\n## Quick Gameplay Overview\\n\\n**Goal:** Earn the most points by...\\n\\n**Each Round:**\\n- **Action 1:** Do something\\n- **Action 2:** Do another thing\\n- **Scoring:** Calculate points\\n\\n**Winner:** The player with the most points after X rounds wins."
+}`;
+
+    const result = await aiComplete({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Create a structured description for this board game:\n\n${rawContent}` },
+      ],
+      max_tokens: 800,
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "format_description",
+            description: "Return the formatted game description",
+            parameters: {
+              type: "object",
+              properties: {
+                description: {
+                  type: "string",
+                  description: "The formatted markdown description following the specified structure",
+                },
+              },
+              required: ["description"],
+              additionalProperties: false,
+            },
+          },
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "format_description" } },
+    });
+
+    if (!result.success) {
+      console.warn(`[BulkImport] AI description formatting failed for ${bggId}:`, result.error);
+      return null;
+    }
+
+    // Handle both tool call and direct content responses
+    if (result.toolCallArguments?.description) {
+      return result.toolCallArguments.description as string;
+    }
+    
+    // Try to parse content as JSON if it's a direct response
+    if (result.content) {
+      try {
+        const parsed = JSON.parse(result.content);
+        if (parsed.description) {
+          return parsed.description;
+        }
+      } catch {
+        // Content might be the description itself
+        if (result.content.includes("## Quick Gameplay Overview") || result.content.length > 100) {
+          return result.content;
+        }
+      }
+    }
+
+    console.warn(`[BulkImport] AI returned unexpected format for ${bggId}`);
+    return null;
+  } catch (e) {
+    console.error(`[BulkImport] AI description error for ${bggId}:`, e);
+    return null;
+  }
+}
+
 // Fetch full BGG data using Firecrawl + AI with retry logic
 async function fetchBGGData(
   bggId: string,
@@ -630,14 +720,32 @@ async function fetchBGGData(
       });
       const mainImage: string | null = filtered[0] || null;
       
-      // IMPORTANT: Skip AI extraction entirely - BGG XML API provides descriptions reliably.
-      // AI tool-calling often fails with "Tool calling is not supported" errors on Perplexity.
-      // The XML fallback (fetchBGGXMLData) is the reliable path for descriptions.
-      // Firecrawl is only useful for getting the best image URL.
-      console.log(`[BulkImport] Firecrawl got image for ${bggId}, skipping AI extraction (using BGG XML for descriptions)`);
-      return { bgg_id: bggId, image_url: mainImage ?? undefined };
-
-      // Dead code removed - AI extraction was unreliable, BGG XML is authoritative for descriptions
+      // We have an image from Firecrawl; now try to get enriched description from AI
+      // if markdown content is available
+      if (markdown && markdown.length > 200) {
+        console.log(`[BulkImport] Attempting AI description formatting for ${bggId}`);
+        const aiDescription = await formatDescriptionWithAI(markdown.slice(0, 10000), bggId);
+        if (aiDescription) {
+          console.log(`[BulkImport] AI formatted description for ${bggId}: ${aiDescription.length} chars`);
+          // Get additional data from BGG XML for player counts, etc.
+          const xmlData = await fetchBGGXMLData(bggId);
+          return {
+            ...xmlData,
+            bgg_id: bggId,
+            image_url: mainImage ?? xmlData?.image_url,
+            description: aiDescription,
+          };
+        }
+      }
+      
+      // AI formatting failed or no content - fall back to BGG XML
+      console.log(`[BulkImport] Firecrawl got image for ${bggId}, using BGG XML for other data`);
+      const xmlData = await fetchBGGXMLData(bggId);
+      return {
+        ...xmlData,
+        bgg_id: bggId,
+        image_url: mainImage ?? xmlData?.image_url,
+      };
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
       console.warn(`[BulkImport] Firecrawl attempt ${attempt} failed for ${bggId}:`, e);
