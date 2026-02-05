@@ -40,9 +40,24 @@ TIMEZONE="${TZ:-America/New_York}"
 STRICT_PORTS="true"
 
 # External SSL certificate paths (Cloudflare Origin or Let's Encrypt)
+# Prefer domain-named certs if present (common with Cloudflare Origin cert installs).
 SSL_CERT_DIR="/etc/ssl/cloudflare"
-SSL_CERT_FILE="$SSL_CERT_DIR/origin.pem"
-SSL_KEY_FILE="$SSL_CERT_DIR/origin.key"
+SSL_CERT_FILE_DEFAULT="$SSL_CERT_DIR/origin.pem"
+SSL_KEY_FILE_DEFAULT="$SSL_CERT_DIR/origin.key"
+
+# Your server currently uses these names:
+#   /etc/ssl/cloudflare/gametaverns.com.pem
+#   /etc/ssl/cloudflare/gametaverns.com.key
+SSL_CERT_FILE_DOMAIN="$SSL_CERT_DIR/${DOMAIN}.pem"
+SSL_KEY_FILE_DOMAIN="$SSL_CERT_DIR/${DOMAIN}.key"
+
+SSL_CERT_FILE="$SSL_CERT_FILE_DEFAULT"
+SSL_KEY_FILE="$SSL_KEY_FILE_DEFAULT"
+
+if [[ -f "$SSL_CERT_FILE_DOMAIN" && -f "$SSL_KEY_FILE_DOMAIN" ]]; then
+    SSL_CERT_FILE="$SSL_CERT_FILE_DOMAIN"
+    SSL_KEY_FILE="$SSL_KEY_FILE_DOMAIN"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Colors & helpers are sourced from mailcow/_lib.sh
@@ -197,11 +212,12 @@ if [[ "$STRICT_PORTS" == "true" ]]; then
     
     PORT_CONFLICT=false
     for port in $HTTP_PORT $HTTPS_PORT; do
-        if ss -tlnp | grep -q "127.0.0.1:$port "; then
-            # Check if it's Mailcow's own nginx
-            OWNER=$(ss -tlnp | grep "127.0.0.1:$port " | awk '{print $NF}')
+        # ss output formatting varies; match by word boundary instead of a trailing space.
+        if ss -tlnp | grep -Eq "127\.0\.0\.1:${port}\\b"; then
+            OWNER=$(ss -tlnp | grep -E "127\.0\.0\.1:${port}\\b" | head -1 | awk '{print $NF}')
             if [[ "$OWNER" != *"nginx-mailcow"* ]]; then
-                err "Port 127.0.0.1:$port is already in use by: $OWNER"
+                err "Port 127.0.0.1:$port is already in use by: ${OWNER:-unknown}"
+                err "Find the owning process with: ss -tlnp | grep -E '127\\.0\\.0\\.1:${port}\\b'"
                 PORT_CONFLICT=true
             fi
         fi
@@ -216,7 +232,7 @@ if [[ "$STRICT_PORTS" == "true" ]]; then
         echo "  2. Edit HTTP_PORT/HTTPS_PORT in this script to use different ports"
         echo ""
         echo "To find what's using the ports:"
-        echo "  ss -tlnp | grep -E ':$HTTP_PORT |:$HTTPS_PORT '"
+        echo "  ss -tlnp | grep -E '127\\.0\\.0\\.1:($HTTP_PORT|$HTTPS_PORT)\\b'"
         echo ""
         die "Port conflict detected. Fix manually before re-running."
     fi
@@ -250,7 +266,9 @@ fi
 
 # Check external SSL certs
 if [[ -f "$SSL_CERT_FILE" && -f "$SSL_KEY_FILE" ]]; then
-    ok "External SSL certs found at $SSL_CERT_DIR"
+    ok "External SSL certs found:"
+    echo "  cert: $SSL_CERT_FILE"
+    echo "  key:  $SSL_KEY_FILE"
     USE_EXTERNAL_SSL=true
 else
     warn "No external SSL certs at $SSL_CERT_DIR - Mailcow will use snake-oil certs"
