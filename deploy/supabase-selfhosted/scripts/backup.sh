@@ -55,13 +55,17 @@ echo ""
 # Check if docker compose is running
 if ! dcp ps --status running 2>/dev/null | grep -q "db"; then
     echo -e "${YELLOW}Warning: Database container may not be running${NC}"
-    echo "Attempting backup anyway..."
+    echo "Skipping backup - no database container found"
+    exit 0
 fi
 
-# Database backup
+# Database backup with timeout (60 seconds max)
 echo "Backing up database..."
-if dcp exec -T db pg_dump -U supabase_admin -d postgres \
-    --no-owner --no-privileges --clean --if-exists 2>/dev/null \
+BACKUP_TIMEOUT=60
+
+# Use timeout to prevent hanging
+if timeout ${BACKUP_TIMEOUT}s dcp exec -T db pg_dump -U supabase_admin -d postgres \
+    --no-owner --no-privileges --clean --if-exists 2>&1 \
     | gzip > "$BACKUP_DIR/database_${DATE}.sql.gz"; then
     
     # Verify backup is not empty
@@ -72,8 +76,12 @@ if dcp exec -T db pg_dump -U supabase_admin -d postgres \
         rm -f "$BACKUP_DIR/database_${DATE}.sql.gz"
         exit 1
     fi
+elif [ $? -eq 124 ]; then
+    echo -e "${YELLOW}  ⚠ Database backup timed out after ${BACKUP_TIMEOUT}s - skipping${NC}"
+    rm -f "$BACKUP_DIR/database_${DATE}.sql.gz"
 else
     echo -e "${RED}  ✗ Database backup failed${NC}"
+    rm -f "$BACKUP_DIR/database_${DATE}.sql.gz"
     exit 1
 fi
 
