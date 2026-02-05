@@ -88,6 +88,177 @@ const PLAY_TIME_OPTIONS = (IS_SELF_HOSTED ? SELF_HOSTED_PLAY_TIME_OPTIONS : CLOU
 const GAME_TYPE_OPTIONS = (IS_SELF_HOSTED ? SELF_HOSTED_GAME_TYPE_OPTIONS : CLOUD_GAME_TYPE_OPTIONS) as readonly string[];
 
 // ---------------------------------------------------------------------------
+// BGG XML API Helper (fast, reliable)
+// ---------------------------------------------------------------------------
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function fetchBGGDataFromXML(
+  bggId: string
+): Promise<{
+  bgg_id: string;
+  title?: string;
+  image_url?: string;
+  description?: string;
+  min_players?: number;
+  max_players?: number;
+  suggested_age?: string;
+  play_time?: string;
+  difficulty?: string;
+  mechanics?: string[];
+  publisher?: string;
+  is_expansion?: boolean;
+}> {
+  const bggApiToken = Deno.env.get("BGG_API_TOKEN");
+  const headers: Record<string, string> = { "User-Agent": "GameTaverns/1.0" };
+  if (bggApiToken) headers["Authorization"] = bggApiToken;
+
+  const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
+  const maxAttempts = 6;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(xmlUrl, { headers });
+
+      if (!res.ok) {
+        console.warn(`[GameImport] BGG XML API returned ${res.status} for ${bggId}${!bggApiToken ? " (no BGG_API_TOKEN configured)" : ""}`);
+        if (res.status === 202 && attempt < maxAttempts) {
+          const backoffMs = Math.min(750 * attempt, 4000);
+          await sleep(backoffMs);
+          continue;
+        }
+        return { bgg_id: bggId };
+      }
+
+      const xml = await res.text();
+
+      const retryable =
+        xml.includes("Please try again later") ||
+        xml.includes("Your request has been accepted") ||
+        xml.includes("<message>") ||
+        !xml.includes("<item");
+
+      if (retryable && attempt < maxAttempts) {
+        const backoffMs = Math.min(750 * attempt, 4000);
+        console.log(`[GameImport] BGG XML not ready for ${bggId}, retrying (${attempt}/${maxAttempts}) in ${backoffMs}ms`);
+        await sleep(backoffMs);
+        continue;
+      }
+
+      // Extract data from XML
+      const titleMatch = xml.match(/<name[^>]*\btype="primary"[^>]*\bvalue="([^"]+)"/);
+      const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+      const descMatch = xml.match(/<description[^>]*>([\s\S]*?)<\/description>/i);
+      const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
+      const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
+      const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
+      const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
+      const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
+      const typeMatch = xml.match(/<item[^>]*type="([^"]+)"/);
+
+      // Extract mechanics
+      const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
+      const mechanics = [...mechanicsMatches].map((m) => m[1]);
+
+      // Extract publisher (first one)
+      const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
+
+      // Map weight to difficulty
+      let difficulty: string | undefined;
+      if (weightMatch) {
+        const w = parseFloat(weightMatch[1]);
+        if (w > 0) {
+          if (IS_SELF_HOSTED) {
+            if (w < 1.5) difficulty = "1 - Very Easy";
+            else if (w < 2.25) difficulty = "2 - Easy";
+            else if (w < 3.0) difficulty = "3 - Medium";
+            else if (w < 3.75) difficulty = "4 - Hard";
+            else difficulty = "5 - Very Hard";
+          } else {
+            if (w < 1.5) difficulty = "1 - Light";
+            else if (w < 2.25) difficulty = "2 - Medium Light";
+            else if (w < 3.0) difficulty = "3 - Medium";
+            else if (w < 3.75) difficulty = "4 - Medium Heavy";
+            else difficulty = "5 - Heavy";
+          }
+        }
+      }
+
+      // Map play time to enum
+      let play_time: string | undefined;
+      if (playTimeMatch) {
+        const minutes = parseInt(playTimeMatch[1], 10);
+        if (IS_SELF_HOSTED) {
+          if (minutes <= 30) play_time = "Under 30 Minutes";
+          else if (minutes <= 45) play_time = "30-45 Minutes";
+          else if (minutes <= 60) play_time = "45-60 Minutes";
+          else if (minutes <= 90) play_time = "60-90 Minutes";
+          else if (minutes <= 120) play_time = "90-120 Minutes";
+          else if (minutes <= 180) play_time = "2-3 Hours";
+          else play_time = "3+ Hours";
+        } else {
+          if (minutes <= 15) play_time = "0-15 Minutes";
+          else if (minutes <= 30) play_time = "15-30 Minutes";
+          else if (minutes <= 45) play_time = "30-45 Minutes";
+          else if (minutes <= 60) play_time = "45-60 Minutes";
+          else if (minutes <= 120) play_time = "60+ Minutes";
+          else if (minutes <= 180) play_time = "2+ Hours";
+          else play_time = "3+ Hours";
+        }
+      }
+
+      // Decode HTML entities in description
+      const decodeEntities = (input: string) =>
+        input
+          .replace(/&#10;/g, "\n")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&#(\d+);/g, (_m, code) => {
+            const n = Number(code);
+            return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+          });
+
+      let description: string | undefined;
+      if (descMatch && descMatch[1]) {
+        description = decodeEntities(descMatch[1]).trim();
+        if (description.length > 5000) description = description.slice(0, 5000);
+      }
+
+      const isExpansion = typeMatch?.[1] === "boardgameexpansion";
+
+      console.log(`[GameImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars, expansion=${isExpansion})`);
+
+      return {
+        bgg_id: bggId,
+        title: titleMatch?.[1],
+        image_url: imageMatch?.[1],
+        description,
+        min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
+        max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
+        suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
+        play_time,
+        difficulty,
+        mechanics: mechanics.length > 0 ? mechanics : undefined,
+        publisher: publisherMatch?.[1],
+        is_expansion: isExpansion,
+      };
+    } catch (e) {
+      console.error("[GameImport] BGG XML error:", e);
+      if (attempt < maxAttempts) {
+        const backoffMs = Math.min(750 * attempt, 4000);
+        await sleep(backoffMs);
+        continue;
+      }
+      return { bgg_id: bggId };
+    }
+  }
+
+  return { bgg_id: bggId };
+}
+
+// ---------------------------------------------------------------------------
 // Enum normalization helpers
 // ---------------------------------------------------------------------------
 const normalizeEnum = (value: string | undefined, allowed: readonly string[]): string | undefined => {
@@ -293,19 +464,272 @@ export default async function handler(req: Request): Promise<Response> {
 
     console.log("Importing game from URL:", url);
 
-    // Step 1: Use Firecrawl to scrape the page
+    // Extract BGG ID for validation and primary data source
+    const bggIdMatch = url.match(/boardgame\/(\d+)/);
+    const bggId = bggIdMatch?.[1];
+
+    // ---------------------------------------------------------------------------
+    // STEP 1: Try BGG XML API first (fast, ~0.5s, reliable descriptions)
+    // ---------------------------------------------------------------------------
+    let bggData: {
+      bgg_id: string;
+      title?: string;
+      image_url?: string;
+      description?: string;
+      min_players?: number;
+      max_players?: number;
+      suggested_age?: string;
+      play_time?: string;
+      difficulty?: string;
+      mechanics?: string[];
+      publisher?: string;
+      is_expansion?: boolean;
+    } | null = null;
+
+    if (bggId) {
+      console.log("Fetching data from BGG XML API for:", bggId);
+      bggData = await fetchBGGDataFromXML(bggId);
+      
+      if (bggData.title && bggData.description) {
+        console.log(`BGG XML API returned complete data for ${bggData.title} (${bggData.description.length} chars)`);
+      } else {
+        console.log(`BGG XML API returned partial data for ${bggId}`);
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // STEP 2: If BGG XML API provided complete data, use it directly (FAST PATH)
+    // ---------------------------------------------------------------------------
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-    if (!firecrawlKey) {
-      console.error("Firecrawl API key not configured");
+    const hasCompleteData = bggData?.title && bggData?.description && bggData?.image_url;
+
+    if (hasCompleteData && bggData) {
+      console.log("Using BGG XML API data directly (fast path)");
+
+      // We have everything we need from the XML API
+      // Skip Firecrawl and AI entirely for maximum speed
+      
+      // Handle mechanics
+      let mechanicIds: string[] = [];
+      if (bggData.mechanics && bggData.mechanics.length > 0) {
+        for (const mechanicName of bggData.mechanics) {
+          const { data: existingMechanic } = await supabaseAdmin
+            .from("mechanics")
+            .select("id")
+            .eq("name", mechanicName)
+            .maybeSingle();
+
+          if (existingMechanic) {
+            mechanicIds.push(existingMechanic.id);
+          } else {
+            const { data: newMechanic, error: mechError } = await supabaseAdmin
+              .from("mechanics")
+              .insert({ name: mechanicName })
+              .select("id")
+              .single();
+            
+            if (newMechanic && !mechError) {
+              mechanicIds.push(newMechanic.id);
+            }
+          }
+        }
+      }
+
+      // Handle publisher
+      let publisherId: string | null = null;
+      if (bggData.publisher) {
+        const { data: existingPublisher } = await supabaseAdmin
+          .from("publishers")
+          .select("id")
+          .eq("name", bggData.publisher)
+          .maybeSingle();
+
+        if (existingPublisher) {
+          publisherId = existingPublisher.id;
+        } else {
+          const { data: newPublisher, error: pubError } = await supabaseAdmin
+            .from("publishers")
+            .insert({ name: bggData.publisher })
+            .select("id")
+            .single();
+          
+          if (newPublisher && !pubError) {
+            publisherId = newPublisher.id;
+          }
+        }
+      }
+
+      // Handle expansion detection - try to find parent game
+      let detectedParentGameId: string | null = null;
+      const aiDetectedExpansion = bggData.is_expansion === true;
+      
+      if (aiDetectedExpansion && bggData.title) {
+        const baseTitle = bggData.title.split(':')[0].trim();
+        if (baseTitle && baseTitle !== bggData.title) {
+          const { data: exactMatch } = await supabaseAdmin
+            .from("games")
+            .select("id, title")
+            .eq("library_id", targetLibraryId)
+            .eq("is_expansion", false)
+            .ilike("title", baseTitle)
+            .maybeSingle();
+
+          if (exactMatch) {
+            detectedParentGameId = exactMatch.id;
+            console.log("Found parent game match:", exactMatch.title);
+          }
+        }
+      }
+
+      // Build game data
+      const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
+      const gameData = {
+        title: bggData.title!.slice(0, 500),
+        description: bggData.description!.slice(0, 10000),
+        image_url: bggData.image_url,
+        additional_images: [],
+        difficulty: bggData.difficulty || (IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium"),
+        game_type: "Board Game",
+        play_time: bggData.play_time || (IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes"),
+        min_players: bggData.min_players || 1,
+        max_players: bggData.max_players || 4,
+        suggested_age: bggData.suggested_age || "10+",
+        publisher_id: publisherId,
+        bgg_id: bggId,
+        bgg_url: url.includes("boardgamegeek.com") ? url : null,
+        is_coming_soon: is_coming_soon === true,
+        is_for_sale: is_for_sale === true,
+        sale_price: is_for_sale === true && sale_price ? Number(sale_price) : null,
+        sale_condition: is_for_sale === true ? normalizedSaleCondition : null,
+        is_expansion: is_expansion === true || aiDetectedExpansion === true,
+        parent_game_id: is_expansion === true ? parent_game_id : (aiDetectedExpansion ? detectedParentGameId : null),
+        location_room: location_room || null,
+        location_shelf: location_shelf || null,
+        location_misc: location_misc || null,
+        sleeved: sleeved === true,
+        upgraded_components: upgraded_components === true,
+        crowdfunded: crowdfunded === true,
+        inserts: inserts === true,
+        library_id: targetLibraryId,
+      };
+
+      // Upsert: if we already have a game for this BGG URL in this library, update it
+      let existingId: string | null = null;
+      if (gameData.bgg_url) {
+        const { data: existing, error: existingError } = await supabaseAdmin
+          .from("games")
+          .select("id")
+          .eq("bgg_url", gameData.bgg_url)
+          .eq("library_id", targetLibraryId)
+          .maybeSingle();
+        if (existingError) throw existingError;
+        existingId = existing?.id ?? null;
+      }
+
+      const write = existingId
+        ? supabaseAdmin.from("games").update(gameData).eq("id", existingId).select().single()
+        : supabaseAdmin.from("games").insert(gameData).select().single();
+
+      const { data: game, error: gameError } = await write;
+
+      if (gameError) {
+        console.error("Game insert error:", gameError);
+        throw gameError;
+      }
+
+      // Handle admin data
+      const adminData = {
+        game_id: game.id,
+        purchase_price: purchase_price ? Number(purchase_price) : null,
+        purchase_date: purchase_date || null,
+      };
+      await supabaseAdmin.from("game_admin_data").upsert(adminData, { onConflict: "game_id" });
+
+      // Link mechanics
+      if (mechanicIds.length > 0) {
+        const mechanicLinks = mechanicIds.map((mechanicId) => ({
+          game_id: game.id,
+          mechanic_id: mechanicId,
+        }));
+        await supabaseAdmin.from("game_mechanics").insert(mechanicLinks);
+      }
+
+      console.log("Game imported successfully (fast path):", game.title);
+
+      // Send Discord notification for NEW games only
+      if (!existingId) {
+        try {
+          const playerCount = game.min_players && game.max_players
+            ? `${game.min_players}-${game.max_players} players`
+            : game.min_players
+              ? `${game.min_players}+ players`
+              : undefined;
+
+          const discordPayload = {
+            library_id: targetLibraryId,
+            event_type: "game_added",
+            data: {
+              title: game.title,
+              image_url: game.image_url,
+              player_count: playerCount,
+              play_time: game.play_time,
+            },
+          };
+
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          
+          console.log("Sending Discord notification for:", game.title);
+          const notifyResponse = await fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${serviceRoleKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(discordPayload),
+          });
+          
+          if (notifyResponse.ok) {
+            console.log("Discord notification sent successfully");
+          } else {
+            console.error("Discord notification failed:", await notifyResponse.text());
+          }
+        } catch (discordErr) {
+          console.error("Discord notification error:", discordErr);
+        }
+      }
+
       return new Response(
-        JSON.stringify({ success: false, error: "Import service temporarily unavailable. Please try again later." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ 
+          success: true, 
+          game: {
+            ...game,
+            mechanics: bggData.mechanics || [],
+            publisher: bggData.publisher || null,
+          }
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Extract BGG ID for validation
-    const bggIdMatch = url.match(/boardgame\/(\d+)/);
-    const bggId = bggIdMatch?.[1];
+    // ---------------------------------------------------------------------------
+    // STEP 3: Fallback to Firecrawl + AI for non-BGG URLs or incomplete data
+    // ---------------------------------------------------------------------------
+    console.log("BGG XML API incomplete or non-BGG URL, falling back to Firecrawl + AI");
+    
+    if (!firecrawlKey) {
+      // If no Firecrawl key and no complete BGG data, return what we have from BGG
+      if (bggData?.title) {
+        console.error("Firecrawl API key not configured, using partial BGG data");
+        // Continue with partial data...
+      } else {
+        console.error("Firecrawl API key not configured and no BGG data available");
+        return new Response(
+          JSON.stringify({ success: false, error: "Import service temporarily unavailable. Please try again later." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     console.log("Scraping with Firecrawl...");
     
@@ -364,36 +788,10 @@ export default async function handler(req: Request): Promise<Response> {
     });
     
     // Take the first image as main (box art preferred), then additional images
-    const mainImage = sortedImageLinks[0] || null;
+    // Use BGG XML image if available, otherwise use scraped image
+    const mainImage = bggData?.image_url || sortedImageLinks[0] || null;
     // Get up to 5 additional images (excluding the main one)
     const additionalScrapedImages = sortedImageLinks.slice(1, 6);
-
-    console.log("Found image links:", sortedImageLinks.length, "main:", !!mainImage, "additional:", additionalScrapedImages.length);
-    console.log("Main image:", mainImage);
-
-    // Guardrail: ensure the scraped content actually matches the requested BGG game page
-    // (BGG sometimes serves "hotness"/generic content when blocked).
-    const requestedBggId = bggId;
-    if (requestedBggId) {
-      const looksLikeRightPage =
-        typeof markdown === "string" &&
-        (markdown.includes(requestedBggId) || markdown.toLowerCase().includes(url.toLowerCase()));
-
-      if (!looksLikeRightPage) {
-        console.error("Scrape mismatch: content does not appear to be for requested game", {
-          url,
-          requestedBggId,
-        });
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error:
-              "Could not reliably read that BoardGameGeek page (it returned unrelated content). Please try again in a moment.",
-          }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
 
     if (!markdown) {
       return new Response(
