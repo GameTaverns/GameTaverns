@@ -132,14 +132,11 @@ export function BulkImportDialog({
   const [locationShelf, setLocationShelf] = useState("");
   const [locationMisc, setLocationMisc] = useState("");
 
-  // Cleanup on unmount or dialog close
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
+  // NOTE: We intentionally do NOT abort on unmount/dialog close.
+  // This allows the import to continue in the background even when the user
+  // switches tabs or navigates away. The import job is tracked in the database
+  // and will complete server-side regardless of client connection.
+  // The user will see the results when they return to the dialog or via toast.
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
