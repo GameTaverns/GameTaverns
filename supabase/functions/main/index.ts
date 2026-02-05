@@ -2343,6 +2343,33 @@ async function handleBulkImport(req: Request): Promise<Response> {
 // ============================================================================
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
+const SMTP_SEND_TIMEOUT_MS = 8000;
+
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<T>((_resolve, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+function sendEmailSafely(sendFn: () => Promise<void>) {
+  // Never block API responses on SMTP.
+  // We still attempt delivery in the background with a hard timeout.
+  (async () => {
+    try {
+      await withTimeout(sendFn(), SMTP_SEND_TIMEOUT_MS, "SMTP send");
+    } catch (e) {
+      console.error("SMTP send failed (non-blocking):", e);
+    }
+  })();
+}
+
 function generateSecureToken(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
@@ -2570,15 +2597,14 @@ async function handleSignup(req: Request): Promise<Response> {
     const baseUrl = redirectUrl || "https://gametaverns.com";
     const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
     // Fire-and-forget email sending so SMTP issues can't 504 the signup request
-    console.log(`[Signup] Attempting confirmation email via SMTP ${Deno.env.get("SMTP_HOST")}:${Deno.env.get("SMTP_PORT") || "465"} for ${email}`);
-    ;(async () => {
-      try {
-        await sendConfirmationEmail({ email, confirmUrl });
-        console.log(`[Signup] Confirmation email sent successfully to ${email}`);
-      } catch (emailError) {
-        console.error(`[Signup] Failed to send confirmation email to ${email}:`, emailError);
-      }
-    })();
+    console.log(
+      `[Signup] Attempting confirmation email via SMTP ${Deno.env.get("SMTP_HOST")}:${Deno.env.get("SMTP_PORT") || "465"} for ${email}`,
+    );
+
+    sendEmailSafely(async () => {
+      await sendConfirmationEmail({ email, confirmUrl });
+      console.log(`[Signup] Confirmation email sent successfully to ${email}`);
+    });
 
     return new Response(
       JSON.stringify({ success: true, message: "Account created. Check your email to confirm." }),
