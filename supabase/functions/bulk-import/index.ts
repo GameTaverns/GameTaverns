@@ -388,7 +388,8 @@ async function fetchBGGXMLData(bggId: string): Promise<{
     
     // Extract data using regex (simple parsing for XML)
     const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
-    const descMatch = xml.match(/<description>([^<]*)<\/description>/);
+    // Description can contain HTML entities like &lt; and line breaks, so match everything until closing tag
+    const descMatch = xml.match(/<description>([\s\S]*?)<\/description>/);
     const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
     const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
     const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
