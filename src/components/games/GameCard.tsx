@@ -38,14 +38,14 @@ export function GameCard({ game, priority = false }: GameCardProps) {
         <Link to={gameUrl}>
           <Card className="group overflow-hidden card-elevated card-hover bg-card border-border">
             {/* Image */}
-            <div className="relative aspect-square overflow-hidden bg-muted">
+            <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-b from-muted/50 to-muted">
               {game.image_url ? (
                 <GameImage
                   imageUrl={game.image_url}
                   alt={game.title}
                   loading={priority ? "eager" : "lazy"}
                   priority={priority}
-                  className="h-full w-full object-contain"
+                  className="h-full w-full object-contain p-2"
                   fallback={
                     <div className="flex h-full items-center justify-center bg-muted">
                       <span className="text-4xl text-muted-foreground/50">🎲</span>
