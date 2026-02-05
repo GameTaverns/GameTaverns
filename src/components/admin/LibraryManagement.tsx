@@ -46,8 +46,20 @@ export function LibraryManagement() {
   // Fetch all libraries with owner info
   const { data: libraries, isLoading } = useQuery({
     queryKey: ["admin-libraries"],
-    queryFn: async () => {
-      // Get all libraries
+    queryFn: async (): Promise<LibraryWithOwner[]> => {
+      // In self-hosted mode, use API endpoint
+      if (isSelfHostedMode()) {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch('/api/admin/libraries', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error('Failed to fetch libraries');
+        return res.json();
+      }
+      
+      // Cloud mode: use Supabase client
       const { data: libs, error: libsError } = await supabase
         .from("libraries")
         .select("*")
@@ -84,9 +96,20 @@ export function LibraryManagement() {
   // Fetch suspension history for selected library
   const { data: suspensionHistory, isLoading: historyLoading } = useQuery({
     queryKey: ["library-suspensions", selectedLibrary?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<SuspensionRecord[]> => {
       if (!selectedLibrary) return [];
 
+      // Self-hosted mode
+      if (isSelfHostedMode()) {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(`/api/admin/libraries/${selectedLibrary.id}/suspensions`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch suspension history');
+        return res.json();
+      }
+
+      // Cloud mode
       const { data, error } = await supabase
         .from("library_suspensions")
         .select("*")
@@ -113,7 +136,21 @@ export function LibraryManagement() {
   // Suspend library mutation
   const suspendMutation = useMutation({
     mutationFn: async ({ libraryId, reason }: { libraryId: string; reason: string }) => {
-      // Update library status
+      if (isSelfHostedMode()) {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(`/api/admin/libraries/${libraryId}/suspend`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reason }),
+        });
+        if (!res.ok) throw new Error('Failed to suspend library');
+        return;
+      }
+
+      // Cloud mode
       const { error: updateError } = await supabase
         .from("libraries")
         .update({ is_active: false })
@@ -121,7 +158,6 @@ export function LibraryManagement() {
 
       if (updateError) throw updateError;
 
-      // Create suspension record
       const { error: recordError } = await supabase
         .from("library_suspensions")
         .insert({
@@ -149,7 +185,17 @@ export function LibraryManagement() {
   // Unsuspend library mutation
   const unsuspendMutation = useMutation({
     mutationFn: async (libraryId: string) => {
-      // Update library status
+      if (isSelfHostedMode()) {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(`/api/admin/libraries/${libraryId}/unsuspend`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to unsuspend library');
+        return;
+      }
+
+      // Cloud mode
       const { error: updateError } = await supabase
         .from("libraries")
         .update({ is_active: true })
@@ -157,7 +203,6 @@ export function LibraryManagement() {
 
       if (updateError) throw updateError;
 
-      // Create unsuspension record
       const { error: recordError } = await supabase
         .from("library_suspensions")
         .insert({
@@ -182,6 +227,21 @@ export function LibraryManagement() {
   // Toggle library premium status
   const togglePremiumMutation = useMutation({
     mutationFn: async ({ id, is_premium }: { id: string; is_premium: boolean }) => {
+      if (isSelfHostedMode()) {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(`/api/admin/libraries/${id}/premium`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ is_premium }),
+        });
+        if (!res.ok) throw new Error('Failed to update premium status');
+        return;
+      }
+
+      // Cloud mode
       const { error } = await supabase
         .from("libraries")
         .update({ is_premium })

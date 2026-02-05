@@ -327,6 +327,117 @@ router.get('/analytics', async (req: Request, res: Response) => {
   }
 });
 
+// Get all libraries for admin panel
+router.get('/libraries', async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT l.id, l.name, l.slug, l.description, l.is_active, l.is_premium, l.created_at, l.owner_id,
+             up.display_name as owner_display_name
+      FROM libraries l
+      LEFT JOIN user_profiles up ON l.owner_id = up.user_id
+      ORDER BY l.created_at DESC
+    `);
+    
+    res.json(result.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      description: row.description,
+      is_active: row.is_active,
+      is_premium: row.is_premium,
+      created_at: row.created_at,
+      owner_display_name: row.owner_display_name || 'Unknown',
+    })));
+  } catch (error) {
+    console.error('List libraries error:', error);
+    res.status(500).json({ error: 'Failed to fetch libraries' });
+  }
+});
+
+// Suspend library
+router.post('/libraries/:id/suspend', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    if (!reason?.trim()) {
+      res.status(400).json({ error: 'Reason is required' });
+      return;
+    }
+    
+    // Update library status
+    await pool.query('UPDATE libraries SET is_active = false, updated_at = NOW() WHERE id = $1', [id]);
+    
+    // Create suspension record
+    await pool.query(
+      'INSERT INTO library_suspensions (library_id, action, reason, performed_by) VALUES ($1, $2, $3, $4)',
+      [id, 'suspended', reason, req.user!.sub]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Suspend library error:', error);
+    res.status(500).json({ error: 'Failed to suspend library' });
+  }
+});
+
+// Unsuspend library
+router.post('/libraries/:id/unsuspend', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // Update library status
+    await pool.query('UPDATE libraries SET is_active = true, updated_at = NOW() WHERE id = $1', [id]);
+    
+    // Create unsuspension record
+    await pool.query(
+      'INSERT INTO library_suspensions (library_id, action, performed_by) VALUES ($1, $2, $3)',
+      [id, 'unsuspended', req.user!.sub]
+    );
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Unsuspend library error:', error);
+    res.status(500).json({ error: 'Failed to unsuspend library' });
+  }
+});
+
+// Update library premium status
+router.put('/libraries/:id/premium', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { is_premium } = req.body;
+    
+    await pool.query('UPDATE libraries SET is_premium = $1, updated_at = NOW() WHERE id = $2', [is_premium, id]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update premium error:', error);
+    res.status(500).json({ error: 'Failed to update premium status' });
+  }
+});
+
+// Get library suspension history
+router.get('/libraries/:id/suspensions', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(`
+      SELECT ls.id, ls.library_id, ls.action, ls.reason, ls.performed_by, ls.created_at,
+             up.display_name as performer_name
+      FROM library_suspensions ls
+      LEFT JOIN user_profiles up ON ls.performed_by = up.user_id
+      WHERE ls.library_id = $1
+      ORDER BY ls.created_at DESC
+    `, [id]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get suspension history error:', error);
+    res.status(500).json({ error: 'Failed to fetch suspension history' });
+  }
+});
+
 // Get site settings
 router.get('/settings', async (req: Request, res: Response) => {
   try {
