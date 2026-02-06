@@ -137,7 +137,21 @@ services:
             - admin
             - anon
 
-  ## Storage Service
+  ## Storage Service (PUBLIC objects)
+  # Browsers load <img src=".../storage/v1/object/public/..."> without headers.
+  # If we protect this with key-auth, public bucket assets will 401.
+  - name: storage-v1-public
+    _comment: "Storage public objects: /storage/v1/object/public/* -> http://storage:5000/object/public/*"
+    url: http://storage:5000/
+    routes:
+      - name: storage-v1-object-public
+        strip_path: true
+        paths:
+          - /storage/v1/object/public/
+    plugins:
+      - name: cors
+
+  ## Storage Service (Protected)
   - name: storage-v1
     _comment: "Storage: /storage/v1/* -> http://storage:5000/*"
     url: http://storage:5000/
