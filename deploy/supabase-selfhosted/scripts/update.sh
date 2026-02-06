@@ -96,6 +96,10 @@ echo ""
 echo "Restarting services..."
 dcp up -d
 
+echo ""
+echo "Force-recreating Edge Functions container (clears Deno cache)..."
+dcp up -d --force-recreate functions
+
 # Wait for services to stabilize
 echo ""
 echo "Waiting for services to stabilize..."
