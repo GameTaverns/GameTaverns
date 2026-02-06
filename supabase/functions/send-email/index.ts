@@ -129,30 +129,35 @@ export default async function handler(req: Request): Promise<Response> {
     };
 
     // Create SMTP client with port-appropriate TLS settings:
-    // - Port 465: Implicit TLS (SMTPS) - connection is encrypted from the start
+    // - Port 465: Implicit TLS (SMTPS) - connection is encrypted from the start, auth required
     // - Port 587: STARTTLS required - start plain, upgrade to TLS before auth
-    // - Port 25: Internal relay - may or may not need TLS (allow unsecure)
+    // - Port 25: Internal relay - NO authentication (trusted internal network)
     const implicitTls = smtpPort === 465;
     const isInternalRelay = smtpPort === 25;
     
     console.log(`SMTP config: host=${smtpHost}, port=${smtpPort}, implicitTls=${implicitTls}, isInternalRelay=${isInternalRelay}`);
     
+    // Build connection config - skip auth for internal relay on port 25
+    const connectionConfig: any = {
+      hostname: smtpHost,
+      port: smtpPort,
+      tls: implicitTls,
+    };
+    
+    // Only add auth for ports that expect it (465 and 587)
+    if (!isInternalRelay) {
+      connectionConfig.auth = {
+        username: smtpUser,
+        password: smtpPass,
+      };
+    }
+    
     const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: implicitTls,
-        auth: {
-          username: smtpUser,
-          password: smtpPass,
-        },
-      },
+      connection: connectionConfig,
       debug: {
         log: true, // Enable for debugging
         encodeLB: false,
         // Port 25 (internal relay): allow unsecure, skip STARTTLS
-        // Port 587: require STARTTLS before auth (noStartTLS = false)
-        // Port 465: implicit TLS, these don't apply
         allowUnsecure: isInternalRelay,
         noStartTLS: isInternalRelay,
       },
