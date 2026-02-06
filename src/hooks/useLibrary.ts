@@ -152,26 +152,30 @@ export function useUpdateLibrarySettings() {
     }) => {
       // Self-hosted: use API endpoint
       if (isSelfHostedMode()) {
-        const result = await apiClient.put<{ success: boolean; library_id: string }>(
+        await apiClient.put<{ success: boolean; library_id: string }>(
           `/library-settings/${libraryId}`,
           updates
         );
         return { ...updates, library_id: libraryId } as LibrarySettings;
       }
-      
+
+      // Supabase mode: upsert so we don't fail if the settings row doesn't exist yet
       const { data, error } = await supabase
         .from("library_settings")
-        .update(updates)
-        .eq("library_id", libraryId)
+        .upsert(
+          { library_id: libraryId, ...updates } as any,
+          { onConflict: "library_id" }
+        )
         .select()
         .maybeSingle();
-      
+
       if (error) throw error;
       if (!data) {
         throw new Error(
-          "No settings row was updated. This usually means your session claims aren't reaching the database (RLS/JWT config) or you don't have permission for this library."
+          "No settings row was returned. This can happen if your database rejected the upsert (RLS/JWT config) or the settings table isn't reachable."
         );
       }
+
       return data as LibrarySettings;
     },
     onSuccess: (_, variables) => {
@@ -259,17 +263,19 @@ export function useUserProfile() {
       }
       
       // Supabase mode - fetch with joined achievement
+      // IMPORTANT: Avoid constraint-name join syntax here because self-hosted DBs
+      // may not have the exact same FK constraint name, which can cause PostgREST 400s.
       const { data, error } = await supabase
         .from("user_profiles")
-        .select(`
-          *,
-          featured_achievement:achievements!user_profiles_featured_achievement_id_fkey(
-            id,
-            name,
-            icon,
-            tier
-          )
-        `)
+        .select(
+          `*,
+           featured_achievement:achievements(
+             id,
+             name,
+             icon,
+             tier
+           )`
+        )
         .eq("user_id", user.id)
         .maybeSingle();
       
