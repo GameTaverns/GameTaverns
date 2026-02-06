@@ -175,7 +175,12 @@ const GameDetail = () => {
     }
 
     // Only allow known-safe image hosts
-    const allowedHosts = new Set(["cf.geekdo-images.com", "boardgamegeek.com", "www.boardgamegeek.com"]);
+    const allowedHosts = new Set([
+      "cf.geekdo-images.com",
+      "cf.geekdo-static.com",
+      "boardgamegeek.com",
+      "www.boardgamegeek.com",
+    ]);
     if (!allowedHosts.has(parsed.hostname)) return null;
 
     const path = parsed.pathname.toLowerCase();

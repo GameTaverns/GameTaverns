@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { Dices } from "lucide-react";
 import { isLovableCloud } from "@/config/runtime";
-import ltnLogo from "@/assets/ltn-logo.png";
+
+const LTN_LOGO_SRC = "/ltn-logo.png";
+const BGG_LOGO_SRC = "/bgg-logo.svg";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -19,8 +21,8 @@ export function Footer() {
               <span className="font-display font-bold text-lg">GameTaverns</span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-sm">
-              The platform for board game enthusiasts to catalog, share, and celebrate 
-              their collections with friends and gaming communities.
+              The platform for board game enthusiasts to catalog, share, and celebrate their
+              collections with friends and gaming communities.
             </p>
           </div>
 
@@ -29,8 +31,8 @@ export function Footer() {
             <h3 className="font-semibold mb-3">Platform</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a 
-                  href="mailto:support@gametaverns.com" 
+                <a
+                  href="mailto:support@gametaverns.com"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Contact
@@ -73,33 +75,40 @@ export function Footer() {
             <p className="text-sm text-muted-foreground text-center md:text-left">
               © {currentYear} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
             </p>
-            
+
             {/* Only show attributions on self-hosted */}
             {showAttributions && (
               <div className="flex items-center gap-6">
                 {/* Love Thy Nerd Attribution */}
-                <a 
-                  href="https://lovethynerd.com" 
-                  target="_blank" 
+                <a
+                  href="https://lovethynerd.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="hover:opacity-80 transition-opacity"
                   title="Love Thy Nerd"
                 >
-                  <img 
-                    src={ltnLogo}
-                    alt="Love Thy Nerd" 
+                  <img
+                    src={LTN_LOGO_SRC}
+                    alt="Love Thy Nerd"
                     className="h-8 w-8 object-contain"
+                    loading="lazy"
                   />
                 </a>
-                
+
                 {/* BGG Attribution - Required for API usage */}
-                <a 
-                  href="https://boardgamegeek.com" 
-                  target="_blank" 
+                <a
+                  href="https://boardgamegeek.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity text-xs text-muted-foreground font-medium"
                   title="Game data powered by BoardGameGeek"
                 >
+                  <img
+                    src={BGG_LOGO_SRC}
+                    alt="BoardGameGeek"
+                    className="h-6 w-6 object-contain"
+                    loading="lazy"
+                  />
                   <span>Powered by BGG</span>
                 </a>
               </div>
