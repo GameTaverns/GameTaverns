@@ -546,43 +546,51 @@ async function formatDescriptionWithAI(rawContent: string, bggId: string): Promi
   }
 
   try {
-    const systemPrompt = `You are a board game description writer. Transform the provided game page content into a well-structured, engaging description.
+    // Truncate input to avoid token limits
+    const truncatedContent = rawContent.length > 3000 ? rawContent.slice(0, 3000) + "..." : rawContent;
+    
+    const systemPrompt = `You are a board game description writer. Transform the provided BGG game description into a well-structured, scannable format.
 
-FORMAT YOUR RESPONSE AS A JSON OBJECT with a single "description" field containing markdown text.
+Your output MUST be a valid JSON object with a single "description" key containing a markdown string.
 
-The description should follow this EXACT structure:
-1. Opening paragraph (2-3 sentences): What the game is about, theme, player count range
-2. "## Quick Gameplay Overview" header
-3. Bullet points with bold labels:
-   - **Goal:** One sentence about how to win
-   - **Each Round:** or **Gameplay:** 3-5 bullet points describing the main actions
-   - **End Game:** or **Winner:** One sentence about game end condition
+The description MUST follow this EXACT format:
 
-TOTAL: 150-250 words. Keep it scannable and engaging. Use markdown formatting.
+1. **Opening paragraph** (2-3 sentences): Theme, player count, and what makes the game interesting.
 
-Example format:
-{
-  "description": "Game Name transports 1-4 players to... This game blends strategic X, Y, and Z for an engaging experience.\\n\\n## Quick Gameplay Overview\\n\\n**Goal:** Earn the most points by...\\n\\n**Each Round:**\\n- **Action 1:** Do something\\n- **Action 2:** Do another thing\\n- **Scoring:** Calculate points\\n\\n**Winner:** The player with the most points after X rounds wins."
-}`;
+2. **"## Quick Gameplay Overview"** - This exact header.
+
+3. **Structured bullet points with bold labels:**
+   - **Goal:** One sentence about how to win.
+   - **Gameplay:** 2-4 bullet points describing main player actions.
+   - **End Game:** One sentence about when/how the game ends.
+
+RULES:
+- Total: 120-200 words
+- Use proper markdown: ## for headers, **bold** for labels, - for bullets
+- Use \\n for newlines in the JSON string
+- No extra text outside the JSON object
+
+EXAMPLE OUTPUT:
+{"description":"Wingspan invites 1-5 players into the world of bird enthusiasts, competing to build the most vibrant wildlife preserve. This engine-building game combines strategic card play with beautiful artwork for a relaxing yet competitive experience.\\n\\n## Quick Gameplay Overview\\n\\n**Goal:** Score the most points by attracting birds to your wildlife preserves.\\n\\n**Gameplay:**\\n- Play bird cards to one of three habitats (forest, grassland, wetland)\\n- Activate habitat powers to gain food, eggs, or draw more birds\\n- Chain bird abilities for powerful combos\\n\\n**End Game:** After 4 rounds, the player with the most points from birds, bonus cards, and end-of-round goals wins."}`;
 
     const result = await aiComplete({
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Create a structured description for this board game:\n\n${rawContent}` },
+        { role: "user", content: `Format this board game description:\n\n${truncatedContent}` },
       ],
-      max_tokens: 800,
+      max_tokens: 600,
       tools: [
         {
           type: "function",
           function: {
             name: "format_description",
-            description: "Return the formatted game description",
+            description: "Return the formatted game description as markdown",
             parameters: {
               type: "object",
               properties: {
                 description: {
                   type: "string",
-                  description: "The formatted markdown description following the specified structure",
+                  description: "The formatted markdown description following the Quick Gameplay Overview structure",
                 },
               },
               required: ["description"],
@@ -599,27 +607,54 @@ Example format:
       return null;
     }
 
-    // Handle both tool call and direct content responses
+    // Handle tool call response (structured output via response_format or actual tool call)
     if (result.toolCallArguments?.description) {
-      return result.toolCallArguments.description as string;
+      const desc = result.toolCallArguments.description as string;
+      console.log(`[BulkImport] AI formatted description via tool call: ${desc.length} chars`);
+      return desc;
     }
     
     // Try to parse content as JSON if it's a direct response
     if (result.content) {
+      // First try direct JSON parse
       try {
         const parsed = JSON.parse(result.content);
         if (parsed.description) {
+          console.log(`[BulkImport] AI formatted description via JSON content: ${parsed.description.length} chars`);
           return parsed.description;
         }
       } catch {
-        // Content might be the description itself
-        if (result.content.includes("## Quick Gameplay Overview") || result.content.length > 100) {
-          return result.content;
+        // Not valid JSON, try other approaches
+      }
+      
+      // Try to extract JSON from markdown code blocks
+      const jsonMatch = result.content.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1].trim());
+          if (parsed.description) {
+            console.log(`[BulkImport] AI formatted description from code block: ${parsed.description.length} chars`);
+            return parsed.description;
+          }
+        } catch {
+          // Fall through
         }
+      }
+      
+      // If content looks like a properly formatted description (has the header), use it directly
+      if (result.content.includes("## Quick Gameplay Overview")) {
+        console.log(`[BulkImport] AI returned raw markdown directly: ${result.content.length} chars`);
+        return result.content;
+      }
+      
+      // Last resort: if it's substantial text, return it
+      if (result.content.length > 100 && !result.content.startsWith("{")) {
+        console.log(`[BulkImport] AI returned plain text: ${result.content.length} chars`);
+        return result.content;
       }
     }
 
-    console.warn(`[BulkImport] AI returned unexpected format for ${bggId}`);
+    console.warn(`[BulkImport] AI returned unexpected format for ${bggId}, no usable description extracted`);
     return null;
   } catch (e) {
     console.error(`[BulkImport] AI description error for ${bggId}:`, e);
