@@ -11,6 +11,7 @@ import { useUserProfile, useUpdateUserProfile } from "@/hooks/useLibrary";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { DiscordLinkCard } from "./DiscordLinkCard";
 import { TwoFactorSettings } from "./TwoFactorSettings";
+import { FeaturedBadgeSelector } from "./FeaturedBadgeSelector";
 
 export function AccountSettings() {
   const { user } = useAuth();
@@ -247,6 +248,12 @@ export function AccountSettings() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Featured Achievement Badge */}
+      <FeaturedBadgeSelector 
+        currentBadgeId={profile?.featured_achievement_id || null}
+        currentBadge={profile?.featured_achievement || null}
+      />
 
       {/* Two-Factor Authentication */}
       <TwoFactorSettings />

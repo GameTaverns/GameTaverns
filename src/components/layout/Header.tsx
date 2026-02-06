@@ -11,6 +11,7 @@ import { useUserProfile } from "@/hooks/useLibrary";
 import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
 import { isProductionDeployment } from "@/config/runtime";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
+import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 
 // Get the base platform URL for a specific path (main domain, not subdomain)
 function getPlatformUrl(path: string = "/dashboard"): string {
@@ -217,11 +218,14 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             </a>
           )}
           
-          {/* User display name when viewing libraries */}
+          {/* User display name with featured badge when viewing libraries */}
           {tenantSlug && isAuthenticated && (profile?.display_name || (user as any)?.user_metadata?.display_name) && (
             <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground px-2">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">{profile?.display_name || (user as any)?.user_metadata?.display_name}</span>
+              {profile?.featured_achievement && (
+                <FeaturedBadge achievement={profile.featured_achievement} size="xs" />
+              )}
             </span>
           )}
           {/* Only show Demo link if demo mode is enabled, not in production, and not already in demo */}
