@@ -128,12 +128,15 @@ export default async function handler(req: Request): Promise<Response> {
       SMTPClient: SMTPClientCtor;
     };
 
-    // Create SMTP client
-    // NOTE: Many internal relays (Mailcow, local Postfix relays, etc.) may NOT support STARTTLS
-    // on 587/25 in container-to-container networking, even if they do externally.
-    // For non-465 ports we force a plaintext connection and disable STARTTLS *using denomailer’s
-    // debug.noStartTLS option* (top-level noStartTLS is ignored by denomailer).
+    // Create SMTP client with port-appropriate TLS settings:
+    // - Port 465: Implicit TLS (SMTPS) - connection is encrypted from the start
+    // - Port 587: STARTTLS required - start plain, upgrade to TLS before auth
+    // - Port 25: Internal relay - may or may not need TLS (allow unsecure)
     const implicitTls = smtpPort === 465;
+    const isInternalRelay = smtpPort === 25;
+    
+    console.log(`SMTP config: host=${smtpHost}, port=${smtpPort}, implicitTls=${implicitTls}, isInternalRelay=${isInternalRelay}`);
+    
     const client = new SMTPClient({
       connection: {
         hostname: smtpHost,
@@ -145,11 +148,13 @@ export default async function handler(req: Request): Promise<Response> {
         },
       },
       debug: {
-        log: false,
+        log: true, // Enable for debugging
         encodeLB: false,
-        // For non-465 ports, allow plaintext auth to an internal relay and never attempt STARTTLS.
-        allowUnsecure: !implicitTls,
-        noStartTLS: !implicitTls,
+        // Port 25 (internal relay): allow unsecure, skip STARTTLS
+        // Port 587: require STARTTLS before auth (noStartTLS = false)
+        // Port 465: implicit TLS, these don't apply
+        allowUnsecure: isInternalRelay,
+        noStartTLS: isInternalRelay,
       },
     });
 
