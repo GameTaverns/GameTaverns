@@ -159,8 +159,11 @@ export function LibraryFeatureFlagsAdmin() {
       updateData.allow_lending = localFlags.lending;
       
       if (isSelfHostedMode()) {
-        // Self-hosted: use API endpoint
-        await apiClient.put(`/library-settings/${library.id}/features`, updateData);
+        // Self-hosted: use Edge Function with libraryId in body
+        const { error } = await supabase.functions.invoke("library-settings", {
+          body: { ...updateData, libraryId: library.id },
+        });
+        if (error) throw error;
       } else {
         // Cloud: use Supabase
         const { data: updatedSettings, error } = await supabase

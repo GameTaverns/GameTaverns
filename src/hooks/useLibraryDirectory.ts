@@ -64,9 +64,12 @@ export function useLibraryDirectory() {
       if (!user) throw new Error("Must be logged in to follow");
 
       if (isSelfHostedMode()) {
-        // Self-hosted: use API endpoint
-        const result = await apiClient.post<{ success: boolean; follow: any }>(`/membership/${libraryId}/follow`);
-        return result.follow;
+        // Self-hosted: use Edge Function
+        const { data, error } = await supabase.functions.invoke("membership", {
+          body: { action: "follow", libraryId },
+        });
+        if (error) throw error;
+        return data;
       }
 
       const { data, error } = await supabase
@@ -97,8 +100,11 @@ export function useLibraryDirectory() {
       if (!user) throw new Error("Must be logged in to unfollow");
 
       if (isSelfHostedMode()) {
-        // Self-hosted: use API endpoint
-        await apiClient.post(`/membership/${libraryId}/unfollow`);
+        // Self-hosted: use Edge Function
+        const { error } = await supabase.functions.invoke("membership", {
+          body: { action: "unfollow", libraryId },
+        });
+        if (error) throw error;
         return;
       }
 

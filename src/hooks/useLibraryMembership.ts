@@ -59,9 +59,12 @@ export function useLibraryMembership(libraryId: string | undefined) {
       if (!libraryId || !user?.id) throw new Error("Missing library or user");
       
       if (isSelfHostedMode()) {
-        // Self-hosted: use API endpoint
-        const result = await apiClient.post<{ success: boolean; membership: any }>(`/membership/${libraryId}/join`);
-        return result.membership;
+        // Self-hosted: use Edge Function
+        const { data, error } = await supabase.functions.invoke("membership", {
+          body: { action: "join", libraryId },
+        });
+        if (error) throw error;
+        return data;
       }
       
       const { data, error } = await supabase
@@ -89,8 +92,11 @@ export function useLibraryMembership(libraryId: string | undefined) {
       if (!libraryId || !user?.id) throw new Error("Missing library or user");
       
       if (isSelfHostedMode()) {
-        // Self-hosted: use API endpoint
-        await apiClient.post(`/membership/${libraryId}/leave`);
+        // Self-hosted: use Edge Function
+        const { error } = await supabase.functions.invoke("membership", {
+          body: { action: "leave", libraryId },
+        });
+        if (error) throw error;
         return;
       }
       
