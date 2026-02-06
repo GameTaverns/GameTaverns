@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { Dices } from "lucide-react";
+import { isSelfHostedMode } from "@/integrations/backend/client";
 import ltnLogo from "@/assets/ltn-logo.png";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const showAttributions = isSelfHostedMode();
 
   return (
     <footer className="border-t bg-card/50">
@@ -75,33 +77,37 @@ export function Footer() {
             <p className="text-sm text-muted-foreground text-center md:text-left">
               © {currentYear} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
             </p>
-            <div className="flex items-center gap-6">
-              {/* Love Thy Nerd Attribution */}
-              <a 
-                href="https://lovethynerd.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="hover:opacity-80 transition-opacity"
-                title="Love Thy Nerd"
-              >
-                <img 
-                  src={ltnLogo}
-                  alt="Love Thy Nerd" 
-                  className="h-8 w-8 object-contain"
-                />
-              </a>
-              
-              {/* BGG Attribution - Required for API usage */}
-              <a 
-                href="https://boardgamegeek.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity text-xs text-muted-foreground font-medium"
-                title="Game data powered by BoardGameGeek"
-              >
-                <span>Powered by BGG</span>
-              </a>
-            </div>
+            
+            {/* Only show attributions on self-hosted */}
+            {showAttributions && (
+              <div className="flex items-center gap-6">
+                {/* Love Thy Nerd Attribution */}
+                <a 
+                  href="https://lovethynerd.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                  title="Love Thy Nerd"
+                >
+                  <img 
+                    src={ltnLogo}
+                    alt="Love Thy Nerd" 
+                    className="h-8 w-8 object-contain"
+                  />
+                </a>
+                
+                {/* BGG Attribution - Required for API usage */}
+                <a 
+                  href="https://boardgamegeek.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity text-xs text-muted-foreground font-medium"
+                  title="Game data powered by BoardGameGeek"
+                >
+                  <span>Powered by BGG</span>
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>
