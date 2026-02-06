@@ -1,10 +1,10 @@
 -- =============================================================================
 -- GameTaverns Self-Hosted: Storage Permission Fixes
--- Version: 2.3.3 - Fix storage.buckets SELECT permission
+-- Version: 2.3.4 - Fix storage.buckets SELECT permission + explicit GRANTs
 -- 
 -- ISSUE: In self-hosted Supabase, the storage service queries storage.buckets
 --        to get file_size_limit and allowed_mime_types BEFORE checking objects.
---        The 'authenticated' role needs SELECT on storage.buckets.
+--        The 'authenticated' role needs explicit GRANT + RLS policy on buckets.
 -- =============================================================================
 
 -- Ensure storage schema and tables exist before proceeding
@@ -16,19 +16,31 @@ BEGIN
     END IF;
 
     -- ===========================================================================
-    -- CRITICAL: Grant SELECT on storage.buckets to authenticated role
-    -- Without this, uploads fail with "permission denied for table buckets"
+    -- CRITICAL: Grant USAGE on storage schema first
     -- ===========================================================================
     GRANT USAGE ON SCHEMA storage TO authenticated;
     GRANT USAGE ON SCHEMA storage TO anon;
+    GRANT USAGE ON SCHEMA storage TO service_role;
     
+    -- ===========================================================================
+    -- CRITICAL: Grant SELECT on storage.buckets to all roles
+    -- Without this explicit GRANT, uploads fail with "42501 permission denied"
+    -- even if RLS policies allow access. The GRANT is checked BEFORE RLS.
+    -- ===========================================================================
     GRANT SELECT ON storage.buckets TO authenticated;
     GRANT SELECT ON storage.buckets TO anon;
+    GRANT SELECT ON storage.buckets TO service_role;
+    GRANT ALL ON storage.buckets TO postgres;
     
+    -- ===========================================================================
+    -- CRITICAL: Grant permissions on storage.objects
+    -- ===========================================================================
     GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
     GRANT SELECT ON storage.objects TO anon;
+    GRANT ALL ON storage.objects TO service_role;
+    GRANT ALL ON storage.objects TO postgres;
     
-    RAISE NOTICE 'Granted storage schema permissions to authenticated and anon roles';
+    RAISE NOTICE 'Granted storage schema permissions to all roles';
 
     -- ===========================================================================
     -- Ensure RLS is enabled and policies exist on storage.buckets
