@@ -1697,6 +1697,7 @@ export type Database = {
           created_at: string
           discord_user_id: string | null
           display_name: string | null
+          featured_achievement_id: string | null
           id: string
           updated_at: string
           user_id: string
@@ -1708,6 +1709,7 @@ export type Database = {
           created_at?: string
           discord_user_id?: string | null
           display_name?: string | null
+          featured_achievement_id?: string | null
           id?: string
           updated_at?: string
           user_id: string
@@ -1719,12 +1721,21 @@ export type Database = {
           created_at?: string
           discord_user_id?: string | null
           display_name?: string | null
+          featured_achievement_id?: string | null
           id?: string
           updated_at?: string
           user_id?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_featured_achievement_id_fkey"
+            columns: ["featured_achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

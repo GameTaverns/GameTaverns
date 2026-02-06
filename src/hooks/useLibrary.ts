@@ -207,6 +207,13 @@ export function useUserProfile() {
             roles?: string[];
             libraries?: any[];
             email?: string;
+            featured_achievement_id?: string | null;
+            featured_achievement?: {
+              id: string;
+              name: string;
+              icon: string | null;
+              tier: number;
+            } | null;
           }>("/profiles/me");
           return profile;
         } catch (error) {
@@ -221,14 +228,24 @@ export function useUserProfile() {
             avatar_url: metadata?.avatar_url || null,
             bio: null,
             created_at: new Date().toISOString(),
+            featured_achievement_id: null as string | null,
+            featured_achievement: null as { id: string; name: string; icon: string | null; tier: number } | null,
           };
         }
       }
       
-      // Supabase mode
+      // Supabase mode - fetch with joined achievement
       const { data, error } = await supabase
         .from("user_profiles")
-        .select("*")
+        .select(`
+          *,
+          featured_achievement:achievements!user_profiles_featured_achievement_id_fkey(
+            id,
+            name,
+            icon,
+            tier
+          )
+        `)
         .eq("user_id", user.id)
         .maybeSingle();
       
@@ -257,6 +274,7 @@ export function useUpdateUserProfile() {
       avatar_url?: string | null; 
       bio?: string | null;
       username?: string | null;
+      featured_achievement_id?: string | null;
     }) => {
       if (!user) throw new Error("Must be logged in");
       
