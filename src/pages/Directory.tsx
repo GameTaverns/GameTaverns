@@ -11,17 +11,16 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Search, 
-  Users, 
-  Gamepad2, 
-  Heart, 
-  HeartOff, 
-  TrendingUp, 
-  Clock, 
+import {
+  Search,
+  Users,
+  Gamepad2,
+  Heart,
+  HeartOff,
+  TrendingUp,
+  Clock,
   BookOpen,
   ExternalLink,
-  ArrowLeft
 } from "lucide-react";
 
 export default function Directory() {
@@ -154,13 +153,6 @@ export default function Directory() {
   return (
     <Layout hideSidebar>
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Back to Dashboard */}
-        {user && (
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
-        )}
         
         {/* Header */}
         <div className="mb-8">
