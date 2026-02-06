@@ -125,6 +125,37 @@ export function isSelfHostedMode(): boolean {
 }
 
 /**
+ * Check if running on self-hosted Supabase stack (gametaverns.com or gamehavens.com)
+ * This is used for features that need to know if they're on a self-hosted instance
+ * but NOT in legacy Express API mode - specifically for image proxy routing.
+ */
+export function isSelfHostedSupabaseStack(): boolean {
+  const runtime = getRuntimeConfig();
+  
+  // If runtime config says NOT self-hosted Express, check for self-hosted Supabase domains
+  if (runtime.SELF_HOSTED === false || runtime.SUPABASE_URL) {
+    try {
+      if (typeof window !== "undefined") {
+        const host = window.location.hostname.toLowerCase();
+        // Self-hosted Supabase stack domains
+        if (
+          host === "gametaverns.com" || 
+          host.endsWith(".gametaverns.com") ||
+          host === "gamehavens.com" ||
+          host.endsWith(".gamehavens.com")
+        ) {
+          return true;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Get a config value with fallback chain:
  * Runtime Config → Vite Env → Default
  */

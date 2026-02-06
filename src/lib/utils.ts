@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { getSupabaseConfig, isSelfHostedMode } from "@/config/runtime";
+import { getSupabaseConfig, isSelfHostedMode, isSelfHostedSupabaseStack } from "@/config/runtime";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -9,19 +9,18 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Clean and normalize BGG image URLs.
  * BGG CDN often has encoded parentheses that need to be normalized.
+ * 
+ * IMPORTANT: We do NOT do format conversions (e.g., __opengraph -> __imagepage) here
+ * because not all BGG images have equivalent formats. Gallery/gameplay images only
+ * exist in their original format and converting breaks them with 404s.
  */
 function cleanBggUrl(url: string): string {
   // For client-side/browser loading, we want literal parentheses (browsers handle them fine)
-  // plus some normalization for BGG's various image formats.
   return url
     .replace(/%28/g, "(")
     .replace(/%29/g, ")")
     .replace(/%2528/g, "(") // Double-encoded
     .replace(/%2529/g, ")")
-    // BGG often provides a 1200x630 OpenGraph image; normalize to the square imagepage variant
-    // so box art doesn't render like a "half-rectangle" in our square-ish containers.
-    .replace(/__opengraph\b/g, "__imagepage")
-    .replace(/\/fit-in\/1200x630\//g, "/fit-in/600x600/")
     .replace(/&quot;.*$/, "") // Remove HTML entities from bad scraping
     .replace(/[\s\u0000-\u001F]+$/g, "") // Strip trailing control/whitespace
     .replace(/[;,]+$/g, ""); // Remove trailing punctuation (common scraping artifacts)
@@ -42,16 +41,22 @@ export function proxiedImageUrl(url: string | null | undefined): string | undefi
     
     // Only proxy BGG images - other images (like Unsplash) work fine directly
     if (u.hostname === "cf.geekdo-images.com" || u.hostname === "cf.geekdo-static.com") {
-      // In self-hosted mode, use local API proxy if available
+      const normalized = cleanBggUrl(url);
+      
+      // In legacy Express API self-hosted mode, use /api path
       if (isSelfHostedMode()) {
-        const normalized = cleanBggUrl(url);
         return `/api/image-proxy?url=${encodeURIComponent(normalized)}`;
       }
       
-      // Cloud mode: use Supabase Edge Function
+      // Self-hosted Supabase stack: use same-origin /functions/v1 path
+      // (Kong routes this to the edge function container)
+      if (isSelfHostedSupabaseStack()) {
+        return `/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
+      }
+      
+      // Cloud mode: use full Supabase Edge Function URL
       const { url: apiUrl } = getSupabaseConfig();
       if (apiUrl) {
-        const normalized = cleanBggUrl(url);
         return `${apiUrl}/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
       }
     }
