@@ -153,6 +153,9 @@ router.post('/', authMiddleware, adminMiddleware, async (req: Request, res: Resp
   }
 });
 
+// Fields that are stored as PostgreSQL arrays
+const ARRAY_FIELDS = ['youtube_videos', 'additional_images'];
+
 // Update game (admin only)
 router.put('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
   try {
@@ -167,7 +170,12 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Re
     for (const [key, value] of Object.entries(data)) {
       if (value !== undefined && key !== 'id') {
         paramCount++;
-        updates.push(`${key} = $${paramCount}`);
+        // Handle array fields specially for PostgreSQL
+        if (ARRAY_FIELDS.includes(key) && Array.isArray(value)) {
+          updates.push(`${key} = $${paramCount}::text[]`);
+        } else {
+          updates.push(`${key} = $${paramCount}`);
+        }
         values.push(value);
       }
     }
