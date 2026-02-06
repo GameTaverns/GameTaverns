@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { Dices } from "lucide-react";
-import { isSelfHostedMode } from "@/integrations/backend/client";
+import { isLovableCloud } from "@/config/runtime";
 import ltnLogo from "@/assets/ltn-logo.png";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
-  const showAttributions = isSelfHostedMode();
+  // Show attributions on self-hosted/production deployments, NOT on Lovable Cloud
+  const showAttributions = !isLovableCloud();
 
   return (
     <footer className="border-t bg-card/50">
@@ -27,11 +28,6 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-3">Platform</h3>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link to="/docs" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Documentation
-                </Link>
-              </li>
               <li>
                 <a 
                   href="mailto:support@gametaverns.com" 

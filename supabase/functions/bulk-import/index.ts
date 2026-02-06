@@ -553,32 +553,46 @@ async function formatDescriptionWithAI(rawContent: string, bggId: string): Promi
 
 Your output MUST be a valid JSON object with a single "description" key containing a markdown string.
 
-The description MUST follow this EXACT format:
+The description MUST follow this EXACT structure:
 
-1. **Opening paragraph** (2-3 sentences): Theme, player count, and what makes the game interesting.
+## Description
 
-2. **"## Quick Gameplay Overview"** - This exact header.
+[1-2 sentence narrative summary about the theme and what makes the game interesting]
 
-3. **Structured bullet points with bold labels:**
-   - **Goal:** One sentence about how to win.
-   - **Gameplay:** 2-4 bullet points describing main player actions.
-   - **End Game:** One sentence about when/how the game ends.
+---
+
+## Quick Gameplay Overview
+
+**Goal:** [One sentence about how to win]
+
+**On Your Turn:**
+- [First action or step]
+- [Second action or step]
+- [Additional steps as needed]
+
+**End Game:** [One sentence about when/how the game ends]
+
+**Winner:** [One sentence about victory conditions]
+
+[Optional: One closing sentence about a unique feature of this edition]
 
 RULES:
-- Total: 120-200 words
-- Use proper markdown: ## for headers, **bold** for labels, - for bullets
+- Total: 150-250 words
+- Use proper markdown: ## for section headers (Description, Quick Gameplay Overview), **bold** for labels
+- Use --- for horizontal rule between sections
+- Use - for bullet points under "On Your Turn"
 - Use \\n for newlines in the JSON string
 - No extra text outside the JSON object
 
 EXAMPLE OUTPUT:
-{"description":"Wingspan invites 1-5 players into the world of bird enthusiasts, competing to build the most vibrant wildlife preserve. This engine-building game combines strategic card play with beautiful artwork for a relaxing yet competitive experience.\\n\\n## Quick Gameplay Overview\\n\\n**Goal:** Score the most points by attracting birds to your wildlife preserves.\\n\\n**Gameplay:**\\n- Play bird cards to one of three habitats (forest, grassland, wetland)\\n- Activate habitat powers to gain food, eggs, or draw more birds\\n- Chain bird abilities for powerful combos\\n\\n**End Game:** After 4 rounds, the player with the most points from birds, bonus cards, and end-of-round goals wins."}`;
+{"description":"## Description\\n\\nBlokus is an abstract strategy game where players place polyomino pieces to claim territory on a board. Its simple rules hide deep tactical depth, offering accessible yet engaging spatial puzzles for all skill levels.\\n\\n---\\n\\n## Quick Gameplay Overview\\n\\n**Goal:** Be the player with the fewest unplayed pieces by placing as many as possible.\\n\\n**On Your Turn:**\\n- Start: Play your first piece touching a corner square\\n- Place Piece: Subsequent pieces must touch a corner of one of your previously placed pieces\\n- Corners Only: Your pieces of the same color cannot touch along an edge, only at corners\\n- Others: Different colored pieces can touch along edges or corners\\n\\n**End Game:** The game ends when no player can make a legal move.\\n\\n**Winner:** The player with the lowest score (sum of squares in unplaced pieces) wins. Placing all pieces gives a -20 bonus; placing the single square last gives a -5 bonus.\\n\\nThis edition features colorful polyomino pieces for a visually engaging experience."}`;
 
     const result = await aiComplete({
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Format this board game description:\n\n${truncatedContent}` },
       ],
-      max_tokens: 600,
+      max_tokens: 800,
       tools: [
         {
           type: "function",
@@ -590,7 +604,7 @@ EXAMPLE OUTPUT:
               properties: {
                 description: {
                   type: "string",
-                  description: "The formatted markdown description following the Quick Gameplay Overview structure",
+                  description: "The formatted markdown description with Description section, horizontal rule, and Quick Gameplay Overview section",
                 },
               },
               required: ["description"],
@@ -642,7 +656,7 @@ EXAMPLE OUTPUT:
       }
       
       // If content looks like a properly formatted description (has the header), use it directly
-      if (result.content.includes("## Quick Gameplay Overview")) {
+      if (result.content.includes("## Description") || result.content.includes("## Quick Gameplay Overview")) {
         console.log(`[BulkImport] AI returned raw markdown directly: ${result.content.length} chars`);
         return result.content;
       }
@@ -1111,9 +1125,16 @@ export default async function handler(req: Request): Promise<Response> {
           const maxPlayersRaw = row.max_players || row["max players"] || row.maxplayers;
           const playTimeRaw = row.play_time || row["play time"] || row.playtime || row.playingtime;
           
-          const isExpansion = parseBool(row.is_expansion || row["is expansion"]) || 
-                             row.itemtype === "expansion" || 
-                             row.objecttype === "expansion";
+          // Detect expansion from multiple possible sources
+          const isExpansionFromCSV = parseBool(row.is_expansion || row["is expansion"]);
+          const isExpansionFromItemType = row.itemtype === "expansion";
+          const isExpansionFromObjectType = row.objecttype === "expansion";
+          const isExpansion = isExpansionFromCSV || isExpansionFromItemType || isExpansionFromObjectType;
+          
+          // Log expansion detection for debugging
+          if (isExpansion) {
+            console.log(`[BulkImport] Detected expansion: "${title}" (itemtype=${row.itemtype}, objecttype=${row.objecttype}, is_expansion=${row.is_expansion})`);
+          }
           
           // Use avgweight (community rating) for difficulty mapping, NOT row.weight (user's personal rating)
           // row.weight in BGG exports is often "0" which is invalid for the enum

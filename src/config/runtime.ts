@@ -252,3 +252,32 @@ export function isProductionDeployment(): boolean {
   
   return false;
 }
+
+/**
+ * Check if running on Lovable Cloud (not self-hosted)
+ * Returns true ONLY if running on *.lovable.app or *.lovableproject.com
+ * 
+ * This is the inverse of detecting "user's own deployment" - use this to hide
+ * attribution logos that should only appear on self-hosted instances.
+ */
+export function isLovableCloud(): boolean {
+  try {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname.toLowerCase();
+      
+      // Lovable preview and published domains
+      if (
+        host.endsWith(".lovable.app") ||
+        host.endsWith(".lovableproject.com") ||
+        host === "lovable.app" ||
+        host === "lovableproject.com"
+      ) {
+        return true;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  
+  return false;
+}
