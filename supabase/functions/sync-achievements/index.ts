@@ -125,23 +125,23 @@ Deno.serve(async (req) => {
     const { count: membersCount } = await supabaseAdmin
       .from("library_members")
       .select("*", { count: "exact", head: true })
-      .eq("library_id", library.id)
+      .eq("library_id", libraryId)
       .neq("user_id", user.id);
     
     progress.followers_gained = (followersCount || 0) + (membersCount || 0);
 
-    // Wishlist votes (votes the user has cast)
+    // Wishlist votes (votes cast for games in this library)
     const { count: wishlistCount } = await supabaseAdmin
       .from("game_wishlist")
       .select("*, games!inner(library_id)", { count: "exact", head: true })
-      .eq("games.library_id", library.id);
+      .eq("games.library_id", libraryId);
     progress.wishlist_votes = wishlistCount || 0;
 
-    // Ratings given (by user's guest identifier or games in their library)
+    // Ratings given (ratings for games in this library)
     const { count: ratingsCount } = await supabaseAdmin
       .from("game_ratings")
       .select("*, games!inner(library_id)", { count: "exact", head: true })
-      .eq("games.library_id", library.id);
+      .eq("games.library_id", libraryId);
     progress.ratings_given = ratingsCount || 0;
 
     // Unique game types
