@@ -221,7 +221,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
         .from("libraries_public")
         .select("*")
         .eq("slug", tenantSlug)
-        .single();
+        .maybeSingle();
       
       if (libraryError || !libraryData) {
         setError("Library not found");
@@ -243,7 +243,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
                 .eq("action", "suspended")
                 .order("created_at", { ascending: false })
                 .limit(1)
-                .single()
+                .maybeSingle()
             ).data
           : null;
         
@@ -277,10 +277,13 @@ export function TenantProvider({ children }: TenantProviderProps) {
         .from("library_settings_public")
         .select("*")
         .eq("library_id", libraryData.id)
-        .single();
+        .maybeSingle();
       
       if (!settingsError && settingsData) {
         setSettings(settingsData as LibrarySettings);
+      } else if (!settingsError && !settingsData) {
+        // Settings row may not exist yet
+        setSettings(null);
       } else if (settingsError) {
         console.warn("[Tenant] Failed to load public library settings", settingsError);
       }
