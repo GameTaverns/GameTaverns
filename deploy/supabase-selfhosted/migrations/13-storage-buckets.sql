@@ -39,7 +39,23 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Drop existing policies first to allow clean re-runs
+    -- ==========================================================================
+    -- CRITICAL: storage.buckets needs a SELECT policy for the storage service
+    -- to read bucket metadata (file_size_limit, allowed_mime_types) during uploads
+    -- ==========================================================================
+    
+    -- Enable RLS on buckets if not already enabled
+    ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
+    
+    -- Drop existing bucket policies first
+    DROP POLICY IF EXISTS "Public buckets are readable by everyone" ON storage.buckets;
+    
+    -- Allow reading bucket metadata (required for upload validation)
+    CREATE POLICY "Public buckets are readable by everyone"
+    ON storage.buckets FOR SELECT
+    USING (true);
+
+    -- Drop existing object policies first to allow clean re-runs
     DROP POLICY IF EXISTS "Public logos are viewable by everyone" ON storage.objects;
     DROP POLICY IF EXISTS "Library owners can upload logos" ON storage.objects;
     DROP POLICY IF EXISTS "Library owners can update logos" ON storage.objects;
