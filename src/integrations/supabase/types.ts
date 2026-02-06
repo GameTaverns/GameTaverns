@@ -1753,6 +1753,7 @@ export type Database = {
           created_at: string
           id: string
           is_enabled: boolean
+          last_login_totp_verified_at: string | null
           totp_secret_encrypted: string
           updated_at: string
           user_id: string
@@ -1763,6 +1764,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_enabled?: boolean
+          last_login_totp_verified_at?: string | null
           totp_secret_encrypted: string
           updated_at?: string
           user_id: string
@@ -1773,6 +1775,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_enabled?: boolean
+          last_login_totp_verified_at?: string | null
           totp_secret_encrypted?: string
           updated_at?: string
           user_id?: string

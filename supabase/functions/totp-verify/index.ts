@@ -96,6 +96,14 @@ Deno.serve(async (req) => {
             .eq("user_id", user.id);
         }
 
+        // If this is a login verification, record the timestamp for grace period
+        if (action === "login") {
+          await adminClient
+            .from("user_totp_settings")
+            .update({ last_login_totp_verified_at: new Date().toISOString() })
+            .eq("user_id", user.id);
+        }
+
         return new Response(
           JSON.stringify({ 
             valid: true, 
@@ -132,6 +140,14 @@ Deno.serve(async (req) => {
       await adminClient
         .from("user_totp_settings")
         .update({ is_enabled: true, verified_at: new Date().toISOString() })
+        .eq("user_id", user.id);
+    }
+
+    // If this is a login verification, record the timestamp for grace period
+    if (action === "login") {
+      await adminClient
+        .from("user_totp_settings")
+        .update({ last_login_totp_verified_at: new Date().toISOString() })
         .eq("user_id", user.id);
     }
 

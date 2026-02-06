@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
 
     const { data: totpSettings, error: fetchError } = await adminClient
       .from("user_totp_settings")
-      .select("is_enabled, verified_at, backup_codes_encrypted")
+      .select("is_enabled, verified_at, backup_codes_encrypted, last_login_totp_verified_at")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -63,12 +63,29 @@ Deno.serve(async (req) => {
       } catch {}
     }
 
+    // Check if within grace period (default 120 minutes = 2 hours)
+    const GRACE_PERIOD_MINUTES = 120;
+    let requiresVerification = true;
+    
+    if (totpSettings?.is_enabled && totpSettings?.last_login_totp_verified_at) {
+      const lastVerified = new Date(totpSettings.last_login_totp_verified_at);
+      const now = new Date();
+      const minutesSinceVerification = (now.getTime() - lastVerified.getTime()) / (1000 * 60);
+      
+      if (minutesSinceVerification < GRACE_PERIOD_MINUTES) {
+        requiresVerification = false;
+      }
+    }
+
     return new Response(
       JSON.stringify({
         isEnabled: totpSettings?.is_enabled ?? false,
         verifiedAt: totpSettings?.verified_at ?? null,
         remainingBackupCodes,
         requiresSetup: !totpSettings?.is_enabled,
+        requiresVerification,
+        lastLoginVerifiedAt: totpSettings?.last_login_totp_verified_at ?? null,
+        gracePeriodMinutes: GRACE_PERIOD_MINUTES,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -115,13 +115,19 @@ const Login = () => {
             console.log("[Login] totp-status data:", JSON.stringify(data));
             
             if (data.isEnabled) {
-              // User has 2FA enabled - show verification screen
-              console.log("[Login] 2FA is enabled, showing verification screen");
-              setPendingAccessToken(session.access_token);
-              setRequires2FA(true);
-              setAuthGate("needs_2fa");
-              setIsLoading(false);
-              return;
+              // Check if within grace period - skip 2FA if recently verified
+              if (data.requiresVerification === false) {
+                console.log("[Login] 2FA enabled but within grace period, skipping verification");
+                // Continue to dashboard without 2FA prompt
+              } else {
+                // User has 2FA enabled and needs to verify
+                console.log("[Login] 2FA is enabled, showing verification screen");
+                setPendingAccessToken(session.access_token);
+                setRequires2FA(true);
+                setAuthGate("needs_2fa");
+                setIsLoading(false);
+                return;
+              }
             } else if (data.requiresSetup) {
               // User needs to set up 2FA (required for all users)
               console.log("[Login] 2FA requires setup, redirecting to /setup-2fa");

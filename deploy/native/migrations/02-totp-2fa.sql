@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS user_totp_settings (
     backup_codes_hash TEXT[], -- Hashed backup codes
     is_enabled BOOLEAN NOT NULL DEFAULT false,
     verified_at TIMESTAMPTZ,
+    last_login_totp_verified_at TIMESTAMPTZ,  -- For 2FA grace period
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
