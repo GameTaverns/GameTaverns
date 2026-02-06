@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
+import { supabase, isSelfHostedSupabaseStack } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export interface LibraryMember {
@@ -58,8 +58,8 @@ export function useLibraryMembership(libraryId: string | undefined) {
     mutationFn: async () => {
       if (!libraryId || !user?.id) throw new Error("Missing library or user");
       
-      if (isSelfHostedMode()) {
-        // Self-hosted: use Edge Function
+      if (isSelfHostedSupabaseStack()) {
+        // Self-hosted Supabase stack: use backend function (service role) to avoid RLS edge cases
         const { data, error } = await supabase.functions.invoke("membership", {
           body: { action: "join", libraryId },
         });
@@ -91,8 +91,8 @@ export function useLibraryMembership(libraryId: string | undefined) {
     mutationFn: async () => {
       if (!libraryId || !user?.id) throw new Error("Missing library or user");
       
-      if (isSelfHostedMode()) {
-        // Self-hosted: use Edge Function
+      if (isSelfHostedSupabaseStack()) {
+        // Self-hosted Supabase stack: use backend function
         const { error } = await supabase.functions.invoke("membership", {
           body: { action: "leave", libraryId },
         });
