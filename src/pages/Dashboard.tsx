@@ -362,10 +362,18 @@ const { data: playCount } = useQuery({
               {/* Achievements Card */}
               <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-secondary" />
-                    Achievements
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-secondary" />
+                      Achievements
+                    </CardTitle>
+                    <Link to="/achievements">
+                      <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 -mr-2">
+                        View All
+                        <ArrowRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </Link>
+                  </div>
                   <CardDescription className="text-cream/70">
                     Track your progress and unlock badges
                   </CardDescription>

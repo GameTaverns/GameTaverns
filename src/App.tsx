@@ -49,6 +49,7 @@ const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
 const Setup2FA = lazy(() => import("./pages/Setup2FA"));
 const Directory = lazy(() => import("./pages/Directory"));
+const Achievements = lazy(() => import("./pages/Achievements"));
 
 // Library admin pages
 const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
@@ -172,6 +173,7 @@ function PlatformRoutes() {
       <Route path="/setup-2fa" element={<Setup2FA />} />
       <Route path="/admin" element={<PlatformAdmin />} />
       <Route path="/directory" element={<Directory />} />
+      <Route path="/achievements" element={<Achievements />} />
       <Route path="/docs" element={<Docs />} />
       {/* Legal & Info pages */}
       <Route path="/legal" element={<Legal />} />
