@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Layout } from "@/components/layout/Layout";
 import { LibrarySettingsGeneral } from "@/components/settings/LibrarySettingsGeneral";
 import { LibraryThemeCustomizer } from "@/components/settings/LibraryThemeCustomizer";
@@ -84,7 +85,7 @@ export default function LibrarySettings() {
           <p className="text-muted-foreground mb-6">
             You don't have permission to manage this library's settings.
           </p>
-          <Link to={`/?tenant=${tenantSlug}`}>
+          <Link to={tenantSlug ? getLibraryUrl(tenantSlug, "/") : "/"}>
             <Button>Back to Library</Button>
           </Link>
         </div>

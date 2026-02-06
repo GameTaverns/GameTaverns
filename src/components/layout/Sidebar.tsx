@@ -203,14 +203,15 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const currentValue = searchParams.get("value");
 
   // Use setSearchParams for filter updates to avoid page flash
-  // Preserve demo mode and tenant when navigating
+  // On subdomain deployments, we don't need ?tenant param (already on correct subdomain)
+  // Only use ?tenant for Lovable preview/localhost where subdomains don't work
   const handleFilterClick = (filter: string, value: string) => {
     const newParams: Record<string, string> = { filter, value };
     if (isDemoMode) {
       newParams.demo = "true";
-    } else if (tenantSlug) {
-      newParams.tenant = tenantSlug;
     }
+    // Note: On production subdomains, we don't add ?tenant because we're already on the subdomain
+    // The useTenantUrl hook's buildUrl() handles this correctly for cross-page navigation
     
     // If we're not on the home page, navigate there first
     if (location.pathname !== "/") {

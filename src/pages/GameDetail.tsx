@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenant } from "@/contexts/TenantContext";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { getOptimalImageUrl, proxiedImageUrl, directImageUrl, isBggImage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,8 +48,8 @@ const GameDetail = () => {
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
   const [useProxyForImage, setUseProxyForImage] = useState<Record<string, boolean>>({});
   
-  // Build tenant-aware base URL for links
-  const baseFilterUrl = isDemoMode ? "/?demo=true" : tenantSlug ? `/?tenant=${tenantSlug}` : "/";
+  // Build tenant-aware base URL for links - uses subdomains in production, query params in preview
+  const baseFilterUrl = isDemoMode ? "/?demo=true" : tenantSlug ? getLibraryUrl(tenantSlug, "/") : "/";
 
   // Reset image state when slug changes - must be before early returns
   useEffect(() => {
@@ -409,7 +410,7 @@ const GameDetail = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/edit/${game.slug || game.id}${tenantSlug ? `?tenant=${tenantSlug}` : ''}`)}
+                    onClick={() => navigate(tenantSlug ? getLibraryUrl(tenantSlug, `/edit/${game.slug || game.id}`) : `/edit/${game.slug || game.id}`)}
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit

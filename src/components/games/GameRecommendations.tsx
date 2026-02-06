@@ -3,6 +3,7 @@ import { Sparkles } from "lucide-react";
 import { useGameRecommendations } from "@/hooks/useGameRecommendations";
 import { useTenant } from "@/contexts/TenantContext";
 import { useDemoMode } from "@/contexts/DemoContext";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GameImage } from "./GameImage";
@@ -28,7 +29,7 @@ export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsPr
 
   const buildGameUrl = (slug: string | null, id: string) => {
     const path = `/game/${slug || id}`;
-    return tenantSlug ? `${path}?tenant=${tenantSlug}` : path;
+    return tenantSlug ? getLibraryUrl(tenantSlug, path) : path;
   };
 
   return (

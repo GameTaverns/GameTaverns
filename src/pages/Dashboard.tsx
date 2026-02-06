@@ -509,13 +509,13 @@ const { data: playCount } = useQuery({
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-end space-y-2">
-                    <a href={`/?tenant=${library.slug}&path=/settings&tab=ratings`}>
+                    <a href={getLibraryUrl(library.slug, "/settings?tab=ratings")}>
                       <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
                         <Star className="h-4 w-4 mr-2" />
                         View Ratings
                       </Button>
                     </a>
-                    <a href={`/?tenant=${library.slug}&path=/settings&tab=wishlist`}>
+                    <a href={getLibraryUrl(library.slug, "/settings?tab=wishlist")}>
                       <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
                         <Heart className="h-4 w-4 mr-2" />
                         View Wishlist
@@ -556,7 +556,7 @@ const { data: playCount } = useQuery({
                         <div className="text-xs text-cream/60">Members</div>
                       </div>
                     </div>
-                    <a href={`/?tenant=${library.slug}&path=/stats`}>
+                    <a href={getLibraryUrl(library.slug, "/stats")}>
                       <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Monthly Play Stats
