@@ -43,14 +43,24 @@ export function useLibrarySettings(libraryId: string | null) {
     queryFn: async () => {
       if (!libraryId) return null;
       
+      // Self-hosted: use API endpoint
+      if (isSelfHostedMode()) {
+        try {
+          return await apiClient.get<LibrarySettings>(`/library-settings/${libraryId}`);
+        } catch (e) {
+          // Settings may not exist yet
+          return null;
+        }
+      }
+      
       const { data, error } = await supabase
         .from("library_settings")
         .select("*")
         .eq("library_id", libraryId)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
-      return data as LibrarySettings;
+      return data as LibrarySettings | null;
     },
     enabled: !!libraryId,
   });
