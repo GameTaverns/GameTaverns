@@ -20,26 +20,38 @@ BEGIN
     -- ===========================================================================
     GRANT USAGE ON SCHEMA storage TO authenticated;
     GRANT USAGE ON SCHEMA storage TO anon;
+    GRANT USAGE ON SCHEMA storage TO authenticator;
     GRANT USAGE ON SCHEMA storage TO service_role;
-    
+
     -- ===========================================================================
-    -- CRITICAL: Grant SELECT on storage.buckets to all roles
+    -- CRITICAL: Grant SELECT on storage.buckets to roles used by API/Storage
     -- Without this explicit GRANT, uploads fail with "42501 permission denied"
     -- even if RLS policies allow access. The GRANT is checked BEFORE RLS.
     -- ===========================================================================
     GRANT SELECT ON storage.buckets TO authenticated;
     GRANT SELECT ON storage.buckets TO anon;
+    GRANT SELECT ON storage.buckets TO authenticator;
     GRANT SELECT ON storage.buckets TO service_role;
     GRANT ALL ON storage.buckets TO postgres;
-    
+
     -- ===========================================================================
-    -- CRITICAL: Grant permissions on storage.objects
+    -- CRITICAL: Grant permissions on storage.objects (metadata table)
     -- ===========================================================================
     GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
     GRANT SELECT ON storage.objects TO anon;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticator;
     GRANT ALL ON storage.objects TO service_role;
     GRANT ALL ON storage.objects TO postgres;
-    
+
+    -- ===========================================================================
+    -- CRITICAL: Storage uses functions like storage.search() internally.
+    -- Missing EXECUTE here surfaces as 42501 during list/upload flows.
+    -- ===========================================================================
+    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA storage TO authenticated;
+    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA storage TO anon;
+    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA storage TO authenticator;
+    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA storage TO service_role;
+
     RAISE NOTICE 'Granted storage schema permissions to all roles';
 
     -- ===========================================================================
