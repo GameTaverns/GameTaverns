@@ -98,6 +98,7 @@ MIGRATION_FILES=(
     "15-totp-2fa.sql"
     "16-security-hardening.sql"
     "17-rls-fixes-feb2026.sql"
+    "18-storage-grants-fix.sql"
 )
 
 SUCCESS_COUNT=0
