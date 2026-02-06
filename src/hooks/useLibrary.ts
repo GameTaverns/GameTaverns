@@ -164,9 +164,14 @@ export function useUpdateLibrarySettings() {
         .update(updates)
         .eq("library_id", libraryId)
         .select()
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
+      if (!data) {
+        throw new Error(
+          "No settings row was updated. This usually means your session claims aren't reaching the database (RLS/JWT config) or you don't have permission for this library."
+        );
+      }
       return data as LibrarySettings;
     },
     onSuccess: (_, variables) => {
