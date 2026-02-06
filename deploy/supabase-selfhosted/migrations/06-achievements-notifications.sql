@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS public.user_achievements (
     user_id UUID NOT NULL,
     achievement_id UUID NOT NULL REFERENCES public.achievements(id) ON DELETE CASCADE,
     earned_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    progress INTEGER DEFAULT 0,
+    notified BOOLEAN DEFAULT false,
     UNIQUE(user_id, achievement_id)
 );
 

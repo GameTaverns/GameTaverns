@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // IMPORTANT (self-hosted): this module is imported by the main router.
 // Any top-level dependency fetch failure can crash the whole functions service.
 // So we lazy-load SMTP deps inside the handler.
+// Using esm.sh instead of npm: to avoid Deno cache resolution issues with denomailer.
 type SMTPClientCtor = new (options: any) => {
   send: (options: any) => Promise<void>;
   close: () => Promise<void>;
@@ -122,7 +123,8 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const { SMTPClient } = (await import("npm:denomailer@1.6.0")) as {
+    // Use esm.sh specifier to avoid stale Deno module graph issues with npm: specifier
+    const { SMTPClient } = (await import("https://esm.sh/denomailer@1.6.0")) as {
       SMTPClient: SMTPClientCtor;
     };
 
