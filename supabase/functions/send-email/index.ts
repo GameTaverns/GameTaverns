@@ -123,8 +123,8 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Use esm.sh specifier to avoid stale Deno module graph issues with npm: specifier
-    const { SMTPClient } = (await import("https://esm.sh/denomailer@1.6.0")) as {
+    // Use deno.land/x import to avoid npm module resolution issues in self-hosted edge-runtime
+    const { SMTPClient } = (await import("https://deno.land/x/denomailer@1.6.0/mod.ts")) as {
       SMTPClient: SMTPClientCtor;
     };
 

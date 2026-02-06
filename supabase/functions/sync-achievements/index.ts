@@ -56,13 +56,25 @@ Deno.serve(async (req) => {
     }
 
     // Get user's library
-    const { data: library } = await supabaseAdmin
+    // Prefer owned library; if user is only a member, fall back to the first joined library.
+    const { data: ownedLibrary } = await supabaseAdmin
       .from("libraries")
       .select("id")
       .eq("owner_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (!library) {
+    let libraryId: string | null = ownedLibrary?.id ?? null;
+
+    if (!libraryId) {
+      const { data: membership } = await supabaseAdmin
+        .from("library_members")
+        .select("library_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      libraryId = membership?.library_id ?? null;
+    }
+
+    if (!libraryId) {
       return new Response(JSON.stringify({ error: "No library found", awarded: [] }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -84,7 +96,7 @@ Deno.serve(async (req) => {
     const { count: gamesCount } = await supabaseAdmin
       .from("games")
       .select("*", { count: "exact", head: true })
-      .eq("library_id", library.id)
+      .eq("library_id", libraryId)
       .eq("is_expansion", false);
     progress.games_owned = gamesCount || 0;
 
@@ -92,7 +104,7 @@ Deno.serve(async (req) => {
     const { count: sessionsCount } = await supabaseAdmin
       .from("game_sessions")
       .select("*, games!inner(library_id)", { count: "exact", head: true })
-      .eq("games.library_id", library.id);
+      .eq("games.library_id", libraryId);
     progress.sessions_logged = sessionsCount || 0;
 
     // Loans completed (as lender)
@@ -107,7 +119,7 @@ Deno.serve(async (req) => {
     const { count: followersCount } = await supabaseAdmin
       .from("library_followers")
       .select("*", { count: "exact", head: true })
-      .eq("library_id", library.id);
+      .eq("library_id", libraryId);
     
     // Also count library members (excluding the owner themselves)
     const { count: membersCount } = await supabaseAdmin
@@ -136,7 +148,7 @@ Deno.serve(async (req) => {
     const { data: gameTypes } = await supabaseAdmin
       .from("games")
       .select("game_type")
-      .eq("library_id", library.id)
+      .eq("library_id", libraryId)
       .eq("is_expansion", false)
       .not("game_type", "is", null);
     const uniqueTypes = new Set(gameTypes?.map(g => g.game_type) || []);
