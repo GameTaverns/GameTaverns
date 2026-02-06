@@ -70,6 +70,7 @@ const GameForm = () => {
   const [suggestedAge, setSuggestedAge] = useState("10+");
   const [publisherId, setPublisherId] = useState<string | null>(null);
   const [selectedMechanics, setSelectedMechanics] = useState<string[]>([]);
+  const [originalMechanics, setOriginalMechanics] = useState<string[]>([]); // Track original for comparison
   const [bggUrl, setBggUrl] = useState("");
   const [isComingSoon, setIsComingSoon] = useState(false);
   const [isForSale, setIsForSale] = useState(false);
@@ -108,7 +109,9 @@ const GameForm = () => {
       setMaxPlayers(existingGame.max_players);
       setSuggestedAge(existingGame.suggested_age);
       setPublisherId(existingGame.publisher_id);
-      setSelectedMechanics(existingGame.mechanics.map((m) => m.id));
+      const mechanicIds = existingGame.mechanics.map((m) => m.id);
+      setSelectedMechanics(mechanicIds);
+      setOriginalMechanics(mechanicIds);
       setBggUrl(existingGame.bgg_url || "");
       setIsComingSoon(existingGame.is_coming_soon);
       setIsForSale(existingGame.is_for_sale);
@@ -212,10 +215,16 @@ const GameForm = () => {
 
     try {
       if (isEditing && existingGame?.id) {
+        // Only pass mechanicIds if they changed (avoid unnecessary RLS checks)
+        const mechanicsChanged = 
+          selectedMechanics.length !== originalMechanics.length ||
+          selectedMechanics.some(id => !originalMechanics.includes(id)) ||
+          originalMechanics.some(id => !selectedMechanics.includes(id));
+        
         await updateGame.mutateAsync({
           id: existingGame.id,
           game: gameData,
-          mechanicIds: selectedMechanics,
+          mechanicIds: mechanicsChanged ? selectedMechanics : undefined,
         });
         toast({ title: "Game updated!" });
       } else {
