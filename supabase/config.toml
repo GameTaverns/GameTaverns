@@ -101,3 +101,9 @@ verify_jwt = false
 
 [functions.totp-disable]
 verify_jwt = false
+
+[functions.membership]
+verify_jwt = false
+
+[functions.library-settings]
+verify_jwt = false
