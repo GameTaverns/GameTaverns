@@ -97,6 +97,7 @@ MIGRATION_FILES=(
     "13-storage-buckets.sql"
     "15-totp-2fa.sql"
     "16-security-hardening.sql"
+    "17-rls-fixes-feb2026.sql"
 )
 
 SUCCESS_COUNT=0

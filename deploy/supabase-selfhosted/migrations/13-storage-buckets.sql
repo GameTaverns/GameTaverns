@@ -51,36 +51,51 @@ BEGIN
     ON storage.objects FOR SELECT
     USING (bucket_id = 'library-logos');
 
-    -- Library moderators (including owners, moderators, and staff) can upload/update/delete logos
-    -- This matches the app permission model (branding changes are not necessarily owner-only).
+    -- Library owners can upload logos
     CREATE POLICY "Library owners can upload logos"
     ON storage.objects FOR INSERT
     TO authenticated
     WITH CHECK (
         bucket_id = 'library-logos'
-        AND public.is_library_moderator(auth.uid(), split_part(name, '/', 1)::uuid)
+        AND EXISTS (
+          SELECT 1 FROM public.libraries
+          WHERE owner_id = auth.uid()
+            AND id::text = split_part(name, '/', 1)
+        )
     );
 
-    -- Library moderators can update their logos
+    -- Library owners can update their logos
     CREATE POLICY "Library owners can update logos"
     ON storage.objects FOR UPDATE
     TO authenticated
     USING (
         bucket_id = 'library-logos'
-        AND public.is_library_moderator(auth.uid(), split_part(name, '/', 1)::uuid)
+        AND EXISTS (
+          SELECT 1 FROM public.libraries
+          WHERE owner_id = auth.uid()
+            AND id::text = split_part(name, '/', 1)
+        )
     )
     WITH CHECK (
         bucket_id = 'library-logos'
-        AND public.is_library_moderator(auth.uid(), split_part(name, '/', 1)::uuid)
+        AND EXISTS (
+          SELECT 1 FROM public.libraries
+          WHERE owner_id = auth.uid()
+            AND id::text = split_part(name, '/', 1)
+        )
     );
 
-    -- Library moderators can delete their logos
+    -- Library owners can delete their logos
     CREATE POLICY "Library owners can delete logos"
     ON storage.objects FOR DELETE
     TO authenticated
     USING (
         bucket_id = 'library-logos'
-        AND public.is_library_moderator(auth.uid(), split_part(name, '/', 1)::uuid)
+        AND EXISTS (
+          SELECT 1 FROM public.libraries
+          WHERE owner_id = auth.uid()
+            AND id::text = split_part(name, '/', 1)
+        )
     );
 
     -- Admins can manage all logos
