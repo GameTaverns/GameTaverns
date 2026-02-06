@@ -352,13 +352,24 @@ export function useUpdateUserProfile() {
     }) => {
       if (!user) throw new Error("Must be logged in");
       
-      // Self-hosted: use API
+      // Self-hosted Express API: use API endpoint
       if (isSelfHostedMode()) {
         const profile = await apiClient.put<any>("/profiles/me", updates);
         return profile;
       }
       
-      // Supabase mode
+      // Self-hosted Supabase stack: route through edge function to bypass PostgREST schema cache
+      if (isSelfHostedSupabaseStack()) {
+        const { data, error } = await supabase.functions.invoke("profile-update", {
+          method: "POST",
+          body: updates,
+        });
+        
+        if (error) throw error;
+        return data;
+      }
+      
+      // Cloud mode: direct PostgREST update
       const { data, error } = await supabase
         .from("user_profiles")
         .update(updates)

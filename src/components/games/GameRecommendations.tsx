@@ -68,7 +68,7 @@ export function GameRecommendations({ gameId, gameTitle }: GameRecommendationsPr
                       imageUrl={game.image_url}
                       alt={game.title}
                       loading="lazy"
-                      className="h-full w-full object-contain transition-transform group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
                       fallback={
                         <div className="h-full w-full flex items-center justify-center">
                           <span className="text-4xl">🎲</span>
