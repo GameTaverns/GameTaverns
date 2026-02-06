@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AchievementsDisplay } from "@/components/achievements/AchievementsDisplay";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import logoImage from "@/assets/logo.png";
 
 export default function Achievements() {
@@ -20,12 +21,12 @@ export default function Achievements() {
           
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Link to="/dashboard">
+            <a href={getPlatformUrl("/dashboard")}>
               <Button variant="outline" className="gap-2 border-wood-medium/50 text-cream hover:bg-wood-medium/30">
                 <ArrowLeft className="h-4 w-4" />
                 Back to Dashboard
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </header>

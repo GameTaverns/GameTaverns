@@ -14,7 +14,7 @@ import { CategoryManager } from "@/components/games/CategoryManager";
 import { GameCollectionTable } from "@/components/games/GameCollectionTable";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
-import { useTenantUrl } from "@/hooks/useTenantUrl";
+import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 
 type ImportMode = "csv" | "bgg_collection" | "bgg_links";
 
@@ -177,9 +177,9 @@ export default function LibraryGames() {
           <p className="text-muted-foreground mb-6">
             The library you're looking for doesn't exist or is not active.
           </p>
-          <Link to="/dashboard">
+          <a href={getPlatformUrl("/dashboard")}>
             <Button>Go to Dashboard</Button>
-          </Link>
+          </a>
         </div>
       </Layout>
     );

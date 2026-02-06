@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { ReplyDialog } from "@/components/messages/ReplyDialog";
 import { useTenant } from "@/contexts/TenantContext";
-import { useTenantUrl } from "@/hooks/useTenantUrl";
+import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 
 const Messages = () => {
   const navigate = useNavigate();
@@ -113,7 +113,7 @@ const Messages = () => {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
-        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate(buildUrl("/dashboard"))}>
+        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => window.location.href = getPlatformUrl("/dashboard")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Dashboard
         </Button>
