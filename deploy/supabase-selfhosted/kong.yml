@@ -145,9 +145,9 @@ services:
     url: http://storage:5000/
     routes:
       - name: storage-v1-object-public
-        strip_path: true
+        strip_path: false
         paths:
-          - /storage/v1/object/public/
+          - /storage/v1/object/public
     plugins:
       - name: cors
 
