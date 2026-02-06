@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
+import {
+  supabase,
+  apiClient,
+  isSelfHostedMode,
+  isSelfHostedSupabaseStack,
+} from "@/integrations/backend/client";
 import { useAuth } from "./useAuth";
 import { Library, LibrarySettings } from "@/contexts/TenantContext";
 
@@ -141,16 +146,16 @@ export function useCreateLibrary() {
 // Hook to update library settings
 export function useUpdateLibrarySettings() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async ({ 
-      libraryId, 
-      updates 
-    }: { 
-      libraryId: string; 
+    mutationFn: async ({
+      libraryId,
+      updates,
+    }: {
+      libraryId: string;
       updates: Partial<LibrarySettings>;
     }) => {
-      // Self-hosted: use API endpoint
+      // Legacy self-hosted (Express API): use API endpoint
       if (isSelfHostedMode()) {
         await apiClient.put<{ success: boolean; library_id: string }>(
           `/library-settings/${libraryId}`,
@@ -159,13 +164,25 @@ export function useUpdateLibrarySettings() {
         return { ...updates, library_id: libraryId } as LibrarySettings;
       }
 
-      // Supabase mode: upsert so we don't fail if the settings row doesn't exist yet
+      // Self-hosted Supabase stack: route through backend function to avoid RLS/JWT/GUC edge cases
+      // while still enforcing ownership checks server-side.
+      if (isSelfHostedSupabaseStack()) {
+        const { data, error } = await supabase.functions.invoke("library-settings", {
+          method: "PUT",
+          body: { libraryId, ...updates },
+        });
+
+        if (error) throw error;
+        const payload: any = data;
+        return (payload?.data ?? payload) as LibrarySettings;
+      }
+
+      // Cloud mode: upsert so we don't fail if the settings row doesn't exist yet
       const { data, error } = await supabase
         .from("library_settings")
-        .upsert(
-          { library_id: libraryId, ...updates } as any,
-          { onConflict: "library_id" }
-        )
+        .upsert({ library_id: libraryId, ...updates } as any, {
+          onConflict: "library_id",
+        })
         .select()
         .maybeSingle();
 
