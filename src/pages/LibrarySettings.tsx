@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
-import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { getLibraryUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 import { Layout } from "@/components/layout/Layout";
 import { LibrarySettingsGeneral } from "@/components/settings/LibrarySettingsGeneral";
 import { LibraryThemeCustomizer } from "@/components/settings/LibraryThemeCustomizer";
@@ -69,9 +69,9 @@ export default function LibrarySettings() {
           <p className="text-muted-foreground mb-6">
             The library you're looking for doesn't exist or is not active.
           </p>
-          <Link to="/dashboard">
+          <a href={getPlatformUrl("/dashboard")}>
             <Button>Go to Dashboard</Button>
-          </Link>
+          </a>
         </div>
       </Layout>
     );
@@ -96,14 +96,12 @@ export default function LibrarySettings() {
   return (
     <Layout>
       <div className="max-w-5xl mx-auto">
-        <Button
-          variant="ghost"
-          className="mb-6 -ml-2"
-          onClick={() => navigate("/dashboard")}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
+        <a href={getPlatformUrl("/dashboard")}>
+          <Button variant="ghost" className="mb-6 -ml-2">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </a>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">

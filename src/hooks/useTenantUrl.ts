@@ -43,6 +43,24 @@ function getBaseDomain(): string | null {
 }
 
 /**
+ * Get the main platform URL (apex domain, not subdomain)
+ * Used for platform-level routes like /dashboard, /login, /settings
+ */
+export function getPlatformUrl(path: string = "/"): string {
+  const baseDomain = getBaseDomain();
+  const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
+  
+  // In production on gametaverns.com, use the apex domain
+  if (baseDomain && isProductionDeployment()) {
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${protocol}//${baseDomain}${normalizedPath}`;
+  }
+  
+  // For Lovable preview / localhost, just use relative path (no subdomain issues)
+  return path;
+}
+
+/**
  * Hook to build tenant-aware URLs
  * 
  * In production/self-hosted: Uses real subdomains (library.gametaverns.com)
@@ -146,6 +164,7 @@ export function useTenantUrl() {
     buildUrl,
     buildTenantUrl,
     getTenantQueryString,
+    getPlatformUrl,
     tenantSlug,
     useSubdomainUrls,
   };
