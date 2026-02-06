@@ -44,12 +44,22 @@ export function FavoriteButton({ gameId, className, size = "default" }: Favorite
 
     setIsUpdating(true);
     try {
-      const { error } = await supabase
+      // Use a returning update so we can detect silent no-op updates (RLS can result in 0 rows updated
+      // without an error when no rows are visible/match the filter).
+      const { data: updated, error } = await supabase
         .from("games")
         .update({ is_favorite: !isFavorite })
-        .eq("id", gameId);
+        .eq("id", gameId)
+        .select("id, is_favorite")
+        .single();
 
       if (error) throw error;
+      if (!updated) {
+        throw new Error("Favorite update was blocked (missing permission or game not accessible). Please re-login and try again.");
+      }
+
+      // Update cache immediately for snappy UI
+      queryClient.setQueryData(["game-favorite", gameId], updated.is_favorite);
 
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["game-favorite", gameId] });
@@ -58,7 +68,7 @@ export function FavoriteButton({ gameId, className, size = "default" }: Favorite
       queryClient.invalidateQueries({ queryKey: ["game", gameId] });
 
       toast({
-        title: isFavorite ? "Removed from favorites" : "Added to favorites",
+        title: updated.is_favorite ? "Added to favorites" : "Removed from favorites",
       });
     } catch (error: any) {
       toast({

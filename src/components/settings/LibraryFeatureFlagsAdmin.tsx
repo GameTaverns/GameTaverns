@@ -158,12 +158,17 @@ export function LibraryFeatureFlagsAdmin() {
       // Sync allow_lending with feature_lending for directory visibility
       updateData.allow_lending = localFlags.lending;
       
-      const { error } = await supabase
+      const { data: updatedSettings, error } = await supabase
         .from("library_settings")
         .update(updateData)
-        .eq("library_id", library.id);
-      
+        .eq("library_id", library.id)
+        .select("library_id")
+        .single();
+
       if (error) throw error;
+      if (!updatedSettings) {
+        throw new Error("Save was blocked (missing permission). Please re-login and try again.");
+      }
       
       // Refresh tenant context
       await refreshLibrary();
