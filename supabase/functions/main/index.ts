@@ -12,7 +12,7 @@ import bggImportHandler from "../bgg-import/index.ts";
 import bggLookupHandler from "../bgg-lookup/index.ts";
 import gameImportHandler from "../game-import/index.ts";
 
-// Import handlers from functions that already export them
+// Router-compatible exported handlers
 import verifyEmailHandler from "../verify-email/index.ts";
 import verifyResetTokenHandler from "../verify-reset-token/index.ts";
 import sendAuthEmailHandler from "../send-auth-email/index.ts";
@@ -20,6 +20,8 @@ import sendEmailHandler from "../send-email/index.ts";
 import sendMessageHandler from "../send-message/index.ts";
 import condenseDescriptionsHandler from "../condense-descriptions/index.ts";
 import decryptMessagesHandler from "../decrypt-messages/index.ts";
+import membershipHandler from "../membership/index.ts";
+import librarySettingsHandler from "../library-settings/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -3387,6 +3389,8 @@ const AVAILABLE_FUNCTIONS = [
   "rate-game", "refresh-images", "resolve-username", "send-auth-email", "send-email",
   "send-message", "signup", "sync-achievements", "totp-disable", "totp-setup", "totp-status",
   "totp-verify", "verify-email", "verify-reset-token", "wishlist",
+  // Self-hosted-only helpers
+  "membership", "library-settings",
 ];
 
 const INLINED_FUNCTIONS = [
@@ -3396,6 +3400,8 @@ const INLINED_FUNCTIONS = [
   "send-message", "condense-descriptions", "decrypt-messages", "resolve-username", "sync-achievements",
   "discord-notify", "discord-create-event", "discord-forum-post", "discord-delete-thread",
   "discord-oauth-callback", "discord-send-dm",
+  // Self-hosted-only helpers
+  "membership", "library-settings",
 ];
 
 // NOTE: In self-hosted deployments, the edge-runtime process itself binds to the
@@ -3466,6 +3472,10 @@ Deno.serve(async (req) => {
       return condenseDescriptionsHandler(req);
     case "decrypt-messages":
       return decryptMessagesHandler(req);
+    case "membership":
+      return membershipHandler(req);
+    case "library-settings":
+      return librarySettingsHandler(req);
     // Inlined handlers for remaining functions
     case "game-recommendations":
       return handleGameRecommendations(req);

@@ -1,6 +1,13 @@
 // Note: We keep serve import for compatibility but export handler for self-hosted router
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SMTPClient } from "npm:denomailer@1.6.0";
+
+// IMPORTANT (self-hosted): this module is imported by the main router.
+// Any top-level dependency fetch failure can crash the whole functions service.
+// So we lazy-load SMTP deps inside the handler.
+type SMTPClientCtor = new (options: any) => {
+  send: (options: any) => Promise<void>;
+  close: () => Promise<void>;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -115,6 +122,10 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
+    const { SMTPClient } = (await import("npm:denomailer@1.6.0")) as {
+      SMTPClient: SMTPClientCtor;
+    };
+
     // Create SMTP client
     const implicitTls = smtpPort === 465;
     const client = new SMTPClient({
@@ -128,7 +139,7 @@ export default async function handler(req: Request): Promise<Response> {
         },
       },
       // Self-hosted stacks often use internal relays without STARTTLS.
-      // These flags prevent Deno's TLS/STARTTLS handshake issues that can surface as 502s.
+      // These flags prevent TLS/STARTTLS handshake issues that can surface as 502s.
       allowUnsecure: !implicitTls,
       noStartTLS: !implicitTls,
       debug: false,

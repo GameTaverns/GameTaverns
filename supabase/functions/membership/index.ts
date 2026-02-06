@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,20 +6,32 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-Deno.serve(async (req) => {
+interface MembershipRequest {
+  action: "join" | "leave" | "follow" | "unfollow";
+  libraryId: string;
+}
+
+export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY");
-    
+    const serviceKey =
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY");
+
     if (!supabaseUrl || !serviceKey) {
-      throw new Error("Missing Supabase configuration");
+      throw new Error("Missing backend configuration");
     }
 
-    // Get user from auth header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -30,9 +42,12 @@ Deno.serve(async (req) => {
 
     const token = authHeader.slice(7);
     const supabase = createClient(supabaseUrl, serviceKey);
-    
-    // Verify user
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
@@ -40,8 +55,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, libraryId } = await req.json();
-    
+    const body = (await req.json()) as Partial<MembershipRequest>;
+    const action = body.action;
+    const libraryId = body.libraryId;
+
     if (!action || !libraryId) {
       return new Response(JSON.stringify({ error: "Missing action or libraryId" }), {
         status: 400,
@@ -49,25 +66,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    let result;
-    
     switch (action) {
       case "join": {
-        // Check if already a member
         const { data: existing } = await supabase
           .from("library_members")
           .select("id")
           .eq("library_id", libraryId)
           .eq("user_id", user.id)
           .maybeSingle();
-        
+
         if (existing) {
           return new Response(JSON.stringify({ error: "Already a member" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        
+
         const { data, error } = await supabase
           .from("library_members")
           .insert({
@@ -77,40 +91,43 @@ Deno.serve(async (req) => {
           })
           .select()
           .single();
-        
+
         if (error) throw error;
-        result = data;
-        break;
+
+        return new Response(JSON.stringify(data), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      
+
       case "leave": {
         const { error } = await supabase
           .from("library_members")
           .delete()
           .eq("library_id", libraryId)
           .eq("user_id", user.id);
-        
+
         if (error) throw error;
-        result = { success: true };
-        break;
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      
+
       case "follow": {
-        // Check if already following
         const { data: existing } = await supabase
           .from("library_followers")
           .select("id")
           .eq("library_id", libraryId)
           .eq("follower_user_id", user.id)
           .maybeSingle();
-        
+
         if (existing) {
           return new Response(JSON.stringify({ error: "Already following" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-        
+
         const { data, error } = await supabase
           .from("library_followers")
           .insert({
@@ -119,39 +136,37 @@ Deno.serve(async (req) => {
           })
           .select()
           .single();
-        
+
         if (error) throw error;
-        result = data;
-        break;
+
+        return new Response(JSON.stringify(data), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      
+
       case "unfollow": {
         const { error } = await supabase
           .from("library_followers")
           .delete()
           .eq("library_id", libraryId)
           .eq("follower_user_id", user.id);
-        
+
         if (error) throw error;
-        result = { success: true };
-        break;
-      }
-      
-      default:
-        return new Response(JSON.stringify({ error: "Invalid action" }), {
-          status: 400,
+
+        return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
     }
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Membership error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error?.message || "Server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
