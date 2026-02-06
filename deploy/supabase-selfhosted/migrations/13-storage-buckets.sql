@@ -54,30 +54,39 @@ BEGIN
     -- Library owners can upload logos
     CREATE POLICY "Library owners can upload logos"
     ON storage.objects FOR INSERT
+    TO authenticated
     WITH CHECK (
         bucket_id = 'library-logos'
-        AND (storage.foldername(name))[1] IN (
-            SELECT id::text FROM public.libraries WHERE owner_id = auth.uid()
+        AND EXISTS (
+          SELECT 1 FROM public.libraries
+          WHERE owner_id = auth.uid()
+          AND id::text = split_part(name, '/', 1)
         )
     );
 
     -- Library owners can update their logos
     CREATE POLICY "Library owners can update logos"
     ON storage.objects FOR UPDATE
+    TO authenticated
     USING (
         bucket_id = 'library-logos'
-        AND (storage.foldername(name))[1] IN (
-            SELECT id::text FROM public.libraries WHERE owner_id = auth.uid()
+        AND EXISTS (
+          SELECT 1 FROM public.libraries
+          WHERE owner_id = auth.uid()
+          AND id::text = split_part(name, '/', 1)
         )
     );
 
     -- Library owners can delete their logos
     CREATE POLICY "Library owners can delete logos"
     ON storage.objects FOR DELETE
+    TO authenticated
     USING (
         bucket_id = 'library-logos'
-        AND (storage.foldername(name))[1] IN (
-            SELECT id::text FROM public.libraries WHERE owner_id = auth.uid()
+        AND EXISTS (
+          SELECT 1 FROM public.libraries
+          WHERE owner_id = auth.uid()
+          AND id::text = split_part(name, '/', 1)
         )
     );
 
