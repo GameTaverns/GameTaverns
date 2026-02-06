@@ -98,10 +98,12 @@ END $$;
 -- Achievement categories
 DO $$ BEGIN
     CREATE TYPE achievement_category AS ENUM (
-        'collection',
+        'collector',
+        'player',
         'social',
-        'engagement',
-        'special'
+        'explorer',
+        'contributor',
+        'lender'
     );
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;

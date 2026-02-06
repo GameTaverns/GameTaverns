@@ -103,12 +103,20 @@ Deno.serve(async (req) => {
       .eq("status", "returned");
     progress.loans_completed = loansCount || 0;
 
-    // Followers gained
+    // Followers/members gained (combine library_followers and library_members, excluding owner)
     const { count: followersCount } = await supabaseAdmin
       .from("library_followers")
       .select("*", { count: "exact", head: true })
       .eq("library_id", library.id);
-    progress.followers_gained = followersCount || 0;
+    
+    // Also count library members (excluding the owner themselves)
+    const { count: membersCount } = await supabaseAdmin
+      .from("library_members")
+      .select("*", { count: "exact", head: true })
+      .eq("library_id", library.id)
+      .neq("user_id", user.id);
+    
+    progress.followers_gained = (followersCount || 0) + (membersCount || 0);
 
     // Wishlist votes (votes the user has cast)
     const { count: wishlistCount } = await supabaseAdmin
