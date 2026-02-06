@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/backend/client";
+import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export interface LibraryMember {
@@ -58,6 +58,12 @@ export function useLibraryMembership(libraryId: string | undefined) {
     mutationFn: async () => {
       if (!libraryId || !user?.id) throw new Error("Missing library or user");
       
+      if (isSelfHostedMode()) {
+        // Self-hosted: use API endpoint
+        const result = await apiClient.post<{ success: boolean; membership: any }>(`/membership/${libraryId}/join`);
+        return result.membership;
+      }
+      
       const { data, error } = await supabase
         .from("library_members")
         .insert({
@@ -81,6 +87,12 @@ export function useLibraryMembership(libraryId: string | undefined) {
   const leaveLibrary = useMutation({
     mutationFn: async () => {
       if (!libraryId || !user?.id) throw new Error("Missing library or user");
+      
+      if (isSelfHostedMode()) {
+        // Self-hosted: use API endpoint
+        await apiClient.post(`/membership/${libraryId}/leave`);
+        return;
+      }
       
       const { error } = await supabase
         .from("library_members")
