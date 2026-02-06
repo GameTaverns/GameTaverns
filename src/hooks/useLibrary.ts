@@ -278,10 +278,37 @@ export function useUserProfile() {
           };
         }
       }
+
+      // Self-hosted Supabase stack: avoid embedded relationship syntax (causes 400 on older PostgREST)
+      // Fetch profile and achievement separately, then merge
+      if (isSelfHostedSupabaseStack()) {
+        const { data: profile, error: profileError } = await supabase
+          .from("user_profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (profileError && profileError.code !== "PGRST116") {
+          throw profileError;
+        }
+
+        if (!profile) return null;
+
+        // Fetch featured achievement separately if set
+        let featured_achievement = null;
+        if (profile.featured_achievement_id) {
+          const { data: achievement } = await supabase
+            .from("achievements")
+            .select("id, name, icon, tier")
+            .eq("id", profile.featured_achievement_id)
+            .maybeSingle();
+          featured_achievement = achievement;
+        }
+
+        return { ...profile, featured_achievement };
+      }
       
-      // Supabase mode - fetch with joined achievement
-      // IMPORTANT: Avoid constraint-name join syntax here because self-hosted DBs
-      // may not have the exact same FK constraint name, which can cause PostgREST 400s.
+      // Cloud mode: use embedded relationship syntax (works reliably)
       const { data, error } = await supabase
         .from("user_profiles")
         .select(
