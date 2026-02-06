@@ -131,15 +131,22 @@ export function isSelfHostedMode(): boolean {
  */
 export function isSelfHostedSupabaseStack(): boolean {
   const runtime = getRuntimeConfig();
-  
-  // If runtime config says NOT self-hosted Express, check for self-hosted Supabase domains
+
+  // Any deployment that injects SUPABASE_URL at runtime (and is NOT legacy Express mode)
+  // should be treated as the self-hosted Supabase stack.
+  // This must work for custom domains/IPs, not only gametaverns.com.
+  if (runtime.SELF_HOSTED === false && runtime.SUPABASE_URL) {
+    return true;
+  }
+
+  // Back-compat: if runtime says "not legacy self-hosted" (or provides SUPABASE_URL),
+  // we can also infer self-hosted by hostname as a fallback.
   if (runtime.SELF_HOSTED === false || runtime.SUPABASE_URL) {
     try {
       if (typeof window !== "undefined") {
         const host = window.location.hostname.toLowerCase();
-        // Self-hosted Supabase stack domains
         if (
-          host === "gametaverns.com" || 
+          host === "gametaverns.com" ||
           host.endsWith(".gametaverns.com") ||
           host === "gamehavens.com" ||
           host.endsWith(".gamehavens.com")
@@ -151,7 +158,7 @@ export function isSelfHostedSupabaseStack(): boolean {
       // ignore
     }
   }
-  
+
   return false;
 }
 
