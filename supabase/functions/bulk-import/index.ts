@@ -676,15 +676,119 @@ EXAMPLE OUTPUT:
   }
 }
 
+// Fetch additional gameplay images from BGG gallery using Firecrawl
+async function fetchBGGGalleryImages(
+  bggId: string,
+  firecrawlKey: string,
+  maxImages = 5
+): Promise<string[]> {
+  // BGG gallery URL - filtered to user-uploaded images (gameplay/components)
+  const galleryUrl = `https://boardgamegeek.com/boardgame/${bggId}/images`;
+  
+  try {
+    console.log(`[BulkImport] Fetching gallery images for BGG ID: ${bggId}`);
+    
+    const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${firecrawlKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: galleryUrl,
+        formats: ["rawHtml"],
+        onlyMainContent: false, // Need full page for gallery
+      }),
+    });
+    
+    if (!scrapeRes.ok) {
+      console.warn(`[BulkImport] Firecrawl gallery returned ${scrapeRes.status} for ${bggId}`);
+      return [];
+    }
+    
+    const raw = await scrapeRes.text();
+    if (!raw || raw.trim().length === 0) {
+      return [];
+    }
+    
+    let scrapeData: any;
+    try {
+      scrapeData = JSON.parse(raw);
+    } catch {
+      console.warn(`[BulkImport] Failed to parse Firecrawl gallery response for ${bggId}`);
+      return [];
+    }
+    
+    const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
+    if (!rawHtml) {
+      return [];
+    }
+    
+    // Extract all BGG CDN image URLs
+    const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
+    const allImages = rawHtml.match(imageRegex) || [];
+    const uniqueImages = [...new Set(allImages)] as string[];
+    
+    // Filter out thumbnails, avatars, and very small images
+    // Also filter out the main box art (_itemrep) since we already have that
+    const filtered = uniqueImages.filter((img: string) => {
+      // Exclude small images
+      if (/crop100|square30|100x100|150x150|_thumb|_avatar|_micro|square100|_mt|_t$/i.test(img)) {
+        return false;
+      }
+      // Exclude main box art (we get that from main image)
+      if (/_itemrep/i.test(img)) {
+        return false;
+      }
+      // Only include imagepage (full size) or imagepagemedium
+      if (/_imagepage|_imagepagemedium|_md|_lg|_original/i.test(img)) {
+        return true;
+      }
+      // Include if it doesn't have size suffix (could be original)
+      if (!/_(mt|t|sq|th|md|lg)$/i.test(img)) {
+        return true;
+      }
+      return false;
+    });
+    
+    // Prioritize larger/full images and limit count
+    filtered.sort((a: string, b: string) => {
+      const prio = (url: string) => {
+        if (/_original/i.test(url)) return 0;
+        if (/_imagepage(?!medium)/i.test(url)) return 1;
+        if (/_imagepagemedium/i.test(url)) return 2;
+        if (/_lg/i.test(url)) return 3;
+        if (/_md/i.test(url)) return 4;
+        return 5;
+      };
+      return prio(a) - prio(b);
+    });
+    
+    // Normalize URLs and limit to maxImages
+    const result = filtered
+      .slice(0, maxImages)
+      .map((url: string) => normalizeImageUrl(url))
+      .filter((url): url is string => !!url);
+    
+    console.log(`[BulkImport] Found ${result.length} gallery images for BGG ID: ${bggId}`);
+    return result;
+  } catch (e) {
+    console.error(`[BulkImport] Gallery fetch error for ${bggId}:`, e);
+    return [];
+  }
+}
+
 // Fetch full BGG data using Firecrawl + AI with retry logic
 async function fetchBGGData(
   bggId: string,
   firecrawlKey: string,
-  maxRetries = 3
+  maxRetries = 3,
+  fetchGalleryImages = false
 ): Promise<{
   bgg_id: string;
   description?: string;
   image_url?: string;
+  additional_images?: string[];
   min_players?: number;
   max_players?: number;
   suggested_age?: string;
@@ -778,11 +882,19 @@ async function fetchBGGData(
           console.log(`[BulkImport] AI formatted description for ${bggId}: ${aiDescription.length} chars`);
           // Get additional data from BGG XML for player counts, etc.
           const xmlData = await fetchBGGXMLData(bggId);
+          
+          // Fetch gallery images if requested
+          let additionalImages: string[] | undefined;
+          if (fetchGalleryImages) {
+            additionalImages = await fetchBGGGalleryImages(bggId, firecrawlKey, 5);
+          }
+          
           return {
             ...xmlData,
             bgg_id: bggId,
             image_url: mainImage ?? xmlData?.image_url,
             description: aiDescription,
+            additional_images: additionalImages?.length ? additionalImages : undefined,
           };
         }
       }
@@ -790,10 +902,18 @@ async function fetchBGGData(
       // AI formatting failed or no content - fall back to BGG XML
       console.log(`[BulkImport] Firecrawl got image for ${bggId}, using BGG XML for other data`);
       const xmlData = await fetchBGGXMLData(bggId);
+      
+      // Fetch gallery images if requested
+      let additionalImages: string[] | undefined;
+      if (fetchGalleryImages) {
+        additionalImages = await fetchBGGGalleryImages(bggId, firecrawlKey, 5);
+      }
+      
       return {
         ...xmlData,
         bgg_id: bggId,
         image_url: mainImage ?? xmlData?.image_url,
+        additional_images: additionalImages?.length ? additionalImages : undefined,
       };
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
@@ -803,7 +923,21 @@ async function fetchBGGData(
   
   // All Firecrawl retries failed - fallback to BGG XML API
   console.log(`[BulkImport] Firecrawl failed after ${maxRetries} attempts, using BGG XML fallback for ${bggId}`);
-  return await fetchBGGXMLData(bggId);
+  const xmlFallback = await fetchBGGXMLData(bggId);
+  
+  // Still try to fetch gallery images even if main scrape failed
+  if (fetchGalleryImages && xmlFallback) {
+    try {
+      const additionalImages = await fetchBGGGalleryImages(bggId, firecrawlKey, 5);
+      if (additionalImages.length > 0) {
+        return { ...xmlFallback, additional_images: additionalImages };
+      }
+    } catch (e) {
+      console.warn(`[BulkImport] Gallery fetch failed for ${bggId}:`, e);
+    }
+  }
+  
+  return xmlFallback;
 }
 
 // Fetch BGG collection for a user
@@ -1326,6 +1460,7 @@ export default async function handler(req: Request): Promise<Response> {
               bgg_url?: string;
               description?: string;
               image_url?: string;
+              additional_images?: string[];
               min_players?: number;
               max_players?: number;
               suggested_age?: string;
@@ -1355,6 +1490,7 @@ export default async function handler(req: Request): Promise<Response> {
               bgg_id: gameInput.bgg_id,
               bgg_url: gameInput.bgg_url,
               image_url: gameInput.image_url,
+              additional_images: gameInput.additional_images,
               description: gameInput.description,
               min_players: gameInput.min_players,
               max_players: gameInput.max_players,
@@ -1464,18 +1600,28 @@ export default async function handler(req: Request): Promise<Response> {
                 console.log(`[BulkImport] XML enriched "${gameData.title}": description=${(gameData.description?.length || 0)} chars, image=${!!gameData.image_url}`);
               }
               
-              // SLOW PATH: Optionally use Firecrawl+AI for rich descriptions
+              // SLOW PATH: Optionally use Firecrawl+AI for rich descriptions AND gallery images
               // Only when explicitly requested via enhance_with_ai=true
-              if (enhance_with_ai && firecrawlKey && (!gameData.description || gameData.description.length < 100)) {
-                console.log(`[BulkImport] AI enrichment for: ${gameInput.bgg_id}`);
-                try {
-                  const aiData = await fetchBGGData(gameInput.bgg_id, firecrawlKey);
-                  if (aiData?.description && aiData.description.length > (gameData.description?.length || 0)) {
-                    gameData.description = aiData.description;
-                    console.log(`[BulkImport] AI enhanced description: ${aiData.description.length} chars`);
+              if (enhance_with_ai && firecrawlKey) {
+                const needsDescription = !gameData.description || gameData.description.length < 100;
+                const needsGalleryImages = !gameData.additional_images || gameData.additional_images.length === 0;
+                
+                if (needsDescription || needsGalleryImages) {
+                  console.log(`[BulkImport] AI enrichment for: ${gameInput.bgg_id} (desc=${needsDescription}, gallery=${needsGalleryImages})`);
+                  try {
+                    // Fetch with gallery images enabled
+                    const aiData = await fetchBGGData(gameInput.bgg_id, firecrawlKey, 3, needsGalleryImages);
+                    if (aiData?.description && aiData.description.length > (gameData.description?.length || 0)) {
+                      gameData.description = aiData.description;
+                      console.log(`[BulkImport] AI enhanced description: ${aiData.description.length} chars`);
+                    }
+                    if (aiData?.additional_images && aiData.additional_images.length > 0) {
+                      gameData.additional_images = aiData.additional_images;
+                      console.log(`[BulkImport] Added ${aiData.additional_images.length} gallery images`);
+                    }
+                  } catch (e) {
+                    console.warn(`[BulkImport] AI enrichment failed for ${gameInput.bgg_id}:`, e);
                   }
-                } catch (e) {
-                  console.warn(`[BulkImport] AI enrichment failed for ${gameInput.bgg_id}:`, e);
                 }
               }
             } else if (enhance_with_bgg !== false && gameData.title && !hasCompleteData) {
@@ -1539,6 +1685,20 @@ export default async function handler(req: Request): Promise<Response> {
                         // Override is_expansion from BGG if not already set
                         is_expansion: gameData.is_expansion || bggData.is_expansion,
                       };
+                      
+                      // Also fetch gallery images if AI enrichment is enabled
+                      if (enhance_with_ai && firecrawlKey && (!gameData.additional_images || gameData.additional_images.length === 0)) {
+                        console.log(`[BulkImport] Fetching gallery images for title lookup: ${foundId}`);
+                        try {
+                          const galleryImages = await fetchBGGGalleryImages(foundId, firecrawlKey, 5);
+                          if (galleryImages.length > 0) {
+                            gameData.additional_images = galleryImages;
+                            console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameData.title}"`);
+                          }
+                        } catch (e) {
+                          console.warn(`[BulkImport] Gallery fetch failed for ${foundId}:`, e);
+                        }
+                      }
                     }
                   }
                 }
