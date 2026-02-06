@@ -968,6 +968,7 @@ type GameToImport = {
   bgg_id?: string;
   bgg_url?: string;
   image_url?: string;
+  additional_images?: string[]; // Added for gameplay/component photos
   type?: string;
   difficulty?: string;
   play_time?: string;
@@ -1004,6 +1005,28 @@ type GameToImport = {
   purchase_date?: string;
   purchase_price?: number;
 };
+
+// Convert BGG OpenGraph URLs to higher quality image URLs
+// OpenGraph images are 1200x630 with weird cropping; prefer the square/original version
+function normalizeImageUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  
+  // Convert __opengraph to __imagepage for better quality square images
+  // Also handles other low-quality variants
+  if (url.includes("__opengraph")) {
+    return url.replace("__opengraph", "__imagepage");
+  }
+  
+  // If it's a BGG image with fit-in/filters, try to get the cleaner version
+  // Pattern: /0x266:1319x958/fit-in/1200x630/filters:strip_icc()/
+  const fitInMatch = url.match(/\/fit-in\/\d+x\d+\/filters:[^/]+\//);
+  if (fitInMatch) {
+    // Remove the cropping/filter parameters to get original
+    return url.replace(fitInMatch[0], "/");
+  }
+  
+  return url;
+}
 
 // Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
@@ -1155,11 +1178,18 @@ export default async function handler(req: Request): Promise<Response> {
           const csvDesc = (row.description ?? "").trim();
           const csvNotes = buildNotes(row.privatecomment, row.comment);
 
+          // Parse additional_images (semicolon-separated list)
+          const additionalImagesRaw = row.additional_images || row["additional images"] || row.additionalimages || "";
+          const additionalImages = additionalImagesRaw
+            ? additionalImagesRaw.split(";").map((s: string) => normalizeImageUrl(s.trim())).filter(Boolean) as string[]
+            : undefined;
+
           const gameData: GameToImport = { 
             title,
             bgg_id: bggId,
             bgg_url: bggId ? `https://boardgamegeek.com/boardgame/${bggId}` : (row.bgg_url || row["bgg url"] || row.url || undefined),
-            image_url: row.image_url || row["image url"] || row.imageurl || undefined,
+            image_url: normalizeImageUrl(row.image_url || row["image url"] || row.imageurl || undefined),
+            additional_images: additionalImages,
             type: row.type || row["game type"] || row.game_type || undefined,
             difficulty,
             play_time: playTime,
@@ -1611,7 +1641,8 @@ export default async function handler(req: Request): Promise<Response> {
                 library_id: targetLibraryId,
                 title: gameData.title,
                 description: gameData.description || null,
-                image_url: gameData.image_url || null,
+                image_url: normalizeImageUrl(gameData.image_url) || null,
+                additional_images: gameData.additional_images?.length ? gameData.additional_images : null,
                 bgg_id: gameData.bgg_id || null,
                 bgg_url: gameData.bgg_url || null,
                 min_players: gameData.min_players ?? 2,

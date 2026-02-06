@@ -173,6 +173,7 @@ export function GameCollectionTable() {
       "bgg_id",
       "bgg_url",
       "image_url",
+      "additional_images", // Added for gameplay/component photos
       // Metadata
       "description",
       "game_type",
@@ -219,6 +220,8 @@ export function GameCollectionTable() {
       game.bgg_id || "",
       game.bgg_url || "",
       game.image_url || "",
+      // Additional images as semicolon-separated list
+      (game as any).additional_images?.join(";") || "",
       // Metadata - description may contain newlines/commas, will be quoted
       game.description || "",
       game.game_type || "",
