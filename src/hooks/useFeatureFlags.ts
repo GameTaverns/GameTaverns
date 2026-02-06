@@ -1,14 +1,17 @@
 import { useMemo } from "react";
 import { useSiteSettings } from "./useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { getRuntimeFeatureFlag, isProductionDeployment } from "@/config/runtime";
 
 /**
  * Feature Flags System
  * 
- * Priority: Runtime Config (Cloudron) → ENV VARS (Vite) → Admin Settings → Defaults
+ * Priority (in tenant mode): Library Settings → Runtime Config → ENV VARS → Defaults
+ * Priority (platform mode): Runtime Config → ENV VARS → Admin Settings → Defaults
  * 
- * Supports both Cloudron (window.__RUNTIME_CONFIG__) and Lovable/Vite (import.meta.env)
+ * When viewing a library (tenant mode), the library's feature flags take precedence.
+ * This ensures library owners can control what features are shown on their library pages.
  */
 
 export interface FeatureFlags {
@@ -90,8 +93,11 @@ function getConfigFlags(): Partial<FeatureFlags> {
 
 // Hook for accessing feature flags
 export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
-  const { data: siteSettings, isLoading } = useSiteSettings();
+  const { data: siteSettings, isLoading: siteLoading } = useSiteSettings();
   const { isDemoMode, demoFeatureFlags } = useDemoMode();
+  const { settings: librarySettings, isTenantMode, isLoading: tenantLoading } = useTenant();
+  
+  const isLoading = siteLoading || (isTenantMode && tenantLoading);
   
   const flags = useMemo(() => {
     const defaultFlags = getDefaultFlags();
@@ -108,8 +114,38 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
     // Start with defaults
     const result = { ...defaultFlags };
     
-    // Apply admin settings (from database)
-    if (siteSettings) {
+    // In tenant mode (viewing a library), use library settings as primary source
+    if (isTenantMode && librarySettings) {
+      // Library settings are booleans directly, not strings
+      if (librarySettings.feature_play_logs !== undefined) {
+        result.playLogs = librarySettings.feature_play_logs;
+      }
+      if (librarySettings.feature_wishlist !== undefined) {
+        result.wishlist = librarySettings.feature_wishlist;
+      }
+      if (librarySettings.feature_for_sale !== undefined) {
+        result.forSale = librarySettings.feature_for_sale;
+      }
+      if (librarySettings.feature_messaging !== undefined) {
+        result.messaging = librarySettings.feature_messaging;
+      }
+      if (librarySettings.feature_coming_soon !== undefined) {
+        result.comingSoon = librarySettings.feature_coming_soon;
+      }
+      if (librarySettings.feature_ratings !== undefined) {
+        result.ratings = librarySettings.feature_ratings;
+      }
+      if (librarySettings.feature_events !== undefined) {
+        result.events = librarySettings.feature_events;
+      }
+      if (librarySettings.feature_achievements !== undefined) {
+        result.achievements = librarySettings.feature_achievements;
+      }
+      if (librarySettings.feature_lending !== undefined) {
+        result.lending = librarySettings.feature_lending;
+      }
+    } else if (siteSettings) {
+      // Platform mode: use global site settings (from database)
       const dbPlayLogs = (siteSettings as Record<string, string | undefined>).feature_play_logs;
       const dbWishlist = (siteSettings as Record<string, string | undefined>).feature_wishlist;
       const dbForSale = (siteSettings as Record<string, string | undefined>).feature_for_sale;
@@ -133,12 +169,15 @@ export function useFeatureFlags(): FeatureFlags & { isLoading: boolean } {
       if (dbLending !== undefined) result.lending = dbLending === "true";
     }
     
-    // Apply config overrides last (they take precedence)
-    const configFlags = getConfigFlags();
-    Object.assign(result, configFlags);
+    // Apply config overrides last (they take precedence over DB settings)
+    // Note: In tenant mode, we skip config overrides to respect library owner's choices
+    if (!isTenantMode) {
+      const configFlags = getConfigFlags();
+      Object.assign(result, configFlags);
+    }
     
     return result;
-  }, [siteSettings, isDemoMode, demoFeatureFlags]);
+  }, [siteSettings, isDemoMode, demoFeatureFlags, isTenantMode, librarySettings]);
   
   return { ...flags, isLoading };
 }
