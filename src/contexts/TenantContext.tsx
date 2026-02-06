@@ -263,7 +263,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
           .from("libraries")
           .select("owner_id")
           .eq("id", libraryData.id)
-          .single();
+          .maybeSingle();
 
         if (!ownerErr && ownerRow?.owner_id) {
           ownerId = ownerRow.owner_id;
