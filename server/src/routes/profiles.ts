@@ -140,17 +140,47 @@ router.put('/me', authMiddleware, async (req: Request, res: Response) => {
       }
     }
     
+    // Build dynamic update - handle null explicitly for fields that can be cleared
+    const updateFields: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (data.display_name !== undefined) {
+      updateFields.push(`display_name = $${paramIndex++}`);
+      values.push(data.display_name);
+    }
+    if (data.username !== undefined) {
+      updateFields.push(`username = $${paramIndex++}`);
+      values.push(data.username);
+    }
+    if (data.bio !== undefined) {
+      updateFields.push(`bio = $${paramIndex++}`);
+      values.push(data.bio);
+    }
+    if (data.avatar_url !== undefined) {
+      updateFields.push(`avatar_url = $${paramIndex++}`);
+      values.push(data.avatar_url);
+    }
+    if (data.featured_achievement_id !== undefined) {
+      // Explicitly allow setting to NULL to clear the badge
+      updateFields.push(`featured_achievement_id = $${paramIndex++}`);
+      values.push(data.featured_achievement_id);
+    }
+
+    if (updateFields.length === 0) {
+      res.status(400).json({ error: 'No fields to update' });
+      return;
+    }
+
+    updateFields.push('updated_at = NOW()');
+    values.push(req.user!.sub);
+
     const result = await pool.query(
       `UPDATE user_profiles 
-       SET display_name = COALESCE($1, display_name),
-           username = COALESCE($2, username),
-           bio = COALESCE($3, bio),
-           avatar_url = COALESCE($4, avatar_url),
-           featured_achievement_id = COALESCE($5, featured_achievement_id),
-           updated_at = NOW()
-       WHERE user_id = $6
+       SET ${updateFields.join(', ')}
+       WHERE user_id = $${paramIndex}
        RETURNING *`,
-      [data.display_name, data.username, data.bio, data.avatar_url, data.featured_achievement_id, req.user!.sub]
+      values
     );
     
     res.json(result.rows[0]);
