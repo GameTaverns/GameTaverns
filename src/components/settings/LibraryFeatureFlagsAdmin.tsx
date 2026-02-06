@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
+import { supabase, isSelfHostedSupabaseStack } from "@/integrations/backend/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { 
@@ -158,13 +158,13 @@ export function LibraryFeatureFlagsAdmin() {
       // Sync allow_lending with feature_lending for directory visibility
       updateData.allow_lending = localFlags.lending;
       
-      if (isSelfHostedMode()) {
-        // Self-hosted: use Edge Function with libraryId in body
-        const { error } = await supabase.functions.invoke("library-settings", {
-          body: { ...updateData, libraryId: library.id },
-        });
-        if (error) throw error;
-      } else {
+       if (isSelfHostedSupabaseStack()) {
+         // Self-hosted Supabase stack: use backend function (service role) to avoid RLS/PostgREST issues
+         const { error } = await supabase.functions.invoke("library-settings", {
+           body: { ...updateData, libraryId: library.id },
+         });
+         if (error) throw error;
+       } else {
         // Cloud: use Supabase
         const { data: updatedSettings, error } = await supabase
           .from("library_settings")

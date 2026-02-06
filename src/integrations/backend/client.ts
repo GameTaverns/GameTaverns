@@ -3,6 +3,7 @@ import type { Database } from "@/integrations/supabase/types";
 import {
   getSupabaseConfig,
   isSelfHostedMode as checkSelfHostedMode,
+  isSelfHostedSupabaseStack as checkSelfHostedSupabaseStack,
   getApiBaseUrl,
 } from "@/config/runtime";
 import { computeAuthStorageKey } from "@/lib/authStorageKey";
@@ -115,11 +116,18 @@ export const supabase = new Proxy({} as SupabaseClient<Database>, {
 });
 
 /**
- * Check if we should use API client (self-hosted) vs Supabase (cloud)
- * This is a function that checks fresh each time - not cached at module load
+ * Check if we should use API client (legacy Express) vs Supabase (cloud/self-hosted Supabase stack)
  */
 export function isSelfHostedMode(): boolean {
   return checkSelfHostedMode();
+}
+
+/**
+ * Check if we are running on the self-hosted Supabase stack (same-origin Kong routing).
+ * Used for codepaths that must behave differently on self-hosted deployments.
+ */
+export function isSelfHostedSupabaseStack(): boolean {
+  return checkSelfHostedSupabaseStack();
 }
 
 /**

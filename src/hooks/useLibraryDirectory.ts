@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
+import { supabase, isSelfHostedSupabaseStack } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -63,14 +63,14 @@ export function useLibraryDirectory() {
     mutationFn: async (libraryId: string) => {
       if (!user) throw new Error("Must be logged in to follow");
 
-      if (isSelfHostedMode()) {
-        // Self-hosted: use Edge Function
-        const { data, error } = await supabase.functions.invoke("membership", {
-          body: { action: "follow", libraryId },
-        });
-        if (error) throw error;
-        return data;
-      }
+       if (isSelfHostedSupabaseStack()) {
+         // Self-hosted Supabase stack: use backend function
+         const { data, error } = await supabase.functions.invoke("membership", {
+           body: { action: "follow", libraryId },
+         });
+         if (error) throw error;
+         return data;
+       }
 
       const { data, error } = await supabase
         .from("library_followers")
@@ -99,14 +99,14 @@ export function useLibraryDirectory() {
     mutationFn: async (libraryId: string) => {
       if (!user) throw new Error("Must be logged in to unfollow");
 
-      if (isSelfHostedMode()) {
-        // Self-hosted: use Edge Function
-        const { error } = await supabase.functions.invoke("membership", {
-          body: { action: "unfollow", libraryId },
-        });
-        if (error) throw error;
-        return;
-      }
+       if (isSelfHostedSupabaseStack()) {
+         // Self-hosted Supabase stack: use backend function
+         const { error } = await supabase.functions.invoke("membership", {
+           body: { action: "unfollow", libraryId },
+         });
+         if (error) throw error;
+         return;
+       }
 
       const { error } = await supabase
         .from("library_followers")

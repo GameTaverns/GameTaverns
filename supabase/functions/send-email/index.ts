@@ -1,6 +1,6 @@
 // Note: We keep serve import for compatibility but export handler for self-hosted router
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { SMTPClient } from "npm:denomailer@1.6.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -116,16 +116,22 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // Create SMTP client
+    const implicitTls = smtpPort === 465;
     const client = new SMTPClient({
       connection: {
         hostname: smtpHost,
         port: smtpPort,
-        tls: smtpPort === 465, // Use TLS for port 465, STARTTLS for others
+        tls: implicitTls,
         auth: {
           username: smtpUser,
           password: smtpPass,
         },
       },
+      // Self-hosted stacks often use internal relays without STARTTLS.
+      // These flags prevent Deno's TLS/STARTTLS handshake issues that can surface as 502s.
+      allowUnsecure: !implicitTls,
+      noStartTLS: !implicitTls,
+      debug: false,
     });
 
     // Determine the From address
