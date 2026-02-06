@@ -2853,7 +2853,8 @@ async function handleSyncAchievements(req: Request): Promise<Response> {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "No authorization header" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -2861,53 +2862,121 @@ async function handleSyncAchievements(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
+    // Client with user's auth for getting their identity
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+
+    // Service client for admin operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: library } = await supabaseAdmin.from("libraries").select("id").eq("owner_id", user.id).single();
-    if (!library) {
+    // Prefer owned library; if user is only a member, fall back to the first joined library.
+    const { data: ownedLibrary } = await supabaseAdmin
+      .from("libraries")
+      .select("id")
+      .eq("owner_id", user.id)
+      .maybeSingle();
+
+    let libraryId: string | null = ownedLibrary?.id ?? null;
+
+    if (!libraryId) {
+      const { data: membership } = await supabaseAdmin
+        .from("library_members")
+        .select("library_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      libraryId = membership?.library_id ?? null;
+    }
+
+    if (!libraryId) {
       return new Response(JSON.stringify({ error: "No library found", awarded: [] }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Calculate progress
-    const { count: gamesCount } = await supabaseAdmin.from("games").select("*", { count: "exact", head: true }).eq("library_id", library.id).eq("is_expansion", false);
-    const { count: sessionsCount } = await supabaseAdmin.from("game_sessions").select("*, games!inner(library_id)", { count: "exact", head: true }).eq("games.library_id", library.id);
-    const { count: loansCount } = await supabaseAdmin.from("game_loans").select("*", { count: "exact", head: true }).eq("lender_user_id", user.id).eq("status", "returned");
-    const { count: followersCount } = await supabaseAdmin.from("library_followers").select("*", { count: "exact", head: true }).eq("library_id", library.id);
-    const { count: wishlistCount } = await supabaseAdmin.from("game_wishlist").select("*, games!inner(library_id)", { count: "exact", head: true }).eq("games.library_id", library.id);
-    const { count: ratingsCount } = await supabaseAdmin.from("game_ratings").select("*, games!inner(library_id)", { count: "exact", head: true }).eq("games.library_id", library.id);
-    const { data: gameTypes } = await supabaseAdmin.from("games").select("game_type").eq("library_id", library.id).eq("is_expansion", false).not("game_type", "is", null);
-    const uniqueTypes = new Set(gameTypes?.map(g => g.game_type) || []);
+    const { count: gamesCount } = await supabaseAdmin
+      .from("games")
+      .select("*", { count: "exact", head: true })
+      .eq("library_id", libraryId)
+      .eq("is_expansion", false);
+
+    const { count: sessionsCount } = await supabaseAdmin
+      .from("game_sessions")
+      .select("*, games!inner(library_id)", { count: "exact", head: true })
+      .eq("games.library_id", libraryId);
+
+    const { count: loansCount } = await supabaseAdmin
+      .from("game_loans")
+      .select("*", { count: "exact", head: true })
+      .eq("lender_user_id", user.id)
+      .eq("status", "returned");
+
+    // Followers/members gained (combine followers and members excluding the current user)
+    const { count: followersCount } = await supabaseAdmin
+      .from("library_followers")
+      .select("*", { count: "exact", head: true })
+      .eq("library_id", libraryId);
+
+    const { count: membersCount } = await supabaseAdmin
+      .from("library_members")
+      .select("*", { count: "exact", head: true })
+      .eq("library_id", libraryId)
+      .neq("user_id", user.id);
+
+    const { count: wishlistCount } = await supabaseAdmin
+      .from("game_wishlist")
+      .select("*, games!inner(library_id)", { count: "exact", head: true })
+      .eq("games.library_id", libraryId);
+
+    const { count: ratingsCount } = await supabaseAdmin
+      .from("game_ratings")
+      .select("*, games!inner(library_id)", { count: "exact", head: true })
+      .eq("games.library_id", libraryId);
+
+    const { data: gameTypes } = await supabaseAdmin
+      .from("games")
+      .select("game_type")
+      .eq("library_id", libraryId)
+      .eq("is_expansion", false)
+      .not("game_type", "is", null);
+
+    const uniqueTypes = new Set(gameTypes?.map((g) => g.game_type) || []);
 
     const progress = {
       games_owned: gamesCount || 0,
       sessions_logged: sessionsCount || 0,
       loans_completed: loansCount || 0,
-      followers_gained: followersCount || 0,
+      followers_gained: (followersCount || 0) + (membersCount || 0),
       wishlist_votes: wishlistCount || 0,
       ratings_given: ratingsCount || 0,
       unique_game_types: uniqueTypes.size,
     };
 
-    const { data: achievements } = await supabaseAdmin.from("achievements").select("id, requirement_type, requirement_value");
-    const { data: earnedAchievements } = await supabaseAdmin.from("user_achievements").select("achievement_id").eq("user_id", user.id);
-    const earnedIds = new Set(earnedAchievements?.map(a => a.achievement_id) || []);
+    const { data: achievements } = await supabaseAdmin
+      .from("achievements")
+      .select("id, requirement_type, requirement_value");
+
+    const { data: earnedAchievements } = await supabaseAdmin
+      .from("user_achievements")
+      .select("achievement_id")
+      .eq("user_id", user.id);
+
+    const earnedIds = new Set(earnedAchievements?.map((a) => a.achievement_id) || []);
 
     const toAward: string[] = [];
-    for (const achievement of (achievements || [])) {
+    for (const achievement of achievements || []) {
       if (earnedIds.has(achievement.id)) continue;
-      const currentValue = progress[achievement.requirement_type as keyof typeof progress] || 0;
+      const currentValue = (progress as any)[achievement.requirement_type] || 0;
       if (currentValue >= achievement.requirement_value) {
         toAward.push(achievement.id);
       }
@@ -2915,29 +2984,36 @@ async function handleSyncAchievements(req: Request): Promise<Response> {
 
     const awarded: string[] = [];
     for (const achievementId of toAward) {
-      const { error: insertError } = await supabaseAdmin.from("user_achievements").insert({
-        user_id: user.id, achievement_id: achievementId,
-        progress: progress[(achievements?.find(a => a.id === achievementId)?.requirement_type || "games_owned") as keyof typeof progress] || 0,
-        notified: false,
-      });
+      const requirementType = achievements?.find((a) => a.id === achievementId)?.requirement_type || "games_owned";
+      const { error: insertError } = await supabaseAdmin
+        .from("user_achievements")
+        .insert({
+          user_id: user.id,
+          achievement_id: achievementId,
+          progress: (progress as any)[requirementType] || 0,
+          notified: false,
+        });
       if (!insertError) awarded.push(achievementId);
     }
 
     let awardedNames: string[] = [];
     if (awarded.length > 0) {
-      const { data: awardedAchievements } = await supabaseAdmin.from("achievements").select("name").in("id", awarded);
-      awardedNames = awardedAchievements?.map(a => a.name) || [];
+      const { data: awardedAchievements } = await supabaseAdmin
+        .from("achievements")
+        .select("name")
+        .in("id", awarded);
+      awardedNames = awardedAchievements?.map((a) => a.name) || [];
     }
 
     return new Response(
       JSON.stringify({ success: true, progress, newAchievements: awarded.length, awarded: awardedNames }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("Error syncing achievements:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 }

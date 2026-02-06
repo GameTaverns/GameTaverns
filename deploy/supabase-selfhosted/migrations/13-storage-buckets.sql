@@ -75,6 +75,14 @@ BEGIN
           WHERE owner_id = auth.uid()
           AND id::text = split_part(name, '/', 1)
         )
+    )
+    WITH CHECK (
+        bucket_id = 'library-logos'
+        AND EXISTS (
+          SELECT 1 FROM public.libraries
+          WHERE owner_id = auth.uid()
+          AND id::text = split_part(name, '/', 1)
+        )
     );
 
     -- Library owners can delete their logos
