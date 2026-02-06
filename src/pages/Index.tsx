@@ -491,15 +491,12 @@ const Index = () => {
       ) : (
         <>
           <GameGrid games={paginatedGames} />
-
-          {/* Spacer for sticky pagination */}
-          {totalPages > 1 && <div className="h-20" />}
         </>
       )}
 
-      {/* Sticky Pagination - only over main content, not sidebar */}
+      {/* Pagination (sticky within content so it won't cover the footer) */}
       {totalPages > 1 && (
-        <div className="fixed bottom-0 left-0 right-0 lg:left-72 z-30 bg-background/95 backdrop-blur-sm border-t border-border py-3 px-4 shadow-lg min-h-[60px]">
+        <div className="sticky bottom-0 z-30 bg-background/95 backdrop-blur-sm border-t border-border py-3 px-4 shadow-lg min-h-[60px]">
           <Pagination>
             <PaginationContent>
               <PaginationItem>
@@ -508,7 +505,7 @@ const Index = () => {
                   className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                 />
               </PaginationItem>
-              
+
               {getPageNumbers().map((page, index) => (
                 <PaginationItem key={index} className="w-10 flex justify-center">
                   {page === null ? (
@@ -526,7 +523,7 @@ const Index = () => {
                   )}
                 </PaginationItem>
               ))}
-              
+
               <PaginationItem>
                 <PaginationNext
                   onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}

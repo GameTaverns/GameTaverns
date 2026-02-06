@@ -12,14 +12,19 @@ export function cn(...inputs: ClassValue[]) {
  */
 function cleanBggUrl(url: string): string {
   // For client-side/browser loading, we want literal parentheses (browsers handle them fine)
+  // plus some normalization for BGG's various image formats.
   return url
     .replace(/%28/g, "(")
     .replace(/%29/g, ")")
-    .replace(/%2528/g, "(")  // Double-encoded
+    .replace(/%2528/g, "(") // Double-encoded
     .replace(/%2529/g, ")")
+    // BGG often provides a 1200x630 OpenGraph image; normalize to the square imagepage variant
+    // so box art doesn't render like a "half-rectangle" in our square-ish containers.
+    .replace(/__opengraph\b/g, "__imagepage")
+    .replace(/\/fit-in\/1200x630\//g, "/fit-in/600x600/")
     .replace(/&quot;.*$/, "") // Remove HTML entities from bad scraping
     .replace(/[\s\u0000-\u001F]+$/g, "") // Strip trailing control/whitespace
-    .replace(/[;,]+$/g, "");  // Remove trailing punctuation (common scraping artifacts)
+    .replace(/[;,]+$/g, ""); // Remove trailing punctuation (common scraping artifacts)
 }
 
 /**
