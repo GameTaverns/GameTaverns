@@ -246,13 +246,13 @@ export function Sidebar({ isOpen }: SidebarProps) {
             </span>
           </Link>
           
-          {/* Library Logo */}
+          {/* Library Logo - full width to match title */}
           {isTenantMode && tenantSettings?.logo_url && (
-            <Link to={libraryBaseUrl} className="mt-3">
+            <Link to={libraryBaseUrl} className="mt-3 w-full">
               <TenantLogoImage
                 url={tenantSettings.logo_url}
                 alt={`${library?.name || "Library"} logo`}
-                className="w-28 h-28 object-contain rounded-xl bg-sidebar-accent/20"
+                className="w-full max-h-40 object-contain rounded-xl bg-sidebar-accent/20"
               />
             </Link>
           )}

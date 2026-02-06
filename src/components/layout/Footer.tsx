@@ -84,15 +84,20 @@ export function Footer() {
                   href="https://lovethynerd.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity text-xs text-muted-foreground font-medium"
                   title="Love Thy Nerd"
                 >
                   <img
                     src={LTN_LOGO_SRC}
                     alt="Love Thy Nerd"
-                    className="h-8 w-8 object-contain"
+                    className="h-6 w-6 object-contain"
                     loading="lazy"
+                    onError={(e) => {
+                      // Hide if image fails to load
+                      (e.currentTarget.parentElement as HTMLElement)?.classList.add('hidden');
+                    }}
                   />
+                  <span>Love Thy Nerd</span>
                 </a>
 
                 {/* BGG Attribution - Required for API usage */}
