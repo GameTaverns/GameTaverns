@@ -1,8 +1,11 @@
 -- =============================================================================
--- GameTaverns Self-Hosted: Library Settings INSERT Policy
--- Fixes: upsert failing due to missing INSERT policy
+-- GameTaverns Self-Hosted: Library Settings INSERT Policy + Grants
+-- Fixes: upsert failing due to missing INSERT policy and table grants
 -- Version: 2.7.6
 -- =============================================================================
+
+-- Grant INSERT privilege to authenticated role (required for RLS to work)
+GRANT INSERT ON public.library_settings TO authenticated;
 
 -- Allow library owners to INSERT their settings row (needed for upsert)
 DROP POLICY IF EXISTS "Library owners can insert their settings" ON public.library_settings;
