@@ -54,10 +54,30 @@ Deno.serve(async (req) => {
     try {
       const stateData = JSON.parse(atob(state));
       userId = stateData.user_id;
-      // Always redirect to /settings after Discord link - the original path might not exist
-      // or could cause routing issues with library slugs, etc.
+      // For gametaverns.com, redirect to dashboard on main domain after Discord link
+      // For other domains, redirect to /settings
       returnUrl = "/settings";
       appOrigin = stateData.app_origin;
+      
+      // If app_origin is a subdomain, redirect to main domain dashboard
+      // e.g., tzolaks-tavern.gametaverns.com -> gametaverns.com/dashboard
+      if (appOrigin) {
+        try {
+          const originUrl = new URL(appOrigin);
+          const hostParts = originUrl.hostname.split('.');
+          // Check if it's a subdomain (e.g., tzolaks-tavern.gametaverns.com or tzolaks-tavern.gamehavens.com)
+          if (hostParts.length > 2 && 
+              (originUrl.hostname.endsWith('.gametaverns.com') || originUrl.hostname.endsWith('.gamehavens.com'))) {
+            // Redirect to main domain dashboard
+            const mainDomain = hostParts.slice(-2).join('.');
+            appOrigin = `${originUrl.protocol}//${mainDomain}`;
+            returnUrl = "/dashboard";
+          }
+        } catch {
+          // Keep original appOrigin if parsing fails
+        }
+      }
+      
       console.log("Discord OAuth state parsed:", { userId, returnUrl, appOrigin, originalReturnUrl: stateData.return_url });
     } catch (parseError) {
       console.error("Failed to parse state:", parseError);
