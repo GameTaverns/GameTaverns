@@ -140,6 +140,15 @@ export function useUpdateLibrarySettings() {
       libraryId: string; 
       updates: Partial<LibrarySettings>;
     }) => {
+      // Self-hosted: use API endpoint
+      if (isSelfHostedMode()) {
+        const result = await apiClient.put<{ success: boolean; library_id: string }>(
+          `/library-settings/${libraryId}`,
+          updates
+        );
+        return { ...updates, library_id: libraryId } as LibrarySettings;
+      }
+      
       const { data, error } = await supabase
         .from("library_settings")
         .update(updates)
@@ -150,8 +159,8 @@ export function useUpdateLibrarySettings() {
       if (error) throw error;
       return data as LibrarySettings;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["library-settings", data.library_id] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["library-settings", variables.libraryId] });
     },
   });
 }
