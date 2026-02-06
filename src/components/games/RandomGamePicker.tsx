@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/backend/client";
 import { GameImage } from "./GameImage";
 import { motion, AnimatePresence } from "framer-motion";
 import { GENRE_OPTIONS } from "@/types/game";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 
 // Types
 interface Game {
@@ -209,7 +210,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
   const handleShare = useCallback(async () => {
     if (!pickedGame || !librarySlug) return;
     
-    const shareUrl = `${window.location.origin}/?tenant=${librarySlug}&path=/games/${pickedGame.slug || pickedGame.id}`;
+    const shareUrl = getLibraryUrl(librarySlug, `/game/${pickedGame.slug || pickedGame.id}`);
     
     try {
       await navigator.clipboard.writeText(

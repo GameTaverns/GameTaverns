@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { MobileStorage } from './useCapacitor';
+import { getLibraryUrl } from './useTenantUrl';
 
 interface PushNotificationState {
   isSupported: boolean;
@@ -89,13 +90,12 @@ export function usePushNotifications() {
         console.log('Push notification action performed:', action);
         // Handle deep linking based on notification data
         const data = action.notification.data;
-        if (data?.librarySlug) {
-          // Navigate to specific library
-          window.location.href = `/?tenant=${data.librarySlug}`;
-        }
-        if (data?.gameSlug) {
+        if (data?.gameSlug && data?.librarySlug) {
           // Navigate to specific game
-          window.location.href = `/?tenant=${data.librarySlug}&path=/games/${data.gameSlug}`;
+          window.location.href = getLibraryUrl(data.librarySlug, `/games/${data.gameSlug}`);
+        } else if (data?.librarySlug) {
+          // Navigate to specific library
+          window.location.href = getLibraryUrl(data.librarySlug, "/");
         }
       }
     );
