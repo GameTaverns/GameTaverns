@@ -164,13 +164,20 @@ const GameDetail = () => {
   }
 
   const sanitizeImageUrl = (url: string): string | null => {
-    // Reject obviously corrupted strings from scraping (HTML entities, trailing junk)
-    // Note: Allow semicolons since BGG uses filter syntax like "filters:no_upscale():strip_icc()"
-    if (!url || url.includes("&quot;") || url.includes(" ")) return null;
+    if (!url) return null;
+    
+    // Clean up malformed URLs from scraping - strip trailing HTML entities and junk
+    let cleanUrl = url
+      .replace(/&quot;.*$/i, '')  // Remove &quot; and everything after
+      .replace(/["');}\s]+$/g, '') // Remove trailing quotes, parens, braces, spaces
+      .trim();
+    
+    // Skip if nothing useful remains
+    if (!cleanUrl || cleanUrl.length < 20) return null;
 
     let parsed: URL;
     try {
-      parsed = new URL(url);
+      parsed = new URL(cleanUrl);
     } catch {
       return null;
     }
@@ -187,12 +194,9 @@ const GameDetail = () => {
     const path = parsed.pathname.toLowerCase();
 
     // Exclude images that are almost always generic/irrelevant
+    // Note: Allow geeklistimagebar since they can be valid gameplay photos
     const blockedPathFragments = [
-      "geeklist",
-      "geeklistimagebar",
-      // NOTE: Do NOT block "opengraph".
-      // Many games (including Coffee Rush) have their primary image stored as a
-      // BoardGameGeek OpenGraph URL, which is a perfectly valid hero image.
+      "geeklist/", // Block geeklist pages, but not geeklistimagebar images
       "thumb",
       "avatar",
       "icon",
