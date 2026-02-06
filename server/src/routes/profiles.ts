@@ -12,9 +12,12 @@ const router = Router();
 router.get('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
     let result = await pool.query(
-      `SELECT up.*, u.email
+      `SELECT up.*, u.email,
+              a.id as achievement_id, a.name as achievement_name, 
+              a.icon as achievement_icon, a.tier as achievement_tier
        FROM user_profiles up
        JOIN users u ON u.id = up.user_id
+       LEFT JOIN achievements a ON a.id = up.featured_achievement_id
        WHERE up.user_id = $1`,
       [req.user!.sub]
     );
@@ -41,11 +44,14 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
         [req.user!.sub, defaultDisplayName]
       );
       
-      // Re-fetch
+      // Re-fetch with achievement join
       result = await pool.query(
-        `SELECT up.*, u.email
+        `SELECT up.*, u.email,
+                a.id as achievement_id, a.name as achievement_name, 
+                a.icon as achievement_icon, a.tier as achievement_tier
          FROM user_profiles up
          JOIN users u ON u.id = up.user_id
+         LEFT JOIN achievements a ON a.id = up.featured_achievement_id
          WHERE up.user_id = $1`,
         [req.user!.sub]
       );
@@ -68,8 +74,21 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
       [req.user!.sub]
     );
     
+    // Build featured_achievement object if exists
+    const row = result.rows[0];
+    const featured_achievement = row.achievement_id ? {
+      id: row.achievement_id,
+      name: row.achievement_name,
+      icon: row.achievement_icon,
+      tier: row.achievement_tier,
+    } : null;
+    
+    // Remove the flat achievement fields from the response
+    const { achievement_id, achievement_name, achievement_icon, achievement_tier, ...profileData } = row;
+    
     res.json({
-      ...result.rows[0],
+      ...profileData,
+      featured_achievement,
       roles: rolesResult.rows.map(r => r.role),
       libraries: librariesResult.rows,
     });
@@ -90,6 +109,7 @@ router.put('/me', authMiddleware, async (req: Request, res: Response) => {
       username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional().nullable(),
       bio: z.string().max(500).optional().nullable(),
       avatar_url: z.string().url().optional().nullable(),
+      featured_achievement_id: z.string().uuid().optional().nullable(),
     });
     
     const data = schema.parse(req.body);
@@ -107,16 +127,30 @@ router.put('/me', authMiddleware, async (req: Request, res: Response) => {
       }
     }
     
+    // Validate that featured_achievement_id is an achievement the user has earned
+    if (data.featured_achievement_id) {
+      const hasAchievement = await pool.query(
+        'SELECT 1 FROM user_achievements WHERE user_id = $1 AND achievement_id = $2',
+        [req.user!.sub, data.featured_achievement_id]
+      );
+      
+      if (hasAchievement.rows.length === 0) {
+        res.status(400).json({ error: 'You can only feature achievements you have earned' });
+        return;
+      }
+    }
+    
     const result = await pool.query(
       `UPDATE user_profiles 
        SET display_name = COALESCE($1, display_name),
            username = COALESCE($2, username),
            bio = COALESCE($3, bio),
            avatar_url = COALESCE($4, avatar_url),
+           featured_achievement_id = COALESCE($5, featured_achievement_id),
            updated_at = NOW()
-       WHERE user_id = $5
+       WHERE user_id = $6
        RETURNING *`,
-      [data.display_name, data.username, data.bio, data.avatar_url, req.user!.sub]
+      [data.display_name, data.username, data.bio, data.avatar_url, data.featured_achievement_id, req.user!.sub]
     );
     
     res.json(result.rows[0]);
