@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -63,6 +63,12 @@ export function useLibraryDirectory() {
     mutationFn: async (libraryId: string) => {
       if (!user) throw new Error("Must be logged in to follow");
 
+      if (isSelfHostedMode()) {
+        // Self-hosted: use API endpoint
+        const result = await apiClient.post<{ success: boolean; follow: any }>(`/membership/${libraryId}/follow`);
+        return result.follow;
+      }
+
       const { data, error } = await supabase
         .from("library_followers")
         .insert({
@@ -89,6 +95,12 @@ export function useLibraryDirectory() {
   const unfollowLibrary = useMutation({
     mutationFn: async (libraryId: string) => {
       if (!user) throw new Error("Must be logged in to unfollow");
+
+      if (isSelfHostedMode()) {
+        // Self-hosted: use API endpoint
+        await apiClient.post(`/membership/${libraryId}/unfollow`);
+        return;
+      }
 
       const { error } = await supabase
         .from("library_followers")

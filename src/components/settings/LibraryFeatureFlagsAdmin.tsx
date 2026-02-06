@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/backend/client";
+import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/contexts/TenantContext";
 import { 
@@ -158,16 +158,22 @@ export function LibraryFeatureFlagsAdmin() {
       // Sync allow_lending with feature_lending for directory visibility
       updateData.allow_lending = localFlags.lending;
       
-      const { data: updatedSettings, error } = await supabase
-        .from("library_settings")
-        .update(updateData)
-        .eq("library_id", library.id)
-        .select("library_id")
-        .single();
+      if (isSelfHostedMode()) {
+        // Self-hosted: use API endpoint
+        await apiClient.put(`/library-settings/${library.id}/features`, updateData);
+      } else {
+        // Cloud: use Supabase
+        const { data: updatedSettings, error } = await supabase
+          .from("library_settings")
+          .update(updateData)
+          .eq("library_id", library.id)
+          .select("library_id")
+          .single();
 
-      if (error) throw error;
-      if (!updatedSettings) {
-        throw new Error("Save was blocked (missing permission). Please re-login and try again.");
+        if (error) throw error;
+        if (!updatedSettings) {
+          throw new Error("Save was blocked (missing permission). Please re-login and try again.");
+        }
       }
       
       // Refresh tenant context

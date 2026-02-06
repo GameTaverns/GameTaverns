@@ -203,6 +203,29 @@ docker compose exec mail mailq
 docker compose exec mail tail -f /var/log/mail.log
 ```
 
+### 6b. Email Reply Not Working (502 Error)
+
+**Symptoms:**
+- Users can send messages about games
+- Library owner receives the email
+- Replying directly to the email gives a 502 error or bounces
+
+**Explanation:**
+
+This is a **known limitation**. The "Reply directly to this email" feature requires an incoming mail handler (mail receiving server + webhook processor) which is not included in the self-hosted deployment.
+
+**Current behavior:**
+- Outgoing emails work (verification, password reset, game inquiries)
+- The `Reply-To` header is set to the sender's email address
+- However, there's no server-side handler to receive and process incoming reply emails
+
+**Workarounds:**
+1. **Manual copy/paste**: Library owners can copy the sender's email from the message and reply using their email client
+2. **Use the Messages page**: Respond through the in-app messaging interface at `/messages`
+3. **Implement a webhook**: Advanced users can set up a mail receiving service (Mailgun, SendGrid, etc.) with a webhook that calls a custom endpoint
+
+**Future enhancement:** This may be implemented in a future version using a dedicated mail receiving container or third-party integration.
+
 ### 7. Storage Issues
 
 **Symptoms:**
