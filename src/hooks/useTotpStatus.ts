@@ -7,6 +7,9 @@ interface TotpStatus {
   verifiedAt: string | null;
   remainingBackupCodes: number;
   requiresSetup: boolean;
+  requiresVerification: boolean;
+  lastLoginVerifiedAt: string | null;
+  gracePeriodMinutes: number;
 }
 
 export function useTotpStatus() {

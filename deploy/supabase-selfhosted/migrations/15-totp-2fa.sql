@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.user_totp_settings (
     backup_codes_encrypted TEXT,                 -- Matches Cloud schema (TEXT, not TEXT[])
     is_enabled BOOLEAN NOT NULL DEFAULT false,
     verified_at TIMESTAMPTZ,
+    last_login_totp_verified_at TIMESTAMPTZ,     -- For 2FA grace period
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
