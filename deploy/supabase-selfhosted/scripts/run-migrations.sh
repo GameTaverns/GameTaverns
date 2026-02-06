@@ -14,7 +14,9 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 INSTALL_DIR="/opt/gametaverns"
-MIGRATIONS_DIR="$INSTALL_DIR/migrations"
+# Migrations live alongside the self-hosted docker-compose file.
+# (The db container mounts ./migrations from deploy/supabase-selfhosted/)
+MIGRATIONS_DIR="$INSTALL_DIR/deploy/supabase-selfhosted/migrations"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 RED='\033[0;31m'

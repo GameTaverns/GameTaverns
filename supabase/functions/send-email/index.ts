@@ -131,7 +131,8 @@ export default async function handler(req: Request): Promise<Response> {
     // Create SMTP client
     // NOTE: Many internal relays (Mailcow, local Postfix relays, etc.) may NOT support STARTTLS
     // on 587/25 in container-to-container networking, even if they do externally.
-    // We hard-disable STARTTLS here and only use implicit TLS when port=465.
+    // For non-465 ports we force a plaintext connection and disable STARTTLS *using denomailer’s
+    // debug.noStartTLS option* (top-level noStartTLS is ignored by denomailer).
     const implicitTls = smtpPort === 465;
     const client = new SMTPClient({
       connection: {
@@ -143,11 +144,13 @@ export default async function handler(req: Request): Promise<Response> {
           password: smtpPass,
         },
       },
-      // For non-465 ports, allow plaintext auth to internal relay and never attempt STARTTLS.
-      // This prevents the edge-runtime worker from crashing with BadResource / invalid cmd.
-      allowUnsecure: !implicitTls ? true : false,
-      noStartTLS: !implicitTls ? true : true,
-      debug: false,
+      debug: {
+        log: false,
+        encodeLB: false,
+        // For non-465 ports, allow plaintext auth to an internal relay and never attempt STARTTLS.
+        allowUnsecure: !implicitTls,
+        noStartTLS: !implicitTls,
+      },
     });
 
     // Determine the From address
