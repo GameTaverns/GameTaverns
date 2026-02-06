@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase, isSelfHostedMode, isSelfHostedSupabaseStack } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -80,6 +80,36 @@ export function useAchievements() {
     queryFn: async () => {
       if (!user) return [];
 
+      // Self-hosted Supabase stack: avoid embedded relationship syntax (causes 400 on older PostgREST)
+      // Fetch user_achievements and achievements separately, then merge
+      if (isSelfHostedSupabaseStack()) {
+        const { data: userAchievementsData, error: uaError } = await supabase
+          .from("user_achievements")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("earned_at", { ascending: false });
+
+        if (uaError) throw uaError;
+        if (!userAchievementsData || userAchievementsData.length === 0) return [];
+
+        // Fetch related achievements
+        const achievementIds = userAchievementsData.map(ua => ua.achievement_id);
+        const { data: achievementsData, error: achError } = await supabase
+          .from("achievements")
+          .select("*")
+          .in("id", achievementIds);
+
+        if (achError) throw achError;
+
+        // Map achievements to user achievements
+        const achievementsMap = new Map((achievementsData || []).map(a => [a.id, a]));
+        return userAchievementsData.map(ua => ({
+          ...ua,
+          achievement: achievementsMap.get(ua.achievement_id) || null,
+        })) as UserAchievement[];
+      }
+
+      // Cloud mode: use embedded relationship syntax
       const { data, error } = await supabase
         .from("user_achievements")
         .select(`
@@ -185,6 +215,34 @@ export function useUserAchievements(userId: string | undefined) {
     queryFn: async () => {
       if (!userId) return [];
 
+      // Self-hosted Supabase stack: avoid embedded relationship syntax
+      if (isSelfHostedSupabaseStack()) {
+        const { data: userAchievementsData, error: uaError } = await supabase
+          .from("user_achievements")
+          .select("*")
+          .eq("user_id", userId)
+          .order("earned_at", { ascending: false });
+
+        if (uaError) throw uaError;
+        if (!userAchievementsData || userAchievementsData.length === 0) return [];
+
+        // Fetch related achievements
+        const achievementIds = userAchievementsData.map(ua => ua.achievement_id);
+        const { data: achievementsData, error: achError } = await supabase
+          .from("achievements")
+          .select("*")
+          .in("id", achievementIds);
+
+        if (achError) throw achError;
+
+        const achievementsMap = new Map((achievementsData || []).map(a => [a.id, a]));
+        return userAchievementsData.map(ua => ({
+          ...ua,
+          achievement: achievementsMap.get(ua.achievement_id) || null,
+        })) as UserAchievement[];
+      }
+
+      // Cloud mode: use embedded relationship syntax
       const { data, error } = await supabase
         .from("user_achievements")
         .select(`
