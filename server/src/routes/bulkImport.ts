@@ -252,6 +252,54 @@ const isEmpty = (val: unknown): boolean => {
   return v === "" || v.toLowerCase() === "null";
 };
 
+/**
+ * Normalize BoardGameGeek image URLs.
+ * Converts Cloudflare resized/opengraph URLs into the canonical full image:
+ *   https://cf.geekdo-images.com/<cdnKey>/pic123.png
+ */
+const normalizeBggImageUrl = (url: string | undefined): string | undefined => {
+  if (!url) return undefined;
+
+  // Remove common scraping artifacts (trailing commas/quotes/whitespace)
+  const cleaned = url
+    .replace(/%28/g, "(")
+    .replace(/%29/g, ")")
+    .replace(/%2528/g, "(")
+    .replace(/%2529/g, ")")
+    .replace(/&quot;.*$/, "")
+    .replace(/[\s\u0000-\u001F]+$/g, "")
+    .replace(/[;,]+$/g, "")
+    .trim();
+
+  try {
+    const parsed = new URL(cleaned);
+    const host = parsed.hostname.toLowerCase();
+
+    if (host !== "cf.geekdo-images.com" && host !== "cf.geekdo-static.com") {
+      return cleaned;
+    }
+
+    // Find pic file anywhere in the path.
+    const picMatch = parsed.pathname.match(/\/(pic\d+\.[a-z0-9]+)/i);
+    if (!picMatch) return cleaned;
+
+    // First segment is the CDN key (may include __opengraph, __small, etc.).
+    const keyMatch = parsed.pathname.match(/^\/([^/]+)/);
+    if (!keyMatch) return cleaned;
+
+    const cdnKey = keyMatch[1]
+      .replace(/__(?:opengraph|imagepage|thumb|small|medium|large|original|square|crop\d+|crop\dx\d+|micro|avatar|itemrep)\b.*$/i, "")
+      .replace(/_+$/, "")
+      .trim();
+
+    if (!cdnKey) return cleaned;
+
+    return `${parsed.origin}/${cdnKey}/${picMatch[1]}`;
+  } catch {
+    return cleaned;
+  }
+};
+
 // Helper: sleep for ms
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -510,7 +558,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             _csv_description: csvDesc,
             _csv_notes: csvNotes,
             description: buildDescriptionWithNotes(csvDesc, csvNotes),
-            image_url: row.image_url || row.imageurl || undefined,
+            image_url: normalizeBggImageUrl(row.image_url || row.imageurl || undefined),
             purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
             purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
           };
