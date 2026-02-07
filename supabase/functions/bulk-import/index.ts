@@ -1173,6 +1173,48 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
     cleaned = cleaned.replace("__opengraph", "__imagepage");
   }
 
+  // If this is a Geekdo CDN "opengraph" style URL, collapse it to the clean
+  // "original" asset URL that ends in /picXXXX.ext.
+  // Example input:
+  //   https://cf.geekdo-images.com/<key>__opengraph/img/<sig>=/0x0:.../fit-in/1200x630/filters:.../pic123.png
+  // Desired output:
+  //   https://cf.geekdo-images.com/<key>/pic123.png
+  // (works for both cf.geekdo-images.com and cf.geekdo-static.com)
+  try {
+    const u = new URL(cleaned);
+    if (
+      (u.hostname === "cf.geekdo-images.com" || u.hostname === "cf.geekdo-static.com") &&
+      /\/pic\d+\.[a-z0-9]+$/i.test(u.pathname)
+    ) {
+      const picFile = u.pathname.match(/(\/pic\d+\.[a-z0-9]+)$/i)?.[1];
+      const keySegment = u.pathname.match(/^\/([^/]+)\//)?.[1];
+      if (picFile && keySegment) {
+        // Remove any lingering quality variant suffixes from the key segment.
+        // Keep other double-underscore parts (they appear to be part of the CDN key).
+        const normalizedKey = keySegment
+          .replace(/__opengraph\b/i, "")
+          .replace(/__imagepage\b/i, "")
+          .replace(/__original\b/i, "")
+          .replace(/__thumb\b/i, "")
+          .replace(/__micro\b/i, "")
+          .replace(/__small\b/i, "")
+          .replace(/__medium\b/i, "")
+          .replace(/__large\b/i, "")
+          .replace(/__big\b/i, "")
+          .replace(/__huge\b/i, "")
+          .replace(/__\b/i, "__")
+          .replace(/__+$/g, "")
+          .trim();
+
+        if (normalizedKey) {
+          return `${u.origin}/${normalizedKey}${picFile}`;
+        }
+      }
+    }
+  } catch {
+    // ignore; fall back to heuristic stripping below
+  }
+
   // Strip BGG's cropping prefix when present (e.g. /0x0:1635x858/)
   // This segment is often paired with fit-in/filters and can break proxy fetches.
   cleaned = cleaned.replace(/\/\d+x\d+:\d+x\d+\//, "/");
