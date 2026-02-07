@@ -123,7 +123,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
             echo -e "${RED}✗ Error${NC}"
             echo "    Migration file is not visible inside db container: /docker-entrypoint-initdb.d/$migration"
             echo "    Host path checked: $MIGRATIONS_DIR/$migration"
-            ((ERROR_COUNT++))
+            ERROR_COUNT=$((ERROR_COUNT + 1))
             continue
         fi
 
@@ -179,32 +179,33 @@ for migration in "${MIGRATION_FILES[@]}"; do
             if echo "$ERROR_MSG" | grep -qiE "already exists|duplicate|does not exist"; then
                 echo -e "${YELLOW}⚠ Warning${NC}"
                 echo "    $ERROR_MSG"
-                ((WARNING_COUNT++))
+                WARNING_COUNT=$((WARNING_COUNT + 1))
             else
                 echo -e "${RED}✗ Error${NC}"
                 echo "    $ERROR_MSG"
-                ((ERROR_COUNT++))
+                ERROR_COUNT=$((ERROR_COUNT + 1))
             fi
         elif [ $EXIT_CODE -ne 0 ]; then
             # Non-zero exit code but no ERROR in output
             if echo "$OUTPUT" | grep -qiE "already exists|duplicate"; then
                 echo -e "${YELLOW}⚠ Warning (already exists)${NC}"
-                ((WARNING_COUNT++))
+                WARNING_COUNT=$((WARNING_COUNT + 1))
             else
                 echo -e "${RED}✗ Error (exit code: $EXIT_CODE)${NC}"
                 echo "    $(echo "$OUTPUT" | tail -n 3 | tr '\n' ' ' | sed 's/  */ /g')"
-                ((ERROR_COUNT++))
+                ERROR_COUNT=$((ERROR_COUNT + 1))
             fi
         else
             echo -e "${GREEN}✓${NC}"
-            ((SUCCESS_COUNT++))
+            SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+            echo "DEBUG: Incremented success count to $SUCCESS_COUNT"
         fi
         
         echo "DEBUG: Finished processing $migration (success_count=$SUCCESS_COUNT, error_count=$ERROR_COUNT)"
     else
         echo "DEBUG: File NOT found: $MIGRATIONS_DIR/$migration"
         echo -e "${YELLOW}⚠ $migration not found, skipping${NC}"
-        ((SKIP_COUNT++))
+        SKIP_COUNT=$((SKIP_COUNT + 1))
     fi
     echo "DEBUG: End of iteration for $migration, continuing to next..."
 done
