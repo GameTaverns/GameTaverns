@@ -1186,6 +1186,22 @@ async function handleDiscordUnlink(req: Request): Promise<Response> {
 // ============================================================================
 // IMAGE-PROXY HANDLER
 // ============================================================================
+
+// Browser-like headers required for BGG CDN - they block requests without proper Referer/Origin
+function browserLikeHeaders(): Record<string, string> {
+  return {
+    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Language": "en-US,en;q=0.9",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Referer": "https://boardgamegeek.com/",
+    "Origin": "https://boardgamegeek.com",
+    "Sec-Fetch-Dest": "image",
+    "Sec-Fetch-Mode": "no-cors",
+    "Sec-Fetch-Site": "cross-site",
+  };
+}
+
 async function handleImageProxy(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const imageUrl = url.searchParams.get("url");
@@ -1195,11 +1211,22 @@ async function handleImageProxy(req: Request): Promise<Response> {
   }
 
   try {
-    const decodedUrl = decodeURIComponent(imageUrl);
+    // Normalize problematic encoding - BGG CDN expects literal (unencoded) parentheses
+    let normalizedUrl = imageUrl
+      .replace(/&quot;.*$/, "")
+      .replace(/[;,]+$/, "")
+      .replace(/[\s\u0000-\u001F]+$/g, "")
+      .replace(/%2528/gi, "(")
+      .replace(/%2529/gi, ")")
+      .replace(/%28/gi, "(")
+      .replace(/%29/gi, ")");
+
+    const decodedUrl = decodeURIComponent(normalizedUrl);
     
     // Security: Only allow specific domains
     const allowedDomains = [
       "cf.geekdo-images.com",
+      "cf.geekdo-static.com",
       "images.unsplash.com",
     ];
 
@@ -1209,21 +1236,23 @@ async function handleImageProxy(req: Request): Promise<Response> {
     }
 
     const response = await fetch(decodedUrl, {
-      headers: { "User-Agent": "GameTaverns/1.0" },
+      method: "GET",
+      headers: browserLikeHeaders(),
+      redirect: "follow",
     });
 
     if (!response.ok) {
+      console.log(`image-proxy: fetch failed for ${decodedUrl} with status ${response.status}`);
       return new Response("Failed to fetch image", { status: response.status, headers: corsHeaders });
     }
 
     const contentType = response.headers.get("content-type") || "image/jpeg";
-    const imageData = await response.arrayBuffer();
 
-    return new Response(imageData, {
+    return new Response(response.body, {
       headers: {
         ...corsHeaders,
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=86400",
+        "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
       },
     });
   } catch (error) {
