@@ -121,16 +121,44 @@ for migration in "${MIGRATION_FILES[@]}"; do
             continue
         fi
 
-        # Run migration (stream output so hangs are visible). Timeout prevents silent freezes.
+        # Run migration in background with fallback timeout
         LOG_FILE="/tmp/gametaverns-migration-${migration}.log"
         rm -f "$LOG_FILE"
 
         set +e
-        # Pipe output to a logfile on the HOST so we can inspect it even if the container is unhealthy.
-        timeout 90 docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+        # Run psql in background and capture PID
+        docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
           psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" \
-          2>&1 | tee "$LOG_FILE"
-        EXIT_CODE=${PIPESTATUS[0]}
+          > "$LOG_FILE" 2>&1 &
+        PSQL_PID=$!
+        
+        # Manual timeout: wait 90 seconds max
+        TIMEOUT=90
+        ELAPSED=0
+        while kill -0 $PSQL_PID 2>/dev/null; do
+            if [ $ELAPSED -ge $TIMEOUT ]; then
+                echo -e "${RED}✗ Timeout (${TIMEOUT}s)${NC}"
+                echo "    Migration did not complete within ${TIMEOUT} seconds"
+                echo "    Last 20 log lines:"
+                tail -n 20 "$LOG_FILE" 2>/dev/null || echo "    (no log output)"
+                kill -9 $PSQL_PID 2>/dev/null || true
+                ((ERROR_COUNT++))
+                EXIT_CODE=124
+                break
+            fi
+            sleep 1
+            ((ELAPSED++))
+            # Show progress every 10 seconds
+            if [ $((ELAPSED % 10)) -eq 0 ]; then
+                echo "  ... still running (${ELAPSED}s / ${TIMEOUT}s) ..."
+            fi
+        done
+        
+        # Get exit code if process finished naturally
+        if [ $EXIT_CODE -ne 124 ]; then
+            wait $PSQL_PID
+            EXIT_CODE=$?
+        fi
         set -e
 
         # Capture the last output lines for error reporting
