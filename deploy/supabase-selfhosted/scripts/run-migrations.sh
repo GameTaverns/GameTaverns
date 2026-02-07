@@ -61,7 +61,7 @@ echo -e "${BLUE}Waiting for database to be ready...${NC}"
 MAX_RETRIES=90
 RETRY_COUNT=0
 
-until docker compose exec -T db pg_isready -U supabase_admin -d postgres > /dev/null 2>&1; do
+until docker compose exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         echo -e "${RED}Error: Database not ready after $MAX_RETRIES attempts${NC}"
@@ -115,7 +115,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
         # Run migration and capture output and exit code
         set +e
         OUTPUT=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
-          psql -v ON_ERROR_STOP=1 -U supabase_admin -d postgres -f "/docker-entrypoint-initdb.d/$migration" 2>&1)
+          psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" 2>&1)
         EXIT_CODE=$?
         set -e
         
@@ -181,7 +181,7 @@ TABLES=(
 
 MISSING_TABLES=0
 for table in "${TABLES[@]}"; do
-    if docker compose exec -T db psql -U supabase_admin -d postgres -tAc \
+    if docker compose exec -T db psql -U postgres -d postgres -tAc \
         "SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = '$table';" 2>/dev/null | grep -q 1; then
         echo -e "  ${GREEN}✓${NC} $table"
     else
