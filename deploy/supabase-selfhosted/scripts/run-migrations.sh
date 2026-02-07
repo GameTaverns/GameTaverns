@@ -101,6 +101,7 @@ MIGRATION_FILES=(
     "18-storage-grants-fix.sql"
     "19-library-settings-insert-policy.sql"
     "20-featured-achievement.sql"
+    "21-fix-libraries-recursion.sql"
 )
 
 SUCCESS_COUNT=0
