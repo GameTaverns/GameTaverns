@@ -165,47 +165,29 @@ const GameDetail = () => {
 
   const sanitizeImageUrl = (url: string): string | null => {
     if (!url) return null;
-    
+
     // Clean up malformed URLs from scraping - strip trailing HTML entities and junk
-    // Handle URL-encoded entities like &quot; (%22) and );
     let cleanUrl = url
-      .replace(/%22\)%3B$/i, '')    // URL-encoded &quot;);
-      .replace(/&quot;.*$/i, '')     // Remove &quot; and everything after
-      .replace(/%27\)%3B$/i, '')    // URL-encoded ');
-      .replace(/["');}\s]+$/g, '')  // Remove trailing quotes, parens, braces, spaces
+      .replace(/&quot;.*$/i, "")
+      .replace(/["');}\s]+$/g, "")
       .trim();
-    
-    // Skip if nothing useful remains
-    if (!cleanUrl || cleanUrl.length < 20) return null;
+
+    if (!cleanUrl) return null;
 
     let parsed: URL;
     try {
       parsed = new URL(cleanUrl);
     } catch {
-      console.log("[GameDetail] URL parse failed:", cleanUrl);
       return null;
     }
 
-    // Only allow known-safe image hosts
-    const allowedHosts = new Set([
-      "cf.geekdo-images.com",
-      "cf.geekdo-static.com",
-      "boardgamegeek.com",
-      "www.boardgamegeek.com",
-    ]);
-    if (!allowedHosts.has(parsed.hostname)) {
-      console.log("[GameDetail] Host not allowed:", parsed.hostname);
-      return null;
-    }
+    // Only allow http(s)
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
 
+    // Must look like an image URL (extension OR BGG /pic path)
     const path = parsed.pathname.toLowerCase();
-
-    // Must look like an actual image (has pic in path or image extension)
     const looksLikeImage = /\.(jpg|jpeg|png|webp)$/i.test(path) || path.includes("/pic");
-    if (!looksLikeImage) {
-      console.log("[GameDetail] Doesn't look like image:", path);
-      return null;
-    }
+    if (!looksLikeImage) return null;
 
     return parsed.toString();
   };
@@ -336,15 +318,15 @@ const GameDetail = () => {
                     const selectedUrl = allImages[safeIndex];
 
                     return (
-                      <img
-                        src={getImageSrc(selectedUrl)}
-                        alt={game.title}
-                        loading="eager"
-                        decoding="async"
-                        referrerPolicy="no-referrer"
-                        onError={() => handleImageError(selectedUrl)}
-                        className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-                      />
+                       <img
+                         src={getImageSrc(selectedUrl)}
+                         alt={game.title}
+                         loading="eager"
+                         decoding="async"
+                         referrerPolicy="no-referrer"
+                         onError={() => handleImageError(selectedUrl)}
+                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                       />
                     );
                   })()}
                   {/* Navigation arrows for multiple images */}
@@ -394,15 +376,15 @@ const GameDetail = () => {
                         : "border-border hover:border-primary/50"
                     }`}
                    >
-                      <img
-                        src={getImageSrc(img)}
-                        alt={`${game.title} - Image ${idx + 1}`}
-                        loading="lazy"
-                        decoding="async"
-                        referrerPolicy="no-referrer"
-                        onError={() => handleImageError(img)}
-                        className="h-full w-full object-contain bg-muted"
-                      />
+                       <img
+                         src={getImageSrc(img)}
+                         alt={`${game.title} - Image ${idx + 1}`}
+                         loading="lazy"
+                         decoding="async"
+                         referrerPolicy="no-referrer"
+                         onError={() => handleImageError(img)}
+                         className="h-full w-full object-cover bg-muted"
+                       />
                   </button>
                 ))}
               </div>
