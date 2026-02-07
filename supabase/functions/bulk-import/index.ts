@@ -1142,24 +1142,42 @@ type GameToImport = {
 
 // Convert BGG OpenGraph URLs to higher quality image URLs
 // OpenGraph images are 1200x630 with weird cropping; prefer the square/original version
+// Also sanitizes malformed URLs from HTML scraping
 function normalizeImageUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
   
+  // Clean malformed URL junk from HTML scraping (e.g., &quot;); trailing garbage)
+  let cleaned = url
+    .replace(/&quot;.*$/i, "")       // Remove &quot; and everything after
+    .replace(/["');}\s]+$/g, "")     // Remove trailing quotes, parens, brackets, whitespace
+    .replace(/%22.*$/i, "")          // Remove encoded quote and everything after
+    .replace(/[\r\n\t]+/g, "")       // Remove any newlines/tabs
+    .trim();
+  
+  if (!cleaned) return undefined;
+  
+  // Validate it's actually a URL
+  try {
+    new URL(cleaned);
+  } catch {
+    return undefined;
+  }
+  
   // Convert __opengraph to __imagepage for better quality square images
   // Also handles other low-quality variants
-  if (url.includes("__opengraph")) {
-    return url.replace("__opengraph", "__imagepage");
+  if (cleaned.includes("__opengraph")) {
+    return cleaned.replace("__opengraph", "__imagepage");
   }
   
   // If it's a BGG image with fit-in/filters, try to get the cleaner version
   // Pattern: /0x266:1319x958/fit-in/1200x630/filters:strip_icc()/
-  const fitInMatch = url.match(/\/fit-in\/\d+x\d+\/filters:[^/]+\//);
+  const fitInMatch = cleaned.match(/\/fit-in\/\d+x\d+\/filters:[^/]+\//);
   if (fitInMatch) {
     // Remove the cropping/filter parameters to get original
-    return url.replace(fitInMatch[0], "/");
+    return cleaned.replace(fitInMatch[0], "/");
   }
   
-  return url;
+  return cleaned;
 }
 
 // Export handler for self-hosted router

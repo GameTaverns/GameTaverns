@@ -1116,15 +1116,26 @@ ${markdown.slice(0, 18000)}`,
     // Step 5: Create the game
     // BGG/Geekdo image URLs sometimes include characters like parentheses in filters (e.g. no_upscale())
     // which can cause HTTP 400 unless properly URL-encoded.
+    // Also cleans up malformed URLs from HTML scraping (e.g., &quot;); trailing garbage)
     const sanitizeImageUrl = (imageUrl: string): string => {
+      // First, clean malformed URL junk from HTML scraping
+      let cleaned = imageUrl
+        .replace(/&quot;.*$/i, "")       // Remove &quot; and everything after
+        .replace(/["');}\s]+$/g, "")     // Remove trailing quotes, parens, brackets, whitespace
+        .replace(/%22.*$/i, "")          // Remove encoded quote and everything after
+        .replace(/[\r\n\t]+/g, "")       // Remove any newlines/tabs
+        .trim();
+      
+      if (!cleaned) return imageUrl;
+      
       try {
-        const u = new URL(imageUrl);
+        const u = new URL(cleaned);
         // Ensure special characters are encoded (notably parentheses)
         u.pathname = u.pathname.replace(/\(/g, "%28").replace(/\)/g, "%29");
         // Preserve already-encoded values; URL will normalize safely
         return u.toString();
       } catch {
-        return imageUrl
+        return cleaned
           .replace(/\(/g, "%28")
           .replace(/\)/g, "%29");
       }
