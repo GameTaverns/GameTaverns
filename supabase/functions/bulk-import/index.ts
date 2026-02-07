@@ -1295,11 +1295,18 @@ export default async function handler(req: Request): Promise<Response> {
             .map((m: string) => m.trim())
             .filter((m: string) => m.length > 0);
           
-          const bggId = row.bgg_id || row["bgg id"] || row.objectid || undefined;
+          
+          // BGG ID can be missing in Cloud-export CSVs; derive it from URL when needed
+          const bggUrlCandidate = row.bgg_url || row["bgg url"] || row.url || row["bgg_url"] || "";
+          const bggIdFromUrl = bggUrlCandidate
+            ? (bggUrlCandidate.match(/boardgame\/(\d+)/)?.[1] || bggUrlCandidate.match(/\bid=(\d+)\b/)?.[1])
+            : undefined;
+
+          const bggId = row.bgg_id || row["bgg id"] || row.objectid || bggIdFromUrl || undefined;
           const minPlayersRaw = row.min_players || row["min players"] || row.minplayers;
           const maxPlayersRaw = row.max_players || row["max players"] || row.maxplayers;
           const playTimeRaw = row.play_time || row["play time"] || row.playtime || row.playingtime;
-          
+
           // Detect expansion from multiple possible sources
           const isExpansionFromCSV = parseBool(row.is_expansion || row["is expansion"]);
           const isExpansionFromItemType = row.itemtype === "expansion";
@@ -1553,9 +1560,25 @@ export default async function handler(req: Request): Promise<Response> {
             const hasCsvDescription = csvDesc.length > 0;
             const hasCompleteData = hasCsvDescription && csvDesc.length > 50;
 
-            if (hasCompleteData) {
-              console.log(`[BulkImport] Skipping enrichment for "${gameData.title}" - CSV description already present (${csvDesc.length} chars)`);
-            } else if (gameInput.bgg_id && enhance_with_bgg !== false) {
+             if (hasCompleteData) {
+               console.log(`[BulkImport] Skipping enrichment for "${gameData.title}" - CSV description already present (${csvDesc.length} chars)`);
+
+               // Cloud-export CSVs often include rich descriptions but no gallery images.
+               // If AI enrichment is enabled, still fetch BGG gallery images when we can.
+               const needsGalleryImages = !gameData.additional_images || gameData.additional_images.length === 0;
+               if (enhance_with_ai && firecrawlKey && needsGalleryImages && gameInput.bgg_id) {
+                 console.log(`[BulkImport] Fetching gallery images (description already present) for: ${gameInput.bgg_id}`);
+                 try {
+                   const galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, firecrawlKey, 5);
+                   if (galleryImages.length > 0) {
+                     gameData.additional_images = galleryImages;
+                     console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameData.title}"`);
+                   }
+                 } catch (e) {
+                   console.warn(`[BulkImport] Gallery fetch failed for ${gameInput.bgg_id}:`, e);
+                 }
+               }
+             } else if (gameInput.bgg_id && enhance_with_bgg !== false) {
               // FAST PATH: Use BGG XML API (default behavior)
               // This is ~10x faster than Firecrawl+AI
               console.log(`[BulkImport] Fetching BGG XML data for: ${gameInput.bgg_id}`);
