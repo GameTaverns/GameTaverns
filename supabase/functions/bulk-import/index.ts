@@ -1149,7 +1149,7 @@ type GameToImport = {
 // Also sanitizes malformed URLs from HTML scraping
 function normalizeImageUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
-  
+
   // Clean malformed URL junk from HTML scraping (e.g., &quot;); trailing garbage)
   let cleaned = url
     .replace(/&quot;.*$/i, "")       // Remove &quot; and everything after
@@ -1157,37 +1157,43 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
     .replace(/%22.*$/i, "")          // Remove encoded quote and everything after
     .replace(/[\r\n\t]+/g, "")       // Remove any newlines/tabs
     .trim();
-  
+
   if (!cleaned) return undefined;
-  
+
   // Validate it's actually a URL
   try {
     new URL(cleaned);
   } catch {
     return undefined;
   }
-  
+
   // Convert __opengraph to __imagepage for better quality square images
   // Also handles other low-quality variants
   if (cleaned.includes("__opengraph")) {
-    return cleaned.replace("__opengraph", "__imagepage");
+    cleaned = cleaned.replace("__opengraph", "__imagepage");
   }
-  
-  // If it's a BGG image with fit-in/filters, try to get the cleaner version
-  // Pattern: /0x266:1319x958/fit-in/1200x630/filters:strip_icc()/
-  // Also handles: /img/it-in/1200x630/filters:strip_icc()/ (truncated "fit-in" variant)
-  const fitInMatch = cleaned.match(/(?:\/img)?\/(?:f)?it-in\/\d+x\d+\/filters:[^/]+\//);
-  if (fitInMatch) {
-    // Remove the cropping/filter parameters to get original
-    return cleaned.replace(fitInMatch[0], "/");
+
+  // Strip BGG's cropping prefix when present (e.g. /0x0:1635x858/)
+  // This segment is often paired with fit-in/filters and can break proxy fetches.
+  cleaned = cleaned.replace(/\/\d+x\d+:\d+x\d+\//, "/");
+
+  // Strip Cloudflare resize + filter segments.
+  // Seen variants:
+  // - /fit-in/1200x630/filters:strip_icc()/
+  // - /img/it-in/1200x630/filters:strip_icc()/   (truncated "fit-in")
+  // - /img/fit-in/1200x630/filters:strip_icc()/
+  // Also allow no trailing slash after filters.
+  const resizeFilterMatch = cleaned.match(/(?:\/img)?\/(?:f)?it-in\/\d+x\d+\/filters:[^/]+\/?/);
+  if (resizeFilterMatch) {
+    cleaned = cleaned.replace(resizeFilterMatch[0], "/");
   }
-  
-  // Also handle standalone /img/ prefix with filters (another variant)
-  const imgFiltersMatch = cleaned.match(/\/img\/[^/]+\/\d+x\d+\/filters:[^/]+\//);
-  if (imgFiltersMatch) {
-    return cleaned.replace(imgFiltersMatch[0], "/");
+
+  // Some URLs include just /fit-in/... without filters; strip it too.
+  const fitInOnlyMatch = cleaned.match(/(?:\/img)?\/(?:f)?it-in\/\d+x\d+\/?/);
+  if (fitInOnlyMatch) {
+    cleaned = cleaned.replace(fitInOnlyMatch[0], "/");
   }
-  
+
   return cleaned;
 }
 
@@ -1854,7 +1860,9 @@ export default async function handler(req: Request): Promise<Response> {
                 title: gameData.title,
                 description: gameData.description || null,
                 image_url: normalizeImageUrl(gameData.image_url) || null,
-                additional_images: gameData.additional_images?.length ? gameData.additional_images : null,
+                additional_images: gameData.additional_images?.length
+                  ? (gameData.additional_images.map((u) => normalizeImageUrl(u)).filter(Boolean) as string[])
+                  : null,
                 bgg_id: gameData.bgg_id || null,
                 bgg_url: gameData.bgg_url || null,
                 min_players: gameData.min_players ?? 2,
