@@ -14,9 +14,9 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 INSTALL_DIR="/opt/gametaverns"
-# Migrations live alongside the self-hosted docker-compose file.
-# (The db container mounts ./migrations from deploy/supabase-selfhosted/)
-MIGRATIONS_DIR="$INSTALL_DIR/deploy/supabase-selfhosted/migrations"
+# Migrations + docker-compose.yml live together in deploy/supabase-selfhosted
+COMPOSE_DIR="$INSTALL_DIR/deploy/supabase-selfhosted"
+MIGRATIONS_DIR="$COMPOSE_DIR/migrations"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 RED='\033[0;31m'
@@ -48,7 +48,7 @@ echo "  Running Database Migrations"
 echo "=============================================="
 echo ""
 
-cd "$INSTALL_DIR"
+cd "$COMPOSE_DIR"
 
 # Ensure docker compose is available
 if ! docker compose version > /dev/null 2>&1; then
@@ -114,7 +114,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
         
         # Run migration and capture output and exit code
         set +e
-        OUTPUT=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+        OUTPUT=$(timeout 90 docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
           psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" 2>&1)
         EXIT_CODE=$?
         set -e
