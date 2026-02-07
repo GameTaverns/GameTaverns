@@ -110,14 +110,31 @@ ERROR_COUNT=0
 
 for migration in "${MIGRATION_FILES[@]}"; do
     if [ -f "$MIGRATIONS_DIR/$migration" ]; then
-        echo -n "Running: $migration ... "
-        
-        # Run migration and capture output and exit code
+        echo "Running: $migration" 
+
+        # Sanity check: confirm file is mounted into the db container
+        if ! docker compose exec -T db sh -lc "test -f /docker-entrypoint-initdb.d/$migration"; then
+            echo -e "${RED}✗ Error${NC}"
+            echo "    Migration file is not visible inside db container: /docker-entrypoint-initdb.d/$migration"
+            echo "    Host path checked: $MIGRATIONS_DIR/$migration"
+            ((ERROR_COUNT++))
+            continue
+        fi
+
+        # Run migration (stream output so hangs are visible). Timeout prevents silent freezes.
+        LOG_FILE="/tmp/gametaverns-migration-${migration}.log"
+        rm -f "$LOG_FILE"
+
         set +e
-        OUTPUT=$(timeout 90 docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
-          psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" 2>&1)
-        EXIT_CODE=$?
+        # Pipe output to a logfile on the HOST so we can inspect it even if the container is unhealthy.
+        timeout 90 docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+          psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" \
+          2>&1 | tee "$LOG_FILE"
+        EXIT_CODE=${PIPESTATUS[0]}
         set -e
+
+        # Capture the last output lines for error reporting
+        OUTPUT=$(tail -n 50 "$LOG_FILE" 2>/dev/null || true)
         
         # Check for actual errors (not just notices) - case insensitive
         if echo "$OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
