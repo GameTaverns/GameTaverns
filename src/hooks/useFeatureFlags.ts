@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useSiteSettings } from "./useSiteSettings";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useTenant } from "@/contexts/TenantContext";
-import { getRuntimeFeatureFlag, isProductionDeployment } from "@/config/runtime";
+import { getRuntimeFeatureFlag, isProductionDeployment, isLovableCloud } from "@/config/runtime";
 
 /**
  * Feature Flags System
@@ -28,19 +28,25 @@ export interface FeatureFlags {
 }
 
 // Default values when nothing is configured
-// Note: demoMode is disabled by default in production deployments
-const getDefaultFlags = (): FeatureFlags => ({
-  playLogs: true,
-  wishlist: true,
-  forSale: true,
-  messaging: true,
-  comingSoon: true,
-  demoMode: !isProductionDeployment(), // Disabled in production by default
-  ratings: true,
-  events: true,
-  achievements: true,
-  lending: true,
-});
+// Note: demoMode is disabled by default in production and self-hosted deployments
+const getDefaultFlags = (): FeatureFlags => {
+  // Demo mode should ONLY be enabled in Lovable Cloud for testing
+  // Self-hosted deployments and production should never have demo mode
+  const enableDemoMode = isLovableCloud() && !isProductionDeployment();
+  
+  return {
+    playLogs: true,
+    wishlist: true,
+    forSale: true,
+    messaging: true,
+    comingSoon: true,
+    demoMode: enableDemoMode,
+    ratings: true,
+    events: true,
+    achievements: true,
+    lending: true,
+  };
+};
 
 // Get flag from runtime config (Cloudron) or env var (Vite)
 function getConfigFlag(runtimeKey: 'PLAY_LOGS' | 'WISHLIST' | 'FOR_SALE' | 'MESSAGING' | 'COMING_SOON' | 'DEMO_MODE' | 'RATINGS' | 'EVENTS' | 'ACHIEVEMENTS' | 'LENDING', envKey: string): boolean | undefined {
