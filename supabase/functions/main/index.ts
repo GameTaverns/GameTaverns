@@ -2008,6 +2008,54 @@ const mapPlayTimeToEnum = (minutes: number | undefined): string | undefined => {
   return "3+ Hours";
 };
 
+// Normalize BoardGameGeek image URLs (strip opengraph/fit-in/filters variants)
+const normalizeBggImageUrl = (url: string | undefined): string | undefined => {
+  if (!url) return undefined;
+
+  const cleaned = url
+    .replace(/%28/g, "(")
+    .replace(/%29/g, ")")
+    .replace(/%2528/g, "(")
+    .replace(/%2529/g, ")")
+    .replace(/&quot;.*$/, "")
+    .replace(/[\s\u0000-\u001F]+$/g, "")
+    .replace(/[;,]+$/g, "")
+    .trim();
+
+  try {
+    const parsed = new URL(cleaned);
+    const host = parsed.hostname.toLowerCase();
+
+    if (host !== "cf.geekdo-images.com" && host !== "cf.geekdo-static.com") {
+      return cleaned;
+    }
+
+    const picMatch = parsed.pathname.match(/\/(pic\d+\.[a-z0-9]+)/i);
+    if (!picMatch) return cleaned;
+
+    const keyMatch = parsed.pathname.match(/^\/([^/]+)/);
+    if (!keyMatch) return cleaned;
+
+    const cdnKey = keyMatch[1]
+      .replace(
+        /__(?:opengraph|imagepage|imagepagezoom|thumb|micro|small|medium|large|big|huge|original|square\d*|crop\d+|crop\dx\d+|avatar|itemrep)\b.*$/i,
+        "",
+      )
+      .replace(/_+$/, "")
+      .trim();
+
+    if (!cdnKey) return cleaned;
+
+    const normalized = `${parsed.origin}/${cdnKey}/${picMatch[1]}`;
+    if (normalized !== cleaned) {
+      console.log("[BulkImport] Normalized BGG image URL:", cleaned, "→", normalized);
+    }
+    return normalized;
+  } catch {
+    return cleaned;
+  }
+};
+
 const buildDescription = (description: string | undefined, privateComment: string | undefined): string | undefined => {
   const desc = description?.trim();
   const notes = privateComment?.trim();
@@ -2168,7 +2216,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
             inserts: parseBool(row.inserts),
             in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
             description: buildDescription(row.description, row.privatecomment),
-            image_url: row.image_url || row["image url"] || row.thumbnail || undefined,
+            image_url: normalizeBggImageUrl(row.image_url || row["image url"] || row.thumbnail || undefined),
             purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
             purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
           });
