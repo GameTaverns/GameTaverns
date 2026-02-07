@@ -131,11 +131,21 @@ export default async function profileUpdateHandler(req: Request): Promise<Respon
       .single();
 
     if (error) {
-      console.error("Profile update error:", error);
-      return new Response(JSON.stringify({ error: "Failed to update profile" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // Make self-hosted debugging actually actionable
+      console.error("Profile update error:", JSON.stringify(error, null, 2));
+      return new Response(
+        JSON.stringify({
+          error: "Failed to update profile",
+          code: (error as any).code ?? null,
+          message: (error as any).message ?? String(error),
+          details: (error as any).details ?? null,
+          hint: (error as any).hint ?? null,
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     return new Response(JSON.stringify(data), {
