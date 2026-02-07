@@ -182,6 +182,7 @@ const GameDetail = () => {
     try {
       parsed = new URL(cleanUrl);
     } catch {
+      console.log("[GameDetail] URL parse failed:", cleanUrl);
       return null;
     }
 
@@ -192,18 +193,19 @@ const GameDetail = () => {
       "boardgamegeek.com",
       "www.boardgamegeek.com",
     ]);
-    if (!allowedHosts.has(parsed.hostname)) return null;
+    if (!allowedHosts.has(parsed.hostname)) {
+      console.log("[GameDetail] Host not allowed:", parsed.hostname);
+      return null;
+    }
 
     const path = parsed.pathname.toLowerCase();
 
-    // Exclude very small thumbnails (75x75, 100x100 are typically avatar/icon size)
-    // But allow larger thumbnails that might be useful
-    const isSmallSquareThumbnail = /\/75x75\/|\/100x100\//.test(path);
-    if (isSmallSquareThumbnail) return null;
-
-    // Must look like an actual image
+    // Must look like an actual image (has pic in path or image extension)
     const looksLikeImage = /\.(jpg|jpeg|png|webp)$/i.test(path) || path.includes("/pic");
-    if (!looksLikeImage) return null;
+    if (!looksLikeImage) {
+      console.log("[GameDetail] Doesn't look like image:", path);
+      return null;
+    }
 
     return parsed.toString();
   };
