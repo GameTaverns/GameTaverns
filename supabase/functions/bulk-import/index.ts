@@ -1414,8 +1414,8 @@ export default async function handler(req: Request): Promise<Response> {
 
     const totalGames = gamesToImport.length;
     console.log(`[BulkImport] Total games to process: ${totalGames}`);
-    console.log(`[BulkImport] Firecrawl key present: ${!!firecrawlKey}, Enhance with BGG: ${enhance_with_bgg}`);
-    console.log(`[BulkImport] AI configured: ${isAIConfigured()}, Provider: ${getAIProviderName()}`);
+    console.log(`[BulkImport] Enhance with BGG: ${enhance_with_bgg}, Enhance with AI: ${enhance_with_ai}`);
+    console.log(`[BulkImport] Firecrawl key present: ${!!firecrawlKey}, AI configured: ${isAIConfigured()}, Provider: ${getAIProviderName()}`);
 
     // Create import job
     console.log(`[BulkImport] Creating import job for library: ${targetLibraryId}`);
