@@ -175,8 +175,15 @@ export function TenantThemeApplicator() {
       document.body.style.backgroundSize = 'cover';
       document.body.style.backgroundPosition = 'center';
       document.body.style.backgroundAttachment = 'fixed';
+      document.body.classList.add('has-background-image');
+      
+      // Apply overlay opacity as CSS variable
+      const overlayOpacity = settings.background_overlay_opacity || '0.85';
+      root.style.setProperty('--background-overlay-opacity', overlayOpacity);
     } else {
       document.body.style.backgroundImage = '';
+      document.body.classList.remove('has-background-image');
+      root.style.removeProperty('--background-overlay-opacity');
     }
     
     appliedRef.current = true;
@@ -222,6 +229,8 @@ export function TenantThemeApplicator() {
         document.body.style.backgroundSize = '';
         document.body.style.backgroundPosition = '';
         document.body.style.backgroundAttachment = '';
+        document.body.classList.remove('has-background-image');
+        root.style.removeProperty('--background-overlay-opacity');
       }
     };
   }, [mounted, applyTheme, resolvedTheme, settings]);
