@@ -99,6 +99,8 @@ MIGRATION_FILES=(
     "16-security-hardening.sql"
     "17-rls-fixes-feb2026.sql"
     "18-storage-grants-fix.sql"
+    "19-library-settings-insert-policy.sql"
+    "20-featured-achievement.sql"
 )
 
 SUCCESS_COUNT=0
