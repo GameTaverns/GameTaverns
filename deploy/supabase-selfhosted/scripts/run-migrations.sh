@@ -135,6 +135,8 @@ for migration in "${MIGRATION_FILES[@]}"; do
         # Manual timeout: wait 90 seconds max
         TIMEOUT=90
         ELAPSED=0
+        EXIT_CODE=0
+        
         while kill -0 $PSQL_PID 2>/dev/null; do
             if [ $ELAPSED -ge $TIMEOUT ]; then
                 echo -e "${RED}✗ Timeout (${TIMEOUT}s)${NC}"
