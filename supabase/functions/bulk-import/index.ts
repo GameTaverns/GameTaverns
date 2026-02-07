@@ -871,7 +871,9 @@ async function fetchBGGData(
         };
         return prio(a) - prio(b);
       });
-      const mainImage: string | null = filtered[0] || null;
+      // Normalize the scraped image URL (Firecrawl often gets Cloudflare-resized URLs with filters)
+      const mainImageRaw: string | null = filtered[0] || null;
+      const mainImage = mainImageRaw ? normalizeImageUrl(mainImageRaw) : null;
       
       // We have an image from Firecrawl; now try to get enriched description from AI
       // if markdown content is available
@@ -892,7 +894,8 @@ async function fetchBGGData(
           return {
             ...xmlData,
             bgg_id: bggId,
-            image_url: mainImage ?? xmlData?.image_url,
+            // Prefer XML API image (always clean), fall back to normalized scraped image
+            image_url: xmlData?.image_url || mainImage || null,
             description: aiDescription,
             additional_images: additionalImages?.length ? additionalImages : undefined,
           };
@@ -912,7 +915,8 @@ async function fetchBGGData(
       return {
         ...xmlData,
         bgg_id: bggId,
-        image_url: mainImage ?? xmlData?.image_url,
+        // Prefer XML API image (always clean), fall back to normalized scraped image
+        image_url: xmlData?.image_url || mainImage || null,
         additional_images: additionalImages?.length ? additionalImages : undefined,
       };
     } catch (e) {
