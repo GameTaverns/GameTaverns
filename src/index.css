@@ -153,6 +153,12 @@
       linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--parchment)) 100%);
   }
 
+  /* When a background image is set on body, make the parchment texture semi-transparent */
+  body.has-background-image .parchment-texture {
+    background-color: hsl(var(--background) / var(--background-overlay-opacity, 0.85));
+    background-image: none;
+  }
+
   .wood-grain {
     background: linear-gradient(
       135deg,
