@@ -167,9 +167,12 @@ const GameDetail = () => {
     if (!url) return null;
     
     // Clean up malformed URLs from scraping - strip trailing HTML entities and junk
+    // Handle URL-encoded entities like &quot; (%22) and );
     let cleanUrl = url
-      .replace(/&quot;.*$/i, '')  // Remove &quot; and everything after
-      .replace(/["');}\s]+$/g, '') // Remove trailing quotes, parens, braces, spaces
+      .replace(/%22\)%3B$/i, '')    // URL-encoded &quot;);
+      .replace(/&quot;.*$/i, '')     // Remove &quot; and everything after
+      .replace(/%27\)%3B$/i, '')    // URL-encoded ');
+      .replace(/["');}\s]+$/g, '')  // Remove trailing quotes, parens, braces, spaces
       .trim();
     
     // Skip if nothing useful remains
@@ -193,16 +196,10 @@ const GameDetail = () => {
 
     const path = parsed.pathname.toLowerCase();
 
-    // Exclude images that are almost always generic/irrelevant
-    // Note: Allow geeklistimagebar since they can be valid gameplay photos
-    const blockedPathFragments = [
-      "geeklist/", // Block geeklist pages, but not geeklistimagebar images
-      "thumb",
-      "avatar",
-      "icon",
-      "logo",
-    ];
-    if (blockedPathFragments.some((frag) => path.includes(frag))) return null;
+    // Exclude very small thumbnails (75x75, 100x100 are typically avatar/icon size)
+    // But allow larger thumbnails that might be useful
+    const isSmallSquareThumbnail = /\/75x75\/|\/100x100\//.test(path);
+    if (isSmallSquareThumbnail) return null;
 
     // Must look like an actual image
     const looksLikeImage = /\.(jpg|jpeg|png|webp)$/i.test(path) || path.includes("/pic");
@@ -212,15 +209,34 @@ const GameDetail = () => {
   };
 
   // Images: show multiple images, but aggressively filter out broken/irrelevant ones
+  // Debug: log what we receive from database
+  console.log("[GameDetail] Raw image data:", {
+    image_url: game.image_url,
+    additional_images: game.additional_images,
+    additional_images_type: typeof game.additional_images,
+    additional_images_isArray: Array.isArray(game.additional_images),
+  });
+  
+  const rawImages = [game.image_url, ...(game.additional_images || [])];
+  const stringImages = rawImages.filter((u): u is string => typeof u === "string" && !!u);
+  const sanitizedImages = stringImages.map((u) => ({ original: u, sanitized: sanitizeImageUrl(u) }));
+  
+  console.log("[GameDetail] Image processing:", {
+    rawImages,
+    stringImages,
+    sanitizedImages,
+  });
+  
   const allImages = Array.from(
     new Set(
-      [game.image_url, ...(game.additional_images || [])]
-        .filter((u): u is string => typeof u === "string" && !!u)
-        .map((u) => sanitizeImageUrl(u))
+      sanitizedImages
+        .map(i => i.sanitized)
         .filter((u): u is string => !!u)
         .filter((u) => !brokenImageUrls.includes(u))
     )
   ).slice(0, 10);
+  
+  console.log("[GameDetail] Final allImages:", allImages);
 
   const playerRange =
     game.min_players === game.max_players

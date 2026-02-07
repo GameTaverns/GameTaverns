@@ -22,6 +22,7 @@ import condenseDescriptionsHandler from "../condense-descriptions/index.ts";
 import decryptMessagesHandler from "../decrypt-messages/index.ts";
 import membershipHandler from "../membership/index.ts";
 import librarySettingsHandler from "../library-settings/index.ts";
+import profileUpdateHandler from "../profile-update/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -3477,7 +3478,7 @@ const INLINED_FUNCTIONS = [
   "discord-notify", "discord-create-event", "discord-forum-post", "discord-delete-thread",
   "discord-oauth-callback", "discord-send-dm",
   // Self-hosted-only helpers
-  "membership", "library-settings",
+  "membership", "library-settings", "profile-update",
 ];
 
 // NOTE: In self-hosted deployments, the edge-runtime process itself binds to the
@@ -3552,6 +3553,8 @@ Deno.serve(async (req) => {
       return membershipHandler(req);
     case "library-settings":
       return librarySettingsHandler(req);
+    case "profile-update":
+      return profileUpdateHandler(req);
     // Inlined handlers for remaining functions
     case "game-recommendations":
       return handleGameRecommendations(req);
