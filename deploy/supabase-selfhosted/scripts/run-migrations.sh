@@ -103,20 +103,14 @@ MIGRATION_FILES=(
     "20-featured-achievement.sql"
 )
 
-echo "DEBUG: Starting migration loop with ${#MIGRATION_FILES[@]} files"
-echo ""
-
 SUCCESS_COUNT=0
 WARNING_COUNT=0
 SKIP_COUNT=0
 ERROR_COUNT=0
 
 for migration in "${MIGRATION_FILES[@]}"; do
-    echo "DEBUG: Processing migration file: $migration"
-    
     if [ -f "$MIGRATIONS_DIR/$migration" ]; then
-        echo "DEBUG: File exists at $MIGRATIONS_DIR/$migration"
-        echo "Running: $migration"
+        echo -n "Running: $migration ... "
 
         # Sanity check: confirm file is mounted into the db container
         if ! docker compose exec -T db sh -lc "test -f /docker-entrypoint-initdb.d/$migration"; then
@@ -198,24 +192,12 @@ for migration in "${MIGRATION_FILES[@]}"; do
         else
             echo -e "${GREEN}✓${NC}"
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-            echo "DEBUG: Incremented success count to $SUCCESS_COUNT"
         fi
-        
-        echo "DEBUG: Finished processing $migration (success_count=$SUCCESS_COUNT, error_count=$ERROR_COUNT)"
     else
-        echo "DEBUG: File NOT found: $MIGRATIONS_DIR/$migration"
         echo -e "${YELLOW}⚠ $migration not found, skipping${NC}"
         SKIP_COUNT=$((SKIP_COUNT + 1))
     fi
-    echo "DEBUG: End of iteration for $migration, continuing to next..."
 done
-
-echo ""
-echo "DEBUG: ====== LOOP COMPLETED ======"
-echo "DEBUG: Total files processed: ${#MIGRATION_FILES[@]}"
-echo ""
-
-echo ""
 echo "=============================================="
 echo "  Migration Summary"
 echo "=============================================="
