@@ -161,6 +161,12 @@ export function BulkImportDialog({
   };
 
   const handleImport = async () => {
+    console.log("[BulkImport] Starting import...");
+    console.log("[BulkImport] isDemo:", isDemo);
+    console.log("[BulkImport] isSelfHostedMode():", isSelfHostedMode());
+    console.log("[BulkImport] isSelfHostedSupabaseStack():", isSelfHostedSupabaseStack());
+    console.log("[BulkImport] library_id:", library?.id);
+    
     setIsImporting(true);
     setResult(null);
     setProgress(null);
@@ -217,12 +223,14 @@ export function BulkImportDialog({
         payload.bgg_links = links;
       }
 
+      console.log("[BulkImport] Checking demo mode: isDemo=", isDemo, "onDemoImport=", !!onDemoImport);
       if (isDemo && onDemoImport) {
         // Demo mode - simulate import (existing demo logic)
         await handleDemoImport(payload);
         return;
       }
 
+      console.log("[BulkImport] Checking legacy Express mode: isSelfHostedMode() && !isSelfHostedSupabaseStack() =", isSelfHostedMode() && !isSelfHostedSupabaseStack());
       // Legacy Express API mode only: use local API
       if (isSelfHostedMode() && !isSelfHostedSupabaseStack()) {
         const token = localStorage.getItem("auth_token");
@@ -268,9 +276,11 @@ export function BulkImportDialog({
         return;
       }
 
-      // Cloud mode: Get auth token
+      // Cloud / self-hosted Supabase stack: Get auth token
+      console.log("[BulkImport] Using Supabase client path (Cloud or self-hosted stack)");
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
+      console.log("[BulkImport] Got session token:", token ? "yes" : "no");
       
       if (!token) {
         toast({
@@ -286,15 +296,18 @@ export function BulkImportDialog({
       abortControllerRef.current = new AbortController();
 
       const { url: apiUrl, anonKey } = getSupabaseConfig();
+      console.log("[BulkImport] Supabase config: url=", apiUrl, "anonKey present=", !!anonKey);
 
       // Self-hosted Edge Runtime uses a router as the main service, and Kong
       // already strips `/functions/v1/` before forwarding to the runtime.
       // So we always call `/functions/v1/bulk-import` (NOT `/main/bulk-import`).
       const bulkImportPath = "bulk-import";
+      const fullUrl = `${apiUrl}/functions/v1/${bulkImportPath}`;
+      console.log("[BulkImport] Fetching:", fullUrl);
 
       // Use streaming fetch
       const response = await fetch(
-        `${apiUrl}/functions/v1/${bulkImportPath}`,
+        fullUrl,
         {
           method: "POST",
           headers: {
