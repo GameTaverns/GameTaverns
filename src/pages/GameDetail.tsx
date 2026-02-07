@@ -192,35 +192,26 @@ const GameDetail = () => {
     return parsed.toString();
   };
 
-  // Images: show multiple images, but aggressively filter out broken/irrelevant ones
+  // Images: show multiple images.
+  // IMPORTANT: do not over-filter here; proxy/hotlink handling happens at render time.
+  const allImages = Array.from(
+    new Set(
+      [game.image_url, ...(game.additional_images || [])]
+        .filter((u): u is string => typeof u === "string" && !!u)
+        .map((u) =>
+          // reuse the shared URL cleaning logic (handles &quot; junk, trailing punctuation, etc.)
+          directImageUrl(u) ?? u
+        )
+        .filter((u) => !brokenImageUrls.includes(u))
+    )
+  ).slice(0, 10);
+
   // Debug: log what we receive from database
   console.log("[GameDetail] Raw image data:", {
     image_url: game.image_url,
     additional_images: game.additional_images,
-    additional_images_type: typeof game.additional_images,
-    additional_images_isArray: Array.isArray(game.additional_images),
+    allImages,
   });
-  
-  const rawImages = [game.image_url, ...(game.additional_images || [])];
-  const stringImages = rawImages.filter((u): u is string => typeof u === "string" && !!u);
-  const sanitizedImages = stringImages.map((u) => ({ original: u, sanitized: sanitizeImageUrl(u) }));
-  
-  console.log("[GameDetail] Image processing:", {
-    rawImages,
-    stringImages,
-    sanitizedImages,
-  });
-  
-  const allImages = Array.from(
-    new Set(
-      sanitizedImages
-        .map(i => i.sanitized)
-        .filter((u): u is string => !!u)
-        .filter((u) => !brokenImageUrls.includes(u))
-    )
-  ).slice(0, 10);
-  
-  console.log("[GameDetail] Final allImages:", allImages);
 
   const playerRange =
     game.min_players === game.max_players

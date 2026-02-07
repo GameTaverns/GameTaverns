@@ -105,12 +105,13 @@ export function useUserRatings() {
       }
 
       // Use edge function to fetch ratings securely (bypasses RLS)
-      const { data, error } = await supabase.functions.invoke(
-        `rate-game?guestIdentifier=${encodeURIComponent(guestId)}`,
-        {
-          method: "GET",
-        }
-      );
+      // IMPORTANT: do not include query params in invoke() function name.
+      const { data, error } = await supabase.functions.invoke("rate-game", {
+        method: "GET",
+        headers: {
+          "x-guest-identifier": guestId,
+        },
+      });
 
       if (error) {
         console.error("Error fetching user ratings:", error);
