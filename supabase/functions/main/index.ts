@@ -966,7 +966,8 @@ async function handleRateGame(req: Request): Promise<Response> {
     // GET: Fetch user's own ratings by guestIdentifier
     if (req.method === "GET") {
       const url = new URL(req.url);
-      const guestIdentifier = url.searchParams.get("guestIdentifier");
+      // Support both query param and header for guestIdentifier
+      const guestIdentifier = url.searchParams.get("guestIdentifier") || req.headers.get("x-guest-identifier");
       
       if (!guestIdentifier) {
         return new Response(
