@@ -193,11 +193,18 @@ for migration in "${MIGRATION_FILES[@]}"; do
             echo -e "${GREEN}✓${NC}"
             ((SUCCESS_COUNT++))
         fi
+        
+        # Debug: Confirm we're continuing
+        echo "  Completed. Moving to next migration..."
     else
         echo -e "${YELLOW}⚠ $migration not found, skipping${NC}"
         ((SKIP_COUNT++))
     fi
 done
+
+echo ""
+echo "DEBUG: Loop completed. Total files in array: ${#MIGRATION_FILES[@]}"
+echo ""
 
 echo ""
 echo "=============================================="
