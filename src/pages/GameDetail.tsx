@@ -309,14 +309,17 @@ const GameDetail = () => {
                     const selectedUrl = allImages[safeIndex];
 
                     return (
-                       <img
-                         src={getImageSrc(selectedUrl)}
+                       <GameImage
+                         imageUrl={selectedUrl}
                          alt={game.title}
                          loading="eager"
-                         decoding="async"
-                         referrerPolicy="no-referrer"
-                         onError={() => handleImageError(selectedUrl)}
-                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                         priority={true}
+                         className="h-full w-full object-contain"
+                         fallback={
+                           <div className="flex h-full items-center justify-center bg-muted">
+                             <span className="text-8xl text-muted-foreground/50">🎲</span>
+                           </div>
+                         }
                        />
                     );
                   })()}
@@ -367,14 +370,16 @@ const GameDetail = () => {
                         : "border-border hover:border-primary/50"
                     }`}
                    >
-                       <img
-                         src={getImageSrc(img)}
+                       <GameImage
+                         imageUrl={img}
                          alt={`${game.title} - Image ${idx + 1}`}
                          loading="lazy"
-                         decoding="async"
-                         referrerPolicy="no-referrer"
-                         onError={() => handleImageError(img)}
                          className="h-full w-full object-cover bg-muted"
+                         fallback={
+                           <div className="flex h-full items-center justify-center bg-muted">
+                             <span className="text-2xl text-muted-foreground/50">🎲</span>
+                           </div>
+                         }
                        />
                   </button>
                 ))}
