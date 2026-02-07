@@ -1180,13 +1180,20 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
     parsedUrl.hostname === "cf.geekdo-images.com" ||
     parsedUrl.hostname === "cf.geekdo-static.com"
   ) {
-    // Extract the pic file (e.g., pic6973669.png)
-    const picMatch = parsedUrl.pathname.match(/\/(pic\d+\.[a-z0-9]+)$/i);
+    console.log(`[normalizeImageUrl] Processing BGG URL pathname: ${parsedUrl.pathname}`);
+    
+    // Extract the pic file from ANYWHERE in the path (not just the end)
+    // The pic file pattern: pic followed by digits and a file extension
+    const picMatch = parsedUrl.pathname.match(/\/(pic\d+\.[a-z0-9]+)/i);
+    console.log(`[normalizeImageUrl] picMatch: ${picMatch ? picMatch[1] : 'null'}`);
+    
     if (picMatch) {
       const picFile = picMatch[1];
       
       // Extract the CDN key (first path segment, before any /img/ or other segments)
       const keyMatch = parsedUrl.pathname.match(/^\/([^/]+)/);
+      console.log(`[normalizeImageUrl] keyMatch: ${keyMatch ? keyMatch[1] : 'null'}`);
+      
       if (keyMatch) {
         let cdnKey = keyMatch[1];
         
@@ -1216,22 +1223,30 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
         
         // Clean up any trailing underscores left over
         cdnKey = cdnKey.replace(/_+$/, '').trim();
+        console.log(`[normalizeImageUrl] Cleaned cdnKey: ${cdnKey}`);
         
         if (cdnKey) {
           // Return clean URL: origin/key/picfile
-          return `${parsedUrl.origin}/${cdnKey}/${picFile}`;
+          const result = `${parsedUrl.origin}/${cdnKey}/${picFile}`;
+          console.log(`[normalizeImageUrl] SUCCESS: ${result}`);
+          return result;
         }
       }
     }
     
     // Fallback: If we couldn't parse cleanly, still try to strip resize/filter segments
+    console.log(`[normalizeImageUrl] Using fallback for: ${cleaned.substring(0, 100)}`);
     let fallbackCleaned = cleaned;
+    
+    // Strip everything from /img/ to /pic (the signature and resize params)
+    fallbackCleaned = fallbackCleaned.replace(/\/img\/[^p]*(pic)/gi, '/pic');
     
     // Strip cropping segments like /0x266:1319x958/
     fallbackCleaned = fallbackCleaned.replace(/\/\d+x\d+:\d+x\d+\//g, '/');
     
     // Strip fit-in + filters segments
     // Matches: /fit-in/1200x630/filters:strip_icc()/ and variations
+    fallbackCleaned = fallbackCleaned.replace(/\/fit-in\/\d+x\d+\/filters:[^/]+\//gi, '/');
     fallbackCleaned = fallbackCleaned.replace(/\/(?:img\/)?(?:f)?it-in\/\d+x\d+(?:\/filters:[^/]*)?(?:\/)?/gi, '/');
     
     // Strip /img/<signature>=/ segments
@@ -1245,6 +1260,7 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
     // Clean up double slashes
     fallbackCleaned = fallbackCleaned.replace(/([^:])\/+/g, '$1/');
     
+    console.log(`[normalizeImageUrl] Fallback result: ${fallbackCleaned}`);
     return fallbackCleaned;
   }
 
