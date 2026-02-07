@@ -1171,10 +1171,17 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
   
   // If it's a BGG image with fit-in/filters, try to get the cleaner version
   // Pattern: /0x266:1319x958/fit-in/1200x630/filters:strip_icc()/
-  const fitInMatch = cleaned.match(/\/fit-in\/\d+x\d+\/filters:[^/]+\//);
+  // Also handles: /img/it-in/1200x630/filters:strip_icc()/ (truncated "fit-in" variant)
+  const fitInMatch = cleaned.match(/(?:\/img)?\/(?:f)?it-in\/\d+x\d+\/filters:[^/]+\//);
   if (fitInMatch) {
     // Remove the cropping/filter parameters to get original
     return cleaned.replace(fitInMatch[0], "/");
+  }
+  
+  // Also handle standalone /img/ prefix with filters (another variant)
+  const imgFiltersMatch = cleaned.match(/\/img\/[^/]+\/\d+x\d+\/filters:[^/]+\//);
+  if (imgFiltersMatch) {
+    return cleaned.replace(imgFiltersMatch[0], "/");
   }
   
   return cleaned;
