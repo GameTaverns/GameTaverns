@@ -25,7 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { supabase, isSelfHostedMode, apiClient } from "@/integrations/backend/client";
+import { supabase, isSelfHostedMode, isSelfHostedSupabaseStack, apiClient } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 import { useTenant } from "@/contexts/TenantContext";
 
@@ -223,8 +223,8 @@ export function BulkImportDialog({
         return;
       }
 
-      // Self-hosted mode: use local API
-      if (isSelfHostedMode()) {
+      // Legacy Express API mode only: use local API
+      if (isSelfHostedMode() && !isSelfHostedSupabaseStack()) {
         const token = localStorage.getItem("auth_token");
         if (!token) {
           toast({
