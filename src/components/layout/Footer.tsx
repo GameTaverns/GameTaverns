@@ -79,7 +79,8 @@ export function Footer() {
             {/* Only show attributions on self-hosted */}
             {showAttributions && (
               <div className="flex items-center gap-6">
-                {/* Love Thy Nerd Attribution */}
+                {/* Love Thy Nerd Attribution - Hidden until official permission granted */}
+                {/* TODO: Uncomment when LTN permission is obtained
                 <a
                   href="https://lovethynerd.com"
                   target="_blank"
@@ -93,12 +94,12 @@ export function Footer() {
                     className="h-6 w-6 object-contain"
                     loading="lazy"
                     onError={(e) => {
-                      // Hide if image fails to load
                       (e.currentTarget.parentElement as HTMLElement)?.classList.add('hidden');
                     }}
                   />
                   <span>Love Thy Nerd</span>
                 </a>
+                */}
 
                 {/* BGG Attribution - Required for API usage */}
                 <a
