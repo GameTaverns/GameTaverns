@@ -1161,81 +1161,94 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
   if (!cleaned) return undefined;
 
   // Validate it's actually a URL
+  let parsedUrl: URL;
   try {
-    new URL(cleaned);
+    parsedUrl = new URL(cleaned);
   } catch {
     return undefined;
   }
 
-  // Convert __opengraph to __imagepage for better quality square images
-  // Also handles other low-quality variants
-  if (cleaned.includes("__opengraph")) {
-    cleaned = cleaned.replace("__opengraph", "__imagepage");
-  }
-
-  // If this is a Geekdo CDN "opengraph" style URL, collapse it to the clean
-  // "original" asset URL that ends in /picXXXX.ext.
-  // Example input:
-  //   https://cf.geekdo-images.com/<key>__opengraph/img/<sig>=/0x0:.../fit-in/1200x630/filters:.../pic123.png
-  // Desired output:
-  //   https://cf.geekdo-images.com/<key>/pic123.png
-  // (works for both cf.geekdo-images.com and cf.geekdo-static.com)
-  try {
-    const u = new URL(cleaned);
-    if (
-      (u.hostname === "cf.geekdo-images.com" || u.hostname === "cf.geekdo-static.com") &&
-      /\/pic\d+\.[a-z0-9]+$/i.test(u.pathname)
-    ) {
-      const picFile = u.pathname.match(/(\/pic\d+\.[a-z0-9]+)$/i)?.[1];
-      const keySegment = u.pathname.match(/^\/([^/]+)\//)?.[1];
-      if (picFile && keySegment) {
-        // Remove any lingering quality variant suffixes from the key segment.
-        // Keep other double-underscore parts (they appear to be part of the CDN key).
-        const normalizedKey = keySegment
-          .replace(/__opengraph\b/i, "")
-          .replace(/__imagepage\b/i, "")
-          .replace(/__original\b/i, "")
-          .replace(/__thumb\b/i, "")
-          .replace(/__micro\b/i, "")
-          .replace(/__small\b/i, "")
-          .replace(/__medium\b/i, "")
-          .replace(/__large\b/i, "")
-          .replace(/__big\b/i, "")
-          .replace(/__huge\b/i, "")
-          .replace(/__\b/i, "__")
-          .replace(/__+$/g, "")
-          .trim();
-
-        if (normalizedKey) {
-          return `${u.origin}/${normalizedKey}${picFile}`;
+  // For BGG CDN URLs, aggressively strip all Cloudflare resize/filter segments
+  // and collapse to clean original asset format: https://<host>/<key>/pic####.ext
+  //
+  // Input examples:
+  //   https://cf.geekdo-images.com/kqyGO2Disn148SnEq-ga5g__opengraph/img/DAKLVIRBBDOmAdN5ZzbybVWlqcY=/0x266:1319x958/fit-in/1200x630/filters:strip_icc()/pic6973669.png
+  //   https://cf.geekdo-images.com/ACeJF1UGwabYv2hj4E__0Q__opengraph/img/TEc6rAa5aI_oiwrMCprQLKOPJrI=/0x0:5281x2773/fit-in/1200x630/filters:strip_icc()/pic8544623.png
+  // Output:
+  //   https://cf.geekdo-images.com/kqyGO2Disn148SnEq-ga5g/pic6973669.png
+  if (
+    parsedUrl.hostname === "cf.geekdo-images.com" ||
+    parsedUrl.hostname === "cf.geekdo-static.com"
+  ) {
+    // Extract the pic file (e.g., pic6973669.png)
+    const picMatch = parsedUrl.pathname.match(/\/(pic\d+\.[a-z0-9]+)$/i);
+    if (picMatch) {
+      const picFile = picMatch[1];
+      
+      // Extract the CDN key (first path segment, before any /img/ or other segments)
+      const keyMatch = parsedUrl.pathname.match(/^\/([^/]+)/);
+      if (keyMatch) {
+        let cdnKey = keyMatch[1];
+        
+        // Strip ALL known variant suffixes from the key
+        // These are the quality/format tags BGG appends
+        const variantSuffixes = [
+          "__opengraph",
+          "__imagepage", 
+          "__imagepagezoom",
+          "__original",
+          "__thumb",
+          "__micro",
+          "__small",
+          "__medium",
+          "__large",
+          "__big",
+          "__huge",
+          "__square200",
+          "__square",
+        ];
+        
+        for (const suffix of variantSuffixes) {
+          // Case-insensitive removal
+          const regex = new RegExp(suffix.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'), 'gi');
+          cdnKey = cdnKey.replace(regex, '');
+        }
+        
+        // Clean up any trailing underscores left over
+        cdnKey = cdnKey.replace(/_+$/, '').trim();
+        
+        if (cdnKey) {
+          // Return clean URL: origin/key/picfile
+          return `${parsedUrl.origin}/${cdnKey}/${picFile}`;
         }
       }
     }
-  } catch {
-    // ignore; fall back to heuristic stripping below
+    
+    // Fallback: If we couldn't parse cleanly, still try to strip resize/filter segments
+    let fallbackCleaned = cleaned;
+    
+    // Strip cropping segments like /0x266:1319x958/
+    fallbackCleaned = fallbackCleaned.replace(/\/\d+x\d+:\d+x\d+\//g, '/');
+    
+    // Strip fit-in + filters segments
+    // Matches: /fit-in/1200x630/filters:strip_icc()/ and variations
+    fallbackCleaned = fallbackCleaned.replace(/\/(?:img\/)?(?:f)?it-in\/\d+x\d+(?:\/filters:[^/]*)?(?:\/)?/gi, '/');
+    
+    // Strip /img/<signature>=/ segments
+    fallbackCleaned = fallbackCleaned.replace(/\/img\/[^/]+=[^/]*\//gi, '/');
+    
+    // Strip variant suffixes from path
+    for (const suffix of ['__opengraph', '__imagepage', '__imagepagezoom', '__original', '__thumb', '__micro', '__small', '__medium', '__large', '__big', '__huge', '__square200', '__square']) {
+      fallbackCleaned = fallbackCleaned.replace(new RegExp(suffix, 'gi'), '');
+    }
+    
+    // Clean up double slashes
+    fallbackCleaned = fallbackCleaned.replace(/([^:])\/+/g, '$1/');
+    
+    return fallbackCleaned;
   }
 
-  // Strip BGG's cropping prefix when present (e.g. /0x0:1635x858/)
-  // This segment is often paired with fit-in/filters and can break proxy fetches.
-  cleaned = cleaned.replace(/\/\d+x\d+:\d+x\d+\//, "/");
-
-  // Strip Cloudflare resize + filter segments.
-  // Seen variants:
-  // - /fit-in/1200x630/filters:strip_icc()/
-  // - /img/it-in/1200x630/filters:strip_icc()/   (truncated "fit-in")
-  // - /img/fit-in/1200x630/filters:strip_icc()/
-  // Also allow no trailing slash after filters.
-  const resizeFilterMatch = cleaned.match(/(?:\/img)?\/(?:f)?it-in\/\d+x\d+\/filters:[^/]+\/?/);
-  if (resizeFilterMatch) {
-    cleaned = cleaned.replace(resizeFilterMatch[0], "/");
-  }
-
-  // Some URLs include just /fit-in/... without filters; strip it too.
-  const fitInOnlyMatch = cleaned.match(/(?:\/img)?\/(?:f)?it-in\/\d+x\d+\/?/);
-  if (fitInOnlyMatch) {
-    cleaned = cleaned.replace(fitInOnlyMatch[0], "/");
-  }
-
+  // For non-BGG URLs, just return the cleaned version
   return cleaned;
 }
 
