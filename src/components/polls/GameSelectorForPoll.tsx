@@ -41,13 +41,15 @@ export function GameSelectorForPoll({
         .select("id, title, image_url, min_players, max_players")
         .eq("library_id", libraryId)
         .eq("is_expansion", false)
+        .eq("is_coming_soon", false)
         .order("title");
 
       if (debouncedSearch) {
         query = query.ilike("title", `%${debouncedSearch}%`);
-      } else {
-        query = query.limit(50);
       }
+      
+      // Limit to 500 games max (use search for larger libraries)
+      query = query.limit(500);
 
       const { data, error } = await query;
       if (error) throw error;
