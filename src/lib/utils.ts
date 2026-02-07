@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { getSupabaseConfig, isSelfHostedMode, isSelfHostedSupabaseStack } from "@/config/runtime";
+import { isSelfHostedMode, isSelfHostedSupabaseStack } from "@/config/runtime";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -27,6 +27,31 @@ function cleanBggUrl(url: string): string {
 }
 
 /**
+ * Get the apex/platform URL for API calls that need to route through the main domain.
+ * 
+ * For self-hosted Supabase stack, this returns the configured SUPABASE_URL from runtime config
+ * (e.g., https://gametaverns.com), NOT the same-origin URL. This is important for features
+ * like the image proxy that are only routed on the apex domain's Nginx config.
+ * 
+ * Tenant subdomains (e.g., tzolaks-tavern.gametaverns.com) don't have their own /functions/v1
+ * routing, so we must use the apex domain for edge function calls like image-proxy.
+ */
+function getApexApiUrl(): string | null {
+  // Check runtime config first (self-hosted Supabase stack)
+  if (typeof window !== 'undefined' && window.__RUNTIME_CONFIG__?.SUPABASE_URL) {
+    return window.__RUNTIME_CONFIG__.SUPABASE_URL;
+  }
+  
+  // Fall back to Vite env (Lovable Cloud)
+  const viteUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (viteUrl) {
+    return viteUrl;
+  }
+  
+  return null;
+}
+
+/**
  * Returns an image URL, using proxy for BGG images to bypass hotlink protection.
  * Falls back to direct URL if proxy isn't available.
  * 
@@ -48,14 +73,19 @@ export function proxiedImageUrl(url: string | null | undefined): string | undefi
         return `/api/image-proxy?url=${encodeURIComponent(normalized)}`;
       }
       
-      // Self-hosted Supabase stack: use same-origin /functions/v1 path
-      // (Kong routes this to the edge function container)
+      // Self-hosted Supabase stack: use the APEX domain for edge function routing
+      // Tenant subdomains don't have /functions/v1 proxied, only the main domain does
       if (isSelfHostedSupabaseStack()) {
+        const apexUrl = getApexApiUrl();
+        if (apexUrl) {
+          return `${apexUrl}/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
+        }
+        // Fallback to same-origin if no apex URL available
         return `/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
       }
       
       // Cloud mode: use full Supabase Edge Function URL
-      const { url: apiUrl } = getSupabaseConfig();
+      const apiUrl = getApexApiUrl();
       if (apiUrl) {
         return `${apiUrl}/functions/v1/image-proxy?url=${encodeURIComponent(normalized)}`;
       }
