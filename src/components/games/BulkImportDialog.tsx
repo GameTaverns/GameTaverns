@@ -889,9 +889,14 @@ https://boardgamegeek.com/boardgame/9209/ticket-to-ride`}
                       onCheckedChange={(checked) => setEnhanceWithAi(!!checked)}
                       disabled={isImporting || !enhanceWithBgg}
                     />
-                    <Label htmlFor="enhance-ai" className={`cursor-pointer ${!enhanceWithBgg ? "text-muted-foreground" : ""}`}>
-                      Generate rich AI descriptions (slower, ~8s per game)
-                    </Label>
+                    <div className="flex flex-col">
+                      <Label htmlFor="enhance-ai" className={`cursor-pointer ${!enhanceWithBgg ? "text-muted-foreground" : ""}`}>
+                        Enhance with AI descriptions &amp; gallery images (slower, ~8s per game)
+                      </Label>
+                      <span className="text-xs text-muted-foreground ml-0 mt-0.5">
+                        Adds formatted gameplay overview and up to 5 gameplay photos
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
