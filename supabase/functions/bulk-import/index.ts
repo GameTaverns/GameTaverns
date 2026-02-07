@@ -1524,6 +1524,7 @@ export default async function handler(req: Request): Promise<Response> {
         };
 
         let imported = 0;
+        let updated = 0;
         let failed = 0;
         const errors: string[] = [];
         const importedGames: { title: string; id?: string }[] = [];
@@ -1828,14 +1829,73 @@ export default async function handler(req: Request): Promise<Response> {
             }
 
             // Check if game already exists
+            // NOTE: CSV re-imports are commonly used to "refresh" media URLs.
+            // Historically we skipped duplicates entirely; however that prevents image URL
+            // normalization fixes from taking effect for existing rows.
             const { data: existing } = await supabaseAdmin
               .from("games")
-              .select("id, title")
+              .select("id, title, image_url, additional_images")
               .eq("title", gameData.title)
               .eq("library_id", targetLibraryId)
               .maybeSingle();
 
+            const isBggCdnUrl = (u: string | null | undefined) => {
+              if (!u) return false;
+              try {
+                const parsed = new URL(u);
+                return parsed.hostname === "cf.geekdo-images.com" || parsed.hostname === "cf.geekdo-static.com";
+              } catch {
+                return false;
+              }
+            };
+
+            const looksLikeBggOpengraphOrResized = (u: string | null | undefined) => {
+              if (!u) return false;
+              return (
+                u.includes("__opengraph") ||
+                u.includes("/fit-in/") ||
+                u.includes("filters:strip_icc") ||
+                u.includes("filters:fill(blur)")
+              );
+            };
+
             if (existing) {
+              // If this import provides a (normalized) image URL and the existing one looks like
+              // a BGG OpenGraph/Cloudflare-resized variant, update it in-place.
+              const incomingImage = gameData.image_url || null;
+              const existingImage = (existing as any).image_url as string | null;
+
+              const shouldUpdateImage =
+                incomingImage &&
+                incomingImage !== existingImage &&
+                isBggCdnUrl(incomingImage) &&
+                (looksLikeBggOpengraphOrResized(existingImage) || !existingImage);
+
+              const incomingAdditional = gameData.additional_images || null;
+              const existingAdditional = (existing as any).additional_images as string[] | null;
+              const shouldUpdateAdditional =
+                !!incomingAdditional?.length && (!existingAdditional || existingAdditional.length === 0);
+
+              if (shouldUpdateImage || shouldUpdateAdditional) {
+                const patch: Record<string, unknown> = {};
+                if (shouldUpdateImage) patch.image_url = incomingImage;
+                if (shouldUpdateAdditional) patch.additional_images = incomingAdditional;
+
+                const { error: updateErr } = await supabaseAdmin
+                  .from("games")
+                  .update(patch)
+                  .eq("id", existing.id);
+
+                if (updateErr) {
+                  console.warn(`[BulkImport] Failed updating existing media for "${gameData.title}":`, updateErr);
+                  // Fall through to previous behavior so the user sees it's a duplicate.
+                } else {
+                  updated++;
+                  console.log(`[BulkImport] Updated media for existing game "${gameData.title}"`);
+                  continue;
+                }
+              }
+
               failed++;
               failureBreakdown.already_exists++;
               errors.push(`"${gameData.title}" already exists`);
@@ -2097,13 +2157,14 @@ export default async function handler(req: Request): Promise<Response> {
         const errorSummary = summaryParts.length ? summaryParts.join(", ") : "";
 
         console.log(
-          `[BulkImport] Complete: imported=${imported} failed=${failed} breakdown=${JSON.stringify(failureBreakdown)}`
+          `[BulkImport] Complete: imported=${imported} updated=${updated} failed=${failed} breakdown=${JSON.stringify(failureBreakdown)}`
         );
 
         sendProgress({ 
           type: "complete", 
           success: true,
           imported,
+          updated,
           failed,
           // Keep payload small for SSE, but give enough info for debugging.
           errors: errors.slice(0, 50),
