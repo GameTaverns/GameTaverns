@@ -38,17 +38,37 @@ function cleanBggUrl(url: string): string {
  */
 function getApexApiUrl(): string | null {
   // Check runtime config first (self-hosted Supabase stack)
-  if (typeof window !== 'undefined' && window.__RUNTIME_CONFIG__?.SUPABASE_URL) {
-    return window.__RUNTIME_CONFIG__.SUPABASE_URL;
-  }
-  
+  const runtimeUrl =
+    typeof window !== "undefined" ? window.__RUNTIME_CONFIG__?.SUPABASE_URL : undefined;
+
   // Fall back to Vite env (Lovable Cloud)
   const viteUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (viteUrl) {
-    return viteUrl;
+
+  const configuredUrl = runtimeUrl || viteUrl;
+  if (!configuredUrl) return null;
+
+  // IMPORTANT (Self-hosted multi-tenant same-origin routing):
+  // When browsing a tenant subdomain, calling the apex domain can be blocked by
+  // connect-src CSP rules (often 'self'). Prefer same-origin when we're on a
+  // subdomain of the configured host.
+  try {
+    if (typeof window !== "undefined") {
+      const currentHost = window.location.hostname.toLowerCase();
+      const configuredHost = new URL(configuredUrl).hostname.toLowerCase();
+
+      if (
+        currentHost !== configuredHost &&
+        (currentHost.endsWith(`.${configuredHost}`) ||
+          configuredHost.endsWith(`.${currentHost}`))
+      ) {
+        return window.location.origin;
+      }
+    }
+  } catch {
+    // ignore and fall back to configuredUrl
   }
-  
-  return null;
+
+  return configuredUrl;
 }
 
 /**
