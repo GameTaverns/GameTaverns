@@ -1552,6 +1552,23 @@ export default async function handler(req: Request): Promise<Response> {
         const errors: string[] = [];
         const importedGames: { title: string; id?: string }[] = [];
 
+        // Debug counters so the UI can tell whether enrichment actually happened.
+        // (This is critical for self-hosted deployments where server-side logs may not be visible.)
+        let bggXmlAttempts = 0;
+        let bggXmlWithImage = 0;
+        let galleryAttempts = 0;
+        let galleryWithImages = 0;
+        let aiEnrichAttempts = 0;
+
+        const debug = {
+          enhance_with_bgg: enhance_with_bgg !== false,
+          enhance_with_ai: Boolean(enhance_with_ai),
+          firecrawl_key_present: Boolean(firecrawlKey),
+          ai_configured: isAIConfigured(),
+          ai_provider: getAIProviderName(),
+          bgg_api_token_present: Boolean(Deno.env.get("BGG_API_TOKEN")),
+        };
+
         const failureBreakdown: FailureBreakdown = {
           already_exists: 0,
           missing_title: 0,
@@ -1561,10 +1578,11 @@ export default async function handler(req: Request): Promise<Response> {
 
         // Send initial progress
         console.log(`[BulkImport] Sending SSE start event`);
-        sendProgress({ 
-          type: "start", 
-          jobId, 
-          total: totalGames 
+        sendProgress({
+          type: "start",
+          jobId,
+          total: totalGames,
+          debug,
         });
 
         // Process each game
@@ -1670,8 +1688,10 @@ export default async function handler(req: Request): Promise<Response> {
               if (enhance_with_bgg !== false && gameInput.bgg_id && (!gameData.image_url || hasLowQualityImage)) {
                 console.log(`[BulkImport] Replacing low-quality image via BGG XML for: ${gameInput.bgg_id}`);
                 try {
+                  bggXmlAttempts++;
                   const bggData = await fetchBGGXMLData(gameInput.bgg_id);
                   if (bggData?.image_url) {
+                    bggXmlWithImage++;
                     gameData.image_url = normalizeImageUrl(bggData.image_url);
                   }
                 } catch (e) {
@@ -1681,30 +1701,34 @@ export default async function handler(req: Request): Promise<Response> {
 
               // Cloud-export CSVs often include rich descriptions but no gallery images.
               // If AI enrichment is enabled, still fetch BGG gallery images when we can.
-              const needsGalleryImages = !gameData.additional_images || gameData.additional_images.length === 0;
-              if (enhance_with_ai && firecrawlKey && needsGalleryImages && gameInput.bgg_id) {
-                console.log(`[BulkImport] Fetching gallery images (description already present) for: ${gameInput.bgg_id}`);
-                try {
-                  const galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, firecrawlKey, 5);
-                  if (galleryImages.length > 0) {
-                    gameData.additional_images = galleryImages;
-                    console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameData.title}"`);
-                  }
-                } catch (e) {
-                  console.warn(`[BulkImport] Gallery fetch failed for ${gameInput.bgg_id}:`, e);
-                }
-              }
+               const needsGalleryImages = !gameData.additional_images || gameData.additional_images.length === 0;
+               if (enhance_with_ai && firecrawlKey && needsGalleryImages && gameInput.bgg_id) {
+                 console.log(`[BulkImport] Fetching gallery images (description already present) for: ${gameInput.bgg_id}`);
+                 try {
+                   galleryAttempts++;
+                   const galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, firecrawlKey, 5);
+                   if (galleryImages.length > 0) {
+                     galleryWithImages++;
+                     gameData.additional_images = galleryImages;
+                     console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameData.title}"`);
+                   }
+                 } catch (e) {
+                   console.warn(`[BulkImport] Gallery fetch failed for ${gameInput.bgg_id}:`, e);
+                 }
+               }
             } else if (gameInput.bgg_id && enhance_with_bgg !== false) {
               // FAST PATH: Use BGG XML API (default behavior)
               // This is ~10x faster than Firecrawl+AI
-              console.log(`[BulkImport] Fetching BGG XML data for: ${gameInput.bgg_id}`);
-              let bggData: Awaited<ReturnType<typeof fetchBGGXMLData>> | null = null;
-              try {
-                bggData = await fetchBGGXMLData(gameInput.bgg_id);
-              } catch (e) {
-                console.warn(`[BulkImport] BGG XML fetch failed for ${gameInput.bgg_id}:`, e);
-                bggData = null;
-              }
+               console.log(`[BulkImport] Fetching BGG XML data for: ${gameInput.bgg_id}`);
+               let bggData: Awaited<ReturnType<typeof fetchBGGXMLData>> | null = null;
+               try {
+                 bggXmlAttempts++;
+                 bggData = await fetchBGGXMLData(gameInput.bgg_id);
+                 if (bggData?.image_url) bggXmlWithImage++;
+               } catch (e) {
+                 console.warn(`[BulkImport] BGG XML fetch failed for ${gameInput.bgg_id}:`, e);
+                 bggData = null;
+               }
 
               if (bggData) {
                 const isEmpty = (val: unknown): boolean => {
@@ -1733,25 +1757,25 @@ export default async function handler(req: Request): Promise<Response> {
                   ? buildDescriptionWithNotes(formattedDescription, gameInput._csv_notes)
                   : gameData.description;
 
-                const shouldUseBggImage =
-                  isEmpty(gameData.image_url) ||
-                  (bggData.image_url && isLowQualityBggImageUrl(gameData.image_url));
+                 const shouldUseBggImage =
+                   isEmpty(gameData.image_url) ||
+                   (bggData.image_url && isLowQualityBggImageUrl(gameData.image_url));
 
-                gameData = {
-                  ...gameData,
-                  bgg_id: gameData.bgg_id || bggData.bgg_id,
-                  image_url: shouldUseBggImage ? bggData.image_url : gameData.image_url,
-                  description: isEmpty(mergedDescription) ? gameData.description : mergedDescription,
-                  difficulty: isEmpty(gameData.difficulty) ? bggData.difficulty : gameData.difficulty,
-                  play_time: isEmpty(gameData.play_time) ? bggData.play_time : gameData.play_time,
-                  min_players: gameData.min_players ?? bggData.min_players,
-                  max_players: gameData.max_players ?? bggData.max_players,
-                  suggested_age: isEmpty(gameData.suggested_age) ? bggData.suggested_age : gameData.suggested_age,
-                  mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
-                  publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
-                  // Override is_expansion from BGG if not already set (BGG is authoritative)
-                  is_expansion: gameData.is_expansion || bggData.is_expansion,
-                };
+                 gameData = {
+                   ...gameData,
+                   bgg_id: gameData.bgg_id || bggData.bgg_id,
+                   image_url: shouldUseBggImage ? normalizeImageUrl(bggData.image_url) : gameData.image_url,
+                   description: isEmpty(mergedDescription) ? gameData.description : mergedDescription,
+                   difficulty: isEmpty(gameData.difficulty) ? bggData.difficulty : gameData.difficulty,
+                   play_time: isEmpty(gameData.play_time) ? bggData.play_time : gameData.play_time,
+                   min_players: gameData.min_players ?? bggData.min_players,
+                   max_players: gameData.max_players ?? bggData.max_players,
+                   suggested_age: isEmpty(gameData.suggested_age) ? bggData.suggested_age : gameData.suggested_age,
+                   mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
+                   publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
+                   // Override is_expansion from BGG if not already set (BGG is authoritative)
+                   is_expansion: gameData.is_expansion || bggData.is_expansion,
+                 };
 
                 // Ensure notes are appended after enrichment when CSV had notes.
                 if (!hasCsvDescription) {
@@ -1767,23 +1791,26 @@ export default async function handler(req: Request): Promise<Response> {
                 const needsDescription = !gameData.description || gameData.description.length < 100;
                 const needsGalleryImages = !gameData.additional_images || gameData.additional_images.length === 0;
                 
-                if (needsDescription || needsGalleryImages) {
-                  console.log(`[BulkImport] AI enrichment for: ${gameInput.bgg_id} (desc=${needsDescription}, gallery=${needsGalleryImages})`);
-                  try {
-                    // Fetch with gallery images enabled
-                    const aiData = await fetchBGGData(gameInput.bgg_id, firecrawlKey, 3, needsGalleryImages);
-                    if (aiData?.description && aiData.description.length > (gameData.description?.length || 0)) {
-                      gameData.description = aiData.description;
-                      console.log(`[BulkImport] AI enhanced description: ${aiData.description.length} chars`);
-                    }
-                    if (aiData?.additional_images && aiData.additional_images.length > 0) {
-                      gameData.additional_images = aiData.additional_images;
-                      console.log(`[BulkImport] Added ${aiData.additional_images.length} gallery images`);
-                    }
-                  } catch (e) {
-                    console.warn(`[BulkImport] AI enrichment failed for ${gameInput.bgg_id}:`, e);
-                  }
-                }
+                 if (needsDescription || needsGalleryImages) {
+                   console.log(`[BulkImport] AI enrichment for: ${gameInput.bgg_id} (desc=${needsDescription}, gallery=${needsGalleryImages})`);
+                   try {
+                     aiEnrichAttempts++;
+                     // Fetch with gallery images enabled
+                     galleryAttempts += needsGalleryImages ? 1 : 0;
+                     const aiData = await fetchBGGData(gameInput.bgg_id, firecrawlKey, 3, needsGalleryImages);
+                     if (aiData?.description && aiData.description.length > (gameData.description?.length || 0)) {
+                       gameData.description = aiData.description;
+                       console.log(`[BulkImport] AI enhanced description: ${aiData.description.length} chars`);
+                     }
+                     if (aiData?.additional_images && aiData.additional_images.length > 0) {
+                       galleryWithImages++;
+                       gameData.additional_images = aiData.additional_images;
+                       console.log(`[BulkImport] Added ${aiData.additional_images.length} gallery images`);
+                     }
+                   } catch (e) {
+                     console.warn(`[BulkImport] AI enrichment failed for ${gameInput.bgg_id}:`, e);
+                   }
+                 }
               }
             } else if (enhance_with_bgg !== false && gameData.title && !hasCompleteData) {
               // No BGG ID - try to look up by title using XML search
@@ -2207,8 +2234,8 @@ export default async function handler(req: Request): Promise<Response> {
           `[BulkImport] Complete: imported=${imported} updated=${updated} failed=${failed} breakdown=${JSON.stringify(failureBreakdown)}`
         );
 
-        sendProgress({ 
-          type: "complete", 
+        sendProgress({
+          type: "complete",
           success: true,
           imported,
           updated,
@@ -2218,6 +2245,14 @@ export default async function handler(req: Request): Promise<Response> {
           failureBreakdown,
           errorSummary,
           games: importedGames,
+          debug: {
+            ...debug,
+            bgg_xml_attempts: bggXmlAttempts,
+            bgg_xml_with_image: bggXmlWithImage,
+            ai_enrich_attempts: aiEnrichAttempts,
+            gallery_attempts: galleryAttempts,
+            gallery_with_images: galleryWithImages,
+          },
         });
 
         controller.close();
