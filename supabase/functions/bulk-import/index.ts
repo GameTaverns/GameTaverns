@@ -1578,11 +1578,16 @@ export default async function handler(req: Request): Promise<Response> {
 
         // Send initial progress
         console.log(`[BulkImport] Sending SSE start event`);
+
+        // NOTE: JSON.stringify omits keys with `undefined` values.
+        // We ensure debug is always a plain object so it reliably appears in SSE.
+        const debugPayload = { ...debug, debug_version: "bulk-import-2026-02-08" };
+
         sendProgress({
           type: "start",
           jobId,
           total: totalGames,
-          debug,
+          debug: debugPayload,
         });
 
         // Process each game
@@ -2247,6 +2252,7 @@ export default async function handler(req: Request): Promise<Response> {
           games: importedGames,
           debug: {
             ...debug,
+            debug_version: "bulk-import-2026-02-08",
             bgg_xml_attempts: bggXmlAttempts,
             bgg_xml_with_image: bggXmlWithImage,
             ai_enrich_attempts: aiEnrichAttempts,
