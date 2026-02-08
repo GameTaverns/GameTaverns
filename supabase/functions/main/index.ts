@@ -3927,12 +3927,18 @@ async function handleDiscordOAuthCallback(req: Request): Promise<Response> {
       const stateData = JSON.parse(atob(state));
       userId = stateData.user_id;
       appOrigin = stateData.app_origin;
-    } catch {
+      console.log("[discord-oauth-callback] Parsed state - userId:", userId, "appOrigin:", appOrigin);
+    } catch (stateErr) {
+      console.error("[discord-oauth-callback] Failed to parse state:", stateErr);
       return redirectWithError("Invalid state parameter", undefined);
     }
 
-    if (!userId || !appOrigin) return redirectWithError("Missing user ID or app origin in state", appOrigin);
+    if (!userId || !appOrigin) {
+      console.error("[discord-oauth-callback] Missing userId or appOrigin");
+      return redirectWithError("Missing user ID or app origin in state", appOrigin);
+    }
 
+    console.log("[discord-oauth-callback] Exchanging code for tokens...");
     const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -3945,32 +3951,62 @@ async function handleDiscordOAuthCallback(req: Request): Promise<Response> {
       }),
     });
 
-    if (!tokenResponse.ok) return redirectWithError("Failed to exchange authorization code", appOrigin);
+    const tokenBody = await tokenResponse.text();
+    console.log("[discord-oauth-callback] Token response status:", tokenResponse.status);
+    
+    if (!tokenResponse.ok) {
+      console.error("[discord-oauth-callback] Token exchange failed:", tokenBody);
+      return redirectWithError("Failed to exchange authorization code", appOrigin);
+    }
 
-    const tokens = await tokenResponse.json();
+    const tokens = JSON.parse(tokenBody);
+    console.log("[discord-oauth-callback] Got access token, fetching user info...");
 
-    const userResponse = await fetch("https://discord.com/api/users/@me", { headers: { Authorization: `Bearer ${tokens.access_token}` } });
-    if (!userResponse.ok) return redirectWithError("Failed to fetch Discord user info", appOrigin);
+    const userResponse = await fetch("https://discord.com/api/users/@me", { 
+      headers: { Authorization: `Bearer ${tokens.access_token}` } 
+    });
+    
+    if (!userResponse.ok) {
+      const userBody = await userResponse.text();
+      console.error("[discord-oauth-callback] User fetch failed:", userResponse.status, userBody);
+      return redirectWithError("Failed to fetch Discord user info", appOrigin);
+    }
 
     const discordUser = await userResponse.json();
+    console.log("[discord-oauth-callback] Got Discord user:", discordUser.id, discordUser.username);
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { data: existingProfile } = await supabase.from("user_profiles").select("id").eq("user_id", userId).maybeSingle();
+    console.log("[discord-oauth-callback] Checking for existing profile...");
+    const { data: existingProfile, error: profileFetchError } = await supabase
+      .from("user_profiles")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (profileFetchError) {
+      console.error("[discord-oauth-callback] Profile fetch error:", profileFetchError.message);
+    }
 
     let upsertError;
     if (existingProfile) {
+      console.log("[discord-oauth-callback] Updating existing profile...");
       const { error } = await supabase.from("user_profiles").update({ discord_user_id: discordUser.id }).eq("user_id", userId);
       upsertError = error;
     } else {
+      console.log("[discord-oauth-callback] Inserting new profile...");
       const { error } = await supabase.from("user_profiles").insert({ user_id: userId, discord_user_id: discordUser.id });
       upsertError = error;
     }
 
-    if (upsertError) return redirectWithError("Failed to link Discord account", appOrigin);
+    if (upsertError) {
+      console.error("[discord-oauth-callback] Upsert error:", JSON.stringify(upsertError, null, 2));
+      return redirectWithError("Failed to link Discord account", appOrigin);
+    }
 
+    console.log("[discord-oauth-callback] Success! Redirecting to settings...");
     return new Response(null, { status: 302, headers: { Location: `${appOrigin}/settings?discord_linked=true` } });
   } catch (error) {
-    console.error("Discord OAuth callback error:", error);
+    console.error("[discord-oauth-callback] Unexpected error:", error);
     return new Response(`Discord connection failed: ${(error as Error).message}. Please close this tab and try again.`, { status: 400, headers: { "Content-Type": "text/plain" } });
   }
 }
