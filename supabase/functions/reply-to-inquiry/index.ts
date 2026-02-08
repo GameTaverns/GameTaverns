@@ -172,35 +172,32 @@ export default async function handler(req: Request): Promise<Response> {
     // Encrypt the reply
     const encryptedReply = await encryptData(reply_text.trim(), encryptionKey);
 
-    // Insert the reply
-    const { error: insertError } = await supabaseAdmin
-      .from("game_message_replies")
-      .insert({
+    // Insert the reply (use raw REST call so we can capture exact status/body in self-hosted)
+    const insertRes = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/game_message_replies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseServiceKey,
+        Authorization: `Bearer ${supabaseServiceKey}`,
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
         message_id,
         reply_text_encrypted: encryptedReply,
         replied_by: user.id,
-      });
+      }),
+    });
 
-    if (insertError) {
-      // NOTE: PostgrestError often has non-enumerable properties, so JSON.stringify can show "{}".
-      // Log multiple representations so we can see the real failure (grants, FK, etc.).
-      try {
-        console.error("[reply-to-inquiry] Insert error direct:", insertError);
-        console.error("[reply-to-inquiry] Insert error keys:", Object.keys(insertError as any));
-        console.error("[reply-to-inquiry] Insert error props:", Object.getOwnPropertyNames(insertError as any));
-        console.error("[reply-to-inquiry] Insert error raw JSON:", JSON.stringify(insertError, null, 2));
-      } catch (e) {
-        console.error("[reply-to-inquiry] Failed to stringify insert error:", e);
-      }
+    const insertBody = await insertRes.text();
 
-      const anyErr = insertError as any;
+    if (!insertRes.ok) {
+      console.error("[reply-to-inquiry] Insert failed:", insertRes.status, insertBody);
       return new Response(
         JSON.stringify({
           success: false,
-          error: anyErr?.message || anyErr?.details || anyErr?.hint || String(insertError) || "Failed to send reply",
-          code: anyErr?.code || null,
-          details: anyErr?.details || null,
-          hint: anyErr?.hint || null,
+          error: "Failed to send reply",
+          status: insertRes.status,
+          body: insertBody || null,
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
