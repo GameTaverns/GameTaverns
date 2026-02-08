@@ -1268,6 +1268,13 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
   return cleaned;
 }
 
+function isLowQualityBggImageUrl(url: string | undefined): boolean {
+  if (!url) return true;
+  if (!url.includes("geekdo-images.com") && !url.includes("geekdo-static.com")) return false;
+
+  return /__opengraph|__opengraph_letterbox|fit-in\/1200x630|filters:strip_icc\(\)|__thumb|__micro|__square\d*|crop\d+|\b1200x630\b/i.test(url);
+}
+
 // Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
@@ -1643,31 +1650,51 @@ export default async function handler(req: Request): Promise<Response> {
               phase: enhance_with_ai ? "ai_enhancing" : (enhance_with_bgg !== false ? "fetching" : "importing")
             });
 
+            // Normalize/clean the CSV-provided image immediately so even "skip enrichment" rows
+            // don't get stuck with cropped OpenGraph variants.
+            gameData.image_url = normalizeImageUrl(gameData.image_url);
+
+            const hasLowQualityImage = isLowQualityBggImageUrl(gameData.image_url) || isLowQualityBggImageUrl(gameInput.image_url);
+
             // BGG enhancement - SKIP if the CSV already had a real description.
             // IMPORTANT: Notes-only rows ("**Notes:** ...") should still be enriched.
             const csvDesc = (gameInput._csv_description || "").trim();
             const hasCsvDescription = csvDesc.length > 0;
             const hasCompleteData = hasCsvDescription && csvDesc.length > 50;
 
-             if (hasCompleteData) {
-               console.log(`[BulkImport] Skipping enrichment for "${gameData.title}" - CSV description already present (${csvDesc.length} chars)`);
+            if (hasCompleteData) {
+              console.log(`[BulkImport] CSV description present for "${gameData.title}" (${csvDesc.length} chars) - skipping description enrichment`);
 
-               // Cloud-export CSVs often include rich descriptions but no gallery images.
-               // If AI enrichment is enabled, still fetch BGG gallery images when we can.
-               const needsGalleryImages = !gameData.additional_images || gameData.additional_images.length === 0;
-               if (enhance_with_ai && firecrawlKey && needsGalleryImages && gameInput.bgg_id) {
-                 console.log(`[BulkImport] Fetching gallery images (description already present) for: ${gameInput.bgg_id}`);
-                 try {
-                   const galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, firecrawlKey, 5);
-                   if (galleryImages.length > 0) {
-                     gameData.additional_images = galleryImages;
-                     console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameData.title}"`);
-                   }
-                 } catch (e) {
-                   console.warn(`[BulkImport] Gallery fetch failed for ${gameInput.bgg_id}:`, e);
-                 }
-               }
-             } else if (gameInput.bgg_id && enhance_with_bgg !== false) {
+              // Even if we skip description enrichment, we still want to fix cropped/low-quality images
+              // when Enhance with BGG is enabled.
+              if (enhance_with_bgg !== false && gameInput.bgg_id && (!gameData.image_url || hasLowQualityImage)) {
+                console.log(`[BulkImport] Replacing low-quality image via BGG XML for: ${gameInput.bgg_id}`);
+                try {
+                  const bggData = await fetchBGGXMLData(gameInput.bgg_id);
+                  if (bggData?.image_url) {
+                    gameData.image_url = normalizeImageUrl(bggData.image_url);
+                  }
+                } catch (e) {
+                  console.warn(`[BulkImport] Image-only XML enrichment failed for ${gameInput.bgg_id}:`, e);
+                }
+              }
+
+              // Cloud-export CSVs often include rich descriptions but no gallery images.
+              // If AI enrichment is enabled, still fetch BGG gallery images when we can.
+              const needsGalleryImages = !gameData.additional_images || gameData.additional_images.length === 0;
+              if (enhance_with_ai && firecrawlKey && needsGalleryImages && gameInput.bgg_id) {
+                console.log(`[BulkImport] Fetching gallery images (description already present) for: ${gameInput.bgg_id}`);
+                try {
+                  const galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, firecrawlKey, 5);
+                  if (galleryImages.length > 0) {
+                    gameData.additional_images = galleryImages;
+                    console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameData.title}"`);
+                  }
+                } catch (e) {
+                  console.warn(`[BulkImport] Gallery fetch failed for ${gameInput.bgg_id}:`, e);
+                }
+              }
+            } else if (gameInput.bgg_id && enhance_with_bgg !== false) {
               // FAST PATH: Use BGG XML API (default behavior)
               // This is ~10x faster than Firecrawl+AI
               console.log(`[BulkImport] Fetching BGG XML data for: ${gameInput.bgg_id}`);
@@ -1706,10 +1733,14 @@ export default async function handler(req: Request): Promise<Response> {
                   ? buildDescriptionWithNotes(formattedDescription, gameInput._csv_notes)
                   : gameData.description;
 
+                const shouldUseBggImage =
+                  isEmpty(gameData.image_url) ||
+                  (bggData.image_url && isLowQualityBggImageUrl(gameData.image_url));
+
                 gameData = {
                   ...gameData,
                   bgg_id: gameData.bgg_id || bggData.bgg_id,
-                  image_url: isEmpty(gameData.image_url) ? bggData.image_url : gameData.image_url,
+                  image_url: shouldUseBggImage ? bggData.image_url : gameData.image_url,
                   description: isEmpty(mergedDescription) ? gameData.description : mergedDescription,
                   difficulty: isEmpty(gameData.difficulty) ? bggData.difficulty : gameData.difficulty,
                   play_time: isEmpty(gameData.play_time) ? bggData.play_time : gameData.play_time,
