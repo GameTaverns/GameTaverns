@@ -2354,6 +2354,75 @@ const buildDescription = (description: string | undefined, privateComment: strin
   return `${desc}\n\n**Notes:** ${notes}`;
 };
 
+// Fetch BGG collection for a user (same-origin self-hosted support)
+async function fetchBGGCollection(username: string): Promise<{ id: string; name: string }[]> {
+  const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&excludesubtype=boardgameexpansion`;
+  
+  // BGG now requires an API token for access
+  const bggToken = Deno.env.get("BGG_API_TOKEN");
+  
+  const headers: Record<string, string> = {
+    "User-Agent": "GameTaverns/1.0 (Collection Import)",
+    "Accept": "application/xml",
+  };
+  
+  // Add authorization if token is configured
+  if (bggToken) {
+    headers["Authorization"] = `Bearer ${bggToken}`;
+  }
+  
+  let attempts = 0;
+  while (attempts < 5) {
+    const res = await fetch(collectionUrl, { headers });
+    
+    if (res.status === 202) {
+      // BGG is processing the request, wait and retry
+      await new Promise(r => setTimeout(r, 3000));
+      attempts++;
+      continue;
+    }
+    
+    if (res.status === 401) {
+      // BGG now requires API registration and tokens
+      throw new Error(
+        "BGG API requires authentication. Please ensure BGG_API_TOKEN is configured in your server .env file. As an alternative, export your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option."
+      );
+    }
+    
+    if (res.status === 404 || res.status === 400) {
+      throw new Error(`BGG username "${username}" not found or collection is private. Please check the username is correct and your collection is public.`);
+    }
+    
+    if (!res.ok) {
+      throw new Error(`Failed to fetch BGG collection (status ${res.status}). Please try again or use CSV import.`);
+    }
+    
+    const xml = await res.text();
+    
+    // Check for error messages in the response
+    if (xml.includes("<error>") || xml.includes("Invalid username")) {
+      throw new Error(`BGG username "${username}" not found. Please check the username is correct.`);
+    }
+    
+    const games: { id: string; name: string }[] = [];
+    
+    const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>[\s\S]*?<name[^>]*>([^<]+)<\/name>[\s\S]*?<\/item>/g;
+    let match;
+    while ((match = itemRegex.exec(xml)) !== null) {
+      games.push({ id: match[1], name: match[2] });
+    }
+    
+    if (games.length === 0 && xml.includes("<items")) {
+      // Empty collection - valid but no owned games
+      console.log(`[BulkImport] BGG collection for ${username} is empty or has no owned games`);
+    }
+    
+    return games;
+  }
+  
+  throw new Error("BGG collection request timed out. The collection may be too large - please try using CSV export instead.");
+}
+
 type GameToImport = {
   title: string;
   bgg_id?: string;
@@ -2442,9 +2511,9 @@ async function handleBulkImport(req: Request): Promise<Response> {
       );
     }
 
-    const { mode, library_id, csv_data, default_options, enhance_with_bgg } = body;
+    const { mode, library_id, csv_data, bgg_username, bgg_links, default_options, enhance_with_bgg } = body;
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-    console.log("[BulkImport] Mode:", mode, "library_id:", library_id, "csv_data length:", csv_data?.length);
+    console.log("[BulkImport] Mode:", mode, "library_id:", library_id, "csv_data length:", csv_data?.length, "bgg_username:", bgg_username);
     console.log("[BulkImport] enhance_with_bgg:", enhance_with_bgg, "firecrawlKey present:", !!firecrawlKey, "AI configured:", isAIConfigured());
     const targetLibraryId = library_id || libraryData?.id;
     if (!targetLibraryId) {
@@ -2520,9 +2589,41 @@ async function handleBulkImport(req: Request): Promise<Response> {
         }
       }
       console.log("[BulkImport] Games to import:", gamesToImport.length);
+    } else if (mode === "bgg_collection" && bgg_username) {
+      // BGG Collection import via username (requires BGG_API_TOKEN in server .env)
+      console.log(`[BulkImport] Fetching BGG collection for: ${bgg_username}`);
+      try {
+        const collection = await fetchBGGCollection(bgg_username);
+        console.log(`[BulkImport] Found ${collection.length} games in collection`);
+        
+        for (const game of collection) {
+          gamesToImport.push({
+            title: game.name,
+            bgg_id: game.id,
+            bgg_url: `https://boardgamegeek.com/boardgame/${game.id}`,
+          });
+        }
+      } catch (collectionError: unknown) {
+        const errorMessage = collectionError instanceof Error ? collectionError.message : "Failed to fetch BGG collection";
+        console.error("[BulkImport] BGG collection fetch error:", errorMessage);
+        return new Response(JSON.stringify({ success: false, error: errorMessage }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    } else if (mode === "bgg_links" && bgg_links && bgg_links.length > 0) {
+      // BGG Links import (paste URLs)
+      console.log(`[BulkImport] Processing ${bgg_links.length} BGG links`);
+      for (const link of bgg_links) {
+        const idMatch = link.match(/boardgame\/(\d+)/);
+        if (idMatch) {
+          gamesToImport.push({
+            title: "",
+            bgg_id: idMatch[1],
+            bgg_url: link,
+          });
+        }
+      }
     } else {
-      console.log("[BulkImport] FAIL: Not CSV mode or no csv_data. mode=", mode, "csv_data present:", !!csv_data);
-      return new Response(JSON.stringify({ success: false, error: "Only CSV mode is supported in self-hosted" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      console.log("[BulkImport] FAIL: Invalid mode or missing data. mode=", mode, "csv_data:", !!csv_data, "bgg_username:", !!bgg_username, "bgg_links:", !!bgg_links);
+      return new Response(JSON.stringify({ success: false, error: "Invalid import mode or missing data" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const totalGames = gamesToImport.length;
