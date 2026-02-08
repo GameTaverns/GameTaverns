@@ -1224,7 +1224,10 @@ async function handleRateGame(req: Request): Promise<Response> {
 async function handleDiscordConfig(_req: Request): Promise<Response> {
   try {
     const clientId = Deno.env.get("DISCORD_CLIENT_ID");
+    // Use APP_URL for self-hosted or SUPABASE_URL for cloud
+    const appUrl = Deno.env.get("APP_URL");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const baseUrl = appUrl || supabaseUrl;
 
     if (!clientId) {
       return new Response(
@@ -1233,10 +1236,17 @@ async function handleDiscordConfig(_req: Request): Promise<Response> {
       );
     }
 
+    if (!baseUrl) {
+      return new Response(
+        JSON.stringify({ error: "Server URL not configured" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({
         client_id: clientId,
-        redirect_uri: `${supabaseUrl}/functions/v1/discord-oauth-callback`,
+        redirect_uri: `${baseUrl}/functions/v1/discord-oauth-callback`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
