@@ -36,14 +36,19 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): P
   }
 }
 
-function sendEmailSafely(sendFn: () => Promise<void>) {
+function sendEmailSafely(sendFn: () => Promise<void>, email: string) {
   // Never block API responses on SMTP.
   // We still attempt delivery in the background with a hard timeout.
   (async () => {
     try {
       await withTimeout(sendFn(), SMTP_SEND_TIMEOUT_MS, "SMTP send");
-    } catch (e) {
-      console.error("SMTP send failed (non-blocking):", e);
+      console.log(`[Signup] Email successfully sent to ${email}`);
+    } catch (e: any) {
+      // Log full error details for debugging - this is critical for diagnosing SMTP issues
+      console.error(`[Signup] SMTP send FAILED for ${email}:`, e?.message || e);
+      if (e?.stack) {
+        console.error(`[Signup] Stack trace:`, e.stack);
+      }
     }
   })();
 }
@@ -318,8 +323,7 @@ async function handler(req: Request): Promise<Response> {
       sendEmailSafely(async () => {
         console.log(`[Signup] Attempting confirmation email via SMTP ${Deno.env.get("SMTP_HOST")}:${Deno.env.get("SMTP_PORT") || "465"}`);
         await sendConfirmationEmail({ email, confirmUrl });
-        console.log(`Confirmation email queued for ${email}`);
-      });
+      }, email);
 
       // Return success immediately - user is created, token is stored
       // Email delivery happens in background
