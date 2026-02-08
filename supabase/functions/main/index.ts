@@ -90,6 +90,114 @@ function getAIProviderName(): string {
   return "None";
 }
 
+// Get vision-capable AI config (excludes Perplexity which doesn't support images)
+function getVisionAIConfig(): { endpoint: string; apiKey: string; model: string; provider: string } | null {
+  // Lovable AI with Gemini supports vision
+  const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+  if (lovableKey) {
+    return { 
+      endpoint: "https://ai.gateway.lovable.dev/v1/chat/completions", 
+      apiKey: lovableKey, 
+      model: "google/gemini-2.5-flash", 
+      provider: "lovable" 
+    };
+  }
+  // OpenAI GPT-4o supports vision
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (openaiKey) {
+    return { 
+      endpoint: "https://api.openai.com/v1/chat/completions", 
+      apiKey: openaiKey, 
+      model: "gpt-4o", 
+      provider: "openai" 
+    };
+  }
+  return null;
+}
+
+// Classify images using vision AI to identify gameplay/component photos
+async function classifyGameplayImages(
+  imageUrls: string[],
+  maxToReturn = 5
+): Promise<string[]> {
+  const visionConfig = getVisionAIConfig();
+  if (!visionConfig || imageUrls.length === 0) {
+    console.log("[BulkImport] No vision AI available, using URL-pattern filtering");
+    return imageUrls.slice(0, maxToReturn);
+  }
+
+  console.log(`[BulkImport] Classifying ${imageUrls.length} images with ${visionConfig.provider} vision`);
+  
+  const scoredImages: { url: string; score: number }[] = [];
+  
+  // Process images in batches to avoid rate limits
+  const batchSize = 3;
+  for (let i = 0; i < imageUrls.length && scoredImages.length < maxToReturn * 2; i += batchSize) {
+    const batch = imageUrls.slice(i, i + batchSize);
+    
+    const batchPromises = batch.map(async (url) => {
+      try {
+        const response = await fetch(visionConfig.endpoint, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${visionConfig.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: visionConfig.model,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: `Rate this board game image 1-10 for how useful it is to understand the game. High scores (7-10): gameplay in progress, game components, cards/tokens spread out, player perspective. Medium scores (4-6): box art variants, setup photos, close-ups of single components. Low scores (1-3): promotional graphics, logos, unrelated images, blurry/low-quality. Respond with ONLY a number 1-10.`
+                  },
+                  {
+                    type: "image_url",
+                    image_url: { url }
+                  }
+                ]
+              }
+            ],
+            max_tokens: 10,
+          }),
+        });
+
+        if (!response.ok) {
+          console.warn(`[BulkImport] Vision API returned ${response.status} for image`);
+          return { url, score: 5 }; // Default middle score on error
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content?.trim() || "5";
+        const score = parseInt(content.match(/\d+/)?.[0] || "5", 10);
+        
+        console.log(`[BulkImport] Image scored ${score}/10: ${url.slice(-50)}`);
+        return { url, score: Math.min(10, Math.max(1, score)) };
+      } catch (e) {
+        console.warn(`[BulkImport] Vision classification failed for image:`, e);
+        return { url, score: 5 };
+      }
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    scoredImages.push(...batchResults);
+    
+    // Small delay between batches to be nice to API
+    if (i + batchSize < imageUrls.length) {
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+
+  // Sort by score descending and take top N
+  scoredImages.sort((a, b) => b.score - a.score);
+  const topImages = scoredImages.slice(0, maxToReturn).map(s => s.url);
+  
+  console.log(`[BulkImport] Selected ${topImages.length} top-scoring images (scores: ${scoredImages.slice(0, maxToReturn).map(s => s.score).join(", ")})`);
+  return topImages;
+}
+
 async function aiComplete(options: AIRequestOptions): Promise<AIResponse> {
   const config = getAIConfig();
   if (!config) {
@@ -2116,7 +2224,7 @@ async function fetchBGGGalleryImages(
       return false;
     });
     
-    // Prioritize larger/full images
+    // Prioritize larger/full images by URL pattern
     filtered.sort((a: string, b: string) => {
       const prio = (url: string) => {
         if (/_original/i.test(url)) return 0;
@@ -2129,13 +2237,18 @@ async function fetchBGGGalleryImages(
       return prio(a) - prio(b);
     });
     
-    // Clean URLs and limit count
-    const result = filtered
-      .slice(0, maxImages)
+    // Clean URLs
+    const cleanedUrls = filtered
       .map((url: string) => cleanBggImageUrl(url))
       .filter((url): url is string => !!url);
     
-    console.log(`[BulkImport] Found ${result.length} gallery images for BGG ID: ${bggId}`);
+    // Take more candidates for AI classification (or just maxImages if no AI)
+    const candidates = cleanedUrls.slice(0, maxImages * 3);
+    
+    // Use AI vision to classify and pick the best gameplay images
+    const result = await classifyGameplayImages(candidates, maxImages);
+    
+    console.log(`[BulkImport] Selected ${result.length} gallery images for BGG ID: ${bggId}`);
     return result;
   } catch (e) {
     console.error(`[BulkImport] Gallery fetch error for ${bggId}:`, e);
@@ -2359,8 +2472,10 @@ async function handleBulkImport(req: Request): Promise<Response> {
           firecrawl_key_present: Boolean(firecrawlKey),
           ai_configured: isAIConfigured(),
           ai_provider: getAIProviderName(),
+          vision_ai_available: getVisionAIConfig() !== null,
+          vision_ai_provider: getVisionAIConfig()?.provider || "none",
           bgg_api_token_present: Boolean(Deno.env.get("BGG_API_TOKEN")),
-          debug_version: "bulk-import-2026-02-08-v4-gallery-fetch",
+          debug_version: "bulk-import-2026-02-08-v5-vision-classify",
         };
 
         console.log("[BulkImport] Sending SSE start event");
