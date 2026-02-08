@@ -182,12 +182,25 @@ export default async function handler(req: Request): Promise<Response> {
       });
 
     if (insertError) {
-      console.error("[reply-to-inquiry] Insert error raw:", JSON.stringify(insertError, null, 2));
+      // NOTE: PostgrestError often has non-enumerable properties, so JSON.stringify can show "{}".
+      // Log multiple representations so we can see the real failure (grants, FK, etc.).
+      try {
+        console.error("[reply-to-inquiry] Insert error direct:", insertError);
+        console.error("[reply-to-inquiry] Insert error keys:", Object.keys(insertError as any));
+        console.error("[reply-to-inquiry] Insert error props:", Object.getOwnPropertyNames(insertError as any));
+        console.error("[reply-to-inquiry] Insert error raw JSON:", JSON.stringify(insertError, null, 2));
+      } catch (e) {
+        console.error("[reply-to-inquiry] Failed to stringify insert error:", e);
+      }
+
+      const anyErr = insertError as any;
       return new Response(
         JSON.stringify({
           success: false,
-          error: insertError.message || insertError.details || insertError.hint || "Failed to send reply",
-          code: insertError.code || null,
+          error: anyErr?.message || anyErr?.details || anyErr?.hint || String(insertError) || "Failed to send reply",
+          code: anyErr?.code || null,
+          details: anyErr?.details || null,
+          hint: anyErr?.hint || null,
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
