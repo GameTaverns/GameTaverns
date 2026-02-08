@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Send, Loader2, LogIn } from "lucide-react";
 import { z } from "zod";
 import { Link } from "react-router-dom";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/backend/client";
 import { TurnstileWidget } from "./TurnstileWidget";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
+import { useUserProfile } from "@/hooks/useLibrary";
 
 // URL/link detection regex
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s]*)?/gi;
@@ -39,6 +40,14 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
   const { buildUrl } = useTenantUrl();
+  const { data: userProfile } = useUserProfile();
+
+  // Auto-populate name from user profile
+  useEffect(() => {
+    if (userProfile?.display_name && !name) {
+      setName(userProfile.display_name);
+    }
+  }, [userProfile?.display_name]);
 
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
