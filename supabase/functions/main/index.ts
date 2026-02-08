@@ -1513,9 +1513,11 @@ async function fetchBGGImageDirect(bggUrl: string): Promise<string | null> {
     if (!pageRes.ok) return null;
     const html = await pageRes.text();
     
-    // Try og:image first
+    // Try og:image first (but ignore opengraph/thumbnail variants)
     const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
-    if (ogMatch?.[1]?.includes("cf.geekdo-images.com")) return ogMatch[1].trim();
+    if (ogMatch?.[1]?.includes("cf.geekdo-images.com") && !isLowQualityBggImageUrl(ogMatch[1])) {
+      return ogMatch[1].trim();
+    }
     
     // Fallback: find images
     const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
@@ -1569,10 +1571,14 @@ async function handleRefreshImages(req: Request): Promise<Response> {
       .not("bgg_url", "is", null)
       .limit(limit);
     
-    // Filter client-side to catch both null and empty strings
-    const gamesNeedingImages = (games || []).filter(g => 
-      !g.image_url || g.image_url.trim() === "" || g.image_url === "null"
-    );
+    // Filter client-side:
+    // - missing images (null/empty)
+    // - OR low-quality/cropped BGG variants (opengraph/thumbnails)
+    const gamesNeedingImages = (games || []).filter((g) => {
+      const missing = !g.image_url || g.image_url.trim() === "" || g.image_url === "null";
+      const lowQuality = isLowQualityBggImageUrl(g.image_url);
+      return missing || lowQuality;
+    });
 
     if (gamesError) {
       return new Response(JSON.stringify({ success: false, error: gamesError.message }),
@@ -1589,13 +1595,24 @@ async function handleRefreshImages(req: Request): Promise<Response> {
 
     for (const game of gamesNeedingImages) {
       if (!game.bgg_url) continue;
-      const imageUrl = await fetchBGGImageDirect(game.bgg_url);
-      if (imageUrl) {
+
+      const imageUrlRaw = await fetchBGGImageDirect(game.bgg_url);
+      const imageUrl = cleanBggImageUrl(imageUrlRaw ?? undefined);
+
+      // Only update if we found something that isn't a known low-quality variant
+      if (imageUrl && !isLowQualityBggImageUrl(imageUrl)) {
         const { error } = await supabaseAdmin.from("games").update({ image_url: imageUrl }).eq("id", game.id);
-        if (!error) { updated++; console.log(`[RefreshImages] Updated: ${game.title}`); }
-        else { failed++; }
-      } else { failed++; }
-      await new Promise(r => setTimeout(r, 200));
+        if (!error) {
+          updated++;
+          console.log(`[RefreshImages] Updated: ${game.title}`);
+        } else {
+          failed++;
+        }
+      } else {
+        failed++;
+      }
+
+      await new Promise((r) => setTimeout(r, 200));
     }
 
     // Count remaining games with missing images
@@ -2031,6 +2048,14 @@ const cleanBggImageUrl = (url: string | undefined): string | undefined => {
   return cleaned.length ? cleaned : undefined;
 };
 
+// Detect BGG image variants that are commonly low-quality/cropped in UI.
+// These often show up in CSV exports (especially opengraph 1200x630) and should
+// be replaced with the canonical <image> URL from the BGG XML API when possible.
+const isLowQualityBggImageUrl = (url: string | undefined): boolean => {
+  if (!url) return true;
+  return /(__opengraph|__opengraph_letterbox|__thumb|__micro|__small|__avatar|crop100|square30|100x100|150x150|fit-in\/1200x630)/i.test(url);
+};
+
 const buildDescription = (description: string | undefined, privateComment: string | undefined): string | undefined => {
   const desc = description?.trim();
   const notes = privateComment?.trim();
@@ -2237,7 +2262,8 @@ async function handleBulkImport(req: Request): Promise<Response> {
           try {
             // Check if we need enrichment
             const hasCompleteData = !!(gameInput.description && gameInput.description.length > 50);
-            const shouldEnrich = enhance_with_bgg && gameInput.bgg_id && !hasCompleteData;
+            const hasLowQualityImage = isLowQualityBggImageUrl(gameInput.image_url);
+            const shouldEnrich = !!(enhance_with_bgg && gameInput.bgg_id && (!hasCompleteData || hasLowQualityImage));
             
             sendProgress({ 
               type: "progress", 
@@ -2262,21 +2288,14 @@ async function handleBulkImport(req: Request): Promise<Response> {
                 }
                 if (bggData) {
                   const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
-                  
-                  // Helper: check if a URL is a low-quality opengraph/social variant
-                  const isLowQualityBggImage = (url: string | undefined): boolean => {
-                    if (!url) return true;
-                    return /(__opengraph|__thumb|__micro|__small|__avatar|crop100|square30|100x100|150x150)/i.test(url);
-                  };
-                  
-                  // For image_url: prefer BGG-fetched image if CSV has a low-quality variant
-                  // This fixes the common issue where CSV exports have cropped opengraph images
-                  const shouldUseBggImage = isEmpty(gameInput.image_url) || 
-                    (bggData.image_url && isLowQualityBggImage(gameInput.image_url));
-                  
+
+                  const bggImageClean = cleanBggImageUrl(bggData.image_url);
+                  const shouldUseBggImage =
+                    isEmpty(gameInput.image_url) || (bggImageClean && isLowQualityBggImageUrl(gameInput.image_url));
+
                   enrichedData = {
                     ...gameInput,
-                    image_url: shouldUseBggImage ? bggData.image_url : gameInput.image_url,
+                    image_url: shouldUseBggImage ? bggImageClean : gameInput.image_url,
                     description: isEmpty(gameInput.description) ? bggData.description : gameInput.description,
                     difficulty: isEmpty(gameInput.difficulty) ? bggData.difficulty : gameInput.difficulty,
                     play_time: isEmpty(gameInput.play_time) ? bggData.play_time : gameInput.play_time,
@@ -2287,7 +2306,9 @@ async function handleBulkImport(req: Request): Promise<Response> {
                     mechanics: gameInput.mechanics?.length ? gameInput.mechanics : bggData.mechanics,
                     publisher: isEmpty(gameInput.publisher) ? bggData.publisher : gameInput.publisher,
                   };
-                  console.log(`[BulkImport] Enriched ${gameInput.title}: image=${!!enrichedData.image_url} (usedBgg=${shouldUseBggImage}), desc=${enrichedData.description?.length || 0} chars`);
+                  console.log(
+                    `[BulkImport] Enriched ${gameInput.title}: image=${!!enrichedData.image_url} (usedBgg=${shouldUseBggImage}), desc=${enrichedData.description?.length || 0} chars`
+                  );
                 }
               } catch (e) {
                 console.warn(`[BulkImport] Enrichment failed for ${gameInput.bgg_id}:`, e);
