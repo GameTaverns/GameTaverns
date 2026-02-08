@@ -19,7 +19,8 @@ interface DiscordEmbed {
 
 interface NotificationPayload {
   library_id: string;
-  event_type: "game_added" | "wishlist_vote" | "message_received" | "poll_created" | "poll_closed";
+  lender_user_id?: string; // For loan requests - direct notification to lender
+  event_type: "game_added" | "wishlist_vote" | "message_received" | "poll_created" | "poll_closed" | "loan_requested";
   data: Record<string, unknown>;
 }
 
@@ -30,6 +31,7 @@ const COLORS = {
   message_received: 0x3b82f6, // Blue
   poll_created: 0x8b5cf6,    // Purple
   poll_closed: 0x6366f1,     // Indigo
+  loan_requested: 0xec4899,  // Pink
 };
 
 function buildEmbed(eventType: string, data: Record<string, unknown>): DiscordEmbed {
@@ -105,6 +107,25 @@ function buildEmbed(eventType: string, data: Record<string, unknown>): DiscordEm
       if (data.winner_title) {
         embed.fields.push({ name: "🏆 Winner", value: data.winner_title as string, inline: false });
       }
+      if (data.total_votes) {
+        embed.fields.push({ name: "Total Votes", value: String(data.total_votes), inline: true });
+      }
+      break;
+
+    case "loan_requested":
+      embed.title = "📚 New Loan Request";
+      embed.description = `Someone wants to borrow **${data.game_title}**!`;
+      if (data.image_url) {
+        embed.thumbnail = { url: data.image_url as string };
+      }
+      embed.fields = [];
+      if (data.borrower_name) {
+        embed.fields.push({ name: "From", value: data.borrower_name as string, inline: true });
+      }
+      if (data.notes) {
+        embed.fields.push({ name: "Note", value: data.notes as string, inline: false });
+      }
+      embed.footer = { text: "Check your Lending Dashboard to approve or decline" };
       if (data.total_votes) {
         embed.fields.push({ name: "Total Votes", value: String(data.total_votes), inline: true });
       }
@@ -200,13 +221,16 @@ Deno.serve(async (req) => {
     const embed = buildEmbed(event_type, data);
 
     // Determine notification destination based on event type
-    // Private notifications (message_received) → DM to library owner
+    // Private notifications (message_received, loan_requested) → DM to library owner or lender
     // Public notifications (game_added, wishlist_vote, poll_*) → Webhook
-    const isPrivateEvent = event_type === "message_received";
+    const isPrivateEvent = event_type === "message_received" || event_type === "loan_requested";
 
     if (isPrivateEvent) {
-      // Send DM to library owner
-      await sendDM(supabaseUrl, library.owner_id, embed);
+      // For loan_requested, we may have a specific lender_user_id; otherwise use library owner
+      const targetUserId = payload.lender_user_id || library.owner_id;
+      
+      // Send DM to target user
+      await sendDM(supabaseUrl, targetUserId, embed);
       
       return new Response(
         JSON.stringify({ success: true, method: "dm" }),
