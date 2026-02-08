@@ -2048,7 +2048,101 @@ const cleanBggImageUrl = (url: string | undefined): string | undefined => {
   return cleaned.length ? cleaned : undefined;
 };
 
-// Detect BGG image variants that are commonly low-quality/cropped in UI.
+// Fetch gallery/gameplay images from BGG using Firecrawl
+async function fetchBGGGalleryImages(
+  bggId: string,
+  firecrawlKey: string,
+  maxImages = 5
+): Promise<string[]> {
+  try {
+    const galleryUrl = `https://boardgamegeek.com/boardgame/${bggId}/images`;
+    console.log(`[BulkImport] Fetching gallery images from: ${galleryUrl}`);
+    
+    const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${firecrawlKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: galleryUrl,
+        formats: ['rawHtml'],
+        onlyMainContent: false,
+      }),
+    });
+    
+    if (!scrapeRes.ok) {
+      console.warn(`[BulkImport] Firecrawl gallery returned ${scrapeRes.status} for ${bggId}`);
+      return [];
+    }
+    
+    const raw = await scrapeRes.text();
+    if (!raw || raw.trim().length === 0) return [];
+    
+    let scrapeData: any;
+    try {
+      scrapeData = JSON.parse(raw);
+    } catch {
+      console.warn(`[BulkImport] Failed to parse Firecrawl gallery response for ${bggId}`);
+      return [];
+    }
+    
+    const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
+    if (!rawHtml) return [];
+    
+    // Extract all BGG CDN image URLs
+    const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
+    const allImages = rawHtml.match(imageRegex) || [];
+    const uniqueImages = [...new Set(allImages)] as string[];
+    
+    // Filter out thumbnails, avatars, and very small images
+    const filtered = uniqueImages.filter((img: string) => {
+      // Exclude small images
+      if (/crop100|square30|100x100|150x150|_thumb|_avatar|_micro|square100|_mt|_t$/i.test(img)) {
+        return false;
+      }
+      // Exclude main box art (we get that from main image)
+      if (/_itemrep/i.test(img)) {
+        return false;
+      }
+      // Only include full-size images
+      if (/_imagepage|_imagepagemedium|_md|_lg|_original/i.test(img)) {
+        return true;
+      }
+      // Include if it doesn't have size suffix (could be original)
+      if (!/_(mt|t|sq|th|md|lg)$/i.test(img)) {
+        return true;
+      }
+      return false;
+    });
+    
+    // Prioritize larger/full images
+    filtered.sort((a: string, b: string) => {
+      const prio = (url: string) => {
+        if (/_original/i.test(url)) return 0;
+        if (/_imagepage(?!medium)/i.test(url)) return 1;
+        if (/_imagepagemedium/i.test(url)) return 2;
+        if (/_lg/i.test(url)) return 3;
+        if (/_md/i.test(url)) return 4;
+        return 5;
+      };
+      return prio(a) - prio(b);
+    });
+    
+    // Clean URLs and limit count
+    const result = filtered
+      .slice(0, maxImages)
+      .map((url: string) => cleanBggImageUrl(url))
+      .filter((url): url is string => !!url);
+    
+    console.log(`[BulkImport] Found ${result.length} gallery images for BGG ID: ${bggId}`);
+    return result;
+  } catch (e) {
+    console.error(`[BulkImport] Gallery fetch error for ${bggId}:`, e);
+    return [];
+  }
+}
+
 // These often show up in CSV exports (especially opengraph 1200x630) and should
 // be replaced with the canonical <image> URL from the BGG XML API when possible.
 const isLowQualityBggImageUrl = (url: string | undefined): boolean => {
@@ -2266,7 +2360,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
           ai_configured: isAIConfigured(),
           ai_provider: getAIProviderName(),
           bgg_api_token_present: Boolean(Deno.env.get("BGG_API_TOKEN")),
-          debug_version: "bulk-import-2026-02-08-v3-additional-images",
+          debug_version: "bulk-import-2026-02-08-v4-gallery-fetch",
         };
 
         console.log("[BulkImport] Sending SSE start event");
@@ -2285,9 +2379,10 @@ async function handleBulkImport(req: Request): Promise<Response> {
               }
             }
             
-            // Check if we need enrichment - now also triggers for low-quality images even with complete data
+            // Check if we need enrichment - triggers for low-quality images OR missing gallery images
             const hasLowQualityImage = isLowQualityBggImageUrl(gameInput.image_url);
-            const shouldEnrich = !!(enhance_with_bgg && effectiveBggId && hasLowQualityImage);
+            const needsGalleryImages = !gameInput.additional_images || gameInput.additional_images.length === 0;
+            const shouldEnrich = !!(enhance_with_bgg && effectiveBggId && (hasLowQualityImage || needsGalleryImages));
             
             sendProgress({ 
               type: "progress", 
@@ -2334,6 +2429,20 @@ async function handleBulkImport(req: Request): Promise<Response> {
                   console.log(
                     `[BulkImport] Enriched ${gameInput.title}: image=${!!enrichedData.image_url} (usedBgg=${shouldUseBggImage}), desc=${enrichedData.description?.length || 0} chars`
                   );
+                }
+                
+                // Fetch gallery images if we have Firecrawl and no additional images yet
+                if (firecrawlKey && (!enrichedData.additional_images || enrichedData.additional_images.length === 0)) {
+                  console.log(`[BulkImport] Fetching gallery images for: ${gameInput.title}`);
+                  try {
+                    const galleryImages = await fetchBGGGalleryImages(effectiveBggId, firecrawlKey, 5);
+                    if (galleryImages.length > 0) {
+                      enrichedData.additional_images = galleryImages;
+                      console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameInput.title}"`);
+                    }
+                  } catch (e) {
+                    console.warn(`[BulkImport] Gallery fetch failed for ${gameInput.title}:`, e);
+                  }
                 }
               } catch (e) {
                 console.warn(`[BulkImport] Enrichment failed for ${effectiveBggId}:`, e);
