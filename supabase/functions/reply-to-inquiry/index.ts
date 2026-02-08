@@ -36,6 +36,8 @@ async function encryptData(plaintext: string, keyHex: string): Promise<string> {
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  console.log("[reply-to-inquiry] Handler invoked, version: 2026-02-08-v1");
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -45,9 +47,24 @@ export default async function handler(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const encryptionKey = Deno.env.get("PII_ENCRYPTION_KEY");
 
-    if (!supabaseUrl || !supabaseServiceKey || !encryptionKey) {
+    if (!supabaseUrl) {
+      console.error("[reply-to-inquiry] Missing SUPABASE_URL");
       return new Response(
-        JSON.stringify({ success: false, error: "Server configuration error" }),
+        JSON.stringify({ success: false, error: "Server configuration error: missing URL" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!supabaseServiceKey) {
+      console.error("[reply-to-inquiry] Missing SUPABASE_SERVICE_ROLE_KEY");
+      return new Response(
+        JSON.stringify({ success: false, error: "Server configuration error: missing service key" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!encryptionKey) {
+      console.error("[reply-to-inquiry] Missing PII_ENCRYPTION_KEY");
+      return new Response(
+        JSON.stringify({ success: false, error: "Server configuration error: missing encryption key" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -67,11 +84,14 @@ export default async function handler(req: Request): Promise<Response> {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
+      console.error("[reply-to-inquiry] Auth error:", authError?.message);
       return new Response(
         JSON.stringify({ success: false, error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("[reply-to-inquiry] User authenticated:", user.id);
 
     const { message_id, reply_text } = await req.json();
 
@@ -90,33 +110,59 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Verify the user is the library owner for this message's game
+    // Fetch message without nested joins (self-hosted PostgREST compatibility)
     const { data: message, error: msgError } = await supabaseAdmin
       .from("game_messages")
-      .select(`
-        id,
-        game_id,
-        sender_user_id,
-        games!inner (
-          library_id,
-          title,
-          libraries!inner (
-            owner_id
-          )
-        )
-      `)
+      .select("id, game_id, sender_user_id")
       .eq("id", message_id)
-      .single();
+      .maybeSingle();
 
-    if (msgError || !message) {
+    if (msgError) {
+      console.error("[reply-to-inquiry] Message query error:", msgError.message);
+      return new Response(
+        JSON.stringify({ success: false, error: "Failed to fetch message" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!message) {
       return new Response(
         JSON.stringify({ success: false, error: "Message not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const libraryOwnerId = (message.games as any)?.libraries?.owner_id;
-    if (libraryOwnerId !== user.id) {
+    // Fetch game info separately
+    const { data: game, error: gameError } = await supabaseAdmin
+      .from("games")
+      .select("id, title, library_id")
+      .eq("id", message.game_id)
+      .maybeSingle();
+
+    if (gameError || !game) {
+      console.error("[reply-to-inquiry] Game query error:", gameError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: "Game not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch library to verify ownership
+    const { data: library, error: libError } = await supabaseAdmin
+      .from("libraries")
+      .select("id, owner_id")
+      .eq("id", game.library_id)
+      .maybeSingle();
+
+    if (libError || !library) {
+      console.error("[reply-to-inquiry] Library query error:", libError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: "Library not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (library.owner_id !== user.id) {
       return new Response(
         JSON.stringify({ success: false, error: "You can only reply to messages about your games" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -136,7 +182,7 @@ export default async function handler(req: Request): Promise<Response> {
       });
 
     if (insertError) {
-      console.error("Insert error:", insertError);
+      console.error("[reply-to-inquiry] Insert error:", insertError.message);
       return new Response(
         JSON.stringify({ success: false, error: "Failed to send reply" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -145,7 +191,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Send Discord DM to the inquirer if they have Discord linked
     const senderUserId = message.sender_user_id;
-    const gameTitle = (message.games as any)?.title;
+    const gameTitle = game.title;
     
     if (senderUserId) {
       try {
@@ -170,12 +216,12 @@ export default async function handler(req: Request): Promise<Response> {
           }),
         });
       } catch (err) {
-        console.error("Discord DM notify failed:", err);
+        console.error("[reply-to-inquiry] Discord DM notify failed:", err);
         // Don't fail the request if notification fails
       }
     }
 
-    console.log(`Reply sent for message ${message_id}`);
+    console.log(`[reply-to-inquiry] Reply sent for message ${message_id}`);
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -183,7 +229,7 @@ export default async function handler(req: Request): Promise<Response> {
     );
 
   } catch (error) {
-    console.error("Unexpected error:", error);
+    console.error("[reply-to-inquiry] Unexpected error:", error);
     return new Response(
       JSON.stringify({ success: false, error: "An unexpected error occurred" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
