@@ -1221,13 +1221,9 @@ async function handleRateGame(req: Request): Promise<Response> {
 // ============================================================================
 // DISCORD-CONFIG HANDLER
 // ============================================================================
-async function handleDiscordConfig(_req: Request): Promise<Response> {
+async function handleDiscordConfig(req: Request): Promise<Response> {
   try {
     const clientId = Deno.env.get("DISCORD_CLIENT_ID");
-    // Use APP_URL for self-hosted or SUPABASE_URL for cloud
-    const appUrl = Deno.env.get("APP_URL");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const baseUrl = appUrl || supabaseUrl;
 
     if (!clientId) {
       return new Response(
@@ -1235,6 +1231,22 @@ async function handleDiscordConfig(_req: Request): Promise<Response> {
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Prefer the browser Origin / forwarded host so we don't accidentally return internal
+    // container URLs like http://kong:8000.
+    const origin = req.headers.get("origin");
+    const xfHost = req.headers.get("x-forwarded-host");
+    const xfProto = req.headers.get("x-forwarded-proto") || "https";
+
+    const appUrl = Deno.env.get("APP_URL");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+
+    const baseUrl =
+      origin ||
+      (xfHost ? `${xfProto}://${xfHost}` : null) ||
+      appUrl ||
+      supabaseUrl ||
+      null;
 
     if (!baseUrl) {
       return new Response(
@@ -1246,7 +1258,7 @@ async function handleDiscordConfig(_req: Request): Promise<Response> {
     return new Response(
       JSON.stringify({
         client_id: clientId,
-        redirect_uri: `${baseUrl}/functions/v1/discord-oauth-callback`,
+        redirect_uri: `${baseUrl.replace(/\/$/, "")}/functions/v1/discord-oauth-callback`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
