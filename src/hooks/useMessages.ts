@@ -1,11 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 
+export interface GameMessageReply {
+  id: string;
+  reply_text: string;
+  replied_by: string;
+  is_owner_reply: boolean;
+  created_at: string;
+}
+
 export interface GameMessage {
   id: string;
   game_id: string;
   sender_name: string;
   sender_email: string;
+  sender_user_id: string | null;
   message: string;
   is_read: boolean;
   created_at: string;
@@ -13,6 +22,7 @@ export interface GameMessage {
     title: string;
     slug: string | null;
   } | null;
+  replies?: GameMessageReply[];
 }
 
 export function useMessages(libraryId?: string) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { ArrowLeft, Mail, MailOpen, Trash2, ExternalLink, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Mail, MailOpen, Trash2, ExternalLink, MessageSquare, ChevronDown, ChevronUp, User, Store, Reply, Send } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useMessages, useMarkMessageRead, useDeleteMessage, GameMessage } from "@/hooks/useMessages";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,13 +24,15 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
-import { ReplyToInquiryDialog } from "@/components/messages/ReplyToInquiryDialog";
+import { supabase } from "@/integrations/backend/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Messages = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { library, isOwner, isLoading: tenantLoading } = useTenant();
   const { buildUrl } = useTenantUrl();
+  const queryClient = useQueryClient();
   
   // Fetch messages for the current library
   const { data: messages = [], isLoading } = useMessages(library?.id);
@@ -37,7 +40,9 @@ const Messages = () => {
   const deleteMessage = useDeleteMessage();
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [replyMessage, setReplyMessage] = useState<GameMessage | null>(null);
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
 
   // While auth/tenant is resolving, show loading UI
   if (authLoading || tenantLoading) {
@@ -90,6 +95,38 @@ const Messages = () => {
     if (!isRead) {
       handleMarkRead(id);
     }
+    // Reset reply state when changing messages
+    if (expandedId !== id) {
+      setReplyingToId(null);
+      setReplyText("");
+    }
+  };
+
+  const handleSendReply = async (messageId: string) => {
+    if (!replyText.trim()) return;
+    
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reply-to-inquiry", {
+        body: { message_id: messageId, reply_text: replyText.trim() },
+      });
+      
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to send reply");
+      
+      toast({ title: "Reply sent!" });
+      setReplyText("");
+      setReplyingToId(null);
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to send reply",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   if (isLoading) {
@@ -139,124 +176,201 @@ const Messages = () => {
           </Card>
         ) : (
           <div className="space-y-4">
-            {messages.map((message) => (
-              <Card
-                key={message.id}
-                className={`card-elevated transition-all cursor-pointer ${
-                  !message.is_read ? "border-primary/50 bg-primary/5" : ""
-                }`}
-                onClick={() => toggleExpand(message.id, message.is_read)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {message.is_read ? (
-                        <MailOpen className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                      ) : (
-                        <Mail className="h-5 w-5 text-primary flex-shrink-0" />
-                      )}
-                      <div className="min-w-0">
-                        <CardTitle className="font-display text-base truncate">
-                          {message.sender_name}
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                        </CardDescription>
+            {messages.map((message) => {
+              const hasReplies = message.replies && message.replies.length > 0;
+              const isExpanded = expandedId === message.id;
+              
+              return (
+                <Card
+                  key={message.id}
+                  className={`card-elevated transition-all cursor-pointer ${
+                    !message.is_read ? "border-primary/50 bg-primary/5" : ""
+                  }`}
+                  onClick={() => toggleExpand(message.id, message.is_read)}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {message.is_read ? (
+                          <MailOpen className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                        ) : (
+                          <Mail className="h-5 w-5 text-primary flex-shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="font-display text-base truncate">
+                              {message.sender_name}
+                            </CardTitle>
+                            {hasReplies && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Reply className="h-3 w-3 mr-1" />
+                                {message.replies!.length}
+                              </Badge>
+                            )}
+                          </div>
+                          <CardDescription className="text-xs">
+                            {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {!message.is_read && (
+                          <Badge variant="default" className="text-xs">New</Badge>
+                        )}
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {!message.is_read && (
-                        <Badge variant="default" className="text-xs">New</Badge>
+                  </CardHeader>
+                  <CardContent>
+                    {message.game && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="text-xs">
+                          Re: {message.game.title}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(buildUrl(`/game/${message.game?.slug || message.game_id}`));
+                          }}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* Initial inquiry message */}
+                    <div className={`${isExpanded ? "" : "line-clamp-2"}`}>
+                      {isExpanded && (
+                        <div className="flex items-center gap-2 mb-1">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {message.sender_name} (Buyer)
+                          </span>
+                        </div>
                       )}
-                      {expandedId === message.id ? (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      )}
+                      <p className="text-sm text-muted-foreground">{message.message}</p>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {message.game && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="text-xs">
-                        Re: {message.game.title}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(buildUrl(`/game/${message.game?.slug || message.game_id}`));
-                        }}
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        View
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <p className={`text-sm text-muted-foreground ${expandedId === message.id ? "" : "line-clamp-2"}`}>
-                    {message.message}
-                  </p>
 
-                  {expandedId === message.id && (
-                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setReplyMessage(message);
-                        }}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Reply
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete message?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. The message from {message.sender_name} will be permanently deleted.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(message.id)}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-border space-y-4" onClick={(e) => e.stopPropagation()}>
+                        {/* Conversation thread */}
+                        {hasReplies && (
+                          <div className="space-y-3">
+                            {message.replies!.map((reply) => (
+                              <div
+                                key={reply.id}
+                                className={`rounded-lg p-3 ${
+                                  reply.is_owner_reply 
+                                    ? "bg-primary/10 border border-primary/20 ml-4" 
+                                    : "bg-muted/50 mr-4"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  {reply.is_owner_reply ? (
+                                    <>
+                                      <Store className="h-3 w-3 text-primary" />
+                                      <span className="text-xs font-medium text-primary">You (Owner)</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <User className="h-3 w-3 text-muted-foreground" />
+                                      <span className="text-xs font-medium text-muted-foreground">
+                                        {message.sender_name} (Buyer)
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                                <p className="text-sm">{reply.reply_text}</p>
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Reply input */}
+                        {replyingToId === message.id ? (
+                          <div className="space-y-2 ml-4">
+                            <Textarea
+                              placeholder="Write your reply..."
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              rows={3}
+                              maxLength={2000}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setReplyingToId(null);
+                                  setReplyText("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={!replyText.trim() || sending}
+                                onClick={() => handleSendReply(message.id)}
+                              >
+                                <Send className="h-4 w-4 mr-1" />
+                                {sending ? "Sending..." : "Send"}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => setReplyingToId(message.id)}
+                            >
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Reply
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm">
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete message?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. The message from {message.sender_name} will be permanently deleted.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(message.id)}>
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
-
-      {/* Reply Dialog */}
-      <ReplyToInquiryDialog
-        open={!!replyMessage}
-        onOpenChange={(open) => !open && setReplyMessage(null)}
-        messageId={replyMessage?.id || ""}
-        senderName={replyMessage?.sender_name || ""}
-        gameTitle={replyMessage?.game?.title || "Unknown Game"}
-      />
     </Layout>
   );
 };

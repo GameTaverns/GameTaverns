@@ -198,7 +198,7 @@ export default async function handler(req: Request): Promise<Response> {
     if (messageIds.length > 0) {
       const { data: replies } = await supabaseAdmin
         .from("game_message_replies")
-        .select("id, message_id, reply_text_encrypted, created_at")
+        .select("id, message_id, reply_text_encrypted, replied_by, created_at")
         .in("message_id", messageIds)
         .order("created_at", { ascending: true });
 
@@ -210,6 +210,9 @@ export default async function handler(req: Request): Promise<Response> {
           repliesMap[reply.message_id].push({
             id: reply.id,
             reply_text: await decryptData(reply.reply_text_encrypted, encryptionKey),
+            replied_by: reply.replied_by,
+            // For the inquirer's view: is this reply from them or from the owner?
+            is_own_reply: reply.replied_by === user.id,
             created_at: reply.created_at,
           });
         }
