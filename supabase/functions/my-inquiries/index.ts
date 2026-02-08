@@ -44,6 +44,9 @@ async function decryptData(encryptedBase64: string, keyHex: string): Promise<str
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  // Debug version marker
+  console.log("[my-inquiries] Handler invoked, version: 2026-02-08-v1");
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -53,9 +56,24 @@ export default async function handler(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const encryptionKey = Deno.env.get("PII_ENCRYPTION_KEY");
 
-    if (!supabaseUrl || !supabaseServiceKey || !encryptionKey) {
+    if (!supabaseUrl) {
+      console.error("[my-inquiries] Missing SUPABASE_URL");
       return new Response(
-        JSON.stringify({ success: false, error: "Server configuration error" }),
+        JSON.stringify({ success: false, error: "Server configuration error: missing SUPABASE_URL" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!supabaseServiceKey) {
+      console.error("[my-inquiries] Missing SUPABASE_SERVICE_ROLE_KEY");
+      return new Response(
+        JSON.stringify({ success: false, error: "Server configuration error: missing service key" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!encryptionKey) {
+      console.error("[my-inquiries] Missing PII_ENCRYPTION_KEY");
+      return new Response(
+        JSON.stringify({ success: false, error: "Server configuration error: missing encryption key" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -75,11 +93,14 @@ export default async function handler(req: Request): Promise<Response> {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
+      console.error("[my-inquiries] Auth error:", authError?.message);
       return new Response(
         JSON.stringify({ success: false, error: "Invalid authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    console.log("[my-inquiries] User authenticated:", user.id);
 
     const body = await req.json().catch(() => ({}));
 
@@ -112,31 +133,38 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Fetch user's inquiries with game info
+    // Fetch user's inquiries (without join - self-hosted PostgREST compatibility)
     const { data: messages, error: queryError } = await supabaseAdmin
       .from("game_messages")
-      .select(`
-        id,
-        game_id,
-        sender_name_encrypted,
-        message_encrypted,
-        is_read,
-        created_at,
-        games (
-          title,
-          slug,
-          library_id
-        )
-      `)
+      .select("id, game_id, sender_name_encrypted, message_encrypted, is_read, created_at")
       .eq("sender_user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (queryError) {
-      console.error("Query error:", queryError);
+      console.error("[my-inquiries] Query error:", queryError);
       return new Response(
         JSON.stringify({ success: false, error: "Failed to fetch inquiries" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    console.log("[my-inquiries] Found", messages?.length || 0, "messages");
+
+    // Fetch game info separately for self-hosted compatibility
+    const gameIds = [...new Set((messages || []).map(m => m.game_id))];
+    let gamesMap: Record<string, { title: string; slug: string; library_id: string }> = {};
+    
+    if (gameIds.length > 0) {
+      const { data: games } = await supabaseAdmin
+        .from("games")
+        .select("id, title, slug, library_id")
+        .in("id", gameIds);
+      
+      if (games) {
+        for (const game of games) {
+          gamesMap[game.id] = { title: game.title, slug: game.slug, library_id: game.library_id };
+        }
+      }
     }
 
     // Fetch replies for all messages
@@ -173,10 +201,12 @@ export default async function handler(req: Request): Promise<Response> {
         message: await decryptData(msg.message_encrypted, encryptionKey),
         is_read: msg.is_read,
         created_at: msg.created_at,
-        game: msg.games,
+        game: gamesMap[msg.game_id] || null,
         replies: repliesMap[msg.id] || [],
       }))
     );
+    
+    console.log("[my-inquiries] Returning", inquiries.length, "inquiries");
 
     return new Response(
       JSON.stringify({ success: true, inquiries }),
