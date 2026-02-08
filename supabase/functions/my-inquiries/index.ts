@@ -141,9 +141,11 @@ export default async function handler(req: Request): Promise<Response> {
       .order("created_at", { ascending: false });
 
     if (queryError) {
-      console.error("[my-inquiries] Query error:", queryError);
+      console.error("[my-inquiries] Query error:", JSON.stringify(queryError, null, 2));
+      console.error("[my-inquiries] Error message:", queryError.message);
+      console.error("[my-inquiries] Error code:", queryError.code);
       return new Response(
-        JSON.stringify({ success: false, error: "Failed to fetch inquiries" }),
+        JSON.stringify({ success: false, error: queryError.message || "Failed to fetch inquiries" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
