@@ -136,31 +136,29 @@ export function isSelfHostedMode(): boolean {
 export function isSelfHostedSupabaseStack(): boolean {
   const runtime = getRuntimeConfig();
 
-  // Any deployment that injects SUPABASE_URL at runtime (and is NOT legacy Express mode)
-  // should be treated as the self-hosted Supabase stack.
-  // This must work for custom domains/IPs, not only gametaverns.com.
-  if (runtime.SELF_HOSTED === false && runtime.SUPABASE_URL) {
+  // Any deployment that injects a SUPABASE_URL at runtime is, by definition,
+  // using the self-hosted Supabase stack (Kong + Edge Runtime + PostgREST).
+  // The only exception is legacy Express API mode, where we intentionally
+  // do NOT want to use Supabase at all.
+  if (runtime.SUPABASE_URL && !isSelfHostedMode()) {
     return true;
   }
 
-  // Back-compat: if runtime says "not legacy self-hosted" (or provides SUPABASE_URL),
-  // we can also infer self-hosted by hostname as a fallback.
-  if (runtime.SELF_HOSTED === false || runtime.SUPABASE_URL) {
-    try {
-      if (typeof window !== "undefined") {
-        const host = window.location.hostname.toLowerCase();
-        if (
-          host === "gametaverns.com" ||
-          host.endsWith(".gametaverns.com") ||
-          host === "gamehavens.com" ||
-          host.endsWith(".gamehavens.com")
-        ) {
-          return true;
-        }
+  // Hostname fallback (when runtime-config injection isn't present for some reason)
+  try {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname.toLowerCase();
+      if (
+        host === "gametaverns.com" ||
+        host.endsWith(".gametaverns.com") ||
+        host === "gamehavens.com" ||
+        host.endsWith(".gamehavens.com")
+      ) {
+        return true;
       }
-    } catch {
-      // ignore
     }
+  } catch {
+    // ignore
   }
 
   return false;
