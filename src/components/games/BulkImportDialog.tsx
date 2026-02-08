@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Upload, Link, Users, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
@@ -93,10 +94,13 @@ export function BulkImportDialog({
 }: BulkImportDialogProps) {
   const { toast } = useToast();
   const { library } = useTenant();
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState<ImportMode>(defaultMode);
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const lastRefreshRef = useRef<number>(0); // Track last refresh time to debounce
+  const lastImportedCountRef = useRef<number>(0); // Track imported count for closure safety
   
   // Update mode when defaultMode changes (e.g., when dialog opens with different mode)
   useEffect(() => {
@@ -356,6 +360,10 @@ export function BulkImportDialog({
                 const data: ProgressData = JSON.parse(line.slice(6));
                 
                 if (data.type === "start") {
+                  // Reset refs for new import
+                  lastImportedCountRef.current = 0;
+                  lastRefreshRef.current = 0;
+                  
                   setProgress({
                     current: 0,
                     total: data.total || 0,
@@ -365,15 +373,35 @@ export function BulkImportDialog({
                     phase: "starting",
                   });
                 } else if (data.type === "progress") {
+                  const newImported = data.imported || 0;
+                  const prevImported = lastImportedCountRef.current;
+                  lastImportedCountRef.current = newImported;
+                  
                   setProgress({
                     current: data.current || 0,
                     total: data.total || 0,
-                    imported: data.imported || 0,
+                    imported: newImported,
                     failed: data.failed || 0,
                     currentGame: data.currentGame || "",
                     phase: data.phase || "importing",
                   });
+                  
+                  // Refresh games list when new games are imported (debounced to every 2 seconds max)
+                  if (newImported > prevImported) {
+                    const now = Date.now();
+                    if (now - lastRefreshRef.current > 2000) {
+                      lastRefreshRef.current = now;
+                      queryClient.invalidateQueries({ queryKey: ["games"] });
+                      queryClient.invalidateQueries({ queryKey: ["games-flat"] });
+                    }
+                  }
                 } else if (data.type === "complete") {
+                  // Reset refs for next import
+                  lastImportedCountRef.current = 0;
+                  // Final refresh to ensure all games are shown
+                  queryClient.invalidateQueries({ queryKey: ["games"] });
+                  queryClient.invalidateQueries({ queryKey: ["games-flat"] });
+                  
                   setResult({
                     success: data.success || false,
                     imported: data.imported || 0,
