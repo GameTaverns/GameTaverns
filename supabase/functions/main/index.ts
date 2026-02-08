@@ -92,6 +92,16 @@ function getAIProviderName(): string {
 
 // Get vision-capable AI config (excludes Perplexity which doesn't support images)
 function getVisionAIConfig(): { endpoint: string; apiKey: string; model: string; provider: string } | null {
+  // Google AI API (Gemini) - most cost-effective vision option
+  const googleAIKey = Deno.env.get("GOOGLE_AI_API_KEY");
+  if (googleAIKey) {
+    return { 
+      endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", 
+      apiKey: googleAIKey, 
+      model: "gemini-2.5-flash", 
+      provider: "google" 
+    };
+  }
   // Lovable AI with Gemini supports vision
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
   if (lovableKey) {
