@@ -2262,9 +2262,21 @@ async function handleBulkImport(req: Request): Promise<Response> {
                 }
                 if (bggData) {
                   const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
+                  
+                  // Helper: check if a URL is a low-quality opengraph/social variant
+                  const isLowQualityBggImage = (url: string | undefined): boolean => {
+                    if (!url) return true;
+                    return /(__opengraph|__thumb|__micro|__small|__avatar|crop100|square30|100x100|150x150)/i.test(url);
+                  };
+                  
+                  // For image_url: prefer BGG-fetched image if CSV has a low-quality variant
+                  // This fixes the common issue where CSV exports have cropped opengraph images
+                  const shouldUseBggImage = isEmpty(gameInput.image_url) || 
+                    (bggData.image_url && isLowQualityBggImage(gameInput.image_url));
+                  
                   enrichedData = {
                     ...gameInput,
-                    image_url: isEmpty(gameInput.image_url) ? bggData.image_url : gameInput.image_url,
+                    image_url: shouldUseBggImage ? bggData.image_url : gameInput.image_url,
                     description: isEmpty(gameInput.description) ? bggData.description : gameInput.description,
                     difficulty: isEmpty(gameInput.difficulty) ? bggData.difficulty : gameInput.difficulty,
                     play_time: isEmpty(gameInput.play_time) ? bggData.play_time : gameInput.play_time,
@@ -2275,7 +2287,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
                     mechanics: gameInput.mechanics?.length ? gameInput.mechanics : bggData.mechanics,
                     publisher: isEmpty(gameInput.publisher) ? bggData.publisher : gameInput.publisher,
                   };
-                  console.log(`[BulkImport] Enriched ${gameInput.title}: image=${!!enrichedData.image_url}, desc=${enrichedData.description?.length || 0} chars`);
+                  console.log(`[BulkImport] Enriched ${gameInput.title}: image=${!!enrichedData.image_url} (usedBgg=${shouldUseBggImage}), desc=${enrichedData.description?.length || 0} chars`);
                 }
               } catch (e) {
                 console.warn(`[BulkImport] Enrichment failed for ${gameInput.bgg_id}:`, e);
