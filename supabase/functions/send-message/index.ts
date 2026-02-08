@@ -99,6 +99,9 @@ const URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z
 
 // Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
+  // Debug version marker - 2026-02-08-v2
+  console.log("[send-message] Handler invoked, version: 2026-02-08-v2");
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
