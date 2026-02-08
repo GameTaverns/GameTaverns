@@ -873,22 +873,36 @@ Ticket to Ride,9209`}
                   </p>
                 </div>
 
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Recommended: Use CSV Export</AlertTitle>
-                  <AlertDescription className="space-y-2">
-                    <p>
-                      Due to recent BGG API changes, direct username import may not work. 
-                      For reliable imports, we recommend using BGG's CSV export:
-                    </p>
-                    <ol className="list-decimal list-inside text-xs space-y-1">
-                      <li>Go to your <a href="https://boardgamegeek.com/collection/user/" target="_blank" rel="noopener noreferrer" className="text-primary underline">BGG Collection</a></li>
-                      <li>Click the three dots menu (⋯) → Export</li>
-                      <li>Download the CSV file</li>
-                      <li>Use the "CSV/Excel" tab above to import</li>
-                    </ol>
-                  </AlertDescription>
-                </Alert>
+                {/* Show different messaging based on environment */}
+                {isSelfHostedSupabaseStack() ? (
+                  <Alert>
+                    <CheckCircle2 className="h-4 w-4" />
+                    <AlertTitle>Direct Import Available</AlertTitle>
+                    <AlertDescription>
+                      <p className="text-sm">
+                        Enter your BGG username to import all games marked as "Owned" in your collection.
+                        This requires a BGG API token configured on your server.
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Recommended: Use CSV Export</AlertTitle>
+                    <AlertDescription className="space-y-2">
+                      <p>
+                        Due to BGG API requirements, direct username import requires server-side API tokens. 
+                        For Lovable Cloud, we recommend using BGG's CSV export:
+                      </p>
+                      <ol className="list-decimal list-inside text-xs space-y-1">
+                        <li>Go to your <a href="https://boardgamegeek.com/collection/user/" target="_blank" rel="noopener noreferrer" className="text-primary underline">BGG Collection</a></li>
+                        <li>Click the three dots menu (⋯) → Export</li>
+                        <li>Download the CSV file</li>
+                        <li>Use the "CSV/Excel" tab above to import</li>
+                      </ol>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </TabsContent>
 
               <TabsContent value="bgg_links" className="mt-0 space-y-4">
