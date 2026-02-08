@@ -74,14 +74,18 @@ function getRuntimeConfig(): RuntimeConfig {
  */
 export function isSelfHostedMode(): boolean {
   const runtime = getRuntimeConfig();
-  
+
   // 1. Explicit runtime flag takes priority
   // SELF_HOSTED: true = Legacy Express API mode
   // SELF_HOSTED: false = Use Supabase client (cloud OR self-hosted Supabase stack)
+  //
+  // Robustness: if a deployment provides SUPABASE_URL/ANON_KEY, we MUST treat it as
+  // Supabase mode even if SELF_HOSTED was accidentally set to true.
   if (runtime.SELF_HOSTED === true) {
-    return true;
+    const hasRuntimeSupabase = Boolean(runtime.SUPABASE_URL && runtime.SUPABASE_ANON_KEY);
+    return !hasRuntimeSupabase;
   }
-  
+
   // If runtime config explicitly says SELF_HOSTED: false, use Supabase mode
   // This is the case for self-hosted Supabase stack (inject-config.sh sets this)
   if (runtime.SELF_HOSTED === false) {
@@ -194,8 +198,13 @@ export function getConfig<T>(
  * Returns empty strings if in self-hosted mode (client will use stub)
  */
 export function getSupabaseConfig() {
-  // In self-hosted mode we *must* ignore any baked-in Vite env values,
+  const runtime = getRuntimeConfig();
+
+  // In legacy Express API mode we *must* ignore any baked-in Vite env values,
   // otherwise the app will accidentally talk to the cloud auth endpoint.
+  //
+  // NOTE: Some misconfigured deployments may set SELF_HOSTED=true while still
+  // providing SUPABASE_URL/ANON_KEY; isSelfHostedMode() is robust against that.
   if (isSelfHostedMode()) {
     return { url: '', anonKey: '' };
   }
