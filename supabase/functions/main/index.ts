@@ -2166,66 +2166,30 @@ const cleanBggImageUrl = (url: string | undefined): string | undefined => {
   return cleaned.length ? cleaned : undefined;
 };
 
-// Fetch gallery/gameplay images from BGG using Firecrawl
+// Fetch gallery/gameplay images from BGG.
+//
+// Primary strategy: Firecrawl scrape (rawHtml).
+// Fallback strategy: Directly fetch the BGG /images page and extract cf.geekdo-images.com URLs.
+//
+// Rationale: Firecrawl can hit 402 (insufficient credits) during large imports, but we still want
+// gallery images whenever the BGG page is reachable.
 async function fetchBGGGalleryImages(
   bggId: string,
   firecrawlKey: string,
   maxImages = 5
 ): Promise<string[]> {
-  try {
-    const galleryUrl = `https://boardgamegeek.com/boardgame/${bggId}/images`;
-    console.log(`[Gallery] Fetching from: ${galleryUrl}`);
-    console.log(`[Gallery] Firecrawl key present: ${!!firecrawlKey}, key prefix: ${firecrawlKey?.slice(0, 8)}...`);
-    
-    const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${firecrawlKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: galleryUrl,
-        formats: ['rawHtml'],
-        onlyMainContent: false,
-      }),
-    });
-    
-    console.log(`[Gallery] Firecrawl response status: ${scrapeRes.status}`);
-    
-    if (!scrapeRes.ok) {
-      const errorText = await scrapeRes.text();
-      console.error(`[Gallery] Firecrawl error for ${bggId}: ${scrapeRes.status} - ${errorText.slice(0, 500)}`);
-      return [];
-    }
-    
-    const raw = await scrapeRes.text();
-    console.log(`[Gallery] Raw response length: ${raw?.length || 0} chars`);
-    if (!raw || raw.trim().length === 0) {
-      console.warn(`[Gallery] Empty response from Firecrawl for ${bggId}`);
-      return [];
-    }
-    
-    let scrapeData: any;
-    try {
-      scrapeData = JSON.parse(raw);
-    } catch {
-      console.error(`[Gallery] Failed to parse Firecrawl JSON for ${bggId}: ${raw.slice(0, 200)}`);
-      return [];
-    }
-    
-    const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
-    console.log(`[Gallery] HTML content length: ${rawHtml.length} chars`);
-    if (!rawHtml) {
-      console.warn(`[Gallery] No rawHtml in response for ${bggId}`);
-      return [];
-    }
-    
+  const galleryUrl = `https://boardgamegeek.com/boardgame/${bggId}/images`;
+
+  const extractFromHtml = async (rawHtml: string, sourceLabel: string): Promise<string[]> => {
+    console.log(`[Gallery] ${sourceLabel} HTML content length: ${rawHtml.length} chars`);
+    if (!rawHtml) return [];
+
     // Extract all BGG CDN image URLs
     const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
     const allImages = rawHtml.match(imageRegex) || [];
     const uniqueImages = [...new Set(allImages)] as string[];
-    console.log(`[Gallery] Found ${allImages.length} total images, ${uniqueImages.length} unique`);
-    
+    console.log(`[Gallery] ${sourceLabel} found ${allImages.length} total images, ${uniqueImages.length} unique`);
+
     // Filter out thumbnails, avatars, and very small images
     const filtered = uniqueImages.filter((img: string) => {
       // Exclude small images
@@ -2246,9 +2210,9 @@ async function fetchBGGGalleryImages(
       }
       return false;
     });
-    
-    console.log(`[Gallery] After filtering: ${filtered.length} candidate images`);
-    
+
+    console.log(`[Gallery] ${sourceLabel} after filtering: ${filtered.length} candidate images`);
+
     // Prioritize larger/full images by URL pattern
     filtered.sort((a: string, b: string) => {
       const prio = (url: string) => {
@@ -2261,27 +2225,117 @@ async function fetchBGGGalleryImages(
       };
       return prio(a) - prio(b);
     });
-    
+
     // Clean URLs
     const cleanedUrls = filtered
       .map((url: string) => cleanBggImageUrl(url))
       .filter((url): url is string => !!url);
-    
-    console.log(`[Gallery] After cleaning: ${cleanedUrls.length} valid URLs`);
-    
+
+    console.log(`[Gallery] ${sourceLabel} after cleaning: ${cleanedUrls.length} valid URLs`);
+
     // Take more candidates for AI classification (or just maxImages if no AI)
     const candidates = cleanedUrls.slice(0, maxImages * 3);
-    console.log(`[Gallery] Sending ${candidates.length} candidates to AI classification`);
-    
+    console.log(`[Gallery] ${sourceLabel} sending ${candidates.length} candidates to AI classification`);
+
     // Use AI vision to classify and pick the best gameplay images
     const result = await classifyGameplayImages(candidates, maxImages);
-    
-    console.log(`[Gallery] Final selection: ${result.length} images for BGG ID: ${bggId}`);
+    console.log(`[Gallery] ${sourceLabel} final selection: ${result.length} images for BGG ID: ${bggId}`);
+
     return result;
-  } catch (e) {
-    console.error(`[Gallery] Fetch error for ${bggId}:`, e);
-    return [];
-  }
+  };
+
+  const tryFirecrawl = async (): Promise<string[] | null> => {
+    if (!firecrawlKey) {
+      console.warn(`[Gallery] Firecrawl key missing; skipping Firecrawl scrape for ${bggId}`);
+      return null;
+    }
+
+    try {
+      console.log(`[Gallery] Fetching from: ${galleryUrl}`);
+      console.log(`[Gallery] Firecrawl key present: true, key prefix: ${firecrawlKey.slice(0, 8)}...`);
+
+      const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${firecrawlKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: galleryUrl,
+          formats: ["rawHtml"],
+          onlyMainContent: false,
+        }),
+      });
+
+      console.log(`[Gallery] Firecrawl response status: ${scrapeRes.status}`);
+
+      if (!scrapeRes.ok) {
+        const errorText = await scrapeRes.text();
+        console.error(`[Gallery] Firecrawl error for ${bggId}: ${scrapeRes.status} - ${errorText.slice(0, 500)}`);
+        return null;
+      }
+
+      const raw = await scrapeRes.text();
+      console.log(`[Gallery] Firecrawl raw response length: ${raw?.length || 0} chars`);
+      if (!raw || raw.trim().length === 0) {
+        console.warn(`[Gallery] Empty response from Firecrawl for ${bggId}`);
+        return null;
+      }
+
+      let scrapeData: any;
+      try {
+        scrapeData = JSON.parse(raw);
+      } catch {
+        console.error(`[Gallery] Failed to parse Firecrawl JSON for ${bggId}: ${raw.slice(0, 200)}`);
+        return null;
+      }
+
+      const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
+      if (!rawHtml) {
+        console.warn(`[Gallery] No rawHtml in Firecrawl response for ${bggId}`);
+        return null;
+      }
+
+      return await extractFromHtml(rawHtml, "Firecrawl");
+    } catch (e) {
+      console.error(`[Gallery] Firecrawl fetch error for ${bggId}:`, e);
+      return null;
+    }
+  };
+
+  const tryDirect = async (): Promise<string[]> => {
+    try {
+      console.log(`[Gallery] Direct-fetch fallback: ${galleryUrl}`);
+      const pageRes = await fetch(galleryUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        redirect: "follow",
+      });
+
+      console.log(`[Gallery] Direct-fetch status: ${pageRes.status}`);
+      if (!pageRes.ok) {
+        const snippet = (await pageRes.text().catch(() => "")).slice(0, 200);
+        console.warn(`[Gallery] Direct-fetch failed for ${bggId}: ${pageRes.status} ${snippet}`);
+        return [];
+      }
+
+      const html = await pageRes.text();
+      return await extractFromHtml(html, "Direct");
+    } catch (e) {
+      console.error(`[Gallery] Direct-fetch error for ${bggId}:`, e);
+      return [];
+    }
+  };
+
+  // Try Firecrawl first (if available); fall back to direct fetch.
+  const firecrawlResult = await tryFirecrawl();
+  if (firecrawlResult && firecrawlResult.length > 0) return firecrawlResult;
+
+  return await tryDirect();
 }
 
 // These often show up in CSV exports (especially opengraph 1200x630) and should
