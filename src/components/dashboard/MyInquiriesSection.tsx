@@ -1,19 +1,25 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { MessageSquare, ChevronDown, ChevronUp, ExternalLink, Reply } from "lucide-react";
+import { MessageSquare, ChevronDown, ChevronUp, ExternalLink, Reply, Send } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useMyInquiries } from "@/hooks/useMyInquiries";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
+import { supabase } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export function MyInquiriesSection() {
   const { data: inquiries = [], isLoading } = useMyInquiries();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const { buildUrl } = useTenantUrl();
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+  const { getPlatformUrl } = useTenantUrl();
+  const queryClient = useQueryClient();
 
   if (isLoading) {
     return (
@@ -33,6 +39,51 @@ export function MyInquiriesSection() {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  const buildGameUrl = (inquiry: typeof inquiries[0]) => {
+    if (!inquiry.game?.slug) return null;
+    
+    const librarySlug = inquiry.game.library_slug;
+    if (!librarySlug) return null;
+    
+    // Build absolute URL to the library subdomain
+    const host = window.location.host;
+    const isLocalhost = host.includes("localhost");
+    const isLovablePreview = host.includes("lovable.app");
+    
+    if (isLocalhost || isLovablePreview) {
+      // Use query param for local/preview
+      return `${window.location.origin}/game/${inquiry.game.slug}?tenant=${librarySlug}`;
+    }
+    
+    // Production: use subdomain
+    const parts = host.split(".");
+    const baseDomain = parts.length > 2 ? parts.slice(-2).join(".") : host;
+    return `https://${librarySlug}.${baseDomain}/game/${inquiry.game.slug}`;
+  };
+
+  const handleSendReply = async (messageId: string) => {
+    if (!replyText.trim()) return;
+    
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-inquiry-reply", {
+        body: { message_id: messageId, reply_text: replyText.trim() },
+      });
+      
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to send reply");
+      
+      toast.success("Reply sent!");
+      setReplyText("");
+      setReplyingToId(null);
+      queryClient.invalidateQueries({ queryKey: ["my-inquiries"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send reply");
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -45,6 +96,7 @@ export function MyInquiriesSection() {
         {inquiries.map((inquiry) => {
           const hasReplies = inquiry.replies && inquiry.replies.length > 0;
           const isExpanded = expandedId === inquiry.id;
+          const gameUrl = buildGameUrl(inquiry);
 
           return (
             <Card
@@ -73,19 +125,19 @@ export function MyInquiriesSection() {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (inquiry.game?.slug) {
-                          navigate(buildUrl(`/game/${inquiry.game.slug}`));
-                        }
-                      }}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
+                    {gameUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(gameUrl, "_blank");
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
                     {isExpanded ? (
                       <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     ) : (
@@ -96,7 +148,7 @@ export function MyInquiriesSection() {
               </CardHeader>
 
               {isExpanded && (
-                <CardContent className="pt-0">
+                <CardContent className="pt-0" onClick={(e) => e.stopPropagation()}>
                   <div className="space-y-4">
                     {/* Original message */}
                     <div className="bg-muted/50 rounded-lg p-3">
@@ -107,7 +159,7 @@ export function MyInquiriesSection() {
                     {/* Replies */}
                     {hasReplies && (
                       <div className="space-y-3 border-t border-border pt-3">
-                        <p className="text-xs font-medium text-muted-foreground">Replies:</p>
+                        <p className="text-xs font-medium text-muted-foreground">Conversation:</p>
                         {inquiry.replies!.map((reply) => (
                           <div
                             key={reply.id}
@@ -119,6 +171,52 @@ export function MyInquiriesSection() {
                             </p>
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* Reply input */}
+                    {hasReplies && (
+                      <div className="border-t border-border pt-3">
+                        {replyingToId === inquiry.id ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              placeholder="Write your reply..."
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              rows={3}
+                              maxLength={2000}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setReplyingToId(null);
+                                  setReplyText("");
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={!replyText.trim() || sending}
+                                onClick={() => handleSendReply(inquiry.id)}
+                              >
+                                <Send className="h-4 w-4 mr-1" />
+                                {sending ? "Sending..." : "Send"}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setReplyingToId(inquiry.id)}
+                          >
+                            <Reply className="h-4 w-4 mr-1" />
+                            Reply
+                          </Button>
+                        )}
                       </div>
                     )}
 

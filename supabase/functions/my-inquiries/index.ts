@@ -154,7 +154,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Fetch game info separately for self-hosted compatibility
     const gameIds = [...new Set((messages || []).map(m => m.game_id))];
-    let gamesMap: Record<string, { title: string; slug: string; library_id: string }> = {};
+    let gamesMap: Record<string, { title: string; slug: string; library_id: string; library_slug: string }> = {};
     
     if (gameIds.length > 0) {
       const { data: games } = await supabaseAdmin
@@ -163,8 +163,30 @@ export default async function handler(req: Request): Promise<Response> {
         .in("id", gameIds);
       
       if (games) {
+        // Fetch library slugs
+        const libraryIds = [...new Set(games.map(g => g.library_id).filter(Boolean))];
+        let librarySlugMap: Record<string, string> = {};
+        
+        if (libraryIds.length > 0) {
+          const { data: libraries } = await supabaseAdmin
+            .from("libraries")
+            .select("id, slug")
+            .in("id", libraryIds);
+          
+          if (libraries) {
+            for (const lib of libraries) {
+              librarySlugMap[lib.id] = lib.slug;
+            }
+          }
+        }
+        
         for (const game of games) {
-          gamesMap[game.id] = { title: game.title, slug: game.slug, library_id: game.library_id };
+          gamesMap[game.id] = { 
+            title: game.title, 
+            slug: game.slug, 
+            library_id: game.library_id,
+            library_slug: librarySlugMap[game.library_id] || ""
+          };
         }
       }
     }

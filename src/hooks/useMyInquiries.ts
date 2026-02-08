@@ -12,6 +12,7 @@ export interface MyInquiry {
     title: string;
     slug: string | null;
     library_id: string | null;
+    library_slug: string | null;
   } | null;
   replies?: {
     id: string;
