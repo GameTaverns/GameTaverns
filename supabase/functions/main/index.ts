@@ -3903,6 +3903,19 @@ async function handleDiscordOAuthCallback(req: Request): Promise<Response> {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+    // IMPORTANT: Discord requires the *exact* same redirect_uri on token exchange
+    // as was used during the initial authorize step.
+    // In self-hosted, SUPABASE_URL may be an internal URL, so prefer public origin/forwarded host.
+    const origin = req.headers.get("origin");
+    const xfHost = req.headers.get("x-forwarded-host");
+    const xfProto = req.headers.get("x-forwarded-proto") || "https";
+    const appUrl =
+      origin ||
+      (xfHost ? `${xfProto}://${xfHost}` : null) ||
+      Deno.env.get("APP_URL") ||
+      supabaseUrl;
+    const redirectUri = `${appUrl.replace(/\/$/, "")}/functions/v1/discord-oauth-callback`;
+
     let userId: string, appOrigin: string;
     try {
       const stateData = JSON.parse(atob(state));
@@ -3915,8 +3928,15 @@ async function handleDiscordOAuthCallback(req: Request): Promise<Response> {
     if (!userId || !appOrigin) return redirectWithError("Missing user ID or app origin in state", appOrigin);
 
     const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
-      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, grant_type: "authorization_code", code, redirect_uri: `${supabaseUrl}/functions/v1/discord-oauth-callback` }),
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+      }),
     });
 
     if (!tokenResponse.ok) return redirectWithError("Failed to exchange authorization code", appOrigin);
