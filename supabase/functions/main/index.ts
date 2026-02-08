@@ -1232,19 +1232,21 @@ async function handleDiscordConfig(req: Request): Promise<Response> {
       );
     }
 
-    // Prefer the browser Origin / forwarded host so we don't accidentally return internal
-    // container URLs like http://kong:8000.
-    const origin = req.headers.get("origin");
-    const xfHost = req.headers.get("x-forwarded-host");
-    const xfProto = req.headers.get("x-forwarded-proto") || "https";
-
+    // CRITICAL: For Discord OAuth, we MUST use a consistent redirect_uri.
+    // Always prefer APP_URL when set, because:
+    // 1. The browser Origin could be a tenant subdomain (tzolaks-tavern.gametaverns.com)
+    // 2. The callback from Discord has NO Origin header
+    // 3. Discord requires EXACT match between authorize and token exchange
     const appUrl = Deno.env.get("APP_URL");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
 
+    // Use APP_URL first if configured, otherwise fall back to other options
+    const xfHost = req.headers.get("x-forwarded-host");
+    const xfProto = req.headers.get("x-forwarded-proto") || "https";
+
     const baseUrl =
-      origin ||
-      (xfHost ? `${xfProto}://${xfHost}` : null) ||
       appUrl ||
+      (xfHost ? `${xfProto}://${xfHost}` : null) ||
       supabaseUrl ||
       null;
 
@@ -1254,6 +1256,8 @@ async function handleDiscordConfig(req: Request): Promise<Response> {
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("[discord-config] Using redirect base URL:", baseUrl);
 
     return new Response(
       JSON.stringify({
@@ -3903,18 +3907,20 @@ async function handleDiscordOAuthCallback(req: Request): Promise<Response> {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // IMPORTANT: Discord requires the *exact* same redirect_uri on token exchange
+    // CRITICAL: Discord requires the *exact* same redirect_uri on token exchange
     // as was used during the initial authorize step.
-    // In self-hosted, SUPABASE_URL may be an internal URL, so prefer public origin/forwarded host.
-    const origin = req.headers.get("origin");
+    // MUST use APP_URL first (same logic as discord-config handler) to ensure consistency.
+    const appUrl = Deno.env.get("APP_URL");
     const xfHost = req.headers.get("x-forwarded-host");
     const xfProto = req.headers.get("x-forwarded-proto") || "https";
-    const appUrl =
-      origin ||
+    
+    const baseUrl =
+      appUrl ||
       (xfHost ? `${xfProto}://${xfHost}` : null) ||
-      Deno.env.get("APP_URL") ||
       supabaseUrl;
-    const redirectUri = `${appUrl.replace(/\/$/, "")}/functions/v1/discord-oauth-callback`;
+    const redirectUri = `${baseUrl.replace(/\/$/, "")}/functions/v1/discord-oauth-callback`;
+    
+    console.log("[discord-oauth-callback] Using redirect_uri:", redirectUri);
 
     let userId: string, appOrigin: string;
     try {
