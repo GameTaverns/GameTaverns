@@ -2258,7 +2258,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
           ai_configured: isAIConfigured(),
           ai_provider: getAIProviderName(),
           bgg_api_token_present: Boolean(Deno.env.get("BGG_API_TOKEN")),
-          debug_version: "bulk-import-2026-02-08-main",
+          debug_version: "bulk-import-2026-02-08-v2-url-extract",
         };
 
         console.log("[BulkImport] Sending SSE start event");
@@ -2267,10 +2267,19 @@ async function handleBulkImport(req: Request): Promise<Response> {
           const gameInput = gamesToImport[i];
           console.log(`[BulkImport] Processing game ${i + 1}/${totalGames}: ${gameInput.title}`);
           try {
-            // Check if we need enrichment
-            const hasCompleteData = !!(gameInput.description && gameInput.description.length > 50);
+            // Extract BGG ID from URL if not provided directly
+            let effectiveBggId = gameInput.bgg_id;
+            if (!effectiveBggId && gameInput.bgg_url) {
+              const bggUrlMatch = gameInput.bgg_url.match(/boardgamegeek\.com\/boardgame\/(\d+)/);
+              if (bggUrlMatch) {
+                effectiveBggId = bggUrlMatch[1];
+                console.log(`[BulkImport] Extracted BGG ID ${effectiveBggId} from URL for "${gameInput.title}"`);
+              }
+            }
+            
+            // Check if we need enrichment - now also triggers for low-quality images even with complete data
             const hasLowQualityImage = isLowQualityBggImageUrl(gameInput.image_url);
-            const shouldEnrich = !!(enhance_with_bgg && gameInput.bgg_id && (!hasCompleteData || hasLowQualityImage));
+            const shouldEnrich = !!(enhance_with_bgg && effectiveBggId && hasLowQualityImage);
             
             sendProgress({ 
               type: "progress", 
@@ -2278,20 +2287,20 @@ async function handleBulkImport(req: Request): Promise<Response> {
               total: totalGames, 
               imported, 
               failed, 
-              currentGame: gameInput.title || `BGG ID: ${gameInput.bgg_id}`, 
+              currentGame: gameInput.title || `BGG ID: ${effectiveBggId}`, 
               phase: shouldEnrich ? "enhancing" : "importing" 
             });
             
-            // Enrich with BGG data if needed
+            // Enrich with BGG data if needed (uses effectiveBggId extracted from URL if needed)
             let enrichedData: typeof gameInput = { ...gameInput };
-            if (shouldEnrich && gameInput.bgg_id) {
-              console.log(`[BulkImport] Enriching with BGG: ${gameInput.bgg_id}`);
+            if (shouldEnrich && effectiveBggId) {
+              console.log(`[BulkImport] Enriching with BGG: ${effectiveBggId} (extracted from URL: ${!gameInput.bgg_id})`);
               try {
                 let bggData: Awaited<ReturnType<typeof fetchBGGDataWithFirecrawl>> | null = null;
                 if (firecrawlKey) {
-                  bggData = await fetchBGGDataWithFirecrawl(gameInput.bgg_id, firecrawlKey);
+                  bggData = await fetchBGGDataWithFirecrawl(effectiveBggId, firecrawlKey);
                 } else {
-                  bggData = await fetchBGGXMLData(gameInput.bgg_id);
+                  bggData = await fetchBGGXMLData(effectiveBggId);
                 }
                 if (bggData) {
                   const isEmpty = (val: unknown): boolean => val === undefined || val === null || val === "";
@@ -2302,6 +2311,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
 
                   enrichedData = {
                     ...gameInput,
+                    bgg_id: effectiveBggId, // Store the extracted BGG ID
                     image_url: shouldUseBggImage ? bggImageClean : gameInput.image_url,
                     description: isEmpty(gameInput.description) ? bggData.description : gameInput.description,
                     difficulty: isEmpty(gameInput.difficulty) ? bggData.difficulty : gameInput.difficulty,
@@ -2318,7 +2328,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
                   );
                 }
               } catch (e) {
-                console.warn(`[BulkImport] Enrichment failed for ${gameInput.bgg_id}:`, e);
+                console.warn(`[BulkImport] Enrichment failed for ${effectiveBggId}:`, e);
               }
             }
             
