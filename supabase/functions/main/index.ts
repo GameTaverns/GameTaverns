@@ -19,6 +19,7 @@ import sendAuthEmailHandler from "../send-auth-email/index.ts";
 import sendMessageHandler from "../send-message/index.ts";
 import myInquiriesHandler from "../my-inquiries/index.ts";
 import replyToInquiryHandler from "../reply-to-inquiry/index.ts";
+import sendInquiryReplyHandler from "../send-inquiry-reply/index.ts";
 import condenseDescriptionsHandler from "../condense-descriptions/index.ts";
 import decryptMessagesHandler from "../decrypt-messages/index.ts";
 import membershipHandler from "../membership/index.ts";
@@ -4104,7 +4105,7 @@ const AVAILABLE_FUNCTIONS = [
   "discord-notify", "discord-oauth-callback", "discord-send-dm", "discord-unlink",
   "game-import", "game-recommendations", "image-proxy", "manage-account", "manage-users",
   "my-inquiries", "rate-game", "refresh-images", "reply-to-inquiry", "resolve-username", "send-auth-email",
-  "send-message", "signup", "sync-achievements", "totp-disable", "totp-setup", "totp-status",
+  "send-inquiry-reply", "send-message", "signup", "sync-achievements", "totp-disable", "totp-setup", "totp-status",
   "totp-verify", "verify-email", "verify-reset-token", "wishlist",
   // Self-hosted-only helpers
   "membership", "library-settings",
@@ -4114,7 +4115,7 @@ const INLINED_FUNCTIONS = [
   "totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users", "manage-account",
   "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy", "bulk-import", "refresh-images",
   "signup", "game-recommendations", "verify-email", "verify-reset-token", "send-auth-email",
-  "send-message", "my-inquiries", "reply-to-inquiry", "condense-descriptions", "decrypt-messages", "resolve-username", "sync-achievements",
+  "send-inquiry-reply", "send-message", "my-inquiries", "reply-to-inquiry", "condense-descriptions", "decrypt-messages", "resolve-username", "sync-achievements",
   "discord-notify", "discord-create-event", "discord-forum-post", "discord-delete-thread",
   "discord-oauth-callback", "discord-send-dm",
   // Self-hosted-only helpers
@@ -4187,6 +4188,8 @@ Deno.serve(async (req) => {
       return myInquiriesHandler(req);
     case "reply-to-inquiry":
       return replyToInquiryHandler(req);
+    case "send-inquiry-reply":
+      return sendInquiryReplyHandler(req);
     case "condense-descriptions":
       return condenseDescriptionsHandler(req);
     case "decrypt-messages":
