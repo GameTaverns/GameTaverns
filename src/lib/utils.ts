@@ -16,14 +16,32 @@ export function cn(...inputs: ClassValue[]) {
  */
 function cleanBggUrl(url: string): string {
   // For client-side/browser loading, we want literal parentheses (browsers handle them fine)
-  return url
+  let cleaned = url
+    // Remove HTML entities and everything after (bad scraping artifacts)
+    .replace(/&quot;.*$/gi, "")
+    .replace(/&amp;.*$/gi, "")
+    .replace(/&#\d+;.*$/g, "")
+    // Decode URL-encoded HTML entities (e.g., %22 for quote, which starts junk)
+    .replace(/%22.*$/gi, "")
+    // Handle double-encoded parentheses first
+    .replace(/%2528/g, "(")
+    .replace(/%2529/g, ")")
+    // Then single-encoded
     .replace(/%28/g, "(")
     .replace(/%29/g, ")")
-    .replace(/%2528/g, "(") // Double-encoded
-    .replace(/%2529/g, ")")
-    .replace(/&quot;.*$/, "") // Remove HTML entities from bad scraping
-    .replace(/[\s\u0000-\u001F]+$/g, "") // Strip trailing control/whitespace
-    .replace(/[;,]+$/g, ""); // Remove trailing punctuation (common scraping artifacts)
+    // Strip trailing control/whitespace
+    .replace(/[\s\u0000-\u001F]+$/g, "")
+    // Remove trailing punctuation (common scraping artifacts)
+    .replace(/[;,]+$/g, "");
+  
+  // Validate it's still a valid URL after cleaning
+  try {
+    new URL(cleaned);
+    return cleaned;
+  } catch {
+    // If cleaning broke the URL, return original
+    return url;
+  }
 }
 
 /**
