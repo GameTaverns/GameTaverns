@@ -288,8 +288,8 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
             onClick={() => setMode("wishlist")}
             className={cn(
               mode === "wishlist" 
-                ? "bg-secondary text-secondary-foreground" 
-                : "border-secondary/50 text-cream hover:bg-wood-medium/50"
+                ? "bg-cream text-wood-dark font-medium" 
+                : "border-cream/60 text-cream bg-wood-medium/40 hover:bg-wood-medium/60"
             )}
           >
             <Heart className="h-4 w-4 mr-1" />
@@ -301,8 +301,8 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
             onClick={() => setMode("filter")}
             className={cn(
               mode === "filter" 
-                ? "bg-secondary text-secondary-foreground" 
-                : "border-secondary/50 text-cream hover:bg-wood-medium/50"
+                ? "bg-cream text-wood-dark font-medium" 
+                : "border-cream/60 text-cream bg-wood-medium/40 hover:bg-wood-medium/60"
             )}
           >
             <Filter className="h-4 w-4 mr-1" />
@@ -314,8 +314,8 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
             onClick={() => setMode("manual")}
             className={cn(
               mode === "manual" 
-                ? "bg-secondary text-secondary-foreground" 
-                : "border-secondary/50 text-cream hover:bg-wood-medium/50"
+                ? "bg-cream text-wood-dark font-medium" 
+                : "border-cream/60 text-cream bg-wood-medium/40 hover:bg-wood-medium/60"
             )}
           >
             <Hand className="h-4 w-4 mr-1" />
