@@ -301,6 +301,8 @@ services:
       DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
       DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:-}"
       TURNSTILE_SECRET_KEY: "${TURNSTILE_SECRET_KEY:-}"
+      # Public site origin for OAuth redirect construction
+      APP_URL: "${APP_URL:-}"
       # SMTP for edge functions
       SMTP_HOST: "${SMTP_HOST:-mail}"
       SMTP_PORT: "${SMTP_PORT:-25}"
