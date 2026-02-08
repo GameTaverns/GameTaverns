@@ -182,9 +182,13 @@ export default async function handler(req: Request): Promise<Response> {
       });
 
     if (insertError) {
-      console.error("[reply-to-inquiry] Insert error:", insertError.message);
+      console.error("[reply-to-inquiry] Insert error raw:", JSON.stringify(insertError, null, 2));
       return new Response(
-        JSON.stringify({ success: false, error: "Failed to send reply" }),
+        JSON.stringify({
+          success: false,
+          error: insertError.message || insertError.details || insertError.hint || "Failed to send reply",
+          code: insertError.code || null,
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
