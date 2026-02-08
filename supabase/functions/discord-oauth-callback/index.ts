@@ -46,6 +46,8 @@ Deno.serve(async (req) => {
     const clientSecret = Deno.env.get("DISCORD_CLIENT_SECRET")!;
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // Use APP_URL for self-hosted (public URL) or fall back to SUPABASE_URL
+    const appUrl = Deno.env.get("APP_URL") || supabaseUrl;
 
     // Parse state to get user_id (state is base64 encoded JSON with user_id)
     let userId: string;
@@ -99,7 +101,7 @@ Deno.serve(async (req) => {
         client_secret: clientSecret,
         grant_type: "authorization_code",
         code: code,
-        redirect_uri: `${supabaseUrl}/functions/v1/discord-oauth-callback`,
+        redirect_uri: `${appUrl}/functions/v1/discord-oauth-callback`,
       }),
     });
 
