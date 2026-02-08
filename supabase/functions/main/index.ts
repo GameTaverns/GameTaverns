@@ -2174,7 +2174,8 @@ async function fetchBGGGalleryImages(
 ): Promise<string[]> {
   try {
     const galleryUrl = `https://boardgamegeek.com/boardgame/${bggId}/images`;
-    console.log(`[BulkImport] Fetching gallery images from: ${galleryUrl}`);
+    console.log(`[Gallery] Fetching from: ${galleryUrl}`);
+    console.log(`[Gallery] Firecrawl key present: ${!!firecrawlKey}, key prefix: ${firecrawlKey?.slice(0, 8)}...`);
     
     const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
@@ -2189,29 +2190,41 @@ async function fetchBGGGalleryImages(
       }),
     });
     
+    console.log(`[Gallery] Firecrawl response status: ${scrapeRes.status}`);
+    
     if (!scrapeRes.ok) {
-      console.warn(`[BulkImport] Firecrawl gallery returned ${scrapeRes.status} for ${bggId}`);
+      const errorText = await scrapeRes.text();
+      console.error(`[Gallery] Firecrawl error for ${bggId}: ${scrapeRes.status} - ${errorText.slice(0, 500)}`);
       return [];
     }
     
     const raw = await scrapeRes.text();
-    if (!raw || raw.trim().length === 0) return [];
+    console.log(`[Gallery] Raw response length: ${raw?.length || 0} chars`);
+    if (!raw || raw.trim().length === 0) {
+      console.warn(`[Gallery] Empty response from Firecrawl for ${bggId}`);
+      return [];
+    }
     
     let scrapeData: any;
     try {
       scrapeData = JSON.parse(raw);
     } catch {
-      console.warn(`[BulkImport] Failed to parse Firecrawl gallery response for ${bggId}`);
+      console.error(`[Gallery] Failed to parse Firecrawl JSON for ${bggId}: ${raw.slice(0, 200)}`);
       return [];
     }
     
     const rawHtml = scrapeData.data?.rawHtml || scrapeData.rawHtml || "";
-    if (!rawHtml) return [];
+    console.log(`[Gallery] HTML content length: ${rawHtml.length} chars`);
+    if (!rawHtml) {
+      console.warn(`[Gallery] No rawHtml in response for ${bggId}`);
+      return [];
+    }
     
     // Extract all BGG CDN image URLs
     const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
     const allImages = rawHtml.match(imageRegex) || [];
     const uniqueImages = [...new Set(allImages)] as string[];
+    console.log(`[Gallery] Found ${allImages.length} total images, ${uniqueImages.length} unique`);
     
     // Filter out thumbnails, avatars, and very small images
     const filtered = uniqueImages.filter((img: string) => {
@@ -2234,6 +2247,8 @@ async function fetchBGGGalleryImages(
       return false;
     });
     
+    console.log(`[Gallery] After filtering: ${filtered.length} candidate images`);
+    
     // Prioritize larger/full images by URL pattern
     filtered.sort((a: string, b: string) => {
       const prio = (url: string) => {
@@ -2252,16 +2267,19 @@ async function fetchBGGGalleryImages(
       .map((url: string) => cleanBggImageUrl(url))
       .filter((url): url is string => !!url);
     
+    console.log(`[Gallery] After cleaning: ${cleanedUrls.length} valid URLs`);
+    
     // Take more candidates for AI classification (or just maxImages if no AI)
     const candidates = cleanedUrls.slice(0, maxImages * 3);
+    console.log(`[Gallery] Sending ${candidates.length} candidates to AI classification`);
     
     // Use AI vision to classify and pick the best gameplay images
     const result = await classifyGameplayImages(candidates, maxImages);
     
-    console.log(`[BulkImport] Selected ${result.length} gallery images for BGG ID: ${bggId}`);
+    console.log(`[Gallery] Final selection: ${result.length} images for BGG ID: ${bggId}`);
     return result;
   } catch (e) {
-    console.error(`[BulkImport] Gallery fetch error for ${bggId}:`, e);
+    console.error(`[Gallery] Fetch error for ${bggId}:`, e);
     return [];
   }
 }
@@ -2555,23 +2573,36 @@ async function handleBulkImport(req: Request): Promise<Response> {
                     `[BulkImport] Enriched ${gameInput.title}: image=${!!enrichedData.image_url} (usedBgg=${shouldUseBggImage}), desc=${enrichedData.description?.length || 0} chars`
                   );
                 }
-                
-                // Fetch gallery images if we have Firecrawl and no additional images yet
-                if (firecrawlKey && (!enrichedData.additional_images || enrichedData.additional_images.length === 0)) {
-                  console.log(`[BulkImport] Fetching gallery images for: ${gameInput.title}`);
-                  try {
-                    const galleryImages = await fetchBGGGalleryImages(effectiveBggId, firecrawlKey, 5);
-                    if (galleryImages.length > 0) {
-                      enrichedData.additional_images = galleryImages;
-                      console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameInput.title}"`);
-                    }
-                  } catch (e) {
-                    console.warn(`[BulkImport] Gallery fetch failed for ${gameInput.title}:`, e);
-                  }
-                }
               } catch (e) {
                 console.warn(`[BulkImport] Enrichment failed for ${effectiveBggId}:`, e);
               }
+            }
+            
+            // ALWAYS fetch gallery images when we have Firecrawl + BGG ID + no existing gallery
+            // This runs independently of the enhance_with_bgg flag for main data enrichment
+            const hasGalleryImages = enrichedData.additional_images && enrichedData.additional_images.length > 0;
+            console.log(`[BulkImport] Gallery check for "${gameInput.title}": firecrawlKey=${!!firecrawlKey}, hasGalleryImages=${hasGalleryImages}, bggId=${effectiveBggId}, enhance_with_bgg=${enhance_with_bgg}`);
+            
+            if (firecrawlKey && !hasGalleryImages && effectiveBggId) {
+              console.log(`[BulkImport] Fetching gallery images for: ${gameInput.title} (BGG ID: ${effectiveBggId})`);
+              try {
+                const galleryImages = await fetchBGGGalleryImages(effectiveBggId, firecrawlKey, 5);
+                console.log(`[BulkImport] fetchBGGGalleryImages returned ${galleryImages.length} images for "${gameInput.title}"`);
+                if (galleryImages.length > 0) {
+                  enrichedData.additional_images = galleryImages;
+                  console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameInput.title}": ${galleryImages.slice(0, 2).join(', ')}...`);
+                } else {
+                  console.warn(`[BulkImport] No gallery images returned for "${gameInput.title}"`);
+                }
+              } catch (e) {
+                console.error(`[BulkImport] Gallery fetch failed for ${gameInput.title}:`, e);
+              }
+            } else if (!firecrawlKey) {
+              console.log(`[BulkImport] Skipping gallery fetch - no FIRECRAWL_API_KEY`);
+            } else if (!effectiveBggId) {
+              console.log(`[BulkImport] Skipping gallery fetch for "${gameInput.title}" - no BGG ID`);
+            } else if (hasGalleryImages) {
+              console.log(`[BulkImport] Skipping gallery fetch for "${gameInput.title}" - already has ${enrichedData.additional_images?.length} images`);
             }
             
             if (!enrichedData.title) { 
