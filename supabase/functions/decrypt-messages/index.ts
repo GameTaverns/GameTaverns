@@ -48,6 +48,7 @@ interface DecryptedMessage {
   game_id: string;
   sender_name: string;
   sender_email: string;
+  sender_user_id: string | null;
   message: string;
   is_read: boolean;
   created_at: string;
@@ -55,6 +56,13 @@ interface DecryptedMessage {
     title: string;
     slug: string | null;
   } | null;
+  replies?: {
+    id: string;
+    reply_text: string;
+    replied_by: string;
+    is_owner_reply: boolean;
+    created_at: string;
+  }[];
 }
 
 // Export handler for self-hosted router
@@ -180,6 +188,7 @@ export default async function handler(req: Request): Promise<Response> {
         sender_name_encrypted,
         sender_email_encrypted,
         message_encrypted,
+        sender_user_id,
         is_read,
         created_at,
         game:games(title, slug, library_id)
@@ -218,6 +227,27 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
+    // Fetch replies for all messages
+    const messageIds = (messages || []).map((m: any) => m.id);
+    let repliesMap: Record<string, any[]> = {};
+
+    if (messageIds.length > 0) {
+      const { data: replies } = await supabaseAdmin
+        .from("game_message_replies")
+        .select("id, message_id, reply_text_encrypted, replied_by, created_at")
+        .in("message_id", messageIds)
+        .order("created_at", { ascending: true });
+
+      if (replies) {
+        for (const reply of replies) {
+          if (!repliesMap[reply.message_id]) {
+            repliesMap[reply.message_id] = [];
+          }
+          repliesMap[reply.message_id].push(reply);
+        }
+      }
+    }
+
     // Decrypt PII fields and message content for each message
     const decryptedMessages: DecryptedMessage[] = await Promise.all(
       (messages || []).map(async (msg: any) => {
@@ -234,16 +264,31 @@ export default async function handler(req: Request): Promise<Response> {
 
         // Handle game relation - it comes as an array from Supabase
         const game = Array.isArray(msg.game) ? msg.game[0] : msg.game;
+        
+        // Decrypt replies
+        const rawReplies = repliesMap[msg.id] || [];
+        const decryptedReplies = await Promise.all(
+          rawReplies.map(async (reply: any) => ({
+            id: reply.id,
+            reply_text: await decryptData(reply.reply_text_encrypted, encryptionKey),
+            replied_by: reply.replied_by,
+            // Owner replies are from non-sender users (i.e., replied_by !== sender_user_id)
+            is_owner_reply: reply.replied_by !== msg.sender_user_id,
+            created_at: reply.created_at,
+          }))
+        );
 
         return {
           id: msg.id,
           game_id: msg.game_id,
           sender_name: senderName,
           sender_email: senderEmail,
+          sender_user_id: msg.sender_user_id,
           message: messageContent,
           is_read: msg.is_read,
           created_at: msg.created_at,
           game: game ? { title: game.title, slug: game.slug } : null,
+          replies: decryptedReplies,
         };
       })
     );

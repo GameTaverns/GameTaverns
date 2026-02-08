@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 
+export interface InquiryReply {
+  id: string;
+  reply_text: string;
+  replied_by: string;
+  is_own_reply: boolean;
+  created_at: string;
+}
+
 export interface MyInquiry {
   id: string;
   game_id: string;
@@ -14,11 +22,7 @@ export interface MyInquiry {
     library_id: string | null;
     library_slug: string | null;
   } | null;
-  replies?: {
-    id: string;
-    reply_text: string;
-    created_at: string;
-  }[];
+  replies?: InquiryReply[];
 }
 
 export function useMyInquiries() {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, ChevronDown, ChevronUp, ExternalLink, Reply, Send } from "lucide-react";
+import { MessageSquare, ChevronDown, ChevronUp, ExternalLink, Reply, Send, User, Store } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -163,8 +163,25 @@ export function MyInquiriesSection() {
                         {inquiry.replies!.map((reply) => (
                           <div
                             key={reply.id}
-                            className="bg-primary/5 border border-primary/20 rounded-lg p-3"
+                            className={`rounded-lg p-3 ${
+                              reply.is_own_reply 
+                                ? "bg-muted/50 mr-4" 
+                                : "bg-primary/10 border border-primary/20 ml-4"
+                            }`}
                           >
+                            <div className="flex items-center gap-2 mb-1">
+                              {reply.is_own_reply ? (
+                                <>
+                                  <User className="h-3 w-3 text-muted-foreground" />
+                                  <span className="text-xs font-medium text-muted-foreground">You</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Store className="h-3 w-3 text-primary" />
+                                  <span className="text-xs font-medium text-primary">Seller</span>
+                                </>
+                              )}
+                            </div>
                             <p className="text-sm">{reply.reply_text}</p>
                             <p className="text-xs text-muted-foreground mt-2">
                               {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
