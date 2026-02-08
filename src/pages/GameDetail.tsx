@@ -402,6 +402,7 @@ const GameDetail = () => {
                   <RequestLoanButton
                     gameId={game.id}
                     gameTitle={game.title}
+                    gameImageUrl={game.image_url}
                     libraryId={library.id}
                     lenderUserId={library.owner_id}
                   />

@@ -110,11 +110,17 @@ export function useLending() {
       libraryId,
       lenderUserId,
       notes,
+      gameTitle,
+      gameImageUrl,
+      borrowerName,
     }: {
       gameId: string;
       libraryId: string;
       lenderUserId: string;
       notes?: string;
+      gameTitle?: string;
+      gameImageUrl?: string;
+      borrowerName?: string;
     }) => {
       if (!user) throw new Error("Must be logged in to request a loan");
 
@@ -132,6 +138,27 @@ export function useLending() {
         .single();
 
       if (error) throw error;
+
+      // Send Discord notification to lender (fire-and-forget)
+      try {
+        await supabase.functions.invoke("discord-notify", {
+          body: {
+            library_id: libraryId,
+            lender_user_id: lenderUserId,
+            event_type: "loan_requested",
+            data: {
+              game_title: gameTitle || "a game",
+              image_url: gameImageUrl,
+              borrower_name: borrowerName || "Someone",
+              notes: notes,
+            },
+          },
+        });
+      } catch (notifyError) {
+        console.error("Discord notification failed:", notifyError);
+        // Don't fail the request if notification fails
+      }
+
       return data;
     },
     onSuccess: () => {

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLending } from "@/hooks/useLending";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/backend/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,6 +20,7 @@ import { toast } from "sonner";
 interface RequestLoanButtonProps {
   gameId: string;
   gameTitle: string;
+  gameImageUrl?: string | null;
   libraryId: string;
   lenderUserId: string;
   allowLending?: boolean;
@@ -27,6 +29,7 @@ interface RequestLoanButtonProps {
 export function RequestLoanButton({
   gameId,
   gameTitle,
+  gameImageUrl,
   libraryId,
   lenderUserId,
   allowLending = true,
@@ -37,6 +40,21 @@ export function RequestLoanButton({
   const [notes, setNotes] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
+  // Fetch user's display name when component mounts or user changes
+  useEffect(() => {
+    if (!user) return;
+    
+    supabase
+      .from("user_profiles")
+      .select("display_name")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setDisplayName(data?.display_name || null);
+      });
+  }, [user]);
 
   // Don't show if lending is disabled or user is the owner
   if (!allowLending || (user && user.id === lenderUserId)) {
@@ -66,6 +84,9 @@ export function RequestLoanButton({
         libraryId,
         lenderUserId,
         notes: notes.trim() || undefined,
+        gameTitle,
+        gameImageUrl: gameImageUrl || undefined,
+        borrowerName: displayName || user.email?.split("@")[0] || "Someone",
       });
       setOpen(false);
       setNotes("");
