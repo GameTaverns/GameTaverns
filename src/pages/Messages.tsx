@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useNavigate, Navigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Mail, MailOpen, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { useNavigate, Navigate } from "react-router-dom";
+import { ArrowLeft, Mail, MailOpen, Trash2, ExternalLink, Copy, Check } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
-import { useMessages, useMarkMessageRead, useDeleteMessage, GameMessage } from "@/hooks/useMessages";
+import { useMessages, useMarkMessageRead, useDeleteMessage } from "@/hooks/useMessages";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,13 +21,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
-import { ReplyDialog } from "@/components/messages/ReplyDialog";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 
 const Messages = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { library, isOwner, isLoading: tenantLoading } = useTenant();
   const { buildUrl } = useTenantUrl();
@@ -38,7 +36,19 @@ const Messages = () => {
   const deleteMessage = useDeleteMessage();
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [replyMessage, setReplyMessage] = useState<GameMessage | null>(null);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+
+  const handleCopyEmail = async (email: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopiedEmail(email);
+      toast({ title: "Email copied to clipboard" });
+      setTimeout(() => setCopiedEmail(null), 2000);
+    } catch {
+      toast({ title: "Failed to copy", variant: "destructive" });
+    }
+  };
 
   // While auth/tenant is resolving, show loading UI
   if (authLoading || tenantLoading) {
@@ -203,13 +213,19 @@ const Messages = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setReplyMessage(message);
-                        }}
+                        onClick={(e) => handleCopyEmail(message.sender_email, e)}
                       >
-                        <Mail className="h-4 w-4 mr-2" />
-                        Reply via Email
+                        {copiedEmail === message.sender_email ? (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy Email
+                          </>
+                        )}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -244,14 +260,6 @@ const Messages = () => {
             ))}
           </div>
         )}
-
-        <ReplyDialog
-          open={!!replyMessage}
-          onOpenChange={(open) => !open && setReplyMessage(null)}
-          recipientName={replyMessage?.sender_name || ""}
-          recipientEmail={replyMessage?.sender_email || ""}
-          gameTitle={replyMessage?.game?.title}
-        />
       </div>
     </Layout>
   );

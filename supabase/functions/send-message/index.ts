@@ -281,19 +281,19 @@ export default async function handler(req: Request): Promise<Response> {
 
     console.log(`Message sent for game "${game.title}" (encrypted PII)`);
 
-    // Send Discord notification (fire-and-forget)
+    // Send Discord notifications (fire-and-forget)
     try {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      
-      // Get the library_id for the game
+      // Get the library owner to send DM
       const { data: gameWithLibrary } = await supabaseAdmin
         .from("games")
-        .select("library_id")
+        .select("library_id, libraries!inner(owner_id)")
         .eq("id", game_id)
         .single();
 
       if (gameWithLibrary?.library_id) {
+        const libraryOwnerId = (gameWithLibrary.libraries as any)?.owner_id;
+        
+        // 1. Send webhook notification to library's Discord channel
         fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
           method: "POST",
           headers: {
@@ -308,7 +308,32 @@ export default async function handler(req: Request): Promise<Response> {
               sender_name: sender_name.trim(),
             },
           }),
-        }).catch(err => console.error("Discord notify failed:", err));
+        }).catch(err => console.error("Discord webhook notify failed:", err));
+
+        // 2. Send DM to library owner (if they have Discord linked)
+        if (libraryOwnerId) {
+          fetch(`${supabaseUrl}/functions/v1/discord-send-dm`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              user_id: libraryOwnerId,
+              embed: {
+                title: "📬 New Game Inquiry",
+                description: `Someone is interested in **${game.title}**!`,
+                color: 0x22c55e, // Green
+                fields: [
+                  { name: "From", value: sender_name.trim(), inline: true },
+                  { name: "Game", value: game.title, inline: true },
+                ],
+                footer: { text: "Check your Messages inbox to view the full message" },
+                timestamp: new Date().toISOString(),
+              },
+            }),
+          }).catch(err => console.error("Discord DM notify failed:", err));
+        }
       }
     } catch (notifyError) {
       console.error("Discord notification error:", notifyError);

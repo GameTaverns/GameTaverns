@@ -16,7 +16,7 @@ import gameImportHandler from "../game-import/index.ts";
 import verifyEmailHandler from "../verify-email/index.ts";
 import verifyResetTokenHandler from "../verify-reset-token/index.ts";
 import sendAuthEmailHandler from "../send-auth-email/index.ts";
-import sendEmailHandler from "../send-email/index.ts";
+import sendMessageHandler from "../send-message/index.ts";
 import sendMessageHandler from "../send-message/index.ts";
 import condenseDescriptionsHandler from "../condense-descriptions/index.ts";
 import decryptMessagesHandler from "../decrypt-messages/index.ts";
@@ -3995,7 +3995,7 @@ const AVAILABLE_FUNCTIONS = [
   "discord-config", "discord-create-event", "discord-delete-thread", "discord-forum-post",
   "discord-notify", "discord-oauth-callback", "discord-send-dm", "discord-unlink",
   "game-import", "game-recommendations", "image-proxy", "manage-account", "manage-users",
-  "rate-game", "refresh-images", "resolve-username", "send-auth-email", "send-email",
+  "rate-game", "refresh-images", "resolve-username", "send-auth-email",
   "send-message", "signup", "sync-achievements", "totp-disable", "totp-setup", "totp-status",
   "totp-verify", "verify-email", "verify-reset-token", "wishlist",
   // Self-hosted-only helpers
@@ -4005,7 +4005,7 @@ const AVAILABLE_FUNCTIONS = [
 const INLINED_FUNCTIONS = [
   "totp-status", "totp-setup", "totp-verify", "totp-disable", "manage-users", "manage-account",
   "wishlist", "rate-game", "discord-config", "discord-unlink", "image-proxy", "bulk-import", "refresh-images",
-  "signup", "game-recommendations", "verify-email", "verify-reset-token", "send-auth-email", "send-email",
+  "signup", "game-recommendations", "verify-email", "verify-reset-token", "send-auth-email",
   "send-message", "condense-descriptions", "decrypt-messages", "resolve-username", "sync-achievements",
   "discord-notify", "discord-create-event", "discord-forum-post", "discord-delete-thread",
   "discord-oauth-callback", "discord-send-dm",
@@ -4073,8 +4073,6 @@ Deno.serve(async (req) => {
       return verifyResetTokenHandler(req);
     case "send-auth-email":
       return sendAuthEmailHandler(req);
-    case "send-email":
-      return sendEmailHandler(req);
     case "send-message":
       return sendMessageHandler(req);
     case "condense-descriptions":
