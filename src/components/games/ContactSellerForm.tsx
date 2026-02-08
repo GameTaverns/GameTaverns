@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, LogIn } from "lucide-react";
 import { z } from "zod";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,19 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
 import { TurnstileWidget } from "./TurnstileWidget";
-
-// Enhanced email regex for stricter validation
-const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+import { useAuth } from "@/hooks/useAuth";
+import { useTenantUrl } from "@/hooks/useTenantUrl";
 
 // URL/link detection regex
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s]*)?/gi;
 
 const contactSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
-  email: z.string().trim()
-    .min(1, "Email is required")
-    .max(255, "Email must be less than 255 characters")
-    .refine((val) => EMAIL_REGEX.test(val), { message: "Please enter a valid email address" }),
   message: z.string().trim()
     .min(1, "Message is required")
     .max(2000, "Message must be less than 2000 characters")
@@ -35,13 +31,14 @@ interface ContactSellerFormProps {
 
 export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps) {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; email?: string; message?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; message?: string }>({});
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileKey, setTurnstileKey] = useState(0);
   const { toast } = useToast();
+  const { isAuthenticated, user } = useAuth();
+  const { buildUrl } = useTenantUrl();
 
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
@@ -56,9 +53,9 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
     setErrors({});
 
     // Validate input
-    const result = contactSchema.safeParse({ name, email, message });
+    const result = contactSchema.safeParse({ name, message });
     if (!result.success) {
-      const fieldErrors: { name?: string; email?: string; message?: string } = {};
+      const fieldErrors: { name?: string; message?: string } = {};
       result.error.errors.forEach((err) => {
         if (err.path[0]) {
           fieldErrors[err.path[0] as keyof typeof fieldErrors] = err.message;
@@ -86,7 +83,6 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
         body: {
           game_id: gameId,
           sender_name: result.data.name,
-          sender_email: result.data.email,
           message: result.data.message,
           turnstile_token: turnstileToken,
         },
@@ -100,12 +96,11 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
 
       toast({
         title: "Message sent!",
-        description: "Your inquiry has been sent to the seller.",
+        description: "Your inquiry has been sent. Check your dashboard for replies.",
       });
 
       // Reset form and CAPTCHA
       setName("");
-      setEmail("");
       setMessage("");
       setTurnstileToken(null);
       setTurnstileKey(prev => prev + 1);
@@ -119,6 +114,28 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
       setIsSubmitting(false);
     }
   };
+
+  // Require login to send messages
+  if (!isAuthenticated) {
+    return (
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle className="font-display text-lg">Interested in this game?</CardTitle>
+          <CardDescription>
+            Sign in to send a message about "{gameTitle}"
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link to={buildUrl("/login")}>
+            <Button className="w-full">
+              <LogIn className="h-4 w-4 mr-2" />
+              Sign in to Contact Seller
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="card-elevated">
@@ -136,25 +153,11 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
               id="contact-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="John Doe"
+              placeholder="Your display name"
               disabled={isSubmitting}
               className={errors.name ? "border-destructive" : ""}
             />
             {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="contact-email">Your Email *</Label>
-            <Input
-              id="contact-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="john@example.com"
-              disabled={isSubmitting}
-              className={errors.email ? "border-destructive" : ""}
-            />
-            {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">

@@ -13,7 +13,6 @@ const RATE_LIMIT_WINDOW_HOURS = 1;
 interface MessageRequest {
   game_id: string;
   sender_name: string;
-  sender_email: string;
   message: string;
   turnstile_token: string;
 }
@@ -95,9 +94,6 @@ async function verifyTurnstileToken(token: string, ip: string): Promise<boolean>
   }
 }
 
-// Enhanced email validation regex
-const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
-
 // URL/link detection regex  
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s]*)?/gi;
 
@@ -116,10 +112,10 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Parse and validate request body
     const body: MessageRequest = await req.json();
-    const { game_id, sender_name, sender_email, message, turnstile_token } = body;
+    const { game_id, sender_name, message, turnstile_token } = body;
 
-    // Validate required fields
-    if (!game_id || !sender_name || !sender_email || !message) {
+    // Validate required fields (email no longer required)
+    if (!game_id || !sender_name || !message) {
       return new Response(
         JSON.stringify({ success: false, error: "All fields are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -146,13 +142,6 @@ export default async function handler(req: Request): Promise<Response> {
     if (sender_name.trim().length === 0 || sender_name.length > 100) {
       return new Response(
         JSON.stringify({ success: false, error: "Name must be between 1 and 100 characters" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (sender_email.length > 255 || !EMAIL_REGEX.test(sender_email)) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Please provide a valid email address" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -204,6 +193,23 @@ export default async function handler(req: Request): Promise<Response> {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Get the sender's user ID from the auth token if present
+    let senderUserId: string | null = null;
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.substring(7);
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      senderUserId = user?.id || null;
+    }
+
+    // Require authentication
+    if (!senderUserId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Authentication required to send messages" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Verify the game exists and is for sale
     const { data: game, error: gameError } = await supabaseAdmin
       .from("games")
@@ -252,21 +258,20 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Encrypt PII fields and message content
+    // Encrypt PII fields and message content (no email now)
     const encryptedName = await encryptData(sender_name.trim(), encryptionKey);
-    const encryptedEmail = await encryptData(sender_email.trim().toLowerCase(), encryptionKey);
     const encryptedIp = await encryptData(clientIp, encryptionKey);
     const encryptedMessage = await encryptData(message.trim(), encryptionKey);
 
-    // Insert the message with encrypted data only (no plaintext columns in table)
+    // Insert the message with encrypted data and sender user ID
     const { data: insertedMessage, error: insertError } = await supabaseAdmin
       .from("game_messages")
       .insert({
         game_id,
         sender_name_encrypted: encryptedName,
-        sender_email_encrypted: encryptedEmail,
         sender_ip_encrypted: encryptedIp,
         message_encrypted: encryptedMessage,
+        sender_user_id: senderUserId,
       })
       .select()
       .single();
@@ -279,7 +284,7 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    console.log(`Message sent for game "${game.title}" (encrypted PII)`);
+    console.log(`Message sent for game "${game.title}" by user ${senderUserId}`);
 
     // Send Discord notifications (fire-and-forget)
     try {
@@ -328,7 +333,7 @@ export default async function handler(req: Request): Promise<Response> {
                   { name: "From", value: sender_name.trim(), inline: true },
                   { name: "Game", value: game.title, inline: true },
                 ],
-                footer: { text: "Check your Messages inbox to view the full message" },
+                footer: { text: "Check your Messages inbox to view and reply" },
                 timestamp: new Date().toISOString(),
               },
             }),

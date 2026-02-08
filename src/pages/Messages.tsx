@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { ArrowLeft, Mail, MailOpen, Trash2, ExternalLink, Copy, Check } from "lucide-react";
+import { ArrowLeft, Mail, MailOpen, Trash2, ExternalLink, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
-import { useMessages, useMarkMessageRead, useDeleteMessage } from "@/hooks/useMessages";
+import { useMessages, useMarkMessageRead, useDeleteMessage, GameMessage } from "@/hooks/useMessages";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
+import { ReplyToInquiryDialog } from "@/components/messages/ReplyToInquiryDialog";
 
 const Messages = () => {
   const navigate = useNavigate();
@@ -36,19 +37,7 @@ const Messages = () => {
   const deleteMessage = useDeleteMessage();
   const { toast } = useToast();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
-
-  const handleCopyEmail = async (email: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(email);
-      setCopiedEmail(email);
-      toast({ title: "Email copied to clipboard" });
-      setTimeout(() => setCopiedEmail(null), 2000);
-    } catch {
-      toast({ title: "Failed to copy", variant: "destructive" });
-    }
-  };
+  const [replyMessage, setReplyMessage] = useState<GameMessage | null>(null);
 
   // While auth/tenant is resolving, show loading UI
   if (authLoading || tenantLoading) {
@@ -170,16 +159,20 @@ const Messages = () => {
                         <CardTitle className="font-display text-base truncate">
                           {message.sender_name}
                         </CardTitle>
-                        <CardDescription className="truncate">{message.sender_email}</CardDescription>
+                        <CardDescription className="text-xs">
+                          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                        </CardDescription>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {!message.is_read && (
                         <Badge variant="default" className="text-xs">New</Badge>
                       )}
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                      </span>
+                      {expandedId === message.id ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -211,21 +204,15 @@ const Messages = () => {
                   {expandedId === message.id && (
                     <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
                       <Button
-                        variant="outline"
+                        variant="default"
                         size="sm"
-                        onClick={(e) => handleCopyEmail(message.sender_email, e)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReplyMessage(message);
+                        }}
                       >
-                        {copiedEmail === message.sender_email ? (
-                          <>
-                            <Check className="h-4 w-4 mr-2" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy Email
-                          </>
-                        )}
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Reply
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -261,6 +248,15 @@ const Messages = () => {
           </div>
         )}
       </div>
+
+      {/* Reply Dialog */}
+      <ReplyToInquiryDialog
+        open={!!replyMessage}
+        onOpenChange={(open) => !open && setReplyMessage(null)}
+        messageId={replyMessage?.id || ""}
+        senderName={replyMessage?.sender_name || ""}
+        gameTitle={replyMessage?.game?.title || "Unknown Game"}
+      />
     </Layout>
   );
 };

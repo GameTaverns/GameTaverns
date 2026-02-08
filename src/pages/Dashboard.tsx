@@ -51,6 +51,7 @@ import { useMyMemberships, useLibraryMembership } from "@/hooks/useLibraryMember
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Footer } from "@/components/layout/Footer";
+import { MyInquiriesSection } from "@/components/dashboard/MyInquiriesSection";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -382,6 +383,15 @@ const { data: playCount } = useQuery({
                   <AchievementsDisplay compact />
                 </CardContent>
               </Card>
+
+              {/* My Inquiries Section - Full Width */}
+              <div className="lg:col-span-3">
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardContent className="pt-6">
+                    <MyInquiriesSection />
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Account Settings Card - Full Width */}
               <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">

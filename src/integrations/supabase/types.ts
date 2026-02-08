@@ -299,6 +299,38 @@ export type Database = {
           },
         ]
       }
+      game_message_replies: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          replied_by: string
+          reply_text_encrypted: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          replied_by: string
+          reply_text_encrypted: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          replied_by?: string
+          reply_text_encrypted?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_message_replies_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "game_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_messages: {
         Row: {
           created_at: string
@@ -309,6 +341,7 @@ export type Database = {
           sender_email_encrypted: string | null
           sender_ip_encrypted: string | null
           sender_name_encrypted: string | null
+          sender_user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -319,6 +352,7 @@ export type Database = {
           sender_email_encrypted?: string | null
           sender_ip_encrypted?: string | null
           sender_name_encrypted?: string | null
+          sender_user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -329,6 +363,7 @@ export type Database = {
           sender_email_encrypted?: string | null
           sender_ip_encrypted?: string | null
           sender_name_encrypted?: string | null
+          sender_user_id?: string | null
         }
         Relationships: [
           {
