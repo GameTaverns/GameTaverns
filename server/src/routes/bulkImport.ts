@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../services/db.js';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.js';
+import { config } from '../config.js';
 import crypto from 'crypto';
 
 const router = Router();
@@ -46,6 +47,7 @@ interface BulkImportRequest {
   bgg_username?: string;
   bgg_links?: string[];
   enhance_with_bgg?: boolean;
+  enhance_with_ai?: boolean; // Fetch gallery images via Firecrawl (slower)
   default_options?: {
     is_coming_soon?: boolean;
     is_for_sale?: boolean;
@@ -89,6 +91,7 @@ interface GameToImport {
   in_base_game_box?: boolean;
   description?: string;
   image_url?: string;
+  additional_images?: string[];
   purchase_date?: string;
   purchase_price?: number;
 
@@ -300,6 +303,76 @@ const normalizeBggImageUrl = (url: string | undefined): string | undefined => {
   }
 };
 
+// Detect low-quality BGG CDN variants (OpenGraph crops, thumbnails, etc.)
+const isLowQualityBggImageUrl = (url: string | undefined): boolean => {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  return (
+    u.includes("cf.geekdo-images.com") &&
+    (u.includes("__opengraph") ||
+      u.includes("__opengraph_letterbox") ||
+      u.includes("fit-in/1200x630") ||
+      u.includes("/crop") ||
+      u.includes("_thumb") ||
+      u.includes("square") ||
+      u.includes("100x100"))
+  );
+};
+
+// Fetch additional gameplay/component images from the BGG gallery via Firecrawl
+async function fetchBGGGalleryImages(bggId: string, maxImages = 5): Promise<string[]> {
+  if (!config.firecrawlApiKey) return [];
+
+  const galleryUrl = `https://boardgamegeek.com/boardgame/${bggId}/images`;
+
+  try {
+    const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.firecrawlApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: galleryUrl,
+        formats: ['rawHtml'],
+        onlyMainContent: false,
+      }),
+    });
+
+    if (!scrapeRes.ok) {
+      console.warn(`[BulkImport] Firecrawl gallery returned ${scrapeRes.status} for ${bggId}`);
+      return [];
+    }
+
+    const raw = await scrapeRes.text();
+    let scrapeData: any;
+    try {
+      scrapeData = JSON.parse(raw);
+    } catch {
+      console.warn(`[BulkImport] Failed to parse Firecrawl gallery response for ${bggId}`);
+      return [];
+    }
+
+    const rawHtml = scrapeData?.data?.rawHtml || scrapeData?.rawHtml || '';
+    if (!rawHtml) return [];
+
+    const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
+    const allMatches = rawHtml.match(imageRegex) || [];
+
+    const unique = [...new Set(allMatches)] as string[];
+    const filtered = unique
+      .map((u) => normalizeBggImageUrl(u))
+      .filter((u): u is string => !!u)
+      .filter((u) => !isLowQualityBggImageUrl(u));
+
+    // Cap results
+    return filtered.slice(0, maxImages);
+  } catch (e) {
+    console.warn(`[BulkImport] Gallery fetch failed for ${bggId}:`, e);
+    return [];
+  }
+}
+
 // Helper: sleep for ms
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -449,7 +522,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
   try {
     const userId = req.user!.id;
     const body: BulkImportRequest = req.body;
-    const { mode, library_id, csv_data, bgg_username, bgg_links, enhance_with_bgg, default_options } = body;
+    const { mode, library_id, csv_data, bgg_username, bgg_links, enhance_with_bgg, enhance_with_ai, default_options } = body;
 
     // Get user's library
     const libraryResult = await pool.query(
@@ -529,6 +602,15 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             row.comment,
           );
 
+          // Parse additional_images (semicolon-separated list)
+          const additionalImagesRaw = row.additional_images || row.additionalimages || row["additional images"] || "";
+          const additionalImages = additionalImagesRaw
+            ? additionalImagesRaw
+                .split(";")
+                .map((s: string) => normalizeBggImageUrl(s.trim()))
+                .filter((u): u is string => !!u)
+            : [];
+
           const gameData: GameToImport = { 
             title,
             bgg_id: bggId,
@@ -559,6 +641,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             _csv_notes: csvNotes,
             description: buildDescriptionWithNotes(csvDesc, csvNotes),
             image_url: normalizeBggImageUrl(row.image_url || row.imageurl || undefined),
+            additional_images: additionalImages,
             purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
             purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
           };
@@ -585,7 +668,8 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
 
     const totalGames = gamesToImport.length;
     console.log(`Processing ${totalGames} games for import...`);
-    console.log(`[BulkImport] enhance_with_bgg: ${enhance_with_bgg}`);
+    console.log(`[BulkImport] enhance_with_bgg: ${enhance_with_bgg}, enhance_with_ai: ${enhance_with_ai}`);
+    console.log(`[BulkImport] Firecrawl key present: ${!!config.firecrawlApiKey}`);
 
     let imported = 0;
     let failed = 0;
@@ -615,8 +699,10 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
 
           // Merge BGG data into game input (only fill missing fields)
           if (!gameInput.title && bggData.title) gameInput.title = bggData.title;
-          if (isEmpty(gameInput.image_url)) gameInput.image_url = bggData.image_url;
 
+          const shouldUseBggImage =
+            isEmpty(gameInput.image_url) || (bggData.image_url && isLowQualityBggImageUrl(gameInput.image_url));
+          if (shouldUseBggImage) gameInput.image_url = normalizeBggImageUrl(bggData.image_url);
           // Description rules:
           // - If CSV description is missing/blank, use BGG description and append notes.
           // - If CSV description exists, keep it (but still allow notes).
@@ -679,6 +765,24 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             }
           } catch (e) {
             console.warn(`[BulkImport] Title lookup failed for "${gameInput.title}":`, e);
+          }
+        }
+
+        // Enhance with AI: fetch gallery images via Firecrawl (no LLM required)
+        if (
+          enhance_with_ai &&
+          config.firecrawlApiKey &&
+          gameInput.bgg_id &&
+          (!gameInput.additional_images || gameInput.additional_images.length === 0)
+        ) {
+          try {
+            const gallery = await fetchBGGGalleryImages(gameInput.bgg_id, 5);
+            if (gallery.length > 0) {
+              gameInput.additional_images = gallery;
+              console.log(`[BulkImport] Added ${gallery.length} gallery images for: ${gameInput.title || gameInput.bgg_id}`);
+            }
+          } catch (e) {
+            console.warn(`[BulkImport] Gallery fetch failed for ${gameInput.bgg_id}:`, e);
           }
         }
         
@@ -754,10 +858,12 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             min_players, max_players, suggested_age, play_time, difficulty, game_type,
             publisher_id, is_expansion, parent_game_id, is_coming_soon, is_for_sale,
             sale_price, sale_condition, location_room, location_shelf, location_misc,
-            sleeved, upgraded_components, crowdfunded, inserts, in_base_game_box
+            sleeved, upgraded_components, crowdfunded, inserts, in_base_game_box,
+            additional_images
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-            $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29
+            $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29,
+            $30::text[]
           ) RETURNING id, title`,
           [
             gameId,
@@ -789,6 +895,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
             gameInput.crowdfunded ?? default_options?.crowdfunded ?? false,
             gameInput.inserts ?? default_options?.inserts ?? false,
             gameInput.in_base_game_box ?? false,
+            (gameInput.additional_images && gameInput.additional_images.length > 0) ? gameInput.additional_images : null,
           ]
         );
 
