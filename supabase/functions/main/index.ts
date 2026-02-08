@@ -2252,10 +2252,17 @@ async function handleBulkImport(req: Request): Promise<Response> {
         // Track failure reasons
         const failureBreakdown = { already_exists: 0, missing_title: 0, create_failed: 0, exception: 0 };
         
-        console.log("[BulkImport] Sending SSE start event");
-        sendProgress({ type: "start", jobId, total: totalGames });
+        const debugPayload = {
+          enhance_with_bgg: enhance_with_bgg !== false,
+          firecrawl_key_present: Boolean(firecrawlKey),
+          ai_configured: isAIConfigured(),
+          ai_provider: getAIProviderName(),
+          bgg_api_token_present: Boolean(Deno.env.get("BGG_API_TOKEN")),
+          debug_version: "bulk-import-2026-02-08-main",
+        };
 
-        console.log("[BulkImport] Beginning game loop");
+        console.log("[BulkImport] Sending SSE start event");
+        sendProgress({ type: "start", jobId, total: totalGames, debug: debugPayload });
         for (let i = 0; i < gamesToImport.length; i++) {
           const gameInput = gamesToImport[i];
           console.log(`[BulkImport] Processing game ${i + 1}/${totalGames}: ${gameInput.title}`);
@@ -2425,7 +2432,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
 
         console.log("[BulkImport] Loop complete. Imported:", imported, "Failed:", failed, "Breakdown:", JSON.stringify(failureBreakdown));
         await supabaseAdmin.from("import_jobs").update({ status: "completed", processed_items: totalGames, successful_items: imported, failed_items: failed }).eq("id", jobId);
-        sendProgress({ type: "complete", success: true, imported, failed, errors: errors.slice(0, 20), games: importedGames, failureBreakdown });
+        sendProgress({ type: "complete", success: true, imported, failed, errors: errors.slice(0, 20), games: importedGames, failureBreakdown, debug: debugPayload });
         controller.close();
       },
     });
