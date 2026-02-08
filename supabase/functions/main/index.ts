@@ -2093,6 +2093,7 @@ type GameToImport = {
   in_base_game_box?: boolean;
   description?: string;
   image_url?: string;
+  additional_images?: string[];
   purchase_date?: string;
   purchase_price?: number;
 };
@@ -2217,6 +2218,13 @@ async function handleBulkImport(req: Request): Promise<Response> {
             in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
             description: buildDescription(row.description, row.privatecomment),
             image_url: cleanBggImageUrl(row.image_url || row["image url"] || row.thumbnail || undefined),
+            // Parse additional_images from semicolon-separated list and clean URLs
+            additional_images: (() => {
+              const raw = row.additional_images || row["additional images"] || row.additionalimages || "";
+              if (!raw) return undefined;
+              const urls = raw.split(";").map((s: string) => cleanBggImageUrl(s.trim())).filter((u: string | undefined): u is string => !!u);
+              return urls.length > 0 ? urls : undefined;
+            })(),
             purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
             purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
           });
@@ -2258,7 +2266,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
           ai_configured: isAIConfigured(),
           ai_provider: getAIProviderName(),
           bgg_api_token_present: Boolean(Deno.env.get("BGG_API_TOKEN")),
-          debug_version: "bulk-import-2026-02-08-v2-url-extract",
+          debug_version: "bulk-import-2026-02-08-v3-additional-images",
         };
 
         console.log("[BulkImport] Sending SSE start event");
@@ -2409,6 +2417,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
               crowdfunded: enrichedData.crowdfunded ?? default_options?.crowdfunded ?? false,
               inserts: enrichedData.inserts ?? default_options?.inserts ?? false,
               in_base_game_box: enrichedData.in_base_game_box ?? false,
+              additional_images: enrichedData.additional_images ?? null,
             }).select("id, title").single();
 
             if (gameError || !newGame) { 
