@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDiscordNotify } from "@/hooks/useDiscordNotify";
 
 export interface CalendarEvent {
-  event_type: "poll" | "standalone";
+  event_type: "poll" | "standalone" | "event" | "game_night"; // "event"/"game_night" for backwards compat with self-hosted
   id: string;
   library_id: string;
   title: string;

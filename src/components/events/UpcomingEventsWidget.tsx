@@ -46,7 +46,8 @@ function EventItem({
     ? buildUrl(`/poll/${event.share_token}`)
     : null;
   
-  const isStandaloneEvent = event.event_type === "standalone";
+  // Handle both Cloud ("standalone") and self-hosted ("event") naming
+  const isStandaloneEvent = event.event_type === "standalone" || event.event_type === "event";
   
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group">
