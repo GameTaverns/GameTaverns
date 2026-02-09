@@ -114,9 +114,24 @@ function parseBGGPlaysXML(xmlText: string): BGGPlay[] {
     
     for (const playerMatch of playerMatches) {
       const playerAttrs = playerMatch[1];
+      
+      // Extract name - try multiple patterns since BGG can format differently
+      const nameMatch = playerAttrs.match(/name="([^"]*)"/);
+      const usernameMatch = playerAttrs.match(/username="([^"]*)"/);
+      
+      // Get the best available name
+      const rawName = nameMatch?.[1] || "";
+      const rawUsername = usernameMatch?.[1] || "";
+      const playerName = rawName.trim() || rawUsername.trim() || "Unknown";
+      
+      // Debug log for first few plays to see what BGG returns
+      if (players.length < 3) {
+        console.log(`[BGGPlayImport] Player parse: rawName="${rawName}", rawUsername="${rawUsername}", final="${playerName}", attrs="${playerAttrs.slice(0, 200)}"`);
+      }
+      
       players.push({
-        name: playerAttrs.match(/name="([^"]*)"/)?.[1] || "Unknown",
-        username: playerAttrs.match(/username="([^"]*)"/)?.[1],
+        name: playerName,
+        username: rawUsername,
         userid: playerAttrs.match(/userid="([^"]*)"/)?.[1],
         startposition: playerAttrs.match(/startposition="([^"]*)"/)?.[1],
         color: playerAttrs.match(/color="([^"]*)"/)?.[1],
@@ -443,7 +458,7 @@ export default async function handler(req: Request): Promise<Response> {
                 .insert(
                   play.players.map((p) => ({
                     session_id: existingSessionId,
-                    player_name: (p.name || "").trim() || (p.username || "").trim() || "Unknown",
+                    player_name: p.name, // Already resolved in parser
                     score: p.score ? parseInt(p.score, 10) : null,
                     is_winner: p.win,
                     is_first_play: p.new,
@@ -506,7 +521,7 @@ export default async function handler(req: Request): Promise<Response> {
             .insert(
               play.players.map((p) => ({
                 session_id: session.id,
-                player_name: (p.name || "").trim() || (p.username || "").trim() || "Unknown",
+                player_name: p.name, // Already resolved in parser
                 score: p.score ? parseInt(p.score, 10) : null,
                 is_winner: p.win,
                 is_first_play: p.new,
@@ -544,7 +559,7 @@ export default async function handler(req: Request): Promise<Response> {
               .insert(
                 play.players.map((p) => ({
                   session_id: extraSession.id,
-                  player_name: (p.name || "").trim() || (p.username || "").trim() || "Unknown",
+                  player_name: p.name, // Already resolved in parser
                   score: p.score ? parseInt(p.score, 10) : null,
                   is_winner: p.win,
                   is_first_play: false, // Only first play counts as "new"
