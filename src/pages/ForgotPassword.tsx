@@ -53,17 +53,17 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-4">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md bg-sidebar/80 border-border/50 backdrop-blur-sm">
+      <Card className="w-full max-w-md bg-card/80 dark:bg-sidebar/80 border-border/50 backdrop-blur-sm">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-3 mb-4">
             <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
-            <span className="font-display text-2xl font-bold text-cream">GameTaverns</span>
+            <span className="font-display text-2xl font-bold text-foreground">GameTaverns</span>
           </Link>
-          <CardTitle className="font-display text-2xl text-cream">Reset Password</CardTitle>
+          <CardTitle className="font-display text-2xl text-foreground">Reset Password</CardTitle>
           <CardDescription className="text-muted-foreground">
             {emailSent 
               ? "Check your email for a reset link" 
@@ -74,10 +74,10 @@ export default function ForgotPassword() {
         <CardContent>
           {emailSent ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-center p-6 bg-wood-medium/30 rounded-lg">
+              <div className="flex items-center justify-center p-6 bg-muted/50 dark:bg-wood-medium/30 rounded-lg">
                 <Mail className="h-12 w-12 text-secondary" />
               </div>
-              <p className="text-center text-cream/80">
+              <p className="text-center text-foreground/80">
                 If an account exists for <strong>{email}</strong>, you'll receive an email with instructions to reset your password.
               </p>
               <Button
@@ -91,14 +91,14 @@ export default function ForgotPassword() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-cream/80">Email</Label>
+                <Label htmlFor="email" className="text-foreground/80">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                  className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                   required
                 />
               </div>

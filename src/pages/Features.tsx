@@ -35,16 +35,16 @@ interface FeatureDetailProps {
 
 function FeatureDetail({ icon, title, description, highlights }: FeatureDetailProps) {
   return (
-    <div className="bg-wood-medium/20 rounded-xl p-6 border border-border/20 hover:border-secondary/40 transition-colors">
+    <div className="bg-muted/50 dark:bg-wood-medium/20 rounded-xl p-6 border border-border/20 hover:border-secondary/40 transition-colors">
       <div className="flex items-start gap-4">
         <div className="text-secondary shrink-0 mt-1">{icon}</div>
         <div>
-          <h3 className="font-display text-xl font-semibold text-cream mb-2">{title}</h3>
-          <p className="text-cream/70 mb-3">{description}</p>
+          <h3 className="font-display text-xl font-semibold text-foreground mb-2">{title}</h3>
+          <p className="text-muted-foreground mb-3">{description}</p>
           {highlights && highlights.length > 0 && (
             <ul className="space-y-1">
               {highlights.map((highlight, i) => (
-                <li key={i} className="text-cream/50 text-sm flex items-center gap-2">
+                <li key={i} className="text-muted-foreground/70 text-sm flex items-center gap-2">
                   <span className="w-1 h-1 rounded-full bg-secondary"></span>
                   {highlight}
                 </li>
@@ -62,13 +62,13 @@ export default function Features() {
   const { data: myLibrary } = useMyLibrary();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
+    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium">
       {/* Header */}
-      <header className="border-b border-border/30 bg-wood-dark/50 backdrop-blur-sm">
+      <header className="border-b border-border/30 bg-muted/50 dark:bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
             <img src={logoImage} alt="GameTaverns" className="h-10 w-auto" />
-            <span className="font-display text-2xl font-bold text-cream">
+            <span className="font-display text-2xl font-bold text-foreground">
               GameTaverns
             </span>
           </Link>
@@ -79,7 +79,7 @@ export default function Features() {
             {isAuthenticated ? (
               <>
                 <Link to="/dashboard">
-                  <Button variant="ghost" className="text-cream/80 hover:text-cream hover:bg-wood-medium/50">
+                  <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
                     Dashboard
                   </Button>
                 </Link>
@@ -93,7 +93,7 @@ export default function Features() {
               </>
             ) : (
               <Link to="/login">
-                <Button variant="ghost" className="text-cream/80 hover:text-cream hover:bg-wood-medium/50">
+                <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
                   Sign In
                 </Button>
               </Link>
@@ -104,15 +104,15 @@ export default function Features() {
 
       {/* Hero */}
       <section className="container mx-auto px-4 py-12">
-        <Link to="/" className="inline-flex items-center gap-2 text-cream/60 hover:text-cream transition-colors mb-6">
+        <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6">
           <ArrowLeft className="h-4 w-4" />
           Back to Home
         </Link>
         
-        <h1 className="font-display text-4xl md:text-5xl font-bold text-cream mb-4">
+        <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
           Everything Your Library Needs
         </h1>
-        <p className="text-xl text-cream/70 max-w-2xl mb-12">
+        <p className="text-xl text-muted-foreground max-w-2xl mb-12">
           GameTaverns is packed with features designed by board gamers, for board gamers. 
           Discover what makes our platform the best way to manage your collection.
         </p>
@@ -120,7 +120,7 @@ export default function Features() {
 
       {/* Core Features */}
       <section className="container mx-auto px-4 py-8">
-        <h2 className="font-display text-2xl font-bold text-cream mb-6 flex items-center gap-3">
+        <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
           <Library className="h-6 w-6 text-secondary" />
           Core Library Features
         </h2>
@@ -176,7 +176,7 @@ export default function Features() {
 
       {/* Play Tracking */}
       <section className="container mx-auto px-4 py-8">
-        <h2 className="font-display text-2xl font-bold text-cream mb-6 flex items-center gap-3">
+        <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
           <Dice6 className="h-6 w-6 text-secondary" />
           Play Tracking & Statistics
         </h2>
@@ -234,7 +234,7 @@ export default function Features() {
 
       {/* Lending & Community */}
       <section className="container mx-auto px-4 py-8">
-        <h2 className="font-display text-2xl font-bold text-cream mb-6 flex items-center gap-3">
+        <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
           <Users className="h-6 w-6 text-secondary" />
           Lending Library & Community
         </h2>
@@ -292,7 +292,7 @@ export default function Features() {
 
       {/* Customization */}
       <section className="container mx-auto px-4 py-8">
-        <h2 className="font-display text-2xl font-bold text-cream mb-6 flex items-center gap-3">
+        <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
           <Palette className="h-6 w-6 text-secondary" />
           Customization & Privacy
         </h2>
@@ -326,11 +326,11 @@ export default function Features() {
 
       {/* CTA */}
       <section className="container mx-auto px-4 py-16 text-center">
-        <div className="bg-wood-medium/30 rounded-2xl p-12 border border-border/30">
-          <h2 className="font-display text-3xl font-bold text-cream mb-4">
+        <div className="bg-muted/50 dark:bg-wood-medium/30 rounded-2xl p-12 border border-border/30">
+          <h2 className="font-display text-3xl font-bold text-foreground mb-4">
             Ready to Get Started?
           </h2>
-          <p className="text-cream/70 mb-8 max-w-xl mx-auto">
+          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
             Create your free library today and start organizing your board game collection.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -356,7 +356,7 @@ export default function Features() {
               </Link>
             )}
             <Link to="/">
-              <Button size="lg" variant="outline" className="border-cream/30 text-cream hover:bg-wood-medium/50 text-lg px-8">
+              <Button size="lg" variant="outline" className="text-lg px-8">
                 Back to Home
               </Button>
             </Link>
@@ -365,23 +365,23 @@ export default function Features() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/30 bg-wood-dark/50 py-8">
+      <footer className="border-t border-border/30 bg-muted/50 dark:bg-wood-dark/50 py-8">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-cream/50 text-sm">
+            <p className="text-muted-foreground text-sm">
               &copy; {new Date().getFullYear()} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
             </p>
             <nav className="flex gap-6 text-sm">
-              <Link to="/privacy" className="text-cream/50 hover:text-cream transition-colors">
+              <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
                 Privacy
               </Link>
-              <Link to="/terms" className="text-cream/50 hover:text-cream transition-colors">
+              <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
                 Terms
               </Link>
-              <Link to="/cookies" className="text-cream/50 hover:text-cream transition-colors">
+              <Link to="/cookies" className="text-muted-foreground hover:text-foreground transition-colors">
                 Cookies
               </Link>
-              <Link to="/legal" className="text-cream/50 hover:text-cream transition-colors">
+              <Link to="/legal" className="text-muted-foreground hover:text-foreground transition-colors">
                 Legal
               </Link>
             </nav>

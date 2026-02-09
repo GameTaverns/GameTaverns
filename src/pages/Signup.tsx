@@ -173,17 +173,17 @@ export default function Signup() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-4">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md bg-sidebar/80 border-border/50 backdrop-blur-sm">
+      <Card className="w-full max-w-md bg-card/80 dark:bg-sidebar/80 border-border/50 backdrop-blur-sm">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-3 mb-4">
             <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
-            <span className="font-display text-2xl font-bold text-cream">GameTaverns</span>
+            <span className="font-display text-2xl font-bold text-foreground">GameTaverns</span>
           </Link>
-          <CardTitle className="font-display text-2xl text-cream">Create Account</CardTitle>
+          <CardTitle className="font-display text-2xl text-foreground">Create Account</CardTitle>
           <CardDescription className="text-muted-foreground">
             Start building your board game library
           </CardDescription>
@@ -191,7 +191,7 @@ export default function Signup() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-cream/80">
+              <Label htmlFor="username" className="text-foreground/80">
                 Username <span className="text-muted-foreground">(optional, for login)</span>
               </Label>
               <Input
@@ -200,13 +200,13 @@ export default function Signup() {
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                 placeholder="your_username"
                 maxLength={30}
-                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
               />
               <p className="text-xs text-muted-foreground">3-30 characters, letters, numbers, underscores only</p>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="displayName" className="text-cream/80">
+              <Label htmlFor="displayName" className="text-foreground/80">
                 Display Name <span className="text-muted-foreground">(optional)</span>
               </Label>
               <Input
@@ -214,51 +214,51 @@ export default function Signup() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
-                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-cream/80">Email</Label>
+              <Label htmlFor="email" className="text-foreground/80">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-cream/80">Password</Label>
+              <Label htmlFor="password" className="text-foreground/80">Password</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-cream/80">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-foreground/80">Confirm Password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-cream/80">Verification</Label>
+              <Label className="text-foreground/80">Verification</Label>
               <TurnstileWidget
                 key={turnstileKey}
                 onVerify={handleTurnstileVerify}
