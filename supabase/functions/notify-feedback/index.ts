@@ -18,7 +18,7 @@ const FEEDBACK_COLORS: Record<string, number> = {
   feature_request: 0x8b5cf6, // Purple
 };
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -141,4 +141,10 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}

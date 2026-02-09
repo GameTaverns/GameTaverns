@@ -26,6 +26,7 @@ import decryptMessagesHandler from "../decrypt-messages/index.ts";
 import membershipHandler from "../membership/index.ts";
 import librarySettingsHandler from "../library-settings/index.ts";
 import profileUpdateHandler from "../profile-update/index.ts";
+import notifyFeedbackHandler from "../notify-feedback/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -4197,6 +4198,7 @@ const AVAILABLE_FUNCTIONS = [
   "my-inquiries", "rate-game", "refresh-images", "reply-to-inquiry", "resolve-username", "send-auth-email",
   "send-inquiry-reply", "send-message", "signup", "sync-achievements", "totp-disable", "totp-setup", "totp-status",
   "totp-verify", "verify-email", "verify-reset-token", "wishlist",
+  "notify-feedback",
   // Self-hosted-only helpers
   "membership", "library-settings",
 ];
@@ -4212,6 +4214,7 @@ const INLINED_FUNCTIONS = [
   "membership", "library-settings", "profile-update",
   // Self-hosted-only feature functions
   "bgg-play-import",
+  "notify-feedback",
 ];
 
 // NOTE: In self-hosted deployments, the edge-runtime process itself binds to the
@@ -4313,6 +4316,8 @@ Deno.serve(async (req) => {
       return handleDiscordOAuthCallback(req);
     case "discord-send-dm":
       return handleDiscordSendDM(req);
+    case "notify-feedback":
+      return notifyFeedbackHandler(req);
   }
 
   // For other functions, return info
