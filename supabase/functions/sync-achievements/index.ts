@@ -19,6 +19,12 @@ interface UserProgress {
   wishlist_votes: number;
   ratings_given: number;
   unique_game_types: number;
+  // Community/forum metrics
+  threads_created: number;
+  replies_created: number;
+  thread_replies_received: number;
+  libraries_joined: number;
+  library_forums_active: number;
 }
 
 Deno.serve(async (req) => {
@@ -90,6 +96,11 @@ Deno.serve(async (req) => {
       wishlist_votes: 0,
       ratings_given: 0,
       unique_game_types: 0,
+      threads_created: 0,
+      replies_created: 0,
+      thread_replies_received: 0,
+      libraries_joined: 0,
+      library_forums_active: 0,
     };
 
     // Games owned (excluding expansions)
@@ -153,6 +164,57 @@ Deno.serve(async (req) => {
       .not("game_type", "is", null);
     const uniqueTypes = new Set(gameTypes?.map(g => g.game_type) || []);
     progress.unique_game_types = uniqueTypes.size;
+
+    // === Community/Forum Metrics ===
+    
+    // Threads created by user
+    const { count: threadsCount } = await supabaseAdmin
+      .from("forum_threads")
+      .select("*", { count: "exact", head: true })
+      .eq("author_id", user.id);
+    progress.threads_created = threadsCount || 0;
+
+    // Replies created by user
+    const { count: repliesCount } = await supabaseAdmin
+      .from("forum_replies")
+      .select("*", { count: "exact", head: true })
+      .eq("author_id", user.id);
+    progress.replies_created = repliesCount || 0;
+
+    // Max replies received on any single thread by user
+    const { data: userThreads } = await supabaseAdmin
+      .from("forum_threads")
+      .select("reply_count")
+      .eq("author_id", user.id)
+      .order("reply_count", { ascending: false })
+      .limit(1);
+    progress.thread_replies_received = userThreads?.[0]?.reply_count || 0;
+
+    // Libraries joined (as member, not owner)
+    const { count: librariesJoined } = await supabaseAdmin
+      .from("library_members")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    progress.libraries_joined = librariesJoined || 0;
+
+    // Unique library forums user has posted in
+    const { data: forumActivity } = await supabaseAdmin
+      .from("forum_threads")
+      .select("category:forum_categories(library_id)")
+      .eq("author_id", user.id);
+    const { data: replyActivity } = await supabaseAdmin
+      .from("forum_replies")
+      .select("thread:forum_threads(category:forum_categories(library_id))")
+      .eq("author_id", user.id);
+    
+    const libraryForumsSet = new Set<string>();
+    forumActivity?.forEach((t: any) => {
+      if (t.category?.library_id) libraryForumsSet.add(t.category.library_id);
+    });
+    replyActivity?.forEach((r: any) => {
+      if (r.thread?.category?.library_id) libraryForumsSet.add(r.thread.category.library_id);
+    });
+    progress.library_forums_active = libraryForumsSet.size;
 
     // Get all achievements
     const { data: achievements } = await supabaseAdmin
