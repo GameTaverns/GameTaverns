@@ -108,6 +108,7 @@ MIGRATION_FILES=(
     "25-forum-postgrest-fix.sql"
     "26-achievements-sync.sql"
     "27-fix-forum-categories-rls.sql"
+    "28-bgg-play-import.sql"
 )
 
 SUCCESS_COUNT=0
