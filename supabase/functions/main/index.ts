@@ -3513,6 +3513,73 @@ async function handleSyncAchievements(req: Request): Promise<Response> {
 
     const uniqueTypes = new Set(gameTypes?.map((g) => g.game_type) || []);
 
+    // === Community/Forum Metrics ===
+    
+    // Threads created by user
+    const { count: threadsCount } = await supabaseAdmin
+      .from("forum_threads")
+      .select("*", { count: "exact", head: true })
+      .eq("author_id", user.id);
+
+    // Replies created by user
+    const { count: repliesCount } = await supabaseAdmin
+      .from("forum_replies")
+      .select("*", { count: "exact", head: true })
+      .eq("author_id", user.id);
+
+    // Total replies received on all threads by user
+    const { data: userThreadReplies } = await supabaseAdmin
+      .from("forum_threads")
+      .select("reply_count")
+      .eq("author_id", user.id);
+    const threadRepliesReceived = (userThreadReplies || []).reduce(
+      (sum, t) => sum + (t.reply_count || 0), 0
+    );
+
+    // Libraries joined (as member)
+    const { count: librariesJoined } = await supabaseAdmin
+      .from("library_members")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    // Unique library forums user has posted in (avoid nested joins for self-hosted)
+    const { data: threadCategories } = await supabaseAdmin
+      .from("forum_threads")
+      .select("category_id")
+      .eq("author_id", user.id);
+    const { data: replyThreads } = await supabaseAdmin
+      .from("forum_replies")
+      .select("thread_id")
+      .eq("author_id", user.id);
+    
+    const categoryIds = new Set<string>();
+    threadCategories?.forEach((t) => categoryIds.add(t.category_id));
+    
+    // Get thread category_ids for replies
+    if (replyThreads && replyThreads.length > 0) {
+      const threadIds = replyThreads.map((r) => r.thread_id);
+      const { data: replyThreadCategories } = await supabaseAdmin
+        .from("forum_threads")
+        .select("category_id")
+        .in("id", threadIds);
+      replyThreadCategories?.forEach((t) => categoryIds.add(t.category_id));
+    }
+
+    // Get library_ids from categories
+    let libraryForumsActive = 0;
+    if (categoryIds.size > 0) {
+      const { data: categoriesWithLibraries } = await supabaseAdmin
+        .from("forum_categories")
+        .select("library_id")
+        .in("id", Array.from(categoryIds))
+        .not("library_id", "is", null);
+      const libraryForumsSet = new Set<string>();
+      categoriesWithLibraries?.forEach((c) => {
+        if (c.library_id) libraryForumsSet.add(c.library_id);
+      });
+      libraryForumsActive = libraryForumsSet.size;
+    }
+
     const progress = {
       games_owned: gamesCount || 0,
       sessions_logged: sessionsCount || 0,
@@ -3521,6 +3588,12 @@ async function handleSyncAchievements(req: Request): Promise<Response> {
       wishlist_votes: wishlistCount || 0,
       ratings_given: ratingsCount || 0,
       unique_game_types: uniqueTypes.size,
+      // Forum metrics
+      threads_created: threadsCount || 0,
+      replies_created: repliesCount || 0,
+      thread_replies_received: threadRepliesReceived,
+      libraries_joined: librariesJoined || 0,
+      library_forums_active: libraryForumsActive,
     };
 
     const { data: achievements } = await supabaseAdmin
