@@ -122,6 +122,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
         score: p.score ? parseInt(p.score, 10) : null,
         is_winner: p.isWinner,
         is_first_play: p.isFirstPlay,
+        color: null,
       })),
       expansion_ids: Array.from(selectedExpansions),
     };

@@ -760,6 +760,7 @@ export type Database = {
       }
       game_session_players: {
         Row: {
+          color: string | null
           created_at: string
           id: string
           is_first_play: boolean
@@ -769,6 +770,7 @@ export type Database = {
           session_id: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           id?: string
           is_first_play?: boolean
@@ -778,6 +780,7 @@ export type Database = {
           session_id: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           id?: string
           is_first_play?: boolean

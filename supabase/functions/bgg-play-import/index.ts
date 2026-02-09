@@ -445,6 +445,7 @@ export default async function handler(req: Request): Promise<Response> {
                 score: p.score ? parseInt(p.score, 10) : null,
                 is_winner: p.win,
                 is_first_play: p.new,
+                color: p.color || null,
               }))
             );
 
@@ -482,6 +483,7 @@ export default async function handler(req: Request): Promise<Response> {
                   score: p.score ? parseInt(p.score, 10) : null,
                   is_winner: p.win,
                   is_first_play: false, // Only first play counts as "new"
+                  color: p.color || null,
                 }))
               );
           }
