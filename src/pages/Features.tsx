@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { 
   Library, 
   Users, 
@@ -72,7 +73,8 @@ export default function Features() {
             </span>
           </Link>
           
-          <nav className="flex items-center gap-4">
+          <nav className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             <FeedbackDialog />
             {isAuthenticated ? (
               <>

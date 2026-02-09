@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Library, Users, Palette, Shield, Zap, Upload } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
@@ -40,7 +41,8 @@ export default function Platform() {
             </span>
           </Link>
           
-          <nav className="flex items-center gap-4">
+          <nav className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             <FeedbackDialog />
             {isAuthenticated ? (
               <>
