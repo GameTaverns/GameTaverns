@@ -170,11 +170,18 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
         console.log(`[BGGPlayImport] Fetching page ${page}: ${url} (UA: ${userAgent.slice(0, 30)}...)`);
 
         const headers: Record<string, string> = {
+          // BGG can block “server-y” traffic; these headers mimic a real browser request more closely.
           "User-Agent": userAgent,
-          "Accept": "application/xml, text/xml, */*;q=0.8",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.9",
-          "Accept-Encoding": "gzip, deflate, br",
-          "Connection": "keep-alive",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+          "Referer": "https://boardgamegeek.com/",
+          "Origin": "https://boardgamegeek.com",
+          "Sec-Fetch-Dest": "document",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Site": "same-origin",
+          "Upgrade-Insecure-Requests": "1",
         };
 
         if (bggCookie) {
@@ -250,8 +257,8 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
   // All User-Agents failed
   const hasCookie = !!bggCookie;
   const errorMsg = hasCookie
-    ? `BGG is blocking server requests. Your BGG_SESSION_COOKIE may be expired. Please update it in your .env file.`
-    : `BGG is blocking server requests (${lastError?.message || "unknown error"}). To fix this, add BGG_SESSION_COOKIE to your .env file with your browser's BGG cookie value.`;
+    ? `BGG is blocking server requests. Your BGG_SESSION_COOKIE may be expired/invalid (BGG returned: ${lastError?.message || "unknown error"}). Re-login to BGG in a browser and update the cookie value.`
+    : `BGG is blocking server requests (${lastError?.message || "unknown error"}). To fix this, set BGG_SESSION_COOKIE (from your browser) in your server environment and restart the functions service.`;
   
   throw new Error(errorMsg);
 }
