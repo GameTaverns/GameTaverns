@@ -17,7 +17,15 @@ import {
   Trophy,
   Bell,
   Shuffle,
-  ArrowLeft
+  ArrowLeft,
+  MessageCircle,
+  ArrowLeftRight,
+  Target,
+  Vote,
+  DollarSign,
+  Download,
+  Sparkles,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -171,6 +179,17 @@ export default function Features() {
               "Perfect for planning game nights"
             ]}
           />
+          <FeatureDetail
+            icon={<DollarSign className="h-6 w-6" />}
+            title="Collection Value Tracking"
+            description="Track the financial value of your collection over time."
+            highlights={[
+              "Record purchase prices and dates",
+              "Set current estimated values",
+              "BGG marketplace price integration",
+              "Total collection value dashboard"
+            ]}
+          />
         </div>
       </section>
 
@@ -227,6 +246,30 @@ export default function Features() {
               "Filter by play time",
               "Exclude recently played",
               "Spin the wheel for game night"
+            ]}
+          />
+          
+          <FeatureDetail
+            icon={<Download className="h-6 w-6" />}
+            title="BGG Play History Import"
+            description="Bring your existing play data from BoardGameGeek."
+            highlights={[
+              "Import by BGG username",
+              "Smart deduplication avoids double-counting",
+              "Player names, scores, and colors imported",
+              "Update existing plays with fresh data"
+            ]}
+          />
+          
+          <FeatureDetail
+            icon={<Sparkles className="h-6 w-6" />}
+            title="AI Game Recommendations"
+            description="Discover what to play next with intelligent suggestions."
+            highlights={[
+              "\"Games like this\" on every detail page",
+              "Based on mechanics, theme, and complexity",
+              "Only recommends games in your library",
+              "Powered by AI analysis"
             ]}
           />
         </div>
@@ -287,6 +330,54 @@ export default function Features() {
               "Event reminders"
             ]}
           />
+          
+          <FeatureDetail
+            icon={<MessageCircle className="h-6 w-6" />}
+            title="Community Forums"
+            description="Built-in discussion boards for your gaming community."
+            highlights={[
+              "Site-wide and library-level forums",
+              "Threaded conversations with replies",
+              "Category management and moderation",
+              "Real-time updates via live sync"
+            ]}
+          />
+          
+          <FeatureDetail
+            icon={<Vote className="h-6 w-6" />}
+            title="Polls & Game Night Voting"
+            description="Let your community vote on what to play next."
+            highlights={[
+              "Create shareable polls",
+              "RSVP tracking for events",
+              "Configurable voting limits",
+              "Results display options"
+            ]}
+          />
+          
+          <FeatureDetail
+            icon={<ArrowLeftRight className="h-6 w-6" />}
+            title="Trade Matching"
+            description="Find trade opportunities across libraries automatically."
+            highlights={[
+              "Cross-library want/have matching",
+              "Browse available trades",
+              "Contact traders directly",
+              "Community-driven exchange"
+            ]}
+          />
+          
+          <FeatureDetail
+            icon={<Target className="h-6 w-6" />}
+            title="Group Challenges"
+            description="Set play goals and compete with your community."
+            highlights={[
+              "Play count challenge goals",
+              "Competitive leaderboards",
+              "Track progress in real-time",
+              "Motivate more game nights"
+            ]}
+          />
         </div>
       </section>
 
@@ -319,6 +410,18 @@ export default function Features() {
               "Hide admin-only data (purchase prices)",
               "Public or private library mode",
               "Directory listing opt-in"
+            ]}
+          />
+          
+          <FeatureDetail
+            icon={<ShieldCheck className="h-6 w-6" />}
+            title="Two-Factor Authentication"
+            description="Secure your account with TOTP-based two-factor authentication."
+            highlights={[
+              "Time-based one-time passwords",
+              "Works with any authenticator app",
+              "Backup codes for recovery",
+              "Configurable grace periods"
             ]}
           />
         </div>
