@@ -1,513 +1,354 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, FileText, Settings, Server, Terminal, Copy, Check } from "lucide-react";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useMyLibrary } from "@/hooks/useLibrary";
+import {
+  BookOpen,
+  Bell,
+  MessageSquare,
+  Trophy,
+  ArrowLeftRight,
+  DollarSign,
+  Users,
+  Gamepad2,
+  Star,
+  Heart,
+  BarChart3,
+  Shield,
+  Settings,
+  Calendar,
+  HandshakeIcon,
+  Palette,
+  Link as LinkIcon,
+  Target,
+} from "lucide-react";
 
-// Documentation content
-const DEPLOYMENT_CONTENT = `# Game Haven Self-Hosted Deployment Guide
-
-This guide walks you through deploying Game Haven on your own Linux server with a fully self-hosted Supabase backend.
-
-## Prerequisites
-
-- **Linux server** (Ubuntu 20.04+ recommended)
-- **Docker** 20.10+ and **Docker Compose** v2+
-- **4GB+ RAM** (8GB recommended)
-- **20GB+ disk space**
-- **Domain name** (optional, but recommended for production)
-
-## Quick Start
-
-\`\`\`bash
-# Clone the repository
-git clone https://github.com/your-username/game-haven.git
-cd game-haven
-
-# Make deploy script executable
-chmod +x deploy/deploy.sh
-
-# Run full setup
-./deploy/deploy.sh setup
-\`\`\`
-
-The script will:
-1. Check requirements
-2. Generate secure credentials
-3. Prompt for site configuration
-4. Initialize the database with all migrations
-5. Start the Docker stack
-
-## Services & Ports
-
-| Service | Port | Description |
-|---------|------|-------------|
-| Frontend | 80/443 | Game Haven web app |
-| Kong | 8000/8443 | Supabase API Gateway |
-| Studio | 3000 | Supabase Admin UI |
-| PostgreSQL | 5432 | Database (internal) |
-
-## Post-Installation
-
-### 1. Create Admin User
-
-1. Visit your site and create an account via signup
-2. Access Supabase Studio at \`http://localhost:3000\`
-3. Navigate to Table Editor → \`user_roles\`
-4. Insert a row with your \`user_id\` and \`role\` = \`admin\`
-
-### 2. Configure Site Settings
-
-In Studio, update the \`site_settings\` table:
-
-| Key | Value |
-|-----|-------|
-| \`contact_email\` | Your contact email |
-| \`show_for_sale\` | \`true\` or \`false\` |
-
-## Security Checklist
-
-- [ ] Change all default passwords
-- [ ] Use HTTPS in production
-- [ ] Configure firewall (only expose 80/443)
-- [ ] Keep PostgreSQL port internal only
-- [ ] Set up automated backups
-- [ ] Monitor disk usage
-`;
-
-const CONFIGURATION_CONTENT = `# Site Configuration Guide
-
-This application uses environment variables for branding and configuration.
-
-## Environment Variables
-
-### Required (for custom branding)
-
-\`\`\`env
-# Site name displayed in header, sidebar, and browser tab
-VITE_SITE_NAME="Your Game Library"
-
-# Description for SEO meta tags
-VITE_SITE_DESCRIPTION="Browse and discover our collection of board games."
-
-# Author name for meta tags
-VITE_SITE_AUTHOR="Your Name"
-\`\`\`
-
-### Required (for backend)
-
-\`\`\`env
-VITE_SUPABASE_URL="https://your-project.supabase.co"
-VITE_SUPABASE_PUBLISHABLE_KEY="your-anon-key"
-VITE_SUPABASE_PROJECT_ID="your-project-id"
-\`\`\`
-
-## Supabase Secrets (Edge Functions)
-
-| Secret | Required | Description |
-|--------|----------|-------------|
-| \`SUPABASE_URL\` | Yes | Supabase project URL |
-| \`SUPABASE_SERVICE_ROLE_KEY\` | Yes | Service role key for admin operations |
-| \`PII_ENCRYPTION_KEY\` | Yes | 32-byte hex key for encrypting personal data |
-| \`TURNSTILE_SECRET_KEY\` | Yes | Cloudflare Turnstile secret for anti-spam |
-| \`SMTP_HOST\` | Yes | SMTP server hostname |
-| \`SMTP_PORT\` | Yes | SMTP port (usually 587 or 465) |
-| \`SMTP_USER\` | Yes | SMTP username |
-| \`SMTP_PASS\` | Yes | SMTP password |
-| \`SMTP_FROM\` | Yes | From email address |
-
-## Theme Customization
-
-Colors and theming are controlled in:
-- \`src/index.css\` - CSS variables for colors
-- \`tailwind.config.ts\` - Tailwind theme configuration
-`;
-
-const DOCKER_COMPOSE_CONTENT = `version: "3.8"
-
-# Game Haven Self-Hosted Stack
-services:
-  frontend:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
-    container_name: gamehaven-frontend
-    ports:
-      - "\${FRONTEND_PORT:-80}:80"
-    environment:
-      - VITE_SITE_NAME=\${VITE_SITE_NAME:-Game Haven}
-      - VITE_SUPABASE_URL=http://kong:8000
-      - VITE_SUPABASE_PUBLISHABLE_KEY=\${ANON_KEY}
-    depends_on:
-      - kong
-    restart: unless-stopped
-    networks:
-      - gamehaven
-
-  kong:
-    image: kong:2.8.1
-    container_name: supabase-kong
-    ports:
-      - "\${KONG_HTTP_PORT:-8000}:8000"
-    # ... additional configuration
-    networks:
-      - gamehaven
-
-  auth:
-    image: supabase/gotrue:v2.143.0
-    container_name: supabase-auth
-    environment:
-      GOTRUE_DB_DATABASE_URL: postgres://...@db:5432/\${POSTGRES_DB}
-      GOTRUE_JWT_SECRET: \${JWT_SECRET}
-      # ... additional configuration
-    networks:
-      - gamehaven
-
-  rest:
-    image: postgrest/postgrest:v12.0.1
-    container_name: supabase-rest
-    environment:
-      PGRST_DB_URI: postgres://...@db:5432/\${POSTGRES_DB}
-      PGRST_JWT_SECRET: \${JWT_SECRET}
-    networks:
-      - gamehaven
-
-  db:
-    image: supabase/postgres:15.1.0.147
-    container_name: supabase-db
-    environment:
-      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
-      POSTGRES_DB: \${POSTGRES_DB}
-    volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
-    networks:
-      - gamehaven
-
-  # ... additional services (realtime, storage, functions, studio)
-
-networks:
-  gamehaven:
-    driver: bridge
-`;
-
-const DEPLOY_SCRIPT_CONTENT = `#!/bin/bash
-
-#######################################
-# Game Haven Self-Hosted Deployment Script
-#######################################
-
-set -e
-
-print_header() {
-    echo "========================================"
-    echo "$1"
-    echo "========================================"
-}
-
-# Check for required tools
-check_requirements() {
-    print_header "Checking Requirements"
-    
-    for cmd in docker openssl; do
-        if ! command -v $cmd &> /dev/null; then
-            echo "Missing: $cmd"
-            exit 1
-        fi
-    done
-    
-    echo "✓ All requirements met"
-}
-
-# Generate secure random strings
-generate_secret() {
-    openssl rand -hex 32
-}
-
-# Create .env file with user input
-create_env_file() {
-    print_header "Creating Environment Configuration"
-    
-    read -p "Site name [Game Haven]: " site_name
-    site_name=\${site_name:-"Game Haven"}
-    
-    read -p "Domain [localhost]: " domain
-    domain=\${domain:-"localhost"}
-    
-    # Generate secrets
-    local postgres_password=$(generate_secret)
-    local jwt_secret=$(openssl rand -base64 64)
-    local pii_key=$(generate_secret)
-    
-    cat > deploy/.env << EOF
-VITE_SITE_NAME="\${site_name}"
-SITE_URL=http://\${domain}
-POSTGRES_PASSWORD=\${postgres_password}
-JWT_SECRET=\${jwt_secret}
-PII_ENCRYPTION_KEY=\${pii_key}
-EOF
-
-    echo "✓ Configuration created"
-}
-
-# Main commands
-case "\${1:-setup}" in
-    setup)
-        check_requirements
-        create_env_file
-        docker compose up -d
-        ;;
-    start)
-        docker compose up -d
-        ;;
-    stop)
-        docker compose down
-        ;;
-    *)
-        echo "Usage: $0 [setup|start|stop]"
-        ;;
-esac
-`;
-
-const ENV_EXAMPLE_CONTENT = `# Environment template for Game Haven
-# Copy to .env and fill in values
-
-###################################
-# Site Branding
-###################################
-VITE_SITE_NAME="Game Haven"
-VITE_SITE_DESCRIPTION="Browse and discover our collection of board games"
-VITE_SITE_AUTHOR="Game Haven"
-
-###################################
-# Domain Configuration
-###################################
-SITE_URL=http://localhost
-API_EXTERNAL_URL=http://localhost:8000
-
-###################################
-# Ports
-###################################
-FRONTEND_PORT=80
-KONG_HTTP_PORT=8000
-POSTGRES_PORT=5432
-STUDIO_PORT=3000
-
-###################################
-# Database (generate unique values!)
-###################################
-# Generate with: openssl rand -hex 32
-POSTGRES_PASSWORD=your-super-secret-password
-POSTGRES_DB=postgres
-
-###################################
-# JWT / Authentication
-###################################
-# Generate with: openssl rand -base64 64
-JWT_SECRET=your-jwt-secret
-
-###################################
-# PII Encryption
-###################################
-# Generate with: openssl rand -hex 32
-PII_ENCRYPTION_KEY=
-
-###################################
-# SMTP Configuration
-###################################
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-SMTP_FROM=
-
-###################################
-# Cloudflare Turnstile
-###################################
-TURNSTILE_SECRET_KEY=
-`;
-
-// File definitions for download
-const FILES = [
-  { name: "DEPLOYMENT.md", content: DEPLOYMENT_CONTENT, type: "markdown" },
-  { name: "CONFIGURATION.md", content: CONFIGURATION_CONTENT, type: "markdown" },
-  { name: "docker-compose.yml", content: DOCKER_COMPOSE_CONTENT, type: "yaml" },
-  { name: "deploy.sh", content: DEPLOY_SCRIPT_CONTENT, type: "bash" },
-  { name: ".env.example", content: ENV_EXAMPLE_CONTENT, type: "env" },
-];
-
-function CodeBlock({ content, language }: { content: string; language: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(content);
-    setCopied(true);
-    toast.success("Copied to clipboard");
-    setTimeout(() => setCopied(false), 2000);
-  };
-
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="relative group">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={handleCopy}
-      >
-        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-      </Button>
-      <ScrollArea className="h-[500px] w-full rounded-md border bg-muted/50">
-        <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-words">
-          <code>{content}</code>
-        </pre>
-      </ScrollArea>
+    <div className="space-y-3">
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <div className="text-sm text-muted-foreground leading-relaxed space-y-2">{children}</div>
     </div>
   );
 }
 
-function downloadFile(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  toast.success(`Downloaded ${filename}`);
-}
-
-function downloadAllAsZip() {
-  // Create a simple combined file since we can't use JSZip without adding dependency
-  const combined = FILES.map(f => 
-    `${"=".repeat(60)}\n${f.name}\n${"=".repeat(60)}\n\n${f.content}\n\n`
-  ).join("\n");
-  
-  downloadFile("game-haven-deployment-files.txt", combined);
+function Step({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-3 items-start">
+      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+        {n}
+      </span>
+      <div className="text-sm leading-relaxed">{children}</div>
+    </div>
+  );
 }
 
 export default function Docs() {
+  const { user, isAuthenticated, isAdmin, loading } = useAuth();
+  const { data: library, isLoading: libraryLoading } = useMyLibrary();
+  const navigate = useNavigate();
+
+  // Gate: must be logged in and be admin or library owner
+  useEffect(() => {
+    if (!loading && !libraryLoading) {
+      if (!isAuthenticated) {
+        navigate("/login");
+      } else if (!isAdmin && !library) {
+        navigate("/dashboard");
+      }
+    }
+  }, [loading, libraryLoading, isAuthenticated, isAdmin, library, navigate]);
+
+  if (loading || libraryLoading) {
+    return (
+      <Layout>
+        <div className="container max-w-4xl py-12 text-center text-muted-foreground">Loading...</div>
+      </Layout>
+    );
+  }
+
+  if (!isAuthenticated || (!isAdmin && !library)) {
+    return null;
+  }
+
   return (
     <Layout>
-      <div className="container max-w-5xl py-8 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Deployment Documentation</h1>
-            <p className="text-muted-foreground mt-1">
-              Everything you need to self-host Game Haven
-            </p>
-          </div>
-          <Button onClick={downloadAllAsZip} className="gap-2">
-            <Download className="h-4 w-4" />
-            Download All Files
-          </Button>
+      <div className="container max-w-4xl py-8 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Library Owner Guide</h1>
+          <p className="text-muted-foreground mt-1">
+            How to get the most out of your GameTaverns library
+          </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5" />
-              Quick Start
-            </CardTitle>
-            <CardDescription>
-              Deploy with a single command
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-muted rounded-lg p-4 font-mono text-sm">
-              <p className="text-muted-foreground"># Clone and deploy</p>
-              <p>git clone https://github.com/your-username/game-haven.git</p>
-              <p>cd game-haven</p>
-              <p>chmod +x deploy/deploy.sh</p>
-              <p className="text-primary font-semibold">./deploy/deploy.sh setup</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Tabs defaultValue="deployment" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="deployment" className="gap-1">
-              <FileText className="h-4 w-4 hidden sm:inline" />
-              <span>Guide</span>
+        <Tabs defaultValue="getting-started" className="w-full">
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="getting-started" className="gap-1.5">
+              <BookOpen className="h-4 w-4" /> Getting Started
             </TabsTrigger>
-            <TabsTrigger value="config" className="gap-1">
-              <Settings className="h-4 w-4 hidden sm:inline" />
-              <span>Config</span>
+            <TabsTrigger value="discord" className="gap-1.5">
+              <MessageSquare className="h-4 w-4" /> Discord
             </TabsTrigger>
-            <TabsTrigger value="docker" className="gap-1">
-              <Server className="h-4 w-4 hidden sm:inline" />
-              <span>Docker</span>
+            <TabsTrigger value="features" className="gap-1.5">
+              <Gamepad2 className="h-4 w-4" /> Features
             </TabsTrigger>
-            <TabsTrigger value="script" className="gap-1">
-              <Terminal className="h-4 w-4 hidden sm:inline" />
-              <span>Script</span>
+            <TabsTrigger value="community" className="gap-1.5">
+              <Users className="h-4 w-4" /> Community
             </TabsTrigger>
-            <TabsTrigger value="env" className="gap-1">
-              <FileText className="h-4 w-4 hidden sm:inline" />
-              <span>.env</span>
+            <TabsTrigger value="advanced" className="gap-1.5">
+              <Settings className="h-4 w-4" /> Advanced
             </TabsTrigger>
           </TabsList>
 
-          {FILES.map((file, index) => (
-            <TabsContent 
-              key={file.name} 
-              value={["deployment", "config", "docker", "script", "env"][index]}
-              className="mt-4"
-            >
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <div>
-                    <CardTitle className="text-lg">{file.name}</CardTitle>
-                    <CardDescription>
-                      {index === 0 && "Complete deployment walkthrough"}
-                      {index === 1 && "Environment variables and customization"}
-                      {index === 2 && "Docker Compose stack definition"}
-                      {index === 3 && "Automated setup script"}
-                      {index === 4 && "Environment variable template"}
-                    </CardDescription>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => downloadFile(file.name, file.content)}
-                    className="gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <CodeBlock content={file.content} language={file.type} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
+          {/* ===== GETTING STARTED ===== */}
+          <TabsContent value="getting-started" className="mt-6 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5" /> Setting Up Your Library
+                </CardTitle>
+                <CardDescription>The essentials to get your library running</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Section title="1. Create Your Library">
+                  <p>From the Dashboard, click <strong>"Create Library"</strong>. Choose a name and a URL slug (e.g., <code>my-game-group</code>). Your library will be instantly available.</p>
+                </Section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>File Structure</CardTitle>
-            <CardDescription>
-              Files included in the deployment package
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="font-mono text-sm space-y-1 bg-muted p-4 rounded-lg">
-              <p>├── DEPLOYMENT.md              <span className="text-muted-foreground"># Full deployment guide</span></p>
-              <p>├── CONFIGURATION.md           <span className="text-muted-foreground"># Configuration reference</span></p>
-              <p>└── deploy/</p>
-              <p>    ├── docker-compose.yml     <span className="text-muted-foreground"># Full Docker stack</span></p>
-              <p>    ├── Dockerfile             <span className="text-muted-foreground"># Frontend container</span></p>
-              <p>    ├── nginx.conf             <span className="text-muted-foreground"># Web server config</span></p>
-              <p>    ├── deploy.sh              <span className="text-muted-foreground"># Automated setup script</span></p>
-              <p>    ├── .env.example           <span className="text-muted-foreground"># Environment template</span></p>
-              <p>    └── volumes/kong/kong.yml  <span className="text-muted-foreground"># API gateway config</span></p>
-            </div>
-          </CardContent>
-        </Card>
+                <Section title="2. Add Games">
+                  <p>You have several ways to populate your collection:</p>
+                  <div className="space-y-2 pl-4">
+                    <Step n={1}><strong>Manual entry</strong> — Click "Add Game" and fill in the details.</Step>
+                    <Step n={2}><strong>BGG Import</strong> — Enter a BoardGameGeek username to bulk-import your entire collection with images, descriptions, and metadata.</Step>
+                    <Step n={3}><strong>CSV Import</strong> — Upload a spreadsheet for large batch imports.</Step>
+                    <Step n={4}><strong>URL Import</strong> — Paste a BGG game URL to import a single game with all details pre-filled.</Step>
+                  </div>
+                </Section>
+
+                <Section title="3. Customize Your Theme">
+                  <p>Go to <strong>Library Settings → Theme</strong> to customize colors, fonts, and branding. You can set separate light/dark mode themes, upload a logo, and add a background image.</p>
+                </Section>
+
+                <Section title="4. Invite Members">
+                  <p>Share your library URL with friends. They can create accounts and join your library as members, which enables borrowing, challenge participation, and community features.</p>
+                </Section>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ===== DISCORD ===== */}
+          <TabsContent value="discord" className="mt-6 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" /> Discord Integration
+                </CardTitle>
+                <CardDescription>Connect your library to Discord for automatic notifications</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Section title="Webhook Notifications (Public Events)">
+                  <p>Public library events are posted to a Discord channel via webhook. This includes:</p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>New games added to the collection</li>
+                    <li>Wishlist votes and updates</li>
+                    <li>Game night polls created or updated</li>
+                    <li>New events scheduled</li>
+                  </ul>
+                  <div className="mt-3 space-y-2">
+                    <Step n={1}>In Discord, go to <strong>Server Settings → Integrations → Webhooks</strong> and create a new webhook.</Step>
+                    <Step n={2}>Copy the webhook URL.</Step>
+                    <Step n={3}>In your library settings, go to <strong>Discord Settings</strong> and paste the webhook URL.</Step>
+                    <Step n={4}>Choose which events should trigger notifications.</Step>
+                  </div>
+                </Section>
+
+                <Section title="Bot DM Notifications (Private)">
+                  <p>Private notifications (game inquiries, lending requests) are delivered as direct messages via the platform bot. Users must:</p>
+                  <div className="mt-3 space-y-2">
+                    <Step n={1}>Share at least one server with the GameTaverns bot.</Step>
+                    <Step n={2}>Link their Discord account via <strong>Dashboard → Settings → Discord</strong>.</Step>
+                    <Step n={3}>Once linked, they'll receive DMs for inquiries and loan activity on their games.</Step>
+                  </div>
+                </Section>
+
+                <Section title="Discord Events & Forum Threads">
+                  <p>When you create a game night event, the system can automatically:</p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>Create a <strong>Discord Scheduled Event</strong> in your server</li>
+                    <li>Post a <strong>forum thread</strong> for discussion (if you have a forum channel configured)</li>
+                  </ul>
+                  <p className="mt-2">To enable this, set the <strong>Discord Events Channel ID</strong> in your library Discord settings. The bot will use your webhook to discover the Guild ID automatically.</p>
+                </Section>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ===== FEATURES ===== */}
+          <TabsContent value="features" className="mt-6 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Gamepad2 className="h-5 w-5" /> Feature Guide
+                </CardTitle>
+                <CardDescription>What each feature does and how to use it</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-8">
+
+                <Section title="⭐ Game Ratings">
+                  <p>Visitors can rate games on a 5-star scale. Ratings are anonymous — each visitor gets one vote per game, tracked by a device fingerprint. View aggregate ratings in <strong>Library Settings → Ratings</strong>.</p>
+                </Section>
+
+                <Section title="❤️ Wishlist">
+                  <p>Visitors can "wish" for games they'd like to see added. View wishlist votes and voter names in <strong>Library Settings → Wishlist</strong>. Use this to gauge demand before purchasing.</p>
+                </Section>
+
+                <Section title="🎲 Play Logging">
+                  <p>Log game sessions with players, scores, winners, and duration. Data feeds into the <strong>Play Stats</strong> page with charts, win rates, and an H-index. You can also <strong>import play history from BGG</strong>.</p>
+                </Section>
+
+                <Section title="📅 Events & Game Nights">
+                  <p>Create events from the Dashboard. Events appear on the library calendar and can be linked to Discord. Polls let members vote on which games to play.</p>
+                </Section>
+
+                <Section title="📚 Game Lending">
+                  <p>Enable lending in <strong>Library Settings → Feature Flags</strong>. Members can request to borrow games, and you approve/deny from the Dashboard. Track loan status, due dates, and borrower ratings.</p>
+                </Section>
+
+                <Section title="🏆 Achievements">
+                  <p>Automatic achievement badges unlock as users hit milestones — play counts, unique games, win streaks, and more. Members can feature their favorite badge on their profile.</p>
+                </Section>
+
+                <Section title="📊 Analytics">
+                  <p>The Library Analytics dashboard shows play trends, most-played games, active players, and growth over time. Available on the <strong>Dashboard → Library</strong> tab.</p>
+                </Section>
+
+                <Section title="💬 Game Inquiries">
+                  <p>When messaging is enabled, visitors can contact you about specific games (e.g., to ask about condition or negotiate a sale). Messages are encrypted and visible in <strong>Dashboard → Library → Messages</strong>.</p>
+                </Section>
+
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                    Self-Hosted Exclusive Features
+                    <Badge variant="secondary" className="text-xs">Self-Hosted</Badge>
+                  </h3>
+
+                  <div className="space-y-6">
+                    <Section title="💰 Collection Value Tracking">
+                      <p>Track purchase prices and current market values for every game. The system can pull BGG marketplace prices as a reference. View total invested vs. current value, gains/losses per game, on the <strong>Dashboard → Library</strong> tab.</p>
+                    </Section>
+
+                    <Section title="🎯 Group Challenges">
+                      <p>Create competitive challenges for your library members:</p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li><strong>Play Count Goals</strong> — everyone tries to hit X total plays</li>
+                        <li><strong>Unique Games</strong> — play as many different games as possible</li>
+                        <li><strong>Specific Game</strong> — who can play a specific game the most</li>
+                        <li><strong>Competitive</strong> — most plays or most unique games wins</li>
+                      </ul>
+                      <p className="mt-2">Create from <strong>Dashboard → Library</strong> tab. Challenges have start/end dates, leaderboards, and progress tracking.</p>
+                    </Section>
+
+                    <Section title="🔄 Cross-Library Trade Matching">
+                      <p>List games you're willing to trade and games you want. The system matches your offers against other discoverable libraries using BGG IDs. Find matches on the <strong>Dashboard → Trades</strong> tab.</p>
+                    </Section>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ===== COMMUNITY ===== */}
+          <TabsContent value="community" className="mt-6 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" /> Community Management
+                </CardTitle>
+                <CardDescription>Managing members, forums, and engagement</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Section title="Members & Roles">
+                  <p>Members who join your library get access to borrowing, challenges, and forums. You can promote members to <strong>Moderator</strong> to help manage content. Manage members in <strong>Library Settings → Members</strong>.</p>
+                </Section>
+
+                <Section title="Community Forum">
+                  <p>Enable the forum in <strong>Library Settings → Feature Flags</strong>. You can create custom categories, pin important threads, and lock discussions. Moderators can manage posts within your library's categories.</p>
+                </Section>
+
+                <Section title="Notifications">
+                  <p>Members receive real-time notifications for:</p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>Replies to their forum threads</li>
+                    <li>Lending activity (request approved, game due, etc.)</li>
+                    <li>Achievement unlocks</li>
+                  </ul>
+                  <p className="mt-2">Notifications appear via the bell icon in the header and can optionally be delivered as Discord DMs.</p>
+                </Section>
+
+                <Section title="Making Your Library Discoverable">
+                  <p>Toggle <strong>"Discoverable"</strong> in Library Settings to appear in the public library directory. This lets other users find and join your community, and enables cross-library trade matching.</p>
+                </Section>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ===== ADVANCED ===== */}
+          <TabsContent value="advanced" className="mt-6 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" /> Advanced Configuration
+                </CardTitle>
+                <CardDescription>Power-user settings and customization</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <Section title="Feature Flags">
+                  <p>Toggle individual features on/off in <strong>Library Settings → Feature Flags</strong>:</p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>Play Logs, Ratings, Wishlist, For Sale, Coming Soon</li>
+                    <li>Messaging, Events, Achievements, Lending</li>
+                    <li>Community Forum</li>
+                  </ul>
+                  <p className="mt-2">Disabled features are completely hidden from visitors.</p>
+                </Section>
+
+                <Section title="Cloudflare Turnstile (Anti-Spam)">
+                  <p>To protect contact forms from spam, configure a Cloudflare Turnstile site key in <strong>Library Settings → General</strong>. When set, visitors must pass a CAPTCHA challenge before submitting inquiries.</p>
+                </Section>
+
+                <Section title="Custom Theme Fonts">
+                  <p>Choose from available display and body fonts in <strong>Library Settings → Theme</strong>. Fonts are loaded from Google Fonts automatically. The display font is used for headings, the body font for all other text.</p>
+                </Section>
+
+                <Section title="Social Links">
+                  <p>Add links to your Discord server, Facebook group, Instagram, and Twitter in <strong>Library Settings → General</strong>. These appear in your library's footer.</p>
+                </Section>
+
+                {isAdmin && (
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                      <Shield className="h-5 w-5" /> Admin-Only
+                    </h3>
+                    <Section title="Platform Administration">
+                      <p>As a platform admin, you have access to:</p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li><strong>User Management</strong> — view all users, assign roles, suspend accounts</li>
+                        <li><strong>Library Management</strong> — oversee all libraries, manage suspensions and premium status</li>
+                        <li><strong>Platform Settings</strong> — global announcements, maintenance mode</li>
+                        <li><strong>Feedback</strong> — review user-submitted feedback</li>
+                        <li><strong>Analytics</strong> — platform-wide usage statistics</li>
+                      </ul>
+                      <p className="mt-2">Access via <strong>Dashboard → Platform Admin</strong>.</p>
+                    </Section>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
