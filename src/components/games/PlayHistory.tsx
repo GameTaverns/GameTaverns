@@ -118,6 +118,13 @@ function SessionCard({
                 className="flex items-center justify-between p-2 rounded-md bg-muted/50"
               >
                 <div className="flex items-center gap-2">
+                  {player.color && (
+                    <span 
+                      className="w-4 h-4 rounded-full border border-border flex-shrink-0"
+                      style={{ backgroundColor: player.color.toLowerCase() }}
+                      title={player.color}
+                    />
+                  )}
                   <span className="font-medium">{player.player_name}</span>
                   {player.is_winner && (
                     <Trophy className="h-4 w-4 text-yellow-500" />

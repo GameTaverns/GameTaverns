@@ -8,6 +8,7 @@ export interface SessionPlayer {
   score: number | null;
   is_winner: boolean;
   is_first_play: boolean;
+  color: string | null;
 }
 
 export interface SessionExpansion {
@@ -102,6 +103,7 @@ export function useGameSessions(gameId: string) {
             score: p.score,
             is_winner: p.is_winner,
             is_first_play: p.is_first_play,
+            color: (p as any).color ?? null,
           })),
         expansions: (expansionsResult.data || [])
           .filter((e) => e.session_id === session.id)
