@@ -22,7 +22,8 @@ import {
   Calendar,
   Trophy,
   BookOpen,
-  Info
+  Info,
+  Users
 } from "lucide-react";
 
 interface LibraryFeatureFlags {
@@ -35,6 +36,7 @@ interface LibraryFeatureFlags {
   events: boolean;
   achievements: boolean;
   lending: boolean;
+  communityForum: boolean;
 }
 
 const FEATURE_FLAG_ICONS: Record<keyof LibraryFeatureFlags, React.ComponentType<{ className?: string }>> = {
@@ -47,6 +49,7 @@ const FEATURE_FLAG_ICONS: Record<keyof LibraryFeatureFlags, React.ComponentType<
   events: Calendar,
   achievements: Trophy,
   lending: BookOpen,
+  communityForum: Users,
 };
 
 const FEATURE_FLAG_LABELS: Record<keyof LibraryFeatureFlags, string> = {
@@ -59,6 +62,7 @@ const FEATURE_FLAG_LABELS: Record<keyof LibraryFeatureFlags, string> = {
   events: "Events Calendar",
   achievements: "Achievements",
   lending: "Game Lending",
+  communityForum: "Community Forum",
 };
 
 const FEATURE_FLAG_DESCRIPTIONS: Record<keyof LibraryFeatureFlags, string> = {
@@ -71,6 +75,7 @@ const FEATURE_FLAG_DESCRIPTIONS: Record<keyof LibraryFeatureFlags, string> = {
   events: "Show upcoming events and calendar to visitors",
   achievements: "Show achievements and badges for library engagement",
   lending: "Allow registered users to request game loans. When enabled, your library will appear in the public directory under 'Lending Libraries'.",
+  communityForum: "Enable a community discussion forum for your library members",
 };
 
 // Features that affect directory visibility
@@ -86,6 +91,7 @@ const FEATURE_FLAG_DB_KEYS: Record<keyof LibraryFeatureFlags, string> = {
   events: "feature_events",
   achievements: "feature_achievements",
   lending: "feature_lending",
+  communityForum: "feature_community_forum",
 };
 
 export function LibraryFeatureFlagsAdmin() {
@@ -102,6 +108,7 @@ export function LibraryFeatureFlagsAdmin() {
     events: true,
     achievements: true,
     lending: true,
+    communityForum: true,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -120,6 +127,7 @@ export function LibraryFeatureFlagsAdmin() {
         events: settings.feature_events ?? true,
         achievements: settings.feature_achievements ?? true,
         lending: settings.feature_lending ?? true,
+        communityForum: (settings as any).feature_community_forum ?? true,
       };
       setLocalFlags(flags);
       setInitialFlags(flags);

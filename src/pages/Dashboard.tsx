@@ -22,7 +22,8 @@ import {
   Trophy,
   AlertTriangle,
   Users,
-  Globe
+  Globe,
+  MessageSquare
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -52,6 +53,7 @@ import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Footer } from "@/components/layout/Footer";
 import { MyInquiriesSection } from "@/components/dashboard/MyInquiriesSection";
+import { CommunityTab } from "@/components/community/CommunityTab";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -201,6 +203,13 @@ const { data: playCount } = useQuery({
               Personal
             </TabsTrigger>
             <TabsTrigger 
+              value="community" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Community
+            </TabsTrigger>
+            <TabsTrigger 
               value="library" 
               className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
             >
@@ -221,7 +230,10 @@ const { data: playCount } = useQuery({
             </TabsTrigger>
           </TabsList>
 
-          {/* ===== PERSONAL TAB ===== */}
+          {/* ===== COMMUNITY TAB ===== */}
+          <TabsContent value="community">
+            <CommunityTab />
+          </TabsContent>
           <TabsContent value="personal">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Admin Card - Only show for site owners */}
