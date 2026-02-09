@@ -55,8 +55,15 @@ function getTransporter(): nodemailer.Transporter {
  * Check if email is configured (either local Postfix or external SMTP)
  */
 export function isEmailConfigured(): boolean {
-  // Email is configured if we have a host (local Postfix) OR host + auth (external SMTP)
-  return !!(config.smtp.host || config.smtp.from);
+  // Email is configured if we have an SMTP host - the from address alone is not enough
+  // We need an actual mail server to send through
+  const isConfigured = !!config.smtp.host;
+  
+  if (!isConfigured && config.nodeEnv !== 'test') {
+    console.log('[Email] SMTP not configured - SMTP_HOST is empty. Email verification disabled.');
+  }
+  
+  return isConfigured;
 }
 
 interface EmailOptions {
