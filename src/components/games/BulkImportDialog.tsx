@@ -99,8 +99,18 @@ export function BulkImportDialog({
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const lastRefreshRef = useRef<number>(0); // Track last refresh time to debounce
-  const lastImportedCountRef = useRef<number>(0); // Track imported count for closure safety
+  const lastRefreshRef = useRef<number>(0);
+  const lastImportedCountRef = useRef<number>(0);
+  
+  // Auto play-history import state
+  const [playImportStatus, setPlayImportStatus] = useState<{
+    phase: "idle" | "importing" | "done" | "error";
+    imported?: number;
+    skipped?: number;
+    failed?: number;
+    unmatchedGames?: string[];
+    error?: string;
+  }>({ phase: "idle" });
   
   // Update mode when defaultMode changes (e.g., when dialog opens with different mode)
   useEffect(() => {
@@ -162,6 +172,72 @@ export function BulkImportDialog({
     setEnhanceWithAi(false);
     setResult(null);
     setProgress(null);
+    setPlayImportStatus({ phase: "idle" });
+  };
+
+  // Auto-import play history after BGG collection import
+  const autoImportPlayHistory = async (username: string, libraryId: string) => {
+    setPlayImportStatus({ phase: "importing" });
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        setPlayImportStatus({ phase: "error", error: "Authentication expired" });
+        return;
+      }
+
+      const { url: apiUrl, anonKey } = getSupabaseConfig();
+      const fullUrl = `${apiUrl}/functions/v1/bgg-play-import`;
+
+      const response = await fetch(fullUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          apikey: anonKey,
+        },
+        body: JSON.stringify({
+          bgg_username: username,
+          library_id: libraryId,
+          update_existing: false,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setPlayImportStatus({
+          phase: "error",
+          error: (errorData as any)?.error || `HTTP ${response.status}`,
+        });
+        return;
+      }
+
+      const data = await response.json();
+      setPlayImportStatus({
+        phase: "done",
+        imported: data.imported || 0,
+        skipped: data.skipped || 0,
+        failed: data.failed || 0,
+        unmatchedGames: data.details?.unmatchedGames,
+      });
+
+      // Invalidate play-related queries
+      queryClient.invalidateQueries({ queryKey: ["game-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["play-stats"] });
+
+      if ((data.imported || 0) > 0) {
+        toast({
+          title: "Play history imported!",
+          description: `${data.imported} play${data.imported !== 1 ? "s" : ""} imported from BGG`,
+        });
+      }
+    } catch (e) {
+      console.error("Auto play-history import error:", e);
+      setPlayImportStatus({
+        phase: "error",
+        error: e instanceof Error ? e.message : "Failed to import play history",
+      });
+    }
   };
 
   const handleImport = async () => {
@@ -415,9 +491,14 @@ export function BulkImportDialog({
                   if ((data.imported || 0) > 0) {
                     toast({
                       title: "Import complete!",
-                      description: `Successfully imported ${data.imported} game${data.imported !== 1 ? "s" : ""}${(data.failed || 0) > 0 ? `. ${data.failed} failed.` : ""}`,
+                      description: `Successfully imported ${data.imported} game${data.imported !== 1 ? "s" : ""}${(data.failed || 0) > 0 ? `. ${data.failed} failed.` : ""}. Now importing play history...`,
                     });
                     onImportComplete?.();
+                    
+                    // Auto-import play history for BGG collection imports
+                    if (mode === "bgg_collection" && bggUsername.trim() && library?.id) {
+                      autoImportPlayHistory(bggUsername.trim(), library.id);
+                    }
                   } else if ((data.failed || 0) > 0) {
                     toast({
                       title: "Import failed",
@@ -1046,6 +1127,45 @@ https://boardgamegeek.com/boardgame/9209/ticket-to-ride`}
                         )}
                       </ul>
                     </div>
+                  )}
+
+                  {/* Auto play-history import status */}
+                  {playImportStatus.phase !== "idle" && (
+                    <Alert className="mt-4">
+                      {playImportStatus.phase === "importing" ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <AlertTitle>Importing play history...</AlertTitle>
+                          <AlertDescription>
+                            Fetching play logs from BoardGameGeek and matching to your library games.
+                          </AlertDescription>
+                        </>
+                      ) : playImportStatus.phase === "done" ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4" />
+                          <AlertTitle>Play history imported</AlertTitle>
+                          <AlertDescription>
+                            <div className="flex gap-3 text-sm mt-1">
+                              {(playImportStatus.imported || 0) > 0 && <span>✓ {playImportStatus.imported} plays imported</span>}
+                              {(playImportStatus.skipped || 0) > 0 && <span>{playImportStatus.skipped} skipped (duplicates)</span>}
+                              {(playImportStatus.failed || 0) > 0 && <span className="text-destructive">{playImportStatus.failed} failed</span>}
+                              {playImportStatus.imported === 0 && playImportStatus.skipped === 0 && playImportStatus.failed === 0 && <span>No plays found on BGG</span>}
+                            </div>
+                            {playImportStatus.unmatchedGames && playImportStatus.unmatchedGames.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {playImportStatus.unmatchedGames.length} game{playImportStatus.unmatchedGames.length !== 1 ? "s" : ""} not in your library (plays skipped)
+                              </p>
+                            )}
+                          </AlertDescription>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Play history import failed</AlertTitle>
+                          <AlertDescription>{playImportStatus.error || "Unknown error"}</AlertDescription>
+                        </>
+                      )}
+                    </Alert>
                   )}
                 </div>
               )}
