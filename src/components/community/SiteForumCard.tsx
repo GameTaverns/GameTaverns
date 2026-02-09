@@ -15,21 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRecentSiteThreads, useSiteWideCategories, type ForumThread } from "@/hooks/useForum";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
+import { useAuth } from "@/hooks/useAuth";
+import { InlineForumManagement } from "./InlineForumManagement";
+import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
 
-// Map icon names to Lucide components
-const ICON_MAP: Record<string, React.ElementType> = {
-  Megaphone,
-  MessageSquare,
-  Users,
-  ShoppingBag,
-};
-
-const COLOR_MAP: Record<string, string> = {
-  amber: "text-amber-500",
-  blue: "text-blue-500",
-  green: "text-green-500",
-  purple: "text-purple-500",
-};
+// Use shared maps
+const ICON_MAP = FORUM_ICON_MAP;
+const COLOR_MAP = FORUM_COLOR_MAP;
 
 function ThreadPreview({ thread }: { thread: ForumThread }) {
   const Icon = thread.category?.icon ? ICON_MAP[thread.category.icon] || MessageSquare : MessageSquare;
@@ -71,27 +63,37 @@ function ThreadPreview({ thread }: { thread: ForumThread }) {
 export function SiteForumCard() {
   const { data: categories = [], isLoading: categoriesLoading } = useSiteWideCategories();
   const { data: recentThreads = [], isLoading: threadsLoading } = useRecentSiteThreads(5);
+  const { isAdmin } = useAuth();
 
   const isLoading = categoriesLoading || threadsLoading;
 
   return (
     <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <MessageSquare className="h-5 w-5 text-secondary" />
             Site-Wide Forums
           </CardTitle>
-          <Link to="/community">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 -mr-2"
-            >
-              View All
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </Link>
+          <div className="flex items-center gap-1">
+            {isAdmin && (
+              <InlineForumManagement
+                scope="site"
+                categories={categories}
+                isLoading={categoriesLoading}
+              />
+            )}
+            <Link to="/community">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-cream/70 hover:text-cream hover:bg-wood-medium/40"
+              >
+                View All
+                <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

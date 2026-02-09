@@ -11,10 +11,8 @@ import {
   Lock,
   MessageCircle,
   Plus,
-  Eye,
-  Settings
+  Eye
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -227,33 +225,22 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
 
 function ForumHome() {
   const { data: categories = [], isLoading } = useSiteWideCategories();
-  const { isAdmin } = useAuth();
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/dashboard?tab=community">
-            <Button variant="ghost" className="-ml-2">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold">Community Forums</h1>
-            <p className="text-muted-foreground mt-1">
-              Discuss board games, find players, and connect with the community
-            </p>
-          </div>
+      <div className="flex items-center gap-4">
+        <Link to="/dashboard?tab=community">
+          <Button variant="ghost" className="-ml-2">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-3xl font-bold">Community Forums</h1>
+          <p className="text-muted-foreground mt-1">
+            Discuss board games, find players, and connect with the community
+          </p>
         </div>
-        {isAdmin && (
-          <Link to="/admin?tab=forums">
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Manage Forums
-            </Button>
-          </Link>
-        )}
       </div>
 
       {isLoading ? (

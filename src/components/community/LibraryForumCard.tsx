@@ -7,9 +7,7 @@ import {
   Pin,
   MessageCircle,
   Library as LibraryIcon,
-  Megaphone,
-  Users,
-  ShoppingBag
+  Settings
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,21 +18,12 @@ import { useRecentLibraryThreads, useLibraryCategories, useLibrariesForumEnabled
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { useMyMemberships } from "@/hooks/useLibraryMembership";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { InlineForumManagement } from "./InlineForumManagement";
+import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
 
-// Map icon names to Lucide components
-const ICON_MAP: Record<string, React.ElementType> = {
-  Megaphone,
-  MessageSquare,
-  Users,
-  ShoppingBag,
-};
-
-const COLOR_MAP: Record<string, string> = {
-  amber: "text-amber-500",
-  blue: "text-blue-500",
-  green: "text-green-500",
-  purple: "text-purple-500",
-};
+// Use shared maps
+const ICON_MAP = FORUM_ICON_MAP;
+const COLOR_MAP: Record<string, string> = FORUM_COLOR_MAP;
 
 function ThreadPreview({ thread, librarySlug }: { thread: ForumThread; librarySlug?: string }) {
   const Icon = thread.category?.icon ? ICON_MAP[thread.category.icon] || MessageSquare : MessageSquare;
@@ -82,18 +71,34 @@ interface LibraryTabContentProps {
   libraryId: string;
   librarySlug: string;
   libraryName: string;
+  memberRole: string;
 }
 
-function LibraryTabContent({ libraryId, librarySlug, libraryName }: LibraryTabContentProps) {
+function LibraryTabContent({ libraryId, librarySlug, libraryName, memberRole }: LibraryTabContentProps) {
   const { data: categories = [], isLoading: categoriesLoading } = useLibraryCategories(libraryId);
   const { data: recentThreads = [], isLoading: threadsLoading } = useRecentLibraryThreads([libraryId], 5);
 
   const isLoading = categoriesLoading || threadsLoading;
   const libraryForumUrl = getLibraryUrl(librarySlug, "/community");
 
+  // Check if user can manage this library's forum (owner or admin)
+  const canManage = memberRole === "owner" || memberRole === "admin";
+
   // Forum IS enabled (parent component already filtered) - show content or "no categories yet"
   return (
     <div className="space-y-4">
+      {/* Management controls for owners/admins - always visible */}
+      {canManage && (
+        <div className="flex justify-end">
+          <InlineForumManagement
+            scope="library"
+            libraryId={libraryId}
+            categories={categories}
+            isLoading={categoriesLoading}
+          />
+        </div>
+      )}
+
       {/* Category Pills */}
       {categories.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -137,11 +142,15 @@ function LibraryTabContent({ libraryId, librarySlug, libraryName }: LibraryTabCo
             </a>
           </div>
         ) : (
-          // Forum enabled but no categories created yet - prompt to set up
+          // Forum enabled but no categories created yet
           <div className="text-center py-6">
             <MessageSquare className="h-8 w-8 mx-auto text-cream/40 mb-2" />
             <p className="text-sm text-cream/60">No forum categories created yet for {libraryName}</p>
-            <p className="text-xs text-cream/40 mt-1">Library owner can create categories in Library Settings</p>
+            {canManage ? (
+              <p className="text-xs text-cream/40 mt-1">Use the Manage button above to create categories</p>
+            ) : (
+              <p className="text-xs text-cream/40 mt-1">The library owner hasn't set up forum categories yet</p>
+            )}
           </div>
         )}
       </div>
@@ -241,6 +250,7 @@ export function LibraryForumCard() {
                 libraryId={membership.library!.id}
                 librarySlug={membership.library!.slug}
                 libraryName={membership.library!.name}
+                memberRole={membership.role}
               />
             </TabsContent>
           ))}
