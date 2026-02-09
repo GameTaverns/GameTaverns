@@ -277,20 +277,22 @@ interface AuthorData {
 // Helper to fetch author display names and badges
 async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorData>> {
   if (authorIds.length === 0) return new Map();
-  
+
   const { data, error } = await supabase
     .from("user_profiles")
-    .select(`
-      user_id, 
+    .select(
+      `
+      user_id,
       display_name,
       featured_achievement:achievements(name, icon, tier)
-    `)
+    `
+    )
     .in("user_id", authorIds);
-  
+
   if (error) {
     console.warn("Failed to fetch author data:", error);
   }
-  
+
   const map = new Map<string, AuthorData>();
   if (data) {
     for (const p of data) {
@@ -301,6 +303,26 @@ async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorD
         featured_badge: badge,
       });
     }
+  }
+  return map;
+}
+
+async function fetchCategoriesByIds(categoryIds: string[]): Promise<Map<string, ForumCategory>> {
+  if (categoryIds.length === 0) return new Map();
+
+  const { data, error } = await supabase
+    .from("forum_categories")
+    .select("*")
+    .in("id", categoryIds);
+
+  if (error) {
+    console.warn("Failed to fetch forum categories:", error);
+    return new Map();
+  }
+
+  const map = new Map<string, ForumCategory>();
+  for (const c of data ?? []) {
+    map.set(c.id, c as ForumCategory);
   }
   return map;
 }
@@ -347,26 +369,33 @@ export function useRecentSiteThreads(limit = 5) {
         .select("id")
         .is("library_id", null)
         .eq("is_archived", false);
-      
+
       if (!categories || categories.length === 0) return [];
-      
+
       const categoryIds = categories.map((c) => c.id);
-      
+
+      // IMPORTANT: Avoid deep joins on self-hosted PostgREST (can 400/500).
+      // We fetch threads + categories separately and merge client-side.
       const { data, error } = await supabase
         .from("forum_threads")
-        .select("*, category:forum_categories(*)")
+        .select("*")
         .in("category_id", categoryIds)
         .order("created_at", { ascending: false })
         .limit(limit);
 
       if (error) throw error;
-      
-      // Fetch author data with badges
+
       const authorIds = [...new Set(data.map((t) => t.author_id))];
-      const authorMap = await fetchAuthorData(authorIds);
-      
+      const threadCategoryIds = [...new Set(data.map((t) => t.category_id))];
+
+      const [authorMap, categoryMap] = await Promise.all([
+        fetchAuthorData(authorIds),
+        fetchCategoriesByIds(threadCategoryIds),
+      ]);
+
       return data.map((t) => ({
         ...t,
+        category: categoryMap.get(t.category_id) || undefined,
         author: authorMap.get(t.author_id) || { display_name: null },
       })) as ForumThread[];
     },
@@ -386,26 +415,32 @@ export function useRecentLibraryThreads(libraryIds: string[], limit = 5) {
         .select("id")
         .in("library_id", libraryIds)
         .eq("is_archived", false);
-      
+
       if (!categories || categories.length === 0) return [];
-      
+
       const categoryIds = categories.map((c) => c.id);
 
+      // Avoid deep join on self-hosted; merge categories client-side.
       const { data, error } = await supabase
         .from("forum_threads")
-        .select("*, category:forum_categories(*)")
+        .select("*")
         .in("category_id", categoryIds)
         .order("created_at", { ascending: false })
         .limit(limit);
 
       if (error) throw error;
-      
-      // Fetch author data with badges
+
       const authorIds = [...new Set(data.map((t) => t.author_id))];
-      const authorMap = await fetchAuthorData(authorIds);
-      
+      const threadCategoryIds = [...new Set(data.map((t) => t.category_id))];
+
+      const [authorMap, categoryMap] = await Promise.all([
+        fetchAuthorData(authorIds),
+        fetchCategoriesByIds(threadCategoryIds),
+      ]);
+
       return data.map((t) => ({
         ...t,
+        category: categoryMap.get(t.category_id) || undefined,
         author: authorMap.get(t.author_id) || { display_name: null },
       })) as ForumThread[];
     },
@@ -420,19 +455,24 @@ export function useThread(threadId: string | undefined) {
     queryFn: async () => {
       if (!threadId) return null;
 
+      // Avoid deep join on self-hosted; fetch category separately.
       const { data, error } = await supabase
         .from("forum_threads")
-        .select("*, category:forum_categories(*)")
+        .select("*")
         .eq("id", threadId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      
-      // Fetch author data with badge
-      const authorMap = await fetchAuthorData([data.author_id]);
-      
+      if (!data) return null;
+
+      const [authorMap, categoryMap] = await Promise.all([
+        fetchAuthorData([data.author_id]),
+        fetchCategoriesByIds([data.category_id]),
+      ]);
+
       return {
         ...data,
+        category: categoryMap.get(data.category_id) || undefined,
         author: authorMap.get(data.author_id) || { display_name: null },
       } as ForumThread;
     },
