@@ -68,7 +68,7 @@ serve(async (req) => {
       .map((gm: any) => gm.mechanic?.name)
       .filter(Boolean);
 
-    // Fetch all other games in the library
+    // Fetch all other games in the library (excluding expansions and coming soon)
     const { data: libraryGames, error: libraryError } = await supabase
       .from("games")
       .select(`
@@ -79,6 +79,7 @@ serve(async (req) => {
       .eq("library_id", library_id)
       .neq("id", game_id)
       .eq("is_expansion", false)
+      .eq("is_coming_soon", false)
       .limit(100);
 
     if (libraryError) {
