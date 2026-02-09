@@ -107,7 +107,9 @@ dcp up -d
 
 echo ""
 echo "Force-recreating Edge Functions container (clears Deno cache)..."
-dcp up -d --force-recreate functions
+dcp stop functions
+dcp rm -f functions
+dcp up -d functions
 
 # Wait for services to stabilize
 echo ""
