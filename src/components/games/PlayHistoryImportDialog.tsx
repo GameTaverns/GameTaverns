@@ -248,6 +248,73 @@ export function PlayHistoryImportDialog({
                 </AlertDescription>
               </Alert>
 
+              {/* Imported plays details */}
+              {result.details?.importedPlays && result.details.importedPlays.length > 0 && (
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertTitle>Imported Plays</AlertTitle>
+                  <AlertDescription>
+                    <ScrollArea className="h-32">
+                      <ul className="text-xs space-y-1">
+                        {result.details.importedPlays.slice(0, 30).map((play, i) => (
+                          <li key={i} className="text-muted-foreground">• {play}</li>
+                        ))}
+                        {result.details.importedPlays.length > 30 && (
+                          <li className="text-muted-foreground italic">
+                            ...and {result.details.importedPlays.length - 30} more
+                          </li>
+                        )}
+                      </ul>
+                    </ScrollArea>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Updated plays details */}
+              {result.details?.updatedPlays && result.details.updatedPlays.length > 0 && (
+                <Alert>
+                  <RefreshCw className="h-4 w-4" />
+                  <AlertTitle>Updated Plays</AlertTitle>
+                  <AlertDescription>
+                    <ScrollArea className="h-32">
+                      <ul className="text-xs space-y-1">
+                        {result.details.updatedPlays.slice(0, 30).map((play, i) => (
+                          <li key={i} className="text-muted-foreground">• {play}</li>
+                        ))}
+                        {result.details.updatedPlays.length > 30 && (
+                          <li className="text-muted-foreground italic">
+                            ...and {result.details.updatedPlays.length - 30} more
+                          </li>
+                        )}
+                      </ul>
+                    </ScrollArea>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Skipped duplicates details */}
+              {result.details?.skippedDuplicates && result.details.skippedDuplicates.length > 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Skipped (Already Imported)</AlertTitle>
+                  <AlertDescription>
+                    <ScrollArea className="h-32">
+                      <ul className="text-xs space-y-1">
+                        {result.details.skippedDuplicates.slice(0, 20).map((play, i) => (
+                          <li key={i} className="text-muted-foreground">• {play}</li>
+                        ))}
+                        {result.details.skippedDuplicates.length > 20 && (
+                          <li className="text-muted-foreground italic">
+                            ...and {result.details.skippedDuplicates.length - 20} more
+                          </li>
+                        )}
+                      </ul>
+                    </ScrollArea>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Unmatched games */}
               {result.details?.unmatchedGames && result.details.unmatchedGames.length > 0 && (
                 <Alert>
                   <Users className="h-4 w-4" />
