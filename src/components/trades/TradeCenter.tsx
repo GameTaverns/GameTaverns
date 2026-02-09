@@ -269,29 +269,43 @@ function WantListTab() {
   const addWant = useAddWant();
   const removeWant = useRemoveWant();
   const [addOpen, setAddOpen] = useState(false);
-  const [bggId, setBggId] = useState("");
+  const [bggInput, setBggInput] = useState("");
   const [gameTitle, setGameTitle] = useState("");
   const [bggImageUrl, setBggImageUrl] = useState<string | null>(null);
   const [isFetchingBgg, setIsFetchingBgg] = useState(false);
   const { toast } = useToast();
 
-  // Auto-fetch game info from BGG when ID is entered
-  const handleBggIdBlur = async () => {
-    if (!bggId) return;
+  // Extract BGG ID from either a raw ID or a full URL
+  const extractBggId = (input: string): string => {
+    const trimmed = input.trim();
+    // Match URLs like boardgamegeek.com/boardgame/174430 or /boardgame/174430/gloomhaven
+    const urlMatch = trimmed.match(/boardgamegeek\.com\/boardgame\/(\d+)/i);
+    if (urlMatch) return urlMatch[1];
+    // If it's just digits, use as-is
+    if (/^\d+$/.test(trimmed)) return trimmed;
+    return "";
+  };
+
+  // Auto-fetch game info from BGG when input changes
+  const handleBggInputBlur = async () => {
+    const id = extractBggId(bggInput);
+    if (!id) return;
     setIsFetchingBgg(true);
     setBggImageUrl(null);
     try {
-      const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`);
+      const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${id}&stats=1`);
       const text = await res.text();
       const parser = new DOMParser();
       const xml = parser.parseFromString(text, "text/xml");
       const nameEl = xml.querySelector('name[type="primary"]');
-      if (nameEl && !gameTitle) {
+      if (nameEl) {
         setGameTitle(nameEl.getAttribute("value") || "");
       }
+      const imageEl = xml.querySelector("image");
       const thumbEl = xml.querySelector("thumbnail");
-      if (thumbEl?.textContent) {
-        setBggImageUrl(thumbEl.textContent.trim());
+      const imgUrl = imageEl?.textContent?.trim() || thumbEl?.textContent?.trim();
+      if (imgUrl) {
+        setBggImageUrl(imgUrl);
       }
     } catch {
       // silently fail - user can type the title manually
@@ -301,12 +315,13 @@ function WantListTab() {
   };
 
   const handleAdd = async () => {
-    if (!bggId || !gameTitle) return;
+    const id = extractBggId(bggInput);
+    if (!id || !gameTitle) return;
     try {
-      await addWant.mutateAsync({ bgg_id: bggId, game_title: gameTitle });
+      await addWant.mutateAsync({ bgg_id: id, game_title: gameTitle });
       toast({ title: "Added to want list" });
       setAddOpen(false);
-      setBggId("");
+      setBggInput("");
       setGameTitle("");
       setBggImageUrl(null);
     } catch (error: any) {
@@ -343,16 +358,16 @@ function WantListTab() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="bggId">BGG ID</Label>
+                <Label htmlFor="bggInput">BGG Link or ID</Label>
                 <Input
-                  id="bggId"
-                  value={bggId}
-                  onChange={(e) => setBggId(e.target.value)}
-                  onBlur={handleBggIdBlur}
-                  placeholder="e.g., 174430"
+                  id="bggInput"
+                  value={bggInput}
+                  onChange={(e) => setBggInput(e.target.value)}
+                  onBlur={handleBggInputBlur}
+                  placeholder="e.g., https://boardgamegeek.com/boardgame/174430 or 174430"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter the BGG ID and tab out — title and image auto-fill
+                  Paste a BGG link or ID and tab out — title and image auto-fill
                 </p>
               </div>
               {bggImageUrl && (
@@ -384,7 +399,7 @@ function WantListTab() {
               </div>
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleAdd} disabled={addWant.isPending || !bggId || !gameTitle || isFetchingBgg}>
+              <Button onClick={handleAdd} disabled={addWant.isPending || !extractBggId(bggInput) || !gameTitle || isFetchingBgg}>
                 Add
               </Button>
             </div>
