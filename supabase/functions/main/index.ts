@@ -3582,7 +3582,7 @@ async function handleSyncAchievements(req: Request): Promise<Response> {
 // ============================================================================
 // DISCORD NOTIFY HANDLER
 // ============================================================================
-const DISCORD_COLORS = { game_added: 0x22c55e, wishlist_vote: 0xf59e0b, message_received: 0x3b82f6, poll_created: 0x8b5cf6, poll_closed: 0x6366f1 };
+const DISCORD_COLORS = { game_added: 0x22c55e, wishlist_vote: 0xf59e0b, message_received: 0x3b82f6, poll_created: 0x8b5cf6, poll_closed: 0x6366f1, loan_requested: 0xec4899 };
 
 function buildDiscordEmbed(eventType: string, data: Record<string, unknown>): Record<string, unknown> {
   const embed: Record<string, unknown> = { color: DISCORD_COLORS[eventType as keyof typeof DISCORD_COLORS] || 0x6b7280, timestamp: new Date().toISOString() };
@@ -3625,6 +3625,15 @@ function buildDiscordEmbed(eventType: string, data: Record<string, unknown>): Re
       if (data.winner_title) (embed.fields as any[]).push({ name: "🏆 Winner", value: data.winner_title, inline: false });
       if (data.total_votes) (embed.fields as any[]).push({ name: "Total Votes", value: String(data.total_votes), inline: true });
       break;
+    case "loan_requested":
+      embed.title = "📚 New Loan Request";
+      embed.description = `Someone wants to borrow **${data.game_title}**!`;
+      if (data.image_url) embed.thumbnail = { url: data.image_url };
+      embed.fields = [];
+      if (data.borrower_name) (embed.fields as any[]).push({ name: "From", value: data.borrower_name, inline: true });
+      if (data.notes) (embed.fields as any[]).push({ name: "Note", value: data.notes, inline: false });
+      embed.footer = { text: "Check your Lending Dashboard to approve or decline" };
+      break;
     default:
       embed.title = "📢 Notification";
       embed.description = JSON.stringify(data);
@@ -3642,7 +3651,8 @@ async function handleDiscordNotify(req: Request): Promise<Response> {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { library_id, event_type, data } = await req.json();
+    const payload = await req.json();
+    const { library_id, lender_user_id, event_type, data } = payload;
     if (!library_id || !event_type) {
       return new Response(JSON.stringify({ error: "Missing library_id or event_type" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -3659,14 +3669,20 @@ async function handleDiscordNotify(req: Request): Promise<Response> {
     }
 
     const embed = buildDiscordEmbed(event_type, data);
-    const isPrivateEvent = event_type === "message_received";
+    const isPrivateEvent = event_type === "message_received" || event_type === "loan_requested";
 
     if (isPrivateEvent) {
-      // Send DM to library owner via discord-send-dm (internal call)
+      // For loan_requested, use lender_user_id if provided; otherwise fall back to library owner
+      const targetUserId = lender_user_id || library.owner_id;
+      // Send DM to target user via discord-send-dm (internal call)
       try {
         const dmResponse = await fetch(`${supabaseUrl}/functions/v1/discord-send-dm`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: library.owner_id, embed }),
+          method: "POST", 
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({ user_id: targetUserId, embed }),
         });
         if (!dmResponse.ok) console.error("DM send failed:", await dmResponse.text());
       } catch (e) { console.error("DM send error:", e); }
