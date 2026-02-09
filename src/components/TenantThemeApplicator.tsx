@@ -48,12 +48,26 @@ export function TenantThemeApplicator() {
       return Number.isFinite(parsed) ? parsed : fallback;
     };
     
-    // Calculate foreground color based on background lightness
+    // Calculate foreground color based on lightness — always neutral (no hue tint)
     const getForeground = (l: string | null | undefined): string => {
       if (!l) return isDark ? '0 0% 95%' : '0 0% 10%';
       const lightness = parseInt(l.replace('%', ''));
-      // If background is light (>50%), use dark foreground; if dark, use light foreground
       return lightness > 50 ? '0 0% 10%' : '0 0% 95%';
+    };
+
+    // Derive border/input as neutral grey appropriate for the background lightness
+    const getNeutralBorder = (bgL: number): string => {
+      if (isDark) {
+        return `0 0% ${clamp(bgL + 12, 0, 100)}%`;
+      }
+      return `0 0% ${clamp(bgL - 16, 0, 100)}%`;
+    };
+
+    const getNeutralInput = (bgL: number): string => {
+      if (isDark) {
+        return `0 0% ${clamp(bgL + 8, 0, 100)}%`;
+      }
+      return `0 0% ${clamp(bgL - 9, 0, 100)}%`;
     };
     
     if (isDark) {
@@ -87,13 +101,15 @@ export function TenantThemeApplicator() {
       if (background) {
         root.style.setProperty('--background', background);
         root.style.setProperty('--foreground', getForeground(settings.theme_dark_background_l));
-        // Muted is slightly lighter/darker than background
         const bgL = parseInt((settings.theme_dark_background_l || '10').replace('%', ''));
+        // Muted: keep slight warmth but mostly neutral
         const mutedL = Math.min(bgL + 5, 100);
-        root.style.setProperty('--muted', `${settings.theme_dark_background_h} ${settings.theme_dark_background_s} ${mutedL}%`);
-        root.style.setProperty('--muted-foreground', `${settings.theme_dark_background_h} ${settings.theme_dark_background_s} 60%`);
+        root.style.setProperty('--muted', `0 0% ${mutedL}%`);
+        root.style.setProperty('--muted-foreground', `0 0% 60%`);
+        // Border and input: neutral grey
+        root.style.setProperty('--border', getNeutralBorder(bgL));
+        root.style.setProperty('--input', getNeutralInput(bgL));
 
-        // Parchment is used by .parchment-texture gradient
         const parchmentL = clamp(bgL + 2, 0, 100);
         root.style.setProperty('--parchment', `${settings.theme_dark_background_h} ${settings.theme_dark_background_s} ${parchmentL}%`);
       }
@@ -136,13 +152,15 @@ export function TenantThemeApplicator() {
       if (background) {
         root.style.setProperty('--background', background);
         root.style.setProperty('--foreground', getForeground(settings.theme_background_l));
-        // Muted is slightly darker than background in light mode
         const bgL = parseInt((settings.theme_background_l || '95').replace('%', ''));
+        // Muted: neutral grey, not tinted by background hue
         const mutedL = Math.max(bgL - 5, 0);
-        root.style.setProperty('--muted', `${settings.theme_background_h} ${settings.theme_background_s} ${mutedL}%`);
-        root.style.setProperty('--muted-foreground', `${settings.theme_background_h} ${settings.theme_background_s} 40%`);
+        root.style.setProperty('--muted', `0 0% ${mutedL}%`);
+        root.style.setProperty('--muted-foreground', `0 0% 40%`);
+        // Border and input: neutral grey
+        root.style.setProperty('--border', getNeutralBorder(bgL));
+        root.style.setProperty('--input', getNeutralInput(bgL));
 
-        // Parchment is used by .parchment-texture gradient
         const parchmentL = clamp(bgL - 2, 0, 100);
         root.style.setProperty('--parchment', `${settings.theme_background_h} ${settings.theme_background_s} ${parchmentL}%`);
       }
@@ -220,6 +238,7 @@ export function TenantThemeApplicator() {
           '--popover', '--popover-foreground',
           '--sidebar-background', '--sidebar-foreground',
           '--parchment', '--gold', '--forest', '--sienna', '--ring',
+          '--border', '--input',
           '--font-display', '--font-body'
         ];
         cssVars.forEach((key) => {
