@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/backend/client";
 import { useCallback, useState, useMemo } from "react";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/contexts/TenantContext";
 
 // Generate a stable guest identifier for this browser session
 function getGuestIdentifier(): string {
@@ -21,6 +22,7 @@ function getGuestIdentifier(): string {
 export function useWishlist() {
   const queryClient = useQueryClient();
   const [guestIdentifier] = useState(() => getGuestIdentifier());
+  const { library } = useTenant();
   
   // Get display name from authenticated user
   const { user } = useAuth();
@@ -43,13 +45,17 @@ export function useWishlist() {
     hasVotedForGame 
   } = useDemoMode();
 
-  // Fetch vote counts for all games (only in non-demo mode)
+  // Fetch vote counts for all games in this library (only in non-demo mode)
+  // Uses library_id join filtering to avoid 502 errors from huge IN() clauses
   const { data: voteCounts, isLoading: isLoadingCounts } = useQuery({
-    queryKey: ["wishlist-counts"],
+    queryKey: ["wishlist-counts", library?.id],
     queryFn: async () => {
+      if (!library?.id) return {};
+      // Use join filtering to avoid huge IN() clauses that cause 502 errors
       const { data, error } = await supabase
         .from("game_wishlist_summary")
-        .select("*");
+        .select("game_id, vote_count, games!inner(library_id)")
+        .eq("games.library_id", library.id);
       
       if (error) throw error;
       
@@ -61,7 +67,7 @@ export function useWishlist() {
       return countMap;
     },
     staleTime: 30000, // 30 seconds
-    enabled: !isDemoMode, // Disable query in demo mode
+    enabled: !isDemoMode && !!library?.id,
   });
 
   // Fetch this guest's votes (only in non-demo mode)

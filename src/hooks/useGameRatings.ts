@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/contexts/DemoContext";
+import { useTenant } from "@/contexts/TenantContext";
 
 interface RatingSummary {
   game_id: string;
@@ -63,20 +64,25 @@ function getDeviceFingerprint(): string {
   return fingerprint;
 }
 
-// Hook to get rating summary for all games
+// Hook to get rating summary for games in the current library
 export function useGameRatingsSummary() {
   const { isDemoMode, demoRatings } = useDemoMode();
+  const { library } = useTenant();
 
   return useQuery({
-    queryKey: ["game-ratings-summary", isDemoMode],
+    queryKey: ["game-ratings-summary", isDemoMode, library?.id],
     queryFn: async (): Promise<RatingSummary[]> => {
       if (isDemoMode) {
         return demoRatings || [];
       }
 
+      if (!library?.id) return [];
+
+      // Use join filtering to avoid huge IN() clauses that cause 502 errors
       const { data, error } = await supabase
         .from("game_ratings_summary")
-        .select("*");
+        .select("game_id, rating_count, average_rating, games!inner(library_id)")
+        .eq("games.library_id", library.id);
 
       if (error) {
         console.error("Error fetching ratings summary:", error);
@@ -89,6 +95,7 @@ export function useGameRatingsSummary() {
         average_rating: Number(r.average_rating) || 0,
       }));
     },
+    enabled: isDemoMode || !!library?.id,
   });
 }
 
