@@ -9,10 +9,10 @@ ALTER TABLE public.game_sessions
   ADD COLUMN IF NOT EXISTS bgg_play_id TEXT,
   ADD COLUMN IF NOT EXISTS import_source TEXT;
 
--- Create unique index on bgg_play_id for deduplication
--- Only applies when bgg_play_id is not null (manual entries won't conflict)
+-- Create unique index on bgg_play_id + game_id for deduplication
+-- Scoped per game (and thus per library) so each library can import independently
 CREATE UNIQUE INDEX IF NOT EXISTS idx_game_sessions_bgg_play_id 
-  ON public.game_sessions(bgg_play_id) 
+  ON public.game_sessions(bgg_play_id, game_id) 
   WHERE bgg_play_id IS NOT NULL;
 
 -- Add index for efficient querying by import source
