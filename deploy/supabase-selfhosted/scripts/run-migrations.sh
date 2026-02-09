@@ -109,6 +109,9 @@ MIGRATION_FILES=(
     "26-achievements-sync.sql"
     "27-fix-forum-categories-rls.sql"
     "28-bgg-play-import.sql"
+    "29-collection-value-tracking.sql"
+    "30-group-challenges.sql"
+    "31-trade-matching.sql"
 )
 
 SUCCESS_COUNT=0
