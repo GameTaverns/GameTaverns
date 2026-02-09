@@ -67,8 +67,11 @@ services:
     image: supabase/postgres:15.6.1.143
     container_name: gametaverns-db
     restart: unless-stopped
+    # SECURITY: Bind to localhost only to prevent external access.
+    # Docker bypasses UFW/iptables rules when publishing to 0.0.0.0.
+    # Internal services connect via the 'gametaverns' docker network.
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     environment:
       POSTGRES_HOST: /var/run/postgresql
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
