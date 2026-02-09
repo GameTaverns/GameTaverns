@@ -107,3 +107,15 @@ verify_jwt = false
 
 [functions.library-settings]
 verify_jwt = false
+
+[functions.my-inquiries]
+verify_jwt = false
+
+[functions.reply-to-inquiry]
+verify_jwt = false
+
+[functions.send-inquiry-reply]
+verify_jwt = false
+
+[functions.profile-update]
+verify_jwt = false
