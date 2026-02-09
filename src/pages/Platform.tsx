@@ -87,7 +87,7 @@ export default function Platform() {
             className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-8 py-6"
             onClick={handleGetStarted}
           >
-            {authLoading ? "Loading..." : isAuthenticated ? (myLibrary ? "Go to My Library" : "Create Your Library") : "Start Free"}
+            {authLoading ? "Loading..." : isAuthenticated ? (myLibrary ? "Go to My Library" : "Create Your Library") : "Start Now"}
           </Button>
           <Link to="/features">
             <Button 
