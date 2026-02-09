@@ -23,7 +23,8 @@ import {
   Calendar,
   MapPin,
   Wand2,
-  Globe
+  Globe,
+  BarChart3
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
@@ -155,7 +156,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const { data: settings } = useSiteSettings();
   const { forSale, comingSoon, wishlist, events } = useFeatureFlags();
   const { toast } = useToast();
-  const { tenantSlug, library, isTenantMode } = useTenant();
+  const { tenantSlug, library, isTenantMode, isOwner } = useTenant();
   const tenantSettings = useTenantSettings();
   const { buildUrl } = useTenantUrl();
 
@@ -507,6 +508,21 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <User className="h-4 w-4" />
               <span className="truncate">{user?.email}</span>
             </div>
+            
+            {/* Play Stats - show when in tenant mode and user is owner */}
+            {isTenantMode && isOwner && (
+              <Link
+                to={buildUrl("/stats")}
+                className={cn(
+                  "sidebar-link",
+                  location.pathname === "/stats" && "sidebar-link-active"
+                )}
+              >
+                <BarChart3 className="h-5 w-5" />
+                <span>Play Stats</span>
+              </Link>
+            )}
+            
             <Link
               to="/dashboard"
               className={cn(

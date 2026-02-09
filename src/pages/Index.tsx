@@ -13,6 +13,7 @@ import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useWishlist } from "@/hooks/useWishlist";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
@@ -45,6 +46,7 @@ const Index = () => {
   const { forSale: forSaleFlag, comingSoon: comingSoonFlag, wishlist: wishlistFlag, demoMode: demoModeEnabled, isLoading: flagsLoading } = useFeatureFlags();
   const { data: realGames = [], isLoading: gamesLoading } = useGames(!isDemoMode);
   const { myVotes, isLoading: wishlistLoading } = useWishlist();
+  const { library } = useTenant();
   
   // Quadrant filter state
   const [quadrantFilter, setQuadrantFilter] = useState<{
@@ -64,17 +66,21 @@ const Index = () => {
     setAdvancedFilters(filters);
   }, []);
   
-  // Fetch ratings summary for top-rated filter
+  // Fetch ratings summary for top-rated filter - filtered by library_id to avoid URL length issues
   const { data: ratingsData, isLoading: ratingsLoading } = useQuery({
-    queryKey: ["game-ratings-summary"],
+    queryKey: ["game-ratings-summary", library?.id],
     queryFn: async () => {
+      if (!library?.id) return [];
+      // Use join filtering to avoid huge IN() clauses that cause 502 errors
       const { data, error } = await supabase
         .from("game_ratings_summary")
-        .select("game_id, average_rating, rating_count");
+        .select("game_id, average_rating, rating_count, games!inner(library_id)")
+        .eq("games.library_id", library.id);
       if (error) throw error;
       return data || [];
     },
     staleTime: 60000, // 1 minute
+    enabled: !!library?.id,
   });
   
   // Redirect away from demo mode if the feature is disabled
