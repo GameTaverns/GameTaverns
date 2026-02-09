@@ -100,7 +100,7 @@ export function PlayHistoryImportDialog({
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
-          "apikey": anonKey,
+          apikey: anonKey,
         },
         body: JSON.stringify({
           bgg_username: bggUsername.trim(),
@@ -108,10 +108,32 @@ export function PlayHistoryImportDialog({
         }),
       });
 
-      const data = await response.json();
+      const rawText = await response.text();
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json")
+        ? (() => {
+            try {
+              return JSON.parse(rawText);
+            } catch {
+              return null;
+            }
+          })()
+        : null;
 
       if (!response.ok) {
-        throw new Error(data.error || "Import failed");
+        const backendMsg =
+          (data && typeof data === "object" && "error" in data && typeof (data as any).error === "string")
+            ? (data as any).error
+            : "";
+        const snippet = rawText ? rawText.slice(0, 240) : "";
+        throw new Error(
+          backendMsg ||
+            `Import failed (HTTP ${response.status})${snippet ? `: ${snippet}` : ""}`
+        );
+      }
+
+      if (!data) {
+        throw new Error("Import succeeded but returned an unexpected response.");
       }
 
       setResult(data);
