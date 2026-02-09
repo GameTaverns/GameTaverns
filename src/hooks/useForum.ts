@@ -278,7 +278,7 @@ interface AuthorData {
 async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorData>> {
   if (authorIds.length === 0) return new Map();
   
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("user_profiles")
     .select(`
       user_id, 
@@ -287,13 +287,21 @@ async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorD
     `)
     .in("user_id", authorIds);
   
+  if (error) {
+    console.warn("Failed to fetch author data:", error);
+  }
+  
   const map = new Map<string, AuthorData>();
-  data?.forEach((p: any) => {
-    map.set(p.user_id, {
-      display_name: p.display_name || "Unknown",
-      featured_badge: p.featured_achievement || null,
-    });
-  });
+  if (data) {
+    for (const p of data) {
+      // PostgREST returns the join as an object or null
+      const badge = p.featured_achievement as { name: string; icon: string | null; tier: number } | null;
+      map.set(p.user_id, {
+        display_name: p.display_name || "Unknown",
+        featured_badge: badge,
+      });
+    }
+  }
   return map;
 }
 
