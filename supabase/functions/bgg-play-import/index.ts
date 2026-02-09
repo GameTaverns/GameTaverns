@@ -399,15 +399,27 @@ export default async function handler(req: Request): Promise<Response> {
       gamesByTitle.set(game.title.toLowerCase(), { id: game.id, title: game.title });
     }
 
-    // Get existing sessions with bgg_play_id to avoid duplicates (or update them)
-    const { data: existingSessions } = await supabaseAdmin
-      .from("game_sessions")
-      .select("id, bgg_play_id")
-      .not("bgg_play_id", "is", null);
-
-    const existingBggPlayIds = new Map<string, string>(
-      (existingSessions || []).map(s => [s.bgg_play_id, s.id])
-    );
+    // Get existing sessions with bgg_play_id scoped to THIS library's games to avoid duplicates
+    // This allows the same BGG play to be imported into different libraries independently
+    const libraryGameIds = (libraryGames || []).map(g => g.id);
+    let existingBggPlayIds = new Map<string, string>();
+    
+    if (libraryGameIds.length > 0) {
+      // Batch in chunks to avoid URL length limits
+      const chunkSize = 200;
+      for (let i = 0; i < libraryGameIds.length; i += chunkSize) {
+        const chunk = libraryGameIds.slice(i, i + chunkSize);
+        const { data: existingSessions } = await supabaseAdmin
+          .from("game_sessions")
+          .select("id, bgg_play_id")
+          .not("bgg_play_id", "is", null)
+          .in("game_id", chunk);
+        
+        for (const s of existingSessions || []) {
+          existingBggPlayIds.set(s.bgg_play_id, s.id);
+        }
+      }
+    }
 
     const result: ImportResult = {
       imported: 0,
