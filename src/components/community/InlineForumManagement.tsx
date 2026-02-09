@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Plus, Archive, ArchiveRestore, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Plus, Archive, ArchiveRestore, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useCreateForumCategory, useSetCategoryArchived, type ForumCategory } from "@/hooks/useForum";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useCreateForumCategory, useSetCategoryArchived, useDeleteForumCategory, type ForumCategory } from "@/hooks/useForum";
 import { FORUM_ICON_OPTIONS, FORUM_COLOR_OPTIONS, type ForumIconValue, type ForumColorValue } from "@/lib/forumOptions";
 
 interface InlineForumManagementProps {
@@ -19,6 +30,13 @@ interface InlineForumManagementProps {
 
 function CategoryRow({ category }: { category: ForumCategory }) {
   const setArchived = useSetCategoryArchived();
+  const deleteCategory = useDeleteForumCategory();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDelete = () => {
+    deleteCategory.mutate({ categoryId: category.id, libraryId: category.library_id });
+    setShowDeleteConfirm(false);
+  };
 
   return (
     <div className="flex items-center justify-between gap-2 p-2 rounded bg-wood-dark/40 text-sm">
@@ -27,20 +45,59 @@ function CategoryRow({ category }: { category: ForumCategory }) {
         <Badge variant={category.is_archived ? "outline" : "secondary"} className="text-xs">
           {category.is_archived ? "Archived" : "Active"}
         </Badge>
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 px-2 text-cream/70 hover:text-cream"
-        onClick={() => setArchived.mutate({ categoryId: category.id, archived: !category.is_archived })}
-        disabled={setArchived.isPending}
-      >
-        {category.is_archived ? (
-          <ArchiveRestore className="h-3.5 w-3.5" />
-        ) : (
-          <Archive className="h-3.5 w-3.5" />
+        {category.is_system && (
+          <Badge variant="outline" className="text-xs text-cream/50">
+            System
+          </Badge>
         )}
-      </Button>
+      </div>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-cream/70 hover:text-cream"
+          onClick={() => setArchived.mutate({ categoryId: category.id, archived: !category.is_archived })}
+          disabled={setArchived.isPending || category.is_system}
+          title={category.is_archived ? "Restore category" : "Archive category"}
+        >
+          {category.is_archived ? (
+            <ArchiveRestore className="h-3.5 w-3.5" />
+          ) : (
+            <Archive className="h-3.5 w-3.5" />
+          )}
+        </Button>
+        
+        {/* Only show delete for non-system categories */}
+        {!category.is_system && (
+          <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                disabled={deleteCategory.isPending}
+                title="Delete category permanently"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete "{category.name}"?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this category and all its threads. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
     </div>
   );
 }

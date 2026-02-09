@@ -28,6 +28,7 @@ import {
 } from "@/hooks/useForum";
 import { useCategoryThreadsRealtime } from "@/hooks/useForumRealtime";
 import { useTenant } from "@/contexts/TenantContext";
+import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { CreateThreadDialog } from "@/components/community/CreateThreadDialog";
 
 // Map icon names to Lucide components
@@ -258,18 +259,28 @@ function ForumHome() {
     : "Discuss board games, find players, and connect with the community";
   
   // Back link destination differs based on context
-  const backLink = isTenantMode ? "/" : "/dashboard?tab=community";
+  // On library subdomain: back to library home "/"
+  // On platform (site-wide forums): back to dashboard with community tab - use getPlatformUrl to escape subdomain
   const backLabel = isTenantMode ? "Back to Home" : "Back to Dashboard";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link to={backLink}>
-          <Button variant="ghost" className="-ml-2">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {backLabel}
-          </Button>
-        </Link>
+        {isTenantMode ? (
+          <Link to="/">
+            <Button variant="ghost" className="-ml-2">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              {backLabel}
+            </Button>
+          </Link>
+        ) : (
+          <a href={getPlatformUrl("/dashboard?tab=community")}>
+            <Button variant="ghost" className="-ml-2">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              {backLabel}
+            </Button>
+          </a>
+        )}
         <div>
           <h1 className="text-3xl font-bold">{forumTitle}</h1>
           <p className="text-muted-foreground mt-1">
