@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, MessageSquare } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +9,6 @@ import { LibraryManagement } from "@/components/admin/LibraryManagement";
 import { PlatformSettings } from "@/components/admin/PlatformSettings";
 import { PlatformAnalytics } from "@/components/admin/PlatformAnalytics";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
-import { PlatformForumManagement } from "@/components/admin/PlatformForumManagement";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { Badge } from "@/components/ui/badge";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
@@ -137,13 +136,6 @@ export default function PlatformAdmin() {
               Libraries
             </TabsTrigger>
             <TabsTrigger 
-              value="forums"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Forums
-            </TabsTrigger>
-            <TabsTrigger 
               value="settings"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
             >
@@ -174,10 +166,6 @@ export default function PlatformAdmin() {
           
           <TabsContent value="libraries" className="mt-6">
             <LibraryManagement />
-          </TabsContent>
-
-          <TabsContent value="forums" className="mt-6">
-            <PlatformForumManagement />
           </TabsContent>
           
           <TabsContent value="settings" className="mt-6">
