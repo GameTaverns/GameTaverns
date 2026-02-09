@@ -204,7 +204,7 @@ export default function LibraryGames() {
   return (
     <Layout>
       <div className="max-w-5xl mx-auto">
-        <a href={getPlatformUrl("/dashboard")}>
+        <a href={getPlatformUrl("/dashboard?tab=library")}>
           <Button
             variant="ghost"
             className="mb-6 -ml-2"
