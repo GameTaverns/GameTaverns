@@ -32,7 +32,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <a
-                  href="mailto:support@gametaverns.com"
+                  href="mailto:admin@gametaverns.com"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Contact

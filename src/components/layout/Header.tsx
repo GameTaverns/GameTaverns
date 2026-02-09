@@ -13,6 +13,7 @@ import { isProductionDeployment } from "@/config/runtime";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 
 // Get the base platform URL for a specific path (main domain, not subdomain)
 function getPlatformUrl(path: string = "/dashboard"): string {
@@ -152,6 +153,8 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           {isAuthenticated && !isDemoMode && (
             <NotificationsDropdown />
           )}
+          
+          <FeedbackDialog />
           
           <ThemeToggle />
           

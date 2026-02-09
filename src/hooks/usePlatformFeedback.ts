@@ -87,11 +87,17 @@ export function useSubmitFeedback() {
       sender_email: string;
       message: string;
     }) => {
+      // Save to database
       const { error } = await supabase
         .from("platform_feedback")
         .insert(feedback);
 
       if (error) throw error;
+
+      // Fire-and-forget: notify admins via Discord DM + email
+      supabase.functions.invoke("notify-feedback", {
+        body: feedback,
+      }).catch((e) => console.warn("Feedback notification failed:", e));
     },
   });
 }
