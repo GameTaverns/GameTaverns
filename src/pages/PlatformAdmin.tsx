@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Shield, Users, Database, Settings, Activity, MessageCircle, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,9 +16,32 @@ import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 
 export default function PlatformAdmin() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated, loading: authLoading, isAdmin, roleLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("analytics");
+  
+  // Get initial tab from URL param
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "analytics");
   const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
+  
+  // Update tab when URL changes
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  // Update URL when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const newParams = new URLSearchParams(searchParams);
+    if (value === "analytics") {
+      newParams.delete("tab");
+    } else {
+      newParams.set("tab", value);
+    }
+    setSearchParams(newParams, { replace: true });
+  };
   
   // Debug logging for admin access issues
   useEffect(() => {
@@ -90,7 +113,7 @@ export default function PlatformAdmin() {
           </p>
         </div>
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="bg-wood-medium/30 border border-wood-medium/50">
             <TabsTrigger 
               value="analytics" 

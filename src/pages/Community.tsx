@@ -11,8 +11,10 @@ import {
   Lock,
   MessageCircle,
   Plus,
-  Eye
+  Eye,
+  Settings
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -223,6 +225,7 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
 
 function ForumHome() {
   const { data: categories = [], isLoading } = useSiteWideCategories();
+  const { isAdmin } = useAuth();
 
   return (
     <div className="space-y-6">
@@ -241,6 +244,14 @@ function ForumHome() {
             </p>
           </div>
         </div>
+        {isAdmin && (
+          <Link to="/admin?tab=forums">
+            <Button variant="outline" size="sm">
+              <Settings className="h-4 w-4 mr-2" />
+              Manage Forums
+            </Button>
+          </Link>
+        )}
       </div>
 
       {isLoading ? (
