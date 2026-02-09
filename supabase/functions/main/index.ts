@@ -10,6 +10,7 @@ import * as OTPAuth from "npm:otpauth@9.4.0";
 // These modules must guard `Deno.serve(...)` behind `import.meta.main`.
 import bggImportHandler from "../bgg-import/index.ts";
 import bggLookupHandler from "../bgg-lookup/index.ts";
+import bggPlayImportHandler from "../bgg-play-import/index.ts";
 import gameImportHandler from "../game-import/index.ts";
 
 // Router-compatible exported handlers
@@ -4189,7 +4190,7 @@ async function handleDiscordSendDM(req: Request): Promise<Response> {
 // MAIN ROUTER
 // ============================================================================
 const AVAILABLE_FUNCTIONS = [
-  "bgg-import", "bgg-lookup", "bulk-import", "condense-descriptions", "decrypt-messages",
+  "bgg-import", "bgg-lookup", "bgg-play-import", "bulk-import", "condense-descriptions", "decrypt-messages",
   "discord-config", "discord-create-event", "discord-delete-thread", "discord-forum-post",
   "discord-notify", "discord-oauth-callback", "discord-send-dm", "discord-unlink",
   "game-import", "game-recommendations", "image-proxy", "manage-account", "manage-users",
@@ -4209,6 +4210,8 @@ const INLINED_FUNCTIONS = [
   "discord-oauth-callback", "discord-send-dm",
   // Self-hosted-only helpers
   "membership", "library-settings", "profile-update",
+  // Self-hosted-only feature functions
+  "bgg-play-import",
 ];
 
 // NOTE: In self-hosted deployments, the edge-runtime process itself binds to the
@@ -4234,6 +4237,8 @@ Deno.serve(async (req) => {
       return bggImportHandler(req);
     case "bgg-lookup":
       return bggLookupHandler(req);
+    case "bgg-play-import":
+      return bggPlayImportHandler(req);
     case "game-import":
       return gameImportHandler(req);
     case "totp-status":
