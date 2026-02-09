@@ -143,12 +143,13 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/community">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link to="/dashboard?tab=community">
+              <Button variant="ghost" className="-ml-2">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </Link>
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg border ${colorClass}`}>
               <Icon className="h-6 w-6" />
@@ -227,9 +228,10 @@ function ForumHome() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/dashboard">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
+          <Link to="/dashboard?tab=community">
+            <Button variant="ghost" className="-ml-2">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
             </Button>
           </Link>
           <div>

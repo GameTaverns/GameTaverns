@@ -15,6 +15,7 @@ import { LibraryBranding } from "@/components/settings/LibraryBranding";
 import { LibraryDiscordSettings } from "@/components/settings/LibraryDiscordSettings";
 import { LibraryFeatureFlagsAdmin } from "@/components/settings/LibraryFeatureFlagsAdmin";
 import { LibraryMemberManagement } from "@/components/settings/LibraryMemberManagement";
+import { LibraryForumManagement } from "@/components/settings/LibraryForumManagement";
 
 export default function LibrarySettings() {
   const navigate = useNavigate();
@@ -104,7 +105,7 @@ export default function LibrarySettings() {
         </a>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-9">
             <TabsTrigger value="general" className="gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">General</span>
@@ -136,6 +137,10 @@ export default function LibrarySettings() {
             <TabsTrigger value="features" className="gap-2">
               <ToggleRight className="h-4 w-4" />
               <span className="hidden sm:inline">Features</span>
+            </TabsTrigger>
+            <TabsTrigger value="forum" className="gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Forum</span>
             </TabsTrigger>
           </TabsList>
 
@@ -169,6 +174,10 @@ export default function LibrarySettings() {
 
           <TabsContent value="features">
             <LibraryFeatureFlagsAdmin />
+          </TabsContent>
+
+          <TabsContent value="forum">
+            <LibraryForumManagement />
           </TabsContent>
         </Tabs>
       </div>
