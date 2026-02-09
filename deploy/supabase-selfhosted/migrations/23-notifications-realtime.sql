@@ -250,9 +250,19 @@ GRANT INSERT ON public.notification_log TO authenticated;
 -- ===========================================
 -- Enable Realtime for Tables
 -- ===========================================
--- Note: In self-hosted Supabase, you may need to run these separately
--- depending on your PostgREST/Realtime configuration
+-- Self-hosted Supabase may not have the realtime publication created yet.
+-- We create it if missing, then add tables to it.
 
+DO $$
+BEGIN
+    -- Create the publication if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        CREATE PUBLICATION supabase_realtime;
+        RAISE NOTICE 'Created supabase_realtime publication';
+    END IF;
+END $$;
+
+-- Add tables to realtime publication (safe even if already added)
 DO $$
 BEGIN
     -- Enable realtime for notification_log
@@ -261,6 +271,8 @@ BEGIN
         RAISE NOTICE 'Added notification_log to supabase_realtime publication';
     EXCEPTION WHEN duplicate_object THEN
         RAISE NOTICE 'notification_log already in supabase_realtime publication';
+    WHEN undefined_table THEN
+        RAISE NOTICE 'notification_log table does not exist yet';
     END;
 
     -- Enable realtime for forum_threads
@@ -269,6 +281,8 @@ BEGIN
         RAISE NOTICE 'Added forum_threads to supabase_realtime publication';
     EXCEPTION WHEN duplicate_object THEN
         RAISE NOTICE 'forum_threads already in supabase_realtime publication';
+    WHEN undefined_table THEN
+        RAISE NOTICE 'forum_threads table does not exist yet';
     END;
 
     -- Enable realtime for forum_replies
@@ -277,5 +291,7 @@ BEGIN
         RAISE NOTICE 'Added forum_replies to supabase_realtime publication';
     EXCEPTION WHEN duplicate_object THEN
         RAISE NOTICE 'forum_replies already in supabase_realtime publication';
+    WHEN undefined_table THEN
+        RAISE NOTICE 'forum_replies table does not exist yet';
     END;
 END $$;
