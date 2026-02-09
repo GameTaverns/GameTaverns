@@ -23,7 +23,10 @@ import {
   AlertTriangle,
   Users,
   Globe,
-  MessageSquare
+  MessageSquare,
+  DollarSign,
+  Target,
+  ArrowLeftRight
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -39,6 +42,7 @@ import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyticsDashboard";
+import { CollectionValueDashboard } from "@/components/analytics/CollectionValueDashboard";
 import { PollsManager } from "@/components/polls/PollsManager";
 import { AccountSettings } from "@/components/settings/AccountSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -54,6 +58,8 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Footer } from "@/components/layout/Footer";
 import { MyInquiriesSection } from "@/components/dashboard/MyInquiriesSection";
 import { CommunityTab } from "@/components/community/CommunityTab";
+import { ChallengesManager } from "@/components/challenges/ChallengesManager";
+import { TradeCenter } from "@/components/trades/TradeCenter";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -244,6 +250,13 @@ const { data: playCount } = useQuery({
                   {pendingLoanRequests + unreadCount}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="trades" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              Trades
             </TabsTrigger>
             <TabsTrigger 
               value="danger" 
@@ -656,6 +669,42 @@ const { data: playCount } = useQuery({
                   </CardContent>
                 </Card>
 
+                {/* Collection Value - Self-hosted feature */}
+                {isSelfHostedMode() && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="h-5 w-5 text-secondary" />
+                        Collection Value
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        Track purchase prices and current market value
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <CollectionValueDashboard libraryId={library.id} />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Group Challenges - Self-hosted feature */}
+                {isSelfHostedMode() && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-secondary" />
+                        Group Challenges
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        Create play goals, game challenges, and competitive leaderboards
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChallengesManager libraryId={library.id} canManage={true} />
+                    </CardContent>
+                  </Card>
+                )}
+
               </div>
             ) : (
               /* Non-owner: Show Create Library prompt */
@@ -676,6 +725,23 @@ const { data: playCount } = useQuery({
                       Create Library
                     </Button>
                   </Link>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* ===== TRADES TAB ===== */}
+          <TabsContent value="trades">
+            {isSelfHostedMode() ? (
+              <TradeCenter />
+            ) : (
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <CardContent className="py-12 text-center">
+                  <ArrowLeftRight className="h-12 w-12 mx-auto mb-4 text-cream/40" />
+                  <h3 className="text-lg font-medium mb-2">Cross-Library Trading</h3>
+                  <p className="text-cream/60">
+                    This feature is only available on self-hosted deployments.
+                  </p>
                 </CardContent>
               </Card>
             )}
