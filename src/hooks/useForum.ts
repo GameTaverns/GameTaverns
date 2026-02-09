@@ -166,6 +166,39 @@ export function useSetCategoryArchived() {
   });
 }
 
+export function useDeleteForumCategory() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ categoryId, libraryId }: { categoryId: string; libraryId: string | null }) => {
+      const { error } = await supabase
+        .from("forum_categories")
+        .delete()
+        .eq("id", categoryId);
+
+      if (error) throw error;
+      return { categoryId, libraryId };
+    },
+    onSuccess: ({ libraryId }) => {
+      queryClient.invalidateQueries({ queryKey: ["forum-categories"] });
+      if (libraryId) {
+        queryClient.invalidateQueries({ queryKey: ["forum-categories", "library", libraryId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["forum-categories", "site-wide"] });
+      }
+      toast({ title: "Category deleted" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not delete category",
+        description: err?.message ?? "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export interface ForumCategory {
   id: string;
   name: string;
