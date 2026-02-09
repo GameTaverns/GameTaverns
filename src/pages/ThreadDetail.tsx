@@ -45,6 +45,7 @@ import {
   useDeleteThread,
   type ForumReply 
 } from "@/hooks/useForum";
+import { useThreadRepliesRealtime } from "@/hooks/useForumRealtime";
 import { useAuth } from "@/hooks/useAuth";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 
@@ -139,6 +140,9 @@ export default function ThreadDetail() {
   const { isAdmin } = useAuth();
   const { data: thread, isLoading: threadLoading } = useThread(threadId);
   const { data: replies = [], isLoading: repliesLoading } = useThreadReplies(threadId);
+  
+  // Subscribe to realtime reply updates
+  useThreadRepliesRealtime(threadId);
   
   // Moderation hooks
   const togglePin = useToggleThreadPin();

@@ -25,6 +25,7 @@ import {
   type ForumCategory,
   type ForumThread 
 } from "@/hooks/useForum";
+import { useCategoryThreadsRealtime } from "@/hooks/useForumRealtime";
 import { CreateThreadDialog } from "@/components/community/CreateThreadDialog";
 
 // Map icon names to Lucide components
@@ -109,6 +110,9 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
   const category = categories.find((c) => c.slug === categorySlug);
   const { data: threads = [], isLoading: threadsLoading } = useCategoryThreads(category?.id, 50);
   const [showCreateThread, setShowCreateThread] = useState(false);
+  
+  // Subscribe to realtime thread updates
+  useCategoryThreadsRealtime(category?.id);
 
   if (categoriesLoading) {
     return (
