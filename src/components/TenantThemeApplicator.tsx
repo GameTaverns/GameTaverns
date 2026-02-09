@@ -100,13 +100,18 @@ export function TenantThemeApplicator() {
       }
       if (background) {
         root.style.setProperty('--background', background);
-        root.style.setProperty('--foreground', getForeground(settings.theme_dark_background_l));
+        // Use explicit foreground color if set, otherwise auto-derive
+        const s = settings as any;
+        const explicitFg = formatHSL(s.theme_dark_foreground_h, s.theme_dark_foreground_s, s.theme_dark_foreground_l);
+        const fg = explicitFg || getForeground(settings.theme_dark_background_l);
+        root.style.setProperty('--foreground', fg);
         const bgL = parseInt((settings.theme_dark_background_l || '10').replace('%', ''));
-        // Muted: keep slight warmth but mostly neutral
+        // Muted: derived from foreground at reduced opacity
         const mutedL = Math.min(bgL + 5, 100);
         root.style.setProperty('--muted', `0 0% ${mutedL}%`);
-        root.style.setProperty('--muted-foreground', `0 0% 60%`);
-        // Border and input: neutral grey
+        // Muted-foreground: a softer version of the main foreground
+        const fgL = explicitFg ? parseInt((s.theme_dark_foreground_l || '90').replace('%', '')) : 95;
+        root.style.setProperty('--muted-foreground', `0 0% ${clamp(fgL - 30, 0, 100)}%`);
         root.style.setProperty('--border', getNeutralBorder(bgL));
         root.style.setProperty('--input', getNeutralInput(bgL));
 
@@ -151,13 +156,17 @@ export function TenantThemeApplicator() {
       }
       if (background) {
         root.style.setProperty('--background', background);
-        root.style.setProperty('--foreground', getForeground(settings.theme_background_l));
+        // Use explicit foreground color if set, otherwise auto-derive
+        const s = settings as any;
+        const explicitFg = formatHSL(s.theme_foreground_h, s.theme_foreground_s, s.theme_foreground_l);
+        const fg = explicitFg || getForeground(settings.theme_background_l);
+        root.style.setProperty('--foreground', fg);
         const bgL = parseInt((settings.theme_background_l || '95').replace('%', ''));
-        // Muted: neutral grey, not tinted by background hue
         const mutedL = Math.max(bgL - 5, 0);
         root.style.setProperty('--muted', `0 0% ${mutedL}%`);
-        root.style.setProperty('--muted-foreground', `0 0% 40%`);
-        // Border and input: neutral grey
+        // Muted-foreground: a softer version of the main foreground
+        const fgL = explicitFg ? parseInt((s.theme_foreground_l || '15').replace('%', '')) : 10;
+        root.style.setProperty('--muted-foreground', `0 0% ${clamp(fgL + 30, 0, 100)}%`);
         root.style.setProperty('--border', getNeutralBorder(bgL));
         root.style.setProperty('--input', getNeutralInput(bgL));
 
