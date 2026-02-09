@@ -258,8 +258,8 @@ const Login = () => {
   // Show nothing while checking auth to prevent flash
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center">
-        <div className="animate-pulse text-cream">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center">
+        <div className="animate-pulse text-foreground">Loading...</div>
       </div>
     );
   }
@@ -284,24 +284,24 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-4">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      <Card className="w-full max-w-md bg-sidebar/80 border-border/50 backdrop-blur-sm">
+      <Card className="w-full max-w-md bg-card/80 dark:bg-sidebar/80 border-border/50 backdrop-blur-sm">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-3 mb-4">
             <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
-            <span className="font-display text-2xl font-bold text-cream">GameTaverns</span>
+            <span className="font-display text-2xl font-bold text-foreground">GameTaverns</span>
           </Link>
-          <CardTitle className="font-display text-2xl text-cream">Welcome Back</CardTitle>
+          <CardTitle className="font-display text-2xl text-foreground">Welcome Back</CardTitle>
           <CardDescription className="text-muted-foreground">
             Sign in to manage your game libraries
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full" onValueChange={resetTurnstile}>
-            <TabsList className="grid w-full grid-cols-2 bg-wood-medium/50">
+            <TabsList className="grid w-full grid-cols-2 bg-muted dark:bg-wood-medium/50">
               <TabsTrigger 
                 value="signin" 
                 className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
@@ -318,30 +318,30 @@ const Login = () => {
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email" className="text-cream/80">Email or Username</Label>
+                  <Label htmlFor="signin-email" className="text-foreground/80">Email or Username</Label>
                   <Input
                     id="signin-email"
                     type="text"
                     value={emailOrUsername}
                     onChange={(e) => setEmailOrUsername(e.target.value)}
                     placeholder="you@example.com or username"
-                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password" className="text-cream/80">Password</Label>
+                  <Label htmlFor="signin-password" className="text-foreground/80">Password</Label>
                   <PasswordInput
                     id="signin-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-cream/80">Verification</Label>
+                  <Label className="text-foreground/80">Verification</Label>
                   <TurnstileWidget
                     key={`signin-${turnstileKey}`}
                     onVerify={handleTurnstileVerify}
@@ -368,7 +368,7 @@ const Login = () => {
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-username" className="text-cream/80">
+                  <Label htmlFor="signup-username" className="text-foreground/80">
                     Username <span className="text-muted-foreground text-xs">(optional, for login)</span>
                   </Label>
                   <Input
@@ -377,12 +377,12 @@ const Login = () => {
                     onChange={(e) => setSignupUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                     placeholder="your_username"
                     maxLength={30}
-                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                   />
                   <p className="text-xs text-muted-foreground">3-30 characters, letters, numbers, underscores only</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-displayname" className="text-cream/80">
+                  <Label htmlFor="signup-displayname" className="text-foreground/80">
                     Display Name <span className="text-muted-foreground text-xs">(optional)</span>
                   </Label>
                   <Input
@@ -390,47 +390,47 @@ const Login = () => {
                     value={signupDisplayName}
                     onChange={(e) => setSignupDisplayName(e.target.value)}
                     placeholder="Your name"
-                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email" className="text-cream/80">Email</Label>
+                  <Label htmlFor="signup-email" className="text-foreground/80">Email</Label>
                   <Input
                     id="signup-email"
                     type="email"
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password" className="text-cream/80">Password</Label>
+                  <Label htmlFor="signup-password" className="text-foreground/80">Password</Label>
                   <PasswordInput
                     id="signup-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                     minLength={6}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-confirm-password" className="text-cream/80">Confirm Password</Label>
+                  <Label htmlFor="signup-confirm-password" className="text-foreground/80">Confirm Password</Label>
                   <PasswordInput
                     id="signup-confirm-password"
                     value={signupConfirmPassword}
                     onChange={(e) => setSignupConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
+                    className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                     minLength={6}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-cream/80">Verification</Label>
+                  <Label className="text-foreground/80">Verification</Label>
                   <TurnstileWidget
                     key={`signup-${turnstileKey}`}
                     onVerify={handleTurnstileVerify}

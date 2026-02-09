@@ -30,13 +30,13 @@ export default function Platform() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
+    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium">
       {/* Header */}
-      <header className="border-b border-border/30 bg-wood-dark/50 backdrop-blur-sm">
+      <header className="border-b border-border/30 bg-muted/50 dark:bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
             <img src={logoImage} alt="GameTaverns" className="h-10 w-auto" />
-            <span className="font-display text-2xl font-bold text-cream">
+            <span className="font-display text-2xl font-bold text-foreground">
               GameTaverns
             </span>
           </Link>
@@ -47,7 +47,7 @@ export default function Platform() {
             {isAuthenticated ? (
               <>
                 <Link to="/dashboard">
-                  <Button variant="ghost" className="text-cream/80 hover:text-cream hover:bg-wood-medium/50">
+                  <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
                     Dashboard
                   </Button>
                 </Link>
@@ -62,7 +62,7 @@ export default function Platform() {
             ) : (
               <>
               <Link to="/login">
-                  <Button variant="ghost" className="text-cream/80 hover:text-cream hover:bg-wood-medium/50">
+                  <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
                     Sign In
                   </Button>
                 </Link>
@@ -74,12 +74,12 @@ export default function Platform() {
       
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
-        <h1 className="font-display text-5xl md:text-7xl font-bold text-cream mb-6">
+        <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground mb-6">
           Your Board Game Collection,
           <br />
           <span className="text-secondary">Beautifully Organized</span>
         </h1>
-        <p className="text-xl text-cream/70 max-w-2xl mx-auto mb-10">
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
           Create your own personalized board game library. Track your collection, 
           log play sessions, share with friends, and make it uniquely yours.
         </p>
@@ -95,7 +95,7 @@ export default function Platform() {
             <Button 
               size="lg" 
               variant="outline"
-              className="border-cream/30 text-cream hover:bg-wood-medium/50 text-lg px-8 py-6"
+              className="border-border text-foreground hover:bg-accent hover:text-accent-foreground text-lg px-8 py-6"
             >
               Explore Features
             </Button>
@@ -108,26 +108,26 @@ export default function Platform() {
             <div className="text-3xl font-bold text-secondary">
               {statsLoading ? "..." : formatStatNumber(stats?.librariesCount || 0)}
             </div>
-            <div className="text-cream/50 text-sm">Libraries Created</div>
+            <div className="text-muted-foreground text-sm">Libraries Created</div>
           </div>
           <div>
             <div className="text-3xl font-bold text-secondary">
               {statsLoading ? "..." : formatStatNumber(stats?.gamesCount || 0)}
             </div>
-            <div className="text-cream/50 text-sm">Games Cataloged</div>
+            <div className="text-muted-foreground text-sm">Games Cataloged</div>
           </div>
           <div>
             <div className="text-3xl font-bold text-secondary">
               {statsLoading ? "..." : formatStatNumber(stats?.playsCount || 0)}
             </div>
-            <div className="text-cream/50 text-sm">Plays Logged</div>
+            <div className="text-muted-foreground text-sm">Plays Logged</div>
           </div>
         </div>
       </section>
       
       {/* Features */}
       <section className="container mx-auto px-4 py-20">
-        <h2 className="font-display text-3xl font-bold text-cream text-center mb-12">
+        <h2 className="font-display text-3xl font-bold text-foreground text-center mb-12">
           Everything You Need
         </h2>
         
@@ -167,11 +167,11 @@ export default function Platform() {
       
       {/* CTA */}
       <section className="container mx-auto px-4 py-20 text-center">
-        <div className="bg-wood-medium/30 rounded-2xl p-12 border border-border/30">
-          <h2 className="font-display text-3xl font-bold text-cream mb-4">
+        <div className="bg-muted/50 dark:bg-wood-medium/30 rounded-2xl p-12 border border-border/30">
+          <h2 className="font-display text-3xl font-bold text-foreground mb-4">
             Ready to Create Your Library?
           </h2>
-          <p className="text-cream/70 mb-8 max-w-xl mx-auto">
+          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
             Join thousands of board game enthusiasts who trust GameTaverns to organize and showcase their collections.
           </p>
           <Button 
@@ -192,10 +192,10 @@ export default function Platform() {
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="bg-wood-medium/20 rounded-xl p-6 border border-border/20">
+    <div className="bg-muted/50 dark:bg-wood-medium/20 rounded-xl p-6 border border-border/20">
       <div className="text-secondary mb-4">{icon}</div>
-      <h3 className="font-display text-xl font-semibold text-cream mb-2">{title}</h3>
-      <p className="text-cream/60">{description}</p>
+      <h3 className="font-display text-xl font-semibold text-foreground mb-2">{title}</h3>
+      <p className="text-muted-foreground">{description}</p>
     </div>
   );
 }
