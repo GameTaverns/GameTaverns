@@ -146,29 +146,74 @@ function parseBGGPlaysXML(xmlText: string): BGGPlay[] {
 async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
   const allPlays: BGGPlay[] = [];
   let page = 1;
-  const perPage = 100;
-  
+
+  // Optional: allow self-hosted operators to provide a BGG cookie if BGG blocks server-to-server traffic.
+  // Example value: "bggusername=...; SessionID=..." (whatever your browser sends to boardgamegeek.com)
+  const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+
   while (true) {
     const url = `https://boardgamegeek.com/xmlapi2/plays?username=${encodeURIComponent(username)}&page=${page}`;
     console.log(`[BGGPlayImport] Fetching page ${page}: ${url}`);
-    
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "GameTaverns/1.0 (Board Game Library Management)",
-      },
-    });
-    
+
+    const headers: Record<string, string> = {
+      // BGG is increasingly strict about non-browser traffic; these headers reduce false positives.
+      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 GameTaverns/1.0",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
+      "Referer": "https://boardgamegeek.com/",
+      "Origin": "https://boardgamegeek.com",
+    };
+
+    if (bggCookie) {
+      headers["Cookie"] = bggCookie;
+    }
+
+    const response = await fetch(url, { headers });
+
     if (!response.ok) {
+      // BGG sometimes returns 202 while preparing a cached response.
       if (response.status === 202) {
-        // BGG is processing, wait and retry
         console.log("[BGGPlayImport] BGG returned 202, waiting...");
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 2000));
         continue;
       }
-      throw new Error(`BGG API error: ${response.status}`);
+
+      const bodySnippet = (await response.text().catch(() => "")).slice(0, 300);
+      throw new Error(`BGG API error: ${response.status}${bodySnippet ? ` (${bodySnippet})` : ""}`);
     }
-    
+
     const xmlText = await response.text();
+
+    // Check for error response
+    if (xmlText.includes("<error>")) {
+      const errorMatch = xmlText.match(/<message>([^<]+)<\/message>/);
+      throw new Error(errorMatch?.[1] || "BGG API error");
+    }
+
+    // Get total plays count
+    const totalMatch = xmlText.match(/total="(\d+)"/);
+    const total = parseInt(totalMatch?.[1] || "0", 10);
+
+    const plays = parseBGGPlaysXML(xmlText);
+    allPlays.push(...plays);
+
+    console.log(
+      `[BGGPlayImport] Page ${page}: got ${plays.length} plays, total so far: ${allPlays.length}/${total}`
+    );
+
+    if (allPlays.length >= total || plays.length === 0) {
+      break;
+    }
+
+    page++;
+    // Rate limit
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  return allPlays;
+}
     
     // Check for error response
     if (xmlText.includes("<error>")) {
