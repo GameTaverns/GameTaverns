@@ -21,11 +21,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   useSiteWideCategories, 
+  useLibraryCategories,
   useCategoryThreads, 
   type ForumCategory,
   type ForumThread 
 } from "@/hooks/useForum";
 import { useCategoryThreadsRealtime } from "@/hooks/useForumRealtime";
+import { useTenant } from "@/contexts/TenantContext";
 import { CreateThreadDialog } from "@/components/community/CreateThreadDialog";
 
 // Map icon names to Lucide components
@@ -106,14 +108,22 @@ function ThreadRow({ thread }: { thread: ForumThread }) {
 }
 
 function CategoryView({ categorySlug }: { categorySlug: string }) {
-  const { data: categories = [], isLoading: categoriesLoading } = useSiteWideCategories();
+  const { library, isTenantMode } = useTenant();
+  
+  // Fetch categories based on context (library vs site-wide)
+  const { data: siteCategories = [], isLoading: siteCategoriesLoading } = useSiteWideCategories();
+  const { data: libraryCategories = [], isLoading: libraryCategoriesLoading } = useLibraryCategories(library?.id);
+  
+  // Use appropriate categories based on tenant mode
+  const categories = isTenantMode ? libraryCategories : siteCategories;
+  const categoriesLoading = isTenantMode ? libraryCategoriesLoading : siteCategoriesLoading;
+  
   const category = categories.find((c) => c.slug === categorySlug);
   const { data: threads = [], isLoading: threadsLoading } = useCategoryThreads(category?.id, 50);
   const [showCreateThread, setShowCreateThread] = useState(false);
   
   // Subscribe to realtime thread updates
   useCategoryThreadsRealtime(category?.id);
-
   if (categoriesLoading) {
     return (
       <div className="space-y-4">
@@ -145,15 +155,19 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
   const pinnedThreads = threads.filter((t) => t.is_pinned);
   const regularThreads = threads.filter((t) => !t.is_pinned);
 
+  // Back link for category view - go to forum home (which differs by context)
+  const backLink = "/community";
+  const backLabel = "Back to Forums";
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/dashboard?tab=community">
+            <Link to={backLink}>
               <Button variant="ghost" className="-ml-2">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
+                {backLabel}
               </Button>
             </Link>
           <div className="flex items-center gap-3">
@@ -228,21 +242,38 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
 }
 
 function ForumHome() {
-  const { data: categories = [], isLoading } = useSiteWideCategories();
+  const { library, isTenantMode } = useTenant();
+  
+  // Fetch categories based on context (library vs site-wide)
+  const { data: siteCategories = [], isLoading: siteCategoriesLoading } = useSiteWideCategories();
+  const { data: libraryCategories = [], isLoading: libraryCategoriesLoading } = useLibraryCategories(library?.id);
+  
+  // Use appropriate categories based on tenant mode
+  const categories = isTenantMode ? libraryCategories : siteCategories;
+  const isLoading = isTenantMode ? libraryCategoriesLoading : siteCategoriesLoading;
+  
+  const forumTitle = isTenantMode && library ? `${library.name} Forums` : "Community Forums";
+  const forumDescription = isTenantMode 
+    ? "Discuss games, share tips, and connect with fellow members"
+    : "Discuss board games, find players, and connect with the community";
+  
+  // Back link destination differs based on context
+  const backLink = isTenantMode ? "/" : "/dashboard?tab=community";
+  const backLabel = isTenantMode ? "Back to Home" : "Back to Dashboard";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link to="/dashboard?tab=community">
+        <Link to={backLink}>
           <Button variant="ghost" className="-ml-2">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+            {backLabel}
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">Community Forums</h1>
+          <h1 className="text-3xl font-bold">{forumTitle}</h1>
           <p className="text-muted-foreground mt-1">
-            Discuss board games, find players, and connect with the community
+            {forumDescription}
           </p>
         </div>
       </div>
@@ -253,6 +284,16 @@ function ForumHome() {
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="text-center py-12 border border-dashed rounded-lg">
+          <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">No forum categories yet</h3>
+          <p className="text-muted-foreground">
+            {isTenantMode 
+              ? "The library owner hasn't set up any forum categories yet."
+              : "No categories have been created."}
+          </p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
