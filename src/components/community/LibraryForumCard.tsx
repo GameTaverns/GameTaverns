@@ -89,6 +89,7 @@ function LibraryTabContent({ libraryId, librarySlug, libraryName }: LibraryTabCo
   const isLoading = categoriesLoading || threadsLoading;
   const libraryForumUrl = getLibraryUrl(librarySlug, "/community");
 
+  // Forum IS enabled (parent component already filtered) - show content or "no categories yet"
   return (
     <div className="space-y-4">
       {/* Category Pills */}
@@ -134,9 +135,11 @@ function LibraryTabContent({ libraryId, librarySlug, libraryName }: LibraryTabCo
             </a>
           </div>
         ) : (
+          // Forum enabled but no categories created yet - prompt to set up
           <div className="text-center py-6">
             <MessageSquare className="h-8 w-8 mx-auto text-cream/40 mb-2" />
-            <p className="text-sm text-cream/60">Forums not enabled for this library</p>
+            <p className="text-sm text-cream/60">No forum categories created yet for {libraryName}</p>
+            <p className="text-xs text-cream/40 mt-1">Library owner can create categories in Library Settings</p>
           </div>
         )}
       </div>

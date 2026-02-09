@@ -163,11 +163,35 @@ CREATE POLICY "Anyone can view non-archived categories"
         )
     );
 
-DROP POLICY IF EXISTS "Admins and moderators can manage categories" ON public.forum_categories;
-CREATE POLICY "Admins and moderators can manage categories"
-    ON public.forum_categories FOR ALL
+-- INSERT policy (can't use can_manage_forum_category since row doesn't exist yet)
+DROP POLICY IF EXISTS "Admins and moderators can create categories" ON public.forum_categories;
+CREATE POLICY "Admins and moderators can create categories"
+    ON public.forum_categories FOR INSERT
+    WITH CHECK (
+        auth.uid() IS NOT NULL
+        AND (
+            (library_id IS NULL AND public.has_role(auth.uid(), 'admin'))
+            OR
+            (library_id IS NOT NULL AND (
+                public.is_library_moderator(auth.uid(), library_id)
+                OR EXISTS (
+                    SELECT 1 FROM public.libraries l
+                    WHERE l.id = library_id AND l.owner_id = auth.uid()
+                )
+            ))
+        )
+    );
+
+DROP POLICY IF EXISTS "Admins and moderators can update categories" ON public.forum_categories;
+CREATE POLICY "Admins and moderators can update categories"
+    ON public.forum_categories FOR UPDATE
     USING (public.can_manage_forum_category(auth.uid(), id))
     WITH CHECK (public.can_manage_forum_category(auth.uid(), id));
+
+DROP POLICY IF EXISTS "Admins and moderators can delete categories" ON public.forum_categories;
+CREATE POLICY "Admins and moderators can delete categories"
+    ON public.forum_categories FOR DELETE
+    USING (public.can_manage_forum_category(auth.uid(), id));
 
 -- RLS Policies for forum_threads
 DROP POLICY IF EXISTS "Users can view threads in accessible categories" ON public.forum_threads;
