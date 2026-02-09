@@ -106,6 +106,8 @@ MIGRATION_FILES=(
     "23-notifications-realtime.sql"
     "24-seed-forum-categories.sql"
     "25-forum-postgrest-fix.sql"
+    "26-achievements-sync.sql"
+    "27-fix-forum-categories-rls.sql"
 )
 
 SUCCESS_COUNT=0
