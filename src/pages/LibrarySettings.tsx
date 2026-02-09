@@ -96,7 +96,7 @@ export default function LibrarySettings() {
   return (
     <Layout>
       <div className="max-w-5xl mx-auto">
-        <a href={getPlatformUrl("/dashboard")}>
+        <a href={getPlatformUrl("/dashboard?tab=library")}>
           <Button variant="ghost" className="mb-6 -ml-2">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
