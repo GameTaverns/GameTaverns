@@ -206,6 +206,15 @@ const { data: playCount } = useQuery({
                 <ArrowRight className="h-4 w-4" />
               </a>
             )}
+            {(isAdmin || library) && (
+              <Link 
+                to="/docs"
+                className="flex items-center gap-2 px-3 py-1.5 bg-secondary/20 hover:bg-secondary/30 rounded-lg text-cream transition-colors"
+              >
+                <BookOpen className="h-4 w-4" />
+                <span className="hidden sm:inline">Guide</span>
+              </Link>
+            )}
             <span className="text-cream/80 hidden sm:inline">{profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email}</span>
             <Button 
               variant="ghost" 
