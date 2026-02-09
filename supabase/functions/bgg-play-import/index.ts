@@ -214,33 +214,6 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
 
   return allPlays;
 }
-    
-    // Check for error response
-    if (xmlText.includes("<error>")) {
-      const errorMatch = xmlText.match(/<message>([^<]+)<\/message>/);
-      throw new Error(errorMatch?.[1] || "BGG API error");
-    }
-    
-    // Get total plays count
-    const totalMatch = xmlText.match(/total="(\d+)"/);
-    const total = parseInt(totalMatch?.[1] || "0", 10);
-    
-    const plays = parseBGGPlaysXML(xmlText);
-    allPlays.push(...plays);
-    
-    console.log(`[BGGPlayImport] Page ${page}: got ${plays.length} plays, total so far: ${allPlays.length}/${total}`);
-    
-    if (allPlays.length >= total || plays.length === 0) {
-      break;
-    }
-    
-    page++;
-    // Rate limit
-    await new Promise(r => setTimeout(r, 500));
-  }
-  
-  return allPlays;
-}
 
 // Export handler
 export default async function handler(req: Request): Promise<Response> {
