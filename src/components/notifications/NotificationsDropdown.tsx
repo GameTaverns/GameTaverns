@@ -18,10 +18,12 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   loan_request: <BookOpen className="h-4 w-4 text-blue-500" />,
   loan_approved: <Check className="h-4 w-4 text-green-500" />,
   loan_returned: <BookOpen className="h-4 w-4 text-purple-500" />,
+  loan_rejected: <BookOpen className="h-4 w-4 text-red-500" />,
   achievement_earned: <Trophy className="h-4 w-4 text-yellow-500" />,
   event_reminder: <Calendar className="h-4 w-4 text-orange-500" />,
   message_received: <MessageSquare className="h-4 w-4 text-indigo-500" />,
   wishlist_alert: <Heart className="h-4 w-4 text-pink-500" />,
+  forum_reply: <MessageSquare className="h-4 w-4 text-green-500" />,
 };
 
 function NotificationItem({ notification, onMarkRead }: { notification: Notification; onMarkRead: () => void }) {
