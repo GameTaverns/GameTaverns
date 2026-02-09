@@ -523,16 +523,19 @@ export function Sidebar({ isOpen }: SidebarProps) {
               </Link>
             )}
             
-            <Link
-              to="/dashboard"
-              className={cn(
-                "sidebar-link justify-center",
-                location.pathname === "/dashboard" && "sidebar-link-active"
-              )}
-            >
-              <Library className="h-5 w-5" />
-              <span>Dashboard</span>
-            </Link>
+            {/* Dashboard link - only show when NOT in tenant mode (accessible via header in tenant mode) */}
+            {!isTenantMode && (
+              <Link
+                to="/dashboard"
+                className={cn(
+                  "sidebar-link justify-center",
+                  location.pathname === "/dashboard" && "sidebar-link-active"
+                )}
+              >
+                <Library className="h-5 w-5" />
+                <span>Dashboard</span>
+              </Link>
+            )}
             <Button
               variant="ghost"
               className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent"
