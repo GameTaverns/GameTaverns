@@ -52,7 +52,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-sidebar/80 border-border/50 backdrop-blur-sm">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-3 mb-4">

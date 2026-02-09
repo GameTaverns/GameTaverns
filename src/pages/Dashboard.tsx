@@ -152,7 +152,7 @@ const { data: playCount } = useQuery({
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center">
         <div className="animate-pulse text-cream">Loading...</div>
       </div>
     );
@@ -171,7 +171,7 @@ const { data: playCount } = useQuery({
   const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium">
+    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
       <AnnouncementBanner />
       {/* Header */}
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">

@@ -257,7 +257,7 @@ const Login = () => {
   // Show nothing while checking auth to prevent flash
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center">
         <div className="animate-pulse text-cream">Loading...</div>
       </div>
     );
@@ -272,7 +272,7 @@ const Login = () => {
   // Show 2FA verification screen
   if (requires2FA && pendingAccessToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center p-4">
         <TotpVerify 
           accessToken={pendingAccessToken}
           onSuccess={handle2FASuccess}
@@ -283,7 +283,7 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-sidebar/80 border-border/50 backdrop-blur-sm">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-3 mb-4">
