@@ -463,13 +463,11 @@ function BggThumbnail({ bggId, alt }: { bggId: string; alt: string }) {
     let cancelled = false;
     async function fetchThumb() {
       try {
-        const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${bggId}`);
-        const text = await res.text();
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(text, "text/xml");
-        const thumbEl = xml.querySelector("thumbnail");
-        if (!cancelled && thumbEl?.textContent) {
-          setImageUrl(thumbEl.textContent.trim());
+        const { data, error } = await supabase.functions.invoke("bgg-lookup", {
+          body: { bgg_id: bggId, use_ai: false },
+        });
+        if (!cancelled && !error && data?.success && data.data?.image_url) {
+          setImageUrl(data.data.image_url);
         }
       } catch {
         // fail silently
