@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   loan_request: <BookOpen className="h-4 w-4 text-blue-500" />,
   loan_approved: <Check className="h-4 w-4 text-green-500" />,
   loan_returned: <BookOpen className="h-4 w-4 text-purple-500" />,
-  loan_rejected: <BookOpen className="h-4 w-4 text-red-500" />,
+  loan_rejected: <BookOpen className="h-4 w-4 text-destructive" />,
   achievement_earned: <Trophy className="h-4 w-4 text-yellow-500" />,
   event_reminder: <Calendar className="h-4 w-4 text-orange-500" />,
   message_received: <MessageSquare className="h-4 w-4 text-indigo-500" />,
@@ -26,9 +27,57 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   forum_reply: <MessageSquare className="h-4 w-4 text-green-500" />,
 };
 
-function NotificationItem({ notification, onMarkRead }: { notification: Notification; onMarkRead: () => void }) {
+// Get navigation path based on notification type and metadata
+function getNotificationPath(notification: Notification): string | null {
+  const metadata = notification.metadata as Record<string, unknown> | null;
+  
+  switch (notification.notification_type) {
+    case "forum_reply":
+      if (metadata?.thread_id) {
+        return `/community/thread/${metadata.thread_id}`;
+      }
+      break;
+    case "loan_request":
+    case "loan_approved":
+    case "loan_rejected":
+    case "loan_returned":
+      // Navigate to dashboard lending tab
+      return "/dashboard?tab=lending";
+    case "achievement_earned":
+      return "/achievements";
+    case "event_reminder":
+      // Navigate to dashboard events section
+      return "/dashboard";
+    case "message_received":
+      return "/messages";
+    case "wishlist_alert":
+      if (metadata?.game_id) {
+        return `/games/${metadata.game_id}`;
+      }
+      break;
+  }
+  return null;
+}
+
+function NotificationItem({ 
+  notification, 
+  onMarkRead,
+  onNavigate,
+}: { 
+  notification: Notification; 
+  onMarkRead: () => void;
+  onNavigate: (path: string) => void;
+}) {
   const icon = NOTIFICATION_ICONS[notification.notification_type] || <Bell className="h-4 w-4" />;
   const isUnread = !notification.read_at;
+  const path = getNotificationPath(notification);
+
+  const handleClick = () => {
+    onMarkRead();
+    if (path) {
+      onNavigate(path);
+    }
+  };
 
   return (
     <DropdownMenuItem
@@ -36,7 +85,7 @@ function NotificationItem({ notification, onMarkRead }: { notification: Notifica
         "flex items-start gap-3 p-3 cursor-pointer",
         isUnread && "bg-accent/50"
       )}
-      onClick={onMarkRead}
+      onClick={handleClick}
     >
       <div className="flex-shrink-0 mt-0.5">{icon}</div>
       <div className="flex-1 min-w-0">
@@ -62,10 +111,15 @@ interface NotificationsDropdownProps {
 }
 
 export function NotificationsDropdown({ variant = "default" }: NotificationsDropdownProps) {
+  const navigate = useNavigate();
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
 
   const handleMarkRead = (notificationId: string) => {
     markAsRead.mutate(notificationId);
+  };
+  
+  const handleNavigate = (path: string) => {
+    navigate(path);
   };
 
   return (
@@ -122,6 +176,7 @@ export function NotificationsDropdown({ variant = "default" }: NotificationsDrop
                 key={notification.id}
                 notification={notification}
                 onMarkRead={() => handleMarkRead(notification.id)}
+                onNavigate={handleNavigate}
               />
             ))
           )}
