@@ -226,11 +226,18 @@ function ForumHome() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Community Forums</h1>
-          <p className="text-muted-foreground mt-1">
-            Discuss board games, find players, and connect with the community
-          </p>
+        <div className="flex items-center gap-4">
+          <Link to="/dashboard">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold">Community Forums</h1>
+            <p className="text-muted-foreground mt-1">
+              Discuss board games, find players, and connect with the community
+            </p>
+          </div>
         </div>
       </div>
 
