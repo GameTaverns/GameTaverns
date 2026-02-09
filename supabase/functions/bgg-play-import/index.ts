@@ -115,8 +115,8 @@ function parseBGGPlaysXML(xmlText: string): BGGPlay[] {
     for (const playerMatch of playerMatches) {
       const playerAttrs = playerMatch[1];
       
-      // Extract name - try multiple patterns since BGG can format differently
-      const nameMatch = playerAttrs.match(/name="([^"]*)"/);
+      // Extract name - use word boundary to avoid matching "username" 
+      const nameMatch = playerAttrs.match(/(?:^|\s)name="([^"]*)"/);
       const usernameMatch = playerAttrs.match(/username="([^"]*)"/);
       
       // Get the best available name
