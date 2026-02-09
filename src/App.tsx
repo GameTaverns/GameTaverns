@@ -223,6 +223,11 @@ function LibraryRoutes({ isDemoMode }: { isDemoMode: boolean }) {
       <Route path="/stats" element={<PlayStatsPage />} />
       <Route path="/poll/:token" element={<PollPage />} />
       
+      {/* Community/Forum routes for library */}
+      <Route path="/community" element={<Community />} />
+      <Route path="/community/:categorySlug" element={<Community />} />
+      <Route path="/community/thread/:threadId" element={<ThreadDetail />} />
+      
       {/* Docs & Legal pages accessible from library too */}
       <Route path="/docs" element={<Docs />} />
       <Route path="/legal" element={<Legal />} />
