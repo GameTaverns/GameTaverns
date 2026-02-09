@@ -12,6 +12,7 @@ import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
 import { isProductionDeployment } from "@/config/runtime";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
+import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 
 // Get the base platform URL for a specific path (main domain, not subdomain)
 function getPlatformUrl(path: string = "/dashboard"): string {
@@ -145,6 +146,11 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
               />
               <div className="w-px h-4 bg-border mx-1" />
             </>
+          )}
+          
+          {/* Notifications - shown for authenticated users */}
+          {isAuthenticated && !isDemoMode && (
+            <NotificationsDropdown />
           )}
           
           <ThemeToggle />
