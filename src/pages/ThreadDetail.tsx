@@ -5,10 +5,12 @@ import {
   ArrowLeft, 
   Pin, 
   Lock, 
+  Unlock,
   MessageCircle, 
   Eye,
-  User,
-  Reply
+  Reply,
+  MoreVertical,
+  Trash2
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +19,32 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useThread, useThreadReplies, useCreateReply, type ForumReply } from "@/hooks/useForum";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { 
+  useThread, 
+  useThreadReplies, 
+  useCreateReply, 
+  useToggleThreadPin,
+  useToggleThreadLock,
+  useDeleteThread,
+  type ForumReply 
+} from "@/hooks/useForum";
 import { useAuth } from "@/hooks/useAuth";
 
 function ReplyCard({ reply }: { reply: ForumReply }) {
@@ -107,8 +134,25 @@ function ReplyForm({ threadId, isLocked }: { threadId: string; isLocked: boolean
 export default function ThreadDetail() {
   const { threadId } = useParams();
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const { data: thread, isLoading: threadLoading } = useThread(threadId);
   const { data: replies = [], isLoading: repliesLoading } = useThreadReplies(threadId);
+  
+  // Moderation hooks
+  const togglePin = useToggleThreadPin();
+  const toggleLock = useToggleThreadLock();
+  const deleteThread = useDeleteThread();
+  
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const handleDelete = () => {
+    if (!thread) return;
+    deleteThread.mutate(thread.id, {
+      onSuccess: () => {
+        navigate(thread.category?.slug ? `/community/${thread.category.slug}` : "/community");
+      },
+    });
+  };
 
   if (threadLoading) {
     return (
@@ -142,6 +186,9 @@ export default function ThreadDetail() {
     ? thread.author.display_name.slice(0, 2).toUpperCase()
     : "??";
 
+  // Check if user can moderate this thread (admin for now, can extend to moderators)
+  const canModerate = isAdmin;
+
   return (
     <Layout hideSidebar>
       <div className="max-w-3xl mx-auto space-y-6">
@@ -156,22 +203,68 @@ export default function ThreadDetail() {
 
         {/* Thread Header */}
         <div className="space-y-4">
-          <div className="flex items-start gap-2 flex-wrap">
-            {thread.is_pinned && (
-              <Badge variant="secondary">
-                <Pin className="h-3 w-3 mr-1" />
-                Pinned
-              </Badge>
-            )}
-            {thread.is_locked && (
-              <Badge variant="outline">
-                <Lock className="h-3 w-3 mr-1" />
-                Locked
-              </Badge>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-2 flex-wrap">
+              {thread.is_pinned && (
+                <Badge variant="secondary">
+                  <Pin className="h-3 w-3 mr-1" />
+                  Pinned
+                </Badge>
+              )}
+              {thread.is_locked && (
+                <Badge variant="outline">
+                  <Lock className="h-3 w-3 mr-1" />
+                  Locked
+                </Badge>
+              )}
+            </div>
+            
+            {/* Moderation Controls */}
+            {canModerate && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => togglePin.mutate({ threadId: thread.id, isPinned: !thread.is_pinned })}
+                    disabled={togglePin.isPending}
+                  >
+                    <Pin className="h-4 w-4 mr-2" />
+                    {thread.is_pinned ? "Unpin thread" : "Pin thread"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => toggleLock.mutate({ threadId: thread.id, isLocked: !thread.is_locked })}
+                    disabled={toggleLock.isPending}
+                  >
+                    {thread.is_locked ? (
+                      <>
+                        <Unlock className="h-4 w-4 mr-2" />
+                        Unlock thread
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-4 w-4 mr-2" />
+                        Lock thread
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete thread
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
           <h1 className="text-3xl font-bold">{thread.title}</h1>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
             <div className="flex items-center gap-2">
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="text-xs">{authorInitials}</AvatarFallback>
@@ -191,6 +284,27 @@ export default function ThreadDetail() {
             </div>
           </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this thread?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the thread and all its replies. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteThread.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Thread Content */}
         <Card>

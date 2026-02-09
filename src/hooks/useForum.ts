@@ -544,3 +544,109 @@ export function useIncrementViewCount() {
     },
   });
 }
+
+// Toggle thread pinned status
+export function useToggleThreadPin() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ threadId, isPinned }: { threadId: string; isPinned: boolean }) => {
+      const { data, error } = await supabase
+        .from("forum_threads")
+        .update({ is_pinned: isPinned, updated_at: new Date().toISOString() })
+        .eq("id", threadId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["forum-thread", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["forum-threads"] });
+      toast({
+        title: data.is_pinned ? "Thread pinned" : "Thread unpinned",
+        description: data.is_pinned
+          ? "This thread will appear at the top of the category."
+          : "This thread will now follow normal sorting.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error updating thread",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+// Toggle thread locked status
+export function useToggleThreadLock() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ threadId, isLocked }: { threadId: string; isLocked: boolean }) => {
+      const { data, error } = await supabase
+        .from("forum_threads")
+        .update({ is_locked: isLocked, updated_at: new Date().toISOString() })
+        .eq("id", threadId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["forum-thread", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["forum-threads"] });
+      toast({
+        title: data.is_locked ? "Thread locked" : "Thread unlocked",
+        description: data.is_locked
+          ? "No new replies can be added to this thread."
+          : "Users can now reply to this thread.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error updating thread",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+// Delete a thread
+export function useDeleteThread() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      const { error } = await supabase
+        .from("forum_threads")
+        .delete()
+        .eq("id", threadId);
+
+      if (error) throw error;
+      return threadId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["forum-threads"] });
+      toast({
+        title: "Thread deleted",
+        description: "The thread has been removed.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error deleting thread",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}

@@ -10,20 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLibraryCategories, useCreateForumCategory, useSetCategoryArchived, type ForumCategory } from "@/hooks/useForum";
 import { Archive, ArchiveRestore, MessageSquare } from "lucide-react";
-
-const ICON_OPTIONS = [
-  { value: "MessageSquare", label: "Discussion" },
-  { value: "Megaphone", label: "Announcements" },
-  { value: "Users", label: "Players" },
-  { value: "ShoppingBag", label: "Marketplace" },
-] as const;
-
-const COLOR_OPTIONS = [
-  { value: "blue", label: "Blue" },
-  { value: "green", label: "Green" },
-  { value: "amber", label: "Amber" },
-  { value: "purple", label: "Purple" },
-] as const;
+import { FORUM_ICON_OPTIONS, FORUM_COLOR_OPTIONS, type ForumIconValue, type ForumColorValue } from "@/lib/forumOptions";
 
 function CategoryRow({ category }: { category: ForumCategory }) {
   const setArchived = useSetCategoryArchived();
@@ -78,8 +65,8 @@ export function LibraryForumManagement() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [icon, setIcon] = useState<(typeof ICON_OPTIONS)[number]["value"]>("MessageSquare");
-  const [color, setColor] = useState<(typeof COLOR_OPTIONS)[number]["value"]>("blue");
+  const [icon, setIcon] = useState<ForumIconValue>("MessageSquare");
+  const [color, setColor] = useState<ForumColorValue>("blue");
   const [displayOrder, setDisplayOrder] = useState("0");
 
   const activeCategories = useMemo(
@@ -146,7 +133,7 @@ export function LibraryForumManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ICON_OPTIONS.map((o) => (
+                    {FORUM_ICON_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={o.value}>
                         {o.label}
                       </SelectItem>
@@ -162,7 +149,7 @@ export function LibraryForumManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {COLOR_OPTIONS.map((o) => (
+                    {FORUM_COLOR_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={o.value}>
                         {o.label}
                       </SelectItem>
