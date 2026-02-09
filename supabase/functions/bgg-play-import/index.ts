@@ -441,9 +441,9 @@ export default async function handler(req: Request): Promise<Response> {
               await supabaseAdmin
                 .from("game_session_players")
                 .insert(
-                  play.players.map(p => ({
+                  play.players.map((p) => ({
                     session_id: existingSessionId,
-                    player_name: p.name || "Unknown",
+                    player_name: (p.name || "").trim() || (p.username || "").trim() || "Unknown",
                     score: p.score ? parseInt(p.score, 10) : null,
                     is_winner: p.win,
                     is_first_play: p.new,
@@ -504,9 +504,9 @@ export default async function handler(req: Request): Promise<Response> {
           const { error: playersError } = await supabaseAdmin
             .from("game_session_players")
             .insert(
-              play.players.map(p => ({
+              play.players.map((p) => ({
                 session_id: session.id,
-                player_name: p.name || "Unknown",
+                player_name: (p.name || "").trim() || (p.username || "").trim() || "Unknown",
                 score: p.score ? parseInt(p.score, 10) : null,
                 is_winner: p.win,
                 is_first_play: p.new,
@@ -542,9 +542,9 @@ export default async function handler(req: Request): Promise<Response> {
             await supabaseAdmin
               .from("game_session_players")
               .insert(
-                play.players.map(p => ({
+                play.players.map((p) => ({
                   session_id: extraSession.id,
-                  player_name: p.name || "Unknown",
+                  player_name: (p.name || "").trim() || (p.username || "").trim() || "Unknown",
                   score: p.score ? parseInt(p.score, 10) : null,
                   is_winner: p.win,
                   is_first_play: false, // Only first play counts as "new"
