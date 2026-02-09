@@ -191,7 +191,11 @@ services:
       DB_USER: supabase_admin
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: postgres
-      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      # IMPORTANT: The default config set this to "_realtime" which may not exist,
+      # causing Ecto migrations to fail with:
+      #   ERROR 3F000 (invalid_schema_name) no schema has been selected to create in
+      # Keep public first so schema_migrations can be created.
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO public, extensions'
       DB_ENC_KEY: supabaserealtime
       API_JWT_SECRET: ${JWT_SECRET}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
