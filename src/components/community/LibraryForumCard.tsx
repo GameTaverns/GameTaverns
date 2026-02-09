@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRecentLibraryThreads, useLibraryCategories, useLibrariesForumEnabled, type ForumThread } from "@/hooks/useForum";
+import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { useMyMemberships } from "@/hooks/useLibraryMembership";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 
@@ -59,6 +60,7 @@ function ThreadPreview({ thread, librarySlug }: { thread: ForumThread; librarySl
         </div>
         <div className="flex items-center gap-2 mt-1 text-xs text-cream/60">
           <span>{thread.author?.display_name || "Unknown"}</span>
+          <FeaturedBadge achievement={thread.author?.featured_badge ?? null} size="xs" />
           <span>•</span>
           <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>
           {thread.reply_count > 0 && (

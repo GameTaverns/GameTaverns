@@ -198,6 +198,11 @@ export interface ForumThread {
   updated_at: string;
   author?: {
     display_name: string | null;
+    featured_badge?: {
+      name: string;
+      icon: string | null;
+      tier: number;
+    } | null;
   };
   category?: ForumCategory;
 }
@@ -212,6 +217,11 @@ export interface ForumReply {
   updated_at: string;
   author?: {
     display_name: string | null;
+    featured_badge?: {
+      name: string;
+      icon: string | null;
+      tier: number;
+    } | null;
   };
 }
 
@@ -254,17 +264,36 @@ export function useLibraryCategories(libraryId: string | undefined) {
   });
 }
 
-// Helper to fetch author display names
-async function fetchAuthorNames(authorIds: string[]): Promise<Map<string, string>> {
+// Author data including featured badge
+interface AuthorData {
+  display_name: string | null;
+  featured_badge?: {
+    name: string;
+    icon: string | null;
+    tier: number;
+  } | null;
+}
+
+// Helper to fetch author display names and badges
+async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorData>> {
   if (authorIds.length === 0) return new Map();
   
   const { data } = await supabase
     .from("user_profiles")
-    .select("user_id, display_name")
+    .select(`
+      user_id, 
+      display_name,
+      featured_achievement:achievements(name, icon, tier)
+    `)
     .in("user_id", authorIds);
   
-  const map = new Map<string, string>();
-  data?.forEach((p) => map.set(p.user_id, p.display_name || "Unknown"));
+  const map = new Map<string, AuthorData>();
+  data?.forEach((p: any) => {
+    map.set(p.user_id, {
+      display_name: p.display_name || "Unknown",
+      featured_badge: p.featured_achievement || null,
+    });
+  });
   return map;
 }
 
@@ -286,13 +315,13 @@ export function useCategoryThreads(categoryId: string | undefined, limit = 10) {
 
       if (error) throw error;
       
-      // Fetch author names
+      // Fetch author data with badges
       const authorIds = [...new Set(data.map((t) => t.author_id))];
-      const authorMap = await fetchAuthorNames(authorIds);
+      const authorMap = await fetchAuthorData(authorIds);
       
       return data.map((t) => ({
         ...t,
-        author: { display_name: authorMap.get(t.author_id) || null },
+        author: authorMap.get(t.author_id) || { display_name: null },
       })) as ForumThread[];
     },
     enabled: !!categoryId,
@@ -324,13 +353,13 @@ export function useRecentSiteThreads(limit = 5) {
 
       if (error) throw error;
       
-      // Fetch author names
+      // Fetch author data with badges
       const authorIds = [...new Set(data.map((t) => t.author_id))];
-      const authorMap = await fetchAuthorNames(authorIds);
+      const authorMap = await fetchAuthorData(authorIds);
       
       return data.map((t) => ({
         ...t,
-        author: { display_name: authorMap.get(t.author_id) || null },
+        author: authorMap.get(t.author_id) || { display_name: null },
       })) as ForumThread[];
     },
   });
@@ -363,13 +392,13 @@ export function useRecentLibraryThreads(libraryIds: string[], limit = 5) {
 
       if (error) throw error;
       
-      // Fetch author names
+      // Fetch author data with badges
       const authorIds = [...new Set(data.map((t) => t.author_id))];
-      const authorMap = await fetchAuthorNames(authorIds);
+      const authorMap = await fetchAuthorData(authorIds);
       
       return data.map((t) => ({
         ...t,
-        author: { display_name: authorMap.get(t.author_id) || null },
+        author: authorMap.get(t.author_id) || { display_name: null },
       })) as ForumThread[];
     },
     enabled: libraryIds.length > 0,
@@ -391,12 +420,12 @@ export function useThread(threadId: string | undefined) {
 
       if (error) throw error;
       
-      // Fetch author name
-      const authorMap = await fetchAuthorNames([data.author_id]);
+      // Fetch author data with badge
+      const authorMap = await fetchAuthorData([data.author_id]);
       
       return {
         ...data,
-        author: { display_name: authorMap.get(data.author_id) || null },
+        author: authorMap.get(data.author_id) || { display_name: null },
       } as ForumThread;
     },
     enabled: !!threadId,
@@ -418,13 +447,13 @@ export function useThreadReplies(threadId: string | undefined) {
 
       if (error) throw error;
       
-      // Fetch author names
+      // Fetch author data with badges
       const authorIds = [...new Set(data.map((r) => r.author_id))];
-      const authorMap = await fetchAuthorNames(authorIds);
+      const authorMap = await fetchAuthorData(authorIds);
       
       return data.map((r) => ({
         ...r,
-        author: { display_name: authorMap.get(r.author_id) || null },
+        author: authorMap.get(r.author_id) || { display_name: null },
       })) as ForumReply[];
     },
     enabled: !!threadId,

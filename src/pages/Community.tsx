@@ -15,6 +15,7 @@ import {
   Settings
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ function ThreadRow({ thread }: { thread: ForumThread }) {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{thread.author?.display_name || "Unknown"}</span>
+          <FeaturedBadge achievement={thread.author?.featured_badge ?? null} size="xs" />
           <span>•</span>
           <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>
         </div>
