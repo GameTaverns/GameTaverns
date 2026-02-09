@@ -46,6 +46,7 @@ import {
   type ForumReply 
 } from "@/hooks/useForum";
 import { useAuth } from "@/hooks/useAuth";
+import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 
 function ReplyCard({ reply }: { reply: ForumReply }) {
   const initials = reply.author?.display_name
@@ -60,6 +61,7 @@ function ReplyCard({ reply }: { reply: ForumReply }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-medium">{reply.author?.display_name || "Unknown"}</span>
+          <FeaturedBadge achievement={reply.author?.featured_badge ?? null} size="xs" />
           <span className="text-sm text-muted-foreground">
             {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
           </span>
@@ -270,6 +272,7 @@ export default function ThreadDetail() {
                 <AvatarFallback className="text-xs">{authorInitials}</AvatarFallback>
               </Avatar>
               <span>{thread.author?.display_name || "Unknown"}</span>
+              <FeaturedBadge achievement={thread.author?.featured_badge ?? null} size="sm" />
             </div>
             <span>•</span>
             <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>

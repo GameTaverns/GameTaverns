@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRecentSiteThreads, useSiteWideCategories, type ForumThread } from "@/hooks/useForum";
+import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 
 // Map icon names to Lucide components
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -49,6 +50,7 @@ function ThreadPreview({ thread }: { thread: ForumThread }) {
         </div>
         <div className="flex items-center gap-2 mt-1 text-xs text-cream/60">
           <span>{thread.author?.display_name || "Unknown"}</span>
+          <FeaturedBadge achievement={thread.author?.featured_badge ?? null} size="xs" />
           <span>•</span>
           <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>
           {thread.reply_count > 0 && (
