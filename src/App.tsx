@@ -50,6 +50,8 @@ const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
 const Setup2FA = lazy(() => import("./pages/Setup2FA"));
 const Directory = lazy(() => import("./pages/Directory"));
 const Achievements = lazy(() => import("./pages/Achievements"));
+const Community = lazy(() => import("./pages/Community"));
+const ThreadDetail = lazy(() => import("./pages/ThreadDetail"));
 
 // Library admin pages
 const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
@@ -174,6 +176,9 @@ function PlatformRoutes() {
       <Route path="/admin" element={<PlatformAdmin />} />
       <Route path="/directory" element={<Directory />} />
       <Route path="/achievements" element={<Achievements />} />
+      <Route path="/community" element={<Community />} />
+      <Route path="/community/:categorySlug" element={<Community />} />
+      <Route path="/community/thread/:threadId" element={<ThreadDetail />} />
       <Route path="/docs" element={<Docs />} />
       {/* Legal & Info pages */}
       <Route path="/legal" element={<Legal />} />

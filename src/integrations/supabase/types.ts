@@ -127,6 +127,177 @@ export type Database = {
         }
         Relationships: []
       }
+      forum_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          display_order: number | null
+          icon: string | null
+          id: string
+          is_archived: boolean | null
+          is_system: boolean | null
+          library_id: string | null
+          name: string
+          rules: string | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_system?: boolean | null
+          library_id?: string | null
+          name: string
+          rules?: string | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          display_order?: number | null
+          icon?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_system?: boolean | null
+          library_id?: string | null
+          name?: string
+          rules?: string | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_categories_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_categories_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_categories_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_replies: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string | null
+          id: string
+          parent_reply_id: string | null
+          thread_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          parent_reply_id?: string | null
+          thread_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          parent_reply_id?: string | null
+          thread_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_replies_parent_reply_id_fkey"
+            columns: ["parent_reply_id"]
+            isOneToOne: false
+            referencedRelation: "forum_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_replies_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "forum_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_threads: {
+        Row: {
+          author_id: string
+          category_id: string
+          content: string
+          created_at: string | null
+          id: string
+          is_locked: boolean | null
+          is_pinned: boolean | null
+          last_reply_at: string | null
+          reply_count: number | null
+          title: string
+          updated_at: string | null
+          view_count: number | null
+        }
+        Insert: {
+          author_id: string
+          category_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          last_reply_at?: string | null
+          reply_count?: number | null
+          title: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          author_id?: string
+          category_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          is_locked?: boolean | null
+          is_pinned?: boolean | null
+          last_reply_at?: string | null
+          reply_count?: number | null
+          title?: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_threads_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "forum_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_admin_data: {
         Row: {
           created_at: string
@@ -1130,6 +1301,7 @@ export type Database = {
           facebook_url: string | null
           feature_achievements: boolean | null
           feature_coming_soon: boolean | null
+          feature_community_forum: boolean | null
           feature_events: boolean | null
           feature_for_sale: boolean | null
           feature_lending: boolean | null
@@ -1193,6 +1365,7 @@ export type Database = {
           facebook_url?: string | null
           feature_achievements?: boolean | null
           feature_coming_soon?: boolean | null
+          feature_community_forum?: boolean | null
           feature_events?: boolean | null
           feature_for_sale?: boolean | null
           feature_lending?: boolean | null
@@ -1256,6 +1429,7 @@ export type Database = {
           facebook_url?: string | null
           feature_achievements?: boolean | null
           feature_coming_soon?: boolean | null
+          feature_community_forum?: boolean | null
           feature_events?: boolean | null
           feature_for_sale?: boolean | null
           feature_lending?: boolean | null
@@ -2463,6 +2637,14 @@ export type Database = {
       }
     }
     Functions: {
+      can_access_forum_category: {
+        Args: { _category_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_forum_category: {
+        Args: { _category_id: string; _user_id: string }
+        Returns: boolean
+      }
       cleanup_expired_email_tokens: { Args: never; Returns: undefined }
       cleanup_expired_tokens: { Args: never; Returns: undefined }
       cleanup_old_messages: {

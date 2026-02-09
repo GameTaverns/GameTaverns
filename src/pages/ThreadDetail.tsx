@@ -1,0 +1,240 @@
+import { useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { formatDistanceToNow } from "date-fns";
+import { 
+  ArrowLeft, 
+  Pin, 
+  Lock, 
+  MessageCircle, 
+  Eye,
+  User,
+  Reply
+} from "lucide-react";
+import { Layout } from "@/components/layout/Layout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useThread, useThreadReplies, useCreateReply, type ForumReply } from "@/hooks/useForum";
+import { useAuth } from "@/hooks/useAuth";
+
+function ReplyCard({ reply }: { reply: ForumReply }) {
+  const initials = reply.author?.display_name
+    ? reply.author.display_name.slice(0, 2).toUpperCase()
+    : "??";
+
+  return (
+    <div className="flex gap-4 py-4 border-b last:border-0">
+      <Avatar className="h-10 w-10 flex-shrink-0">
+        <AvatarFallback>{initials}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-medium">{reply.author?.display_name || "Unknown"}</span>
+          <span className="text-sm text-muted-foreground">
+            {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
+          </span>
+        </div>
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          <p className="whitespace-pre-wrap">{reply.content}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReplyForm({ threadId, isLocked }: { threadId: string; isLocked: boolean }) {
+  const [content, setContent] = useState("");
+  const createReply = useCreateReply();
+  const { isAuthenticated } = useAuth();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!content.trim()) return;
+
+    createReply.mutate(
+      { threadId, content: content.trim() },
+      {
+        onSuccess: () => setContent(""),
+      }
+    );
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <Card className="bg-muted/50">
+        <CardContent className="py-4 text-center">
+          <p className="text-muted-foreground mb-2">Sign in to reply to this thread</p>
+          <Link to="/login">
+            <Button variant="outline">Sign In</Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <Card className="bg-muted/50">
+        <CardContent className="py-4 text-center">
+          <Lock className="h-5 w-5 mx-auto text-muted-foreground mb-2" />
+          <p className="text-muted-foreground">This thread is locked</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Textarea
+        placeholder="Write your reply..."
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        rows={4}
+      />
+      <div className="flex justify-end">
+        <Button type="submit" disabled={!content.trim() || createReply.isPending}>
+          <Reply className="h-4 w-4 mr-2" />
+          {createReply.isPending ? "Posting..." : "Post Reply"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export default function ThreadDetail() {
+  const { threadId } = useParams();
+  const navigate = useNavigate();
+  const { data: thread, isLoading: threadLoading } = useThread(threadId);
+  const { data: replies = [], isLoading: repliesLoading } = useThreadReplies(threadId);
+
+  if (threadLoading) {
+    return (
+      <Layout hideSidebar>
+        <div className="max-w-3xl mx-auto space-y-6">
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!thread) {
+    return (
+      <Layout hideSidebar>
+        <div className="max-w-3xl mx-auto text-center py-12">
+          <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Thread not found</h2>
+          <Button variant="outline" onClick={() => navigate("/community")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Forums
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const categorySlug = thread.category?.slug || "";
+  const authorInitials = thread.author?.display_name
+    ? thread.author.display_name.slice(0, 2).toUpperCase()
+    : "??";
+
+  return (
+    <Layout hideSidebar>
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Back Navigation */}
+        <Link
+          to={categorySlug ? `/community/${categorySlug}` : "/community"}
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to {thread.category?.name || "Forums"}
+        </Link>
+
+        {/* Thread Header */}
+        <div className="space-y-4">
+          <div className="flex items-start gap-2 flex-wrap">
+            {thread.is_pinned && (
+              <Badge variant="secondary">
+                <Pin className="h-3 w-3 mr-1" />
+                Pinned
+              </Badge>
+            )}
+            {thread.is_locked && (
+              <Badge variant="outline">
+                <Lock className="h-3 w-3 mr-1" />
+                Locked
+              </Badge>
+            )}
+          </div>
+          <h1 className="text-3xl font-bold">{thread.title}</h1>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className="text-xs">{authorInitials}</AvatarFallback>
+              </Avatar>
+              <span>{thread.author?.display_name || "Unknown"}</span>
+            </div>
+            <span>•</span>
+            <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>
+            <span>•</span>
+            <div className="flex items-center gap-1">
+              <Eye className="h-4 w-4" />
+              <span>{thread.view_count} views</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <MessageCircle className="h-4 w-4" />
+              <span>{thread.reply_count} replies</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Thread Content */}
+        <Card>
+          <CardContent className="py-6">
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <p className="whitespace-pre-wrap">{thread.content}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Replies */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <MessageCircle className="h-5 w-5" />
+            Replies ({replies.length})
+          </h2>
+
+          {repliesLoading ? (
+            <Card>
+              <CardContent className="py-4">
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
+          ) : replies.length > 0 ? (
+            <Card>
+              <CardContent className="divide-y">
+                {replies.map((reply) => (
+                  <ReplyCard key={reply.id} reply={reply} />
+                ))}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="bg-muted/30">
+              <CardContent className="py-8 text-center">
+                <MessageCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">No replies yet. Be the first to respond!</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Reply Form */}
+        <ReplyForm threadId={thread.id} isLocked={thread.is_locked} />
+      </div>
+    </Layout>
+  );
+}
