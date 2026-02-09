@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
+// Badge removed - no longer needed
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
 import {
@@ -229,33 +229,24 @@ export default function Docs() {
                   <p>When messaging is enabled, visitors can contact you about specific games (e.g., to ask about condition or negotiate a sale). Messages are encrypted and visible in <strong>Dashboard → Library → Messages</strong>.</p>
                 </Section>
 
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-                    Self-Hosted Exclusive Features
-                    <Badge variant="secondary" className="text-xs">Self-Hosted</Badge>
-                  </h3>
+                <Section title="💰 Collection Value Tracking">
+                  <p>Track purchase prices and current market values for every game. The system can pull BGG marketplace prices as a reference. View total invested vs. current value, gains/losses per game, on the <strong>Dashboard → Library</strong> tab.</p>
+                </Section>
 
-                  <div className="space-y-6">
-                    <Section title="💰 Collection Value Tracking">
-                      <p>Track purchase prices and current market values for every game. The system can pull BGG marketplace prices as a reference. View total invested vs. current value, gains/losses per game, on the <strong>Dashboard → Library</strong> tab.</p>
-                    </Section>
+                <Section title="🎯 Group Challenges">
+                  <p>Create competitive challenges for your library members:</p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li><strong>Play Count Goals</strong> — everyone tries to hit X total plays</li>
+                    <li><strong>Unique Games</strong> — play as many different games as possible</li>
+                    <li><strong>Specific Game</strong> — who can play a specific game the most</li>
+                    <li><strong>Competitive</strong> — most plays or most unique games wins</li>
+                  </ul>
+                  <p className="mt-2">Create from <strong>Dashboard → Library</strong> tab. Challenges have start/end dates, leaderboards, and progress tracking.</p>
+                </Section>
 
-                    <Section title="🎯 Group Challenges">
-                      <p>Create competitive challenges for your library members:</p>
-                      <ul className="list-disc pl-6 space-y-1">
-                        <li><strong>Play Count Goals</strong> — everyone tries to hit X total plays</li>
-                        <li><strong>Unique Games</strong> — play as many different games as possible</li>
-                        <li><strong>Specific Game</strong> — who can play a specific game the most</li>
-                        <li><strong>Competitive</strong> — most plays or most unique games wins</li>
-                      </ul>
-                      <p className="mt-2">Create from <strong>Dashboard → Library</strong> tab. Challenges have start/end dates, leaderboards, and progress tracking.</p>
-                    </Section>
-
-                    <Section title="🔄 Cross-Library Trade Matching">
-                      <p>List games you're willing to trade and games you want. The system matches your offers against other discoverable libraries using BGG IDs. Find matches on the <strong>Dashboard → Trades</strong> tab.</p>
-                    </Section>
-                  </div>
-                </div>
+                <Section title="🔄 Cross-Library Trade Matching">
+                  <p>List games you're willing to trade and games you want. The system matches your offers against other discoverable libraries using BGG IDs. Find matches on the <strong>Dashboard → Trades</strong> tab.</p>
+                </Section>
               </CardContent>
             </Card>
           </TabsContent>
