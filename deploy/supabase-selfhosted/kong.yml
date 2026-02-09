@@ -117,6 +117,8 @@ services:
             - anon
 
   ## Realtime Service
+  ## NOTE: Realtime handles JWT auth internally - do NOT add key-auth/acl here
+  ## or WebSocket connections will fail with 401/403 before reaching the service
   - name: realtime-v1-ws
     _comment: "Realtime: /realtime/v1/* -> ws://realtime:4000/socket/*"
     url: http://realtime:4000/socket
@@ -127,15 +129,6 @@ services:
           - /realtime/v1/
     plugins:
       - name: cors
-      - name: key-auth
-        config:
-          hide_credentials: false
-      - name: acl
-        config:
-          hide_groups_header: true
-          allow:
-            - admin
-            - anon
 
   ## Storage Service (PUBLIC objects)
   # Browsers load <img src=".../storage/v1/object/public/..."> without headers.
