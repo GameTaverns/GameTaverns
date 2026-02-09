@@ -151,68 +151,109 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
   // Example value: "bggusername=...; SessionID=..." (whatever your browser sends to boardgamegeek.com)
   const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
 
-  while (true) {
-    const url = `https://boardgamegeek.com/xmlapi2/plays?username=${encodeURIComponent(username)}&page=${page}`;
-    console.log(`[BGGPlayImport] Fetching page ${page}: ${url}`);
+  // Try multiple User-Agent strategies if BGG blocks us
+  const userAgents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+    "BoardGameGeek-API-Client/1.0 (+https://gametaverns.com)",
+  ];
 
-    const headers: Record<string, string> = {
-      // BGG is increasingly strict about non-browser traffic; these headers reduce false positives.
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 GameTaverns/1.0",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Cache-Control": "no-cache",
-      "Pragma": "no-cache",
-      "Referer": "https://boardgamegeek.com/",
-      "Origin": "https://boardgamegeek.com",
-    };
+  let lastError: Error | null = null;
 
-    if (bggCookie) {
-      headers["Cookie"] = bggCookie;
-    }
+  for (const userAgent of userAgents) {
+    try {
+      allPlays.length = 0; // Reset for retry
+      page = 1;
 
-    const response = await fetch(url, { headers });
+      while (true) {
+        const url = `https://boardgamegeek.com/xmlapi2/plays?username=${encodeURIComponent(username)}&page=${page}`;
+        console.log(`[BGGPlayImport] Fetching page ${page}: ${url} (UA: ${userAgent.slice(0, 30)}...)`);
 
-    if (!response.ok) {
-      // BGG sometimes returns 202 while preparing a cached response.
-      if (response.status === 202) {
-        console.log("[BGGPlayImport] BGG returned 202, waiting...");
-        await new Promise((r) => setTimeout(r, 2000));
-        continue;
+        const headers: Record<string, string> = {
+          "User-Agent": userAgent,
+          "Accept": "application/xml, text/xml, */*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Accept-Encoding": "gzip, deflate, br",
+          "Connection": "keep-alive",
+        };
+
+        if (bggCookie) {
+          headers["Cookie"] = bggCookie;
+        }
+
+        const response = await fetch(url, { headers });
+
+        if (!response.ok) {
+          // BGG sometimes returns 202 while preparing a cached response
+          if (response.status === 202) {
+            console.log("[BGGPlayImport] BGG returned 202, waiting...");
+            await new Promise((r) => setTimeout(r, 3000));
+            continue;
+          }
+
+          // 401/403 means BGG is blocking us - try next User-Agent
+          if (response.status === 401 || response.status === 403) {
+            const bodySnippet = (await response.text().catch(() => "")).slice(0, 200);
+            throw new Error(`BGG returned ${response.status}: ${bodySnippet || "Access denied"}`);
+          }
+
+          const bodySnippet = (await response.text().catch(() => "")).slice(0, 300);
+          throw new Error(`BGG API error: ${response.status}${bodySnippet ? ` (${bodySnippet})` : ""}`);
+        }
+
+        const xmlText = await response.text();
+
+        // Check for error response
+        if (xmlText.includes("<error>")) {
+          const errorMatch = xmlText.match(/<message>([^<]+)<\/message>/);
+          throw new Error(errorMatch?.[1] || "BGG API error");
+        }
+
+        // Check for "Invalid username" which BGG returns as valid XML with total="0"
+        if (xmlText.includes('total="0"') && page === 1) {
+          // Could be valid (user has no plays) or invalid username
+          // We'll proceed - empty result is fine
+          console.log(`[BGGPlayImport] BGG returned 0 plays for user ${username}`);
+        }
+
+        // Get total plays count
+        const totalMatch = xmlText.match(/total="(\d+)"/);
+        const total = parseInt(totalMatch?.[1] || "0", 10);
+
+        const plays = parseBGGPlaysXML(xmlText);
+        allPlays.push(...plays);
+
+        console.log(
+          `[BGGPlayImport] Page ${page}: got ${plays.length} plays, total so far: ${allPlays.length}/${total}`
+        );
+
+        if (allPlays.length >= total || plays.length === 0) {
+          break;
+        }
+
+        page++;
+        // Rate limit - be gentle with BGG
+        await new Promise((r) => setTimeout(r, 1000));
       }
 
-      const bodySnippet = (await response.text().catch(() => "")).slice(0, 300);
-      throw new Error(`BGG API error: ${response.status}${bodySnippet ? ` (${bodySnippet})` : ""}`);
+      // Success! Return the plays
+      return allPlays;
+
+    } catch (err) {
+      lastError = err as Error;
+      console.log(`[BGGPlayImport] User-Agent failed: ${(err as Error).message}, trying next...`);
+      // Small delay before retry with different UA
+      await new Promise((r) => setTimeout(r, 1000));
     }
-
-    const xmlText = await response.text();
-
-    // Check for error response
-    if (xmlText.includes("<error>")) {
-      const errorMatch = xmlText.match(/<message>([^<]+)<\/message>/);
-      throw new Error(errorMatch?.[1] || "BGG API error");
-    }
-
-    // Get total plays count
-    const totalMatch = xmlText.match(/total="(\d+)"/);
-    const total = parseInt(totalMatch?.[1] || "0", 10);
-
-    const plays = parseBGGPlaysXML(xmlText);
-    allPlays.push(...plays);
-
-    console.log(
-      `[BGGPlayImport] Page ${page}: got ${plays.length} plays, total so far: ${allPlays.length}/${total}`
-    );
-
-    if (allPlays.length >= total || plays.length === 0) {
-      break;
-    }
-
-    page++;
-    // Rate limit
-    await new Promise((r) => setTimeout(r, 500));
   }
 
-  return allPlays;
+  // All User-Agents failed
+  const hasCookie = !!bggCookie;
+  const errorMsg = hasCookie
+    ? `BGG is blocking server requests. Your BGG_SESSION_COOKIE may be expired. Please update it in your .env file.`
+    : `BGG is blocking server requests (${lastError?.message || "unknown error"}). To fix this, add BGG_SESSION_COOKIE to your .env file with your browser's BGG cookie value.`;
+  
+  throw new Error(errorMsg);
 }
 
 // Export handler
