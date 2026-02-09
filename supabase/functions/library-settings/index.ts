@@ -166,6 +166,10 @@ export default async function handler(req: Request): Promise<Response> {
       "theme_sidebar_h",
       "theme_sidebar_s",
       "theme_sidebar_l",
+      // Theme foreground/text colors (light mode)
+      "theme_foreground_h",
+      "theme_foreground_s",
+      "theme_foreground_l",
       // Theme colors (dark mode)
       "theme_dark_primary_h",
       "theme_dark_primary_s",
@@ -182,6 +186,10 @@ export default async function handler(req: Request): Promise<Response> {
       "theme_dark_sidebar_h",
       "theme_dark_sidebar_s",
       "theme_dark_sidebar_l",
+      // Theme foreground/text colors (dark mode)
+      "theme_dark_foreground_h",
+      "theme_dark_foreground_s",
+      "theme_dark_foreground_l",
       // Theme fonts
       "theme_font_display",
       "theme_font_body",

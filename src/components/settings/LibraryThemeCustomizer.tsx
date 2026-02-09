@@ -143,7 +143,7 @@ export function LibraryThemeCustomizer() {
     }
   };
   
-  const ls = localSettings || settings;
+  const ls = (localSettings || settings) as any;
   
   return (
     <div className="space-y-6">
@@ -193,36 +193,43 @@ export function LibraryThemeCustomizer() {
                 <ColorPicker
                   label="Primary Color"
                   hue={ls.theme_primary_h}
-                  saturation={ls.theme_primary_s.replace('%', '')}
-                  lightness={ls.theme_primary_l.replace('%', '')}
+                  saturation={ls.theme_primary_s?.replace('%', '') || '35'}
+                  lightness={ls.theme_primary_l?.replace('%', '') || '30'}
                   onChange={(h, s, l) => updateColorLocal('theme_primary', h, s, l)}
                 />
                 <ColorPicker
                   label="Accent Color"
                   hue={ls.theme_accent_h}
-                  saturation={ls.theme_accent_s.replace('%', '')}
-                  lightness={ls.theme_accent_l.replace('%', '')}
+                  saturation={ls.theme_accent_s?.replace('%', '') || '45'}
+                  lightness={ls.theme_accent_l?.replace('%', '') || '42'}
                   onChange={(h, s, l) => updateColorLocal('theme_accent', h, s, l)}
                 />
                 <ColorPicker
                   label="Background"
                   hue={ls.theme_background_h}
-                  saturation={ls.theme_background_s.replace('%', '')}
-                  lightness={ls.theme_background_l.replace('%', '')}
+                  saturation={ls.theme_background_s?.replace('%', '') || '45'}
+                  lightness={ls.theme_background_l?.replace('%', '') || '94'}
                   onChange={(h, s, l) => updateColorLocal('theme_background', h, s, l)}
+                />
+                <ColorPicker
+                  label="Text / Font Color"
+                  hue={ls.theme_foreground_h || '0'}
+                  saturation={ls.theme_foreground_s?.replace('%', '') || '0'}
+                  lightness={ls.theme_foreground_l?.replace('%', '') || '15'}
+                  onChange={(h, s, l) => updateColorLocal('theme_foreground', h, s, l)}
                 />
                 <ColorPicker
                   label="Card Background"
                   hue={ls.theme_card_h}
-                  saturation={ls.theme_card_s.replace('%', '')}
-                  lightness={ls.theme_card_l.replace('%', '')}
+                  saturation={ls.theme_card_s?.replace('%', '') || '50'}
+                  lightness={ls.theme_card_l?.replace('%', '') || '96'}
                   onChange={(h, s, l) => updateColorLocal('theme_card', h, s, l)}
                 />
                 <ColorPicker
                   label="Sidebar"
                   hue={ls.theme_sidebar_h}
-                  saturation={ls.theme_sidebar_s.replace('%', '')}
-                  lightness={ls.theme_sidebar_l.replace('%', '')}
+                  saturation={ls.theme_sidebar_s?.replace('%', '') || '30'}
+                  lightness={ls.theme_sidebar_l?.replace('%', '') || '18'}
                   onChange={(h, s, l) => updateColorLocal('theme_sidebar', h, s, l)}
                 />
               </CardContent>
@@ -238,36 +245,43 @@ export function LibraryThemeCustomizer() {
                 <ColorPicker
                   label="Primary Color"
                   hue={ls.theme_dark_primary_h}
-                  saturation={ls.theme_dark_primary_s.replace('%', '')}
-                  lightness={ls.theme_dark_primary_l.replace('%', '')}
+                  saturation={ls.theme_dark_primary_s?.replace('%', '') || '35'}
+                  lightness={ls.theme_dark_primary_l?.replace('%', '') || '40'}
                   onChange={(h, s, l) => updateColorLocal('theme_dark_primary', h, s, l)}
                 />
                 <ColorPicker
                   label="Accent Color"
                   hue={ls.theme_dark_accent_h}
-                  saturation={ls.theme_dark_accent_s.replace('%', '')}
-                  lightness={ls.theme_dark_accent_l.replace('%', '')}
+                  saturation={ls.theme_dark_accent_s?.replace('%', '') || '45'}
+                  lightness={ls.theme_dark_accent_l?.replace('%', '') || '45'}
                   onChange={(h, s, l) => updateColorLocal('theme_dark_accent', h, s, l)}
                 />
                 <ColorPicker
                   label="Background"
                   hue={ls.theme_dark_background_h}
-                  saturation={ls.theme_dark_background_s.replace('%', '')}
-                  lightness={ls.theme_dark_background_l.replace('%', '')}
+                  saturation={ls.theme_dark_background_s?.replace('%', '') || '10'}
+                  lightness={ls.theme_dark_background_l?.replace('%', '') || '10'}
                   onChange={(h, s, l) => updateColorLocal('theme_dark_background', h, s, l)}
+                />
+                <ColorPicker
+                  label="Text / Font Color"
+                  hue={ls.theme_dark_foreground_h || '0'}
+                  saturation={ls.theme_dark_foreground_s?.replace('%', '') || '0'}
+                  lightness={ls.theme_dark_foreground_l?.replace('%', '') || '90'}
+                  onChange={(h, s, l) => updateColorLocal('theme_dark_foreground', h, s, l)}
                 />
                 <ColorPicker
                   label="Card Background"
                   hue={ls.theme_dark_card_h}
-                  saturation={ls.theme_dark_card_s.replace('%', '')}
-                  lightness={ls.theme_dark_card_l.replace('%', '')}
+                  saturation={ls.theme_dark_card_s?.replace('%', '') || '10'}
+                  lightness={ls.theme_dark_card_l?.replace('%', '') || '15'}
                   onChange={(h, s, l) => updateColorLocal('theme_dark_card', h, s, l)}
                 />
                 <ColorPicker
                   label="Sidebar"
                   hue={ls.theme_dark_sidebar_h}
-                  saturation={ls.theme_dark_sidebar_s.replace('%', '')}
-                  lightness={ls.theme_dark_sidebar_l.replace('%', '')}
+                  saturation={ls.theme_dark_sidebar_s?.replace('%', '') || '10'}
+                  lightness={ls.theme_dark_sidebar_l?.replace('%', '') || '8'}
                   onChange={(h, s, l) => updateColorLocal('theme_dark_sidebar', h, s, l)}
                 />
               </CardContent>
