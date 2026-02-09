@@ -1706,7 +1706,7 @@ export type Database = {
           id: string
           is_read: boolean
           message: string
-          sender_email: string
+          sender_email: string | null
           sender_name: string
           type: Database["public"]["Enums"]["feedback_type"]
         }
@@ -1715,7 +1715,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message: string
-          sender_email: string
+          sender_email?: string | null
           sender_name: string
           type: Database["public"]["Enums"]["feedback_type"]
         }
@@ -1724,7 +1724,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message?: string
-          sender_email?: string
+          sender_email?: string | null
           sender_name?: string
           type?: Database["public"]["Enums"]["feedback_type"]
         }

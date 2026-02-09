@@ -1,0 +1,1 @@
+ALTER TABLE public.platform_feedback ALTER COLUMN sender_email DROP NOT NULL;
