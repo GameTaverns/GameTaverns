@@ -7,6 +7,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlayStats, StatsPeriod } from "@/hooks/usePlayStats";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { isSelfHostedSupabaseStack } from "@/integrations/backend/client";
+import { PlayHistoryImportDialog } from "@/components/games/PlayHistoryImportDialog";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -17,7 +19,8 @@ import {
   TrendingUp,
   Gamepad2,
   Sparkles,
-  Hash
+  Hash,
+  Download
 } from "lucide-react";
 import { format, addMonths, subMonths, addYears, subYears } from "date-fns";
 import { GameImage } from "@/components/games/GameImage";
@@ -152,6 +155,7 @@ export default function PlayStatsPage() {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [period, setPeriod] = useState<StatsPeriod>("month");
+  const [showPlayImport, setShowPlayImport] = useState(false);
   
   const { data: stats, isLoading, error } = usePlayStats(
     library?.id || null,
@@ -218,7 +222,18 @@ export default function PlayStatsPage() {
             </p>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            {isSelfHostedSupabaseStack() && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowPlayImport(true)}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Import from BGG
+              </Button>
+            )}
+            
             <Tabs value={period} onValueChange={(v) => setPeriod(v as StatsPeriod)}>
               <TabsList>
                 <TabsTrigger value="month">Monthly</TabsTrigger>
@@ -243,13 +258,19 @@ export default function PlayStatsPage() {
                 variant="outline"
                 size="icon"
                 onClick={handleNext}
-              disabled={!canGoNext}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+                disabled={!canGoNext}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
+
+        {/* BGG Play Import Dialog */}
+        <PlayHistoryImportDialog
+          open={showPlayImport}
+          onOpenChange={setShowPlayImport}
+        />
 
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
