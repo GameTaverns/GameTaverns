@@ -157,6 +157,12 @@ export default function PlayStatsPage() {
   const [period, setPeriod] = useState<StatsPeriod>("month");
   const [showPlayImport, setShowPlayImport] = useState(false);
   
+  // Debug: Log self-hosted detection
+  const isSelfHosted = isSelfHostedSupabaseStack();
+  console.log("[PlayStats] isSelfHostedSupabaseStack:", isSelfHosted, {
+    runtimeConfig: typeof window !== "undefined" ? window.__RUNTIME_CONFIG__ : "N/A",
+  });
+  
   const { data: stats, isLoading, error } = usePlayStats(
     library?.id || null,
     selectedDate,
