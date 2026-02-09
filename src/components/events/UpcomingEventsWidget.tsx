@@ -108,7 +108,7 @@ function EventItem({
         
         {/* Owner Actions for standalone events */}
         {isOwner && isStandaloneEvent && (
-          <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 mt-2">
             <Button 
               variant="ghost" 
               size="sm" 
