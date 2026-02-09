@@ -2651,6 +2651,16 @@ export type Database = {
         Args: { retention_days?: number }
         Returns: number
       }
+      create_notification: {
+        Args: {
+          _body?: string
+          _metadata?: Json
+          _title: string
+          _type: string
+          _user_id: string
+        }
+        Returns: string
+      }
       generate_slug: { Args: { title: string }; Returns: string }
       get_role_tier: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
