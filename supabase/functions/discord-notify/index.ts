@@ -140,11 +140,14 @@ function buildEmbed(eventType: string, data: Record<string, unknown>): DiscordEm
 }
 
 // Helper to send DM via discord-send-dm function
-async function sendDM(supabaseUrl: string, userId: string, embed: DiscordEmbed): Promise<void> {
+async function sendDM(supabaseUrl: string, serviceRoleKey: string, userId: string, embed: DiscordEmbed): Promise<void> {
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/discord-send-dm`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceRoleKey}`,
+      },
       body: JSON.stringify({ user_id: userId, embed }),
     });
     
@@ -230,7 +233,7 @@ Deno.serve(async (req) => {
       const targetUserId = payload.lender_user_id || library.owner_id;
       
       // Send DM to target user
-      await sendDM(supabaseUrl, targetUserId, embed);
+      await sendDM(supabaseUrl, serviceRoleKey, targetUserId, embed);
       
       return new Response(
         JSON.stringify({ success: true, method: "dm" }),
