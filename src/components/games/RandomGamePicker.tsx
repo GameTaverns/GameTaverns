@@ -262,7 +262,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
   
   // Add game to manual selection
   const addManualGame = (game: Game) => {
-    if (!manualGames.find(g => g.id === game.id) && manualGames.length < 6) {
+    if (!manualGames.find(g => g.id === game.id) && manualGames.length < 10) {
       setManualGames(prev => [...prev, game]);
     }
     setShowGameSelector(false);
@@ -469,14 +469,14 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
               )}
               
               {/* Add game button */}
-              {manualGames.length < 6 && (
+              {manualGames.length < 10 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowGameSelector(true)}
                   className="border-dashed border-cream/30 text-cream/70 hover:bg-wood-medium/50"
                 >
-                  + Add Game ({manualGames.length}/6)
+                  + Add Game ({manualGames.length}/10)
                 </Button>
               )}
               
