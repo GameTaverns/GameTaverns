@@ -98,7 +98,7 @@ BEGIN
         AND EXISTS (
           SELECT 1 FROM public.libraries
           WHERE owner_id = auth.uid()
-            AND id::text = split_part(name, '/', 1)
+            AND id::text = split_part(objects.name, '/', 1)
         )
     );
 
