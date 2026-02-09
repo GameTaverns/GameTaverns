@@ -286,6 +286,11 @@ services:
     image: supabase/edge-runtime:v1.66.4
     container_name: gametaverns-functions
     restart: unless-stopped
+    # Fix intermittent/host-dependent DNS failures inside this container
+    # (e.g. "name resolution failed" when calling external APIs like boardgamegeek.com)
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       JWT_SECRET: ${JWT_SECRET}
       SUPABASE_URL: http://kong:8000
