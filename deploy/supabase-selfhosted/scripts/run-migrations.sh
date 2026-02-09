@@ -102,6 +102,10 @@ MIGRATION_FILES=(
     "19-library-settings-insert-policy.sql"
     "20-featured-achievement.sql"
     "21-fix-libraries-recursion.sql"
+    "22-forum-tables.sql"
+    "23-notifications-realtime.sql"
+    "24-seed-forum-categories.sql"
+    "25-forum-postgrest-fix.sql"
 )
 
 SUCCESS_COUNT=0
