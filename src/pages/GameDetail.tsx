@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin } from "lucide-react";
+import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -25,6 +25,8 @@ import { StarRating } from "@/components/games/StarRating";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
+import { useAddTradeListing, useMyTradeListings, useRemoveTradeListing, type SaleCondition } from "@/hooks/useTrades";
+import { useToast } from "@/hooks/use-toast";
 import {
   Table,
   TableBody,
@@ -397,6 +399,10 @@ const GameDetail = () => {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Favorite Button - visible to library owners */}
                 <FavoriteButton gameId={game.id} />
+                {/* Mark for Trade Button - visible to authenticated library owners */}
+                {isLibraryOwner && !isDemoMode && library && (
+                  <MarkForTradeButton gameId={game.id} gameTitle={game.title} libraryId={library.id} />
+                )}
                 {/* Request Loan Button - visible when lending is enabled */}
                 {lending && library && library.owner_id && !isDemoMode && (
                   <RequestLoanButton
@@ -798,3 +804,46 @@ const GameDetail = () => {
 };
 
 export default GameDetail;
+
+// Inline component for marking a game for trade from the detail page
+function MarkForTradeButton({ gameId, gameTitle, libraryId }: { gameId: string; gameTitle: string; libraryId: string }) {
+  const { data: listings } = useMyTradeListings();
+  const addListing = useAddTradeListing();
+  const removeListing = useRemoveTradeListing();
+  const { toast } = useToast();
+  const [condition, setCondition] = useState<SaleCondition>("Very Good");
+
+  const existingListing = listings?.find((l) => l.game_id === gameId);
+  const isListed = !!existingListing;
+
+  const handleToggle = async () => {
+    try {
+      if (isListed) {
+        await removeListing.mutateAsync(existingListing.id);
+        toast({ title: "Removed from trade list" });
+      } else {
+        await addListing.mutateAsync({
+          game_id: gameId,
+          library_id: libraryId,
+          condition,
+        });
+        toast({ title: `${gameTitle} marked for trade` });
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <Button
+      variant={isListed ? "default" : "outline"}
+      size="sm"
+      onClick={handleToggle}
+      disabled={addListing.isPending || removeListing.isPending}
+      title={isListed ? "Remove from trade list" : "Mark for trade"}
+    >
+      <ArrowLeftRight className="h-4 w-4 mr-2" />
+      {isListed ? "Listed for Trade" : "Mark for Trade"}
+    </Button>
+  );
+}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useMyTradeListings,
   useMyWantList,
@@ -271,7 +271,34 @@ function WantListTab() {
   const [addOpen, setAddOpen] = useState(false);
   const [bggId, setBggId] = useState("");
   const [gameTitle, setGameTitle] = useState("");
+  const [bggImageUrl, setBggImageUrl] = useState<string | null>(null);
+  const [isFetchingBgg, setIsFetchingBgg] = useState(false);
   const { toast } = useToast();
+
+  // Auto-fetch game info from BGG when ID is entered
+  const handleBggIdBlur = async () => {
+    if (!bggId) return;
+    setIsFetchingBgg(true);
+    setBggImageUrl(null);
+    try {
+      const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`);
+      const text = await res.text();
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, "text/xml");
+      const nameEl = xml.querySelector('name[type="primary"]');
+      if (nameEl && !gameTitle) {
+        setGameTitle(nameEl.getAttribute("value") || "");
+      }
+      const thumbEl = xml.querySelector("thumbnail");
+      if (thumbEl?.textContent) {
+        setBggImageUrl(thumbEl.textContent.trim());
+      }
+    } catch {
+      // silently fail - user can type the title manually
+    } finally {
+      setIsFetchingBgg(false);
+    }
+  };
 
   const handleAdd = async () => {
     if (!bggId || !gameTitle) return;
@@ -281,6 +308,7 @@ function WantListTab() {
       setAddOpen(false);
       setBggId("");
       setGameTitle("");
+      setBggImageUrl(null);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -320,21 +348,43 @@ function WantListTab() {
                   id="bggId"
                   value={bggId}
                   onChange={(e) => setBggId(e.target.value)}
+                  onBlur={handleBggIdBlur}
                   placeholder="e.g., 174430"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Enter the BGG ID and tab out — title and image auto-fill
+                </p>
               </div>
+              {bggImageUrl && (
+                <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                  <div className="w-16 h-16 rounded overflow-hidden bg-muted flex-shrink-0">
+                    <GameImage
+                      imageUrl={bggImageUrl}
+                      alt={gameTitle || "Game preview"}
+                      className="w-full h-full object-cover"
+                      fallback={
+                        <div className="flex h-full items-center justify-center bg-muted">
+                          <span className="text-2xl text-muted-foreground/50">🎲</span>
+                        </div>
+                      }
+                    />
+                  </div>
+                  <span className="text-sm font-medium">{gameTitle}</span>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="gameTitle">Game Title</Label>
                 <Input
                   id="gameTitle"
                   value={gameTitle}
                   onChange={(e) => setGameTitle(e.target.value)}
-                  placeholder="e.g., Gloomhaven"
+                  placeholder={isFetchingBgg ? "Fetching from BGG..." : "e.g., Gloomhaven"}
+                  disabled={isFetchingBgg}
                 />
               </div>
             </div>
             <div className="flex justify-end">
-              <Button onClick={handleAdd} disabled={addWant.isPending || !bggId || !gameTitle}>
+              <Button onClick={handleAdd} disabled={addWant.isPending || !bggId || !gameTitle || isFetchingBgg}>
                 Add
               </Button>
             </div>
@@ -357,11 +407,23 @@ function WantListTab() {
               {wants.map((want) => (
                 <div
                   key={want.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50"
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
                 >
-                  <div>
+                  <div className="w-10 h-10 rounded overflow-hidden bg-muted flex-shrink-0">
+                    <BggThumbnail bggId={want.bgg_id} alt={want.game_title} />
+                  </div>
+                  <div className="flex-1">
                     <div className="font-medium text-sm">{want.game_title}</div>
-                    <div className="text-xs text-muted-foreground">BGG #{want.bgg_id}</div>
+                    <div className="text-xs text-muted-foreground">
+                      <a
+                        href={`https://boardgamegeek.com/boardgame/${want.bgg_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline text-primary"
+                      >
+                        BGG #{want.bgg_id}
+                      </a>
+                    </div>
                   </div>
                   <Button
                     variant="ghost"
@@ -378,6 +440,52 @@ function WantListTab() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// Fetches and displays a BGG thumbnail for a game by BGG ID
+function BggThumbnail({ bggId, alt }: { bggId: string; alt: string }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchThumb() {
+      try {
+        const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${bggId}`);
+        const text = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, "text/xml");
+        const thumbEl = xml.querySelector("thumbnail");
+        if (!cancelled && thumbEl?.textContent) {
+          setImageUrl(thumbEl.textContent.trim());
+        }
+      } catch {
+        // fail silently
+      }
+    }
+    fetchThumb();
+    return () => { cancelled = true; };
+  }, [bggId]);
+
+  if (!imageUrl) {
+    return (
+      <div className="flex h-full items-center justify-center bg-muted">
+        <span className="text-lg text-muted-foreground/50">🎲</span>
+      </div>
+    );
+  }
+
+  return (
+    <GameImage
+      imageUrl={imageUrl}
+      alt={alt}
+      className="w-full h-full object-cover"
+      fallback={
+        <div className="flex h-full items-center justify-center bg-muted">
+          <span className="text-lg text-muted-foreground/50">🎲</span>
+        </div>
+      }
+    />
   );
 }
 
