@@ -3,7 +3,7 @@ import { Dices } from "lucide-react";
 import { isLovableCloud } from "@/config/runtime";
 
 const LTN_LOGO_SRC = "/ltn-logo.png";
-const BGG_LOGO_SRC = "/bgg-logo.svg";
+const BGG_LOGO_SRC = "/bgg-logo.png";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
