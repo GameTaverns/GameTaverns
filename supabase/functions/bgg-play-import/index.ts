@@ -282,6 +282,8 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
 
 // Export handler
 export default async function handler(req: Request): Promise<Response> {
+  console.log("[BGGPlayImport] Handler invoked - method:", req.method);
+  
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -368,11 +370,18 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    console.log(`[BGGPlayImport] Fetching plays for BGG user: ${bgg_username}`);
+    console.log(`[BGGPlayImport] Fetching plays for BGG user: ${bgg_username}, update_existing: ${shouldUpdate}`);
 
     // Fetch plays from BGG
     const bggPlays = await fetchAllBGGPlays(bgg_username);
     console.log(`[BGGPlayImport] Fetched ${bggPlays.length} plays from BGG`);
+    
+    // Log first play's player data for debugging
+    if (bggPlays.length > 0 && bggPlays[0].players.length > 0) {
+      console.log(`[BGGPlayImport] First play sample - game: ${bggPlays[0].game.name}, players: ${JSON.stringify(bggPlays[0].players.slice(0, 3))}`);
+    } else if (bggPlays.length > 0) {
+      console.log(`[BGGPlayImport] First play has no players - game: ${bggPlays[0].game.name}`);
+    }
 
     // Get all games in this library with their BGG IDs
     const { data: libraryGames } = await supabaseAdmin
