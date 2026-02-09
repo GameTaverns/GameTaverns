@@ -64,11 +64,13 @@ interface BGGPlay {
 
 interface ImportResult {
   imported: number;
+  updated: number;
   skipped: number;
   failed: number;
   errors: string[];
   details: {
     importedPlays: string[];
+    updatedPlays: string[];
     skippedDuplicates: string[];
     unmatchedGames: string[];
   };
@@ -306,7 +308,8 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Parse request body
     const body = await req.json().catch(() => null);
-    const { bgg_username, library_id } = body || {};
+    const { bgg_username, library_id, update_existing } = body || {};
+    const shouldUpdate = update_existing === true;
 
     if (!bgg_username || typeof bgg_username !== "string") {
       return new Response(JSON.stringify({ success: false, error: "BGG username is required" }), {
@@ -372,21 +375,25 @@ export default async function handler(req: Request): Promise<Response> {
       gamesByTitle.set(game.title.toLowerCase(), { id: game.id, title: game.title });
     }
 
-    // Get existing sessions with bgg_play_id to avoid duplicates
+    // Get existing sessions with bgg_play_id to avoid duplicates (or update them)
     const { data: existingSessions } = await supabaseAdmin
       .from("game_sessions")
-      .select("bgg_play_id")
+      .select("id, bgg_play_id")
       .not("bgg_play_id", "is", null);
 
-    const existingBggPlayIds = new Set((existingSessions || []).map(s => s.bgg_play_id));
+    const existingBggPlayIds = new Map<string, string>(
+      (existingSessions || []).map(s => [s.bgg_play_id, s.id])
+    );
 
     const result: ImportResult = {
       imported: 0,
+      updated: 0,
       skipped: 0,
       failed: 0,
       errors: [],
       details: {
         importedPlays: [],
+        updatedPlays: [],
         skippedDuplicates: [],
         unmatchedGames: [],
       },
@@ -395,9 +402,67 @@ export default async function handler(req: Request): Promise<Response> {
     // Process each play
     for (const play of bggPlays) {
       // Check if already imported (by bgg_play_id)
-      if (existingBggPlayIds.has(play.id)) {
-        result.skipped++;
-        result.details.skippedDuplicates.push(`${play.game.name} (${play.date})`);
+      const existingSessionId = existingBggPlayIds.get(play.id);
+      if (existingSessionId) {
+        if (shouldUpdate) {
+          // Update existing session and its players
+          try {
+            // Find matching game in library
+            let matchedGame = gamesByBggId.get(play.game.objectid);
+            if (!matchedGame) {
+              matchedGame = gamesByTitle.get(play.game.name.toLowerCase());
+            }
+            
+            if (!matchedGame) {
+              result.failed++;
+              if (!result.details.unmatchedGames.includes(play.game.name)) {
+                result.details.unmatchedGames.push(play.game.name);
+              }
+              continue;
+            }
+
+            // Update the session
+            await supabaseAdmin
+              .from("game_sessions")
+              .update({
+                duration_minutes: play.length,
+                notes: play.comments,
+                location: play.location,
+              })
+              .eq("id", existingSessionId);
+
+            // Delete old players and re-insert with fresh data
+            await supabaseAdmin
+              .from("game_session_players")
+              .delete()
+              .eq("session_id", existingSessionId);
+
+            if (play.players.length > 0) {
+              await supabaseAdmin
+                .from("game_session_players")
+                .insert(
+                  play.players.map(p => ({
+                    session_id: existingSessionId,
+                    player_name: p.name || "Unknown",
+                    score: p.score ? parseInt(p.score, 10) : null,
+                    is_winner: p.win,
+                    is_first_play: p.new,
+                    color: p.color || null,
+                  }))
+                );
+            }
+
+            result.updated++;
+            result.details.updatedPlays.push(`${play.game.name} (${play.date})`);
+          } catch (err) {
+            console.error("[BGGPlayImport] Error updating play:", err);
+            result.failed++;
+            result.errors.push(`Failed to update ${play.game.name} (${play.date}): ${(err as Error).message}`);
+          }
+        } else {
+          result.skipped++;
+          result.details.skippedDuplicates.push(`${play.game.name} (${play.date})`);
+        }
         continue;
       }
 
