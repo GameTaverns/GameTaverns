@@ -42,8 +42,7 @@ import { supabase } from "@/integrations/backend/client";
 import { isSelfHostedSupabaseStack } from "@/config/runtime";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
-import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyticsDashboard";
-import { CollectionValueDashboard } from "@/components/analytics/CollectionValueDashboard";
+import { AnalyticsTab } from "@/components/analytics/AnalyticsTab";
 import { PollsManager } from "@/components/polls/PollsManager";
 import { AccountSettings } from "@/components/settings/AccountSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -260,6 +259,13 @@ const { data: playCount } = useQuery({
                   {pendingLoanRequests + unreadCount}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="analytics" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Analytics
             </TabsTrigger>
             <TabsTrigger 
               value="trades" 
@@ -663,39 +669,6 @@ const { data: playCount } = useQuery({
                   </CardContent>
                 </Card>
 
-                {/* Analytics */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-secondary" />
-                      Library Analytics
-                    </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      Insights into your collection's activity
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <LibraryAnalyticsDashboard libraryId={library.id} />
-                  </CardContent>
-                </Card>
-
-                {/* Collection Value - Self-hosted feature */}
-                {isSelfHostedSupabaseStack() && (
-                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5 text-secondary" />
-                        Collection Value
-                      </CardTitle>
-                      <CardDescription className="text-cream/70">
-                        Track purchase prices and current market value
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <CollectionValueDashboard libraryId={library.id} />
-                    </CardContent>
-                  </Card>
-                )}
 
                 {/* Group Challenges - Self-hosted feature */}
                 {isSelfHostedSupabaseStack() && (
@@ -735,6 +708,23 @@ const { data: playCount } = useQuery({
                       Create Library
                     </Button>
                   </Link>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* ===== ANALYTICS TAB ===== */}
+          <TabsContent value="analytics">
+            {(isAdmin || library) ? (
+              <AnalyticsTab isAdmin={isAdmin} libraryId={library?.id || null} />
+            ) : (
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <CardContent className="py-12 text-center">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-cream/40" />
+                  <h3 className="text-lg font-medium mb-2">Analytics</h3>
+                  <p className="text-cream/60">
+                    Create a library to see analytics about your collection.
+                  </p>
                 </CardContent>
               </Card>
             )}
