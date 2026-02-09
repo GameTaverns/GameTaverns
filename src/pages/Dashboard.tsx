@@ -38,7 +38,8 @@ import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
 import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase } from "@/integrations/backend/client";
+import { isSelfHostedSupabaseStack } from "@/config/runtime";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyticsDashboard";
@@ -670,7 +671,7 @@ const { data: playCount } = useQuery({
                 </Card>
 
                 {/* Collection Value - Self-hosted feature */}
-                {isSelfHostedMode() && (
+                {isSelfHostedSupabaseStack() && (
                   <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -688,7 +689,7 @@ const { data: playCount } = useQuery({
                 )}
 
                 {/* Group Challenges - Self-hosted feature */}
-                {isSelfHostedMode() && (
+                {isSelfHostedSupabaseStack() && (
                   <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -732,7 +733,7 @@ const { data: playCount } = useQuery({
 
           {/* ===== TRADES TAB ===== */}
           <TabsContent value="trades">
-            {isSelfHostedMode() ? (
+            {isSelfHostedSupabaseStack() ? (
               <TradeCenter />
             ) : (
               <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
