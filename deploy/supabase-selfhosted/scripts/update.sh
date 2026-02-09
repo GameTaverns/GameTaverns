@@ -93,6 +93,15 @@ if [ -f "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/run-migrations.sh" ]; t
 fi
 
 echo ""
+echo "Fixing bgg_play_id index to be per-game scoped..."
+dcp exec -T db psql -U supabase_admin -d postgres -c "
+  DROP INDEX IF EXISTS idx_game_sessions_bgg_play_id;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_game_sessions_bgg_play_id 
+    ON public.game_sessions(bgg_play_id, game_id) 
+    WHERE bgg_play_id IS NOT NULL;
+" 2>/dev/null && echo -e "${GREEN}Index updated${NC}" || echo -e "${YELLOW}Index fix skipped (columns may not exist yet)${NC}"
+
+echo ""
 echo "Restarting services..."
 dcp up -d
 
