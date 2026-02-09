@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, History, CheckCircle2, AlertCircle, Users } from "lucide-react";
+import { Loader2, History, CheckCircle2, AlertCircle, Users, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedSupabaseStack } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
@@ -23,11 +24,13 @@ import { useTenant } from "@/contexts/TenantContext";
 interface PlayImportResult {
   success: boolean;
   imported: number;
+  updated: number;
   skipped: number;
   failed: number;
   errors: string[];
   details?: {
     importedPlays: string[];
+    updatedPlays: string[];
     skippedDuplicates: string[];
     unmatchedGames: string[];
   };
@@ -48,11 +51,13 @@ export function PlayHistoryImportDialog({
   const { library } = useTenant();
   const queryClient = useQueryClient();
   const [bggUsername, setBggUsername] = useState("");
+  const [updateExisting, setUpdateExisting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<PlayImportResult | null>(null);
 
   const resetForm = () => {
     setBggUsername("");
+    setUpdateExisting(false);
     setResult(null);
   };
 
@@ -105,6 +110,7 @@ export function PlayHistoryImportDialog({
         body: JSON.stringify({
           bgg_username: bggUsername.trim(),
           library_id: library.id,
+          update_existing: updateExisting,
         }),
       });
 
@@ -145,10 +151,15 @@ export function PlayHistoryImportDialog({
       queryClient.invalidateQueries({ queryKey: ["library-analytics-trends"] });
       queryClient.invalidateQueries({ queryKey: ["library-analytics-top-games"] });
 
-      if (data.imported > 0) {
+      if (data.imported > 0 || data.updated > 0) {
+        const parts: string[] = [];
+        if (data.imported > 0) parts.push(`${data.imported} imported`);
+        if (data.updated > 0) parts.push(`${data.updated} updated`);
+        if (data.skipped > 0) parts.push(`${data.skipped} skipped`);
+        if (data.failed > 0) parts.push(`${data.failed} failed`);
         toast({
           title: "Import complete!",
-          description: `Imported ${data.imported} play${data.imported !== 1 ? "s" : ""}${data.skipped > 0 ? `, skipped ${data.skipped} duplicates` : ""}${data.failed > 0 ? `, ${data.failed} failed` : ""}`,
+          description: parts.join(", "),
         });
         onImportComplete?.();
       } else if (data.skipped > 0) {
@@ -212,16 +223,21 @@ export function PlayHistoryImportDialog({
             </Alert>
           ) : result ? (
             <div className="space-y-4">
-              <Alert variant={result.imported > 0 ? "default" : "destructive"}>
-                {result.imported > 0 ? (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <Alert variant={result.imported > 0 || result.updated > 0 ? "default" : "destructive"}>
+                {result.imported > 0 || result.updated > 0 ? (
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
                 ) : (
                   <AlertCircle className="h-4 w-4" />
                 )}
                 <AlertTitle>Import Results</AlertTitle>
                 <AlertDescription>
                   <div className="mt-2 space-y-1 text-sm">
-                    <p className="text-primary">✓ {result.imported} plays imported</p>
+                    {result.imported > 0 && (
+                      <p className="text-primary">✓ {result.imported} plays imported</p>
+                    )}
+                    {result.updated > 0 && (
+                      <p className="text-accent-foreground">↻ {result.updated} plays updated</p>
+                    )}
                     {result.skipped > 0 && (
                       <p className="text-muted-foreground">↷ {result.skipped} duplicates skipped</p>
                     )}
@@ -295,6 +311,21 @@ export function PlayHistoryImportDialog({
                 </p>
               </div>
 
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="update-existing"
+                  checked={updateExisting}
+                  onCheckedChange={(checked) => setUpdateExisting(checked === true)}
+                  disabled={isImporting}
+                />
+                <Label htmlFor="update-existing" className="text-sm font-normal cursor-pointer">
+                  <span className="flex items-center gap-1.5">
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Update existing plays (refresh player data, colors, notes)
+                  </span>
+                </Label>
+              </div>
+
               <Alert>
                 <CheckCircle2 className="h-4 w-4" />
                 <AlertTitle>Smart Merge</AlertTitle>
@@ -302,8 +333,8 @@ export function PlayHistoryImportDialog({
                   <p>The import will:</p>
                   <ul className="list-disc list-inside text-xs space-y-1">
                     <li>Match BGG plays to games in your library by BGG ID or title</li>
-                    <li>Import player names, scores, and win status</li>
-                    <li>Skip plays you've already imported (no duplicates)</li>
+                    <li>Import player names, scores, colors, and win status</li>
+                    <li>{updateExisting ? "Update existing plays with latest BGG data" : "Skip plays you've already imported (no duplicates)"}</li>
                     <li>Handle multi-play sessions (e.g., "played 3 times")</li>
                   </ul>
                 </AlertDescription>
