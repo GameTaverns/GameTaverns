@@ -111,9 +111,9 @@ END $$;
 -- Feedback types
 DO $$ BEGIN
     CREATE TYPE feedback_type AS ENUM (
+        'feedback',
         'bug',
-        'feature',
-        'general'
+        'feature_request'
     );
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
