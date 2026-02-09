@@ -287,31 +287,47 @@ function WantListTab() {
   };
 
   // Auto-fetch game info from BGG when input changes
+  // BGG API may return 202 with empty body on first request; retry up to 3 times
   const handleBggInputBlur = async () => {
     const id = extractBggId(bggInput);
     if (!id) return;
     setIsFetchingBgg(true);
     setBggImageUrl(null);
-    try {
-      const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${id}&stats=1`);
-      const text = await res.text();
-      const parser = new DOMParser();
-      const xml = parser.parseFromString(text, "text/xml");
-      const nameEl = xml.querySelector('name[type="primary"]');
-      if (nameEl) {
-        setGameTitle(nameEl.getAttribute("value") || "");
+
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${id}&stats=1`);
+        if (res.status === 202) {
+          // BGG is queuing the request — wait and retry
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+        const text = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, "text/xml");
+        const nameEl = xml.querySelector('name[type="primary"]');
+        const title = nameEl?.getAttribute("value");
+        if (title) {
+          setGameTitle(title);
+        } else {
+          // No name found — might be empty response, retry
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+        const imageEl = xml.querySelector("image");
+        const thumbEl = xml.querySelector("thumbnail");
+        const imgUrl = imageEl?.textContent?.trim() || thumbEl?.textContent?.trim();
+        if (imgUrl) {
+          setBggImageUrl(imgUrl);
+        }
+        break; // success — stop retrying
+      } catch {
+        // silently fail - user can type the title manually
+        break;
       }
-      const imageEl = xml.querySelector("image");
-      const thumbEl = xml.querySelector("thumbnail");
-      const imgUrl = imageEl?.textContent?.trim() || thumbEl?.textContent?.trim();
-      if (imgUrl) {
-        setBggImageUrl(imgUrl);
-      }
-    } catch {
-      // silently fail - user can type the title manually
-    } finally {
-      setIsFetchingBgg(false);
     }
+    setIsFetchingBgg(false);
   };
 
   const handleAdd = async () => {
