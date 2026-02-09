@@ -16,6 +16,7 @@ import {
   type SaleCondition,
 } from "@/hooks/useTrades";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,46 +287,26 @@ function WantListTab() {
     return "";
   };
 
-  // Auto-fetch game info from BGG when input changes
-  // BGG API may return 202 with empty body on first request; retry up to 3 times
+  // Auto-fetch game info from BGG via backend edge function (direct browser calls get 401)
   const handleBggInputBlur = async () => {
     const id = extractBggId(bggInput);
     if (!id) return;
     setIsFetchingBgg(true);
     setBggImageUrl(null);
-
-    const maxRetries = 3;
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const res = await fetch(`https://boardgamegeek.com/xmlapi2/thing?id=${id}&stats=1`);
-        if (res.status === 202) {
-          // BGG is queuing the request — wait and retry
-          await new Promise((r) => setTimeout(r, 2000));
-          continue;
+    try {
+      const { data, error } = await supabase.functions.invoke("bgg-lookup", {
+        body: { bgg_id: id, use_ai: false },
+      });
+      if (!error && data?.success && data.data) {
+        if (data.data.title) {
+          setGameTitle(data.data.title);
         }
-        const text = await res.text();
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(text, "text/xml");
-        const nameEl = xml.querySelector('name[type="primary"]');
-        const title = nameEl?.getAttribute("value");
-        if (title) {
-          setGameTitle(title);
-        } else {
-          // No name found — might be empty response, retry
-          await new Promise((r) => setTimeout(r, 2000));
-          continue;
+        if (data.data.image_url) {
+          setBggImageUrl(data.data.image_url);
         }
-        const imageEl = xml.querySelector("image");
-        const thumbEl = xml.querySelector("thumbnail");
-        const imgUrl = imageEl?.textContent?.trim() || thumbEl?.textContent?.trim();
-        if (imgUrl) {
-          setBggImageUrl(imgUrl);
-        }
-        break; // success — stop retrying
-      } catch {
-        // silently fail - user can type the title manually
-        break;
       }
+    } catch {
+      // silently fail - user can type the title manually
     }
     setIsFetchingBgg(false);
   };
