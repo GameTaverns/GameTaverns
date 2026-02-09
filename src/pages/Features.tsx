@@ -61,7 +61,7 @@ export default function Features() {
   const { data: myLibrary } = useMyLibrary();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium">
+    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
       {/* Header */}
       <header className="border-b border-border/30 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
