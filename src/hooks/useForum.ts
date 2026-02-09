@@ -3,6 +3,63 @@ import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
+// Check if a library has community forum enabled
+export function useLibraryForumEnabled(libraryId: string | undefined) {
+  return useQuery({
+    queryKey: ["library-settings", libraryId, "feature_community_forum"],
+    queryFn: async () => {
+      if (!libraryId) return false;
+      
+      const { data, error } = await supabase
+        .from("library_settings")
+        .select("feature_community_forum")
+        .eq("library_id", libraryId)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("Failed to check forum enabled status:", error);
+        return true; // Default to enabled on error
+      }
+      
+      // Default to true if no setting exists or if explicitly enabled
+      return data?.feature_community_forum !== false;
+    },
+    enabled: !!libraryId,
+  });
+}
+
+// Batch check forum enabled status for multiple libraries
+export function useLibrariesForumEnabled(libraryIds: string[]) {
+  return useQuery({
+    queryKey: ["library-settings", "feature_community_forum", libraryIds],
+    queryFn: async () => {
+      if (libraryIds.length === 0) return new Map<string, boolean>();
+      
+      const { data, error } = await supabase
+        .from("library_settings")
+        .select("library_id, feature_community_forum")
+        .in("library_id", libraryIds);
+
+      if (error) {
+        console.warn("Failed to check forum enabled status:", error);
+        // Default all to true on error
+        return new Map(libraryIds.map(id => [id, true]));
+      }
+      
+      const enabledMap = new Map<string, boolean>();
+      // Set defaults first (true if no setting)
+      libraryIds.forEach(id => enabledMap.set(id, true));
+      // Override with actual settings
+      data?.forEach(setting => {
+        enabledMap.set(setting.library_id, setting.feature_community_forum !== false);
+      });
+      
+      return enabledMap;
+    },
+    enabled: libraryIds.length > 0,
+  });
+}
+
 export interface ForumCategory {
   id: string;
   name: string;

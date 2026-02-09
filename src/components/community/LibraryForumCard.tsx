@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useRecentLibraryThreads, useLibraryCategories, type ForumThread } from "@/hooks/useForum";
+import { useRecentLibraryThreads, useLibraryCategories, useLibrariesForumEnabled, type ForumThread } from "@/hooks/useForum";
 import { useMyMemberships } from "@/hooks/useLibraryMembership";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 
@@ -145,12 +145,23 @@ function LibraryTabContent({ libraryId, librarySlug, libraryName }: LibraryTabCo
 }
 
 export function LibraryForumCard() {
-  const { data: memberships = [], isLoading } = useMyMemberships();
+  const { data: memberships = [], isLoading: membershipsLoading } = useMyMemberships();
   const [activeTab, setActiveTab] = useState<string>("");
 
+  // Get all library IDs from memberships
+  const allLibraryIds = memberships
+    .filter(m => m.library)
+    .map(m => m.library!.id);
+
+  // Check which libraries have forums enabled
+  const { data: forumEnabledMap, isLoading: forumCheckLoading } = useLibrariesForumEnabled(allLibraryIds);
+
+  const isLoading = membershipsLoading || forumCheckLoading;
+
   // Filter memberships to libraries that have forums enabled
-  // For now, show all memberships - we'll filter by feature_community_forum later
-  const librariesWithForums = memberships.filter(m => m.library);
+  const librariesWithForums = memberships.filter(m => 
+    m.library && forumEnabledMap?.get(m.library.id) === true
+  );
 
   // Set default tab when memberships load
   if (librariesWithForums.length > 0 && !activeTab) {
