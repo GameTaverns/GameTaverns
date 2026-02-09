@@ -245,6 +245,7 @@ CREATE OR REPLACE VIEW public.library_calendar_events
 WITH (security_invoker = false)
 AS
 SELECT 
+    'standalone'::text as event_type,
     id,
     library_id,
     title,
@@ -253,11 +254,11 @@ SELECT
     event_location,
     NULL::text as share_token,
     NULL::text as poll_status,
-    'event' as event_type,
     created_at
 FROM public.library_events
 UNION ALL
 SELECT 
+    'poll'::text as event_type,
     id,
     library_id,
     title,
@@ -266,10 +267,9 @@ SELECT
     event_location,
     share_token,
     status as poll_status,
-    'game_night' as event_type,
     created_at
 FROM public.game_polls
-WHERE event_date IS NOT NULL;
+WHERE event_date IS NOT NULL AND poll_type = 'game_night' AND status IN ('open', 'closed');
 
 -- ===========================================
 -- Site Settings Public View (for unauthenticated access)
