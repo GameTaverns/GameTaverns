@@ -48,32 +48,25 @@ export function CategoryManager() {
     queryKey: ["wishlist-summary", library?.id],
     queryFn: async () => {
       if (!library?.id) return [];
-      
-      // Get games with wishlist votes for this library
-      const { data: games } = await supabase
-        .from("games")
-        .select("id, title, slug")
-        .eq("library_id", library.id);
-      
-      if (!games || games.length === 0) return [];
-      
-      const gameIds = games.map(g => g.id);
-      
-      const { data: summary } = await supabase
+
+      // Use join filtering to avoid huge IN() clauses that can trigger 502s
+      const { data, error } = await supabase
         .from("game_wishlist_summary")
-        .select("*")
-        .in("game_id", gameIds)
+        .select("game_id, vote_count, games!inner(id, title, slug, library_id)")
+        .eq("games.library_id", library.id)
         .gt("vote_count", 0)
         .order("vote_count", { ascending: false })
         .limit(10);
-      
-      // Map game info to summary
-      return (summary || []).map(s => ({
-        ...s,
-        game: games.find(g => g.id === s.game_id)
+
+      if (error) throw error;
+
+      return (data || []).map((row: any) => ({
+        game_id: row.game_id,
+        vote_count: row.vote_count,
+        game: row.games,
       }));
     },
-    enabled: !!library?.id
+    enabled: !!library?.id,
   });
 
   // Fetch favorite games for this library
@@ -100,33 +93,26 @@ export function CategoryManager() {
     queryKey: ["rated-games", library?.id],
     queryFn: async () => {
       if (!library?.id) return [];
-      
-      // Get games for this library
-      const { data: games } = await supabase
-        .from("games")
-        .select("id, title, slug")
-        .eq("library_id", library.id);
-      
-      if (!games || games.length === 0) return [];
-      
-      const gameIds = games.map(g => g.id);
-      
-      // Get rating summaries
-      const { data: ratings } = await supabase
+
+      // Use join filtering to avoid huge IN() clauses that can trigger 502s
+      const { data, error } = await supabase
         .from("game_ratings_summary")
-        .select("*")
-        .in("game_id", gameIds)
+        .select("game_id, rating_count, average_rating, games!inner(id, title, slug, library_id)")
+        .eq("games.library_id", library.id)
         .gt("rating_count", 0)
         .order("average_rating", { ascending: false })
         .limit(10);
-      
-      // Map game info to ratings
-      return (ratings || []).map(r => ({
-        ...r,
-        game: games.find(g => g.id === r.game_id)
+
+      if (error) throw error;
+
+      return (data || []).map((row: any) => ({
+        game_id: row.game_id,
+        rating_count: row.rating_count,
+        average_rating: row.average_rating,
+        game: row.games,
       }));
     },
-    enabled: !!library?.id
+    enabled: !!library?.id,
   });
 
   const handleAddMechanic = async () => {

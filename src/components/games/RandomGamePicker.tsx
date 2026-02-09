@@ -114,17 +114,19 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
     enabled: !!libraryId,
   });
   
-  // Fetch wishlist with vote counts
+  // Fetch wishlist with vote counts (scoped to this library)
   const { data: wishlistData = [] } = useQuery({
     queryKey: ["picker-wishlist", libraryId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("game_wishlist_summary")
-        .select("game_id, vote_count");
+        .select("game_id, vote_count, games!inner(library_id)")
+        .eq("games.library_id", libraryId)
+        .gt("vote_count", 0);
       if (error) throw error;
-      return data;
+      return data || [];
     },
-    enabled: mode === "wishlist",
+    enabled: mode === "wishlist" && !!libraryId,
   });
   
   // Get eligible games based on mode
