@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { 
   ExternalLink, 
   Settings, 
@@ -68,6 +68,30 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editEvent, setEditEvent] = useState<import("@/hooks/useLibraryEvents").CalendarEvent | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "personal");
+
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+    if (!tabFromUrl && activeTab !== "personal") {
+      setActiveTab("personal");
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const newParams = new URLSearchParams(searchParams);
+    if (value === "personal") {
+      newParams.delete("tab");
+    } else {
+      newParams.set("tab", value);
+    }
+    setSearchParams(newParams, { replace: true });
+  };
   
   // Fetch library stats
   const { data: gameCount } = useQuery({
@@ -193,7 +217,7 @@ const { data: playCount } = useQuery({
           Welcome back, {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0]}
         </h1>
         
-        <Tabs defaultValue="personal" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="mb-8 bg-wood-dark/60 border border-wood-medium/40 flex-wrap">
             <TabsTrigger 
               value="personal" 

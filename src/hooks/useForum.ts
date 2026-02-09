@@ -3,13 +3,23 @@ import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
+function slugifyLocal(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 // Check if a library has community forum enabled
 export function useLibraryForumEnabled(libraryId: string | undefined) {
   return useQuery({
     queryKey: ["library-settings", libraryId, "feature_community_forum"],
     queryFn: async () => {
       if (!libraryId) return false;
-      
+
       const { data, error } = await supabase
         .from("library_settings")
         .select("feature_community_forum")
@@ -20,7 +30,7 @@ export function useLibraryForumEnabled(libraryId: string | undefined) {
         console.warn("Failed to check forum enabled status:", error);
         return true; // Default to enabled on error
       }
-      
+
       // Default to true if no setting exists or if explicitly enabled
       return data?.feature_community_forum !== false;
     },
@@ -34,7 +44,7 @@ export function useLibrariesForumEnabled(libraryIds: string[]) {
     queryKey: ["library-settings", "feature_community_forum", libraryIds],
     queryFn: async () => {
       if (libraryIds.length === 0) return new Map<string, boolean>();
-      
+
       const { data, error } = await supabase
         .from("library_settings")
         .select("library_id, feature_community_forum")
@@ -43,20 +53,116 @@ export function useLibrariesForumEnabled(libraryIds: string[]) {
       if (error) {
         console.warn("Failed to check forum enabled status:", error);
         // Default all to true on error
-        return new Map(libraryIds.map(id => [id, true]));
+        return new Map(libraryIds.map((id) => [id, true]));
       }
-      
+
       const enabledMap = new Map<string, boolean>();
       // Set defaults first (true if no setting)
-      libraryIds.forEach(id => enabledMap.set(id, true));
+      libraryIds.forEach((id) => enabledMap.set(id, true));
       // Override with actual settings
-      data?.forEach(setting => {
+      data?.forEach((setting) => {
         enabledMap.set(setting.library_id, setting.feature_community_forum !== false);
       });
-      
+
       return enabledMap;
     },
     enabled: libraryIds.length > 0,
+  });
+}
+
+export type CreateForumCategoryInput = {
+  scope: "site" | "library";
+  libraryId: string | null;
+  name: string;
+  description: string | null;
+  icon: string;
+  color: string;
+  displayOrder: number;
+};
+
+export function useCreateForumCategory() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (input: CreateForumCategoryInput) => {
+      if (!user) throw new Error("Must be logged in");
+
+      const slug = slugifyLocal(input.name);
+      if (!slug) throw new Error("Invalid category name");
+
+      const { data, error } = await supabase
+        .from("forum_categories")
+        .insert({
+          library_id: input.scope === "site" ? null : input.libraryId,
+          name: input.name,
+          slug,
+          description: input.description,
+          icon: input.icon,
+          color: input.color,
+          display_order: input.displayOrder,
+          is_system: false,
+          is_archived: false,
+          created_by: user.id,
+        })
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      return data as ForumCategory;
+    },
+    onSuccess: (cat) => {
+      queryClient.invalidateQueries({ queryKey: ["forum-categories"] });
+      if (cat.library_id) {
+        queryClient.invalidateQueries({ queryKey: ["forum-categories", "library", cat.library_id] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["forum-categories", "site-wide"] });
+      }
+      toast({ title: "Category created" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not create category",
+        description: err?.message ?? "Unknown error",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useSetCategoryArchived() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ categoryId, archived }: { categoryId: string; archived: boolean }) => {
+      const { data, error } = await supabase
+        .from("forum_categories")
+        .update({ is_archived: archived, updated_at: new Date().toISOString() })
+        .eq("id", categoryId)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      return data as ForumCategory;
+    },
+    onSuccess: (cat) => {
+      queryClient.invalidateQueries({ queryKey: ["forum-categories"] });
+      if (cat.library_id) {
+        queryClient.invalidateQueries({ queryKey: ["forum-categories", "library", cat.library_id] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["forum-categories", "site-wide"] });
+      }
+      toast({ title: cat.is_archived ? "Category archived" : "Category restored" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Could not update category",
+        description: err?.message ?? "Unknown error",
+        variant: "destructive",
+      });
+    },
   });
 }
 
