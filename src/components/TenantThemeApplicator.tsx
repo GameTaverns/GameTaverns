@@ -78,12 +78,16 @@ export function TenantThemeApplicator() {
       const card = formatHSL(settings.theme_dark_card_h, settings.theme_dark_card_s, settings.theme_dark_card_l);
       const sidebar = formatHSL(settings.theme_dark_sidebar_h, settings.theme_dark_sidebar_s, settings.theme_dark_sidebar_l);
       
-      console.log('[TenantTheme] Dark mode values:', { primary, accent, background, card, sidebar });
+      // Resolve explicit foreground color once
+      const s = settings as any;
+      const explicitFg = formatHSL(s.theme_dark_foreground_h, s.theme_dark_foreground_s, s.theme_dark_foreground_l);
+      const explicitFgL = explicitFg ? parseInt((s.theme_dark_foreground_l || '90').replace('%', '')) : null;
+      
+      console.log('[TenantTheme] Dark mode values:', { primary, accent, background, card, sidebar, explicitFg });
       
       if (primary) {
         root.style.setProperty('--primary', primary);
         root.style.setProperty('--primary-foreground', getForeground(settings.theme_dark_primary_l));
-        // Tokens used by our "parchment" theme utilities
         root.style.setProperty('--forest', primary);
         root.style.setProperty('--ring', primary);
       }
@@ -92,41 +96,51 @@ export function TenantThemeApplicator() {
         root.style.setProperty('--accent-foreground', getForeground(settings.theme_dark_accent_l));
         root.style.setProperty('--sienna', accent);
 
-        // Gold is a brighter accent used in gradients/badges.
         const h = settings.theme_dark_accent_h;
-        const s = toNum(settings.theme_dark_accent_s, 50);
+        const sVal = toNum(settings.theme_dark_accent_s, 50);
         const l = toNum(settings.theme_dark_accent_l, 45);
-        root.style.setProperty('--gold', `${String(h || '28').replace('%', '')} ${clamp(s, 0, 100)}% ${clamp(l + 10, 0, 100)}%`);
+        root.style.setProperty('--gold', `${String(h || '28').replace('%', '')} ${clamp(sVal, 0, 100)}% ${clamp(l + 10, 0, 100)}%`);
       }
       if (background) {
         root.style.setProperty('--background', background);
-        // Use explicit foreground color if set, otherwise auto-derive
-        const s = settings as any;
-        const explicitFg = formatHSL(s.theme_dark_foreground_h, s.theme_dark_foreground_s, s.theme_dark_foreground_l);
         const fg = explicitFg || getForeground(settings.theme_dark_background_l);
         root.style.setProperty('--foreground', fg);
         const bgL = parseInt((settings.theme_dark_background_l || '10').replace('%', ''));
-        // Muted: derived from foreground at reduced opacity
         const mutedL = Math.min(bgL + 5, 100);
         root.style.setProperty('--muted', `0 0% ${mutedL}%`);
-        // Muted-foreground: a softer version of the main foreground
-        const fgL = explicitFg ? parseInt((s.theme_dark_foreground_l || '90').replace('%', '')) : 95;
+        const fgL = explicitFgL ?? 95;
         root.style.setProperty('--muted-foreground', `0 0% ${clamp(fgL - 30, 0, 100)}%`);
         root.style.setProperty('--border', getNeutralBorder(bgL));
         root.style.setProperty('--input', getNeutralInput(bgL));
 
         const parchmentL = clamp(bgL + 2, 0, 100);
         root.style.setProperty('--parchment', `${settings.theme_dark_background_h} ${settings.theme_dark_background_s} ${parchmentL}%`);
+      } else if (explicitFg) {
+        // Apply foreground even without a custom background
+        root.style.setProperty('--foreground', explicitFg);
+        root.style.setProperty('--muted-foreground', `0 0% ${clamp(explicitFgL! - 30, 0, 100)}%`);
       }
       if (card) {
         root.style.setProperty('--card', card);
-        root.style.setProperty('--card-foreground', getForeground(settings.theme_dark_card_l));
+        const cardFg = explicitFg || getForeground(settings.theme_dark_card_l);
+        root.style.setProperty('--card-foreground', cardFg);
         root.style.setProperty('--popover', card);
-        root.style.setProperty('--popover-foreground', getForeground(settings.theme_dark_card_l));
+        root.style.setProperty('--popover-foreground', cardFg);
       }
       if (sidebar) {
         root.style.setProperty('--sidebar-background', sidebar);
-        root.style.setProperty('--sidebar-foreground', getForeground(settings.theme_dark_sidebar_l));
+        const sidebarFg = explicitFg || getForeground(settings.theme_dark_sidebar_l);
+        root.style.setProperty('--sidebar-foreground', sidebarFg);
+      }
+      // If explicit foreground set but no card/sidebar customized, still apply to those tokens
+      if (explicitFg) {
+        if (!card) {
+          root.style.setProperty('--card-foreground', explicitFg);
+          root.style.setProperty('--popover-foreground', explicitFg);
+        }
+        if (!sidebar) {
+          root.style.setProperty('--sidebar-foreground', explicitFg);
+        }
       }
     } else {
       // Apply light mode colors
@@ -136,7 +150,12 @@ export function TenantThemeApplicator() {
       const card = formatHSL(settings.theme_card_h, settings.theme_card_s, settings.theme_card_l);
       const sidebar = formatHSL(settings.theme_sidebar_h, settings.theme_sidebar_s, settings.theme_sidebar_l);
       
-      console.log('[TenantTheme] Light mode values:', { primary, accent, background, card, sidebar });
+      // Resolve explicit foreground color once
+      const s = settings as any;
+      const explicitFg = formatHSL(s.theme_foreground_h, s.theme_foreground_s, s.theme_foreground_l);
+      const explicitFgL = explicitFg ? parseInt((s.theme_foreground_l || '15').replace('%', '')) : null;
+      
+      console.log('[TenantTheme] Light mode values:', { primary, accent, background, card, sidebar, explicitFg });
       
       if (primary) {
         root.style.setProperty('--primary', primary);
@@ -150,38 +169,50 @@ export function TenantThemeApplicator() {
         root.style.setProperty('--sienna', accent);
 
         const h = settings.theme_accent_h;
-        const s = toNum(settings.theme_accent_s, 50);
+        const sVal = toNum(settings.theme_accent_s, 50);
         const l = toNum(settings.theme_accent_l, 48);
-        root.style.setProperty('--gold', `${String(h || '28').replace('%', '')} ${clamp(s, 0, 100)}% ${clamp(l + 15, 0, 100)}%`);
+        root.style.setProperty('--gold', `${String(h || '28').replace('%', '')} ${clamp(sVal, 0, 100)}% ${clamp(l + 15, 0, 100)}%`);
       }
       if (background) {
         root.style.setProperty('--background', background);
-        // Use explicit foreground color if set, otherwise auto-derive
-        const s = settings as any;
-        const explicitFg = formatHSL(s.theme_foreground_h, s.theme_foreground_s, s.theme_foreground_l);
         const fg = explicitFg || getForeground(settings.theme_background_l);
         root.style.setProperty('--foreground', fg);
         const bgL = parseInt((settings.theme_background_l || '95').replace('%', ''));
         const mutedL = Math.max(bgL - 5, 0);
         root.style.setProperty('--muted', `0 0% ${mutedL}%`);
-        // Muted-foreground: a softer version of the main foreground
-        const fgL = explicitFg ? parseInt((s.theme_foreground_l || '15').replace('%', '')) : 10;
+        const fgL = explicitFgL ?? 10;
         root.style.setProperty('--muted-foreground', `0 0% ${clamp(fgL + 30, 0, 100)}%`);
         root.style.setProperty('--border', getNeutralBorder(bgL));
         root.style.setProperty('--input', getNeutralInput(bgL));
 
         const parchmentL = clamp(bgL - 2, 0, 100);
         root.style.setProperty('--parchment', `${settings.theme_background_h} ${settings.theme_background_s} ${parchmentL}%`);
+      } else if (explicitFg) {
+        // Apply foreground even without a custom background
+        root.style.setProperty('--foreground', explicitFg);
+        root.style.setProperty('--muted-foreground', `0 0% ${clamp(explicitFgL! + 30, 0, 100)}%`);
       }
       if (card) {
         root.style.setProperty('--card', card);
-        root.style.setProperty('--card-foreground', getForeground(settings.theme_card_l));
+        const cardFg = explicitFg || getForeground(settings.theme_card_l);
+        root.style.setProperty('--card-foreground', cardFg);
         root.style.setProperty('--popover', card);
-        root.style.setProperty('--popover-foreground', getForeground(settings.theme_card_l));
+        root.style.setProperty('--popover-foreground', cardFg);
       }
       if (sidebar) {
         root.style.setProperty('--sidebar-background', sidebar);
-        root.style.setProperty('--sidebar-foreground', getForeground(settings.theme_sidebar_l));
+        const sidebarFg = explicitFg || getForeground(settings.theme_sidebar_l);
+        root.style.setProperty('--sidebar-foreground', sidebarFg);
+      }
+      // If explicit foreground set but no card/sidebar customized, still apply to those tokens
+      if (explicitFg) {
+        if (!card) {
+          root.style.setProperty('--card-foreground', explicitFg);
+          root.style.setProperty('--popover-foreground', explicitFg);
+        }
+        if (!sidebar) {
+          root.style.setProperty('--sidebar-foreground', explicitFg);
+        }
       }
     }
     
