@@ -124,6 +124,7 @@ app.get('/api/settings/public', async (req, res) => {
       'footer_text', 'twitter_handle', 'instagram_url', 'facebook_url', 'discord_url', 'contact_email',
       'feature_play_logs', 'feature_wishlist', 'feature_for_sale', 'feature_messaging',
       'feature_coming_soon', 'feature_demo_mode', 'feature_ratings', 'feature_events',
+      'announcement_banner', 'maintenance_mode',
     ];
     
     const result = await pool.query(
