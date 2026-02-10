@@ -9,6 +9,7 @@ import * as OTPAuth from "npm:otpauth@9.4.0";
 // Self-hosted router delegates many functions to their regular implementations.
 // These modules must guard `Deno.serve(...)` behind `import.meta.main`.
 import bggImportHandler, { setGameImportHandler } from "../bgg-import/index.ts";
+import clubsHandler from "../clubs/index.ts";
 import bggLookupHandler from "../bgg-lookup/index.ts";
 import bggPlayImportHandler from "../bgg-play-import/index.ts";
 import gameImportHandler from "../game-import/index.ts";
@@ -4310,7 +4311,7 @@ const AVAILABLE_FUNCTIONS = [
   "my-inquiries", "rate-game", "refresh-images", "reply-to-inquiry", "resolve-username", "send-auth-email",
   "send-inquiry-reply", "send-message", "signup", "sync-achievements", "totp-disable", "totp-setup", "totp-status",
   "totp-verify", "verify-email", "verify-reset-token", "wishlist",
-  "notify-feedback",
+  "notify-feedback", "clubs",
   // Self-hosted-only helpers
   "membership", "library-settings",
 ];
@@ -4326,7 +4327,7 @@ const INLINED_FUNCTIONS = [
   "membership", "library-settings", "profile-update",
   // Self-hosted-only feature functions
   "bgg-play-import",
-  "notify-feedback",
+    "notify-feedback", "clubs",
 ];
 
 // NOTE: In self-hosted deployments, the edge-runtime process itself binds to the
@@ -4430,6 +4431,8 @@ Deno.serve(async (req) => {
       return handleDiscordSendDM(req);
     case "notify-feedback":
       return notifyFeedbackHandler(req);
+    case "clubs":
+      return clubsHandler(req);
   }
 
   // For other functions, return info
