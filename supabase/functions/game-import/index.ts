@@ -233,18 +233,36 @@ async function fetchBGGDataFromXML(
       if (!res.ok) {
         console.warn(`[GameImport] BGG XML API returned ${res.status} for ${bggId}${!bggApiToken ? " (no BGG_API_TOKEN configured)" : ""}`);
         // If token caused a 401/403, retry without it
-        if ((res.status === 401 || res.status === 403) && bggApiToken && attempt < maxAttempts) {
+        if ((res.status === 401 || res.status === 403) && bggApiToken) {
           console.log(`[GameImport] Retrying BGG XML API without token for ${bggId}`);
           const retryRes = await fetch(xmlUrl, { headers: { "User-Agent": "GameTaverns/1.0" } });
           if (retryRes.ok) {
-            // Replace res processing below — re-assign and break out to process
             const xml = await retryRes.text();
-            return parseBggXml(xml, bggId);
+            // BGG may return a 200 with a "please wait" message
+            if (xml.includes("<item")) {
+              return parseBggXml(xml, bggId);
+            }
+            // Otherwise treat as retryable (queued response)
+            if (attempt < maxAttempts) {
+              console.log(`[GameImport] Tokenless retry got queued response, backing off (${attempt}/${maxAttempts})`);
+              await sleep(Math.min(750 * attempt, 4000));
+              continue;
+            }
+          } else if (retryRes.status === 202 && attempt < maxAttempts) {
+            // BGG is queuing the request, retry after backoff
+            await sleep(Math.min(750 * attempt, 4000));
+            continue;
           }
         }
         if (res.status === 202 && attempt < maxAttempts) {
           const backoffMs = Math.min(750 * attempt, 4000);
           await sleep(backoffMs);
+          continue;
+        }
+        // Don't bail on first non-202 failure — retry a few times
+        if (attempt < maxAttempts) {
+          console.log(`[GameImport] BGG API returned ${res.status}, retrying (${attempt}/${maxAttempts})`);
+          await sleep(Math.min(750 * attempt, 4000));
           continue;
         }
         return { bgg_id: bggId };
