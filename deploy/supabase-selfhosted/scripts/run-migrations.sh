@@ -112,6 +112,8 @@ MIGRATION_FILES=(
     "29-collection-value-tracking.sql"
     "30-group-challenges.sql"
     "31-trade-matching.sql"
+    "32-player-color-column.sql"
+    "33-theme-foreground-columns.sql"
 )
 
 SUCCESS_COUNT=0
