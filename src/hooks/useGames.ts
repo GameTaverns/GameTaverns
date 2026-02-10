@@ -51,29 +51,34 @@ export function useGames(enabled = true) {
       if (gamesError) throw gamesError;
 
       // Fetch publishers separately for the view
+      // Use batched queries to avoid URL length overflow on large collections
       const gameIds = (games || []).map((g) => g.id);
-      const publisherIds = (games || []).filter((g) => g.publisher_id).map((g) => g.publisher_id);
+      const publisherIds = [...new Set((games || []).filter((g) => g.publisher_id).map((g) => g.publisher_id))];
 
-      const { data: publishers } = await supabase
-        .from("publishers")
-        .select("id, name")
-        .in("id", publisherIds);
+      const BATCH_SIZE = 50;
 
-      const publisherMap = new Map((publishers || []).map((p) => [p.id, p]));
+      // Batch-fetch publishers
+      const allPublishers: any[] = [];
+      for (let i = 0; i < publisherIds.length; i += BATCH_SIZE) {
+        const batch = publisherIds.slice(i, i + BATCH_SIZE);
+        const { data } = await supabase.from("publishers").select("id, name").in("id", batch);
+        if (data) allPublishers.push(...data);
+      }
+      const publisherMap = new Map(allPublishers.map((p) => [p.id, p]));
 
-      // Fetch mechanics for all games
-      const { data: gameMechanics } = await supabase
-        .from("game_mechanics")
-        .select(
-          `
-            game_id,
-            mechanic:mechanics(id, name)
-          `
-        )
-        .in("game_id", gameIds);
+      // Batch-fetch mechanics
+      const allMechanics: any[] = [];
+      for (let i = 0; i < gameIds.length; i += BATCH_SIZE) {
+        const batch = gameIds.slice(i, i + BATCH_SIZE);
+        const { data } = await supabase
+          .from("game_mechanics")
+          .select(`game_id, mechanic:mechanics(id, name)`)
+          .in("game_id", batch);
+        if (data) allMechanics.push(...data);
+      }
 
       const mechanicsMap = new Map<string, Mechanic[]>();
-      (gameMechanics || []).forEach((gm: { game_id: string; mechanic: Mechanic | null }) => {
+      allMechanics.forEach((gm: { game_id: string; mechanic: Mechanic | null }) => {
         if (gm.mechanic) {
           const existing = mechanicsMap.get(gm.game_id) || [];
           existing.push(gm.mechanic);
