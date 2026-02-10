@@ -26,7 +26,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAllGamesFlat } from "@/hooks/useGames";
 import { SALE_CONDITION_OPTIONS, type SaleCondition } from "@/types/game";
 
-export function GameUrlImport() {
+interface GameUrlImportProps {
+  libraryId?: string;
+}
+
+export function GameUrlImport({ libraryId }: GameUrlImportProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: baseGames = [] } = useAllGamesFlat();
@@ -78,6 +82,7 @@ export function GameUrlImport() {
       const { data, error } = await supabase.functions.invoke("bgg-import", {
         body: { 
           url: importUrl.trim(),
+          library_id: libraryId,
           is_coming_soon: importAsComingSoon,
           is_for_sale: importAsForSale,
           sale_price: importAsForSale && importSalePrice ? parseFloat(importSalePrice) : null,

@@ -244,7 +244,7 @@ export default function LibraryGames() {
           </TabsList>
 
           <TabsContent value="add">
-            <GameUrlImport />
+            <GameUrlImport libraryId={library.id} />
           </TabsContent>
 
           <TabsContent value="import">
