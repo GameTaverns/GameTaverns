@@ -8,10 +8,13 @@ import * as OTPAuth from "npm:otpauth@9.4.0";
 
 // Self-hosted router delegates many functions to their regular implementations.
 // These modules must guard `Deno.serve(...)` behind `import.meta.main`.
-import bggImportHandler from "../bgg-import/index.ts";
+import bggImportHandler, { setGameImportHandler } from "../bgg-import/index.ts";
 import bggLookupHandler from "../bgg-lookup/index.ts";
 import bggPlayImportHandler from "../bgg-play-import/index.ts";
 import gameImportHandler from "../game-import/index.ts";
+
+// Wire bgg-import to call game-import directly (avoids HTTP proxy deadlock)
+setGameImportHandler(gameImportHandler);
 
 // Router-compatible exported handlers
 import verifyEmailHandler from "../verify-email/index.ts";

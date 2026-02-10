@@ -1,5 +1,16 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+// ---------------------------------------------------------------------------
+// Self-hosted detection: when running inside the main router, the game-import
+// handler is passed in at import time to avoid the HTTP-proxy deadlock.
+// ---------------------------------------------------------------------------
+let _directGameImportHandler: ((req: Request) => Promise<Response>) | null = null;
+
+/** Called by the main router to inject the game-import handler directly. */
+export function setGameImportHandler(h: (req: Request) => Promise<Response>) {
+  _directGameImportHandler = h;
+}
+
 // Helper to get allowed origins
 const getAllowedOrigins = (): string[] => {
   const origins = [
@@ -8,7 +19,6 @@ const getAllowedOrigins = (): string[] => {
     "http://localhost:8080",
   ].filter(Boolean);
 
-  // Add production URL pattern
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   if (supabaseUrl) {
     const projectMatch = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/);
@@ -20,7 +30,6 @@ const getAllowedOrigins = (): string[] => {
   return origins;
 };
 
-// Get CORS headers with origin validation
 const getCorsHeaders = (requestOrigin: string | null): Record<string, string> => {
   const allowedOrigins = getAllowedOrigins();
   const isAllowedOrigin =
@@ -37,8 +46,14 @@ const getCorsHeaders = (requestOrigin: string | null): Record<string, string> =>
   };
 };
 
-// Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
+  // If a direct handler was injected (self-hosted), delegate immediately.
+  // This avoids the HTTP-proxy deadlock in the single-threaded edge-runtime.
+  if (_directGameImportHandler) {
+    return _directGameImportHandler(req);
+  }
+
+  // --- Cloud path: proxy via HTTP to game-import ---
   const requestOrigin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(requestOrigin);
 
@@ -47,7 +62,6 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    // Authentication check (keep same contract as other admin-only functions)
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ success: false, error: "Authentication required" }), {
@@ -56,68 +70,8 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    // Verify the user is admin (same logic as before)
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    // Use getUser() for compatibility with both managed + self-hosted auth.
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !userData?.user) {
-      console.error("[BGGImport] Auth error:", userError?.message);
-      return new Response(JSON.stringify({ success: false, error: "Invalid authentication" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userId = userData.user.id;
-
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    // Check if user is either a global admin OR owns a library
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-
-    const { data: libraryData } = await supabaseAdmin
-      .from("libraries")
-      .select("id")
-      .eq("owner_id", userId)
-      .maybeSingle();
-
-    // Allow access if user is admin OR owns a library
-    if (!roleData && !libraryData) {
-      return new Response(JSON.stringify({ success: false, error: "You must own a library to import games" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const body = await req.json().catch(() => null);
     const url = body?.url;
-    const library_id = body?.library_id || libraryData?.id;
-    const is_coming_soon = body?.is_coming_soon;
-    const is_for_sale = body?.is_for_sale;
-    const sale_price = body?.sale_price;
-    const sale_condition = body?.sale_condition;
-    const is_expansion = body?.is_expansion;
-    const parent_game_id = body?.parent_game_id;
-    const location_room = body?.location_room;
-    const location_shelf = body?.location_shelf;
-    const purchase_price = body?.purchase_price;
-    const purchase_date = body?.purchase_date;
-    const sleeved = body?.sleeved;
-    const upgraded_components = body?.upgraded_components;
-    const crowdfunded = body?.crowdfunded;
 
     if (!url || typeof url !== "string") {
       return new Response(JSON.stringify({ success: false, error: "URL is required" }), {
@@ -126,10 +80,9 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    // IMPORTANT: BoardGameGeek sometimes blocks direct XML API calls from serverless environments.
-    // Instead of failing with 401/502, we proxy this to the more robust scraper-based importer.
     const base = Deno.env.get("SUPABASE_URL");
-    if (!base) {
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!base || !anonKey) {
       return new Response(JSON.stringify({ success: false, error: "Backend not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -137,13 +90,6 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     const target = `${base}/functions/v1/game-import`;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    if (!anonKey) {
-      return new Response(JSON.stringify({ success: false, error: "Backend not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
     const upstream = await fetch(target, {
       method: "POST",
       headers: {
@@ -151,12 +97,10 @@ export default async function handler(req: Request): Promise<Response> {
         apikey: anonKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url, library_id, is_coming_soon, is_for_sale, sale_price, sale_condition, is_expansion, parent_game_id, location_room, location_shelf, purchase_price, purchase_date, sleeved, upgraded_components, crowdfunded }),
+      body: JSON.stringify(body),
     });
 
     const text = await upstream.text();
-
-    // Pass through response (but ensure CORS matches our validated origin)
     return new Response(text, {
       status: upstream.status,
       headers: {
@@ -173,8 +117,6 @@ export default async function handler(req: Request): Promise<Response> {
   }
 }
 
-// For Lovable Cloud deployment (direct function invocation)
-// Guard so this module can be imported by the self-hosted main router.
 if (import.meta.main) {
   Deno.serve(handler);
 }
