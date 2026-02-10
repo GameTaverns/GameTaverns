@@ -231,6 +231,8 @@ async function fetchBGGDataFromXML(
       const res = await fetch(xmlUrl, { headers });
 
       if (!res.ok) {
+        // Always consume the response body to prevent Deno resource leaks
+        await res.text().catch(() => {});
         console.warn(`[GameImport] BGG XML API returned ${res.status} for ${bggId}${!bggApiToken ? " (no BGG_API_TOKEN configured)" : ""}`);
         // If token caused a 401/403, retry without it
         if ((res.status === 401 || res.status === 403) && bggApiToken) {
@@ -238,28 +240,25 @@ async function fetchBGGDataFromXML(
           const retryRes = await fetch(xmlUrl, { headers: { "User-Agent": "GameTaverns/1.0" } });
           if (retryRes.ok) {
             const xml = await retryRes.text();
-            // BGG may return a 200 with a "please wait" message
             if (xml.includes("<item")) {
               return parseBggXml(xml, bggId);
             }
-            // Otherwise treat as retryable (queued response)
+            // Queued response — continue retrying
             if (attempt < maxAttempts) {
               console.log(`[GameImport] Tokenless retry got queued response, backing off (${attempt}/${maxAttempts})`);
               await sleep(Math.min(750 * attempt, 4000));
               continue;
             }
-          } else if (retryRes.status === 202 && attempt < maxAttempts) {
-            // BGG is queuing the request, retry after backoff
-            await sleep(Math.min(750 * attempt, 4000));
-            continue;
+          } else {
+            // Consume body to prevent leak
+            await retryRes.text().catch(() => {});
+            if (attempt < maxAttempts) {
+              await sleep(Math.min(750 * attempt, 4000));
+              continue;
+            }
           }
         }
-        if (res.status === 202 && attempt < maxAttempts) {
-          const backoffMs = Math.min(750 * attempt, 4000);
-          await sleep(backoffMs);
-          continue;
-        }
-        // Don't bail on first non-202 failure — retry a few times
+        // Retry on any non-ok status (including 202)
         if (attempt < maxAttempts) {
           console.log(`[GameImport] BGG API returned ${res.status}, retrying (${attempt}/${maxAttempts})`);
           await sleep(Math.min(750 * attempt, 4000));
