@@ -40,7 +40,11 @@ const STATUS_CONFIG: Record<LoanStatus, { label: string; color: string; icon: Re
   cancelled: { label: "Cancelled", color: "bg-slate-500/10 text-slate-600", icon: <X className="h-3 w-3" /> },
 };
 
-export function LendingDashboard() {
+interface LendingDashboardProps {
+  libraryId?: string;
+}
+
+export function LendingDashboard({ libraryId }: LendingDashboardProps) {
   const {
     myBorrowedLoans,
     myLentLoans,
@@ -51,7 +55,7 @@ export function LendingDashboard() {
     markReturned,
     cancelLoan,
     rateBorrower,
-  } = useLending();
+  } = useLending(libraryId);
 
   const [selectedLoan, setSelectedLoan] = useState<GameLoan | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'decline' | 'rate' | null>(null);

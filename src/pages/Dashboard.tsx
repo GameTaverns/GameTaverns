@@ -736,7 +736,7 @@ const { data: playCount } = useQuery({
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <LendingDashboard />
+                    <LendingDashboard libraryId={library?.id} />
                   </CardContent>
                 </Card>
 

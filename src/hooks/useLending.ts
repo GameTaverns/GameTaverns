@@ -55,17 +55,17 @@ export interface BorrowerReputation {
   positive_ratings: number;
 }
 
-export function useLending() {
+export function useLending(libraryId?: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // Fetch loans where user is borrower
   const { data: myBorrowedLoans = [], isLoading: borrowedLoading } = useQuery({
-    queryKey: ["loans", "borrowed", user?.id],
+    queryKey: ["loans", "borrowed", user?.id, libraryId],
     queryFn: async () => {
       if (!user) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from("game_loans")
         .select(`
           *,
@@ -75,6 +75,11 @@ export function useLending() {
         .eq("borrower_user_id", user.id)
         .order("created_at", { ascending: false });
 
+      if (libraryId) {
+        query = query.eq("library_id", libraryId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as GameLoan[];
     },
@@ -83,11 +88,11 @@ export function useLending() {
 
   // Fetch loans where user is lender (library owner)
   const { data: myLentLoans = [], isLoading: lentLoading } = useQuery({
-    queryKey: ["loans", "lent", user?.id],
+    queryKey: ["loans", "lent", user?.id, libraryId],
     queryFn: async () => {
       if (!user) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from("game_loans")
         .select(`
           *,
@@ -97,6 +102,11 @@ export function useLending() {
         .eq("lender_user_id", user.id)
         .order("created_at", { ascending: false });
 
+      if (libraryId) {
+        query = query.eq("library_id", libraryId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as GameLoan[];
     },
