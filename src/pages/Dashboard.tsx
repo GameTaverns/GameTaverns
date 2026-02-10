@@ -63,10 +63,22 @@ import { TradeCenter } from "@/components/trades/TradeCenter";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
-  const { data: library, isLoading: libraryLoading } = useMyLibrary();
+  const { data: defaultLibrary, isLoading: libraryLoading } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
   const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();
   const { data: profile } = useUserProfile();
+  
+  // Active library selection – defaults to the first (oldest) library
+  const [activeLibraryId, setActiveLibraryId] = useState<string | null>(null);
+  const library = myLibraries.find((l) => l.id === activeLibraryId) ?? defaultLibrary ?? null;
+  
+  // Sync activeLibraryId once libraries load
+  useEffect(() => {
+    if (!activeLibraryId && defaultLibrary) {
+      setActiveLibraryId(defaultLibrary.id);
+    }
+  }, [defaultLibrary, activeLibraryId]);
+
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const { myLentLoans, myBorrowedLoans } = useLending();
   const { data: myMemberships = [] } = useMyMemberships();
@@ -482,6 +494,30 @@ const { data: playCount } = useQuery({
           <TabsContent value="library">
             {library ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Library Switcher - only when user has multiple */}
+                {myLibraries.length > 1 && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
+                    <CardContent className="py-3 flex items-center gap-3 flex-wrap">
+                      <span className="text-sm text-cream/70 font-medium">Active Library:</span>
+                      {myLibraries.map((lib) => (
+                        <Button
+                          key={lib.id}
+                          size="sm"
+                          variant={lib.id === library.id ? "default" : "outline"}
+                          className={
+                            lib.id === library.id
+                              ? "bg-secondary text-secondary-foreground"
+                              : "border-secondary/50 text-cream hover:bg-wood-medium/50"
+                          }
+                          onClick={() => setActiveLibraryId(lib.id)}
+                        >
+                          {lib.name}
+                        </Button>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Library Card */}
                 <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
                   <CardHeader>
@@ -690,36 +726,7 @@ const { data: playCount } = useQuery({
                   </Card>
                 )}
 
-                {/* Show additional libraries */}
-                {myLibraries.length > 1 && (
-                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Library className="h-5 w-5 text-secondary" />
-                        My Other Libraries
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {myLibraries
-                          .filter((l) => l.id !== library?.id)
-                          .map((lib) => (
-                            <a
-                              key={lib.id}
-                              href={getLibraryUrl(lib.slug, "/")}
-                              className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
-                            >
-                              <div>
-                                <div className="font-medium text-sm">{lib.name}</div>
-                                <div className="text-xs text-cream/60">{lib.slug}.gametaverns.com</div>
-                              </div>
-                              <ArrowRight className="h-4 w-4 text-cream/60 flex-shrink-0" />
-                            </a>
-                          ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                {/* Library switcher at top now handles multi-library navigation */}
 
                 {/* Create another library if under limit */}
                 {myLibraries.length < maxLibraries && (

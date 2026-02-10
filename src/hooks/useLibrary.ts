@@ -9,6 +9,7 @@ import { useAuth } from "./useAuth";
 import { Library, LibrarySettings } from "@/contexts/TenantContext";
 
 // Hook to get current user's first library (legacy – kept for backward compat)
+// Now returns the oldest library (first created) so creating a 2nd doesn't hide the original.
 export function useMyLibrary() {
   const { user, isAuthenticated } = useAuth();
   
@@ -27,7 +28,7 @@ export function useMyLibrary() {
         .from("libraries")
         .select("*")
         .eq("owner_id", user.id)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
       
