@@ -157,8 +157,33 @@ export function BulkImportDialog({
     if (!file) return;
 
     setCsvFile(file);
-    const text = await file.text();
-    setCsvData(text);
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "xlsx" || ext === "xls") {
+      // Parse Excel file to CSV using SheetJS
+      try {
+        const XLSX = await import("xlsx");
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array" });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const csvText = XLSX.utils.sheet_to_csv(firstSheet);
+        setCsvData(csvText);
+        toast({
+          title: "Excel file loaded",
+          description: `Converted "${file.name}" to CSV format (${csvText.split("\n").length - 1} rows)`,
+        });
+      } catch (err) {
+        console.error("XLSX parse error:", err);
+        toast({
+          title: "Failed to parse Excel file",
+          description: "Please try saving as CSV and uploading again.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      const text = await file.text();
+      setCsvData(text);
+    }
   };
 
   const resetForm = () => {
@@ -938,7 +963,7 @@ export function BulkImportDialog({
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                    <p className="text-xs text-muted-foreground">
-                    Supports CSV files including BGG collection exports and BG Stats app exports (with play history). File should have columns: title/name/objectname, optionally bgg_id/objectid/bggId
+                    Supports CSV and Excel (.xlsx) files including BGG collection exports and BG Stats app exports (with play history). File should have columns: title/name/objectname, optionally bgg_id/objectid/bggId
                   </p>
                 </div>
 

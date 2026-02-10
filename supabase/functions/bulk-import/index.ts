@@ -2247,20 +2247,13 @@ export default async function handler(req: Request): Promise<Response> {
           if (baseGames && baseGames.length > 0) {
             let linked = 0;
             for (const expansion of expansions) {
-              // Try to find parent by title matching
-              // Common patterns: "Base Game – Expansion" or "Base Game: Expansion"
               const expTitle = expansion.title;
-              
-              // Sort base games by title length descending to prefer longer (more specific) matches
               const sortedBases = [...baseGames].sort((a, b) => b.title.length - a.title.length);
               
               for (const baseGame of sortedBases) {
-                // Check if expansion title starts with base game title
                 if (expTitle.toLowerCase().startsWith(baseGame.title.toLowerCase())) {
-                  // Verify there's a separator after the base name (-, :, –)
                   const afterBase = expTitle.substring(baseGame.title.length).trim();
                   if (afterBase.match(/^[–:\-–—]/)) {
-                    // Found a match!
                     const { error: linkErr } = await supabaseAdmin
                       .from("games")
                       .update({ parent_game_id: baseGame.id })
@@ -2279,13 +2272,69 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
 
-        // Third pass: Import play history from CSV (BG Stats format)
+        // Third pass: Detect potential expansions by title patterns
+        // Games like "Small City: The Big Tiles Expansion" should be marked as expansions
+        // of "Small City" even if BGG didn't flag them
+        console.log(`[BulkImport] Third pass: Detecting expansions by title patterns...`);
+        
+        const { data: allLibGames } = await supabaseAdmin
+          .from("games")
+          .select("id, title, is_expansion, parent_game_id")
+          .eq("library_id", targetLibraryId);
+
+        if (allLibGames && allLibGames.length > 1) {
+          const nonExpansions = allLibGames.filter(g => !g.is_expansion);
+          // Sort by title length descending to prefer longer (more specific) base game matches
+          const sortedBases = [...nonExpansions].sort((a, b) => b.title.length - a.title.length);
+          
+          let detected = 0;
+          for (const game of allLibGames) {
+            // Skip games already marked as expansions or already linked
+            if (game.is_expansion || game.parent_game_id) continue;
+            
+            for (const baseGame of sortedBases) {
+              // Don't match against itself
+              if (game.id === baseGame.id) continue;
+              // Base game title must be at least 3 chars to avoid false positives
+              if (baseGame.title.length < 3) continue;
+              
+              const gameTitle = game.title;
+              const baseTitle = baseGame.title;
+              
+              // Check if game title starts with base game title followed by a separator
+              if (gameTitle.toLowerCase().startsWith(baseTitle.toLowerCase())) {
+                const afterBase = gameTitle.substring(baseTitle.length).trim();
+                // Must have a separator: colon, dash, en-dash, em-dash
+                if (afterBase.match(/^[–:\-–—]/)) {
+                  // Additional heuristic: the part after separator should contain
+                  // expansion-like keywords OR be a subtitle (not just a number)
+                  const subtitle = afterBase.replace(/^[–:\-–—]\s*/, "").trim();
+                  if (subtitle.length > 0) {
+                    const { error: updateErr } = await supabaseAdmin
+                      .from("games")
+                      .update({ is_expansion: true, parent_game_id: baseGame.id })
+                      .eq("id", game.id);
+                    
+                    if (!updateErr) {
+                      detected++;
+                      console.log(`[BulkImport] Auto-detected expansion "${game.title}" → "${baseGame.title}"`);
+                    }
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          console.log(`[BulkImport] Auto-detected ${detected} expansions by title pattern`);
+        }
+
+        // Fourth pass: Import play history from CSV (BG Stats format)
         let playsImported = 0;
         let playsSkipped = 0;
         let playsFailed = 0;
 
         if (playLogRows.length > 0) {
-          console.log(`[BulkImport] Third pass: Importing ${playLogRows.length} play log entries...`);
+          console.log(`[BulkImport] Fourth pass: Importing ${playLogRows.length} play log entries...`);
           sendProgress({
             type: "progress",
             current: totalGames,

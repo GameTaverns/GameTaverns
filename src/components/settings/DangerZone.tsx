@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, Trash2, Database, UserX, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Trash2, Database, UserX, ShieldAlert, ChevronDown } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary } from "@/hooks/useLibrary";
+import { useMyLibraries } from "@/hooks/useLibrary";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 
@@ -26,14 +33,22 @@ type ActionType = "clear_library" | "delete_library" | "delete_account" | null;
 export function DangerZone() {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
-  const { data: library } = useMyLibrary();
+  const { data: libraries } = useMyLibraries();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   
+  const [selectedLibraryId, setSelectedLibraryId] = useState<string>("");
   const [currentAction, setCurrentAction] = useState<ActionType>(null);
   const [confirmStep, setConfirmStep] = useState<1 | 2>(1);
   const [confirmationText, setConfirmationText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const hasLibraries = libraries && libraries.length > 0;
+  const hasMultipleLibraries = libraries && libraries.length > 1;
+  const selectedLibrary = libraries?.find(l => l.id === selectedLibraryId) || libraries?.[0] || null;
+
+  // Auto-select first library if only one exists
+  const activeLibrary = hasMultipleLibraries ? (selectedLibraryId ? selectedLibrary : null) : libraries?.[0] || null;
 
   // Check if current user is an admin
   const { data: isAdmin } = useQuery({
@@ -42,7 +57,6 @@ export function DangerZone() {
       if (!user?.id) return false;
       
       if (isSelfHostedMode()) {
-        // In self-hosted mode, check from the auth context (user_metadata or roles)
         return (user as any).isAdmin === true;
       }
       
@@ -61,7 +75,7 @@ export function DangerZone() {
     if (currentAction === "delete_account") {
       return user?.email || "";
     }
-    return library?.name || "";
+    return activeLibrary?.name || "";
   };
 
   const getActionDetails = () => {
@@ -69,7 +83,7 @@ export function DangerZone() {
       case "clear_library":
         return {
           title: "Clear Library",
-          description: "This will permanently delete ALL games from your library. Your library settings and configuration will be preserved.",
+          description: `This will permanently delete ALL games from "${activeLibrary?.name || "your library"}". Your library settings and configuration will be preserved.`,
           warning: "All games, ratings, wishlist entries, play logs, and messages will be permanently deleted.",
           confirmLabel: "library name",
           icon: Database,
@@ -77,7 +91,7 @@ export function DangerZone() {
       case "delete_library":
         return {
           title: "Delete Library",
-          description: "This will permanently delete your entire library, including all games, settings, and configuration.",
+          description: `This will permanently delete "${activeLibrary?.name || "your library"}", including all games, settings, and configuration.`,
           warning: "Your account will remain active, and you can create a new library with a different URL.",
           confirmLabel: "library name",
           icon: Trash2,
@@ -93,6 +107,20 @@ export function DangerZone() {
       default:
         return null;
     }
+  };
+
+  const startAction = (action: ActionType) => {
+    // For library actions with multiple libraries, require selection first
+    if (action !== "delete_account" && hasMultipleLibraries && !selectedLibraryId) {
+      toast({
+        title: "Select a library",
+        description: "Please select which library you want to perform this action on.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setCurrentAction(action);
+    setConfirmStep(1);
   };
 
   const handleAction = async () => {
@@ -113,7 +141,6 @@ export function DangerZone() {
       let response: { success?: boolean; message?: string; error?: string };
 
       if (isSelfHostedMode()) {
-        // Self-hosted mode: use API client
         const token = localStorage.getItem("auth_token");
         if (!token) {
           throw new Error("Not authenticated");
@@ -127,7 +154,7 @@ export function DangerZone() {
           },
           body: JSON.stringify({
             action: currentAction,
-            libraryId: library?.id,
+            libraryId: activeLibrary?.id,
             confirmationText,
           }),
         });
@@ -137,7 +164,6 @@ export function DangerZone() {
           throw new Error(response.error || "Action failed");
         }
       } else {
-        // Cloud mode: use Supabase edge function
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           throw new Error("Not authenticated");
@@ -146,7 +172,7 @@ export function DangerZone() {
         const edgeResponse = await supabase.functions.invoke("manage-account", {
           body: {
             action: currentAction,
-            libraryId: library?.id,
+            libraryId: activeLibrary?.id,
             confirmationText,
           },
         });
@@ -167,7 +193,6 @@ export function DangerZone() {
         description: response.message,
       });
 
-      // Handle post-action navigation
       if (currentAction === "delete_account") {
         await signOut();
         navigate("/");
@@ -175,7 +200,6 @@ export function DangerZone() {
         navigate("/dashboard");
         window.location.reload();
       } else {
-        // Clear library - invalidate queries for a smooth refresh
         await queryClient.invalidateQueries({ queryKey: ["games"] });
         await queryClient.invalidateQueries({ queryKey: ["library"] });
       }
@@ -215,22 +239,42 @@ export function DangerZone() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Library selector when user owns multiple libraries */}
+          {hasMultipleLibraries && (
+            <div className="p-4 border border-border rounded-lg bg-background space-y-2">
+              <Label className="text-sm font-medium">Select Library for Actions</Label>
+              <Select value={selectedLibraryId} onValueChange={setSelectedLibraryId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a library..." />
+                </SelectTrigger>
+                <SelectContent className="bg-popover">
+                  {libraries!.map((lib) => (
+                    <SelectItem key={lib.id} value={lib.id}>
+                      {lib.name} ({lib.slug})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                You own {libraries!.length} libraries. Select which one to manage.
+              </p>
+            </div>
+          )}
+
           {/* Clear Library */}
-          {library && (
+          {hasLibraries && (
             <div className="flex items-center justify-between p-4 border border-destructive/30 rounded-lg bg-background">
               <div>
                 <h4 className="font-medium text-foreground">Clear Library</h4>
                 <p className="text-sm text-muted-foreground">
-                  Delete all games from your library. Settings will be preserved.
+                  Delete all games from {activeLibrary ? `"${activeLibrary.name}"` : "your library"}. Settings will be preserved.
                 </p>
               </div>
               <Button
                 variant="outline"
                 className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => {
-                  setCurrentAction("clear_library");
-                  setConfirmStep(1);
-                }}
+                onClick={() => startAction("clear_library")}
+                disabled={hasMultipleLibraries && !selectedLibraryId}
               >
                 <Database className="h-4 w-4 mr-2" />
                 Clear Games
@@ -239,21 +283,19 @@ export function DangerZone() {
           )}
 
           {/* Delete Library */}
-          {library && (
+          {hasLibraries && (
             <div className="flex items-center justify-between p-4 border border-destructive/30 rounded-lg bg-background">
               <div>
                 <h4 className="font-medium text-foreground">Delete Library</h4>
                 <p className="text-sm text-muted-foreground">
-                  Permanently delete your library. You can create a new one afterward.
+                  Permanently delete {activeLibrary ? `"${activeLibrary.name}"` : "your library"}. You can create a new one afterward.
                 </p>
               </div>
               <Button
                 variant="outline"
                 className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={() => {
-                  setCurrentAction("delete_library");
-                  setConfirmStep(1);
-                }}
+                onClick={() => startAction("delete_library")}
+                disabled={hasMultipleLibraries && !selectedLibraryId}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Library
@@ -277,10 +319,7 @@ export function DangerZone() {
             </div>
             <Button
               variant="destructive"
-              onClick={() => {
-                setCurrentAction("delete_account");
-                setConfirmStep(1);
-              }}
+              onClick={() => startAction("delete_account")}
               disabled={isAdmin}
             >
               <UserX className="h-4 w-4 mr-2" />
@@ -290,7 +329,7 @@ export function DangerZone() {
         </CardContent>
       </Card>
 
-      {/* Confirmation Dialog (single dialog; content switches by step) */}
+      {/* Confirmation Dialog */}
       <AlertDialog open={currentAction !== null} onOpenChange={(open) => !open && handleClose()}>
         <AlertDialogContent>
           {confirmStep === 1 ? (
