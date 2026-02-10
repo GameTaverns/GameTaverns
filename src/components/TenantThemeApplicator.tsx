@@ -216,6 +216,45 @@ export function TenantThemeApplicator() {
       }
     }
     
+    // Derive wood/cream tokens from background so Dashboard tabs etc. follow the theme
+    {
+      const s = settings as any;
+      const darkFgL = formatHSL(s.theme_dark_foreground_h, s.theme_dark_foreground_s, s.theme_dark_foreground_l)
+        ? parseInt((s.theme_dark_foreground_l || '90').replace('%', ''))
+        : null;
+      const lightFgL = formatHSL(s.theme_foreground_h, s.theme_foreground_s, s.theme_foreground_l)
+        ? parseInt((s.theme_foreground_l || '15').replace('%', ''))
+        : null;
+
+      if (isDark) {
+        const bgH = settings.theme_dark_background_h || settings.theme_dark_card_h;
+        const bgS = settings.theme_dark_background_s || settings.theme_dark_card_s;
+        const bgLVal = settings.theme_dark_background_l || settings.theme_dark_card_l;
+        if (bgH && bgS && bgLVal) {
+          const h = bgH.replace('%', '');
+          const sv = toNum(bgS, 30);
+          const l = toNum(bgLVal, 10);
+          root.style.setProperty('--wood-dark', `${h} ${clamp(sv, 0, 100)}% ${clamp(l - 2, 0, 100)}%`);
+          root.style.setProperty('--wood-medium', `${h} ${clamp(sv - 5, 0, 100)}% ${clamp(l + 8, 0, 100)}%`);
+        }
+        const creamL = darkFgL ?? 90;
+        root.style.setProperty('--cream', `0 0% ${clamp(creamL, 0, 100)}%`);
+      } else {
+        const bgH = settings.theme_background_h || settings.theme_card_h;
+        const bgS = settings.theme_background_s || settings.theme_card_s;
+        const bgLVal = settings.theme_background_l || settings.theme_card_l;
+        if (bgH && bgS && bgLVal) {
+          const h = bgH.replace('%', '');
+          const sv = toNum(bgS, 30);
+          const l = toNum(bgLVal, 94);
+          root.style.setProperty('--wood-dark', `${h} ${clamp(sv, 0, 100)}% ${clamp(l - 76, 0, 100)}%`);
+          root.style.setProperty('--wood-medium', `${h} ${clamp(sv - 5, 0, 100)}% ${clamp(l - 66, 0, 100)}%`);
+        }
+        const creamL = lightFgL != null ? (100 - lightFgL) : 96;
+        root.style.setProperty('--cream', `0 0% ${clamp(creamL, 0, 100)}%`);
+      }
+    }
+
     // Apply fonts (wrap in quotes for CSS font-family)
     if (settings.theme_font_display) {
       root.style.setProperty('--font-display', `"${settings.theme_font_display}"`);
@@ -279,6 +318,7 @@ export function TenantThemeApplicator() {
           '--sidebar-background', '--sidebar-foreground',
           '--parchment', '--gold', '--forest', '--sienna', '--ring',
           '--border', '--input',
+          '--wood-dark', '--wood-medium', '--cream',
           '--font-display', '--font-body'
         ];
         cssVars.forEach((key) => {
