@@ -34,7 +34,7 @@ export default async function handler(req: Request): Promise<Response> {
       .select('*')
       .eq('token', token)
       .is('confirmed_at', null)
-      .single();
+      .maybeSingle();
 
     if (tokenError || !tokenData) {
       console.error("Token lookup failed:", tokenError);
