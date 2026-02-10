@@ -98,13 +98,17 @@ echo "Restarting services..."
 dcp up -d
 
 echo ""
-echo "Recreating Edge Functions container (clears Deno cache without full teardown)..."
+echo "Recreating Edge Functions container (clears Deno cache)..."
 dcp up -d --force-recreate --no-deps functions
+
+echo ""
+echo "Restarting Kong gateway (refresh DNS for recreated containers)..."
+dcp restart kong
 
 # Wait for services to stabilize
 echo ""
 echo "Waiting for services to stabilize..."
-sleep 10
+sleep 15
 
 # Check status
 echo ""
