@@ -488,14 +488,32 @@ export function BulkImportDialog({
                     games: data.games || [],
                   });
 
+                  // Handle play history from CSV (BG Stats format)
+                  const playHistory = (data as any).playHistory;
+                  if (playHistory) {
+                    setPlayImportStatus({
+                      phase: "done",
+                      imported: playHistory.imported || 0,
+                      skipped: playHistory.skipped || 0,
+                      failed: playHistory.failed || 0,
+                    });
+                    if ((playHistory.imported || 0) > 0) {
+                      queryClient.invalidateQueries({ queryKey: ["game-sessions"] });
+                      queryClient.invalidateQueries({ queryKey: ["play-stats"] });
+                    }
+                  }
+
                   if ((data.imported || 0) > 0) {
+                    const playMsg = playHistory && playHistory.imported > 0
+                      ? ` Plus ${playHistory.imported} play session${playHistory.imported !== 1 ? "s" : ""}.`
+                      : "";
                     toast({
                       title: "Import complete!",
-                      description: `Successfully imported ${data.imported} game${data.imported !== 1 ? "s" : ""}${(data.failed || 0) > 0 ? `. ${data.failed} failed.` : ""}. Now importing play history...`,
+                      description: `Successfully imported ${data.imported} game${data.imported !== 1 ? "s" : ""}${(data.failed || 0) > 0 ? `. ${data.failed} failed.` : ""}.${playMsg}`,
                     });
                     onImportComplete?.();
                     
-                    // Auto-import play history for BGG collection imports
+                    // Auto-import play history for BGG collection imports (not CSV - that's handled inline)
                     if (mode === "bgg_collection" && bggUsername.trim() && library?.id) {
                       autoImportPlayHistory(bggUsername.trim(), library.id);
                     }
@@ -919,8 +937,8 @@ export function BulkImportDialog({
                     disabled={isImporting}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Supports CSV files including BGG collection exports. File should have columns: title/name/objectname, optionally bgg_id/objectid
+                   <p className="text-xs text-muted-foreground">
+                    Supports CSV files including BGG collection exports and BG Stats app exports (with play history). File should have columns: title/name/objectname, optionally bgg_id/objectid/bggId
                   </p>
                 </div>
 
