@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Shield, Users, Database, Settings, Activity, MessageCircle } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,9 +9,11 @@ import { LibraryManagement } from "@/components/admin/LibraryManagement";
 import { PlatformSettings } from "@/components/admin/PlatformSettings";
 import { PlatformAnalytics } from "@/components/admin/PlatformAnalytics";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
+import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { Badge } from "@/components/ui/badge";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
+import { usePendingClubs } from "@/hooks/useClubs";
 
 export default function PlatformAdmin() {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ export default function PlatformAdmin() {
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "analytics");
   const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
+  const { data: pendingClubs } = usePendingClubs();
   
   // Update tab when URL changes
   useEffect(() => {
@@ -154,6 +157,18 @@ export default function PlatformAdmin() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger 
+              value="clubs"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative"
+            >
+              <Trophy className="h-4 w-4 mr-2" />
+              Clubs
+              {pendingClubs && pendingClubs.length > 0 && (
+                <Badge className="ml-2 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground">
+                  {pendingClubs.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="analytics" className="mt-6">
@@ -174,6 +189,10 @@ export default function PlatformAdmin() {
           
           <TabsContent value="feedback" className="mt-6">
             <FeedbackManagement />
+          </TabsContent>
+          
+          <TabsContent value="clubs" className="mt-6">
+            <ClubsManagement />
           </TabsContent>
         </Tabs>
       </main>
