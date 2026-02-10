@@ -116,6 +116,7 @@ MIGRATION_FILES=(
     "33-theme-foreground-columns.sql"
     "34-fix-public-view-foreground.sql"
     "35-game-copies-inventory.sql"
+    "36-fix-loan-trigger-enum.sql"
 )
 
 SUCCESS_COUNT=0
