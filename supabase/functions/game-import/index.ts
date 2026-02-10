@@ -92,6 +92,117 @@ const GAME_TYPE_OPTIONS = (IS_SELF_HOSTED ? SELF_HOSTED_GAME_TYPE_OPTIONS : CLOU
 // ---------------------------------------------------------------------------
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Shared XML parsing logic
+function parseBggXml(xml: string, bggId: string): {
+  bgg_id: string;
+  title?: string;
+  image_url?: string;
+  description?: string;
+  min_players?: number;
+  max_players?: number;
+  suggested_age?: string;
+  play_time?: string;
+  difficulty?: string;
+  mechanics?: string[];
+  publisher?: string;
+  is_expansion?: boolean;
+} {
+  if (!xml.includes("<item")) return { bgg_id: bggId };
+
+  const titleMatch = xml.match(/<name[^>]*\btype="primary"[^>]*\bvalue="([^"]+)"/);
+  const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+  const descMatch = xml.match(/<description[^>]*>([\s\S]*?)<\/description>/i);
+  const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
+  const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
+  const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
+  const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
+  const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
+  const typeMatch = xml.match(/<item[^>]*type="([^"]+)"/);
+  const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
+  const mechanics = [...mechanicsMatches].map((m) => m[1]);
+  const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
+
+  let difficulty: string | undefined;
+  if (weightMatch) {
+    const w = parseFloat(weightMatch[1]);
+    if (w > 0) {
+      if (IS_SELF_HOSTED) {
+        if (w < 1.5) difficulty = "1 - Very Easy";
+        else if (w < 2.25) difficulty = "2 - Easy";
+        else if (w < 3.0) difficulty = "3 - Medium";
+        else if (w < 3.75) difficulty = "4 - Hard";
+        else difficulty = "5 - Very Hard";
+      } else {
+        if (w < 1.5) difficulty = "1 - Light";
+        else if (w < 2.25) difficulty = "2 - Medium Light";
+        else if (w < 3.0) difficulty = "3 - Medium";
+        else if (w < 3.75) difficulty = "4 - Medium Heavy";
+        else difficulty = "5 - Heavy";
+      }
+    }
+  }
+
+  let play_time: string | undefined;
+  if (playTimeMatch) {
+    const minutes = parseInt(playTimeMatch[1], 10);
+    if (IS_SELF_HOSTED) {
+      if (minutes <= 30) play_time = "Under 30 Minutes";
+      else if (minutes <= 45) play_time = "30-45 Minutes";
+      else if (minutes <= 60) play_time = "45-60 Minutes";
+      else if (minutes <= 90) play_time = "60-90 Minutes";
+      else if (minutes <= 120) play_time = "90-120 Minutes";
+      else if (minutes <= 180) play_time = "2-3 Hours";
+      else play_time = "3+ Hours";
+    } else {
+      if (minutes <= 15) play_time = "0-15 Minutes";
+      else if (minutes <= 30) play_time = "15-30 Minutes";
+      else if (minutes <= 45) play_time = "30-45 Minutes";
+      else if (minutes <= 60) play_time = "45-60 Minutes";
+      else if (minutes <= 120) play_time = "60+ Minutes";
+      else if (minutes <= 180) play_time = "2+ Hours";
+      else play_time = "3+ Hours";
+    }
+  }
+
+  const decodeEntities = (input: string) =>
+    input
+      .replace(/&#10;/g, "\n")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&#(\d+);/g, (_m, code) => {
+        const n = Number(code);
+        return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+      });
+
+  let description: string | undefined;
+  if (descMatch && descMatch[1]) {
+    description = decodeEntities(descMatch[1]).trim();
+    if (description.length > 5000) description = description.slice(0, 5000);
+  }
+
+  const isExpansion = typeMatch?.[1] === "boardgameexpansion";
+
+  console.log(`[GameImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars, expansion=${isExpansion})`);
+
+  return {
+    bgg_id: bggId,
+    title: titleMatch?.[1],
+    image_url: imageMatch?.[1],
+    description,
+    min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
+    max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
+    suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
+    play_time,
+    difficulty,
+    mechanics: mechanics.length > 0 ? mechanics : undefined,
+    publisher: publisherMatch?.[1],
+    is_expansion: isExpansion,
+  };
+}
+
 async function fetchBGGDataFromXML(
   bggId: string
 ): Promise<{
@@ -121,6 +232,16 @@ async function fetchBGGDataFromXML(
 
       if (!res.ok) {
         console.warn(`[GameImport] BGG XML API returned ${res.status} for ${bggId}${!bggApiToken ? " (no BGG_API_TOKEN configured)" : ""}`);
+        // If token caused a 401/403, retry without it
+        if ((res.status === 401 || res.status === 403) && bggApiToken && attempt < maxAttempts) {
+          console.log(`[GameImport] Retrying BGG XML API without token for ${bggId}`);
+          const retryRes = await fetch(xmlUrl, { headers: { "User-Agent": "GameTaverns/1.0" } });
+          if (retryRes.ok) {
+            // Replace res processing below — re-assign and break out to process
+            const xml = await retryRes.text();
+            return parseBggXml(xml, bggId);
+          }
+        }
         if (res.status === 202 && attempt < maxAttempts) {
           const backoffMs = Math.min(750 * attempt, 4000);
           await sleep(backoffMs);
@@ -144,106 +265,7 @@ async function fetchBGGDataFromXML(
         continue;
       }
 
-      // Extract data from XML
-      const titleMatch = xml.match(/<name[^>]*\btype="primary"[^>]*\bvalue="([^"]+)"/);
-      const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
-      const descMatch = xml.match(/<description[^>]*>([\s\S]*?)<\/description>/i);
-      const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
-      const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
-      const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
-      const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
-      const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
-      const typeMatch = xml.match(/<item[^>]*type="([^"]+)"/);
-
-      // Extract mechanics
-      const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
-      const mechanics = [...mechanicsMatches].map((m) => m[1]);
-
-      // Extract publisher (first one)
-      const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
-
-      // Map weight to difficulty
-      let difficulty: string | undefined;
-      if (weightMatch) {
-        const w = parseFloat(weightMatch[1]);
-        if (w > 0) {
-          if (IS_SELF_HOSTED) {
-            if (w < 1.5) difficulty = "1 - Very Easy";
-            else if (w < 2.25) difficulty = "2 - Easy";
-            else if (w < 3.0) difficulty = "3 - Medium";
-            else if (w < 3.75) difficulty = "4 - Hard";
-            else difficulty = "5 - Very Hard";
-          } else {
-            if (w < 1.5) difficulty = "1 - Light";
-            else if (w < 2.25) difficulty = "2 - Medium Light";
-            else if (w < 3.0) difficulty = "3 - Medium";
-            else if (w < 3.75) difficulty = "4 - Medium Heavy";
-            else difficulty = "5 - Heavy";
-          }
-        }
-      }
-
-      // Map play time to enum
-      let play_time: string | undefined;
-      if (playTimeMatch) {
-        const minutes = parseInt(playTimeMatch[1], 10);
-        if (IS_SELF_HOSTED) {
-          if (minutes <= 30) play_time = "Under 30 Minutes";
-          else if (minutes <= 45) play_time = "30-45 Minutes";
-          else if (minutes <= 60) play_time = "45-60 Minutes";
-          else if (minutes <= 90) play_time = "60-90 Minutes";
-          else if (minutes <= 120) play_time = "90-120 Minutes";
-          else if (minutes <= 180) play_time = "2-3 Hours";
-          else play_time = "3+ Hours";
-        } else {
-          if (minutes <= 15) play_time = "0-15 Minutes";
-          else if (minutes <= 30) play_time = "15-30 Minutes";
-          else if (minutes <= 45) play_time = "30-45 Minutes";
-          else if (minutes <= 60) play_time = "45-60 Minutes";
-          else if (minutes <= 120) play_time = "60+ Minutes";
-          else if (minutes <= 180) play_time = "2+ Hours";
-          else play_time = "3+ Hours";
-        }
-      }
-
-      // Decode HTML entities in description
-      const decodeEntities = (input: string) =>
-        input
-          .replace(/&#10;/g, "\n")
-          .replace(/&amp;/g, "&")
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .replace(/&#(\d+);/g, (_m, code) => {
-            const n = Number(code);
-            return Number.isFinite(n) ? String.fromCharCode(n) : _m;
-          });
-
-      let description: string | undefined;
-      if (descMatch && descMatch[1]) {
-        description = decodeEntities(descMatch[1]).trim();
-        if (description.length > 5000) description = description.slice(0, 5000);
-      }
-
-      const isExpansion = typeMatch?.[1] === "boardgameexpansion";
-
-      console.log(`[GameImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars, expansion=${isExpansion})`);
-
-      return {
-        bgg_id: bggId,
-        title: titleMatch?.[1],
-        image_url: imageMatch?.[1],
-        description,
-        min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
-        max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
-        suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
-        play_time,
-        difficulty,
-        mechanics: mechanics.length > 0 ? mechanics : undefined,
-        publisher: publisherMatch?.[1],
-        is_expansion: isExpansion,
-      };
+      return parseBggXml(xml, bggId);
     } catch (e) {
       console.error("[GameImport] BGG XML error:", e);
       if (attempt < maxAttempts) {
@@ -754,6 +776,85 @@ export default async function handler(req: Request): Promise<Response> {
     if (!scrapeResponse.ok) {
       const errorText = await scrapeResponse.text();
       console.error("Firecrawl error:", scrapeResponse.status, errorText);
+      
+      // If we have partial BGG data, use it instead of failing entirely
+      if (bggData?.title) {
+        console.log("Firecrawl failed but BGG XML provided partial data, using that instead");
+        // Build game with partial BGG data (same logic as fast path but with defaults)
+        const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
+        const partialGameData = {
+          title: bggData.title.slice(0, 500),
+          description: bggData.description?.slice(0, 10000) || `${bggData.title} - imported from BoardGameGeek`,
+          image_url: bggData.image_url || null,
+          additional_images: [],
+          difficulty: bggData.difficulty || (IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium"),
+          game_type: "Board Game" as const,
+          play_time: bggData.play_time || (IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes"),
+          min_players: bggData.min_players || 1,
+          max_players: bggData.max_players || 4,
+          suggested_age: bggData.suggested_age || "10+",
+          bgg_id: bggData.bgg_id,
+          bgg_url: url,
+          library_id: targetLibraryId,
+          is_expansion: is_expansion === true || bggData.is_expansion === true,
+          parent_game_id: parent_game_id || null,
+          is_coming_soon: is_coming_soon === true,
+          is_for_sale: is_for_sale === true,
+          sale_price: is_for_sale ? sale_price || null : null,
+          sale_condition: is_for_sale ? normalizedSaleCondition || null : null,
+          location_room: location_room || null,
+          location_shelf: location_shelf || null,
+          location_misc: location_misc || null,
+          sleeved: sleeved === true,
+          upgraded_components: upgraded_components === true,
+          crowdfunded: crowdfunded === true,
+          inserts: inserts === true,
+        };
+
+        const { data: game, error: insertError } = await supabaseAdmin
+          .from("games")
+          .insert(partialGameData)
+          .select()
+          .single();
+
+        if (insertError || !game) {
+          console.error("Insert error (partial):", insertError?.message, insertError?.code, insertError?.details, insertError?.hint);
+          return new Response(
+            JSON.stringify({ success: false, error: insertError?.message || "Failed to save game" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Handle mechanics from BGG data
+        if (bggData.mechanics && bggData.mechanics.length > 0) {
+          for (const mechanicName of bggData.mechanics) {
+            const { data: existingMechanic } = await supabaseAdmin
+              .from("mechanics").select("id").eq("name", mechanicName).maybeSingle();
+            const mechId = existingMechanic?.id;
+            if (mechId) {
+              await supabaseAdmin.from("game_mechanics").insert({ game_id: game.id, mechanic_id: mechId });
+            } else {
+              const { data: newMech } = await supabaseAdmin.from("mechanics").insert({ name: mechanicName }).select("id").single();
+              if (newMech) await supabaseAdmin.from("game_mechanics").insert({ game_id: game.id, mechanic_id: newMech.id });
+            }
+          }
+        }
+
+        // Handle purchase data
+        if (purchase_price || purchase_date) {
+          await supabaseAdmin.from("game_admin_data").insert({
+            game_id: game.id,
+            purchase_price: purchase_price ? parseFloat(purchase_price) : null,
+            purchase_date: purchase_date || null,
+          });
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, game: { ...game, mechanics: bggData.mechanics || [], publisher: bggData.publisher || null } }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ success: false, error: `Failed to scrape page: ${scrapeResponse.status}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
