@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useLending, type GameLoan, type LoanStatus } from "@/hooks/useLending";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/backend/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -49,6 +52,42 @@ const STATUS_CONFIG: Record<LoanStatus, { label: string; color: string; icon: Re
   declined: { label: "Declined", color: "bg-red-500/10 text-red-600", icon: <X className="h-3 w-3" /> },
   cancelled: { label: "Cancelled", color: "bg-slate-500/10 text-slate-600", icon: <X className="h-3 w-3" /> },
 };
+
+function BorrowerReputationBadge({ userId }: { userId: string }) {
+  const { data: rep, isLoading } = useQuery({
+    queryKey: ["borrower-reputation", userId],
+    queryFn: async () => {
+      if (!userId || userId.trim() === "") return null;
+      const { data, error } = await supabase
+        .from("borrower_reputation")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { user_id: string; total_ratings: number; average_rating: number; positive_ratings: number } | null;
+    },
+    enabled: !!userId && userId.trim() !== "",
+  });
+
+  if (isLoading || !rep) return null;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+            {rep.average_rating.toFixed(1)}
+            <span className="text-muted-foreground">({rep.total_ratings})</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{rep.total_ratings} rating{rep.total_ratings !== 1 ? 's' : ''} · {rep.positive_ratings} positive</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 interface LendingDashboardProps {
   libraryId?: string;
@@ -252,13 +291,18 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
                 </Badge>
               </div>
               
-              <p className="text-sm text-muted-foreground mb-1">
-                {isLender ? "Borrower" : (
+              <div className="text-sm text-muted-foreground mb-1">
+                {isLender ? (
+                  <span className="flex items-center gap-2">
+                    Borrower
+                    <BorrowerReputationBadge userId={loan.borrower_user_id} />
+                  </span>
+                ) : (
                   <span>
                     From: <span className="font-medium text-foreground">{loan.library?.name || "Unknown Library"}</span>
                   </span>
                 )}
-              </p>
+              </div>
 
               {/* Copy info */}
               {loan.copy && (
