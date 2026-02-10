@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Users, Clock, DollarSign, Youtube } from "lucide-react";
+import { Users, Clock, DollarSign, Youtube, Copy } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExpansionList } from "./ExpansionList";
@@ -86,6 +86,12 @@ export function GameCard({ game, priority = false }: GameCardProps) {
 
               {/* Tags */}
               <div className="flex flex-wrap gap-1.5">
+                {(game as any).copies_owned > 1 && (
+                  <Badge className="text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                    <Copy className="h-3 w-3 mr-0.5" />
+                    {(game as any).copies_owned} copies
+                  </Badge>
+                )}
                 {forSale && game.is_for_sale && (
                   <Badge className="text-xs bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
                     <DollarSign className="h-3 w-3 mr-0.5" />

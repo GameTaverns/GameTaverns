@@ -93,6 +93,7 @@ export function useGames(enabled = true) {
         game_type: game.game_type as GameType,
         play_time: game.play_time as PlayTime,
         additional_images: game.additional_images || [],
+        copies_owned: (game as any).copies_owned ?? 1,
         // Ensure boolean fields are properly cast from nullable view columns
         is_expansion: game.is_expansion === true,
         is_coming_soon: game.is_coming_soon === true,

@@ -362,21 +362,30 @@ export function useLending() {
     });
   };
 
-  // Check if game is available for loan (not currently on loan)
+  // Check if game is available for loan (compares active loans against copies_owned)
   const checkGameAvailability = async (gameId: string): Promise<boolean> => {
+    // Get the number of copies owned
+    const { data: gameData, error: gameError } = await supabase
+      .from("games")
+      .select("copies_owned")
+      .eq("id", gameId)
+      .maybeSingle();
+
+    const copiesOwned = gameData?.copies_owned ?? 1;
+
+    // Count active/pending loans for this game
     const { data, error } = await supabase
       .from("game_loans")
       .select("id")
       .eq("game_id", gameId)
-      .in("status", ["requested", "approved", "active"])
-      .limit(1);
+      .in("status", ["requested", "approved", "active"]);
 
-    if (error) {
-      console.error("Error checking game availability:", error);
+    if (error || gameError) {
+      console.error("Error checking game availability:", error || gameError);
       return true; // Assume available on error
     }
 
-    return data.length === 0;
+    return data.length < copiesOwned;
   };
 
   return {

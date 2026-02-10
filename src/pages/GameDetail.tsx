@@ -596,6 +596,14 @@ const GameDetail = () => {
                     )}
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
+                        Copies Owned
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {(game as any).copies_owned ?? 1}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium text-muted-foreground">
                         Sleeved
                       </TableCell>
                       <TableCell className="text-foreground">

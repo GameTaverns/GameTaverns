@@ -45,6 +45,18 @@ export interface Game {
   crowdfunded: boolean;
   inserts?: boolean;
   youtube_videos: string[];
+  copies_owned: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GameCopy {
+  id: string;
+  game_id: string;
+  copy_number: number;
+  copy_label: string | null;
+  condition: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }

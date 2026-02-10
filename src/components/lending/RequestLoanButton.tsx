@@ -119,7 +119,7 @@ export function RequestLoanButton({
         ) : !isAvailable ? (
           <div className="py-4 text-center">
             <p className="text-muted-foreground">
-              This game is currently on loan or has a pending request.
+              All copies of this game are currently on loan or have pending requests.
             </p>
           </div>
         ) : !user ? (
