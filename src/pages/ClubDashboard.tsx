@@ -133,11 +133,18 @@ export default function ClubDashboard() {
               {club.status}
             </Badge>
           </div>
-          <Link to={`/club/${club.slug}`}>
-            <Button variant="secondary" size="sm" className="gap-2">
-              <ExternalLink className="h-4 w-4" /> View Club Page
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/dashboard?tab=clubs">
+              <Button variant="ghost" size="sm" className="text-cream hover:text-white hover:bg-wood-medium/50">
+                Back to Dashboard
+              </Button>
+            </Link>
+            <Link to={`/club/${club.slug}`}>
+              <Button variant="secondary" size="sm" className="gap-2">
+                <ExternalLink className="h-4 w-4" /> View Club Page
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
