@@ -376,12 +376,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const shared = readSharedAuthTokens();
           if (shared?.access_token && shared?.refresh_token && !isTokenExpired(shared.access_token, shared.expires_at ?? null)) {
             try {
-              await supabase.auth.setSession({
+              const { data } = await supabase.auth.setSession({
                 access_token: shared.access_token,
                 refresh_token: shared.refresh_token,
               });
-              // onAuthStateChange will run applySession; still set a fallback read.
-              storedSession = readStoredSession();
+              // setSession triggers onAuthStateChange which calls applySession.
+              // If the callback already ran with a valid session, don't overwrite
+              // with a stale null — just re-read and verify.
+              if (data?.session) {
+                storedSession = data.session;
+              } else {
+                storedSession = readStoredSession();
+              }
             } catch {
               // Ignore and fall back to anonymous.
             }
