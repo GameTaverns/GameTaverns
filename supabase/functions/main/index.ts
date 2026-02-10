@@ -2541,7 +2541,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
       );
     }
 
-    const { mode, library_id, csv_data, bgg_username, bgg_links, default_options, enhance_with_bgg } = body;
+    const { mode, library_id, csv_data, bgg_username, bgg_links, default_options, enhance_with_bgg, enhance_with_ai } = body;
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     console.log("[BulkImport] Mode:", mode, "library_id:", library_id, "csv_data length:", csv_data?.length, "bgg_username:", bgg_username);
     console.log("[BulkImport] enhance_with_bgg:", enhance_with_bgg, "firecrawlKey present:", !!firecrawlKey, "AI configured:", isAIConfigured());
@@ -2552,19 +2552,44 @@ async function handleBulkImport(req: Request): Promise<Response> {
     }
 
     let gamesToImport: GameToImport[] = [];
+    // Play log rows extracted from BG Stats CSV exports
+    let playLogRows: { bgg_id: string; title: string; play_date: string; plays: number }[] = [];
 
     if (mode === "csv" && csv_data) {
       const rows = parseCSV(csv_data);
       console.log("[BulkImport] Parsed rows:", rows.length);
       const isBGGExport = rows.length > 0 && rows[0].objectname !== undefined;
-      console.log("[BulkImport] Is BGG export:", isBGGExport);
+      // Detect BG Stats app export format (has bggid + playdateymd columns)
+      const isBGStatsExport = rows.length > 0 && (rows[0].bggid !== undefined || rows[0].playdateymd !== undefined);
+      console.log(`[BulkImport] CSV format detected: ${isBGGExport ? 'BGG Export' : isBGStatsExport ? 'BG Stats Export' : 'Standard'}`);
+
       for (const row of rows) {
         const title = row.title || row.name || row.game || row["game name"] || row["game title"] || row.objectname;
+
+        // BG Stats: rows with a play date are play log entries, not collection entries
+        const playDateRaw = row.playdateymd || row.play_date || row.playdate || undefined;
+        if (isBGStatsExport && playDateRaw) {
+          const bggId = row.bggid || row.bgg_id || row["bgg id"] || row.objectid || undefined;
+          const parsedDate = parseDate(playDateRaw);
+          if (bggId && title && parsedDate) {
+            const playCount = parseInt(row.plays || "1", 10) || 1;
+            playLogRows.push({ bgg_id: bggId, title, play_date: parsedDate, plays: playCount });
+          }
+          continue; // Don't treat play rows as game collection entries
+        }
+
         if (isBGGExport && row.own !== "1") continue;
+
+        // BG Stats: skip rows that aren't owned (statusowned column)
+        if (isBGStatsExport && row.statusowned !== undefined && row.statusowned !== "1") {
+          continue;
+        }
+
         if (title) {
           const mechanicsStr = row.mechanics || row.mechanic || "";
           const mechanics = mechanicsStr.split(";").map((m: string) => m.trim()).filter((m: string) => m.length > 0);
-          const bggId = row.bgg_id || row["bgg id"] || row.objectid || undefined;
+          // BG Stats uses "bggid" (no underscore)
+          const bggId = row.bgg_id || row["bgg id"] || row.objectid || row.bggid || undefined;
           const minPlayersRaw = row.min_players || row["min players"] || row.minplayers;
           const maxPlayersRaw = row.max_players || row["max players"] || row.maxplayers;
           const playTimeRaw = row.play_time || row["play time"] || row.playtime || row.playingtime;
@@ -2578,6 +2603,8 @@ async function handleBulkImport(req: Request): Promise<Response> {
           }
           const suggestedAge = row.suggested_age || row["suggested age"] || row.age || row.bggrecagerange || undefined;
           const isForSale = parseBool(row.is_for_sale || row["is for sale"] || row.fortrade);
+          // BG Stats: copies column
+          const copiesOwned = parseNum(row.copies || row.copies_owned || row["copies owned"]);
           gamesToImport.push({
             title,
             bgg_id: bggId,
@@ -2606,7 +2633,6 @@ async function handleBulkImport(req: Request): Promise<Response> {
             in_base_game_box: parseBool(row.in_base_game_box || row["in base game box"]),
             description: buildDescription(row.description, row.privatecomment),
             image_url: cleanBggImageUrl(row.image_url || row["image url"] || row.thumbnail || undefined),
-            // Parse additional_images from semicolon-separated list and clean URLs
             additional_images: (() => {
               const raw = row.additional_images || row["additional images"] || row.additionalimages || "";
               if (!raw) return undefined;
@@ -2618,7 +2644,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
           });
         }
       }
-      console.log("[BulkImport] Games to import:", gamesToImport.length);
+      console.log(`[BulkImport] Games to import: ${gamesToImport.length}, Play log rows: ${playLogRows.length}`);
     } else if (mode === "bgg_collection" && bgg_username) {
       // BGG Collection import via username (requires BGG_API_TOKEN in server .env)
       console.log(`[BulkImport] Fetching BGG collection for: ${bgg_username}`);
@@ -2900,8 +2926,91 @@ async function handleBulkImport(req: Request): Promise<Response> {
         }
 
         console.log("[BulkImport] Loop complete. Imported:", imported, "Failed:", failed, "Breakdown:", JSON.stringify(failureBreakdown));
+
+        // Fourth pass: Import play history from CSV (BG Stats format)
+        let playsImported = 0;
+        let playsSkipped = 0;
+        let playsFailed = 0;
+
+        if (playLogRows.length > 0) {
+          console.log(`[BulkImport] Fourth pass: Importing ${playLogRows.length} play log entries...`);
+          sendProgress({
+            type: "progress",
+            current: totalGames,
+            total: totalGames,
+            imported,
+            failed,
+            currentGame: `Importing ${playLogRows.length} play sessions...`,
+            phase: "importing_plays",
+          });
+
+          // Build a map of bgg_id → game_id for this library
+          const { data: libraryGames } = await supabaseAdmin
+            .from("games")
+            .select("id, bgg_id")
+            .eq("library_id", targetLibraryId)
+            .not("bgg_id", "is", null);
+
+          const bggIdToGameId = new Map<string, string>();
+          if (libraryGames) {
+            for (const g of libraryGames) {
+              if (g.bgg_id) bggIdToGameId.set(g.bgg_id, g.id);
+            }
+          }
+
+          // Group play rows to batch insert
+          const sessionsToInsert: { game_id: string; played_at: string; import_source: string }[] = [];
+
+          for (const play of playLogRows) {
+            const gameId = bggIdToGameId.get(play.bgg_id);
+            if (!gameId) {
+              playsSkipped++;
+              continue;
+            }
+            sessionsToInsert.push({
+              game_id: gameId,
+              played_at: `${play.play_date}T12:00:00Z`,
+              import_source: "bgstats_csv",
+            });
+          }
+
+          // Batch insert in chunks of 100
+          const chunkSize = 100;
+          for (let ci = 0; ci < sessionsToInsert.length; ci += chunkSize) {
+            const chunk = sessionsToInsert.slice(ci, ci + chunkSize);
+            const { data: inserted, error: insertErr } = await supabaseAdmin
+              .from("game_sessions")
+              .insert(chunk)
+              .select("id");
+
+            if (insertErr) {
+              console.error(`[BulkImport] Play session batch insert error:`, insertErr);
+              playsFailed += chunk.length;
+            } else {
+              playsImported += inserted?.length || 0;
+            }
+          }
+
+          console.log(`[BulkImport] Play history: imported=${playsImported} skipped=${playsSkipped} failed=${playsFailed}`);
+        }
+
         await supabaseAdmin.from("import_jobs").update({ status: "completed", processed_items: totalGames, successful_items: imported, failed_items: failed }).eq("id", jobId);
-        sendProgress({ type: "complete", success: true, imported, failed, errors: errors.slice(0, 20), games: importedGames, failureBreakdown, debug: debugPayload });
+        sendProgress({
+          type: "complete",
+          success: true,
+          imported,
+          failed,
+          errors: errors.slice(0, 50),
+          games: importedGames,
+          failureBreakdown,
+          playHistory: playLogRows.length > 0 ? {
+            imported: playsImported,
+            skipped: playsSkipped,
+            failed: playsFailed,
+            totalRows: playLogRows.length,
+          } : undefined,
+          debug: debugPayload,
+        });
         controller.close();
       },
     });
