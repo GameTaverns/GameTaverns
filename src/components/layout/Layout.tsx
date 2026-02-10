@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { AnnouncementBanner } from "./AnnouncementBanner";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
@@ -14,6 +15,7 @@ export function Layout({ children, hideSidebar = false }: LayoutProps) {
 
   return (
     <div className="min-h-screen parchment-texture flex flex-col">
+      <AnnouncementBanner />
       {!hideSidebar && <Sidebar isOpen={sidebarOpen} />}
       
       {/* Mobile overlay */}
