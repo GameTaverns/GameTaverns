@@ -298,6 +298,7 @@ export function DemoProvider({ children, enabled }: { children: ReactNode; enabl
         crowdfunded: game.crowdfunded || false,
         inserts: game.inserts || false,
         youtube_videos: game.youtube_videos || [],
+        copies_owned: 1,
         slug: game.slug || game.title?.toLowerCase().replace(/\s+/g, "-") || "new-game",
         additional_images: game.additional_images || [],
         created_at: new Date().toISOString(),

@@ -91,6 +91,7 @@ const GameForm = () => {
   const [newMechanic, setNewMechanic] = useState("");
   const [newPublisher, setNewPublisher] = useState("");
   const [youtubeVideos, setYoutubeVideos] = useState<string[]>([]);
+  const [copiesOwned, setCopiesOwned] = useState(1);
 
   // Filter out current game from parent options (can't be its own parent)
   const parentGameOptions = baseGames.filter((g) => g.id !== id);
@@ -130,6 +131,7 @@ const GameForm = () => {
       setCrowdfunded(existingGame.crowdfunded || false);
       setInserts(existingGame.inserts || false);
       setYoutubeVideos(existingGame.youtube_videos || []);
+      setCopiesOwned((existingGame as any).copies_owned ?? 1);
     }
   }, [existingGame]);
 
@@ -211,6 +213,7 @@ const GameForm = () => {
       crowdfunded,
       inserts,
       youtube_videos: youtubeVideos,
+      copies_owned: copiesOwned,
     };
 
     try {
@@ -480,6 +483,26 @@ const GameForm = () => {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Copies Owned */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Inventory</h3>
+                <div className="p-4 rounded-lg border border-border bg-muted/50">
+                  <div className="space-y-2">
+                    <Label htmlFor="copiesOwned">Copies Owned</Label>
+                    <Input
+                      id="copiesOwned"
+                      type="number"
+                      min={1}
+                      value={copiesOwned}
+                      onChange={(e) => setCopiesOwned(Math.max(1, parseInt(e.target.value) || 1))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Track how many copies of this game you own. Used for lending inventory.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Coming Soon Toggle */}

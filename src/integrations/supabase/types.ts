@@ -340,12 +340,61 @@ export type Database = {
           },
         ]
       }
+      game_copies: {
+        Row: {
+          condition: string | null
+          copy_label: string | null
+          copy_number: number
+          created_at: string
+          game_id: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          condition?: string | null
+          copy_label?: string | null
+          copy_number?: number
+          created_at?: string
+          game_id: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          condition?: string | null
+          copy_label?: string | null
+          copy_number?: number
+          created_at?: string
+          game_id?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_copies_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_copies_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_loans: {
         Row: {
           approved_at: string | null
           borrowed_at: string | null
           borrower_notes: string | null
           borrower_user_id: string
+          copy_id: string | null
           created_at: string
           due_date: string | null
           game_id: string
@@ -363,6 +412,7 @@ export type Database = {
           borrowed_at?: string | null
           borrower_notes?: string | null
           borrower_user_id: string
+          copy_id?: string | null
           created_at?: string
           due_date?: string | null
           game_id: string
@@ -380,6 +430,7 @@ export type Database = {
           borrowed_at?: string | null
           borrower_notes?: string | null
           borrower_user_id?: string
+          copy_id?: string | null
           created_at?: string
           due_date?: string | null
           game_id?: string
@@ -393,6 +444,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "game_loans_copy_id_fkey"
+            columns: ["copy_id"]
+            isOneToOne: false
+            referencedRelation: "game_copies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "game_loans_game_id_fkey"
             columns: ["game_id"]
@@ -888,6 +946,7 @@ export type Database = {
           additional_images: string[] | null
           bgg_id: string | null
           bgg_url: string | null
+          copies_owned: number
           created_at: string | null
           crowdfunded: boolean | null
           description: string | null
@@ -925,6 +984,7 @@ export type Database = {
           additional_images?: string[] | null
           bgg_id?: string | null
           bgg_url?: string | null
+          copies_owned?: number
           created_at?: string | null
           crowdfunded?: boolean | null
           description?: string | null
@@ -962,6 +1022,7 @@ export type Database = {
           additional_images?: string[] | null
           bgg_id?: string | null
           bgg_url?: string | null
+          copies_owned?: number
           created_at?: string | null
           crowdfunded?: boolean | null
           description?: string | null
