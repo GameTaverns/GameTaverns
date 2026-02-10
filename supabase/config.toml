@@ -48,6 +48,12 @@ verify_jwt = false
 [functions.bulk-import]
 verify_jwt = false
 
+[functions.bgg-sync]
+verify_jwt = false
+
+[functions.bgg-sync-cron]
+verify_jwt = false
+
 [functions.manage-account]
 verify_jwt = false
 

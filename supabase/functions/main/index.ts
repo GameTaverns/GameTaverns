@@ -12,6 +12,8 @@ import bggImportHandler, { setGameImportHandler } from "../bgg-import/index.ts";
 import clubsHandler from "../clubs/index.ts";
 import bggLookupHandler from "../bgg-lookup/index.ts";
 import bggPlayImportHandler from "../bgg-play-import/index.ts";
+import bggSyncHandler from "../bgg-sync/index.ts";
+import bggSyncCronHandler from "../bgg-sync-cron/index.ts";
 import gameImportHandler from "../game-import/index.ts";
 import bulkImportHandler from "../bulk-import/index.ts";
 
@@ -3001,6 +3003,10 @@ Deno.serve(async (req) => {
       return bggLookupHandler(req);
     case "bgg-play-import":
       return bggPlayImportHandler(req);
+    case "bgg-sync":
+      return bggSyncHandler(req);
+    case "bgg-sync-cron":
+      return bggSyncCronHandler(req);
     case "game-import":
       return gameImportHandler(req);
     case "totp-status":

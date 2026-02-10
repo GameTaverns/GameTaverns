@@ -1561,6 +1561,16 @@ export type Database = {
           allow_lending: boolean
           background_image_url: string | null
           background_overlay_opacity: string | null
+          bgg_last_sync_message: string | null
+          bgg_last_sync_status: string | null
+          bgg_last_synced_at: string | null
+          bgg_sync_collection: boolean
+          bgg_sync_enabled: boolean
+          bgg_sync_frequency: string
+          bgg_sync_plays: boolean
+          bgg_sync_removal_behavior: string
+          bgg_sync_wishlist: boolean
+          bgg_username: string | null
           contact_email: string | null
           created_at: string
           default_loan_duration_days: number | null
@@ -1634,6 +1644,16 @@ export type Database = {
           allow_lending?: boolean
           background_image_url?: string | null
           background_overlay_opacity?: string | null
+          bgg_last_sync_message?: string | null
+          bgg_last_sync_status?: string | null
+          bgg_last_synced_at?: string | null
+          bgg_sync_collection?: boolean
+          bgg_sync_enabled?: boolean
+          bgg_sync_frequency?: string
+          bgg_sync_plays?: boolean
+          bgg_sync_removal_behavior?: string
+          bgg_sync_wishlist?: boolean
+          bgg_username?: string | null
           contact_email?: string | null
           created_at?: string
           default_loan_duration_days?: number | null
@@ -1707,6 +1727,16 @@ export type Database = {
           allow_lending?: boolean
           background_image_url?: string | null
           background_overlay_opacity?: string | null
+          bgg_last_sync_message?: string | null
+          bgg_last_sync_status?: string | null
+          bgg_last_synced_at?: string | null
+          bgg_sync_collection?: boolean
+          bgg_sync_enabled?: boolean
+          bgg_sync_frequency?: string
+          bgg_sync_plays?: boolean
+          bgg_sync_removal_behavior?: string
+          bgg_sync_wishlist?: boolean
+          bgg_username?: string | null
           contact_email?: string | null
           created_at?: string
           default_loan_duration_days?: number | null
