@@ -160,22 +160,33 @@ export function usePlayStats(
       let topMechanics: { name: string; percentage: number; count: number }[] = [];
       
       if (playedGameIds.length > 0) {
-        const { data: gameMechanics, error: gameMechanicsError } = await supabase
-          .from("game_mechanics")
-          .select("game_id, mechanic_id")
-          .in("game_id", playedGameIds);
-
-        if (gameMechanicsError) throw gameMechanicsError;
+        // Batch queries to avoid URL length overflow
+        const BATCH_SIZE = 50;
+        const allGameMechanics: any[] = [];
+        for (let i = 0; i < playedGameIds.length; i += BATCH_SIZE) {
+          const batch = playedGameIds.slice(i, i + BATCH_SIZE);
+          const { data, error } = await supabase
+            .from("game_mechanics")
+            .select("game_id, mechanic_id")
+            .in("game_id", batch);
+          if (error) throw error;
+          if (data) allGameMechanics.push(...data);
+        }
+        const gameMechanics = allGameMechanics;
 
         if (gameMechanics && gameMechanics.length > 0) {
           const mechanicIds = [...new Set(gameMechanics.map((gm) => gm.mechanic_id))];
           
-          const { data: mechanics, error: mechanicsError } = await supabase
-            .from("mechanics")
-            .select("id, name")
-            .in("id", mechanicIds);
+          const allMechanics: any[] = [];
+          for (let i = 0; i < mechanicIds.length; i += BATCH_SIZE) {
+            const batch = mechanicIds.slice(i, i + BATCH_SIZE);
+            const { data, error } = await supabase.from("mechanics").select("id, name").in("id", batch);
+            if (error) throw error;
+            if (data) allMechanics.push(...data);
+          }
+          const mechanics = allMechanics;
 
-          if (mechanicsError) throw mechanicsError;
+          // Errors already thrown inside batch loop above
 
           const mechanicNameMap = new Map(
             (mechanics || []).map((m) => [m.id, m.name])
