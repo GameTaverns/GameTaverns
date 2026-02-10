@@ -114,6 +114,7 @@ MIGRATION_FILES=(
     "31-trade-matching.sql"
     "32-player-color-column.sql"
     "33-theme-foreground-columns.sql"
+    "34-fix-public-view-foreground.sql"
 )
 
 SUCCESS_COUNT=0
