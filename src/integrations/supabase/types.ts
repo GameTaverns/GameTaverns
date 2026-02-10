@@ -2410,6 +2410,9 @@ export type Database = {
           theme_dark_card_h: string | null
           theme_dark_card_l: string | null
           theme_dark_card_s: string | null
+          theme_dark_foreground_h: string | null
+          theme_dark_foreground_l: string | null
+          theme_dark_foreground_s: string | null
           theme_dark_primary_h: string | null
           theme_dark_primary_l: string | null
           theme_dark_primary_s: string | null
@@ -2418,6 +2421,9 @@ export type Database = {
           theme_dark_sidebar_s: string | null
           theme_font_body: string | null
           theme_font_display: string | null
+          theme_foreground_h: string | null
+          theme_foreground_l: string | null
+          theme_foreground_s: string | null
           theme_primary_h: string | null
           theme_primary_l: string | null
           theme_primary_s: string | null
@@ -2466,6 +2472,9 @@ export type Database = {
           theme_dark_card_h?: string | null
           theme_dark_card_l?: string | null
           theme_dark_card_s?: string | null
+          theme_dark_foreground_h?: string | null
+          theme_dark_foreground_l?: string | null
+          theme_dark_foreground_s?: string | null
           theme_dark_primary_h?: string | null
           theme_dark_primary_l?: string | null
           theme_dark_primary_s?: string | null
@@ -2474,6 +2483,9 @@ export type Database = {
           theme_dark_sidebar_s?: string | null
           theme_font_body?: string | null
           theme_font_display?: string | null
+          theme_foreground_h?: string | null
+          theme_foreground_l?: string | null
+          theme_foreground_s?: string | null
           theme_primary_h?: string | null
           theme_primary_l?: string | null
           theme_primary_s?: string | null
@@ -2522,6 +2534,9 @@ export type Database = {
           theme_dark_card_h?: string | null
           theme_dark_card_l?: string | null
           theme_dark_card_s?: string | null
+          theme_dark_foreground_h?: string | null
+          theme_dark_foreground_l?: string | null
+          theme_dark_foreground_s?: string | null
           theme_dark_primary_h?: string | null
           theme_dark_primary_l?: string | null
           theme_dark_primary_s?: string | null
@@ -2530,6 +2545,9 @@ export type Database = {
           theme_dark_sidebar_s?: string | null
           theme_font_body?: string | null
           theme_font_display?: string | null
+          theme_foreground_h?: string | null
+          theme_foreground_l?: string | null
+          theme_foreground_s?: string | null
           theme_primary_h?: string | null
           theme_primary_l?: string | null
           theme_primary_s?: string | null
