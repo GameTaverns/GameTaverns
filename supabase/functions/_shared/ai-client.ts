@@ -200,8 +200,11 @@ async function openaiCompatibleComplete(
         // Ensure the model returns strict JSON when we cannot rely on tool calling.
         const messages = requestBody.messages as AIMessage[];
         const systemIdx = messages.findIndex((m) => m.role === "system");
+        
+        // Include schema description in the prompt so the model knows what to return
+        const schemaStr = JSON.stringify(schema, null, 2);
         const jsonInstruction =
-          "\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no explanation, just the JSON object matching the schema.";
+          `\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no explanation, just the JSON object matching this schema:\n${schemaStr}`;
 
         if (systemIdx >= 0) {
           messages[systemIdx] = {
@@ -216,13 +219,20 @@ async function openaiCompatibleComplete(
         }
 
         requestBody.messages = messages;
-        requestBody.response_format = {
-          type: "json_schema",
-          json_schema: {
-            name: tool.function.name,
-            schema,
-          },
-        };
+        
+        // Perplexity sonar doesn't support json_schema type - use json_object instead
+        // Other providers that reject tool calling may also not support json_schema
+        if (isPerplexity) {
+          requestBody.response_format = { type: "json_object" };
+        } else {
+          requestBody.response_format = {
+            type: "json_schema",
+            json_schema: {
+              name: tool.function.name,
+              schema,
+            },
+          };
+        }
       } else {
         // Standard tool calling path
         requestBody.tools = options.tools;
