@@ -704,7 +704,8 @@ export default async function handler(req: Request): Promise<Response> {
       console.log("Game imported successfully (fast path):", game.title);
 
       // Send Discord notification for NEW games only
-      if (!existingId) {
+      // Skip HTTP-based notification in self-hosted mode to prevent single-threaded deadlock
+      if (!existingId && !IS_SELF_HOSTED) {
         try {
           const playerCount = game.min_players && game.max_players
             ? `${game.min_players}-${game.max_players} players`
@@ -744,6 +745,8 @@ export default async function handler(req: Request): Promise<Response> {
         } catch (discordErr) {
           console.error("Discord notification error:", discordErr);
         }
+      } else if (!existingId) {
+        console.log("Self-hosted: skipping Discord HTTP notification to prevent deadlock");
       }
 
       return new Response(
@@ -1407,7 +1410,8 @@ ${markdown.slice(0, 18000)}`,
     console.log("Game imported successfully:", game.title);
 
     // Step 8: Send Discord notification for NEW games only (not updates)
-    if (!existingId) {
+    // Skip HTTP-based notification in self-hosted mode to prevent single-threaded deadlock
+    if (!existingId && !IS_SELF_HOSTED) {
       try {
         const playerCount = game.min_players && game.max_players
           ? `${game.min_players}-${game.max_players} players`
@@ -1426,7 +1430,6 @@ ${markdown.slice(0, 18000)}`,
           },
         };
 
-        // Call discord-notify function - must await to prevent edge function from terminating early
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         
@@ -1447,8 +1450,9 @@ ${markdown.slice(0, 18000)}`,
         }
       } catch (discordErr) {
         console.error("Discord notification error:", discordErr);
-        // Don't fail the import for notification issues
       }
+    } else if (!existingId) {
+      console.log("Self-hosted: skipping Discord HTTP notification to prevent deadlock");
     }
 
     return new Response(
