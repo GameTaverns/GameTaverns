@@ -103,6 +103,26 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
   const pendingRequests = myLentLoans.filter((l) => l.status === 'requested');
   const activeLoans = myLentLoans.filter((l) => ['approved', 'active'].includes(l.status));
 
+  // Build per-game inventory summary for owners
+  const gameInventory = (() => {
+    const map = new Map<string, { title: string; copiesOwned: number; activeCount: number }>();
+    for (const loan of myLentLoans) {
+      if (!loan.game) continue;
+      const existing = map.get(loan.game_id);
+      const isActive = ['requested', 'approved', 'active'].includes(loan.status);
+      if (existing) {
+        if (isActive) existing.activeCount++;
+      } else {
+        map.set(loan.game_id, {
+          title: loan.game.title,
+          copiesOwned: loan.game.copies_owned ?? 1,
+          activeCount: isActive ? 1 : 0,
+        });
+      }
+    }
+    return Array.from(map.values()).filter((g) => g.activeCount > 0);
+  })();
+
   const LoanCard = ({ loan, isLender }: { loan: GameLoan; isLender: boolean }) => {
     const config = STATUS_CONFIG[loan.status];
     const isOverdue = loan.due_date && isPast(new Date(loan.due_date)) && loan.status === 'active';
@@ -283,6 +303,27 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
         </TabsList>
 
         <TabsContent value="lending" className="space-y-4">
+          {gameInventory.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Inventory Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="space-y-1">
+                  {gameInventory.map((g) => (
+                    <div key={g.title} className="flex items-center justify-between text-sm">
+                      <span className="truncate mr-2">{g.title}</span>
+                      <span className="text-muted-foreground whitespace-nowrap">
+                        {Math.max(0, g.copiesOwned - g.activeCount)}/{g.copiesOwned} available
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {pendingRequests.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">

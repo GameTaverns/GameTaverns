@@ -26,6 +26,7 @@ export interface GameLoan {
     title: string;
     slug: string | null;
     image_url: string | null;
+    copies_owned?: number;
   };
   library?: {
     id: string;
@@ -96,7 +97,7 @@ export function useLending(libraryId?: string) {
         .from("game_loans")
         .select(`
           *,
-          game:games(id, title, slug, image_url),
+          game:games(id, title, slug, image_url, copies_owned),
           library:libraries(id, name, slug)
         `)
         .eq("lender_user_id", user.id)
@@ -373,8 +374,7 @@ export function useLending(libraryId?: string) {
   };
 
   // Check if game is available for loan (compares active loans against copies_owned)
-  const checkGameAvailability = async (gameId: string): Promise<boolean> => {
-    // Get the number of copies owned
+  const checkGameAvailability = async (gameId: string): Promise<{ available: boolean; copiesOwned: number; activeLoans: number; copiesAvailable: number }> => {
     const { data: gameData, error: gameError } = await supabase
       .from("games")
       .select("copies_owned")
@@ -383,7 +383,6 @@ export function useLending(libraryId?: string) {
 
     const copiesOwned = gameData?.copies_owned ?? 1;
 
-    // Count active/pending loans for this game
     const { data, error } = await supabase
       .from("game_loans")
       .select("id")
@@ -392,10 +391,12 @@ export function useLending(libraryId?: string) {
 
     if (error || gameError) {
       console.error("Error checking game availability:", error || gameError);
-      return true; // Assume available on error
+      return { available: true, copiesOwned, activeLoans: 0, copiesAvailable: copiesOwned };
     }
 
-    return data.length < copiesOwned;
+    const activeLoans = data.length;
+    const copiesAvailable = Math.max(0, copiesOwned - activeLoans);
+    return { available: copiesAvailable > 0, copiesOwned, activeLoans, copiesAvailable };
   };
 
   return {
