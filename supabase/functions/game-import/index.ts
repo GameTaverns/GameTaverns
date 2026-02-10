@@ -535,16 +535,20 @@ export default async function handler(req: Request): Promise<Response> {
       
       if (bggData.title && bggData.description) {
         console.log(`BGG XML API returned complete data for ${bggData.title} (${bggData.description.length} chars)`);
+      } else if (bggData.title) {
+        // For expansions/promos that lack descriptions, generate a basic one
+        console.log(`BGG XML API returned title-only data for ${bggId}, generating description`);
+        bggData.description = `${bggData.title} - a board game${bggData.is_expansion ? ' expansion' : ''} imported from BoardGameGeek.`;
       } else {
-        console.log(`BGG XML API returned partial data for ${bggId}`);
+        console.log(`BGG XML API returned no title for ${bggId}`);
       }
     }
 
     // ---------------------------------------------------------------------------
-    // STEP 2: If BGG XML API provided complete data, use it directly (FAST PATH)
+    // STEP 2: If BGG XML API provided sufficient data, use it directly (FAST PATH)
     // ---------------------------------------------------------------------------
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-    const hasCompleteData = bggData?.title && bggData?.description;
+    const hasCompleteData = bggData?.title;
 
     if (hasCompleteData && bggData) {
       console.log("Using BGG XML API data directly (fast path)");
