@@ -40,6 +40,7 @@ export function RequestLoanButton({
   const [notes, setNotes] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [availabilityInfo, setAvailabilityInfo] = useState<{ copiesOwned: number; copiesAvailable: number } | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
 
   // Fetch user's display name when component mounts or user changes
@@ -66,8 +67,9 @@ export function RequestLoanButton({
     
     if (newOpen && isAvailable === null) {
       setIsChecking(true);
-      const available = await checkGameAvailability(gameId);
-      setIsAvailable(available);
+      const result = await checkGameAvailability(gameId);
+      setIsAvailable(result.available);
+      setAvailabilityInfo({ copiesOwned: result.copiesOwned, copiesAvailable: result.copiesAvailable });
       setIsChecking(false);
     }
   };
@@ -119,7 +121,7 @@ export function RequestLoanButton({
         ) : !isAvailable ? (
           <div className="py-4 text-center">
             <p className="text-muted-foreground">
-              All copies of this game are currently on loan or have pending requests.
+              All {availabilityInfo?.copiesOwned ?? 1} {(availabilityInfo?.copiesOwned ?? 1) === 1 ? 'copy' : 'copies'} of this game {(availabilityInfo?.copiesOwned ?? 1) === 1 ? 'is' : 'are'} currently on loan or have pending requests.
             </p>
           </div>
         ) : !user ? (
@@ -133,6 +135,11 @@ export function RequestLoanButton({
           </div>
         ) : (
           <>
+            {availabilityInfo && (
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                {availabilityInfo.copiesAvailable} of {availabilityInfo.copiesOwned} {availabilityInfo.copiesOwned === 1 ? 'copy' : 'copies'} available
+              </div>
+            )}
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="notes">Message to Owner (optional)</Label>
