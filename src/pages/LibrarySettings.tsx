@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare, Users } from "lucide-react";
+import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare, Users, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/contexts/TenantContext";
@@ -15,6 +15,7 @@ import { LibraryBranding } from "@/components/settings/LibraryBranding";
 import { LibraryDiscordSettings } from "@/components/settings/LibraryDiscordSettings";
 import { LibraryFeatureFlagsAdmin } from "@/components/settings/LibraryFeatureFlagsAdmin";
 import { LibraryMemberManagement } from "@/components/settings/LibraryMemberManagement";
+import { BGGSyncSettings } from "@/components/settings/BGGSyncSettings";
 
 export default function LibrarySettings() {
   const navigate = useNavigate();
@@ -104,7 +105,7 @@ export default function LibrarySettings() {
         </a>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9">
             <TabsTrigger value="general" className="gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">General</span>
@@ -132,6 +133,10 @@ export default function LibrarySettings() {
             <TabsTrigger value="discord" className="gap-2">
               <MessageSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Discord</span>
+            </TabsTrigger>
+            <TabsTrigger value="bgg-sync" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              <span className="hidden sm:inline">BGG Sync</span>
             </TabsTrigger>
             <TabsTrigger value="features" className="gap-2">
               <ToggleRight className="h-4 w-4" />
@@ -165,6 +170,10 @@ export default function LibrarySettings() {
 
           <TabsContent value="discord">
             <LibraryDiscordSettings />
+          </TabsContent>
+
+          <TabsContent value="bgg-sync">
+            <BGGSyncSettings />
           </TabsContent>
 
           <TabsContent value="features">
