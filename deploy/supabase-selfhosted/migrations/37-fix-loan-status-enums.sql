@@ -6,8 +6,13 @@
 -- instead of the correct enum value 'declined'.
 -- =============================================================================
 
--- 1) Rename 'borrowed' → 'active' to match the frontend code and Cloud DB
-ALTER TYPE loan_status RENAME VALUE 'borrowed' TO 'active';
+-- 1) Rename 'borrowed' → 'active' (skip if already renamed)
+DO $$ BEGIN
+    ALTER TYPE loan_status RENAME VALUE 'borrowed' TO 'active';
+EXCEPTION WHEN invalid_parameter_value THEN
+    -- Already renamed, nothing to do
+    NULL;
+END $$;
 
 -- 2) Fix the loan status change notification trigger
 --    It was checking for 'rejected' which is not a valid loan_status value.
