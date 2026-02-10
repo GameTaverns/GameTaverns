@@ -115,6 +115,7 @@ MIGRATION_FILES=(
     "32-player-color-column.sql"
     "33-theme-foreground-columns.sql"
     "34-fix-public-view-foreground.sql"
+    "35-game-copies-inventory.sql"
 )
 
 SUCCESS_COUNT=0
