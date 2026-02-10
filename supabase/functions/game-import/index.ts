@@ -411,11 +411,15 @@ export default async function handler(req: Request): Promise<Response> {
       .eq("role", "admin")
       .maybeSingle();
 
-    const { data: libraryData } = await supabaseAdmin
+    // Use .limit(1) instead of .maybeSingle() to avoid errors when user owns multiple libraries
+    const { data: libraryRows } = await supabaseAdmin
       .from("libraries")
       .select("id")
       .eq("owner_id", userId)
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
+
+    const libraryData = libraryRows?.[0] || null;
 
     // Allow access if user is admin OR owns a library
     if (!roleData && !libraryData) {
