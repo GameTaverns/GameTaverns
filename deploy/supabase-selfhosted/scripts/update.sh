@@ -98,10 +98,8 @@ echo "Restarting services..."
 dcp up -d
 
 echo ""
-echo "Force-recreating Edge Functions container (clears Deno cache)..."
-dcp stop functions
-dcp rm -f functions
-dcp up -d functions
+echo "Reloading Edge Functions (preserves container, restarts process)..."
+dcp restart functions
 
 # Wait for services to stabilize
 echo ""
