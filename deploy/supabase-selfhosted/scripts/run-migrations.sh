@@ -118,6 +118,7 @@ MIGRATION_FILES=(
     "35-game-copies-inventory.sql"
     "36-fix-loan-trigger-enum.sql"
     "37-fix-loan-status-enums.sql"
+    "38-lending-enhancements.sql"
 )
 
 SUCCESS_COUNT=0
