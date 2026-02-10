@@ -8,7 +8,7 @@ import {
 import { useAuth } from "./useAuth";
 import { Library, LibrarySettings } from "@/contexts/TenantContext";
 
-// Hook to get current user's library
+// Hook to get current user's first library (legacy – kept for backward compat)
 export function useMyLibrary() {
   const { user, isAuthenticated } = useAuth();
   
@@ -38,6 +38,52 @@ export function useMyLibrary() {
       return data as Library | null;
     },
     enabled: isAuthenticated && !!user,
+  });
+}
+
+// Hook to get ALL libraries owned by the current user
+export function useMyLibraries() {
+  const { user, isAuthenticated } = useAuth();
+
+  return useQuery({
+    queryKey: ["my-libraries", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      if (isSelfHostedMode()) {
+        const me = await apiClient.get<{ libraries?: Library[] }>("/profiles/me");
+        return (me.libraries ?? []) as Library[];
+      }
+
+      const { data, error } = await supabase
+        .from("libraries")
+        .select("*")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      return (data ?? []) as Library[];
+    },
+    enabled: isAuthenticated && !!user,
+  });
+}
+
+// Hook to get the platform max-libraries-per-user setting
+export function useMaxLibrariesPerUser() {
+  return useQuery({
+    queryKey: ["max-libraries-per-user"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "max_libraries_per_user")
+        .maybeSingle();
+
+      if (error) return 1; // default to 1
+      const parsed = parseInt(data?.value || "1", 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -139,6 +185,7 @@ export function useCreateLibrary() {
       queryClient.setQueryData(["my-library", data.owner_id], data);
       // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["my-library"] });
+      queryClient.invalidateQueries({ queryKey: ["my-libraries"] });
     },
   });
 }

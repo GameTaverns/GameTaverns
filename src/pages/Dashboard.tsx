@@ -34,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary, useUserProfile } from "@/hooks/useLibrary";
+import { useMyLibrary, useMyLibraries, useMaxLibrariesPerUser, useUserProfile } from "@/hooks/useLibrary";
 import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -64,6 +64,8 @@ import { TradeCenter } from "@/components/trades/TradeCenter";
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
   const { data: library, isLoading: libraryLoading } = useMyLibrary();
+  const { data: myLibraries = [] } = useMyLibraries();
+  const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();
   const { data: profile } = useUserProfile();
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const { myLentLoans, myBorrowedLoans } = useLending();
@@ -684,6 +686,60 @@ const { data: playCount } = useQuery({
                     </CardHeader>
                     <CardContent>
                       <ChallengesManager libraryId={library.id} canManage={true} />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Show additional libraries */}
+                {myLibraries.length > 1 && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Library className="h-5 w-5 text-secondary" />
+                        My Other Libraries
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {myLibraries
+                          .filter((l) => l.id !== library?.id)
+                          .map((lib) => (
+                            <a
+                              key={lib.id}
+                              href={getLibraryUrl(lib.slug, "/")}
+                              className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
+                            >
+                              <div>
+                                <div className="font-medium text-sm">{lib.name}</div>
+                                <div className="text-xs text-cream/60">{lib.slug}.gametaverns.com</div>
+                              </div>
+                              <ArrowRight className="h-4 w-4 text-cream/60 flex-shrink-0" />
+                            </a>
+                          ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Create another library if under limit */}
+                {myLibraries.length < maxLibraries && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 border-dashed text-cream">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Plus className="h-5 w-5 text-secondary" />
+                        Create Another Library
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        You can create up to {maxLibraries} {maxLibraries === 1 ? 'library' : 'libraries'} ({myLibraries.length} used)
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Link to="/create-library">
+                        <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Library
+                        </Button>
+                      </Link>
                     </CardContent>
                   </Card>
                 )}
