@@ -2672,7 +2672,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
       // BGG Links import (paste URLs)
       console.log(`[BulkImport] Processing ${bgg_links.length} BGG links`);
       for (const link of bgg_links) {
-        const idMatch = link.match(/boardgame\/(\d+)/);
+        const idMatch = link.match(/boardgame(?:expansion)?\/(\d+)/);
         if (idMatch) {
           gamesToImport.push({
             title: "",
@@ -2730,7 +2730,7 @@ async function handleBulkImport(req: Request): Promise<Response> {
             // Extract BGG ID from URL if not provided directly
             let effectiveBggId = gameInput.bgg_id;
             if (!effectiveBggId && gameInput.bgg_url) {
-              const bggUrlMatch = gameInput.bgg_url.match(/boardgamegeek\.com\/boardgame\/(\d+)/);
+              const bggUrlMatch = gameInput.bgg_url.match(/boardgamegeek\.com\/boardgame(?:expansion)?\/(\d+)/);
               if (bggUrlMatch) {
                 effectiveBggId = bggUrlMatch[1];
                 console.log(`[BulkImport] Extracted BGG ID ${effectiveBggId} from URL for "${gameInput.title}"`);

@@ -508,7 +508,7 @@ export default async function handler(req: Request): Promise<Response> {
     console.log("Importing game from URL:", url);
 
     // Extract BGG ID for validation and primary data source
-    const bggIdMatch = url.match(/boardgame\/(\d+)/);
+    const bggIdMatch = url.match(/boardgame(?:expansion)?\/(\d+)/);
     const bggId = bggIdMatch?.[1];
 
     // ---------------------------------------------------------------------------
