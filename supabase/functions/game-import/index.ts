@@ -544,7 +544,7 @@ export default async function handler(req: Request): Promise<Response> {
     // STEP 2: If BGG XML API provided complete data, use it directly (FAST PATH)
     // ---------------------------------------------------------------------------
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-    const hasCompleteData = bggData?.title && bggData?.description && bggData?.image_url;
+    const hasCompleteData = bggData?.title && bggData?.description;
 
     if (hasCompleteData && bggData) {
       console.log("Using BGG XML API data directly (fast path)");
