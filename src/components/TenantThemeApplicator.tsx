@@ -48,11 +48,23 @@ export function TenantThemeApplicator() {
       return Number.isFinite(parsed) ? parsed : fallback;
     };
     
-    // Calculate foreground color based on lightness — always neutral (no hue tint)
+    // Calculate foreground color — picks up subtle warmth from the background hue
+    const getBgHue = (): { h: string; s: number } => {
+      if (isDark) {
+        const h = (settings.theme_dark_background_h || '25').replace('%', '');
+        const s = toNum(settings.theme_dark_background_s, 20);
+        return { h, s };
+      }
+      const h = (settings.theme_background_h || '25').replace('%', '');
+      const s = toNum(settings.theme_background_s, 30);
+      return { h, s };
+    };
     const getForeground = (l: string | null | undefined): string => {
-      if (!l) return isDark ? '0 0% 95%' : '0 0% 10%';
+      const bg = getBgHue();
+      const warmS = Math.min(bg.s * 0.4, 15); // subtle warmth, max 15% saturation
+      if (!l) return isDark ? `${bg.h} ${warmS}% 95%` : `${bg.h} ${warmS}% 10%`;
       const lightness = parseInt(l.replace('%', ''));
-      return lightness > 50 ? '0 0% 10%' : '0 0% 95%';
+      return lightness > 50 ? `${bg.h} ${warmS}% 10%` : `${bg.h} ${warmS}% 95%`;
     };
 
     // Derive border/input as neutral grey appropriate for the background lightness
