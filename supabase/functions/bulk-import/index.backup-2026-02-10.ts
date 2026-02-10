@@ -1083,9 +1083,6 @@ const parseDate = (val: string | undefined): string | undefined => {
   // BGG uses YYYY-MM-DD format
   const dateMatch = val.match(/^\d{4}-\d{2}-\d{2}$/);
   if (dateMatch) return val;
-  // BG Stats uses YYYYMMDD format (compact, no separators)
-  const compactMatch = val.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (compactMatch) return `${compactMatch[1]}-${compactMatch[2]}-${compactMatch[3]}`;
   // Try to parse other formats
   const date = new Date(val);
   if (!isNaN(date.getTime())) {
@@ -1158,7 +1155,6 @@ type GameToImport = {
   // Admin data from BGG CSV
   purchase_date?: string;
   purchase_price?: number;
-  copies_owned?: number;
 };
 
 // Convert BGG OpenGraph URLs to higher quality image URLs
@@ -1385,44 +1381,18 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Collect games to import
     let gamesToImport: GameToImport[] = [];
-    // Play log rows extracted from BG Stats CSV exports
-    let playLogRows: { bgg_id: string; title: string; play_date: string; plays: number }[] = [];
 
     if (mode === "csv" && csv_data) {
       const rows = parseCSV(csv_data);
       console.log(`Parsed ${rows.length} rows from CSV`);
       
       const isBGGExport = rows.length > 0 && rows[0].objectname !== undefined;
-      // Detect BG Stats app export format (has bggid + playdateymd columns)
-      const isBGStatsExport = rows.length > 0 && (rows[0].bggid !== undefined || rows[0].playdateymd !== undefined);
-      console.log(`CSV format detected: ${isBGGExport ? 'BGG Export' : isBGStatsExport ? 'BG Stats Export' : 'Standard'}`);
-
-      // BG Stats export: separate collection rows from play log rows
-      // Collection rows have statusowned=1 and no playdateymd
-      // Play rows have playdateymd and no statusowned
+      console.log(`CSV format detected: ${isBGGExport ? 'BGG Export' : 'Standard'}`);
       
       for (const row of rows) {
-        // BG Stats column aliases
         const title = row.title || row.name || row.game || row["game name"] || row["game title"] || row.objectname;
         
-        // BG Stats: rows with a play date are play log entries, not collection entries
-        const playDateRaw = row.playdateymd || row.play_date || row.playdate || undefined;
-        if (isBGStatsExport && playDateRaw) {
-          const bggId = row.bggid || row.bgg_id || row["bgg id"] || row.objectid || undefined;
-          const parsedDate = parseDate(playDateRaw);
-          if (bggId && title && parsedDate) {
-            const playCount = parseInt(row.plays || "1", 10) || 1;
-            playLogRows.push({ bgg_id: bggId, title, play_date: parsedDate, plays: playCount });
-          }
-          continue; // Don't treat play rows as game collection entries
-        }
-
         if (isBGGExport && row.own !== "1") {
-          continue;
-        }
-
-        // BG Stats: skip rows that aren't owned (statusowned column)
-        if (isBGStatsExport && row.statusowned !== undefined && row.statusowned !== "1") {
           continue;
         }
         
@@ -1440,8 +1410,7 @@ export default async function handler(req: Request): Promise<Response> {
             ? (bggUrlCandidate.match(/boardgame\/(\d+)/)?.[1] || bggUrlCandidate.match(/\bid=(\d+)\b/)?.[1])
             : undefined;
 
-          // BG Stats uses "bggid" (no underscore)
-          const bggId = row.bgg_id || row["bgg id"] || row.objectid || row.bggid || bggIdFromUrl || undefined;
+          const bggId = row.bgg_id || row["bgg id"] || row.objectid || bggIdFromUrl || undefined;
           const minPlayersRaw = row.min_players || row["min players"] || row.minplayers;
           const maxPlayersRaw = row.max_players || row["max players"] || row.maxplayers;
           const playTimeRaw = row.play_time || row["play time"] || row.playtime || row.playingtime;
@@ -1516,8 +1485,6 @@ export default async function handler(req: Request): Promise<Response> {
             // Map BGG CSV admin data fields
             purchase_date: parseDate(row.acquisitiondate || row.acquisition_date || row.purchase_date),
             purchase_price: parsePrice(row.pricepaid || row.price_paid || row.purchase_price),
-            // BG Stats: copies column
-            copies_owned: parseNum(row.copies || row.copies_owned || row["copies owned"]),
           };
           
           gamesToImport.push(gameData);
@@ -2142,7 +2109,6 @@ export default async function handler(req: Request): Promise<Response> {
                 crowdfunded: gameData.crowdfunded ?? default_options?.crowdfunded ?? false,
                 inserts: gameData.inserts ?? default_options?.inserts ?? false,
                 in_base_game_box: gameData.in_base_game_box ?? false,
-                copies_owned: (gameInput as any).copies_owned ?? 1,
               })
               .select("id, title")
               .single();
@@ -2279,75 +2245,6 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
 
-        // Third pass: Import play history from CSV (BG Stats format)
-        let playsImported = 0;
-        let playsSkipped = 0;
-        let playsFailed = 0;
-
-        if (playLogRows.length > 0) {
-          console.log(`[BulkImport] Third pass: Importing ${playLogRows.length} play log entries...`);
-          sendProgress({
-            type: "progress",
-            current: totalGames,
-            total: totalGames,
-            imported,
-            failed,
-            currentGame: `Importing ${playLogRows.length} play sessions...`,
-            phase: "importing_plays",
-          });
-
-          // Build a map of bgg_id → game_id for this library
-          const { data: libraryGames } = await supabaseAdmin
-            .from("games")
-            .select("id, bgg_id")
-            .eq("library_id", targetLibraryId)
-            .not("bgg_id", "is", null);
-
-          const bggIdToGameId = new Map<string, string>();
-          if (libraryGames) {
-            for (const g of libraryGames) {
-              if (g.bgg_id) bggIdToGameId.set(g.bgg_id, g.id);
-            }
-          }
-
-          // Group play rows to batch insert
-          const sessionsToInsert: { game_id: string; played_at: string; import_source: string }[] = [];
-
-          for (const play of playLogRows) {
-            const gameId = bggIdToGameId.get(play.bgg_id);
-            if (!gameId) {
-              playsSkipped++;
-              continue;
-            }
-
-            // Each row = 1 play (the "plays" field in BG Stats is always 1 per row)
-            sessionsToInsert.push({
-              game_id: gameId,
-              played_at: `${play.play_date}T12:00:00Z`,
-              import_source: "bgstats_csv",
-            });
-          }
-
-          // Batch insert in chunks of 100
-          const chunkSize = 100;
-          for (let i = 0; i < sessionsToInsert.length; i += chunkSize) {
-            const chunk = sessionsToInsert.slice(i, i + chunkSize);
-            const { data: inserted, error: insertErr } = await supabaseAdmin
-              .from("game_sessions")
-              .insert(chunk)
-              .select("id");
-
-            if (insertErr) {
-              console.error(`[BulkImport] Play session batch insert error:`, insertErr);
-              playsFailed += chunk.length;
-            } else {
-              playsImported += inserted?.length || 0;
-            }
-          }
-
-          console.log(`[BulkImport] Play history: imported=${playsImported} skipped=${playsSkipped} failed=${playsFailed}`);
-        }
-
         // Mark job as completed
         await supabaseAdmin
           .from("import_jobs")
@@ -2368,7 +2265,7 @@ export default async function handler(req: Request): Promise<Response> {
         const errorSummary = summaryParts.length ? summaryParts.join(", ") : "";
 
         console.log(
-          `[BulkImport] Complete: imported=${imported} updated=${updated} failed=${failed} plays=${playsImported} breakdown=${JSON.stringify(failureBreakdown)}`
+          `[BulkImport] Complete: imported=${imported} updated=${updated} failed=${failed} breakdown=${JSON.stringify(failureBreakdown)}`
         );
 
         sendProgress({
@@ -2382,16 +2279,9 @@ export default async function handler(req: Request): Promise<Response> {
           failureBreakdown,
           errorSummary,
           games: importedGames,
-          // Play history stats from CSV import
-          playHistory: playLogRows.length > 0 ? {
-            imported: playsImported,
-            skipped: playsSkipped,
-            failed: playsFailed,
-            totalRows: playLogRows.length,
-          } : undefined,
           debug: {
             ...debug,
-            debug_version: "bulk-import-2026-02-10",
+            debug_version: "bulk-import-2026-02-08",
             bgg_xml_attempts: bggXmlAttempts,
             bgg_xml_with_image: bggXmlWithImage,
             ai_enrich_attempts: aiEnrichAttempts,
