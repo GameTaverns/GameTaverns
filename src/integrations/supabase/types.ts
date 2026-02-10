@@ -394,8 +394,11 @@ export type Database = {
           borrowed_at: string | null
           borrower_notes: string | null
           borrower_user_id: string
+          condition_in: string | null
+          condition_out: string | null
           copy_id: string | null
           created_at: string
+          damage_reported: boolean
           due_date: string | null
           game_id: string
           id: string
@@ -412,8 +415,11 @@ export type Database = {
           borrowed_at?: string | null
           borrower_notes?: string | null
           borrower_user_id: string
+          condition_in?: string | null
+          condition_out?: string | null
           copy_id?: string | null
           created_at?: string
+          damage_reported?: boolean
           due_date?: string | null
           game_id: string
           id?: string
@@ -430,8 +436,11 @@ export type Database = {
           borrowed_at?: string | null
           borrower_notes?: string | null
           borrower_user_id?: string
+          condition_in?: string | null
+          condition_out?: string | null
           copy_id?: string | null
           created_at?: string
+          damage_reported?: boolean
           due_date?: string | null
           game_id?: string
           id?: string
@@ -1358,6 +1367,7 @@ export type Database = {
           background_overlay_opacity: string | null
           contact_email: string | null
           created_at: string
+          default_loan_duration_days: number | null
           discord_events_channel_id: string | null
           discord_notifications: Json | null
           discord_url: string | null
@@ -1380,6 +1390,8 @@ export type Database = {
           lending_terms: string | null
           library_id: string
           logo_url: string | null
+          max_loans_per_borrower: number | null
+          min_borrower_rating: number | null
           theme_accent_h: string | null
           theme_accent_l: string | null
           theme_accent_s: string | null
@@ -1428,6 +1440,7 @@ export type Database = {
           background_overlay_opacity?: string | null
           contact_email?: string | null
           created_at?: string
+          default_loan_duration_days?: number | null
           discord_events_channel_id?: string | null
           discord_notifications?: Json | null
           discord_url?: string | null
@@ -1450,6 +1463,8 @@ export type Database = {
           lending_terms?: string | null
           library_id: string
           logo_url?: string | null
+          max_loans_per_borrower?: number | null
+          min_borrower_rating?: number | null
           theme_accent_h?: string | null
           theme_accent_l?: string | null
           theme_accent_s?: string | null
@@ -1498,6 +1513,7 @@ export type Database = {
           background_overlay_opacity?: string | null
           contact_email?: string | null
           created_at?: string
+          default_loan_duration_days?: number | null
           discord_events_channel_id?: string | null
           discord_notifications?: Json | null
           discord_url?: string | null
@@ -1520,6 +1536,8 @@ export type Database = {
           lending_terms?: string | null
           library_id?: string
           logo_url?: string | null
+          max_loans_per_borrower?: number | null
+          min_borrower_rating?: number | null
           theme_accent_h?: string | null
           theme_accent_l?: string | null
           theme_accent_s?: string | null
@@ -1628,6 +1646,72 @@ export type Database = {
           },
           {
             foreignKeyName: "library_suspensions_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_waitlist: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          library_id: string
+          notified_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          library_id: string
+          notified_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          library_id?: string
+          notified_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_waitlist_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_waitlist_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_waitlist_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_waitlist_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_waitlist_library_id_fkey"
             columns: ["library_id"]
             isOneToOne: false
             referencedRelation: "library_directory"

@@ -19,6 +19,10 @@ export interface GameLoan {
   returned_at: string | null;
   borrower_notes: string | null;
   lender_notes: string | null;
+  copy_id: string | null;
+  condition_out: string | null;
+  condition_in: string | null;
+  damage_reported: boolean;
   created_at: string;
   // Joined data
   game?: {
@@ -37,6 +41,12 @@ export interface GameLoan {
     display_name: string | null;
     avatar_url: string | null;
   };
+  copy?: {
+    id: string;
+    copy_number: number;
+    copy_label: string | null;
+    condition?: string | null;
+  } | null;
 }
 
 export interface BorrowerRating {
@@ -54,6 +64,22 @@ export interface BorrowerReputation {
   total_ratings: number;
   average_rating: number;
   positive_ratings: number;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  game_id: string;
+  library_id: string;
+  user_id: string;
+  status: string;
+  notified_at: string | null;
+  created_at: string;
+}
+
+export interface LendingRules {
+  max_loans_per_borrower: number | null;
+  default_loan_duration_days: number | null;
+  min_borrower_rating: number | null;
 }
 
 export function useLending(libraryId?: string) {
@@ -98,7 +124,8 @@ export function useLending(libraryId?: string) {
         .select(`
           *,
           game:games(id, title, slug, image_url, copies_owned),
-          library:libraries(id, name, slug)
+          library:libraries(id, name, slug),
+          copy:game_copies(id, copy_number, copy_label, condition)
         `)
         .eq("lender_user_id", user.id)
         .order("created_at", { ascending: false });
@@ -113,6 +140,82 @@ export function useLending(libraryId?: string) {
     },
     enabled: !!user,
   });
+
+  // Fetch lending rules for a library
+  const useLendingRules = (libId: string | undefined) => {
+    return useQuery({
+      queryKey: ["lending-rules", libId],
+      queryFn: async () => {
+        if (!libId) return null;
+        const { data, error } = await supabase
+          .from("library_settings")
+          .select("max_loans_per_borrower, default_loan_duration_days, min_borrower_rating")
+          .eq("library_id", libId)
+          .maybeSingle();
+        if (error) throw error;
+        return data as LendingRules | null;
+      },
+      enabled: !!libId,
+    });
+  };
+
+  // Fetch available copies for a game
+  const useGameCopies = (gameId: string | undefined) => {
+    return useQuery({
+      queryKey: ["game-copies", gameId],
+      queryFn: async () => {
+        if (!gameId) return [];
+        const { data, error } = await supabase
+          .from("game_copies")
+          .select("*")
+          .eq("game_id", gameId)
+          .order("copy_number", { ascending: true });
+        if (error) throw error;
+        return data;
+      },
+      enabled: !!gameId,
+    });
+  };
+
+  // Fetch loan history for a specific game
+  const useGameLoanHistory = (gameId: string | undefined) => {
+    return useQuery({
+      queryKey: ["game-loan-history", gameId],
+      queryFn: async () => {
+        if (!gameId) return [];
+        const { data, error } = await supabase
+          .from("game_loans")
+          .select(`
+            *,
+            copy:game_copies(id, copy_number, copy_label)
+          `)
+          .eq("game_id", gameId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return data as GameLoan[];
+      },
+      enabled: !!gameId,
+    });
+  };
+
+  // Fetch waitlist for a game
+  const useGameWaitlist = (gameId: string | undefined) => {
+    return useQuery({
+      queryKey: ["waitlist", gameId],
+      queryFn: async () => {
+        if (!gameId) return [];
+        const { data, error } = await supabase
+          .from("loan_waitlist")
+          .select("*")
+          .eq("game_id", gameId)
+          .eq("status", "waiting")
+          .order("created_at", { ascending: true });
+        if (error) throw error;
+        return data as WaitlistEntry[];
+      },
+      enabled: !!gameId,
+    });
+  };
 
   // Request to borrow a game
   const requestLoan = useMutation({
@@ -167,7 +270,6 @@ export function useLending(libraryId?: string) {
         });
       } catch (notifyError) {
         console.error("Discord notification failed:", notifyError);
-        // Don't fail the request if notification fails
       }
 
       return data;
@@ -181,16 +283,20 @@ export function useLending(libraryId?: string) {
     },
   });
 
-  // Approve a loan request (lender action)
+  // Approve a loan request (lender action) - now with copy assignment & condition
   const approveLoan = useMutation({
     mutationFn: async ({
       loanId,
       dueDate,
       notes,
+      copyId,
+      conditionOut,
     }: {
       loanId: string;
       dueDate?: string;
       notes?: string;
+      copyId?: string;
+      conditionOut?: string;
     }) => {
       const { data, error } = await supabase
         .from("game_loans")
@@ -199,6 +305,8 @@ export function useLending(libraryId?: string) {
           approved_at: new Date().toISOString(),
           due_date: dueDate || null,
           lender_notes: notes || null,
+          copy_id: copyId || null,
+          condition_out: conditionOut || null,
         })
         .eq("id", loanId)
         .select()
@@ -266,14 +374,24 @@ export function useLending(libraryId?: string) {
     },
   });
 
-  // Mark as returned
+  // Mark as returned - now with condition check-in
   const markReturned = useMutation({
-    mutationFn: async ({ loanId }: { loanId: string }) => {
+    mutationFn: async ({ 
+      loanId, 
+      conditionIn, 
+      damageReported 
+    }: { 
+      loanId: string; 
+      conditionIn?: string;
+      damageReported?: boolean;
+    }) => {
       const { data, error } = await supabase
         .from("game_loans")
         .update({
           status: "returned",
           returned_at: new Date().toISOString(),
+          condition_in: conditionIn || null,
+          damage_reported: damageReported || false,
         })
         .eq("id", loanId)
         .select()
@@ -285,6 +403,7 @@ export function useLending(libraryId?: string) {
     onSuccess: () => {
       toast.success("Game marked as returned!");
       queryClient.invalidateQueries({ queryKey: ["loans"] });
+      queryClient.invalidateQueries({ queryKey: ["waitlist"] });
     },
     onError: (error) => {
       toast.error("Failed to update loan: " + error.message);
@@ -353,6 +472,96 @@ export function useLending(libraryId?: string) {
     },
   });
 
+  // Join waitlist
+  const joinWaitlist = useMutation({
+    mutationFn: async ({ gameId, libraryId }: { gameId: string; libraryId: string }) => {
+      if (!user) throw new Error("Must be logged in");
+      const { data, error } = await supabase
+        .from("loan_waitlist")
+        .insert({
+          game_id: gameId,
+          library_id: libraryId,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Added to waitlist! You'll be notified when available.");
+      queryClient.invalidateQueries({ queryKey: ["waitlist"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to join waitlist: " + error.message);
+    },
+  });
+
+  // Leave waitlist
+  const leaveWaitlist = useMutation({
+    mutationFn: async ({ waitlistId }: { waitlistId: string }) => {
+      const { error } = await supabase
+        .from("loan_waitlist")
+        .delete()
+        .eq("id", waitlistId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Removed from waitlist");
+      queryClient.invalidateQueries({ queryKey: ["waitlist"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to leave waitlist: " + error.message);
+    },
+  });
+
+  // Bulk approve loans
+  const bulkApproveLoan = useMutation({
+    mutationFn: async ({ loanIds, dueDate }: { loanIds: string[]; dueDate?: string }) => {
+      const { data, error } = await supabase
+        .from("game_loans")
+        .update({
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          due_date: dueDate || null,
+        })
+        .in("id", loanIds)
+        .select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.length} loans approved!`);
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+    onError: (error) => {
+      toast.error("Bulk approve failed: " + error.message);
+    },
+  });
+
+  // Bulk mark returned
+  const bulkMarkReturned = useMutation({
+    mutationFn: async ({ loanIds }: { loanIds: string[] }) => {
+      const { data, error } = await supabase
+        .from("game_loans")
+        .update({
+          status: "returned",
+          returned_at: new Date().toISOString(),
+        })
+        .in("id", loanIds)
+        .select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.length} loans marked as returned!`);
+      queryClient.invalidateQueries({ queryKey: ["loans"] });
+    },
+    onError: (error) => {
+      toast.error("Bulk return failed: " + error.message);
+    },
+  });
+
   // Get borrower reputation
   const useBorrowerReputation = (userId: string | undefined) => {
     return useQuery({
@@ -373,7 +582,19 @@ export function useLending(libraryId?: string) {
     });
   };
 
-  // Check if game is available for loan (compares active loans against copies_owned)
+  // Check active loan count for a borrower in a library
+  const checkBorrowerLoanCount = async (borrowerUserId: string, libId: string): Promise<number> => {
+    const { data, error } = await supabase
+      .from("game_loans")
+      .select("id")
+      .eq("borrower_user_id", borrowerUserId)
+      .eq("library_id", libId)
+      .in("status", ["requested", "approved", "active"]);
+    if (error) return 0;
+    return data.length;
+  };
+
+  // Check if game is available for loan
   const checkGameAvailability = async (gameId: string): Promise<{ available: boolean; copiesOwned: number; activeLoans: number; copiesAvailable: number }> => {
     const { data: gameData, error: gameError } = await supabase
       .from("games")
@@ -410,7 +631,16 @@ export function useLending(libraryId?: string) {
     markReturned,
     cancelLoan,
     rateBorrower,
+    joinWaitlist,
+    leaveWaitlist,
+    bulkApproveLoan,
+    bulkMarkReturned,
     useBorrowerReputation,
+    useLendingRules,
+    useGameCopies,
+    useGameLoanHistory,
+    useGameWaitlist,
+    checkBorrowerLoanCount,
     checkGameAvailability,
   };
 }

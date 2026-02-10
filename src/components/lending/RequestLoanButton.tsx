@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLending } from "@/hooks/useLending";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/backend/client";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,7 +36,7 @@ export function RequestLoanButton({
   allowLending = true,
 }: RequestLoanButtonProps) {
   const { user } = useAuth();
-  const { requestLoan, checkGameAvailability } = useLending();
+  const { requestLoan, checkGameAvailability, joinWaitlist } = useLending();
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [isChecking, setIsChecking] = useState(false);
@@ -119,10 +120,25 @@ export function RequestLoanButton({
             <span className="ml-2 text-muted-foreground">Checking availability...</span>
           </div>
         ) : !isAvailable ? (
-          <div className="py-4 text-center">
+          <div className="py-4 text-center space-y-4">
             <p className="text-muted-foreground">
               All {availabilityInfo?.copiesOwned ?? 1} {(availabilityInfo?.copiesOwned ?? 1) === 1 ? 'copy' : 'copies'} of this game {(availabilityInfo?.copiesOwned ?? 1) === 1 ? 'is' : 'are'} currently on loan or have pending requests.
             </p>
+            {user && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await joinWaitlist.mutateAsync({ gameId, libraryId });
+                    setOpen(false);
+                  } catch {}
+                }}
+                disabled={joinWaitlist.isPending}
+              >
+                Join Waitlist
+              </Button>
+            )}
           </div>
         ) : !user ? (
           <div className="py-4 text-center">
