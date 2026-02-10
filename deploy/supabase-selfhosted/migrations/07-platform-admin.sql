@@ -34,7 +34,8 @@ INSERT INTO public.site_settings (key, value) VALUES
     ('announcement_message', ''),
     ('announcement_type', 'info'),
     ('turnstile_site_key', ''),
-    ('allow_new_signups', 'true')
+    ('allow_new_signups', 'true'),
+    ('max_libraries_per_user', '1')
 ON CONFLICT (key) DO NOTHING;
 
 -- ===========================================

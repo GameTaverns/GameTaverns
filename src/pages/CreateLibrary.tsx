@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { useSlugAvailability, useCreateLibrary, useMyLibrary } from "@/hooks/useLibrary";
+import { useSlugAvailability, useCreateLibrary, useMyLibraries, useMaxLibrariesPerUser } from "@/hooks/useLibrary";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 
 export default function CreateLibrary() {
   const { isAuthenticated } = useAuth();
-  const { data: existingLibrary } = useMyLibrary();
+  const { data: myLibraries = [], isLoading: librariesLoading } = useMyLibraries();
+  const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();
   const navigate = useNavigate();
   const { toast } = useToast();
   const createLibrary = useCreateLibrary();
@@ -25,13 +26,15 @@ export default function CreateLibrary() {
   
   const debouncedSlug = useDebounce(slug, 300);
   const { data: slugCheck, isLoading: checkingSlug } = useSlugAvailability(debouncedSlug);
+
+  const atLimit = myLibraries.length >= maxLibraries;
   
-  // Redirect if already has a library
+  // Redirect if already at library limit
   useEffect(() => {
-    if (existingLibrary) {
+    if (!librariesLoading && atLimit) {
       navigate("/dashboard");
     }
-  }, [existingLibrary, navigate]);
+  }, [atLimit, librariesLoading, navigate]);
   
   // Auto-generate slug from name
   useEffect(() => {
