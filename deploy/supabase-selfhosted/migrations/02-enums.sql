@@ -87,7 +87,7 @@ DO $$ BEGIN
     CREATE TYPE loan_status AS ENUM (
         'requested',
         'approved',
-        'borrowed',
+        'active',
         'returned',
         'declined',
         'cancelled'
