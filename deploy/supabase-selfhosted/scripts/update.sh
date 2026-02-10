@@ -92,32 +92,6 @@ if [ -f "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/run-migrations.sh" ]; t
     bash "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/run-migrations.sh" || echo -e "${YELLOW}Migration warnings (often OK)${NC}"
 fi
 
-echo ""
-echo "Applying migration 32: player color column..."
-dcp exec -T db psql -U supabase_admin -d postgres -c "
-  ALTER TABLE public.game_session_players ADD COLUMN IF NOT EXISTS color TEXT;
-" 2>/dev/null && echo -e "${GREEN}Migration 32 applied${NC}" || echo -e "${YELLOW}Migration 32 skipped${NC}"
-
-echo ""
-echo "Applying migration 33: theme foreground columns..."
-dcp exec -T db psql -U supabase_admin -d postgres -c "
-  ALTER TABLE public.library_settings
-    ADD COLUMN IF NOT EXISTS theme_foreground_h text,
-    ADD COLUMN IF NOT EXISTS theme_foreground_s text,
-    ADD COLUMN IF NOT EXISTS theme_foreground_l text,
-    ADD COLUMN IF NOT EXISTS theme_dark_foreground_h text,
-    ADD COLUMN IF NOT EXISTS theme_dark_foreground_s text,
-    ADD COLUMN IF NOT EXISTS theme_dark_foreground_l text;
-" 2>/dev/null && echo -e "${GREEN}Migration 33 applied${NC}" || echo -e "${YELLOW}Migration 33 skipped${NC}"
-
-echo ""
-echo "Fixing bgg_play_id index to be per-game scoped..."
-dcp exec -T db psql -U supabase_admin -d postgres -c "
-  DROP INDEX IF EXISTS idx_game_sessions_bgg_play_id;
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_game_sessions_bgg_play_id 
-    ON public.game_sessions(bgg_play_id, game_id) 
-    WHERE bgg_play_id IS NOT NULL;
-" 2>/dev/null && echo -e "${GREEN}Index updated${NC}" || echo -e "${YELLOW}Index fix skipped (columns may not exist yet)${NC}"
 
 echo ""
 echo "Restarting services..."
