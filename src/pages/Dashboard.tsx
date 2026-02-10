@@ -334,49 +334,76 @@ const { data: playCount } = useQuery({
                     My Communities
                   </CardTitle>
                   <CardDescription className="text-cream/70">
-                    {myMemberships.length > 0 
-                      ? `You're a member of ${myMemberships.length} ${myMemberships.length === 1 ? 'community' : 'communities'}`
-                      : "Join communities to borrow games and participate in events"
-                    }
+                    {(() => {
+                      const totalCount = myMemberships.length + myLibraries.filter(
+                        (lib) => !myMemberships.some((m) => m.library?.id === lib.id)
+                      ).length;
+                      return totalCount > 0
+                        ? `You're part of ${totalCount} ${totalCount === 1 ? 'community' : 'communities'}`
+                        : "Join communities to borrow games and participate in events";
+                    })()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {myMemberships.length > 0 ? (
-                    <div className="space-y-2">
-                      {myMemberships.slice(0, 3).map((membership) => (
-                        <a 
-                          key={membership.id}
-                          href={membership.library?.slug ? getLibraryUrl(membership.library.slug, "/") : "#"}
-                          className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
-                        >
-                          <span className="text-sm font-medium truncate">
-                            {membership.library?.name}
-                          </span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {membership.role === 'owner' && (
-                              <Badge variant="secondary" className="text-xs">Owner</Badge>
-                            )}
-                            {membership.role === 'moderator' && (
-                              <Badge variant="outline" className="text-xs">Mod</Badge>
-                            )}
-                            <ArrowRight className="h-4 w-4 text-cream/60" />
-                          </div>
-                        </a>
-                      ))}
-                      {myMemberships.length > 3 && (
-                        <p className="text-xs text-cream/60 text-center pt-2">
-                          +{myMemberships.length - 3} more
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <Link to="/directory">
-                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        <Users className="h-4 w-4 mr-2" />
-                        Browse Communities
-                      </Button>
-                    </Link>
-                  )}
+                  {(() => {
+                    // Merge owned libraries + memberships, deduplicating by library id
+                    const ownedEntries = myLibraries.map((lib) => ({
+                      key: `owned-${lib.id}`,
+                      name: lib.name,
+                      slug: lib.slug,
+                      role: 'owner' as const,
+                    }));
+                    const memberEntries = myMemberships
+                      .filter((m) => !myLibraries.some((lib) => lib.id === m.library?.id))
+                      .map((m) => ({
+                        key: `member-${m.id}`,
+                        name: m.library?.name ?? 'Unknown',
+                        slug: m.library?.slug,
+                        role: m.role as string,
+                      }));
+                    const allEntries = [...ownedEntries, ...memberEntries];
+
+                    if (allEntries.length === 0) {
+                      return (
+                        <Link to="/directory">
+                          <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                            <Users className="h-4 w-4 mr-2" />
+                            Browse Communities
+                          </Button>
+                        </Link>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2">
+                        {allEntries.slice(0, 5).map((entry) => (
+                          <a
+                            key={entry.key}
+                            href={entry.slug ? getLibraryUrl(entry.slug, "/") : "#"}
+                            className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
+                          >
+                            <span className="text-sm font-medium truncate">
+                              {entry.name}
+                            </span>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {entry.role === 'owner' && (
+                                <Badge variant="secondary" className="text-xs">Owner</Badge>
+                              )}
+                              {entry.role === 'moderator' && (
+                                <Badge variant="outline" className="text-xs">Mod</Badge>
+                              )}
+                              <ArrowRight className="h-4 w-4 text-cream/60" />
+                            </div>
+                          </a>
+                        ))}
+                        {allEntries.length > 5 && (
+                          <p className="text-xs text-cream/60 text-center pt-2">
+                            +{allEntries.length - 5} more
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
 
@@ -518,29 +545,35 @@ const { data: playCount } = useQuery({
                   </Card>
                 )}
 
-                {/* Library Card */}
+                {/* My Libraries Card */}
                 <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Library className="h-5 w-5 text-secondary" />
-                      My Library
+                      {myLibraries.length > 1 ? 'My Libraries' : 'My Library'}
                     </CardTitle>
                     <CardDescription className="text-cream/70">
-                      {library.name}
+                      {myLibraries.length > 1
+                        ? `You own ${myLibraries.length} libraries`
+                        : library.name}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col justify-end">
                     <div className="space-y-3">
-                      <div className="text-sm text-cream/60">
-                        <span className="font-medium text-cream">URL:</span>{" "}
-                        {library.slug}.gametaverns.com
-                      </div>
-                      <a href={libraryUrl!} className="block">
-                        <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          View Library
-                        </Button>
-                      </a>
+                      {myLibraries.map((lib) => (
+                        <div key={lib.id} className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20">
+                          <div className="min-w-0 mr-2">
+                            <div className="text-sm font-medium truncate">{lib.name}</div>
+                            <div className="text-xs text-cream/60">{lib.slug}.gametaverns.com</div>
+                          </div>
+                          <a href={getLibraryUrl(lib.slug, "/")} className="flex-shrink-0">
+                            <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
+                          </a>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
