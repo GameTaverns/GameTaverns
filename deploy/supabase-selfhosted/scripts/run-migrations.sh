@@ -117,7 +117,7 @@ MIGRATION_FILES=(
     "34-fix-public-view-foreground.sql"
     "35-game-copies-inventory.sql"
     "36-fix-loan-trigger-enum.sql"
-    "37-fix-loan-status-active.sql"
+    "37-fix-loan-status-enums.sql"
 )
 
 SUCCESS_COUNT=0
