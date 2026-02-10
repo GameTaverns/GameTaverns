@@ -97,6 +97,192 @@ export type Database = {
           },
         ]
       }
+      club_events: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          event_date: string
+          event_location: string | null
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          event_date: string
+          event_location?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          event_date?: string
+          event_location?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_invite_codes: {
+        Row: {
+          club_id: string
+          code: string
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          uses: number
+        }
+        Insert: {
+          club_id: string
+          code: string
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          uses?: number
+        }
+        Update: {
+          club_id?: string
+          code?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          uses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_invite_codes_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_libraries: {
+        Row: {
+          club_id: string
+          id: string
+          joined_at: string
+          library_id: string
+        }
+        Insert: {
+          club_id: string
+          id?: string
+          joined_at?: string
+          library_id: string
+        }
+        Update: {
+          club_id?: string
+          id?: string
+          joined_at?: string
+          library_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_libraries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_libraries_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_libraries_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_libraries_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clubs: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_public: boolean
+          logo_url: string | null
+          name: string
+          owner_id: string
+          slug: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          logo_url?: string | null
+          name: string
+          owner_id: string
+          slug: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          logo_url?: string | null
+          name?: string
+          owner_id?: string
+          slug?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_confirmation_tokens: {
         Row: {
           confirmed_at: string | null
@@ -129,6 +315,7 @@ export type Database = {
       }
       forum_categories: {
         Row: {
+          club_id: string | null
           color: string | null
           created_at: string | null
           created_by: string | null
@@ -145,6 +332,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          club_id?: string | null
           color?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -161,6 +349,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          club_id?: string | null
           color?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -177,6 +366,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "forum_categories_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "forum_categories_library_id_fkey"
             columns: ["library_id"]
@@ -2862,6 +3058,14 @@ export type Database = {
           _min_role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_club_member: {
+        Args: { _club_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_club_owner: {
+        Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
       is_library_member: {

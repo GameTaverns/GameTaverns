@@ -26,7 +26,8 @@ import {
   MessageSquare,
   DollarSign,
   Target,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Ticket
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -60,6 +61,7 @@ import { MyInquiriesSection } from "@/components/dashboard/MyInquiriesSection";
 import { CommunityTab } from "@/components/community/CommunityTab";
 import { ChallengesManager } from "@/components/challenges/ChallengesManager";
 import { TradeCenter } from "@/components/trades/TradeCenter";
+import { useMyClubs } from "@/hooks/useClubs";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -82,6 +84,7 @@ export default function Dashboard() {
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const { myLentLoans, myBorrowedLoans } = useLending();
   const { data: myMemberships = [] } = useMyMemberships();
+  const { data: myClubs = [] } = useMyClubs();
   const { memberCount } = useLibraryMembership(library?.id);
   const pendingLoanRequests = myLentLoans.filter((l) => l.status === "requested").length;
   const navigate = useNavigate();
@@ -289,6 +292,16 @@ const { data: playCount } = useQuery({
               Trades
             </TabsTrigger>
             <TabsTrigger 
+              value="clubs" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
+              <Users className="h-4 w-4" />
+              Clubs
+              {myClubs.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">{myClubs.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
               value="danger" 
               className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
             >
@@ -296,6 +309,78 @@ const { data: playCount } = useQuery({
               Danger Zone
             </TabsTrigger>
           </TabsList>
+
+          {/* ===== CLUBS TAB ===== */}
+          <TabsContent value="clubs">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-2xl text-cream">My Clubs</h2>
+                <div className="flex gap-2">
+                  <Link to="/join-club">
+                    <Button variant="outline" className="gap-2 text-cream border-wood-medium/50 hover:bg-wood-medium/40">
+                      <Ticket className="h-4 w-4" /> Join Club
+                    </Button>
+                  </Link>
+                  <Link to="/request-club">
+                    <Button className="gap-2 bg-secondary text-secondary-foreground">
+                      <Plus className="h-4 w-4" /> Request Club
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+              {myClubs.length === 0 ? (
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardContent className="py-12 text-center">
+                    <Users className="h-12 w-12 mx-auto text-cream/30 mb-4" />
+                    <h3 className="font-display text-xl mb-2">No Clubs Yet</h3>
+                    <p className="text-cream/60 mb-4">
+                      Clubs connect multiple board game libraries together, letting members search across collections.
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                      <Link to="/request-club">
+                        <Button className="bg-secondary text-secondary-foreground">Request a Club</Button>
+                      </Link>
+                      <Link to="/join-club">
+                        <Button variant="outline" className="text-cream border-wood-medium/50">Join with Code</Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {myClubs.map((club) => (
+                    <Card key={club.id} className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                      <CardHeader>
+                        <CardTitle className="font-display flex items-center gap-2">
+                          {club.name}
+                          <Badge variant={club.status === 'approved' ? 'secondary' : 'outline'} className="text-xs">
+                            {club.status}
+                          </Badge>
+                        </CardTitle>
+                        {club.description && (
+                          <CardDescription className="text-cream/60">{club.description}</CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent className="flex gap-2">
+                        <Link to={`/club/${club.slug}`}>
+                          <Button variant="secondary" size="sm" className="gap-1">
+                            <ExternalLink className="h-3 w-3" /> View
+                          </Button>
+                        </Link>
+                        {club.owner_id === user?.id && (
+                          <Link to={`/club/${club.slug}/manage`}>
+                            <Button variant="outline" size="sm" className="gap-1 text-cream border-wood-medium/50">
+                              <Settings className="h-3 w-3" /> Manage
+                            </Button>
+                          </Link>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
 
           {/* ===== COMMUNITY TAB ===== */}
           <TabsContent value="community">

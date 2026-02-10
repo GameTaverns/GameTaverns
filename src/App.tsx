@@ -52,6 +52,10 @@ const Directory = lazy(() => import("./pages/Directory"));
 const Achievements = lazy(() => import("./pages/Achievements"));
 const Community = lazy(() => import("./pages/Community"));
 const ThreadDetail = lazy(() => import("./pages/ThreadDetail"));
+const ClubPage = lazy(() => import("./pages/ClubPage"));
+const ClubDashboard = lazy(() => import("./pages/ClubDashboard"));
+const RequestClub = lazy(() => import("./pages/RequestClub"));
+const JoinClub = lazy(() => import("./pages/JoinClub"));
 
 // Library admin pages
 const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
@@ -179,6 +183,10 @@ function PlatformRoutes() {
       <Route path="/community" element={<Community />} />
       <Route path="/community/:categorySlug" element={<Community />} />
       <Route path="/community/thread/:threadId" element={<ThreadDetail />} />
+      <Route path="/club/:slug" element={<ClubPage />} />
+      <Route path="/club/:slug/manage" element={<ClubDashboard />} />
+      <Route path="/request-club" element={<RequestClub />} />
+      <Route path="/join-club" element={<JoinClub />} />
       <Route path="/docs" element={<Docs />} />
       {/* Legal & Info pages */}
       <Route path="/legal" element={<Legal />} />
