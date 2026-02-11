@@ -394,7 +394,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
 
   // BGG XML API frequently returns HTTP 202 (Accepted) for heavy traffic.
   // In that case, you must retry the same request after a short delay.
-  const maxAttempts = 6;
+  const maxAttempts = 8;
 
   // BGG now requires authentication - prefer session cookie over API token
   const bggCookie2 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
@@ -425,7 +425,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
 
         // Treat 202 as retryable even if considered "ok" by some proxies.
         if (res.status === 202 && attempt < maxAttempts) {
-          const backoffMs = Math.min(750 * attempt, 4000);
+          const backoffMs = Math.min(1500 * attempt, 8000);
           await sleep(backoffMs);
           continue;
         }
@@ -445,14 +445,14 @@ async function fetchBGGXMLData(bggId: string): Promise<{
         !xml.includes("<item");
 
       if (retryable && attempt < maxAttempts) {
-        const backoffMs = Math.min(750 * attempt, 4000);
+        const backoffMs = Math.min(1500 * attempt, 8000);
         console.log(`[BulkImport] BGG XML not ready for ${bggId}, retrying (${attempt}/${maxAttempts}) in ${backoffMs}ms`);
         await sleep(backoffMs);
         continue;
       }
 
       // Extract data using regex (simple parsing for XML)
-      const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+      const imageMatch = xml.match(/<image>([^<]+)<\/image>/) || xml.match(/<thumbnail>([^<]+)<\/thumbnail>/);
 
       // Description can be huge; it may be empty, or in rare cases the tag can be self-closing.
       // We parse a few variants defensively.
@@ -553,7 +553,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
     } catch (e) {
       console.error("[BulkImport] BGG XML error:", e);
       if (attempt < maxAttempts) {
-        const backoffMs = Math.min(750 * attempt, 4000);
+        const backoffMs = Math.min(1500 * attempt, 8000);
         await sleep(backoffMs);
         continue;
       }
@@ -582,7 +582,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
 
         if (xml.includes("<item") && !xml.includes("Please try again later")) {
           // Parse exactly like the direct path above
-          const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+          const imageMatch = xml.match(/<image>([^<]+)<\/image>/) || xml.match(/<thumbnail>([^<]+)<\/thumbnail>/);
           const descMatch = xml.match(/<description[^>]*>([\s\S]*?)<\/description>/i);
           const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
           const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
@@ -1353,7 +1353,7 @@ function isLowQualityBggImageUrl(url: string | undefined): boolean {
   if (!url) return true;
   if (!url.includes("geekdo-images.com") && !url.includes("geekdo-static.com")) return false;
 
-  return /__opengraph|__opengraph_letterbox|fit-in\/1200x630|filters:strip_icc\(\)|__thumb|__micro|__square\d*|crop\d+|\b1200x630\b/i.test(url);
+  return /__opengraph|__opengraph_letterbox|__small|__thumb|__micro|__square\d*|fit-in\/1200x630|fit-in\/200x150|fit-in\/100x100|filters:strip_icc\(\)|filters:fill\(blur\)|crop\d+|\b1200x630\b/i.test(url);
 }
 
 // Export handler for self-hosted router
@@ -2061,10 +2061,12 @@ export default async function handler(req: Request): Promise<Response> {
               }
             };
 
-            const looksLikeBggOpengraphOrResized = (u: string | null | undefined) => {
+            const looksLikeBggLowQuality = (u: string | null | undefined) => {
               if (!u) return false;
               return (
                 u.includes("__opengraph") ||
+                u.includes("__small") ||
+                u.includes("__thumb") ||
                 u.includes("/fit-in/") ||
                 u.includes("filters:strip_icc") ||
                 u.includes("filters:fill(blur)")
@@ -2079,8 +2081,8 @@ export default async function handler(req: Request): Promise<Response> {
               const shouldUpdateImage =
                 incomingImage &&
                 incomingImage !== existingImage &&
-                isBggCdnUrl(incomingImage) &&
-                (looksLikeBggOpengraphOrResized(existingImage) || !existingImage);
+                !isLowQualityBggImageUrl(incomingImage) &&
+                (looksLikeBggLowQuality(existingImage) || !existingImage);
 
               const incomingAdditional = gameData.additional_images || null;
               const existingAdditional = (existing as any).additional_images as string[] | null;
@@ -2258,7 +2260,15 @@ export default async function handler(req: Request): Promise<Response> {
                 library_id: targetLibraryId,
                 title: gameData.title,
                 description: gameData.description || null,
-                image_url: normalizeImageUrl(gameData.image_url) || null,
+                image_url: (() => {
+                  const normalized = normalizeImageUrl(gameData.image_url);
+                  // Reject low-quality BGG images at insert time - let the client image proxy handle display
+                  if (isLowQualityBggImageUrl(normalized)) {
+                    console.log(`[BulkImport] Rejecting low-quality image at insert for "${gameData.title}": ${normalized}`);
+                    return null;
+                  }
+                  return normalized || null;
+                })(),
                 additional_images: gameData.additional_images?.length
                   ? (gameData.additional_images.map((u) => normalizeImageUrl(u)).filter(Boolean) as string[])
                   : null,
