@@ -141,9 +141,14 @@ export default async function handler(req: Request): Promise<Response> {
           hostname: smtpHost,
           port: smtpPort,
           tls: smtpPort === 465,
-          // Port 587 = STARTTLS
-          ...(smtpPort === 587 ? { starttls: true } : {}),
         };
+
+        // Port 25 = internal relay, no auth, no STARTTLS
+        if (smtpPort === 25) {
+          connection.debug = { noStartTLS: true, allowUnsecure: true };
+        } else if (smtpPort === 587) {
+          connection.starttls = true;
+        }
 
         if (requiresAuth) {
           connection.auth = { username: smtpUser, password: smtpPass };
@@ -277,18 +282,23 @@ export default async function handler(req: Request): Promise<Response> {
       const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
 
       await sendEmailSafely(async () => {
-        const client = new SMTPClient({
-          connection: {
-            hostname: smtpHost,
-            port: smtpPort,
-            tls: smtpPort === 465,
-            ...(smtpPort === 587 ? { starttls: true } : {}),
-            auth: {
-              username: smtpUser,
-              password: smtpPass,
-            },
-          },
-        });
+        const connection: any = {
+          hostname: smtpHost,
+          port: smtpPort,
+          tls: smtpPort === 465,
+        };
+
+        if (smtpPort === 25) {
+          connection.debug = { noStartTLS: true, allowUnsecure: true };
+        } else if (smtpPort === 587) {
+          connection.starttls = true;
+        }
+
+        if (requiresAuth) {
+          connection.auth = { username: smtpUser, password: smtpPass };
+        }
+
+        const client = new SMTPClient({ connection });
 
         try {
           const fromAddress = `GameTaverns <${smtpFrom}>`;
