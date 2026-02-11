@@ -2002,11 +2002,6 @@ export default async function handler(req: Request): Promise<Response> {
                         }
                       }
                     }
-                        } catch (e) {
-                          console.warn(`[BulkImport] Base game lookup failed:`, e);
-                        }
-                      }
-                    }
                     
                     if (galleryImages.length > 0) {
                       galleryWithImages++;
