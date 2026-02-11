@@ -49,7 +49,7 @@ async function deleteDiscordThread(
   return { success: true };
 }
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -69,7 +69,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify the library exists (basic validation)
     const { data: library, error: libError } = await supabase
       .from("libraries")
       .select("id")
@@ -83,7 +82,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Delete the Discord thread
     const result = await deleteDiscordThread(thread_id);
 
     if (!result.success) {
@@ -104,4 +102,10 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}

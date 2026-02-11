@@ -22,7 +22,23 @@ interface DiscordUser {
   email?: string;
 }
 
-Deno.serve(async (req) => {
+function redirectWithError(message: string, appOrigin: string | undefined): Response {
+  const encodedMessage = encodeURIComponent(message);
+  if (appOrigin) {
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `${appOrigin}/settings?discord_error=${encodedMessage}`,
+      },
+    });
+  }
+  return new Response(`Discord connection failed: ${message}. Please close this tab and try again.`, {
+    status: 400,
+    headers: { "Content-Type": "text/plain" },
+  });
+}
+
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -30,7 +46,7 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
-    const state = url.searchParams.get("state"); // Contains user_id encrypted or as JWT
+    const state = url.searchParams.get("state");
     const error = url.searchParams.get("error");
 
     if (error) {
@@ -46,31 +62,23 @@ Deno.serve(async (req) => {
     const clientSecret = Deno.env.get("DISCORD_CLIENT_SECRET")!;
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    // Use APP_URL for self-hosted (public URL) or fall back to SUPABASE_URL
     const appUrl = Deno.env.get("APP_URL") || supabaseUrl;
 
-    // Parse state to get user_id (state is base64 encoded JSON with user_id)
     let userId: string;
     let returnUrl: string;
     let appOrigin: string;
     try {
       const stateData = JSON.parse(atob(state));
       userId = stateData.user_id;
-      // For gametaverns.com, redirect to dashboard on main domain after Discord link
-      // For other domains, redirect to /settings
       returnUrl = "/settings";
       appOrigin = stateData.app_origin;
       
-      // If app_origin is a subdomain, redirect to main domain dashboard
-      // e.g., tzolaks-tavern.gametaverns.com -> gametaverns.com/dashboard
       if (appOrigin) {
         try {
           const originUrl = new URL(appOrigin);
           const hostParts = originUrl.hostname.split('.');
-          // Check if it's a subdomain (e.g., tzolaks-tavern.gametaverns.com or tzolaks-tavern.gamehavens.com)
           if (hostParts.length > 2 && 
               (originUrl.hostname.endsWith('.gametaverns.com') || originUrl.hostname.endsWith('.gamehavens.com'))) {
-            // Redirect to main domain dashboard
             const mainDomain = hostParts.slice(-2).join('.');
             appOrigin = `${originUrl.protocol}//${mainDomain}`;
             returnUrl = "/dashboard";
@@ -90,7 +98,6 @@ Deno.serve(async (req) => {
       return redirectWithError("Missing user ID or app origin in state", appOrigin);
     }
 
-    // Exchange code for access token
     const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
       headers: {
@@ -113,7 +120,6 @@ Deno.serve(async (req) => {
 
     const tokens: DiscordTokenResponse = await tokenResponse.json();
 
-    // Fetch Discord user info
     const userResponse = await fetch("https://discord.com/api/users/@me", {
       headers: {
         Authorization: `Bearer ${tokens.access_token}`,
@@ -127,10 +133,8 @@ Deno.serve(async (req) => {
 
     const discordUser: DiscordUser = await userResponse.json();
 
-    // Save Discord user ID to user_profiles
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // First check if profile exists
     const { data: existingProfile } = await supabase
       .from("user_profiles")
       .select("id")
@@ -139,14 +143,12 @@ Deno.serve(async (req) => {
 
     let upsertError;
     if (existingProfile) {
-      // Update existing profile
       const { error } = await supabase
         .from("user_profiles")
         .update({ discord_user_id: discordUser.id })
         .eq("user_id", userId);
       upsertError = error;
     } else {
-      // Create new profile with Discord ID
       const { error } = await supabase
         .from("user_profiles")
         .insert({ user_id: userId, discord_user_id: discordUser.id });
@@ -160,7 +162,6 @@ Deno.serve(async (req) => {
 
     console.log(`Discord account ${discordUser.id} linked to user ${userId}`);
 
-    // Redirect back to the app with success
     const fullReturnUrl = returnUrl.startsWith("http") ? returnUrl : `${appOrigin}${returnUrl}`;
     return new Response(null, {
       status: 302,
@@ -172,22 +173,10 @@ Deno.serve(async (req) => {
     console.error("Discord OAuth callback error:", error);
     return redirectWithError((error as Error).message, undefined);
   }
-});
+};
 
-function redirectWithError(message: string, appOrigin: string | undefined): Response {
-  const encodedMessage = encodeURIComponent(message);
-  // If we have the app origin, redirect back to the app; otherwise show a simple error page
-  if (appOrigin) {
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `${appOrigin}/settings?discord_error=${encodedMessage}`,
-      },
-    });
-  }
-  // Fallback: display error directly (can't redirect without knowing the app origin)
-  return new Response(`Discord connection failed: ${message}. Please close this tab and try again.`, {
-    status: 400,
-    headers: { "Content-Type": "text/plain" },
-  });
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
 }

@@ -118,7 +118,7 @@ async function createForumThread(
   return { success: true, thread_id: thread.id };
 }
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -138,7 +138,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get library settings to find forum channel ID
     const { data: settings, error: settingsError } = await supabase
       .from("library_settings")
       .select("discord_events_channel_id, discord_notifications")
@@ -160,7 +159,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if notifications are enabled
     const notifications = (settings.discord_notifications as Record<string, boolean>) || {};
     if (event_type === "poll" && notifications.poll_created === false) {
       return new Response(
@@ -169,7 +167,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create the forum thread
     const result = await createForumThread(settings.discord_events_channel_id, {
       title,
       description,
@@ -189,7 +186,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If this is a standalone event, save the thread_id back to the event
     if (event_type === "standalone" && event_id && result.thread_id) {
       const { error: updateError } = await supabase
         .from("library_events")
@@ -198,7 +194,6 @@ Deno.serve(async (req) => {
       
       if (updateError) {
         console.error("Failed to save thread ID to event:", updateError);
-        // Don't fail the request, thread was created successfully
       }
     }
 
@@ -217,4 +212,10 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}

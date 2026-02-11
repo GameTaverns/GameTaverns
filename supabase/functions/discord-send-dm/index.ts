@@ -22,7 +22,7 @@ interface DMPayload {
   embed: DiscordEmbed;
 }
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -42,7 +42,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Look up Discord user ID from user profile
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     
     const { data: profile, error: profileError } = await supabase
@@ -66,7 +65,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create DM channel with user
     const channelResponse = await fetch("https://discord.com/api/v10/users/@me/channels", {
       method: "POST",
       headers: {
@@ -82,7 +80,6 @@ Deno.serve(async (req) => {
       const errorText = await channelResponse.text();
       console.error("Discord DM channel error:", errorText);
       
-      // User might have DMs disabled - don't treat as fatal error
       if (channelResponse.status === 403) {
         return new Response(
           JSON.stringify({ success: true, skipped: true, reason: "User has DMs disabled" }),
@@ -98,7 +95,6 @@ Deno.serve(async (req) => {
 
     const channel = await channelResponse.json();
 
-    // Send the message
     const messageResponse = await fetch(`https://discord.com/api/v10/channels/${channel.id}/messages`, {
       method: "POST",
       headers: {
@@ -114,8 +110,6 @@ Deno.serve(async (req) => {
       const errorText = await messageResponse.text();
       console.error("Discord message error:", errorText);
 
-      // Discord returns 50007 when the bot cannot DM the user (privacy settings / no shared server / blocked).
-      // This should not break app workflows, so treat it as a skipped notification.
       try {
         const parsed = JSON.parse(errorText) as { code?: number; message?: string };
         if (parsed?.code === 50007) {
@@ -129,7 +123,7 @@ Deno.serve(async (req) => {
           );
         }
       } catch {
-        // ignore parse errors and fall through to generic failure
+        // ignore parse errors
       }
 
       return new Response(
@@ -151,4 +145,10 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
