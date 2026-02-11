@@ -829,63 +829,75 @@ async function fetchBGGGalleryImages(
   returnDetailed = false
 ): Promise<string[] | GalleryResult> {
   try {
-    const apiUrl = `https://api.geekdo.com/api/images?ajax=1&gallery=all&nosession=1&objectid=${bggId}&objecttype=thing&pageid=1&showcount=50&sort=hot`;
+    // Fetch up to 2 pages to get a good mix of image types
+    const allCategorized: { url: string; priority: number; isBoxArt: boolean }[] = [];
+    const seen = new Set<string>();
     
-    console.log(`[BulkImport] Fetching gallery via BGG JSON API for BGG ID: ${bggId}`);
-    const res = await fetch(apiUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        "Accept": "application/json",
-        "Referer": "https://boardgamegeek.com/",
-      },
-    });
+    for (let page = 1; page <= 2; page++) {
+      const apiUrl = `https://api.geekdo.com/api/images?ajax=1&gallery=all&nosession=1&objectid=${bggId}&objecttype=thing&pageid=${page}&showcount=50&sort=hot`;
+      
+      console.log(`[BulkImport] Fetching gallery page ${page} via BGG JSON API for BGG ID: ${bggId}`);
+      const res = await fetch(apiUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "Accept": "application/json",
+          "Referer": "https://boardgamegeek.com/",
+        },
+      });
 
-    if (!res.ok) {
-      console.warn(`[BulkImport] BGG gallery API returned ${res.status} for ${bggId}`);
-      return returnDetailed ? { galleryImages: [], boxArtUrl: null } : [];
+      if (!res.ok) {
+        console.warn(`[BulkImport] BGG gallery API returned ${res.status} for ${bggId} page ${page}`);
+        break;
+      }
+
+      const data = await res.json();
+      const images = data?.images;
+      if (!Array.isArray(images) || images.length === 0) break;
+
+      for (const img of images) {
+        const url = img.imageurl_lg;
+        if (!url || typeof url !== "string") continue;
+        
+        const cleanUrl = url.replace(/\\\//g, "/");
+        const imageId = img.imageid || cleanUrl;
+        if (seen.has(imageId)) continue;
+        seen.add(imageId);
+        
+        if (/micro|thumb|avatar|_mt|_t$/i.test(cleanUrl)) continue;
+        
+        const href = (img.imagepagehref || "").toLowerCase();
+        const caption = (img.caption || "").toLowerCase();
+        let priority = 5;
+        let isBoxArt = false;
+        if (href.includes("/play") || caption.includes("play") || caption.includes("gameplay") || caption.includes("game session")) priority = 1;
+        else if (href.includes("/component") || caption.includes("component") || caption.includes("setup") || caption.includes("contents")) priority = 2;
+        else if (href.includes("/custom") || caption.includes("custom") || caption.includes("painted")) priority = 3;
+        else if (href.includes("/miscellaneous") || caption.includes("misc")) priority = 4;
+        else if (href.includes("/boxfront") || href.includes("/boxback") || caption.includes("box")) {
+          priority = 6;
+          isBoxArt = true;
+        }
+        
+        allCategorized.push({ url: cleanUrl, priority, isBoxArt });
+      }
+
+      // If page 1 gave us enough non-box-art images, skip page 2
+      const nonBoxCount = allCategorized.filter(c => !c.isBoxArt).length;
+      if (nonBoxCount >= maxImages) break;
+      
+      // Small delay between pages
+      await new Promise(r => setTimeout(r, 150));
     }
 
-    const data = await res.json();
-    const images = data?.images;
-    if (!Array.isArray(images) || images.length === 0) {
+    if (allCategorized.length === 0) {
       console.log(`[BulkImport] BGG gallery API returned no images for ${bggId}`);
       return returnDetailed ? { galleryImages: [], boxArtUrl: null } : [];
     }
 
-    const categorized: { url: string; priority: number; isBoxArt: boolean }[] = [];
-    const seen = new Set<string>();
-
-    for (const img of images) {
-      const url = img.imageurl_lg;
-      if (!url || typeof url !== "string") continue;
-      
-      const cleanUrl = url.replace(/\\\//g, "/");
-      const imageId = img.imageid || cleanUrl;
-      if (seen.has(imageId)) continue;
-      seen.add(imageId);
-      
-      if (/micro|thumb|avatar|_mt|_t$/i.test(cleanUrl)) continue;
-      
-      const href = (img.imagepagehref || "").toLowerCase();
-      const caption = (img.caption || "").toLowerCase();
-      let priority = 5;
-      let isBoxArt = false;
-      if (href.includes("/play") || caption.includes("play") || caption.includes("gameplay")) priority = 1;
-      else if (href.includes("/component") || caption.includes("component") || caption.includes("setup")) priority = 2;
-      else if (href.includes("/custom") || caption.includes("custom") || caption.includes("painted")) priority = 3;
-      else if (href.includes("/miscellaneous") || caption.includes("misc")) priority = 4;
-      else if (href.includes("/boxfront") || href.includes("/boxback") || caption.includes("box")) {
-        priority = 6;
-        isBoxArt = true;
-      }
-      
-      categorized.push({ url: cleanUrl, priority, isBoxArt });
-    }
-
-    categorized.sort((a, b) => a.priority - b.priority);
+    allCategorized.sort((a, b) => a.priority - b.priority);
     
-    const nonBoxArt = categorized.filter(c => !c.isBoxArt);
-    const boxArt = categorized.filter(c => c.isBoxArt);
+    const nonBoxArt = allCategorized.filter(c => !c.isBoxArt);
+    const boxArt = allCategorized.filter(c => c.isBoxArt);
     
     // For gallery: prefer gameplay/component shots, fill with box art if needed
     const selected = nonBoxArt.slice(0, maxImages);
@@ -1997,27 +2009,60 @@ export default async function handler(req: Request): Promise<Response> {
                         const baseTitle = gameData.title.replace(editionPatterns, "").replace(/[:\-–—]\s*$/, "").trim();
                         console.log(`[BulkImport] Edition detected, merging with base title: "${baseTitle}"`);
                         try {
-                          const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(baseTitle)}&type=boardgame&exact=1`;
-                          const searchRes = await fetch(searchUrl, {
-                            headers: { "User-Agent": "GameTaverns/1.0 (BGG Import)" },
-                          });
-                          if (searchRes.ok) {
-                            const searchXml = await searchRes.text();
-                            const idMatch = searchXml.match(/id="(\d+)"/);
-                            if (idMatch && idMatch[1] !== gameInput.bgg_id) {
-                              console.log(`[BulkImport] Found base game BGG ID: ${idMatch[1]}, fetching gallery`);
-                              const baseResult = await fetchBGGGalleryImages(idMatch[1], null, 5, true);
-                              if (baseResult.galleryImages.length > 0) {
-                                const existingSet = new Set(galleryImages);
-                                const newFromBase = baseResult.galleryImages.filter(u => !existingSet.has(u));
-                                galleryImages = [...galleryImages, ...newFromBase].slice(0, 5);
-                                console.log(`[BulkImport] Merged galleries: ${galleryImages.length} total (${newFromBase.length} added from base game)`);
+                          // Try exact match first, then fuzzy
+                          let baseGameId: string | null = null;
+                          for (const exact of [1, 0]) {
+                            const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(baseTitle)}&type=boardgame${exact ? "&exact=1" : ""}`;
+                            const searchRes = await fetch(searchUrl, {
+                              headers: { "User-Agent": "GameTaverns/1.0 (BGG Import)" },
+                            });
+                            if (searchRes.ok) {
+                              const searchXml = await searchRes.text();
+                              // For fuzzy search, find the result whose name best matches baseTitle
+                              const allIds = [...searchXml.matchAll(/id="(\d+)"/g)].map(m => m[1]);
+                              const allNames = [...searchXml.matchAll(/<name[^>]*value="([^"]+)"/g)].map(m => m[1]);
+                              
+                              if (exact && allIds.length > 0) {
+                                baseGameId = allIds[0] !== gameInput.bgg_id ? allIds[0] : null;
+                                break;
+                              } else if (!exact && allIds.length > 0) {
+                                // Find the closest name match that isn't this edition
+                                const baseLower = baseTitle.toLowerCase();
+                                let bestIdx = 0;
+                                let bestScore = 999;
+                                for (let i = 0; i < allNames.length && i < allIds.length; i++) {
+                                  if (allIds[i] === gameInput.bgg_id) continue;
+                                  const nameLower = allNames[i].toLowerCase();
+                                  // Prefer exact name match or shortest edit distance
+                                  const score = nameLower === baseLower ? 0 : Math.abs(nameLower.length - baseLower.length) + (nameLower.includes(baseLower) || baseLower.includes(nameLower) ? 0 : 50);
+                                  if (score < bestScore) {
+                                    bestScore = score;
+                                    bestIdx = i;
+                                  }
+                                }
+                                if (bestScore < 50 && allIds[bestIdx] !== gameInput.bgg_id) {
+                                  baseGameId = allIds[bestIdx];
+                                  console.log(`[BulkImport] Fuzzy matched base game: "${allNames[bestIdx]}" (BGG ID: ${baseGameId})`);
+                                }
                               }
-                              // If edition has no box art, use base game's box art
-                              if (!bestBoxArt && baseResult.boxArtUrl) {
-                                bestBoxArt = baseResult.boxArtUrl;
-                                console.log(`[BulkImport] Using base game box art as primary`);
-                              }
+                            }
+                            if (baseGameId) break;
+                            await new Promise(r => setTimeout(r, 200));
+                          }
+                          
+                          if (baseGameId) {
+                            console.log(`[BulkImport] Found base game BGG ID: ${baseGameId}, fetching gallery`);
+                            const baseResult = await fetchBGGGalleryImages(baseGameId, null, 5, true);
+                            if (baseResult.galleryImages.length > 0) {
+                              const existingSet = new Set(galleryImages);
+                              const newFromBase = baseResult.galleryImages.filter(u => !existingSet.has(u));
+                              galleryImages = [...galleryImages, ...newFromBase].slice(0, 8);
+                              console.log(`[BulkImport] Merged galleries: ${galleryImages.length} total (${newFromBase.length} added from base game)`);
+                            }
+                            // If edition has no box art, use base game's box art
+                            if (!bestBoxArt && baseResult.boxArtUrl) {
+                              bestBoxArt = baseResult.boxArtUrl;
+                              console.log(`[BulkImport] Using base game box art as primary`);
                             }
                           }
                         } catch (e) {
