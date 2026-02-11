@@ -226,21 +226,20 @@ async function fetchBGGDataFromXML(
   };
 
   const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
-  const maxAttempts = 6;
+  const jinaApiKey = Deno.env.get("JINA_API_KEY") || "";
+  const maxAttempts = 3; // Reduced since we have Jina fallback
 
-  // Try WITHOUT cookies first (the XML API is public), then WITH cookies as fallback
+  // Try direct BGG XML API first
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      // First attempt: no cookies (public API)
       const res = await fetch(xmlUrl, { headers: baseHeaders });
 
       if (!res.ok) {
         await res.text().catch(() => {});
-        console.warn(`[GameImport] BGG XML API returned ${res.status} for ${bggId} (attempt ${attempt}/${maxAttempts}, no cookie)`);
+        console.warn(`[GameImport] BGG XML API returned ${res.status} for ${bggId} (attempt ${attempt}/${maxAttempts})`);
         
-        // If public request fails with 401/403 and we have a cookie, try with it
+        // If 401/403, try with cookie
         if ((res.status === 401 || res.status === 403) && bggCookie) {
-          console.log(`[GameImport] Retrying BGG XML API WITH cookie for ${bggId}`);
           const cookieHeaders = { ...baseHeaders, Cookie: bggCookie };
           const retryRes = await fetch(xmlUrl, { headers: cookieHeaders });
           if (retryRes.ok) {
@@ -253,18 +252,14 @@ async function fetchBGGDataFromXML(
           }
         }
         
-        // Retry with backoff
         if (attempt < maxAttempts) {
-          const backoffMs = Math.min(1000 * attempt, 5000);
-          console.log(`[GameImport] Backing off ${backoffMs}ms (${attempt}/${maxAttempts})`);
-          await sleep(backoffMs);
+          await sleep(Math.min(1000 * attempt, 3000));
           continue;
         }
-        return { bgg_id: bggId };
+        break; // Fall through to Jina
       }
 
       const xml = await res.text();
-
       const retryable =
         xml.includes("Please try again later") ||
         xml.includes("Your request has been accepted") ||
@@ -272,24 +267,96 @@ async function fetchBGGDataFromXML(
         !xml.includes("<item");
 
       if (retryable && attempt < maxAttempts) {
-        const backoffMs = Math.min(750 * attempt, 4000);
-        console.log(`[GameImport] BGG XML not ready for ${bggId}, retrying (${attempt}/${maxAttempts}) in ${backoffMs}ms`);
-        await sleep(backoffMs);
+        await sleep(Math.min(750 * attempt, 3000));
         continue;
       }
 
-      return parseBggXml(xml, bggId);
+      if (!retryable) {
+        return parseBggXml(xml, bggId);
+      }
+      break; // Fall through to Jina
     } catch (e) {
       console.error("[GameImport] BGG XML error:", e);
       if (attempt < maxAttempts) {
-        const backoffMs = Math.min(750 * attempt, 4000);
-        await sleep(backoffMs);
+        await sleep(Math.min(750 * attempt, 3000));
         continue;
       }
-      return { bgg_id: bggId };
+      break;
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Jina proxy fallback: fetch BGG XML via Jina Reader (bypasses IP block)
+  // ---------------------------------------------------------------------------
+  console.log(`[GameImport] Direct BGG failed, trying Jina proxy for XML API (${bggId})`);
+  try {
+    const jinaHeaders: Record<string, string> = {
+      "Accept": "text/plain",
+      "X-Return-Format": "text",
+    };
+    if (jinaApiKey) {
+      jinaHeaders["Authorization"] = `Bearer ${jinaApiKey}`;
+    }
+    const jinaRes = await fetch(`https://r.jina.ai/${xmlUrl}`, { headers: jinaHeaders });
+    if (jinaRes.ok) {
+      const content = await jinaRes.text();
+      if (content.includes("<item")) {
+        console.log(`[GameImport] Jina proxy returned valid XML for ${bggId}`);
+        return parseBggXml(content, bggId);
+      }
+      console.warn(`[GameImport] Jina proxy returned content but no <item> tag`);
+    } else {
+      await jinaRes.text().catch(() => {});
+      console.warn(`[GameImport] Jina proxy returned ${jinaRes.status} for XML`);
+    }
+  } catch (jinaErr) {
+    console.error("[GameImport] Jina XML proxy error:", jinaErr);
+  }
+
+  // Try Jina to fetch the BGG HTML page (og:title/image extraction)
+  console.log(`[GameImport] Trying Jina proxy for BGG HTML page (${bggId})`);
+  try {
+    const bggPageUrl = `https://boardgamegeek.com/boardgame/${bggId}`;
+    const jinaHeaders: Record<string, string> = {
+      "Accept": "text/plain",
+      "X-Return-Format": "html",
+    };
+    if (jinaApiKey) {
+      jinaHeaders["Authorization"] = `Bearer ${jinaApiKey}`;
+    }
+    const jinaHtmlRes = await fetch(`https://r.jina.ai/${bggPageUrl}`, { headers: jinaHeaders });
+    if (jinaHtmlRes.ok) {
+      const html = await jinaHtmlRes.text();
+      const ogTitleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i) ||
+                           html.match(/<meta\s+content="([^"]+)"\s+property="og:title"/i);
+      const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
+                           html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i);
+      const ogDescMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i) ||
+                          html.match(/<meta\s+content="([^"]+)"\s+property="og:description"/i);
+      const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
+      const title = ogTitleMatch?.[1] || titleTagMatch?.[1]?.replace(/\s*\|.*$/, '').replace(/\s*\u2014.*$/, '').trim();
+      
+      if (title) {
+        console.log(`[GameImport] Jina HTML proxy got title: ${title}`);
+        const isExpansion = html.includes('boardgameexpansion');
+        return {
+          bgg_id: bggId,
+          title,
+          image_url: ogImageMatch?.[1],
+          description: ogDescMatch?.[1] || `${title} - imported from BoardGameGeek`,
+          is_expansion: isExpansion,
+        };
+      }
+      console.warn(`[GameImport] Jina HTML proxy returned no title`);
+    } else {
+      await jinaHtmlRes.text().catch(() => {});
+      console.warn(`[GameImport] Jina HTML proxy returned ${jinaHtmlRes.status}`);
+    }
+  } catch (jinaHtmlErr) {
+    console.error("[GameImport] Jina HTML proxy error:", jinaHtmlErr);
+  }
+
+  console.error(`[GameImport] All BGG data sources failed for ${bggId}`);
   return { bgg_id: bggId };
 }
 
