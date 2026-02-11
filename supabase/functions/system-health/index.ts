@@ -208,6 +208,7 @@ export default async function handler(req: Request): Promise<Response> {
       pingFunction(supabaseUrl, "Wishlist", "games", "wishlist"),
       pingFunction(supabaseUrl, "Game Recs", "games", "game-recommendations"),
       pingFunction(supabaseUrl, "Refresh Images", "games", "refresh-images"),
+      pingFunction(supabaseUrl, "Refresh Ratings", "games", "refresh-ratings"),
       pingFunction(supabaseUrl, "Condense Desc", "games", "condense-descriptions"),
 
       // Edge Functions - Social & Communication
