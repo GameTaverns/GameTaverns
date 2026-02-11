@@ -548,6 +548,111 @@ async function fetchBGGXMLData(bggId: string): Promise<{
     }
   }
 
+  // All direct BGG XML attempts failed — try Jina Reader proxy as fallback
+  // Jina proxies the request from a different IP, bypassing BGG's IP blocks
+  const jinaApiKey = Deno.env.get("JINA_API_KEY") || "";
+  if (jinaApiKey || true) {
+    // Try Jina even without key (lower rate limits but still works)
+    try {
+      console.log(`[BulkImport] Trying Jina Reader proxy for BGG XML: ${bggId}`);
+      const jinaHeaders: Record<string, string> = {
+        "Accept": "application/xml",
+        "X-Return-Format": "text",
+      };
+      if (jinaApiKey) {
+        jinaHeaders["Authorization"] = `Bearer ${jinaApiKey}`;
+      }
+
+      const jinaUrl = `https://r.jina.ai/${xmlUrl}`;
+      const jinaRes = await fetch(jinaUrl, { headers: jinaHeaders });
+
+      if (jinaRes.ok) {
+        const xml = await jinaRes.text();
+
+        if (xml.includes("<item") && !xml.includes("Please try again later")) {
+          // Parse exactly like the direct path above
+          const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+          const descMatch = xml.match(/<description[^>]*>([\s\S]*?)<\/description>/i);
+          const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
+          const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
+          const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
+          const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
+          const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
+          const typeMatch = xml.match(/<item[^>]*type="([^"]+)"/);
+          const isExpansion = typeMatch?.[1] === "boardgameexpansion";
+          const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
+          const mechanics = [...mechanicsMatches].map((m) => m[1]);
+          const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
+
+          let difficulty: string | undefined;
+          if (weightMatch) {
+            const w = parseFloat(weightMatch[1]);
+            if (w > 0) {
+              if (w < 1.5) difficulty = "1 - Light";
+              else if (w < 2.25) difficulty = "2 - Medium Light";
+              else if (w < 3.0) difficulty = "3 - Medium";
+              else if (w < 3.75) difficulty = "4 - Medium Heavy";
+              else difficulty = "5 - Heavy";
+            }
+          }
+
+          let play_time: string | undefined;
+          if (playTimeMatch) {
+            const minutes = parseInt(playTimeMatch[1], 10);
+            if (minutes <= 15) play_time = "0-15 Minutes";
+            else if (minutes <= 30) play_time = "15-30 Minutes";
+            else if (minutes <= 45) play_time = "30-45 Minutes";
+            else if (minutes <= 60) play_time = "45-60 Minutes";
+            else if (minutes <= 120) play_time = "60+ Minutes";
+            else if (minutes <= 180) play_time = "2+ Hours";
+            else play_time = "3+ Hours";
+          }
+
+          const decodeEntities = (input: string) =>
+            input
+              .replace(/&#10;/g, "\n")
+              .replace(/&amp;/g, "&")
+              .replace(/&lt;/g, "<")
+              .replace(/&gt;/g, ">")
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/&#(\d+);/g, (_m, code) => {
+                const n = Number(code);
+                return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+              });
+
+          let description: string | undefined;
+          if (descMatch && descMatch[1]) {
+            description = decodeEntities(descMatch[1]).trim();
+            if (description.length > 5000) description = description.slice(0, 5000);
+          }
+
+          console.log(`[BulkImport] Jina proxy SUCCESS for ${bggId}: desc=${description?.length || 0} chars, image=${!!imageMatch}`);
+
+          return {
+            bgg_id: bggId,
+            image_url: imageMatch?.[1],
+            description,
+            min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
+            max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
+            suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
+            play_time,
+            difficulty,
+            mechanics: mechanics.length > 0 ? mechanics : undefined,
+            publisher: publisherMatch?.[1],
+            is_expansion: isExpansion,
+          };
+        } else {
+          console.warn(`[BulkImport] Jina proxy returned non-BGG-XML content for ${bggId}`);
+        }
+      } else {
+        console.warn(`[BulkImport] Jina proxy returned ${jinaRes.status} for ${bggId}`);
+      }
+    } catch (e) {
+      console.warn(`[BulkImport] Jina proxy fallback failed for ${bggId}:`, e);
+    }
+  }
+
   return { bgg_id: bggId };
 }
 
