@@ -125,3 +125,12 @@ verify_jwt = false
 
 [functions.profile-update]
 verify_jwt = false
+
+[functions.bgg-play-import]
+verify_jwt = false
+
+[functions.clubs]
+verify_jwt = false
+
+[functions.notify-feedback]
+verify_jwt = false
