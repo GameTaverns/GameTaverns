@@ -1701,8 +1701,25 @@ export default async function handler(req: Request): Promise<Response> {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        let streamClosed = false;
         const sendProgress = (data: Record<string, unknown>) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          if (streamClosed) return;
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          } catch {
+            // Stream was closed by the client (timeout/disconnect) — continue processing silently
+            streamClosed = true;
+            console.log("[BulkImport] SSE stream closed by client, continuing import in background");
+          }
+        };
+        const closeStream = () => {
+          if (streamClosed) return;
+          try {
+            controller.close();
+          } catch {
+            // Already closed
+          }
+          streamClosed = true;
         };
 
         let imported = 0;
@@ -2937,7 +2954,7 @@ Rules:
           },
         });
 
-        controller.close();
+        closeStream();
       },
     });
 
