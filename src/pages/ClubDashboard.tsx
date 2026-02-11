@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
-  Calendar, Loader2, ExternalLink
+  Calendar, Loader2, ExternalLink, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,21 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useClub, useClubLibraries, useClubInviteCodes, useClubEvents,
   useGenerateInviteCode, useRemoveClubLibrary, useUpdateClub,
-  useCreateClubEvent, useDeleteClubEvent,
+  useCreateClubEvent, useDeleteClubEvent, useDeleteClub,
 } from "@/hooks/useClubs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +37,7 @@ export default function ClubDashboard() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { data: club, isLoading } = useClub(slug || null);
   const { data: libraries = [] } = useClubLibraries(club?.id || null);
   const { data: inviteCodes = [] } = useClubInviteCodes(club?.id || null);
@@ -37,8 +48,10 @@ export default function ClubDashboard() {
   const updateClub = useUpdateClub();
   const createEvent = useCreateClubEvent();
   const deleteEvent = useDeleteClubEvent();
+  const deleteClub = useDeleteClub();
 
   const [showEventDialog, setShowEventDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventLocation, setEventLocation] = useState("");
@@ -303,7 +316,7 @@ export default function ClubDashboard() {
           </TabsContent>
 
           {/* Settings */}
-          <TabsContent value="settings">
+          <TabsContent value="settings" className="space-y-6">
             <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream max-w-lg">
               <CardHeader>
                 <CardTitle className="font-display">Club Settings</CardTitle>
@@ -318,6 +331,68 @@ export default function ClubDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="bg-red-950/30 border-red-500/30 text-cream max-w-lg">
+              <CardHeader>
+                <CardTitle className="font-display text-red-400 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" /> Danger Zone
+                </CardTitle>
+                <CardDescription className="text-cream/60">
+                  Irreversible actions for this club.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-cream">Delete Club</p>
+                    <p className="text-xs text-cream/60">
+                      Permanently delete this club, all invite codes, events, and member associations.
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete "{club.name}"?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the club, all invite codes, events, and remove all member libraries. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={async () => {
+                      try {
+                        await deleteClub.mutateAsync(club.id);
+                        toast({ title: "Club deleted", description: `"${club.name}" has been permanently deleted.` });
+                        navigate("/dashboard?tab=clubs");
+                      } catch (e: any) {
+                        toast({ title: "Error", description: e.message, variant: "destructive" });
+                      }
+                    }}
+                    disabled={deleteClub.isPending}
+                  >
+                    {deleteClub.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Delete Permanently
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
         </Tabs>
       </main>

@@ -490,6 +490,34 @@ export default async function handler(req: Request): Promise<Response> {
         return json(enriched);
       }
 
+      // ── Delete club (owner or admin) ──
+      case "delete_club": {
+        const { club_id: delClubId } = body;
+        if (!delClubId) return json({ error: "club_id required" }, 400);
+
+        const { data: isDelOwner } = await supabase.rpc("is_club_owner", {
+          _user_id: user.id,
+          _club_id: delClubId,
+        });
+        const { data: isDelAdmin } = await supabase.rpc("has_role", {
+          _user_id: user.id,
+          _role: "admin",
+        });
+        if (!isDelOwner && !isDelAdmin)
+          return json({ error: "Not authorized" }, 403);
+
+        // Delete related data in order (invite codes, events, libraries, then club)
+        await supabase.from("club_invite_codes").delete().eq("club_id", delClubId);
+        await supabase.from("club_events").delete().eq("club_id", delClubId);
+        await supabase.from("club_libraries").delete().eq("club_id", delClubId);
+        // Delete forum categories scoped to this club
+        await supabase.from("forum_categories").delete().eq("club_id", delClubId);
+
+        const { error } = await supabase.from("clubs").delete().eq("id", delClubId);
+        if (error) throw error;
+        return json({ success: true });
+      }
+
       default:
         return json({ error: `Unknown action: ${action}` }, 400);
     }

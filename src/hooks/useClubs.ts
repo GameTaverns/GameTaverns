@@ -376,3 +376,15 @@ export function useDeleteClubEvent() {
     },
   });
 }
+
+export function useDeleteClub() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (club_id: string) =>
+      invokeClubs({ action: "delete_club", club_id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-clubs"] });
+      qc.invalidateQueries({ queryKey: ["public-clubs"] });
+    },
+  });
+}
