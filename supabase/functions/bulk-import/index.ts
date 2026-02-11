@@ -305,13 +305,20 @@ async function lookupBGGByTitle(
   publisher?: string;
 } | null> {
   try {
-    // BGG now requires authentication
+    // BGG now requires authentication - prefer session cookie over API token
+    const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
     const bggApiToken = Deno.env.get("BGG_API_TOKEN");
     const headers: Record<string, string> = {
-      "User-Agent": "GameTaverns/1.0 (Bulk Import)",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     };
-    if (bggApiToken) {
-      headers["Authorization"] = `Bearer ${bggApiToken}`;
+    if (bggCookie) {
+      headers["Cookie"] = bggCookie;
+    } else if (bggApiToken) {
+      if (bggApiToken.includes("=") || bggApiToken.includes("SessionID")) {
+        headers["Cookie"] = bggApiToken;
+      } else {
+        headers["Authorization"] = `Bearer ${bggApiToken}`;
+      }
     }
 
     const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(title)}&type=boardgame&exact=1`;
@@ -389,13 +396,20 @@ async function fetchBGGXMLData(bggId: string): Promise<{
   // In that case, you must retry the same request after a short delay.
   const maxAttempts = 6;
 
-  // BGG now requires authentication - use BGG_API_TOKEN if available
+  // BGG now requires authentication - prefer session cookie over API token
+  const bggCookie2 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
   const bggApiToken = Deno.env.get("BGG_API_TOKEN");
   const headers: Record<string, string> = {
-    "User-Agent": "GameTaverns/1.0 (Bulk Import)",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   };
-  if (bggApiToken) {
-    headers["Authorization"] = `Bearer ${bggApiToken}`;
+  if (bggCookie2) {
+    headers["Cookie"] = bggCookie2;
+  } else if (bggApiToken) {
+    if (bggApiToken.includes("=") || bggApiToken.includes("SessionID")) {
+      headers["Cookie"] = bggApiToken;
+    } else {
+      headers["Authorization"] = `Bearer ${bggApiToken}`;
+    }
   }
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -961,17 +975,23 @@ async function fetchBGGData(
 async function fetchBGGCollection(username: string): Promise<{ id: string; name: string }[]> {
   const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&excludesubtype=boardgameexpansion`;
   
-  // BGG now requires an API token for access
+  // BGG now requires authentication - prefer session cookie
+  const bggCookie3 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
   const bggToken = Deno.env.get("BGG_API_TOKEN");
   
   const headers: Record<string, string> = {
-    "User-Agent": "GameTaverns/1.0 (Collection Import)",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     "Accept": "application/xml",
   };
   
-  // Add authorization if token is configured
-  if (bggToken) {
-    headers["Authorization"] = `Bearer ${bggToken}`;
+  if (bggCookie3) {
+    headers["Cookie"] = bggCookie3;
+  } else if (bggToken) {
+    if (bggToken.includes("=") || bggToken.includes("SessionID")) {
+      headers["Cookie"] = bggToken;
+    } else {
+      headers["Authorization"] = `Bearer ${bggToken}`;
+    }
   }
   
   let attempts = 0;
@@ -1883,13 +1903,20 @@ export default async function handler(req: Request): Promise<Response> {
               // No BGG ID - try to look up by title using XML search
               console.log(`[BulkImport] Looking up BGG by title: ${gameData.title}`);
               try {
-                // BGG now requires authentication
-                const bggApiToken = Deno.env.get("BGG_API_TOKEN");
+                // BGG now requires authentication - prefer session cookie
+                const bggCookie4 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+                const bggApiToken4 = Deno.env.get("BGG_API_TOKEN");
                 const searchHeaders: Record<string, string> = {
-                  "User-Agent": "GameTaverns/1.0 (Bulk Import)",
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                 };
-                if (bggApiToken) {
-                  searchHeaders["Authorization"] = `Bearer ${bggApiToken}`;
+                if (bggCookie4) {
+                  searchHeaders["Cookie"] = bggCookie4;
+                } else if (bggApiToken4) {
+                  if (bggApiToken4.includes("=") || bggApiToken4.includes("SessionID")) {
+                    searchHeaders["Cookie"] = bggApiToken4;
+                  } else {
+                    searchHeaders["Authorization"] = `Bearer ${bggApiToken4}`;
+                  }
                 }
                 
                 const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(gameData.title)}&type=boardgame&exact=1`;
