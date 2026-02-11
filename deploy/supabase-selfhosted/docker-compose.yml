@@ -332,6 +332,8 @@ services:
       - /opt/gametaverns/supabase/functions:/home/deno/functions:ro
       # Mount Cloudflare Origin CA certificate for Deno TLS trust
       - /opt/gametaverns/cloudflare-origin-ca.pem:/etc/ssl/certs/cloudflare-origin-ca.pem:ro
+      # Persist Deno compiled module cache across container recreates
+      - deno_cache:/root/.cache/deno
     command:
       - start
       # Point to main/ directory which contains the router (index.ts)
@@ -344,7 +346,11 @@ services:
     # HTTP healthchecks fail. We disable the healthcheck here; Kong handles
     # upstream availability and Docker's restart policy recovers crashes.
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/ || exit 1"]
+      interval: 20s
+      timeout: 10s
+      start_period: 300s
+      retries: 30
     depends_on:
       db:
         condition: service_healthy
@@ -459,3 +465,4 @@ networks:
 volumes:
   db-data:
   storage-data:
+  deno_cache:
