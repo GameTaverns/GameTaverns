@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpDown, X, AlertTriangle } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, X, AlertTriangle } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
 
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/pagination";
 
 type SortOption = "title" | "difficulty" | "playtime" | "newest";
+type SortDir = "asc" | "desc";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -114,6 +115,7 @@ const Index = () => {
   const filter = searchParams.get("filter");
   const filterValue = searchParams.get("value");
   const sortBy = (searchParams.get("sort") as SortOption) || "title";
+  const sortDir = (searchParams.get("dir") as SortDir) || "asc";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
   
   // Combine loading states - show skeleton when relevant data is loading
@@ -269,21 +271,27 @@ const Index = () => {
     }
 
     // Sort
+    const dir = sortDir === "desc" ? -1 : 1;
     result.sort((a, b) => {
+      let cmp = 0;
       switch (sortBy) {
         case "difficulty":
-          return a.difficulty.localeCompare(b.difficulty);
+          cmp = a.difficulty.localeCompare(b.difficulty);
+          break;
         case "playtime":
-          return a.play_time.localeCompare(b.play_time);
+          cmp = a.play_time.localeCompare(b.play_time);
+          break;
         case "newest":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          cmp = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          break;
         default:
-          return a.title.localeCompare(b.title);
+          cmp = a.title.localeCompare(b.title);
       }
+      return cmp * dir;
     });
 
     return result;
-  }, [games, filter, filterValue, sortBy, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter]);
+  }, [games, filter, filterValue, sortBy, sortDir, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredGames.length / ITEMS_PER_PAGE);
@@ -377,8 +385,30 @@ const Index = () => {
           <div className="flex items-center gap-3">
 
             {/* Sort */}
-            <div className="flex items-center gap-2">
-              <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  const newParams = new URLSearchParams(searchParams);
+                  const newDir = sortDir === "asc" ? "desc" : "asc";
+                  if (newDir === "asc") {
+                    newParams.delete("dir");
+                  } else {
+                    newParams.set("dir", "desc");
+                  }
+                  newParams.delete("page");
+                  setSearchParams(newParams);
+                }}
+                title={sortDir === "asc" ? "Sorted A→Z (click to reverse)" : "Sorted Z→A (click to reverse)"}
+              >
+                {sortDir === "asc" ? (
+                  <ArrowUp className="h-4 w-4" />
+                ) : (
+                  <ArrowDown className="h-4 w-4" />
+                )}
+              </Button>
               <Select value={sortBy} onValueChange={handleSortChange}>
                 <SelectTrigger className="w-40 bg-card">
                   <SelectValue placeholder="Sort by" />
