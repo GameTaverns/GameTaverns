@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -24,11 +24,10 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Verify the user's token
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    
+
     const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
       return new Response(
@@ -37,7 +36,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use service role to check TOTP status
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: totpSettings, error: fetchError } = await adminClient
@@ -54,7 +52,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Count remaining backup codes
     let remainingBackupCodes = 0;
     if (totpSettings?.backup_codes_encrypted) {
       try {
@@ -63,15 +60,14 @@ Deno.serve(async (req) => {
       } catch {}
     }
 
-    // Check if within grace period (default 120 minutes = 2 hours)
     const GRACE_PERIOD_MINUTES = 120;
     let requiresVerification = true;
-    
+
     if (totpSettings?.is_enabled && totpSettings?.last_login_totp_verified_at) {
       const lastVerified = new Date(totpSettings.last_login_totp_verified_at);
       const now = new Date();
       const minutesSinceVerification = (now.getTime() - lastVerified.getTime()) / (1000 * 60);
-      
+
       if (minutesSinceVerification < GRACE_PERIOD_MINUTES) {
         requiresVerification = false;
       }
@@ -96,4 +92,10 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
