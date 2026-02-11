@@ -66,6 +66,7 @@ function parseBggXml(xml: string, bggId: string): {
   mechanics?: string[];
   publisher?: string;
   is_expansion?: boolean;
+  bgg_average_rating?: number;
 } {
   if (!xml.includes("<item")) return { bgg_id: bggId };
 
@@ -78,10 +79,16 @@ function parseBggXml(xml: string, bggId: string): {
   const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
   const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
   const typeMatch = xml.match(/<item[^>]*type="([^"]+)"/);
+  // BGG community average rating (inside <statistics><ratings><average value="X.XX"/>)
+  const avgRatingMatch = xml.match(/<average[^>]*value="([\d.]+)"/);
+  let bgg_average_rating: number | undefined;
+  if (avgRatingMatch) {
+    const r = parseFloat(avgRatingMatch[1]);
+    if (r > 0) bgg_average_rating = r;
+  }
   const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
   const mechanics = [...mechanicsMatches].map((m) => m[1]);
   const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
-
   let difficulty: string | undefined;
   if (weightMatch) {
     const w = parseFloat(weightMatch[1]);
@@ -127,7 +134,7 @@ function parseBggXml(xml: string, bggId: string): {
 
   const isExpansion = typeMatch?.[1] === "boardgameexpansion";
 
-  console.log(`[GameImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars, expansion=${isExpansion})`);
+  console.log(`[GameImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars, expansion=${isExpansion}, bgg_rating=${bgg_average_rating || 'N/A'})`);
 
   return {
     bgg_id: bggId,
@@ -142,6 +149,7 @@ function parseBggXml(xml: string, bggId: string): {
     mechanics: mechanics.length > 0 ? mechanics : undefined,
     publisher: publisherMatch?.[1],
     is_expansion: isExpansion,
+    bgg_average_rating,
   };
 }
 
@@ -160,6 +168,7 @@ async function fetchBGGDataFromXML(
   mechanics?: string[];
   publisher?: string;
   is_expansion?: boolean;
+  bgg_average_rating?: number;
 }> {
   const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || Deno.env.get("BGG_API_TOKEN") || "";
   const baseHeaders: Record<string, string> = {
@@ -796,6 +805,24 @@ export default async function handler(req: Request): Promise<Response> {
           mechanic_id: mechanicId,
         }));
         await supabaseAdmin.from("game_mechanics").insert(mechanicLinks);
+      }
+
+      // Insert BGG community rating mapped to 5-star scale
+      if (bggData.bgg_average_rating && bggData.bgg_average_rating > 0) {
+        const mapped5Star = Math.max(1, Math.min(5, Math.round(bggData.bgg_average_rating / 2)));
+        await supabaseAdmin
+          .from("game_ratings")
+          .upsert(
+            {
+              game_id: game.id,
+              rating: mapped5Star,
+              guest_identifier: "bgg-community",
+              ip_address: null,
+              device_fingerprint: null,
+            },
+            { onConflict: "game_id,guest_identifier" }
+          );
+        console.log(`[GameImport] Saved BGG rating ${bggData.bgg_average_rating}/10 → ${mapped5Star}/5 for "${game.title}"`);
       }
 
       console.log("Game imported successfully (fast path):", game.title);
@@ -1716,6 +1743,24 @@ ${markdown.slice(0, 18000)}`,
       }));
 
       await supabaseAdmin.from("game_mechanics").insert(mechanicLinks);
+    }
+
+    // Insert BGG community rating mapped to 5-star scale
+    if (bggData.bgg_average_rating && bggData.bgg_average_rating > 0) {
+      const mapped5Star = Math.max(1, Math.min(5, Math.round(bggData.bgg_average_rating / 2)));
+      await supabaseAdmin
+        .from("game_ratings")
+        .upsert(
+          {
+            game_id: game.id,
+            rating: mapped5Star,
+            guest_identifier: "bgg-community",
+            ip_address: null,
+            device_fingerprint: null,
+          },
+          { onConflict: "game_id,guest_identifier" }
+        );
+      console.log(`[GameImport] Saved BGG rating ${bggData.bgg_average_rating}/10 → ${mapped5Star}/5 for "${game.title}"`);
     }
 
     console.log("Game imported successfully:", game.title);
