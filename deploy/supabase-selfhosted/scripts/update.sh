@@ -116,6 +116,7 @@ EXTERNAL_HANDLERS=(
   resolve-username sync-achievements
   discord-notify discord-create-event discord-forum-post
   discord-delete-thread discord-oauth-callback discord-send-dm
+  system-health
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   if [ -d "$FUNCTIONS_DIR/$handler" ]; then
