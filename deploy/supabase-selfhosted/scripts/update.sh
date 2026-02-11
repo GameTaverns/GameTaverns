@@ -98,6 +98,27 @@ echo "Restarting services..."
 dcp up -d
 
 echo ""
+echo "Syncing external handlers into main/ for edge-runtime sandbox..."
+FUNCTIONS_DIR="$INSTALL_DIR/supabase/functions"
+MAIN_DIR="$FUNCTIONS_DIR/main"
+# List of external handler directories that the main router imports
+EXTERNAL_HANDLERS=(
+  bgg-import bgg-lookup bgg-play-import bgg-sync bgg-sync-cron
+  bulk-import clubs condense-descriptions decrypt-messages
+  game-import library-settings membership my-inquiries
+  notify-feedback profile-update reply-to-inquiry
+  send-auth-email send-inquiry-reply send-message
+  verify-email verify-reset-token _shared
+)
+for handler in "${EXTERNAL_HANDLERS[@]}"; do
+  if [ -d "$FUNCTIONS_DIR/$handler" ]; then
+    rm -rf "$MAIN_DIR/$handler"
+    cp -r "$FUNCTIONS_DIR/$handler" "$MAIN_DIR/$handler"
+  fi
+done
+echo -e "${GREEN}Synced ${#EXTERNAL_HANDLERS[@]} handler directories into main/${NC}"
+
+echo ""
 echo "Recreating Edge Functions container (clears Deno cache)..."
 dcp up -d --force-recreate --no-deps functions
 
