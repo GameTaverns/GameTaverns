@@ -147,7 +147,7 @@ function ChipFilterSection({
   defaultOpen?: boolean;
 }) {
   return (
-    <Collapsible defaultOpen={defaultOpen} className="mt-4">
+    <Collapsible defaultOpen={defaultOpen}>
       <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
         <span className="flex items-center gap-2">
           {icon}
@@ -463,8 +463,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
         </div>
 
         <ScrollArea className="flex-1 px-4 py-6">
-          {/* Main Navigation */}
-          <nav className="space-y-2">
+          {/* Always-visible navigation */}
+          <nav className="space-y-1">
             <Link
               to={libraryBaseUrl}
               className={cn(
@@ -475,38 +475,6 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <Library className="h-5 w-5" />
               <span>Full Collection</span>
             </Link>
-            <button
-              onClick={() => handleFilterClick("status", "favorites")}
-              className={cn(
-                "sidebar-link w-full text-left",
-                isActive("status", "favorites") && "sidebar-link-active"
-              )}
-            >
-              <Star className="h-5 w-5" />
-              <span>Favorites</span>
-            </button>
-            <button
-              onClick={() => handleFilterClick("status", "top-rated")}
-              className={cn(
-                "sidebar-link w-full text-left",
-                isActive("status", "top-rated") && "sidebar-link-active"
-              )}
-            >
-              <TrendingUp className="h-5 w-5" />
-              <span>Top Rated</span>
-            </button>
-            {wishlist && (
-              <button
-                onClick={() => handleFilterClick("status", "wishlist")}
-                className={cn(
-                  "sidebar-link w-full text-left",
-                  isActive("status", "wishlist") && "sidebar-link-active"
-                )}
-              >
-                <Heart className="h-5 w-5" />
-                <span>Most Wanted</span>
-              </button>
-            )}
             {comingSoon && (
               <button
                 onClick={() => handleFilterClick("status", "coming-soon")}
@@ -531,8 +499,6 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 <span>For Sale</span>
               </button>
             )}
-            
-            {/* Library Directory - only show when not in tenant mode */}
             {!isTenantMode && (
               <Link
                 to="/directory"
@@ -547,94 +513,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
             )}
           </nav>
 
-          {/* Upcoming Events - Only in tenant mode when library exists and events feature enabled */}
+          {/* Upcoming Events */}
           {isTenantMode && library && events && <SidebarUpcomingEvents libraryId={library.id} />}
 
-          {/* Player Count - compact chips */}
-          <ChipFilterSection
-            title="Players"
-            icon={<Users className="h-4 w-4" />}
-            options={["1 Player", "2 Players", "3-4 Players", "5-6 Players", "7+ Players"]}
-            filterKey="players"
-            isActive={isActive}
-            onFilterClick={handleFilterClick}
-            defaultOpen={currentFilter === "players"}
-          />
-
-          {/* Difficulty - compact chips */}
-          <ChipFilterSection
-            title="Difficulty"
-            icon={<Gauge className="h-4 w-4" />}
-            options={DIFFICULTY_OPTIONS}
-            filterKey="difficulty"
-            isActive={isActive}
-            onFilterClick={handleFilterClick}
-            defaultOpen={currentFilter === "difficulty"}
-          />
-
-          {/* Play Time - compact chips */}
-          <ChipFilterSection
-            title="Play Time"
-            icon={<Clock className="h-4 w-4" />}
-            options={PLAY_TIME_OPTIONS}
-            filterKey="playtime"
-            isActive={isActive}
-            onFilterClick={handleFilterClick}
-            defaultOpen={currentFilter === "playtime"}
-          />
-
-          {/* Game Type - compact chips */}
-          <ChipFilterSection
-            title="Type"
-            icon={<Gamepad2 className="h-4 w-4" />}
-            options={GAME_TYPE_OPTIONS}
-            filterKey="type"
-            isActive={isActive}
-            onFilterClick={handleFilterClick}
-            defaultOpen={currentFilter === "type"}
-          />
-
-          {/* Genre - compact chips */}
-          <ChipFilterSection
-            title="Genre"
-            icon={<Wand2 className="h-4 w-4" />}
-            options={GENRE_OPTIONS}
-            filterKey="genre"
-            isActive={isActive}
-            onFilterClick={handleFilterClick}
-            defaultOpen={currentFilter === "genre"}
-          />
-
-          {/* Mechanics - grouped by category */}
-          <FilterSection title="Mechanics" icon={<Puzzle className="h-4 w-4" />} defaultOpen={currentFilter === "mechanic"}>
-            <MechanicsFilter
-              mechanics={mechanics}
-              isActive={isActive}
-              onFilterClick={handleFilterClick}
-            />
-          </FilterSection>
-
-          {/* Publishers */}
-          <FilterSection title="Publishers" icon={<Building2 className="h-4 w-4" />} defaultOpen={currentFilter === "publisher"}>
-            <div className="max-h-40 overflow-y-auto px-2">
-              {publishers.map((pub) => (
-                <button
-                  key={pub.id}
-                  onClick={() => handleFilterClick("publisher", pub.name)}
-                  className={cn(
-                    "sidebar-link text-xs w-full text-left py-1",
-                    isActive("publisher", pub.name) && "sidebar-link-active"
-                  )}
-                >
-                  {pub.name}
-                </button>
-              ))}
+          {/* A-Z Filter - always visible */}
+          <div className="mt-4">
+            <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 flex items-center gap-2">
+              <ALargeSmall className="h-4 w-4" />
+              A-Z
             </div>
-          </FilterSection>
-
-          {/* A-Z Filter - compact grid */}
-          <FilterSection title="A-Z" icon={<ALargeSmall className="h-4 w-4" />} defaultOpen={currentFilter === "letter"}>
-            <div className="grid grid-cols-7 gap-0.5 px-3">
+            <div className="grid grid-cols-7 gap-0.5 px-3 mt-0.5">
               {"ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("").map((letter) => (
                 <button
                   key={letter}
@@ -642,8 +530,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
                   className={cn(
                     "flex items-center justify-center h-7 w-7 rounded text-xs font-medium transition-colors",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    isActive("letter", letter) 
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground" 
+                    isActive("letter", letter)
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
                       : "text-sidebar-foreground/70"
                   )}
                 >
@@ -651,7 +539,154 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 </button>
               ))}
             </div>
-          </FilterSection>
+          </div>
+
+          <div className="mt-3 border-t border-sidebar-border/50" />
+
+          {/* ── Category 1: Highlights ── */}
+          <Collapsible defaultOpen className="mt-3">
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+              <span className="flex items-center gap-2">
+                <Star className="h-4 w-4" />
+                Highlights
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <nav className="space-y-0.5 px-1">
+                <button
+                  onClick={() => handleFilterClick("status", "favorites")}
+                  className={cn(
+                    "sidebar-link w-full text-left text-sm",
+                    isActive("status", "favorites") && "sidebar-link-active"
+                  )}
+                >
+                  <Star className="h-4 w-4" />
+                  <span>Favorites</span>
+                </button>
+                <button
+                  onClick={() => handleFilterClick("status", "top-rated")}
+                  className={cn(
+                    "sidebar-link w-full text-left text-sm",
+                    isActive("status", "top-rated") && "sidebar-link-active"
+                  )}
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  <span>Top Rated</span>
+                </button>
+                {wishlist && (
+                  <button
+                    onClick={() => handleFilterClick("status", "wishlist")}
+                    className={cn(
+                      "sidebar-link w-full text-left text-sm",
+                      isActive("status", "wishlist") && "sidebar-link-active"
+                    )}
+                  >
+                    <Heart className="h-4 w-4" />
+                    <span>Most Wanted</span>
+                  </button>
+                )}
+              </nav>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* ── Category 2: Game Specs ── */}
+          <Collapsible defaultOpen={["players","difficulty","playtime"].includes(currentFilter || "")} className="mt-1">
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+              <span className="flex items-center gap-2">
+                <Gamepad2 className="h-4 w-4" />
+                Game Specs
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-2 pt-1">
+                <ChipFilterSection
+                  title="Players"
+                  icon={<Users className="h-3.5 w-3.5" />}
+                  options={["1 Player", "2 Players", "3-4 Players", "5-6 Players", "7+ Players"]}
+                  filterKey="players"
+                  isActive={isActive}
+                  onFilterClick={handleFilterClick}
+                  defaultOpen={currentFilter === "players"}
+                />
+                <ChipFilterSection
+                  title="Difficulty"
+                  icon={<Gauge className="h-3.5 w-3.5" />}
+                  options={DIFFICULTY_OPTIONS}
+                  filterKey="difficulty"
+                  isActive={isActive}
+                  onFilterClick={handleFilterClick}
+                  defaultOpen={currentFilter === "difficulty"}
+                />
+                <ChipFilterSection
+                  title="Play Time"
+                  icon={<Clock className="h-3.5 w-3.5" />}
+                  options={PLAY_TIME_OPTIONS}
+                  filterKey="playtime"
+                  isActive={isActive}
+                  onFilterClick={handleFilterClick}
+                  defaultOpen={currentFilter === "playtime"}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* ── Category 3: More Filters ── */}
+          <Collapsible defaultOpen={["type","genre","mechanic","publisher"].includes(currentFilter || "")} className="mt-1">
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+              <span className="flex items-center gap-2">
+                <Puzzle className="h-4 w-4" />
+                More Filters
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-2 pt-1">
+                <ChipFilterSection
+                  title="Type"
+                  icon={<Gamepad2 className="h-3.5 w-3.5" />}
+                  options={GAME_TYPE_OPTIONS}
+                  filterKey="type"
+                  isActive={isActive}
+                  onFilterClick={handleFilterClick}
+                  defaultOpen={currentFilter === "type"}
+                />
+                <ChipFilterSection
+                  title="Genre"
+                  icon={<Wand2 className="h-3.5 w-3.5" />}
+                  options={GENRE_OPTIONS}
+                  filterKey="genre"
+                  isActive={isActive}
+                  onFilterClick={handleFilterClick}
+                  defaultOpen={currentFilter === "genre"}
+                />
+                <FilterSection title="Mechanics" icon={<Puzzle className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "mechanic"}>
+                  <MechanicsFilter
+                    mechanics={mechanics}
+                    isActive={isActive}
+                    onFilterClick={handleFilterClick}
+                  />
+                </FilterSection>
+                <FilterSection title="Publishers" icon={<Building2 className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "publisher"}>
+                  <div className="max-h-40 overflow-y-auto px-2">
+                    {publishers.map((pub) => (
+                      <button
+                        key={pub.id}
+                        onClick={() => handleFilterClick("publisher", pub.name)}
+                        className={cn(
+                          "sidebar-link text-xs w-full text-left py-1",
+                          isActive("publisher", pub.name) && "sidebar-link-active"
+                        )}
+                      >
+                        {pub.name}
+                      </button>
+                    ))}
+                  </div>
+                </FilterSection>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </ScrollArea>
 
         {/* User Section - Only show when authenticated */}
