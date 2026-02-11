@@ -128,15 +128,25 @@ export default async function handler(req: Request): Promise<Response> {
     const body = await req.json().catch(() => ({}));
     const libraryId = body.library_id || library.id;
     const limit = body.limit || 50; // Process in batches
+    const fixOpengraph = body.fix_opengraph !== false; // Default: also fix opengraph images
 
-    // Find games with bgg_url but no image_url
-    const { data: games, error: gamesError } = await supabaseAdmin
+    // Find games that need image fixes:
+    // 1. Games with bgg_url but no image_url (original behavior)
+    // 2. Games with low-quality opengraph images (new behavior)
+    let query = supabaseAdmin
       .from("games")
-      .select("id, title, bgg_url")
+      .select("id, title, bgg_url, bgg_id, image_url")
       .eq("library_id", libraryId)
-      .not("bgg_url", "is", null)
-      .is("image_url", null)
-      .limit(limit);
+      .not("bgg_url", "is", null);
+
+    if (fixOpengraph) {
+      // Get games with missing OR opengraph images
+      query = query.or("image_url.is.null,image_url.ilike.%__opengraph%,image_url.ilike.%fit-in/1200x630%");
+    } else {
+      query = query.is("image_url", null);
+    }
+
+    const { data: games, error: gamesError } = await query.limit(limit);
 
     if (gamesError) {
       return new Response(
@@ -159,9 +169,39 @@ export default async function handler(req: Request): Promise<Response> {
     const results: { title: string; status: string }[] = [];
 
     for (const game of games) {
-      if (!game.bgg_url) continue;
+      if (!game.bgg_url && !game.bgg_id) continue;
 
-      const imageUrl = await fetchBGGImage(game.bgg_url);
+      // Extract BGG ID from URL or use stored bgg_id
+      const bggId = game.bgg_id || game.bgg_url?.match(/boardgame(?:expansion)?\/(\d+)/)?.[1];
+      if (!bggId) {
+        failed++;
+        results.push({ title: game.title, status: "no_bgg_id" });
+        continue;
+      }
+
+      // Use BGG thing XML API (fast, returns canonical high-quality image URL)
+      let imageUrl: string | null = null;
+      try {
+        const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}`;
+        const res = await fetch(xmlUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/xml",
+          },
+        });
+        if (res.ok) {
+          const xml = await res.text();
+          const imgMatch = xml.match(/<image>([^<]+)<\/image>/);
+          imageUrl = imgMatch?.[1] || null;
+        }
+      } catch (e) {
+        console.error(`Failed to fetch thing XML for ${bggId}:`, e);
+      }
+
+      // Fallback to page scraping if XML failed
+      if (!imageUrl) {
+        imageUrl = await fetchBGGImage(game.bgg_url || `https://boardgamegeek.com/boardgame/${bggId}`);
+      }
       
       if (imageUrl) {
         const { error: updateError } = await supabaseAdmin
@@ -188,12 +228,19 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // Check if there are more games to process
-    const { count: remaining } = await supabaseAdmin
+    let remainingQuery = supabaseAdmin
       .from("games")
       .select("id", { count: "exact", head: true })
       .eq("library_id", libraryId)
-      .not("bgg_url", "is", null)
-      .is("image_url", null);
+      .not("bgg_url", "is", null);
+
+    if (fixOpengraph) {
+      remainingQuery = remainingQuery.or("image_url.is.null,image_url.ilike.%__opengraph%,image_url.ilike.%fit-in/1200x630%");
+    } else {
+      remainingQuery = remainingQuery.is("image_url", null);
+    }
+
+    const { count: remaining } = await remainingQuery;
 
     return new Response(
       JSON.stringify({
