@@ -3,6 +3,7 @@ import { useLending } from "@/hooks/useLending";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/backend/client";
 import { useQuery } from "@tanstack/react-query";
+import { useLibraryMembership } from "@/hooks/useLibraryMembership";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,6 +38,7 @@ export function RequestLoanButton({
 }: RequestLoanButtonProps) {
   const { user } = useAuth();
   const { requestLoan, checkGameAvailability, joinWaitlist } = useLending();
+  const { isMember, checkingMembership } = useLibraryMembership(libraryId);
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [isChecking, setIsChecking] = useState(false);
@@ -58,8 +60,12 @@ export function RequestLoanButton({
       });
   }, [user]);
 
-  // Don't show if lending is disabled or user is the owner
-  if (!allowLending || (user && user.id === lenderUserId)) {
+  // Don't show if lending is disabled, user is the owner, or user is not a member
+  if (!allowLending || (user && user.id === lenderUserId) || checkingMembership) {
+    return null;
+  }
+
+  if (!isMember) {
     return null;
   }
 
