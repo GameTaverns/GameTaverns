@@ -1,7 +1,8 @@
 // Main router for self-hosted deployments
 // ARCHITECTURE: This is a thin dispatcher that lazy-imports all handlers on demand.
-// This prevents the edge-runtime from compiling 3000+ lines at cold boot.
-// Each handler is only compiled when its route is first requested.
+// Uses string-literal dynamic imports because edge-runtime's --main-service sandbox
+// blocks variable-path imports. External handler directories must be physically
+// present inside main/ (copied by update.sh's sync step).
 // For Lovable Cloud, each function is deployed independently.
 
 const corsHeaders = {
@@ -13,35 +14,28 @@ const corsHeaders = {
 // Handler cache: once a module is dynamically imported, we keep the reference
 const handlerCache = new Map<string, (req: Request) => Promise<Response> | Response>();
 
-// Map of function names to their dynamic import paths
-// "external" = separate file under ../function-name/index.ts (has default export)
-// "inlined"  = exported from ./handlers.ts
-// Resolve sibling function paths as absolute file:// URLs
-// (edge-runtime --main-service restricts relative dynamic imports)
-function siblingUrl(name: string): string {
-  return new URL(`../${name}/index.ts`, import.meta.url).href;
-}
-
-const EXTERNAL_HANDLERS: Record<string, string> = {
-  "bgg-lookup": siblingUrl("bgg-lookup"),
-  "bgg-play-import": siblingUrl("bgg-play-import"),
-  "bgg-sync": siblingUrl("bgg-sync"),
-  "bgg-sync-cron": siblingUrl("bgg-sync-cron"),
-  "bulk-import": siblingUrl("bulk-import"),
-  "clubs": siblingUrl("clubs"),
-  "verify-email": siblingUrl("verify-email"),
-  "verify-reset-token": siblingUrl("verify-reset-token"),
-  "send-auth-email": siblingUrl("send-auth-email"),
-  "send-message": siblingUrl("send-message"),
-  "my-inquiries": siblingUrl("my-inquiries"),
-  "reply-to-inquiry": siblingUrl("reply-to-inquiry"),
-  "send-inquiry-reply": siblingUrl("send-inquiry-reply"),
-  "condense-descriptions": siblingUrl("condense-descriptions"),
-  "decrypt-messages": siblingUrl("decrypt-messages"),
-  "membership": siblingUrl("membership"),
-  "library-settings": siblingUrl("library-settings"),
-  "profile-update": siblingUrl("profile-update"),
-  "notify-feedback": siblingUrl("notify-feedback"),
+// Each import MUST be a string literal for edge-runtime sandbox compatibility.
+// Variable-path imports (e.g. import(someVar)) are blocked by the sandbox.
+const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request) => Promise<Response> | Response }>> = {
+  "bgg-lookup":             () => import("./bgg-lookup/index.ts"),
+  "bgg-play-import":        () => import("./bgg-play-import/index.ts"),
+  "bgg-sync":               () => import("./bgg-sync/index.ts"),
+  "bgg-sync-cron":          () => import("./bgg-sync-cron/index.ts"),
+  "bulk-import":            () => import("./bulk-import/index.ts"),
+  "clubs":                  () => import("./clubs/index.ts"),
+  "verify-email":           () => import("./verify-email/index.ts"),
+  "verify-reset-token":     () => import("./verify-reset-token/index.ts"),
+  "send-auth-email":        () => import("./send-auth-email/index.ts"),
+  "send-message":           () => import("./send-message/index.ts"),
+  "my-inquiries":           () => import("./my-inquiries/index.ts"),
+  "reply-to-inquiry":       () => import("./reply-to-inquiry/index.ts"),
+  "send-inquiry-reply":     () => import("./send-inquiry-reply/index.ts"),
+  "condense-descriptions":  () => import("./condense-descriptions/index.ts"),
+  "decrypt-messages":       () => import("./decrypt-messages/index.ts"),
+  "membership":             () => import("./membership/index.ts"),
+  "library-settings":       () => import("./library-settings/index.ts"),
+  "profile-update":         () => import("./profile-update/index.ts"),
+  "notify-feedback":        () => import("./notify-feedback/index.ts"),
 };
 
 // These are exported from handlers.ts by name
@@ -71,8 +65,8 @@ async function getHandler(functionName: string): Promise<((req: Request) => Prom
   // Special case: bgg-import and game-import need wiring
   if (BGG_GAME_IMPORT_NAMES.includes(functionName)) {
     const [bggMod, gameMod] = await Promise.all([
-      import(siblingUrl("bgg-import")),
-      import(siblingUrl("game-import")),
+      import("./bgg-import/index.ts"),
+      import("./game-import/index.ts"),
     ]);
     // Wire bgg-import to call game-import directly (avoids HTTP proxy deadlock)
     if (bggMod.setGameImportHandler) {
@@ -83,9 +77,10 @@ async function getHandler(functionName: string): Promise<((req: Request) => Prom
     return handlerCache.get(functionName)!;
   }
 
-  // External handlers (separate files with default export)
-  if (EXTERNAL_HANDLERS[functionName]) {
-    const mod = await import(EXTERNAL_HANDLERS[functionName]);
+  // External handlers (string-literal imports via thunks)
+  const importer = EXTERNAL_IMPORTERS[functionName];
+  if (importer) {
+    const mod = await importer();
     handlerCache.set(functionName, mod.default);
     return mod.default;
   }
@@ -108,7 +103,7 @@ async function getHandler(functionName: string): Promise<((req: Request) => Prom
 
 const ALL_FUNCTIONS = [
   ...BGG_GAME_IMPORT_NAMES,
-  ...Object.keys(EXTERNAL_HANDLERS),
+  ...Object.keys(EXTERNAL_IMPORTERS),
   ...INLINED_HANDLER_NAMES,
 ];
 
