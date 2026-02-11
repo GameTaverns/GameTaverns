@@ -16,26 +16,32 @@ const handlerCache = new Map<string, (req: Request) => Promise<Response> | Respo
 // Map of function names to their dynamic import paths
 // "external" = separate file under ../function-name/index.ts (has default export)
 // "inlined"  = exported from ./handlers.ts
+// Resolve sibling function paths as absolute file:// URLs
+// (edge-runtime --main-service restricts relative dynamic imports)
+function siblingUrl(name: string): string {
+  return new URL(`../${name}/index.ts`, import.meta.url).href;
+}
+
 const EXTERNAL_HANDLERS: Record<string, string> = {
-  "bgg-lookup": "../bgg-lookup/index.ts",
-  "bgg-play-import": "../bgg-play-import/index.ts",
-  "bgg-sync": "../bgg-sync/index.ts",
-  "bgg-sync-cron": "../bgg-sync-cron/index.ts",
-  "bulk-import": "../bulk-import/index.ts",
-  "clubs": "../clubs/index.ts",
-  "verify-email": "../verify-email/index.ts",
-  "verify-reset-token": "../verify-reset-token/index.ts",
-  "send-auth-email": "../send-auth-email/index.ts",
-  "send-message": "../send-message/index.ts",
-  "my-inquiries": "../my-inquiries/index.ts",
-  "reply-to-inquiry": "../reply-to-inquiry/index.ts",
-  "send-inquiry-reply": "../send-inquiry-reply/index.ts",
-  "condense-descriptions": "../condense-descriptions/index.ts",
-  "decrypt-messages": "../decrypt-messages/index.ts",
-  "membership": "../membership/index.ts",
-  "library-settings": "../library-settings/index.ts",
-  "profile-update": "../profile-update/index.ts",
-  "notify-feedback": "../notify-feedback/index.ts",
+  "bgg-lookup": siblingUrl("bgg-lookup"),
+  "bgg-play-import": siblingUrl("bgg-play-import"),
+  "bgg-sync": siblingUrl("bgg-sync"),
+  "bgg-sync-cron": siblingUrl("bgg-sync-cron"),
+  "bulk-import": siblingUrl("bulk-import"),
+  "clubs": siblingUrl("clubs"),
+  "verify-email": siblingUrl("verify-email"),
+  "verify-reset-token": siblingUrl("verify-reset-token"),
+  "send-auth-email": siblingUrl("send-auth-email"),
+  "send-message": siblingUrl("send-message"),
+  "my-inquiries": siblingUrl("my-inquiries"),
+  "reply-to-inquiry": siblingUrl("reply-to-inquiry"),
+  "send-inquiry-reply": siblingUrl("send-inquiry-reply"),
+  "condense-descriptions": siblingUrl("condense-descriptions"),
+  "decrypt-messages": siblingUrl("decrypt-messages"),
+  "membership": siblingUrl("membership"),
+  "library-settings": siblingUrl("library-settings"),
+  "profile-update": siblingUrl("profile-update"),
+  "notify-feedback": siblingUrl("notify-feedback"),
 };
 
 // These are exported from handlers.ts by name
@@ -65,8 +71,8 @@ async function getHandler(functionName: string): Promise<((req: Request) => Prom
   // Special case: bgg-import and game-import need wiring
   if (BGG_GAME_IMPORT_NAMES.includes(functionName)) {
     const [bggMod, gameMod] = await Promise.all([
-      import("../bgg-import/index.ts"),
-      import("../game-import/index.ts"),
+      import(siblingUrl("bgg-import")),
+      import(siblingUrl("game-import")),
     ]);
     // Wire bgg-import to call game-import directly (avoids HTTP proxy deadlock)
     if (bggMod.setGameImportHandler) {
