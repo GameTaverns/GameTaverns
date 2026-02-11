@@ -1617,8 +1617,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (jobError || !job) {
       console.error(`[BulkImport] Failed to create import job:`, jobError);
+      const detail = jobError?.message || jobError?.code || "Unknown database error";
       return new Response(
-        JSON.stringify({ success: false, error: "Failed to create import job" }),
+        JSON.stringify({ success: false, error: `Failed to create import job: ${detail}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
