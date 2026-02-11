@@ -219,59 +219,45 @@ async function fetchBGGDataFromXML(
   publisher?: string;
   is_expansion?: boolean;
 }> {
-  const bggApiToken = Deno.env.get("BGG_API_TOKEN");
-  const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
-  const headers: Record<string, string> = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" };
-  if (bggCookie) {
-    headers["Cookie"] = bggCookie;
-  } else if (bggApiToken) {
-    // Legacy: try as cookie value if it looks like one, otherwise as Authorization
-    if (bggApiToken.includes("=") || bggApiToken.includes("SessionID")) {
-      headers["Cookie"] = bggApiToken;
-    } else {
-      headers["Authorization"] = `Bearer ${bggApiToken}`;
-    }
-  }
+  const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || Deno.env.get("BGG_API_TOKEN") || "";
+  const baseHeaders: Record<string, string> = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "application/xml, text/xml, */*",
+  };
 
   const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
   const maxAttempts = 6;
 
+  // Try WITHOUT cookies first (the XML API is public), then WITH cookies as fallback
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const res = await fetch(xmlUrl, { headers });
+      // First attempt: no cookies (public API)
+      const res = await fetch(xmlUrl, { headers: baseHeaders });
 
       if (!res.ok) {
-        // Always consume the response body to prevent Deno resource leaks
         await res.text().catch(() => {});
-        console.warn(`[GameImport] BGG XML API returned ${res.status} for ${bggId}${!bggApiToken ? " (no BGG_API_TOKEN configured)" : ""}`);
-        // If token caused a 401/403, retry without it
-        if ((res.status === 401 || res.status === 403) && bggApiToken) {
-          console.log(`[GameImport] Retrying BGG XML API without auth for ${bggId}`);
-          const retryRes = await fetch(xmlUrl, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" } });
+        console.warn(`[GameImport] BGG XML API returned ${res.status} for ${bggId} (attempt ${attempt}/${maxAttempts}, no cookie)`);
+        
+        // If public request fails with 401/403 and we have a cookie, try with it
+        if ((res.status === 401 || res.status === 403) && bggCookie) {
+          console.log(`[GameImport] Retrying BGG XML API WITH cookie for ${bggId}`);
+          const cookieHeaders = { ...baseHeaders, Cookie: bggCookie };
+          const retryRes = await fetch(xmlUrl, { headers: cookieHeaders });
           if (retryRes.ok) {
             const xml = await retryRes.text();
             if (xml.includes("<item")) {
               return parseBggXml(xml, bggId);
             }
-            // Queued response — continue retrying
-            if (attempt < maxAttempts) {
-              console.log(`[GameImport] Tokenless retry got queued response, backing off (${attempt}/${maxAttempts})`);
-              await sleep(Math.min(750 * attempt, 4000));
-              continue;
-            }
           } else {
-            // Consume body to prevent leak
             await retryRes.text().catch(() => {});
-            if (attempt < maxAttempts) {
-              await sleep(Math.min(750 * attempt, 4000));
-              continue;
-            }
           }
         }
-        // Retry on any non-ok status (including 202)
+        
+        // Retry with backoff
         if (attempt < maxAttempts) {
-          console.log(`[GameImport] BGG API returned ${res.status}, retrying (${attempt}/${maxAttempts})`);
-          await sleep(Math.min(750 * attempt, 4000));
+          const backoffMs = Math.min(1000 * attempt, 5000);
+          console.log(`[GameImport] Backing off ${backoffMs}ms (${attempt}/${maxAttempts})`);
+          await sleep(backoffMs);
           continue;
         }
         return { bgg_id: bggId };
