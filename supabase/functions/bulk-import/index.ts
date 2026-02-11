@@ -1133,22 +1133,28 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
     }
   }
   
+  console.log(`[BulkImport] Fetching BGG collection for "${username}", cookie present: ${Boolean(bggCookie3)}, token present: ${Boolean(bggToken)}`);
+
+  let xml = "";
+  let directSuccess = false;
+
+  // --- Attempt 1: Direct BGG API ---
   let attempts = 0;
   while (attempts < 5) {
     const res = await fetch(collectionUrl, { headers });
     
     if (res.status === 202) {
       // BGG is processing the request, wait and retry
+      console.log(`[BulkImport] BGG collection 202 (processing), retrying in 3s...`);
       await new Promise(r => setTimeout(r, 3000));
       attempts++;
       continue;
     }
     
-    if (res.status === 401) {
-      // BGG now requires API registration and tokens
-      throw new Error(
-        "BGG API requires authentication. As an alternative, please export your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option instead."
-      );
+    if (res.status === 401 || res.status === 403) {
+      console.warn(`[BulkImport] BGG collection API returned ${res.status} — falling through to Jina proxy...`);
+      await res.text().catch(() => {}); // consume body
+      break; // fall through to Jina
     }
     
     if (res.status === 404 || res.status === 400) {
@@ -1156,33 +1162,66 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
     }
     
     if (!res.ok) {
-      throw new Error(`Failed to fetch BGG collection (status ${res.status}). Please try again or use CSV import.`);
+      console.warn(`[BulkImport] BGG collection API returned ${res.status}`);
+      await res.text().catch(() => {});
+      break; // fall through to Jina
     }
     
-    const xml = await res.text();
-    
-    // Check for error messages in the response
-    if (xml.includes("<error>") || xml.includes("Invalid username")) {
-      throw new Error(`BGG username "${username}" not found. Please check the username is correct.`);
+    xml = await res.text();
+    directSuccess = true;
+    break;
+  }
+
+  // --- Attempt 2: Jina Reader proxy fallback ---
+  if (!directSuccess) {
+    const jinaKey = Deno.env.get("JINA_API_KEY");
+    if (jinaKey) {
+      console.log(`[BulkImport] Trying Jina proxy for BGG collection...`);
+      try {
+        const jinaRes = await fetch(`https://r.jina.ai/${collectionUrl}`, {
+          headers: {
+            "Authorization": `Bearer ${jinaKey}`,
+            "Accept": "application/xml",
+            "X-Return-Format": "text",
+          },
+        });
+        if (jinaRes.ok) {
+          xml = await jinaRes.text();
+          console.log(`[BulkImport] Jina proxy returned ${xml.length} bytes for collection`);
+        } else {
+          console.warn(`[BulkImport] Jina proxy returned ${jinaRes.status} for collection`);
+        }
+      } catch (e) {
+        console.warn(`[BulkImport] Jina proxy error for collection:`, e);
+      }
     }
-    
-    const games: { id: string; name: string }[] = [];
-    
-    const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>[\s\S]*?<name[^>]*>([^<]+)<\/name>[\s\S]*?<\/item>/g;
-    let match;
-    while ((match = itemRegex.exec(xml)) !== null) {
-      games.push({ id: match[1], name: match[2] });
-    }
-    
-    if (games.length === 0 && xml.includes("<items")) {
-      // Empty collection - valid but no owned games
-      console.log(`BGG collection for ${username} is empty or has no owned games`);
-    }
-    
-    return games;
+  }
+
+  if (!xml) {
+    throw new Error(
+      "BGG API requires authentication and Jina proxy also failed. As an alternative, please export your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option instead."
+    );
+  }
+
+  // Check for error messages in the response
+  if (xml.includes("<error>") || xml.includes("Invalid username")) {
+    throw new Error(`BGG username "${username}" not found. Please check the username is correct.`);
   }
   
-  throw new Error("BGG collection request timed out. The collection may be too large - please try using CSV export instead.");
+  const games: { id: string; name: string }[] = [];
+  
+  const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>[\s\S]*?<name[^>]*>([^<]+)<\/name>[\s\S]*?<\/item>/g;
+  let match;
+  while ((match = itemRegex.exec(xml)) !== null) {
+    games.push({ id: match[1], name: match[2] });
+  }
+  
+  if (games.length === 0 && xml.includes("<items")) {
+    console.log(`BGG collection for ${username} is empty or has no owned games`);
+  }
+  
+  console.log(`[BulkImport] Parsed ${games.length} games from BGG collection for "${username}"`);
+  return games;
 }
 
 // Helper functions
