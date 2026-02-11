@@ -68,12 +68,14 @@ export default async function handler(req: Request): Promise<Response> {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify library ownership
-    const { data: library } = await supabaseAdmin
+    // Verify library ownership (use limit(1) since user may own multiple libraries)
+    const { data: libraries } = await supabaseAdmin
       .from("libraries")
       .select("id")
       .eq("owner_id", userId)
-      .maybeSingle();
+      .limit(1);
+
+    const library = libraries?.[0];
 
     if (!library) {
       return new Response(
