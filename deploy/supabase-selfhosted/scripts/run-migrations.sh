@@ -126,6 +126,7 @@ MIGRATION_FILES=(
     "43-system-logs-columns.sql"
     "44-bgg-community-rating.sql"
     "45-system-logs-rls-policies.sql"
+    "46-import-jobs-admin-policies.sql"
 )
 
 SUCCESS_COUNT=0
