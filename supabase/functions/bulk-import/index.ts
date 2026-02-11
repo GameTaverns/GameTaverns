@@ -567,126 +567,59 @@ async function fetchBGGXMLData(bggId: string): Promise<{
     }
   }
 
-  // Try Jina Reader proxy when direct BGG XML failed OR returned incomplete data
-  const jinaApiKey = Deno.env.get("JINA_API_KEY") || "";
-  if (jinaApiKey || true) {
-    // Try Jina even without key (lower rate limits but still works)
-    try {
-      console.log(`[BulkImport] Trying Jina Reader proxy for BGG XML: ${bggId}`);
-      const jinaHeaders: Record<string, string> = {
-        "Accept": "application/xml",
-        "X-Return-Format": "text",
-      };
-      if (jinaApiKey) {
-        jinaHeaders["Authorization"] = `Bearer ${jinaApiKey}`;
-      }
+  // Fallback: Use Google Gemini AI to generate description from game title when BGG XML fails
+  if (partialResult && (!partialResult.description || partialResult.description.length < 50)) {
+    const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (googleKey) {
+      try {
+        console.log(`[BulkImport] Using Google Gemini to generate description for BGG ID ${bggId}`);
+        const bggUrl = `https://boardgamegeek.com/boardgame/${bggId}`;
+        const prompt = `Look up the board game at ${bggUrl} (BGG ID: ${bggId}). Provide a brief 2-3 sentence description of the game including its theme and core mechanics. Also provide: min_players, max_players, suggested_age (e.g. "10+"), and a list of mechanics. Return as JSON with keys: description, min_players, max_players, suggested_age, mechanics (array of strings).`;
 
-      const jinaUrl = `https://r.jina.ai/${xmlUrl}`;
-      const jinaRes = await fetch(jinaUrl, { headers: jinaHeaders });
+        const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleKey}`;
+        const geminiRes = await fetch(geminiEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 1000 },
+          }),
+        });
 
-      if (jinaRes.ok) {
-        const xml = await jinaRes.text();
-
-        if (xml.includes("<item") && !xml.includes("Please try again later")) {
-          // Parse exactly like the direct path above
-          const imageMatch = xml.match(/<image>([^<]+)<\/image>/) || xml.match(/<thumbnail>([^<]+)<\/thumbnail>/);
-          const descMatch = xml.match(/<description[^>]*>([\s\S]*?)<\/description>/i);
-          const minPlayersMatch = xml.match(/<minplayers[^>]*value="(\d+)"/);
-          const maxPlayersMatch = xml.match(/<maxplayers[^>]*value="(\d+)"/);
-          const minAgeMatch = xml.match(/<minage[^>]*value="(\d+)"/);
-          const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
-          const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
-          const typeMatch = xml.match(/<item[^>]*type="([^"]+)"/);
-          const isExpansion = typeMatch?.[1] === "boardgameexpansion";
-          const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
-          const mechanics = [...mechanicsMatches].map((m) => m[1]);
-          const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
-
-          let difficulty: string | undefined;
-          if (weightMatch) {
-            const w = parseFloat(weightMatch[1]);
-            if (w > 0) {
-              if (w < 1.5) difficulty = "1 - Light";
-              else if (w < 2.25) difficulty = "2 - Medium Light";
-              else if (w < 3.0) difficulty = "3 - Medium";
-              else if (w < 3.75) difficulty = "4 - Medium Heavy";
-              else difficulty = "5 - Heavy";
-            }
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          // Try to parse JSON from the response
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[0]);
+              if (parsed.description) {
+                console.log(`[BulkImport] Google Gemini generated description for ${bggId}: ${parsed.description.length} chars`);
+                partialResult.description = parsed.description;
+                if (!partialResult.min_players && parsed.min_players) partialResult.min_players = parsed.min_players;
+                if (!partialResult.max_players && parsed.max_players) partialResult.max_players = parsed.max_players;
+                if (!partialResult.suggested_age && parsed.suggested_age) partialResult.suggested_age = parsed.suggested_age;
+                if ((!partialResult.mechanics || partialResult.mechanics.length === 0) && parsed.mechanics) {
+                  partialResult.mechanics = parsed.mechanics;
+                }
+              }
+            } catch { /* JSON parse failed, use text as-is */ }
           }
-
-          let play_time: string | undefined;
-          if (playTimeMatch) {
-            const minutes = parseInt(playTimeMatch[1], 10);
-            if (minutes <= 15) play_time = "0-15 Minutes";
-            else if (minutes <= 30) play_time = "15-30 Minutes";
-            else if (minutes <= 45) play_time = "30-45 Minutes";
-            else if (minutes <= 60) play_time = "45-60 Minutes";
-            else if (minutes <= 120) play_time = "60+ Minutes";
-            else if (minutes <= 180) play_time = "2+ Hours";
-            else play_time = "3+ Hours";
+          if (!partialResult.description && text.length > 50) {
+            partialResult.description = text.slice(0, 2000);
+            console.log(`[BulkImport] Google Gemini raw text fallback for ${bggId}: ${partialResult.description.length} chars`);
           }
-
-          const decodeEntities = (input: string) =>
-            input
-              .replace(/&#10;/g, "\n")
-              .replace(/&amp;/g, "&")
-              .replace(/&lt;/g, "<")
-              .replace(/&gt;/g, ">")
-              .replace(/&quot;/g, '"')
-              .replace(/&#39;/g, "'")
-              .replace(/&#(\d+);/g, (_m, code) => {
-                const n = Number(code);
-                return Number.isFinite(n) ? String.fromCharCode(n) : _m;
-              });
-
-          let description: string | undefined;
-          if (descMatch && descMatch[1]) {
-            description = decodeEntities(descMatch[1]).trim();
-            if (description.length > 5000) description = description.slice(0, 5000);
-          }
-
-          console.log(`[BulkImport] Jina proxy SUCCESS for ${bggId}: desc=${description?.length || 0} chars, image=${!!imageMatch}`);
-
-          const jinaResult = {
-            bgg_id: bggId,
-            image_url: imageMatch?.[1],
-            description,
-            min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
-            max_players: maxPlayersMatch ? parseInt(maxPlayersMatch[1], 10) : undefined,
-            suggested_age: minAgeMatch ? `${minAgeMatch[1]}+` : undefined,
-            play_time,
-            difficulty,
-            mechanics: mechanics.length > 0 ? mechanics : undefined,
-            publisher: publisherMatch?.[1],
-            is_expansion: isExpansion,
-          };
-
-          // Merge: prefer Jina description, but keep partialResult's other fields if Jina missed them
-          if (partialResult) {
-            return {
-              ...partialResult,
-              ...jinaResult,
-              // Prefer whichever has a longer description
-              description: (jinaResult.description?.length || 0) > (partialResult.description?.length || 0)
-                ? jinaResult.description
-                : partialResult.description,
-              // Prefer whichever has an image
-              image_url: jinaResult.image_url || partialResult.image_url,
-            };
-          }
-          return jinaResult;
         } else {
-          console.warn(`[BulkImport] Jina proxy returned non-BGG-XML content for ${bggId}`);
+          console.warn(`[BulkImport] Google Gemini returned ${geminiRes.status} for ${bggId}`);
         }
-      } else {
-        console.warn(`[BulkImport] Jina proxy returned ${jinaRes.status} for ${bggId}`);
+      } catch (e) {
+        console.warn(`[BulkImport] Google Gemini fallback failed for ${bggId}:`, e);
       }
-    } catch (e) {
-      console.warn(`[BulkImport] Jina proxy fallback failed for ${bggId}:`, e);
     }
   }
 
-  // Return partial result from direct BGG XML if we have one, otherwise minimal
+  // Return partial result from direct BGG XML + Gemini enrichment if we have one, otherwise minimal
   return partialResult || { bgg_id: bggId };
 }
 
@@ -991,7 +924,12 @@ async function fetchBGGData(
       });
       
       if (!scrapeRes.ok) {
-        console.warn(`[BulkImport] Firecrawl returned ${scrapeRes.status} for ${pageUrl} (attempt ${attempt})`);
+        console.warn(`[BulkImport] Firecrawl returned ${scrapeRes.status} for ${pageUrl}`);
+        if (scrapeRes.status === 402) {
+          // Payment required - don't retry, break immediately
+          console.warn(`[BulkImport] Firecrawl 402 (payment required) — skipping all retries`);
+          break;
+        }
         if (scrapeRes.status === 429) {
           // Rate limited - wait longer
           await sleep(5000);
