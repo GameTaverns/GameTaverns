@@ -5,7 +5,7 @@ const corsHeaders = {
 
 // ============= Rate Limiting =============
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const RATE_LIMIT_MAX = 100; // Max 100 requests per minute per IP (more lenient for images)
+const RATE_LIMIT_MAX = 1000; // Max 1000 requests per minute per IP (large libraries need many images)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 function getClientIP(req: Request): string {
