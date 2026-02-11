@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Activity,
@@ -16,6 +16,13 @@ import {
   Filter,
   Trash2,
   Search,
+  Radio,
+  MessageSquare,
+  Users,
+  Gamepad2,
+  Settings,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface HealthCheck {
   name: string;
+  group: string;
   status: "healthy" | "degraded" | "down" | "unknown";
   latencyMs: number;
   message?: string;
@@ -38,11 +46,13 @@ interface HealthCheck {
 interface HealthData {
   status: string;
   timestamp: string;
+  summary: { total: number; healthy: number; degraded: number; down: number };
   checks: HealthCheck[];
   stats: {
     totalGames: number;
     totalLibraries: number;
     totalSessions: number;
+    totalUsers: number;
   };
 }
 
@@ -57,13 +67,6 @@ interface SystemLog {
   user_id: string | null;
 }
 
-const statusIcons: Record<string, typeof CheckCircle> = {
-  healthy: CheckCircle,
-  degraded: AlertTriangle,
-  down: XCircle,
-  unknown: Clock,
-};
-
 const statusColors: Record<string, string> = {
   healthy: "text-green-400",
   degraded: "text-yellow-400",
@@ -71,13 +74,21 @@ const statusColors: Record<string, string> = {
   unknown: "text-muted-foreground",
 };
 
-const serviceIcons: Record<string, typeof Database> = {
-  Database: Database,
-  "Image Proxy": Image,
-  "BGG API": Globe,
-  "Edge Functions": Zap,
-  "Auth Service": Shield,
-  Storage: HardDrive,
+const statusBgColors: Record<string, string> = {
+  healthy: "bg-green-500/10 border-green-500/30",
+  degraded: "bg-yellow-500/10 border-yellow-500/30",
+  down: "bg-red-500/10 border-red-500/30",
+  unknown: "bg-muted/10 border-muted/30",
+};
+
+const groupMeta: Record<string, { label: string; icon: typeof Database }> = {
+  core: { label: "Core Infrastructure", icon: Database },
+  external: { label: "External Services", icon: Globe },
+  auth: { label: "Auth & Security", icon: Shield },
+  games: { label: "Game Operations", icon: Gamepad2 },
+  social: { label: "Social & Communication", icon: MessageSquare },
+  discord: { label: "Discord Integration", icon: Radio },
+  admin: { label: "Library & Admin", icon: Settings },
 };
 
 const levelColors: Record<string, string> = {
@@ -91,13 +102,6 @@ async function fetchHealth(): Promise<HealthData> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
 
-  const resp = await supabase.functions.invoke("system-health", {
-    body: null,
-    headers: {},
-    method: "GET",
-  });
-
-  // supabase.functions.invoke doesn't support query params easily, use fetch directly
   const url = `${(supabase as any).supabaseUrl}/functions/v1/system-health?action=health`;
   const r = await fetch(url, {
     headers: {
@@ -132,37 +136,80 @@ async function fetchLogs(params: { source?: string; level?: string; limit?: numb
   return data.logs;
 }
 
-function HealthCard({ check }: { check: HealthCheck }) {
-  const StatusIcon = statusIcons[check.status] || Clock;
-  const ServiceIcon = serviceIcons[check.name] || Activity;
-  const color = statusColors[check.status] || "text-muted-foreground";
+// Small status dot for compact view
+function StatusDot({ status }: { status: string }) {
+  const color = status === "healthy" ? "bg-green-400" : status === "degraded" ? "bg-yellow-400" : status === "down" ? "bg-red-400" : "bg-muted-foreground";
+  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} />;
+}
+
+function GroupCard({ group, checks }: { group: string; checks: HealthCheck[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const meta = groupMeta[group] || { label: group, icon: Zap };
+  const GroupIcon = meta.icon;
+
+  const downCount = checks.filter(c => c.status === "down").length;
+  const degradedCount = checks.filter(c => c.status === "degraded").length;
+  const allHealthy = downCount === 0 && degradedCount === 0;
+
+  const groupStatus = downCount > 0 ? "down" : degradedCount > 0 ? "degraded" : "healthy";
+  const avgLatency = Math.round(checks.reduce((s, c) => s + c.latencyMs, 0) / checks.length);
 
   return (
-    <Card className="bg-wood-medium/20 border-wood-medium/40">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <ServiceIcon className="h-5 w-5 text-cream/70" />
-            <span className="font-medium text-cream text-sm">{check.name}</span>
+    <Card className={`border ${statusBgColors[groupStatus]}`}>
+      <CardContent className="p-0">
+        <button
+          className="w-full flex items-center justify-between p-4 text-left"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div className="flex items-center gap-3">
+            <GroupIcon className="h-5 w-5 text-cream/70" />
+            <div>
+              <span className="font-medium text-cream text-sm">{meta.label}</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <StatusDot status={groupStatus} />
+                <span className="text-xs text-cream/50">
+                  {checks.length} services · avg {avgLatency}ms
+                </span>
+                {!allHealthy && (
+                  <span className="text-xs text-red-400">
+                    {downCount > 0 && `${downCount} down`}
+                    {downCount > 0 && degradedCount > 0 && ", "}
+                    {degradedCount > 0 && `${degradedCount} degraded`}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-          <StatusIcon className={`h-5 w-5 ${color}`} />
-        </div>
-        <div className="flex items-center justify-between">
-          <Badge variant="outline" className={`${color} border-current text-xs`}>
-            {check.status}
-          </Badge>
-          <span className="text-xs text-cream/50">{check.latencyMs}ms</span>
-        </div>
-        {check.message && (
-          <p className="text-xs text-cream/50 mt-2 truncate">{check.message}</p>
-        )}
-        {check.details && Object.keys(check.details).length > 0 && (
-          <div className="mt-2 text-xs text-cream/40">
-            {Object.entries(check.details).map(([k, v]) => (
-              <span key={k} className="mr-3">
-                {k}: {String(v)}
-              </span>
-            ))}
+          {expanded ? (
+            <ChevronDown className="h-4 w-4 text-cream/50" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-cream/50" />
+          )}
+        </button>
+
+        {expanded && (
+          <div className="border-t border-wood-medium/20 px-4 pb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 pt-2">
+              {checks.map((check) => (
+                <div
+                  key={check.name}
+                  className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-wood-medium/10"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <StatusDot status={check.status} />
+                    <span className="text-xs text-cream/80 truncate">{check.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {check.message && (
+                      <span className="text-xs text-cream/40 truncate max-w-[120px]" title={check.message}>
+                        {check.message}
+                      </span>
+                    )}
+                    <span className="text-xs text-cream/40 font-mono w-12 text-right">{check.latencyMs}ms</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </CardContent>
@@ -254,24 +301,37 @@ export function SystemHealth() {
     );
   });
 
-  // Get unique sources from logs for filter dropdown
   const uniqueSources = [...new Set((logsQuery.data || []).map((l) => l.source))].sort();
+
+  // Group checks
+  const groupedChecks: Record<string, HealthCheck[]> = {};
+  const groupOrder = ["core", "external", "auth", "games", "social", "discord", "admin"];
+  for (const check of healthQuery.data?.checks || []) {
+    if (!groupedChecks[check.group]) groupedChecks[check.group] = [];
+    groupedChecks[check.group].push(check);
+  }
 
   const overallStatus = healthQuery.data?.status || "unknown";
   const overallColor = statusColors[overallStatus] || "text-muted-foreground";
+  const summary = healthQuery.data?.summary;
 
   return (
     <div className="space-y-6">
-      {/* Header with overall status */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Activity className={`h-6 w-6 ${overallColor}`} />
           <div>
             <h2 className="text-xl font-display font-bold text-cream">System Health</h2>
             <p className="text-sm text-cream/60">
-              {healthQuery.data
-                ? `Last checked: ${new Date(healthQuery.data.timestamp).toLocaleTimeString()}`
+              {summary
+                ? `${summary.total} services: ${summary.healthy} healthy, ${summary.degraded} degraded, ${summary.down} down`
                 : "Loading..."}
+              {healthQuery.data && (
+                <span className="ml-2">
+                  · {new Date(healthQuery.data.timestamp).toLocaleTimeString()}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -299,47 +359,61 @@ export function SystemHealth() {
         </div>
       </div>
 
-      {/* Health Check Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {healthQuery.data?.checks.map((check) => (
-          <HealthCard key={check.name} check={check} />
-        ))}
+      {/* Overall status bar */}
+      {summary && (
+        <div className="flex gap-1 h-2 rounded-full overflow-hidden">
+          {summary.healthy > 0 && (
+            <div className="bg-green-500" style={{ flex: summary.healthy }} title={`${summary.healthy} healthy`} />
+          )}
+          {summary.degraded > 0 && (
+            <div className="bg-yellow-500" style={{ flex: summary.degraded }} title={`${summary.degraded} degraded`} />
+          )}
+          {summary.down > 0 && (
+            <div className="bg-red-500" style={{ flex: summary.down }} title={`${summary.down} down`} />
+          )}
+        </div>
+      )}
+
+      {/* Error state */}
+      {healthQuery.isError && (
+        <Card className="bg-red-500/10 border-red-500/30">
+          <CardContent className="p-4 text-red-400 text-sm">
+            Failed to fetch health data: {healthQuery.error?.message}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Group cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {healthQuery.isLoading &&
           Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="bg-wood-medium/20 border-wood-medium/40 animate-pulse">
-              <CardContent className="p-4 h-24" />
+              <CardContent className="p-4 h-20" />
             </Card>
           ))}
-        {healthQuery.isError && (
-          <Card className="bg-red-500/10 border-red-500/30 col-span-full">
-            <CardContent className="p-4 text-red-400 text-sm">
-              Failed to fetch health data: {healthQuery.error?.message}
-            </CardContent>
-          </Card>
+        {groupOrder.map((group) =>
+          groupedChecks[group] ? (
+            <GroupCard key={group} group={group} checks={groupedChecks[group]} />
+          ) : null
         )}
       </div>
 
       {/* Platform Stats */}
       {healthQuery.data?.stats && (
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="bg-wood-medium/20 border-wood-medium/40">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-cream">{healthQuery.data.stats.totalGames.toLocaleString()}</div>
-              <div className="text-xs text-cream/50">Total Games</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-wood-medium/20 border-wood-medium/40">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-cream">{healthQuery.data.stats.totalLibraries}</div>
-              <div className="text-xs text-cream/50">Libraries</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-wood-medium/20 border-wood-medium/40">
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-cream">{healthQuery.data.stats.totalSessions.toLocaleString()}</div>
-              <div className="text-xs text-cream/50">Play Sessions</div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "Games", value: healthQuery.data.stats.totalGames },
+            { label: "Libraries", value: healthQuery.data.stats.totalLibraries },
+            { label: "Play Sessions", value: healthQuery.data.stats.totalSessions },
+            { label: "Users", value: healthQuery.data.stats.totalUsers },
+          ].map((s) => (
+            <Card key={s.label} className="bg-wood-medium/20 border-wood-medium/40">
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl font-bold text-cream">{s.value.toLocaleString()}</div>
+                <div className="text-xs text-cream/50">{s.label}</div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
@@ -367,7 +441,6 @@ export function SystemHealth() {
             </Button>
           </div>
 
-          {/* Filters */}
           <div className="flex gap-2 mt-3">
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-cream/40" />
@@ -386,9 +459,7 @@ export function SystemHealth() {
               <SelectContent>
                 <SelectItem value="all">All Sources</SelectItem>
                 {uniqueSources.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -418,8 +489,7 @@ export function SystemHealth() {
             )}
             {filteredLogs.length === 0 && !logsQuery.isLoading && (
               <div className="p-8 text-center text-cream/40 text-sm">
-                No log entries found. Logs will appear here as system operations occur
-                (imports, syncs, errors, etc.).
+                No log entries found.
               </div>
             )}
             {filteredLogs.map((log) => (

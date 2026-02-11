@@ -7,11 +7,45 @@ const corsHeaders = {
 
 interface HealthCheck {
   name: string;
+  group: string;
   status: "healthy" | "degraded" | "down" | "unknown";
   latencyMs: number;
   message?: string;
   details?: Record<string, unknown>;
 }
+
+// ---------- helpers ----------
+
+async function pingFunction(
+  supabaseUrl: string,
+  name: string,
+  group: string,
+  fnPath: string,
+  method = "POST",
+  body: string | null = "{}",
+  timeoutMs = 10000,
+): Promise<HealthCheck> {
+  const start = Date.now();
+  try {
+    const opts: RequestInit = {
+      method,
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+    };
+    if (body && method !== "GET") opts.body = body;
+    const resp = await fetch(`${supabaseUrl}/functions/v1/${fnPath}`, opts);
+    const latency = Date.now() - start;
+    // Any response < 500 means the runtime is alive
+    if (resp.status < 500) {
+      return { name, group, status: "healthy", latencyMs: latency };
+    }
+    return { name, group, status: "degraded", latencyMs: latency, message: `HTTP ${resp.status}` };
+  } catch (e) {
+    return { name, group, status: "down", latencyMs: Date.now() - start, message: String(e) };
+  }
+}
+
+// ---------- individual checks ----------
 
 async function checkDatabase(supabase: ReturnType<typeof createClient>): Promise<HealthCheck> {
   const start = Date.now();
@@ -20,86 +54,10 @@ async function checkDatabase(supabase: ReturnType<typeof createClient>): Promise
       .from("games")
       .select("*", { count: "exact", head: true });
     const latency = Date.now() - start;
-    if (error) {
-      return { name: "Database", status: "degraded", latencyMs: latency, message: error.message };
-    }
-    return {
-      name: "Database",
-      status: latency > 5000 ? "degraded" : "healthy",
-      latencyMs: latency,
-      details: { gameCount: count },
-    };
+    if (error) return { name: "Database", group: "core", status: "degraded", latencyMs: latency, message: error.message };
+    return { name: "Database", group: "core", status: latency > 5000 ? "degraded" : "healthy", latencyMs: latency, details: { gameCount: count } };
   } catch (e) {
-    return { name: "Database", status: "down", latencyMs: Date.now() - start, message: String(e) };
-  }
-}
-
-async function checkImageProxy(supabaseUrl: string): Promise<HealthCheck> {
-  const start = Date.now();
-  try {
-    // Use a known small BGG image to test the proxy
-    const testUrl = "https://cf.geekdo-images.com/thumb/img/placeholder.png";
-    const proxyUrl = `${supabaseUrl}/functions/v1/image-proxy?url=${encodeURIComponent(testUrl)}`;
-    const resp = await fetch(proxyUrl, { method: "GET", signal: AbortSignal.timeout(10000) });
-    const latency = Date.now() - start;
-    if (resp.status === 429) {
-      return { name: "Image Proxy", status: "degraded", latencyMs: latency, message: "Rate limited" };
-    }
-    // 404 is ok - means the proxy is running but the test image doesn't exist
-    if (resp.ok || resp.status === 404) {
-      return { name: "Image Proxy", status: "healthy", latencyMs: latency };
-    }
-    return { name: "Image Proxy", status: "degraded", latencyMs: latency, message: `HTTP ${resp.status}` };
-  } catch (e) {
-    return { name: "Image Proxy", status: "down", latencyMs: Date.now() - start, message: String(e) };
-  }
-}
-
-async function checkBggApi(): Promise<HealthCheck> {
-  const start = Date.now();
-  try {
-    const resp = await fetch("https://boardgamegeek.com/xmlapi2/thing?id=174430&stats=0", {
-      signal: AbortSignal.timeout(15000),
-      headers: { "User-Agent": "GameTaverns/HealthCheck" },
-    });
-    const latency = Date.now() - start;
-    if (resp.status === 429) {
-      return { name: "BGG API", status: "degraded", latencyMs: latency, message: "Rate limited by BGG" };
-    }
-    if (resp.status === 401 || resp.status === 403) {
-      return { name: "BGG API", status: "degraded", latencyMs: latency, message: "Auth issue" };
-    }
-    if (resp.ok) {
-      return {
-        name: "BGG API",
-        status: latency > 10000 ? "degraded" : "healthy",
-        latencyMs: latency,
-      };
-    }
-    return { name: "BGG API", status: "degraded", latencyMs: latency, message: `HTTP ${resp.status}` };
-  } catch (e) {
-    return { name: "BGG API", status: "down", latencyMs: Date.now() - start, message: String(e) };
-  }
-}
-
-async function checkEdgeFunctions(supabaseUrl: string): Promise<HealthCheck> {
-  const start = Date.now();
-  try {
-    // Ping a lightweight function
-    const resp = await fetch(`${supabaseUrl}/functions/v1/totp-status`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-      signal: AbortSignal.timeout(10000),
-    });
-    const latency = Date.now() - start;
-    // Even a 401 means the function runtime is responding
-    if (resp.status < 500) {
-      return { name: "Edge Functions", status: "healthy", latencyMs: latency };
-    }
-    return { name: "Edge Functions", status: "degraded", latencyMs: latency, message: `HTTP ${resp.status}` };
-  } catch (e) {
-    return { name: "Edge Functions", status: "down", latencyMs: Date.now() - start, message: String(e) };
+    return { name: "Database", group: "core", status: "down", latencyMs: Date.now() - start, message: String(e) };
   }
 }
 
@@ -111,12 +69,10 @@ async function checkAuth(supabaseUrl: string, anonKey: string): Promise<HealthCh
       signal: AbortSignal.timeout(10000),
     });
     const latency = Date.now() - start;
-    if (resp.ok) {
-      return { name: "Auth Service", status: "healthy", latencyMs: latency };
-    }
-    return { name: "Auth Service", status: "degraded", latencyMs: latency, message: `HTTP ${resp.status}` };
+    if (resp.ok) return { name: "Auth Service", group: "core", status: "healthy", latencyMs: latency };
+    return { name: "Auth Service", group: "core", status: "degraded", latencyMs: latency, message: `HTTP ${resp.status}` };
   } catch (e) {
-    return { name: "Auth Service", status: "down", latencyMs: Date.now() - start, message: String(e) };
+    return { name: "Auth Service", group: "core", status: "down", latencyMs: Date.now() - start, message: String(e) };
   }
 }
 
@@ -125,19 +81,47 @@ async function checkStorage(supabase: ReturnType<typeof createClient>): Promise<
   try {
     const { data, error } = await supabase.storage.listBuckets();
     const latency = Date.now() - start;
-    if (error) {
-      return { name: "Storage", status: "degraded", latencyMs: latency, message: error.message };
-    }
-    return {
-      name: "Storage",
-      status: "healthy",
-      latencyMs: latency,
-      details: { buckets: data?.length || 0 },
-    };
+    if (error) return { name: "Storage", group: "core", status: "degraded", latencyMs: latency, message: error.message };
+    return { name: "Storage", group: "core", status: "healthy", latencyMs: latency, details: { buckets: data?.length || 0 } };
   } catch (e) {
-    return { name: "Storage", status: "down", latencyMs: Date.now() - start, message: String(e) };
+    return { name: "Storage", group: "core", status: "down", latencyMs: Date.now() - start, message: String(e) };
   }
 }
+
+async function checkRealtime(supabaseUrl: string, anonKey: string): Promise<HealthCheck> {
+  const start = Date.now();
+  try {
+    // Realtime health endpoint
+    const url = supabaseUrl.replace(/\/+$/, "");
+    const resp = await fetch(`${url}/realtime/v1/`, {
+      headers: { apikey: anonKey },
+      signal: AbortSignal.timeout(10000),
+    });
+    const latency = Date.now() - start;
+    if (resp.status < 500) return { name: "Realtime", group: "core", status: "healthy", latencyMs: latency };
+    return { name: "Realtime", group: "core", status: "degraded", latencyMs: latency, message: `HTTP ${resp.status}` };
+  } catch (e) {
+    return { name: "Realtime", group: "core", status: "down", latencyMs: Date.now() - start, message: String(e) };
+  }
+}
+
+async function checkBggApi(): Promise<HealthCheck> {
+  const start = Date.now();
+  try {
+    const resp = await fetch("https://boardgamegeek.com/xmlapi2/thing?id=174430&stats=0", {
+      signal: AbortSignal.timeout(15000),
+      headers: { "User-Agent": "GameTaverns/HealthCheck" },
+    });
+    const latency = Date.now() - start;
+    if (resp.status === 429) return { name: "BGG API", group: "external", status: "degraded", latencyMs: latency, message: "Rate limited" };
+    if (resp.ok) return { name: "BGG API", group: "external", status: latency > 10000 ? "degraded" : "healthy", latencyMs: latency };
+    return { name: "BGG API", group: "external", status: "degraded", latencyMs: latency, message: `HTTP ${resp.status}` };
+  } catch (e) {
+    return { name: "BGG API", group: "external", status: "down", latencyMs: Date.now() - start, message: String(e) };
+  }
+}
+
+// ---------- handler ----------
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
@@ -188,49 +172,103 @@ export default async function handler(req: Request): Promise<Response> {
   const action = url.searchParams.get("action") || "health";
 
   if (action === "health") {
-    // Run all health checks in parallel
-    const [db, imageProxy, bgg, edgeFns, auth, storage] = await Promise.all([
+    // Run ALL health checks in parallel
+    const checks = await Promise.all([
+      // Core infrastructure
       checkDatabase(supabase),
-      checkImageProxy(supabaseUrl),
-      checkBggApi(),
-      checkEdgeFunctions(supabaseUrl),
       checkAuth(supabaseUrl, anonKey),
       checkStorage(supabase),
+      checkRealtime(supabaseUrl, anonKey),
+
+      // External services
+      checkBggApi(),
+
+      // Edge Functions - Auth & Security
+      pingFunction(supabaseUrl, "Signup", "auth", "signup"),
+      pingFunction(supabaseUrl, "Verify Email", "auth", "verify-email"),
+      pingFunction(supabaseUrl, "Send Auth Email", "auth", "send-auth-email"),
+      pingFunction(supabaseUrl, "Verify Reset Token", "auth", "verify-reset-token"),
+      pingFunction(supabaseUrl, "Resolve Username", "auth", "resolve-username"),
+      pingFunction(supabaseUrl, "TOTP Status", "auth", "totp-status"),
+      pingFunction(supabaseUrl, "TOTP Setup", "auth", "totp-setup"),
+      pingFunction(supabaseUrl, "TOTP Verify", "auth", "totp-verify"),
+      pingFunction(supabaseUrl, "TOTP Disable", "auth", "totp-disable"),
+      pingFunction(supabaseUrl, "Manage Account", "auth", "manage-account"),
+
+      // Edge Functions - Game Operations
+      pingFunction(supabaseUrl, "Image Proxy", "games", "image-proxy", "GET", null),
+      pingFunction(supabaseUrl, "BGG Lookup", "games", "bgg-lookup"),
+      pingFunction(supabaseUrl, "BGG Import", "games", "bgg-import"),
+      pingFunction(supabaseUrl, "BGG Sync", "games", "bgg-sync"),
+      pingFunction(supabaseUrl, "BGG Sync Cron", "games", "bgg-sync-cron"),
+      pingFunction(supabaseUrl, "BGG Play Import", "games", "bgg-play-import"),
+      pingFunction(supabaseUrl, "Game Import", "games", "game-import"),
+      pingFunction(supabaseUrl, "Bulk Import", "games", "bulk-import"),
+      pingFunction(supabaseUrl, "Rate Game", "games", "rate-game"),
+      pingFunction(supabaseUrl, "Wishlist", "games", "wishlist"),
+      pingFunction(supabaseUrl, "Game Recs", "games", "game-recommendations"),
+      pingFunction(supabaseUrl, "Refresh Images", "games", "refresh-images"),
+      pingFunction(supabaseUrl, "Condense Desc", "games", "condense-descriptions"),
+
+      // Edge Functions - Social & Communication
+      pingFunction(supabaseUrl, "Send Message", "social", "send-message"),
+      pingFunction(supabaseUrl, "Decrypt Messages", "social", "decrypt-messages"),
+      pingFunction(supabaseUrl, "My Inquiries", "social", "my-inquiries"),
+      pingFunction(supabaseUrl, "Reply Inquiry", "social", "reply-to-inquiry"),
+      pingFunction(supabaseUrl, "Send Inq Reply", "social", "send-inquiry-reply"),
+      pingFunction(supabaseUrl, "Notify Feedback", "social", "notify-feedback"),
+
+      // Edge Functions - Discord
+      pingFunction(supabaseUrl, "Discord Config", "discord", "discord-config", "GET", null),
+      pingFunction(supabaseUrl, "Discord Notify", "discord", "discord-notify"),
+      pingFunction(supabaseUrl, "Discord Send DM", "discord", "discord-send-dm"),
+      pingFunction(supabaseUrl, "Discord Forum", "discord", "discord-forum-post"),
+      pingFunction(supabaseUrl, "Discord Event", "discord", "discord-create-event"),
+      pingFunction(supabaseUrl, "Discord Del Thread", "discord", "discord-delete-thread"),
+      pingFunction(supabaseUrl, "Discord OAuth", "discord", "discord-oauth-callback", "GET", null),
+      pingFunction(supabaseUrl, "Discord Unlink", "discord", "discord-unlink"),
+
+      // Edge Functions - Library & Admin
+      pingFunction(supabaseUrl, "Library Settings", "admin", "library-settings"),
+      pingFunction(supabaseUrl, "Membership", "admin", "membership"),
+      pingFunction(supabaseUrl, "Profile Update", "admin", "profile-update"),
+      pingFunction(supabaseUrl, "Manage Users", "admin", "manage-users"),
+      pingFunction(supabaseUrl, "Sync Achievements", "admin", "sync-achievements"),
+      pingFunction(supabaseUrl, "Clubs", "admin", "clubs"),
     ]);
 
-    // Get DB stats
-    const { count: totalGames } = await supabase
-      .from("games")
-      .select("*", { count: "exact", head: true });
-    const { count: totalLibraries } = await supabase
-      .from("libraries")
-      .select("*", { count: "exact", head: true });
-    const { count: totalSessions } = await supabase
-      .from("game_sessions")
-      .select("*", { count: "exact", head: true });
+    // DB stats
+    const [gamesRes, libRes, sessRes, usersRes] = await Promise.all([
+      supabase.from("games").select("*", { count: "exact", head: true }),
+      supabase.from("libraries").select("*", { count: "exact", head: true }),
+      supabase.from("game_sessions").select("*", { count: "exact", head: true }),
+      supabase.from("user_profiles").select("*", { count: "exact", head: true }),
+    ]);
 
-    const checks = [db, imageProxy, bgg, edgeFns, auth, storage];
     const overallStatus = checks.some((c) => c.status === "down")
       ? "down"
       : checks.some((c) => c.status === "degraded")
       ? "degraded"
       : "healthy";
 
+    const downCount = checks.filter(c => c.status === "down").length;
+    const degradedCount = checks.filter(c => c.status === "degraded").length;
+    const healthyCount = checks.filter(c => c.status === "healthy").length;
+
     return new Response(
       JSON.stringify({
         status: overallStatus,
         timestamp: new Date().toISOString(),
+        summary: { total: checks.length, healthy: healthyCount, degraded: degradedCount, down: downCount },
         checks,
         stats: {
-          totalGames: totalGames || 0,
-          totalLibraries: totalLibraries || 0,
-          totalSessions: totalSessions || 0,
+          totalGames: gamesRes.count || 0,
+          totalLibraries: libRes.count || 0,
+          totalSessions: sessRes.count || 0,
+          totalUsers: usersRes.count || 0,
         },
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
@@ -265,16 +303,11 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (action === "cleanup") {
     const days = parseInt(url.searchParams.get("days") || "30");
-    const { data, error } = await supabase.rpc("cleanup_old_system_logs", {
-      retention_days: days,
-    });
+    const { data, error } = await supabase.rpc("cleanup_old_system_logs", { retention_days: days });
 
     return new Response(
       JSON.stringify({ deleted: data, error: error?.message }),
-      {
-        status: error ? 500 : 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: error ? 500 : 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
