@@ -430,11 +430,11 @@ async function fetchBGGXMLData(bggId: string): Promise<{
           continue;
         }
 
-        // 401/403 means auth failed — don't retry, fall through to Jina proxy
+        // 401/403 means auth failed — don't retry, fall through to AI enrichment
         if (res.status === 401 || res.status === 403) {
-          console.log(`[BulkImport] BGG XML auth failed for ${bggId}, falling through to Jina proxy...`);
+          console.log(`[BulkImport] BGG XML auth failed for ${bggId}, falling through to AI enrichment...`);
           await res.text().catch(() => {}); // consume body
-          break; // exit retry loop, fall through to Jina
+          break; // exit retry loop, fall through to AI
         }
 
         return { bgg_id: bggId };
@@ -548,15 +548,15 @@ async function fetchBGGXMLData(bggId: string): Promise<{
         is_expansion: isExpansion,
       };
 
-      // If we got a description, return immediately. Otherwise fall through to Jina.
+      // If we got a description, return immediately. Otherwise fall through to AI enrichment.
       if (description && description.length > 50) {
         return directResult;
       }
 
-      // Store partial result so Jina can merge missing fields
-      console.log(`[BulkImport] Direct BGG XML returned no/short description for ${bggId}, trying Jina...`);
+      // Store partial result so AI can fill in missing fields
+      console.log(`[BulkImport] Direct BGG XML returned no/short description for ${bggId}, falling through to AI enrichment...`);
       partialResult = directResult;
-      break; // exit retry loop, fall through to Jina
+      break; // exit retry loop, fall through to AI
     } catch (e) {
       console.error("[BulkImport] BGG XML error:", e);
       if (attempt < maxAttempts) {
@@ -1120,9 +1120,9 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
     }
     
     if (res.status === 401 || res.status === 403) {
-      console.warn(`[BulkImport] BGG collection API returned ${res.status} — falling through to Jina proxy...`);
+      console.warn(`[BulkImport] BGG collection API returned ${res.status} — auth failed`);
       await res.text().catch(() => {}); // consume body
-      break; // fall through to Jina
+      break;
     }
     
     if (res.status === 404 || res.status === 400) {
@@ -1132,7 +1132,7 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
     if (!res.ok) {
       console.warn(`[BulkImport] BGG collection API returned ${res.status}`);
       await res.text().catch(() => {});
-      break; // fall through to Jina
+      break;
     }
     
     xml = await res.text();
@@ -1140,34 +1140,9 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
     break;
   }
 
-  // --- Attempt 2: Jina Reader proxy fallback ---
-  if (!directSuccess) {
-    const jinaKey = Deno.env.get("JINA_API_KEY");
-    if (jinaKey) {
-      console.log(`[BulkImport] Trying Jina proxy for BGG collection...`);
-      try {
-        const jinaRes = await fetch(`https://r.jina.ai/${collectionUrl}`, {
-          headers: {
-            "Authorization": `Bearer ${jinaKey}`,
-            "Accept": "application/xml",
-            "X-Return-Format": "text",
-          },
-        });
-        if (jinaRes.ok) {
-          xml = await jinaRes.text();
-          console.log(`[BulkImport] Jina proxy returned ${xml.length} bytes for collection`);
-        } else {
-          console.warn(`[BulkImport] Jina proxy returned ${jinaRes.status} for collection`);
-        }
-      } catch (e) {
-        console.warn(`[BulkImport] Jina proxy error for collection:`, e);
-      }
-    }
-  }
-
   if (!xml) {
     throw new Error(
-      "BGG API requires authentication and Jina proxy also failed. As an alternative, please export your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option instead."
+      "BGG API requires authentication. Please ensure your BGG_SESSION_COOKIE is valid. As an alternative, export your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option instead."
     );
   }
 

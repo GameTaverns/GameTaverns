@@ -257,19 +257,14 @@ async function openaiCompatibleComplete(
 
         requestBody.messages = messages;
         
-        // Perplexity sonar doesn't support json_schema type - use json_object instead
-        // Other providers that reject tool calling may also not support json_schema
-        if (isPerplexity) {
-          requestBody.response_format = { type: "json_object" };
-        } else {
-          requestBody.response_format = {
-            type: "json_schema",
-            json_schema: {
-              name: tool.function.name,
-              schema,
-            },
-          };
-        }
+        // Use json_schema format for all providers (Perplexity now requires it)
+        requestBody.response_format = {
+          type: "json_schema",
+          json_schema: {
+            name: tool.function.name,
+            schema,
+          },
+        };
       } else {
         // Standard tool calling path
         requestBody.tools = options.tools;
