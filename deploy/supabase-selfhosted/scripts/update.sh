@@ -112,7 +112,7 @@ EXTERNAL_HANDLERS=(
   totp-status totp-setup totp-verify totp-disable
   manage-users wishlist rate-game
   discord-config discord-unlink image-proxy manage-account
-  refresh-images signup
+  refresh-images refresh-ratings signup
   resolve-username sync-achievements
   discord-notify discord-create-event discord-forum-post
   discord-delete-thread discord-oauth-callback discord-send-dm
