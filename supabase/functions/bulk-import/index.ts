@@ -421,13 +421,20 @@ async function fetchBGGXMLData(bggId: string): Promise<{
 
       // If not ok, return minimal info but don't fail the import.
       if (!res.ok) {
-        console.warn(`[BulkImport] BGG XML API returned ${res.status} for ${bggId}${!bggApiToken ? " (no BGG_API_TOKEN configured)" : ""}`);
+        console.warn(`[BulkImport] BGG XML API returned ${res.status} for ${bggId}${!bggCookie2 && !bggApiToken ? " (no BGG_SESSION_COOKIE or BGG_API_TOKEN configured)" : ""}`);
 
         // Treat 202 as retryable even if considered "ok" by some proxies.
         if (res.status === 202 && attempt < maxAttempts) {
           const backoffMs = Math.min(1500 * attempt, 8000);
           await sleep(backoffMs);
           continue;
+        }
+
+        // 401/403 means auth failed — don't retry, fall through to Jina proxy
+        if (res.status === 401 || res.status === 403) {
+          console.log(`[BulkImport] BGG XML auth failed for ${bggId}, falling through to Jina proxy...`);
+          await res.text().catch(() => {}); // consume body
+          break; // exit retry loop, fall through to Jina
         }
 
         return { bgg_id: bggId };
@@ -1350,7 +1357,7 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
 }
 
 function isLowQualityBggImageUrl(url: string | undefined): boolean {
-  if (!url) return true;
+  if (!url) return false; // undefined/null means "no image", not "low quality" — let caller handle
   if (!url.includes("geekdo-images.com") && !url.includes("geekdo-static.com")) return false;
 
   return /__opengraph|__opengraph_letterbox|__small|__thumb|__micro|__square\d*|fit-in\/1200x630|fit-in\/200x150|fit-in\/100x100|filters:strip_icc\(\)|filters:fill\(blur\)|crop\d+|\b1200x630\b/i.test(url);
