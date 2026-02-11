@@ -8,7 +8,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Verify the user's token
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -39,20 +38,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use service role for database operations
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-
     const { action } = await req.json();
 
     if (action === "generate") {
-      // Generate a new TOTP secret
       const secret = new OTPAuth.Secret({ size: 20 });
-      
-      // Get user email for the TOTP label
       const issuer = "GameTaverns";
       const label = user.email || user.id;
       
-      // Create TOTP instance
       const totp = new OTPAuth.TOTP({
         issuer,
         label,
@@ -62,18 +55,14 @@ Deno.serve(async (req) => {
         secret,
       });
 
-      // Generate QR code URI
       const otpauthUri = totp.toString();
       
-      // Generate backup codes (8 codes, 8 characters each)
       const backupCodes: string[] = [];
       for (let i = 0; i < 8; i++) {
         const code = crypto.getRandomValues(new Uint8Array(4));
         backupCodes.push(Array.from(code).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase());
       }
 
-      // Store the secret (encrypted) and backup codes - not enabled yet
-      // Hash backup codes before storage
       const hashedBackupCodes = await Promise.all(
         backupCodes.map(async (code) => {
           const encoder = new TextEncoder();
@@ -85,12 +74,11 @@ Deno.serve(async (req) => {
         })
       );
 
-      // Upsert the TOTP settings (not enabled until verified)
       const { error: upsertError } = await adminClient
         .from("user_totp_settings")
         .upsert({
           user_id: user.id,
-          totp_secret_encrypted: secret.base32, // In production, encrypt this with a server key
+          totp_secret_encrypted: secret.base32,
           backup_codes_encrypted: JSON.stringify(hashedBackupCodes),
           is_enabled: false,
           verified_at: null,
@@ -108,7 +96,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           otpauthUri,
           secret: secret.base32,
-          backupCodes, // Only shown once during setup
+          backupCodes,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -125,4 +113,10 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}

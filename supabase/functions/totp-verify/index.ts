@@ -8,7 +8,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    // Verify the user's token
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -39,9 +38,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use service role for database operations
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-
     const { code, action } = await req.json();
 
     if (!code || typeof code !== "string") {
@@ -51,7 +48,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get user's TOTP settings
     const { data: totpSettings, error: fetchError } = await adminClient
       .from("user_totp_settings")
       .select("*")
@@ -65,11 +61,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if it's a backup code
     const normalizedCode = code.replace(/\s|-/g, "").toUpperCase();
     
     if (normalizedCode.length === 8) {
-      // This might be a backup code
       const encoder = new TextEncoder();
       const data = encoder.encode(normalizedCode);
       const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -81,7 +75,6 @@ Deno.serve(async (req) => {
       const backupCodeIndex = storedHashes.findIndex((h) => h === hashedInput);
 
       if (backupCodeIndex !== -1) {
-        // Valid backup code - remove it from the list
         storedHashes.splice(backupCodeIndex, 1);
         
         await adminClient
@@ -89,7 +82,6 @@ Deno.serve(async (req) => {
           .update({ backup_codes_encrypted: JSON.stringify(storedHashes) })
           .eq("user_id", user.id);
 
-        // If this is setup verification, enable 2FA
         if (action === "setup") {
           await adminClient
             .from("user_totp_settings")
@@ -97,7 +89,6 @@ Deno.serve(async (req) => {
             .eq("user_id", user.id);
         }
 
-        // If this is a login verification, record the timestamp for grace period
         if (action === "login") {
           await adminClient
             .from("user_totp_settings")
@@ -116,7 +107,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Verify TOTP code
     const totp = new OTPAuth.TOTP({
       issuer: "GameTaverns",
       label: user.email || user.id,
@@ -126,7 +116,6 @@ Deno.serve(async (req) => {
       secret: OTPAuth.Secret.fromBase32(totpSettings.totp_secret_encrypted),
     });
 
-    // Allow 1 period window for clock drift
     const delta = totp.validate({ token: normalizedCode, window: 1 });
 
     if (delta === null) {
@@ -136,7 +125,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If this is setup verification, enable 2FA
     if (action === "setup" && !totpSettings.is_enabled) {
       await adminClient
         .from("user_totp_settings")
@@ -144,7 +132,6 @@ Deno.serve(async (req) => {
         .eq("user_id", user.id);
     }
 
-    // If this is a login verification, record the timestamp for grace period
     if (action === "login") {
       await adminClient
         .from("user_totp_settings")
@@ -163,4 +150,10 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
