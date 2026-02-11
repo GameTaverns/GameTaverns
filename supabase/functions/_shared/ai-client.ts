@@ -48,10 +48,10 @@ async function safeReadJson(response: Response): Promise<any> {
 
 /**
  * Get AI provider configuration
- * Priority: PERPLEXITY (recommended) > LOVABLE (cloud fallback) > OpenAI/Anthropic/Google (legacy)
+ * Priority: PERPLEXITY (primary) > Google Gemini (fallback) > Lovable (cloud) > OpenAI/Anthropic (legacy)
  */
 function getAIConfig(): { endpoint: string; apiKey: string; model: string; provider: string } | null {
-  // Check for Perplexity (PREFERRED - includes web search, best for game data)
+  // Check for Perplexity (PRIMARY - includes web search, best for game data)
   const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
   if (perplexityKey) {
     return {
@@ -62,7 +62,18 @@ function getAIConfig(): { endpoint: string; apiKey: string; model: string; provi
     };
   }
 
-  // Fall back to Lovable AI gateway (for cloud deployments only)
+  // Google AI / Gemini (FIRST FALLBACK - supports vision, good for descriptions & images)
+  const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
+  if (googleKey) {
+    return {
+      endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+      apiKey: googleKey,
+      model: "gemini-2.0-flash",
+      provider: "google",
+    };
+  }
+
+  // Lovable AI gateway (cloud deployments only)
   const lovableKey = Deno.env.get("LOVABLE_API_KEY");
   if (lovableKey) {
     return {
@@ -95,17 +106,6 @@ function getAIConfig(): { endpoint: string; apiKey: string; model: string; provi
     };
   }
 
-  // Legacy: Google AI (Gemini)
-  const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
-  if (googleKey) {
-    return {
-      endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
-      apiKey: googleKey,
-      model: "gemini-1.5-flash",
-      provider: "google",
-    };
-  }
-
   return null;
 }
 
@@ -120,16 +120,32 @@ export function isAIConfigured(): boolean {
  * Get AI provider name for logging
  */
 export function getAIProviderName(): string {
-  if (Deno.env.get("PERPLEXITY_API_KEY")) return "Perplexity (recommended)";
+  if (Deno.env.get("PERPLEXITY_API_KEY")) return "Perplexity (primary)";
+  if (Deno.env.get("GOOGLE_AI_API_KEY")) return "Google Gemini (fallback)";
   if (Deno.env.get("LOVABLE_API_KEY")) return "Lovable AI";
   if (Deno.env.get("OPENAI_API_KEY")) return "OpenAI (legacy)";
   if (Deno.env.get("ANTHROPIC_API_KEY")) return "Anthropic Claude (legacy)";
-  if (Deno.env.get("GOOGLE_AI_API_KEY")) return "Google Gemini (legacy)";
   return "None";
 }
 
 /**
+ * Get a specific AI provider config by name (for fallback logic)
+ */
+function getSpecificAIConfig(provider: string): { endpoint: string; apiKey: string; model: string; provider: string } | null {
+  if (provider === "google") {
+    const key = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (key) return { endpoint: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", apiKey: key, model: "gemini-2.0-flash", provider: "google" };
+  }
+  if (provider === "lovable") {
+    const key = Deno.env.get("LOVABLE_API_KEY");
+    if (key) return { endpoint: "https://ai.gateway.lovable.dev/v1/chat/completions", apiKey: key, model: "google/gemini-2.5-flash", provider: "lovable" };
+  }
+  return null;
+}
+
+/**
  * Make an AI completion request - handles different provider APIs
+ * Includes automatic fallback: if primary provider fails, tries next available
  */
 export async function aiComplete(options: AIRequestOptions): Promise<AIResponse> {
   const config = getAIConfig();
@@ -137,27 +153,48 @@ export async function aiComplete(options: AIRequestOptions): Promise<AIResponse>
   if (!config) {
     return {
       success: false,
-      error: "AI service not configured. Set PERPLEXITY_API_KEY (recommended) or LOVABLE_API_KEY.",
+      error: "AI service not configured. Set PERPLEXITY_API_KEY or GOOGLE_AI_API_KEY.",
     };
   }
 
   console.log(`Using AI provider: ${getAIProviderName()}`);
 
+  const result = await callProvider(config, options);
+
+  // If primary provider failed, try fallback providers
+  if (!result.success && !result.rateLimited) {
+    const fallbackOrder = ["google", "lovable"];
+    for (const fallbackName of fallbackOrder) {
+      if (fallbackName === config.provider) continue; // skip current
+      const fallbackConfig = getSpecificAIConfig(fallbackName);
+      if (!fallbackConfig) continue;
+      console.log(`[AI] Primary provider failed, falling back to ${fallbackName}`);
+      const fallbackResult = await callProvider(fallbackConfig, options);
+      if (fallbackResult.success) return fallbackResult;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Call a specific AI provider
+ */
+async function callProvider(
+  config: { endpoint: string; apiKey: string; model: string; provider: string },
+  options: AIRequestOptions
+): Promise<AIResponse> {
   try {
-    // Handle Anthropic's different API format
     if (config.provider === "anthropic") {
       return await anthropicComplete(config, options);
     }
-
-    // Handle Google AI's different API format
     if (config.provider === "google") {
       return await googleComplete(config, options);
     }
-
     // OpenAI-compatible APIs (OpenAI, Perplexity, Lovable)
     return await openaiCompatibleComplete(config, options);
   } catch (e) {
-    console.error("AI request error:", e);
+    console.error(`AI request error (${config.provider}):`, e);
     return {
       success: false,
       error: e instanceof Error ? e.message : "AI request failed",
