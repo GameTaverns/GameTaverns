@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +10,7 @@ import { PlatformSettings } from "@/components/admin/PlatformSettings";
 import { PlatformAnalytics } from "@/components/admin/PlatformAnalytics";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ClubsManagement } from "@/components/admin/ClubsManagement";
+import { SystemHealth } from "@/components/admin/SystemHealth";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { Badge } from "@/components/ui/badge";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
@@ -169,6 +170,13 @@ export default function PlatformAdmin() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger 
+              value="health"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+            >
+              <HeartPulse className="h-4 w-4 mr-2" />
+              Health
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="analytics" className="mt-6">
@@ -193,6 +201,10 @@ export default function PlatformAdmin() {
           
           <TabsContent value="clubs" className="mt-6">
             <ClubsManagement />
+          </TabsContent>
+          
+          <TabsContent value="health" className="mt-6">
+            <SystemHealth />
           </TabsContent>
         </Tabs>
       </main>
