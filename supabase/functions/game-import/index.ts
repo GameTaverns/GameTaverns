@@ -339,10 +339,12 @@ async function fetchBGGDataFromXML(
       if (title) {
         console.log(`[GameImport] Jina HTML proxy got title: ${title}`);
         const isExpansion = html.includes('boardgameexpansion');
+        // Use pickBestGeekdoImage for high-quality box art instead of og:image social crops
+        const bestImage = pickBestGeekdoImage(html);
         return {
           bgg_id: bggId,
           title,
-          image_url: ogImageMatch?.[1],
+          image_url: bestImage || ogImageMatch?.[1],
           description: ogDescMatch?.[1] || `${title} - imported from BoardGameGeek`,
           is_expansion: isExpansion,
         };
@@ -463,6 +465,119 @@ const normalizeSaleCondition = (saleCondition: string | undefined): string | und
   if (c === "New/Sealed") return "New";
   return c;
 };
+
+// ---------------------------------------------------------------------------
+// AI Description Enrichment Helper
+// Takes raw BGG data and produces the formatted "Quick Gameplay Overview" style
+// ---------------------------------------------------------------------------
+async function enrichDescriptionWithAI(
+  title: string,
+  rawDescription: string,
+  bggData: {
+    min_players?: number;
+    max_players?: number;
+    mechanics?: string[];
+    is_expansion?: boolean;
+    difficulty?: string;
+    play_time?: string;
+  }
+): Promise<string> {
+  if (!isAIConfigured()) {
+    return rawDescription;
+  }
+
+  try {
+    console.log(`[GameImport] Enriching description for "${title}" with AI (${getAIProviderName()})`);
+    
+    const mechanicsStr = bggData.mechanics?.join(", ") || "unknown";
+    const playerStr = bggData.min_players && bggData.max_players
+      ? `${bggData.min_players}-${bggData.max_players} players`
+      : "unknown player count";
+    const isExpansion = bggData.is_expansion === true;
+
+    const aiResult = await aiComplete({
+      messages: [
+        {
+          role: "system",
+          content: `You are a board game description writer. Given raw game data, create a polished, engaging description in this EXACT format:
+
+A brief engaging overview paragraph about the game (2-3 sentences).
+
+## Quick Gameplay Overview
+
+- **Goal:** One sentence about what players are trying to achieve.
+- **On Your Turn:** Brief description of main actions players can take.
+- **End Game:** One sentence about when/how the game ends.
+- **Winner:** One sentence about victory condition.
+
+A brief closing sentence about what makes the game appealing.
+
+RULES:
+- Use markdown with ## headers, **bold**, and bullet points
+- Keep it CONCISE: 150-200 words maximum
+- If it's an expansion, mention what base game it requires
+- Do NOT invent gameplay mechanics that aren't mentioned in the source data
+- If the source description is very short or vague, use the mechanics list and player count to infer reasonable gameplay overview
+- RESPOND WITH THE DESCRIPTION TEXT ONLY, no JSON wrapping`,
+        },
+        {
+          role: "user",
+          content: `Create a formatted description for this board game:
+
+Title: ${title}
+Type: ${isExpansion ? "Expansion" : "Standalone Game"}
+Raw Description: ${rawDescription.slice(0, 3000)}
+Mechanics: ${mechanicsStr}
+Players: ${playerStr}
+Difficulty: ${bggData.difficulty || "unknown"}
+Play Time: ${bggData.play_time || "unknown"}`,
+        },
+      ],
+    });
+
+    if (aiResult.success && aiResult.content) {
+      // Clean any JSON wrapping if present
+      let enriched = aiResult.content.trim();
+      // Remove markdown code fences if AI wrapped it
+      enriched = enriched.replace(/^```(?:markdown)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      if (enriched.length > 50) {
+        console.log(`[GameImport] AI enrichment successful (${enriched.length} chars)`);
+        return enriched;
+      }
+    }
+    
+    console.warn("[GameImport] AI enrichment returned empty/short result, using raw description");
+    return rawDescription;
+  } catch (e) {
+    console.error("[GameImport] AI enrichment error:", e);
+    return rawDescription;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// pickBestGeekdoImage - extract high-quality box art from HTML, avoiding social crops
+// ---------------------------------------------------------------------------
+function pickBestGeekdoImage(html: string): string | null {
+  const imageRegex = /https?:\/\/cf\.geekdo-images\.com[^\s"'<>]+/g;
+  const all = html.match(imageRegex) || [];
+  const unique = [...new Set(all)];
+
+  const filtered = unique.filter((img) =>
+    !/crop100|square30|100x100|150x150|_thumb|_avatar|_micro|opengraph|__opengraph|1200x630/i.test(img)
+  );
+
+  filtered.sort((a, b) => {
+    const prio = (url: string) => {
+      if (/_itemrep/i.test(url)) return 0;
+      if (/_imagepage/i.test(url)) return 1;
+      if (/_original/i.test(url)) return 2;
+      return 3;
+    };
+    return prio(a) - prio(b);
+  });
+
+  return filtered[0] ?? null;
+}
 
 // Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
@@ -614,7 +729,23 @@ export default async function handler(req: Request): Promise<Response> {
     const hasCompleteData = bggData?.title;
 
     if (hasCompleteData && bggData) {
-      console.log("Using BGG XML API data directly (fast path)");
+      console.log("Using BGG XML API data (fast path) + AI enrichment");
+
+      // Enrich description with AI to produce formatted "Quick Gameplay Overview"
+      if (bggData.description) {
+        bggData.description = await enrichDescriptionWithAI(
+          bggData.title!,
+          bggData.description,
+          {
+            min_players: bggData.min_players,
+            max_players: bggData.max_players,
+            mechanics: bggData.mechanics,
+            is_expansion: bggData.is_expansion,
+            difficulty: bggData.difficulty,
+            play_time: bggData.play_time,
+          }
+        );
+      }
 
       // We have everything we need from the XML API
       // Skip Firecrawl and AI entirely for maximum speed
@@ -845,9 +976,11 @@ export default async function handler(req: Request): Promise<Response> {
           const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
           const scrapedTitle = ogTitleMatch?.[1] || titleTagMatch?.[1]?.replace(/\s*\|.*$/, '').replace(/\s*\u2014.*$/, '').trim();
           
+          // Use pickBestGeekdoImage for high-quality box art, fall back to og:image
+          const bestImage = pickBestGeekdoImage(html);
           const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
                                html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i);
-          const scrapedImage = ogImageMatch?.[1] || null;
+          const scrapedImage = bestImage || ogImageMatch?.[1] || null;
           
           const ogDescMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i) ||
                               html.match(/<meta\s+content="([^"]+)"\s+property="og:description"/i);
@@ -859,10 +992,17 @@ export default async function handler(req: Request): Promise<Response> {
 
           if (scrapedTitle) {
             console.log(`[GameImport] Direct HTML scrape success: ${scrapedTitle}`);
+            
+            // Enrich description with AI
+            const rawDesc = scrapedDesc || `${scrapedTitle} - a board game${isExpansionFromHtml ? ' expansion' : ''} imported from BoardGameGeek.`;
+            const enrichedDesc = await enrichDescriptionWithAI(scrapedTitle, rawDesc, {
+              is_expansion: isExpansionFromHtml,
+            });
+            
             const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
             const scrapedGameData = {
               title: scrapedTitle.slice(0, 500),
-              description: scrapedDesc?.slice(0, 10000) || `${scrapedTitle} - imported from BoardGameGeek`,
+              description: enrichedDesc.slice(0, 10000),
               image_url: scrapedImage,
               additional_images: [] as string[],
               difficulty: IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium",
@@ -1054,33 +1194,38 @@ export default async function handler(req: Request): Promise<Response> {
           });
           if (directRes.ok) {
             const html = await directRes.text();
-            // Extract title from og:title or <title> tag
             const ogTitleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i) ||
                                  html.match(/<meta\s+content="([^"]+)"\s+property="og:title"/i);
             const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
             const scrapedTitle = ogTitleMatch?.[1] || titleTagMatch?.[1]?.replace(/\s*\|.*$/, '').replace(/\s*\u2014.*$/, '').trim();
             
-            // Extract image from og:image
+            // Use pickBestGeekdoImage for high-quality box art, fall back to og:image
+            const bestImage = pickBestGeekdoImage(html);
             const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
                                  html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i);
-            const scrapedImage = ogImageMatch?.[1] || null;
+            const scrapedImage = bestImage || ogImageMatch?.[1] || null;
             
-            // Extract description from og:description
             const ogDescMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i) ||
                                 html.match(/<meta\s+content="([^"]+)"\s+property="og:description"/i);
             const scrapedDesc = ogDescMatch?.[1] || null;
 
-            // Check if it's an expansion from the URL or page content
             const isExpansionFromHtml = url.includes('/boardgameexpansion/') || 
                                         html.includes('boardgameexpansion') ||
                                         is_expansion === true;
 
             if (scrapedTitle) {
               console.log(`[GameImport] Direct scrape got title: ${scrapedTitle}`);
+              
+              // Enrich description with AI
+              const rawDesc = scrapedDesc || `${scrapedTitle} - a board game${isExpansionFromHtml ? ' expansion' : ''} imported from BoardGameGeek.`;
+              const enrichedDesc = await enrichDescriptionWithAI(scrapedTitle, rawDesc, {
+                is_expansion: isExpansionFromHtml,
+              });
+              
               const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
               const scrapedGameData = {
                 title: scrapedTitle.slice(0, 500),
-                description: scrapedDesc?.slice(0, 10000) || `${scrapedTitle} - imported from BoardGameGeek`,
+                description: enrichedDesc.slice(0, 10000),
                 image_url: scrapedImage,
                 additional_images: [] as string[],
                 difficulty: IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium",
