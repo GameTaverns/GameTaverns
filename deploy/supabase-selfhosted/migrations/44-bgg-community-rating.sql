@@ -1,0 +1,4 @@
+-- BGG community ratings are now imported during game import.
+-- They use guest_identifier = 'bgg-community' in game_ratings.
+-- No schema changes needed - the existing game_ratings table supports this.
+-- The BGG 10-star rating is mapped to the 5-star scale: Math.round(bgg_rating / 2), clamped 1-5.

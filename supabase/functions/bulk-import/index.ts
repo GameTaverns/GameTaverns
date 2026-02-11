@@ -309,6 +309,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
   mechanics?: string[];
   publisher?: string;
   is_expansion?: boolean;
+  bgg_average_rating?: number;
 } | null> {
   const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
 
@@ -393,9 +394,15 @@ async function fetchBGGXMLData(bggId: string): Promise<{
       const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
       const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
       
-      // Detect expansion from item type attribute
       const typeMatch = xml.match(/<item[^>]*type="([^"]+)"/);
       const isExpansion = typeMatch?.[1] === "boardgameexpansion";
+      // BGG community average rating
+      const avgRatingMatch = xml.match(/<average[^>]*value="([\d.]+)"/);
+      let bgg_average_rating: number | undefined;
+      if (avgRatingMatch) {
+        const r = parseFloat(avgRatingMatch[1]);
+        if (r > 0) bgg_average_rating = r;
+      }
 
       // Extract mechanics
       const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
@@ -466,6 +473,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
         mechanics: mechanics.length > 0 ? mechanics : undefined,
         publisher: publisherMatch?.[1],
         is_expansion: isExpansion,
+        bgg_average_rating,
       };
 
       // If we got a description, return immediately. Otherwise fall through to AI enrichment.
@@ -1866,6 +1874,7 @@ export default async function handler(req: Request): Promise<Response> {
                       if (!gameData.mechanics?.length) gameData.mechanics = bggData.mechanics;
                       if (isEmpty(gameData.publisher)) gameData.publisher = bggData.publisher;
                       if (bggData.is_expansion && !gameData.is_expansion) gameData.is_expansion = bggData.is_expansion;
+                      if (!gameData.bgg_average_rating && bggData.bgg_average_rating) gameData.bgg_average_rating = bggData.bgg_average_rating;
                     }
                   } catch (e) {
                     console.warn(`[BulkImport] Image-only XML enrichment failed for ${resolvedBggId}:`, e);
@@ -1949,6 +1958,7 @@ export default async function handler(req: Request): Promise<Response> {
                    publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
                    // Override is_expansion from BGG if not already set (BGG is authoritative)
                    is_expansion: gameData.is_expansion || bggData.is_expansion,
+                   bgg_average_rating: bggData.bgg_average_rating,
                  };
                  // Track BGG XML image as authoritative box art
                  if (bggData.image_url && !isLowQualityBggImageUrl(normalizeImageUrl(bggData.image_url))) {
@@ -2204,6 +2214,7 @@ export default async function handler(req: Request): Promise<Response> {
                         publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
                         // Override is_expansion from BGG if not already set
                         is_expansion: gameData.is_expansion || bggData.is_expansion,
+                        bgg_average_rating: bggData.bgg_average_rating,
                       };
                       
                       // Also fetch gallery images - try Firecrawl first, fall back to direct scrape
@@ -2565,6 +2576,24 @@ export default async function handler(req: Request): Promise<Response> {
               } else {
                 console.log(`Created admin data for "${gameData.title}": date=${gameData.purchase_date}, price=${gameData.purchase_price}`);
               }
+            }
+
+            // Insert BGG community rating mapped to 5-star scale
+            if (gameData.bgg_average_rating && gameData.bgg_average_rating > 0) {
+              const mapped5Star = Math.max(1, Math.min(5, Math.round(gameData.bgg_average_rating / 2)));
+              await supabaseAdmin
+                .from("game_ratings")
+                .upsert(
+                  {
+                    game_id: newGame.id,
+                    rating: mapped5Star,
+                    guest_identifier: "bgg-community",
+                    ip_address: null,
+                    device_fingerprint: null,
+                  },
+                  { onConflict: "game_id,guest_identifier" }
+                );
+              console.log(`[BulkImport] Saved BGG rating ${gameData.bgg_average_rating}/10 → ${mapped5Star}/5 for "${newGame.title}"`);
             }
 
             imported++;
