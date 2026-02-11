@@ -33,6 +33,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { getSupabaseConfig } from "@/config/runtime";
 
 interface HealthCheck {
   name: string;
@@ -102,11 +103,12 @@ async function fetchHealth(): Promise<HealthData> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
 
-  const url = `${(supabase as any).supabaseUrl}/functions/v1/system-health?action=health`;
+  const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+  const url = `${supabaseUrl}/functions/v1/system-health?action=health`;
   const r = await fetch(url, {
     headers: {
       Authorization: `Bearer ${session.access_token}`,
-      apikey: (supabase as any).supabaseKey,
+      apikey: anonKey,
     },
   });
 
@@ -123,11 +125,12 @@ async function fetchLogs(params: { source?: string; level?: string; limit?: numb
   if (params.level) searchParams.set("level", params.level);
   if (params.limit) searchParams.set("limit", String(params.limit));
 
-  const url = `${(supabase as any).supabaseUrl}/functions/v1/system-health?${searchParams}`;
+  const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+  const url = `${supabaseUrl}/functions/v1/system-health?${searchParams}`;
   const r = await fetch(url, {
     headers: {
       Authorization: `Bearer ${session.access_token}`,
-      apikey: (supabase as any).supabaseKey,
+      apikey: anonKey,
     },
   });
 
@@ -276,11 +279,12 @@ export function SystemHealth() {
     mutationFn: async (days: number) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
-      const url = `${(supabase as any).supabaseUrl}/functions/v1/system-health?action=cleanup&days=${days}`;
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const url = `${supabaseUrl}/functions/v1/system-health?action=cleanup&days=${days}`;
       const r = await fetch(url, {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
-          apikey: (supabase as any).supabaseKey,
+          apikey: anonKey,
         },
       });
       return r.json();
