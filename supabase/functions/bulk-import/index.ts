@@ -948,7 +948,7 @@ async function fetchBGGGalleryImages(
 async function fetchBGGData(
   bggId: string,
   firecrawlKey: string,
-  maxRetries = 3,
+  maxRetries = 1,
   fetchGalleryImages = false
 ): Promise<{
   bgg_id: string;
