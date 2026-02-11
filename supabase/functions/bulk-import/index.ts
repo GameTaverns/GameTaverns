@@ -653,6 +653,13 @@ Return ONLY the JSON object, no extra text.`;
   return partialResult || { bgg_id: bggId };
 }
 
+/**
+ * Strip Perplexity/Sonar citation markers like [1], [2][3], [1][3][4] from text
+ */
+function stripCitationBrackets(text: string): string {
+  return text.replace(/\[\d+\]/g, "").replace(/  +/g, " ").trim();
+}
+
 // Format a BGG description into structured markdown using AI
 // Uses response_format instead of tool calling (Perplexity doesn't support tools)
 async function formatDescriptionWithAI(rawContent: string, bggId: string): Promise<string | null> {
@@ -739,7 +746,7 @@ EXAMPLE OUTPUT:
 
     // Handle tool call response (structured output via response_format or actual tool call)
     if (result.toolCallArguments?.description) {
-      const desc = result.toolCallArguments.description as string;
+      const desc = stripCitationBrackets(result.toolCallArguments.description as string);
       console.log(`[BulkImport] AI formatted description via tool call: ${desc.length} chars`);
       return desc;
     }
@@ -750,8 +757,9 @@ EXAMPLE OUTPUT:
       try {
         const parsed = JSON.parse(result.content);
         if (parsed.description) {
-          console.log(`[BulkImport] AI formatted description via JSON content: ${parsed.description.length} chars`);
-          return parsed.description;
+          const desc = stripCitationBrackets(parsed.description);
+          console.log(`[BulkImport] AI formatted description via JSON content: ${desc.length} chars`);
+          return desc;
         }
       } catch {
         // Not valid JSON, try other approaches
@@ -763,8 +771,9 @@ EXAMPLE OUTPUT:
         try {
           const parsed = JSON.parse(jsonMatch[1].trim());
           if (parsed.description) {
-            console.log(`[BulkImport] AI formatted description from code block: ${parsed.description.length} chars`);
-            return parsed.description;
+            const desc = stripCitationBrackets(parsed.description);
+            console.log(`[BulkImport] AI formatted description from code block: ${desc.length} chars`);
+            return desc;
           }
         } catch {
           // Fall through
@@ -773,14 +782,16 @@ EXAMPLE OUTPUT:
       
       // If content looks like a properly formatted description (has the header), use it directly
       if (result.content.includes("## Description") || result.content.includes("## Quick Gameplay Overview")) {
-        console.log(`[BulkImport] AI returned raw markdown directly: ${result.content.length} chars`);
-        return result.content;
+        const desc = stripCitationBrackets(result.content);
+        console.log(`[BulkImport] AI returned raw markdown directly: ${desc.length} chars`);
+        return desc;
       }
       
       // Last resort: if it's substantial text, return it
       if (result.content.length > 100 && !result.content.startsWith("{")) {
-        console.log(`[BulkImport] AI returned plain text: ${result.content.length} chars`);
-        return result.content;
+        const desc = stripCitationBrackets(result.content);
+        console.log(`[BulkImport] AI returned plain text: ${desc.length} chars`);
+        return desc;
       }
     }
 
@@ -803,7 +814,7 @@ async function fetchBGGGalleryImages(
     // BGG's internal gallery API - returns JSON with categorized images
     // Categories: Components, Play, BoxFront, BoxBack, Customized, Miscellaneous
     // We want gameplay (Play) and component images, sorted by popularity ("hot")
-    const apiUrl = `https://api.geekdo.com/api/images?ajax=1&gallery=all&nosession=1&objectid=${bggId}&objecttype=thing&pageid=1&showcount=20&sort=hot`;
+    const apiUrl = `https://api.geekdo.com/api/images?ajax=1&gallery=all&nosession=1&objectid=${bggId}&objecttype=thing&pageid=1&showcount=50&sort=hot`;
     
     console.log(`[BulkImport] Fetching gallery via BGG JSON API for BGG ID: ${bggId}`);
     const res = await fetch(apiUrl, {
@@ -826,30 +837,37 @@ async function fetchBGGGalleryImages(
       return [];
     }
 
-    // Extract large image URLs, skipping the first one if it's the box front (already used as primary)
-    // Prioritize Play and Components categories via caption/href heuristics
-    const result: string[] = [];
+    // Categorize images: prioritize Play > Components > BoxFront > everything else
+    // BGG categories are in img.imagepagehref or img.caption
+    const categorized: { url: string; priority: number }[] = [];
     const seen = new Set<string>();
 
     for (const img of images) {
-      if (result.length >= maxImages) break;
-      
       const url = img.imageurl_lg;
       if (!url || typeof url !== "string") continue;
       
-      // Normalize URL (unescape JSON-encoded slashes)
       const cleanUrl = url.replace(/\\\//g, "/");
-      
-      // Skip duplicates
       const imageId = img.imageid || cleanUrl;
       if (seen.has(imageId)) continue;
       seen.add(imageId);
       
-      // Skip tiny/avatar images
       if (/micro|thumb|avatar|_mt|_t$/i.test(cleanUrl)) continue;
       
-      result.push(cleanUrl);
+      // Determine category priority from BGG metadata
+      const href = (img.imagepagehref || "").toLowerCase();
+      const caption = (img.caption || "").toLowerCase();
+      let priority = 5; // default
+      if (href.includes("/play") || caption.includes("play")) priority = 1;
+      else if (href.includes("/component") || caption.includes("component")) priority = 2;
+      else if (href.includes("/boxfront") || href.includes("/boxback") || caption.includes("box")) priority = 3;
+      else if (href.includes("/custom") || caption.includes("custom")) priority = 4;
+      
+      categorized.push({ url: cleanUrl, priority });
     }
+
+    // Sort by priority (lower = better), then take top N
+    categorized.sort((a, b) => a.priority - b.priority);
+    const result = categorized.slice(0, maxImages).map(c => c.url);
 
     console.log(`[BulkImport] BGG gallery API found ${result.length} images for BGG ID: ${bggId}`);
     return result;
@@ -1918,6 +1936,12 @@ export default async function handler(req: Request): Promise<Response> {
                        galleryWithImages++;
                        gameData.additional_images = aiData.additional_images;
                        console.log(`[BulkImport] Added ${aiData.additional_images.length} gallery images`);
+                       // Use first gallery image as primary if we have none
+                       if (!gameData.image_url || isLowQualityBggImageUrl(gameData.image_url)) {
+                         gameData.image_url = aiData.additional_images[0];
+                         gameData.additional_images = aiData.additional_images.slice(1);
+                         console.log(`[BulkImport] Using first gallery image as primary`);
+                       }
                      }
                    } catch (e) {
                      console.warn(`[BulkImport] AI enrichment failed for ${gameInput.bgg_id}:`, e);
@@ -1929,11 +1953,51 @@ export default async function handler(req: Request): Promise<Response> {
                   console.log(`[BulkImport] Fetching gallery via BGG JSON API for: ${gameInput.bgg_id}`);
                   try {
                     galleryAttempts++;
-                    const galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, null, 5);
+                    let galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, null, 5);
+                    
+                    // Deluxe/special edition fallback: if this edition has very few images,
+                    // try searching for the base game's BGG ID via the XML API
+                    if (galleryImages.length < 2 && gameData.title) {
+                      const titleLower = gameData.title.toLowerCase();
+                      const editionPatterns = /\b(deluxe|collector'?s?|anniversary|big box|kickstarter|premium|special)\s*(edition)?\b/i;
+                      if (editionPatterns.test(titleLower)) {
+                        const baseTitle = gameData.title.replace(editionPatterns, "").replace(/[:\-–—]\s*$/, "").trim();
+                        console.log(`[BulkImport] Edition detected, trying base title: "${baseTitle}" for more images`);
+                        try {
+                          const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(baseTitle)}&type=boardgame&exact=1`;
+                          const searchRes = await fetch(searchUrl, {
+                            headers: { "User-Agent": "GameTaverns/1.0 (BGG Import)" },
+                          });
+                          if (searchRes.ok) {
+                            const searchXml = await searchRes.text();
+                            const idMatch = searchXml.match(/id="(\d+)"/);
+                            if (idMatch && idMatch[1] !== gameInput.bgg_id) {
+                              console.log(`[BulkImport] Found base game BGG ID: ${idMatch[1]}, fetching gallery`);
+                              const baseImages = await fetchBGGGalleryImages(idMatch[1], null, 5);
+                              if (baseImages.length > galleryImages.length) {
+                                console.log(`[BulkImport] Base game has ${baseImages.length} images vs edition's ${galleryImages.length}, using base`);
+                                galleryImages = baseImages;
+                              }
+                            }
+                          }
+                        } catch (e) {
+                          console.warn(`[BulkImport] Base game lookup failed:`, e);
+                        }
+                      }
+                    }
+                    
                     if (galleryImages.length > 0) {
                       galleryWithImages++;
                       gameData.additional_images = galleryImages;
                       console.log(`[BulkImport] BGG gallery API added ${galleryImages.length} gallery images`);
+                      
+                      // If we have no primary image, use the first gallery image
+                      if (!gameData.image_url || isLowQualityBggImageUrl(gameData.image_url)) {
+                        gameData.image_url = galleryImages[0];
+                        console.log(`[BulkImport] Using first gallery image as primary: ${galleryImages[0].slice(-40)}`);
+                        // Remove from additional_images to avoid duplication
+                        gameData.additional_images = galleryImages.slice(1);
+                      }
                     }
                   } catch (e) {
                     console.warn(`[BulkImport] BGG gallery API failed for ${gameInput.bgg_id}:`, e);
@@ -1958,7 +2022,7 @@ export default async function handler(req: Request): Promise<Response> {
                       console.log(`[BulkImport] Final AI generated description: ${result.content.length} chars`);
                       // Now format it with the standard formatter
                       const formatted = await formatDescriptionWithAI(result.content, gameInput.bgg_id);
-                      gameData.description = formatted || result.content;
+                      gameData.description = formatted || stripCitationBrackets(result.content);
                     }
                   } catch (e) {
                     console.warn(`[BulkImport] Final AI description generation failed for "${gameTitle}":`, e);
