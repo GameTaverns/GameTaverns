@@ -159,7 +159,7 @@ async function sendDM(supabaseUrl: string, serviceRoleKey: string, userId: strin
   }
 }
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -180,8 +180,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch library settings and owner info
-    // Fetch library with settings (one-to-one relationship)
     const { data: library, error: libraryError } = await supabase
       .from("libraries")
       .select("owner_id")
@@ -203,7 +201,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch settings separately
     const { data: settings } = await supabase
       .from("library_settings")
       .select("discord_webhook_url, discord_notifications")
@@ -212,7 +209,6 @@ Deno.serve(async (req) => {
 
     const notifications = (settings?.discord_notifications as Record<string, boolean>) || {};
 
-    // Check if this notification type is enabled
     if (notifications[event_type] === false) {
       return new Response(
         JSON.stringify({ success: true, skipped: true, reason: "Notification type disabled" }),
@@ -220,19 +216,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build the Discord embed
     const embed = buildEmbed(event_type, data);
 
-    // Determine notification destination based on event type
-    // Private notifications (message_received, loan_requested) → DM to library owner or lender
-    // Public notifications (game_added, wishlist_vote, poll_*) → Webhook
     const isPrivateEvent = event_type === "message_received" || event_type === "loan_requested";
 
     if (isPrivateEvent) {
-      // For loan_requested, we may have a specific lender_user_id; otherwise use library owner
       const targetUserId = payload.lender_user_id || library.owner_id;
-      
-      // Send DM to target user
       await sendDM(supabaseUrl, serviceRoleKey, targetUserId, embed);
       
       return new Response(
@@ -241,7 +230,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Public events → Send to webhook if configured
     if (!settings?.discord_webhook_url) {
       return new Response(
         JSON.stringify({ success: true, skipped: true, reason: "No webhook configured" }),
@@ -277,4 +265,10 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}

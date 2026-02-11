@@ -113,7 +113,7 @@ async function createDiscordEvent(
   return await response.json();
 }
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -133,7 +133,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get library settings to find webhook URL
     const { data: settings, error: settingsError } = await supabase
       .from("library_settings")
       .select("discord_webhook_url, discord_notifications")
@@ -155,7 +154,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if poll_created notifications are enabled
     const notifications = (settings.discord_notifications as Record<string, boolean>) || {};
     if (notifications.poll_created === false) {
       return new Response(
@@ -164,7 +162,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get guild ID from webhook
     const guildId = await getGuildIdFromWebhook(settings.discord_webhook_url);
     if (!guildId) {
       return new Response(
@@ -173,13 +170,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build event description with poll link
     let eventDescription = description || "";
     if (poll_url) {
       eventDescription += eventDescription ? `\n\n🗳️ Vote here: ${poll_url}` : `🗳️ Vote here: ${poll_url}`;
     }
 
-    // Create the Discord scheduled event
     const discordEvent = await createDiscordEvent(guildId, {
       name,
       description: eventDescription,
@@ -215,4 +210,10 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
