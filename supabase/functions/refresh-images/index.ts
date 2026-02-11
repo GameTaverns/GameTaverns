@@ -179,7 +179,7 @@ export default async function handler(req: Request): Promise<Response> {
         continue;
       }
 
-      // Use BGG thing XML API (fast, returns canonical high-quality image URL)
+      // Use BGG thing XML API (fast, returns canonical high-quality box art URL)
       let imageUrl: string | null = null;
       try {
         const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}`;
@@ -191,14 +191,20 @@ export default async function handler(req: Request): Promise<Response> {
         });
         if (res.ok) {
           const xml = await res.text();
+          // Prefer <image> (full-size box art) over <thumbnail>
           const imgMatch = xml.match(/<image>([^<]+)<\/image>/);
-          imageUrl = imgMatch?.[1] || null;
+          const thumbMatch = xml.match(/<thumbnail>([^<]+)<\/thumbnail>/);
+          const candidate = imgMatch?.[1] || thumbMatch?.[1] || null;
+          // Only use if it's not a low-quality opengraph/cropped variant
+          if (candidate && !/(__opengraph|fit-in\/1200x630|__small|__thumb|__micro)/i.test(candidate)) {
+            imageUrl = candidate;
+          }
         }
       } catch (e) {
         console.error(`Failed to fetch thing XML for ${bggId}:`, e);
       }
 
-      // Fallback to page scraping if XML failed
+      // Fallback to page scraping if XML failed or returned low-quality image
       if (!imageUrl) {
         imageUrl = await fetchBGGImage(game.bgg_url || `https://boardgamegeek.com/boardgame/${bggId}`);
       }

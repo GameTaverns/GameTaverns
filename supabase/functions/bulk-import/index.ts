@@ -873,7 +873,11 @@ async function fetchBGGGalleryImages(
         else if (href.includes("/component") || caption.includes("component") || caption.includes("setup") || caption.includes("contents")) priority = 2;
         else if (href.includes("/custom") || caption.includes("custom") || caption.includes("painted")) priority = 3;
         else if (href.includes("/miscellaneous") || caption.includes("misc")) priority = 4;
-        else if (href.includes("/boxfront") || href.includes("/boxback") || caption.includes("box")) {
+        else if (
+          href.includes("/boxfront") || href.includes("/boxback") || href.includes("/boxart") ||
+          href.includes("/cover") || href.includes("/box") ||
+          caption.includes("box") || caption.includes("cover") || caption.includes("front")
+        ) {
           priority = 6;
           isBoxArt = true;
         }
@@ -900,6 +904,7 @@ async function fetchBGGGalleryImages(
     const boxArt = allCategorized.filter(c => c.isBoxArt);
     
     // For gallery: prefer gameplay/component shots, fill with box art if needed
+    // This ensures games with only box art images still get a gallery
     const selected = nonBoxArt.slice(0, maxImages);
     if (selected.length < maxImages) {
       selected.push(...boxArt.slice(0, maxImages - selected.length));
@@ -1789,6 +1794,8 @@ export default async function handler(req: Request): Promise<Response> {
             // Normalize/clean the CSV-provided image immediately so even "skip enrichment" rows
             // don't get stuck with cropped OpenGraph variants.
             gameData.image_url = normalizeImageUrl(gameData.image_url);
+            // Track the authoritative BGG XML box art image so gallery logic can't override it
+            let bggXmlBoxArtUrl: string | undefined;
 
             const hasLowQualityImage = isLowQualityBggImageUrl(gameData.image_url) || isLowQualityBggImageUrl(gameInput.image_url);
 
@@ -1851,6 +1858,9 @@ export default async function handler(req: Request): Promise<Response> {
                     if (bggData?.image_url) {
                       bggXmlWithImage++;
                       gameData.image_url = normalizeImageUrl(bggData.image_url);
+                      if (!isLowQualityBggImageUrl(gameData.image_url)) {
+                        bggXmlBoxArtUrl = gameData.image_url;
+                      }
                     }
                     // Also backfill missing metadata even when description is complete
                     if (bggData) {
@@ -1951,6 +1961,10 @@ export default async function handler(req: Request): Promise<Response> {
                    // Override is_expansion from BGG if not already set (BGG is authoritative)
                    is_expansion: gameData.is_expansion || bggData.is_expansion,
                  };
+                 // Track BGG XML image as authoritative box art
+                 if (bggData.image_url && !isLowQualityBggImageUrl(normalizeImageUrl(bggData.image_url))) {
+                   bggXmlBoxArtUrl = normalizeImageUrl(bggData.image_url);
+                 }
 
                 // Ensure notes are appended after enrichment when CSV had notes.
                 if (!hasCsvDescription) {
@@ -2221,6 +2235,25 @@ export default async function handler(req: Request): Promise<Response> {
                 }
               } catch (e) {
                 console.warn(`[BulkImport] Title lookup failed for "${gameData.title}":`, e);
+              }
+            }
+
+            // FINAL BOX ART ENFORCEMENT: The BGG XML <image> tag is the canonical box art.
+            // Gallery enrichment may have overridden it with gameplay/component photos.
+            // Restore the XML box art as primary if it was a valid, high-quality URL.
+            if (bggXmlBoxArtUrl && gameData.image_url !== bggXmlBoxArtUrl) {
+              const currentIsBoxArt = bggXmlBoxArtUrl === gameData.image_url;
+              if (!currentIsBoxArt) {
+                // Move current primary to gallery if it's a valid image
+                if (gameData.image_url && !isLowQualityBggImageUrl(gameData.image_url)) {
+                  const gallery = gameData.additional_images || [];
+                  if (!gallery.includes(gameData.image_url)) {
+                    gallery.unshift(gameData.image_url);
+                    gameData.additional_images = gallery.slice(0, 8);
+                  }
+                }
+                gameData.image_url = bggXmlBoxArtUrl;
+                console.log(`[BulkImport] ENFORCED box art as primary for "${gameData.title}": ${bggXmlBoxArtUrl.slice(-40)}`);
               }
             }
 
