@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { 
   Library, 
@@ -16,7 +16,6 @@ import {
   ShoppingCart,
   ALargeSmall,
   Users,
-  FlaskConical,
   Baby,
   Heart,
   TrendingUp,
@@ -24,7 +23,10 @@ import {
   MapPin,
   Wand2,
   Globe,
-  BarChart3
+  BarChart3,
+  Search,
+  Gauge,
+  X,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
@@ -35,6 +37,7 @@ import { useDemoMode } from "@/contexts/DemoContext";
 import { useAuth } from "@/hooks/useAuth";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import {
   Collapsible,
@@ -54,6 +57,51 @@ interface SidebarProps {
   isOpen: boolean;
 }
 
+// Mechanic category groupings
+const MECHANIC_CATEGORIES: Record<string, string[]> = {
+  "Strategy": [
+    "Worker Placement", "Area Control", "Engine Building", "Route Building",
+    "Network Building", "Tile Placement", "Area Majority / Influence",
+    "Modular Board", "Tech Trees / Tech Tracks", "Rondel",
+    "Action Points", "Action Queue", "Action Retrieval",
+    "Grid Movement", "Hexagon Grid", "Point to Point Movement",
+    "Area Movement", "Map Reduction",
+  ],
+  "Card & Deck": [
+    "Hand Management", "Deck Building", "Deck Construction", "Card Drafting",
+    "Card Play Conflict Resolution", "Trick-taking", "Set Collection",
+    "Multi-Use Cards", "Tableau Building", "Layering",
+    "Ladder Climbing", "Matching", "Pattern Building", "Contracts", "Market",
+  ],
+  "Dice & Luck": [
+    "Dice Rolling", "Die Icon Resolution", "Random Production",
+    "Push Your Luck", "Betting and Bluffing", "Chit-Pull System",
+    "Bag Building", "Pool Building", "Catch the Leader",
+    "Re-rolling and Locking", "Stat Check Resolution",
+  ],
+  "Social": [
+    "Negotiation", "Trading", "Voting", "Alliances", "Bribes",
+    "Team-Based Game", "Cooperative Game", "Semi-Cooperative Game",
+    "Traitor Game", "Hidden Roles", "Role Playing", "Storytelling",
+    "Communication Limits", "Acting", "Player Elimination",
+  ],
+  "Economy": [
+    "Resource Management", "Commodity Speculation", "Stock Holding",
+    "Income", "Loans", "Auction / Bidding", "Ownership", "Investment",
+  ],
+  "Combat": [
+    "Variable Player Powers", "Simultaneous Action Selection",
+    "Take That", "Tug of War", "Siege", "Line of Sight",
+    "Command Cards", "Campaign / Battle Card Driven",
+    "Scenario / Mission / Campaign Game", "Wargame",
+  ],
+  "Puzzle": [
+    "Pattern Recognition", "Connections", "Enclosure",
+    "Drafting", "Open Drafting", "Closed Drafting",
+    "Deduction", "Induction", "Memory", "Programmed Movement",
+  ],
+};
+
 interface FilterSectionProps {
   title: string;
   icon: React.ReactNode;
@@ -63,16 +111,16 @@ interface FilterSectionProps {
 
 function FilterSection({ title, icon, children, defaultOpen = false }: FilterSectionProps) {
   return (
-    <Collapsible defaultOpen={defaultOpen} className="mt-6">
-      <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+    <Collapsible defaultOpen={defaultOpen} className="mt-4">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
         <span className="flex items-center gap-2">
           {icon}
           {title}
         </span>
-        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-1">
-        <nav className="space-y-1">
+      <CollapsibleContent className="mt-0.5">
+        <nav className="space-y-0.5">
           {children}
         </nav>
       </CollapsibleContent>
@@ -80,7 +128,162 @@ function FilterSection({ title, icon, children, defaultOpen = false }: FilterSec
   );
 }
 
-// Compact upcoming events display for sidebar
+// Compact chip-style filter for categories with few options
+function ChipFilterSection({
+  title,
+  icon,
+  options,
+  filterKey,
+  isActive,
+  onFilterClick,
+  defaultOpen = false,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  options: string[];
+  filterKey: string;
+  isActive: (filter: string, value: string) => boolean;
+  onFilterClick: (filter: string, value: string) => void;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <Collapsible defaultOpen={defaultOpen} className="mt-4">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+        <span className="flex items-center gap-2">
+          {icon}
+          {title}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-0.5">
+        <div className="flex flex-wrap gap-1 px-4 py-1">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => onFilterClick(filterKey, opt)}
+              className={cn(
+                "px-2 py-0.5 rounded-full text-xs font-medium transition-colors border",
+                isActive(filterKey, opt)
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary"
+                  : "border-sidebar-border text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+// Grouped mechanics filter with search
+function MechanicsFilter({
+  mechanics,
+  isActive,
+  onFilterClick,
+}: {
+  mechanics: { id: string; name: string }[];
+  isActive: (filter: string, value: string) => boolean;
+  onFilterClick: (filter: string, value: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  
+  const mechanicNameSet = useMemo(() => new Set(mechanics.map(m => m.name)), [mechanics]);
+  
+  // Build grouped categories, only showing mechanics that exist in this library
+  const groupedCategories = useMemo(() => {
+    const result: Record<string, string[]> = {};
+    const assigned = new Set<string>();
+
+    for (const [category, mechs] of Object.entries(MECHANIC_CATEGORIES)) {
+      const existing = mechs.filter(m => mechanicNameSet.has(m));
+      if (existing.length > 0) {
+        result[category] = existing;
+        existing.forEach(m => assigned.add(m));
+      }
+    }
+
+    // "Other" bucket for uncategorized mechanics
+    const uncategorized = mechanics
+      .filter(m => !assigned.has(m.name))
+      .map(m => m.name)
+      .sort();
+    if (uncategorized.length > 0) {
+      result["Other"] = uncategorized;
+    }
+
+    return result;
+  }, [mechanics, mechanicNameSet]);
+
+  // Filter by search
+  const filtered = useMemo(() => {
+    if (!search.trim()) return groupedCategories;
+    const q = search.toLowerCase();
+    const result: Record<string, string[]> = {};
+    for (const [cat, mechs] of Object.entries(groupedCategories)) {
+      const matches = mechs.filter(m => m.toLowerCase().includes(q));
+      if (matches.length > 0) result[cat] = matches;
+    }
+    return result;
+  }, [groupedCategories, search]);
+
+  return (
+    <div className="space-y-1">
+      {/* Search within mechanics */}
+      <div className="relative px-3 mb-1">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-3 w-3 text-sidebar-foreground/40" />
+        <Input
+          placeholder="Search mechanics..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-7 pl-7 pr-6 text-xs bg-sidebar-accent/30 border-sidebar-border"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-5 top-1/2 -translate-y-1/2"
+          >
+            <X className="h-3 w-3 text-sidebar-foreground/40 hover:text-sidebar-foreground" />
+          </button>
+        )}
+      </div>
+      
+      <div className="max-h-56 overflow-y-auto px-2">
+        {Object.entries(filtered).map(([category, mechs]) => (
+          <Collapsible key={category} defaultOpen={mechs.some(m => isActive("mechanic", m))}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-2 py-1 text-[11px] font-semibold text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors">
+              <span>{category}</span>
+              <span className="flex items-center gap-1">
+                <span className="text-sidebar-foreground/30">{mechs.length}</span>
+                <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </span>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="flex flex-wrap gap-0.5 px-1 pb-1">
+                {mechs.map((mech) => (
+                  <button
+                    key={mech}
+                    onClick={() => onFilterClick("mechanic", mech)}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] transition-colors border",
+                      isActive("mechanic", mech)
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary"
+                        : "border-sidebar-border text-sidebar-foreground/60 hover:bg-sidebar-accent"
+                    )}
+                  >
+                    {mech}
+                  </button>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 function SidebarUpcomingEvents({ libraryId }: { libraryId: string }) {
   const { data: events = [], isLoading } = useUpcomingEvents(libraryId, 3);
   
@@ -347,129 +550,79 @@ export function Sidebar({ isOpen }: SidebarProps) {
           {/* Upcoming Events - Only in tenant mode when library exists and events feature enabled */}
           {isTenantMode && library && events && <SidebarUpcomingEvents libraryId={library.id} />}
 
-          {/* Player Count */}
-          <FilterSection title="Player Count" icon={<Users className="h-4 w-4" />} defaultOpen={currentFilter === "players"}>
-            {["1 Player", "2 Players", "3-4 Players", "5-6 Players", "7+ Players"].map((option) => (
-              <button
-                key={option}
-                onClick={() => handleFilterClick("players", option)}
-                className={cn(
-                  "sidebar-link text-sm w-full text-left",
-                  isActive("players", option) && "sidebar-link-active"
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </FilterSection>
+          {/* Player Count - compact chips */}
+          <ChipFilterSection
+            title="Players"
+            icon={<Users className="h-4 w-4" />}
+            options={["1 Player", "2 Players", "3-4 Players", "5-6 Players", "7+ Players"]}
+            filterKey="players"
+            isActive={isActive}
+            onFilterClick={handleFilterClick}
+            defaultOpen={currentFilter === "players"}
+          />
 
-          {/* Difficulty */}
-          <FilterSection title="Difficulty" icon={<Star className="h-4 w-4" />} defaultOpen={currentFilter === "difficulty"}>
-            {DIFFICULTY_OPTIONS.map((diff) => (
-              <button
-                key={diff}
-                onClick={() => handleFilterClick("difficulty", diff)}
-                className={cn(
-                  "sidebar-link text-sm w-full text-left",
-                  isActive("difficulty", diff) && "sidebar-link-active"
-                )}
-              >
-                {diff}
-              </button>
-            ))}
-          </FilterSection>
+          {/* Difficulty - compact chips */}
+          <ChipFilterSection
+            title="Difficulty"
+            icon={<Gauge className="h-4 w-4" />}
+            options={DIFFICULTY_OPTIONS}
+            filterKey="difficulty"
+            isActive={isActive}
+            onFilterClick={handleFilterClick}
+            defaultOpen={currentFilter === "difficulty"}
+          />
 
-          {/* Game Type */}
-          <FilterSection title="Type" icon={<Gamepad2 className="h-4 w-4" />} defaultOpen={currentFilter === "type"}>
-            {GAME_TYPE_OPTIONS.map((type) => (
-              <button
-                key={type}
-                onClick={() => handleFilterClick("type", type)}
-                className={cn(
-                  "sidebar-link text-sm w-full text-left",
-                  isActive("type", type) && "sidebar-link-active"
-                )}
-              >
-                {type}
-              </button>
-            ))}
-          </FilterSection>
+          {/* Play Time - compact chips */}
+          <ChipFilterSection
+            title="Play Time"
+            icon={<Clock className="h-4 w-4" />}
+            options={PLAY_TIME_OPTIONS}
+            filterKey="playtime"
+            isActive={isActive}
+            onFilterClick={handleFilterClick}
+            defaultOpen={currentFilter === "playtime"}
+          />
 
-          {/* Genre */}
-          <FilterSection title="Genre" icon={<Wand2 className="h-4 w-4" />} defaultOpen={currentFilter === "genre"}>
-            {GENRE_OPTIONS.map((genre) => (
-              <button
-                key={genre}
-                onClick={() => handleFilterClick("genre", genre)}
-                className={cn(
-                  "sidebar-link text-sm w-full text-left",
-                  isActive("genre", genre) && "sidebar-link-active"
-                )}
-              >
-                {genre}
-              </button>
-            ))}
-          </FilterSection>
+          {/* Game Type - compact chips */}
+          <ChipFilterSection
+            title="Type"
+            icon={<Gamepad2 className="h-4 w-4" />}
+            options={GAME_TYPE_OPTIONS}
+            filterKey="type"
+            isActive={isActive}
+            onFilterClick={handleFilterClick}
+            defaultOpen={currentFilter === "type"}
+          />
 
-          {/* Play Time */}
-          <FilterSection title="Play Time" icon={<Clock className="h-4 w-4" />} defaultOpen={currentFilter === "playtime"}>
-            {PLAY_TIME_OPTIONS.map((time) => (
-              <button
-                key={time}
-                onClick={() => handleFilterClick("playtime", time)}
-                className={cn(
-                  "sidebar-link text-sm w-full text-left",
-                  isActive("playtime", time) && "sidebar-link-active"
-                )}
-              >
-                {time}
-              </button>
-            ))}
-          </FilterSection>
+          {/* Genre - compact chips */}
+          <ChipFilterSection
+            title="Genre"
+            icon={<Wand2 className="h-4 w-4" />}
+            options={GENRE_OPTIONS}
+            filterKey="genre"
+            isActive={isActive}
+            onFilterClick={handleFilterClick}
+            defaultOpen={currentFilter === "genre"}
+          />
 
-          {/* Age */}
-          <FilterSection title="Age" icon={<Baby className="h-4 w-4" />} defaultOpen={currentFilter === "age"}>
-            {["3+", "6+", "8+", "10+", "12+", "14+", "18+"].map((age) => (
-              <button
-                key={age}
-                onClick={() => handleFilterClick("age", age)}
-                className={cn(
-                  "sidebar-link text-sm w-full text-left",
-                  isActive("age", age) && "sidebar-link-active"
-                )}
-              >
-                {age}
-              </button>
-            ))}
-          </FilterSection>
-
-          {/* Mechanics */}
+          {/* Mechanics - grouped by category */}
           <FilterSection title="Mechanics" icon={<Puzzle className="h-4 w-4" />} defaultOpen={currentFilter === "mechanic"}>
-            <div className="max-h-48 overflow-y-auto">
-              {mechanics.map((mech) => (
-                <button
-                  key={mech.id}
-                  onClick={() => handleFilterClick("mechanic", mech.name)}
-                  className={cn(
-                    "sidebar-link text-sm w-full text-left",
-                    isActive("mechanic", mech.name) && "sidebar-link-active"
-                  )}
-                >
-                  {mech.name}
-                </button>
-              ))}
-            </div>
+            <MechanicsFilter
+              mechanics={mechanics}
+              isActive={isActive}
+              onFilterClick={handleFilterClick}
+            />
           </FilterSection>
 
           {/* Publishers */}
           <FilterSection title="Publishers" icon={<Building2 className="h-4 w-4" />} defaultOpen={currentFilter === "publisher"}>
-            <div className="max-h-48 overflow-y-auto">
+            <div className="max-h-40 overflow-y-auto px-2">
               {publishers.map((pub) => (
                 <button
                   key={pub.id}
                   onClick={() => handleFilterClick("publisher", pub.name)}
                   className={cn(
-                    "sidebar-link text-sm w-full text-left",
+                    "sidebar-link text-xs w-full text-left py-1",
                     isActive("publisher", pub.name) && "sidebar-link-active"
                   )}
                 >
@@ -479,15 +632,15 @@ export function Sidebar({ isOpen }: SidebarProps) {
             </div>
           </FilterSection>
 
-          {/* A-Z Filter */}
+          {/* A-Z Filter - compact grid */}
           <FilterSection title="A-Z" icon={<ALargeSmall className="h-4 w-4" />} defaultOpen={currentFilter === "letter"}>
-            <div className="grid grid-cols-6 gap-1 px-2">
-              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map((letter) => (
+            <div className="grid grid-cols-7 gap-0.5 px-3">
+              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("").map((letter) => (
                 <button
                   key={letter}
                   onClick={() => handleFilterClick("letter", letter)}
                   className={cn(
-                    "flex items-center justify-center h-8 w-8 rounded text-sm font-medium transition-colors",
+                    "flex items-center justify-center h-7 w-7 rounded text-xs font-medium transition-colors",
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     isActive("letter", letter) 
                       ? "bg-sidebar-primary text-sidebar-primary-foreground" 
