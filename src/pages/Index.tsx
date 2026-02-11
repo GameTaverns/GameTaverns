@@ -34,7 +34,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-type SortOption = "title" | "difficulty" | "playtime" | "newest";
+type SortOption = "title" | "difficulty" | "playtime" | "newest" | "rating";
 type SortDir = "asc" | "desc";
 
 const ITEMS_PER_PAGE = 20;
@@ -284,6 +284,12 @@ const Index = () => {
         case "newest":
           cmp = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           break;
+        case "rating": {
+          const aRating = ratingsData?.find(r => r.game_id === a.id)?.average_rating ?? 0;
+          const bRating = ratingsData?.find(r => r.game_id === b.id)?.average_rating ?? 0;
+          cmp = Number(aRating) - Number(bRating);
+          break;
+        }
         default:
           cmp = a.title.localeCompare(b.title);
       }
@@ -418,6 +424,7 @@ const Index = () => {
                   <SelectItem value="difficulty">Difficulty</SelectItem>
                   <SelectItem value="playtime">Play Time</SelectItem>
                   <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="rating">Star Rating</SelectItem>
                 </SelectContent>
               </Select>
             </div>
