@@ -1287,8 +1287,9 @@ type GameToImport = {
 };
 
 // Convert BGG OpenGraph URLs to higher quality image URLs
-// OpenGraph images are 1200x630 with weird cropping; prefer the square/original version
-// Also sanitizes malformed URLs from HTML scraping
+// Sanitize malformed URLs from HTML scraping.
+// IMPORTANT: Do NOT restructure valid BGG CDN URLs — the /img/HASH/ segment is required.
+// Only clean up scraping artifacts and reject known low-quality crops.
 function normalizeImageUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
 
@@ -1303,110 +1304,25 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
   if (!cleaned) return undefined;
 
   // Validate it's actually a URL
-  let parsedUrl: URL;
   try {
-    parsedUrl = new URL(cleaned);
+    new URL(cleaned);
   } catch {
     return undefined;
   }
 
-  // For BGG CDN URLs, aggressively strip all Cloudflare resize/filter segments
-  // and collapse to clean original asset format: https://<host>/<key>/pic####.ext
-  //
-  // Input examples:
-  //   https://cf.geekdo-images.com/kqyGO2Disn148SnEq-ga5g__opengraph/img/DAKLVIRBBDOmAdN5ZzbybVWlqcY=/0x266:1319x958/fit-in/1200x630/filters:strip_icc()/pic6973669.png
-  //   https://cf.geekdo-images.com/ACeJF1UGwabYv2hj4E__0Q__opengraph/img/TEc6rAa5aI_oiwrMCprQLKOPJrI=/0x0:5281x2773/fit-in/1200x630/filters:strip_icc()/pic8544623.png
-  // Output:
-  //   https://cf.geekdo-images.com/kqyGO2Disn148SnEq-ga5g/pic6973669.png
-  if (
-    parsedUrl.hostname === "cf.geekdo-images.com" ||
-    parsedUrl.hostname === "cf.geekdo-static.com"
-  ) {
-    console.log(`[normalizeImageUrl] Processing BGG URL pathname: ${parsedUrl.pathname}`);
-    
-    // Extract the pic file from ANYWHERE in the path (not just the end)
-    // The pic file pattern: pic followed by digits and a file extension
-    const picMatch = parsedUrl.pathname.match(/\/(pic\d+\.[a-z0-9]+)/i);
-    console.log(`[normalizeImageUrl] picMatch: ${picMatch ? picMatch[1] : 'null'}`);
-    
-    if (picMatch) {
-      const picFile = picMatch[1];
-      
-      // Extract the CDN key (first path segment, before any /img/ or other segments)
-      const keyMatch = parsedUrl.pathname.match(/^\/([^/]+)/);
-      console.log(`[normalizeImageUrl] keyMatch: ${keyMatch ? keyMatch[1] : 'null'}`);
-      
-      if (keyMatch) {
-        let cdnKey = keyMatch[1];
-        
-        // Strip ALL known variant suffixes from the key
-        // These are the quality/format tags BGG appends
-        const variantSuffixes = [
-          "__opengraph",
-          "__imagepage", 
-          "__imagepagezoom",
-          "__original",
-          "__thumb",
-          "__micro",
-          "__small",
-          "__medium",
-          "__large",
-          "__big",
-          "__huge",
-          "__square200",
-          "__square",
-        ];
-        
-        for (const suffix of variantSuffixes) {
-          // Case-insensitive removal
-          const regex = new RegExp(suffix.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'), 'gi');
-          cdnKey = cdnKey.replace(regex, '');
-        }
-        
-        // Clean up any trailing underscores left over
-        cdnKey = cdnKey.replace(/_+$/, '').trim();
-        console.log(`[normalizeImageUrl] Cleaned cdnKey: ${cdnKey}`);
-        
-        if (cdnKey) {
-          // Return clean URL: origin/key/picfile
-          const result = `${parsedUrl.origin}/${cdnKey}/${picFile}`;
-          console.log(`[normalizeImageUrl] SUCCESS: ${result}`);
-          return result;
-        }
-      }
+  // For BGG CDN URLs: only swap __opengraph variants to __original when possible,
+  // but preserve the full /img/HASH/ path that BGG requires.
+  if (cleaned.includes("cf.geekdo-images.com") || cleaned.includes("cf.geekdo-static.com")) {
+    // Replace low-quality opengraph variant with original (keeps /img/hash/ intact)
+    if (/__opengraph/i.test(cleaned)) {
+      cleaned = cleaned.replace(/__opengraph[^/]*/i, "__original");
+      // Strip Cloudflare resize params that follow /img/HASH/
+      // e.g., /0x266:1319x958/fit-in/1200x630/filters:strip_icc()/pic123.jpg
+      // These appear AFTER the /img/HASH=/ segment
+      cleaned = cleaned.replace(/(\/img\/[^/]+=?)\/\d+x\d+:\d+x\d+\/fit-in\/\d+x\d+\/filters:[^/]+\//i, "$1/");
     }
-    
-    // Fallback: If we couldn't parse cleanly, still try to strip resize/filter segments
-    console.log(`[normalizeImageUrl] Using fallback for: ${cleaned.substring(0, 100)}`);
-    let fallbackCleaned = cleaned;
-    
-    // Strip everything from /img/ to /pic (the signature and resize params)
-    fallbackCleaned = fallbackCleaned.replace(/\/img\/[^p]*(pic)/gi, '/pic');
-    
-    // Strip cropping segments like /0x266:1319x958/
-    fallbackCleaned = fallbackCleaned.replace(/\/\d+x\d+:\d+x\d+\//g, '/');
-    
-    // Strip fit-in + filters segments
-    // Matches: /fit-in/1200x630/filters:strip_icc()/ and variations
-    fallbackCleaned = fallbackCleaned.replace(/\/fit-in\/\d+x\d+\/filters:[^/]+\//gi, '/');
-    fallbackCleaned = fallbackCleaned.replace(/\/(?:img\/)?(?:f)?it-in\/\d+x\d+(?:\/filters:[^/]*)?(?:\/)?/gi, '/');
-    
-    // Strip /img/<signature>=/ segments
-    fallbackCleaned = fallbackCleaned.replace(/\/img\/[^/]+=[^/]*\//gi, '/');
-    
-    // Strip variant suffixes from path
-    for (const suffix of ['__opengraph', '__imagepage', '__imagepagezoom', '__original', '__thumb', '__micro', '__small', '__medium', '__large', '__big', '__huge', '__square200', '__square']) {
-      fallbackCleaned = fallbackCleaned.replace(new RegExp(suffix, 'gi'), '');
-    }
-    
-    // Clean up double slashes
-    fallbackCleaned = fallbackCleaned.replace(/([^:])\/+/g, '$1/');
-    
-    console.log(`[normalizeImageUrl] Fallback result: ${fallbackCleaned}`);
-    return fallbackCleaned;
   }
 
-  // For non-BGG URLs, just return the cleaned version
   return cleaned;
 }
 
