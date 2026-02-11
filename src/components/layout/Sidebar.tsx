@@ -516,30 +516,35 @@ export function Sidebar({ isOpen }: SidebarProps) {
           {/* Upcoming Events */}
           {isTenantMode && library && events && <SidebarUpcomingEvents libraryId={library.id} />}
 
-          {/* A-Z Filter - always visible */}
-          <div className="mt-4">
-            <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 flex items-center gap-2">
-              <ALargeSmall className="h-4 w-4" />
-              A-Z
-            </div>
-            <div className="grid grid-cols-7 gap-0.5 px-3 mt-0.5">
-              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("").map((letter) => (
-                <button
-                  key={letter}
-                  onClick={() => handleFilterClick("letter", letter)}
-                  className={cn(
-                    "flex items-center justify-center h-7 w-7 rounded text-xs font-medium transition-colors",
-                    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    isActive("letter", letter)
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/70"
-                  )}
-                >
-                  {letter}
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* A-Z Filter - collapsible, closed by default */}
+          <Collapsible defaultOpen={currentFilter === "letter"} className="mt-4">
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+              <span className="flex items-center gap-2">
+                <ALargeSmall className="h-4 w-4" />
+                A-Z
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="grid grid-cols-7 gap-0.5 px-3 mt-0.5">
+                {"ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("").map((letter) => (
+                  <button
+                    key={letter}
+                    onClick={() => handleFilterClick("letter", letter)}
+                    className={cn(
+                      "flex items-center justify-center h-8 w-8 rounded text-sm font-medium transition-colors",
+                      "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                      isActive("letter", letter)
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/70"
+                    )}
+                  >
+                    {letter}
+                  </button>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           <div className="mt-3 border-t border-sidebar-border/50" />
 
