@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { withLogging } from "../_shared/system-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

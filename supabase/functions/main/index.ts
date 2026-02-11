@@ -5,6 +5,8 @@
 // present inside main/ (copied by update.sh's sync step).
 // For Lovable Cloud, each function is deployed independently.
 
+import { withLogging } from "./_shared/system-logger.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -87,8 +89,8 @@ async function getHandler(functionName: string): Promise<((req: Request) => Prom
     if (bggMod.setGameImportHandler) {
       bggMod.setGameImportHandler(gameMod.default);
     }
-    handlerCache.set("bgg-import", bggMod.default);
-    handlerCache.set("game-import", gameMod.default);
+    handlerCache.set("bgg-import", withLogging("bgg-import", bggMod.default));
+    handlerCache.set("game-import", withLogging("game-import", gameMod.default));
     return handlerCache.get(functionName)!;
   }
 
@@ -96,8 +98,10 @@ async function getHandler(functionName: string): Promise<((req: Request) => Prom
   const importer = EXTERNAL_IMPORTERS[functionName];
   if (importer) {
     const mod = await importer();
-    handlerCache.set(functionName, mod.default);
-    return mod.default;
+    // Wrap with logging for automatic monitoring
+    const wrapped = withLogging(functionName, mod.default);
+    handlerCache.set(functionName, wrapped);
+    return wrapped;
   }
 
   // Inlined handlers from handlers.ts

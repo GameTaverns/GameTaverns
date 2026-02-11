@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import * as OTPAuth from "npm:otpauth@9.4.0";
+import { withLogging } from "../_shared/system-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
