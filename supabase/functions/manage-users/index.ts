@@ -238,6 +238,7 @@ export default async function handler(req: Request): Promise<Response> {
             email: u.email,
             created_at: u.created_at,
             last_sign_in_at: u.last_sign_in_at,
+            email_confirmed_at: u.email_confirmed_at || null,
             role: effectiveRole,
             display_name: profileMap.get(u.id)?.display_name || null,
             username: profileMap.get(u.id)?.username || null,
@@ -327,6 +328,72 @@ export default async function handler(req: Request): Promise<Response> {
 
         return new Response(
           JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "resend_confirmation": {
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: "User ID is required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Get the user's email
+        const { data: targetUserData, error: targetUserError } = await adminClient.auth.admin.getUserById(userId);
+        if (targetUserError || !targetUserData?.user) {
+          return new Response(
+            JSON.stringify({ error: "User not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Check if already confirmed
+        if (targetUserData.user.email_confirmed_at) {
+          return new Response(
+            JSON.stringify({ error: "User email is already confirmed" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const targetEmail = targetUserData.user.email;
+        if (!targetEmail) {
+          return new Response(
+            JSON.stringify({ error: "User has no email address" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Call send-auth-email to resend the confirmation
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const sendEmailUrl = `${supabaseUrl}/functions/v1/send-auth-email`;
+
+        const emailRes = await fetch(sendEmailUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: Deno.env.get("SUPABASE_ANON_KEY") || serviceKey,
+          },
+          body: JSON.stringify({
+            type: "email_confirmation",
+            email: targetEmail,
+          }),
+        });
+
+        if (!emailRes.ok) {
+          const errBody = await emailRes.text().catch(() => "Unknown error");
+          console.error(`[manage-users] Failed to resend confirmation email: ${errBody}`);
+          return new Response(
+            JSON.stringify({ error: "Failed to send confirmation email" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, message: "Confirmation email resent" }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
