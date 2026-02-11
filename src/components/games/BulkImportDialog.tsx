@@ -101,6 +101,9 @@ export function BulkImportDialog({
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastRefreshRef = useRef<number>(0);
   const lastImportedCountRef = useRef<number>(0);
+  const jobIdRef = useRef<string | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [streamDisconnected, setStreamDisconnected] = useState(false);
   
   // Auto play-history import state
   const [playImportStatus, setPlayImportStatus] = useState<{
@@ -129,6 +132,113 @@ export function BulkImportDialog({
     phase: string;
   } | null>(null);
 
+  // Poll import_jobs table for progress when SSE stream disconnects
+  const pollJobProgress = async (jobId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("import_jobs")
+        .select("*")
+        .eq("id", jobId)
+        .single();
+
+      if (error || !data) return;
+
+      const totalItems = data.total_items || 0;
+      const processedItems = data.processed_items || 0;
+      const successfulItems = data.successful_items || 0;
+      const failedItems = data.failed_items || 0;
+
+      if (data.status === "completed" || data.status === "failed") {
+        // Import finished — stop polling
+        stopPolling();
+        setIsImporting(false);
+        setStreamDisconnected(false);
+        
+        queryClient.invalidateQueries({ queryKey: ["games"] });
+        queryClient.invalidateQueries({ queryKey: ["games-flat"] });
+        
+        setResult({
+          success: data.status === "completed",
+          imported: successfulItems,
+          failed: failedItems,
+          errors: data.error_message ? [data.error_message] : [],
+          games: [],
+        });
+        
+        toast({
+          title: data.status === "completed" ? "Import complete!" : "Import finished with errors",
+          description: `${successfulItems} imported, ${failedItems} failed.`,
+        });
+        onImportComplete?.();
+        return;
+      }
+
+      // Still processing — update progress
+      setProgress({
+        current: processedItems,
+        total: totalItems,
+        imported: successfulItems,
+        failed: failedItems,
+        currentGame: `Processing... (${processedItems}/${totalItems})`,
+        phase: "importing",
+      });
+      
+      // Periodically refresh game list
+      if (successfulItems > lastImportedCountRef.current) {
+        lastImportedCountRef.current = successfulItems;
+        const now = Date.now();
+        if (now - lastRefreshRef.current > 3000) {
+          lastRefreshRef.current = now;
+          queryClient.invalidateQueries({ queryKey: ["games"] });
+          queryClient.invalidateQueries({ queryKey: ["games-flat"] });
+        }
+      }
+    } catch (e) {
+      console.warn("[BulkImport] Job poll error:", e);
+    }
+  };
+
+  const startPolling = (jobId: string) => {
+    stopPolling();
+    setStreamDisconnected(true);
+    console.log("[BulkImport] SSE disconnected, switching to job polling for:", jobId);
+    // Poll every 3 seconds
+    pollingIntervalRef.current = setInterval(() => pollJobProgress(jobId), 3000);
+    // Also poll immediately
+    pollJobProgress(jobId);
+  };
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  };
+
+  // When tab becomes visible again, check job status
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && jobIdRef.current && isImporting) {
+        console.log("[BulkImport] Tab visible again, checking job:", jobIdRef.current);
+        pollJobProgress(jobIdRef.current);
+        // If we're not already polling (SSE might have died while tab was hidden), start
+        if (!pollingIntervalRef.current) {
+          startPolling(jobIdRef.current);
+        }
+      }
+    };
+    
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isImporting]);
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => stopPolling();
+  }, []);
+
   // CSV mode
   const [csvData, setCsvData] = useState("");
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -150,7 +260,6 @@ export function BulkImportDialog({
   // This allows the import to continue in the background even when the user
   // switches tabs or navigates away. The import job is tracked in the database
   // and will complete server-side regardless of client connection.
-  // The user will see the results when they return to the dialog or via toast.
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -198,6 +307,9 @@ export function BulkImportDialog({
     setResult(null);
     setProgress(null);
     setPlayImportStatus({ phase: "idle" });
+    setStreamDisconnected(false);
+    jobIdRef.current = null;
+    stopPolling();
   };
 
   // Auto-import play history after BGG collection import
@@ -461,6 +573,11 @@ export function BulkImportDialog({
                 const data: ProgressData = JSON.parse(line.slice(6));
                 
                 if (data.type === "start") {
+                  // Capture job ID for polling fallback
+                  if (data.jobId) {
+                    jobIdRef.current = data.jobId;
+                    console.log("[BulkImport] Job ID captured:", data.jobId);
+                  }
                   // Reset refs for new import
                   lastImportedCountRef.current = 0;
                   lastRefreshRef.current = 0;
@@ -582,6 +699,15 @@ export function BulkImportDialog({
           title: "Import cancelled",
           description: "The import was cancelled",
         });
+      } else if (jobIdRef.current) {
+        // SSE stream broke but server is still processing — switch to polling
+        console.log("[BulkImport] Stream disconnected, switching to job polling");
+        toast({
+          title: "Import running in background",
+          description: "The connection was interrupted but your import continues on the server. Progress will update automatically.",
+        });
+        startPolling(jobIdRef.current);
+        return; // Don't clear isImporting — polling will handle completion
       } else {
         console.error("Bulk import error:", error);
         toast({
@@ -591,8 +717,11 @@ export function BulkImportDialog({
         });
       }
     } finally {
-      setIsImporting(false);
-      setProgress(null);
+      // Only clean up if we're NOT falling back to polling
+      if (!pollingIntervalRef.current) {
+        setIsImporting(false);
+        setProgress(null);
+      }
       abortControllerRef.current = null;
     }
   };
@@ -883,6 +1012,15 @@ export function BulkImportDialog({
   };
 
   const handleCancel = () => {
+    if (isImporting && jobIdRef.current) {
+      // Import is running on the server — just close the dialog, don't abort
+      toast({
+        title: "Import continues in background",
+        description: "You can reopen this dialog to check progress. The import will complete on the server.",
+      });
+      onOpenChange(false);
+      return;
+    }
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -923,12 +1061,20 @@ export function BulkImportDialog({
               {progress && (
                 <div className="mb-6 p-4 bg-muted rounded-lg space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Importing games...</span>
+                    <span className="font-medium">
+                      {streamDisconnected ? "Import running on server..." : "Importing games..."}
+                    </span>
                     <span className="text-muted-foreground">
                       {progress.current} / {progress.total}
                     </span>
                   </div>
                   <Progress value={progressPercent} className="h-2" />
+                  {streamDisconnected && (
+                    <p className="text-xs text-muted-foreground">
+                      ℹ️ Connection was interrupted but your import continues on the server. 
+                      You can close this dialog or switch tabs — progress will update when you return.
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 text-sm">
                     {progress.phase === "enhancing" ? (
                       <Loader2 className="h-3 w-3 animate-spin text-primary" />
