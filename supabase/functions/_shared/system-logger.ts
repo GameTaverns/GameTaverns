@@ -29,12 +29,12 @@ function getLogClient() {
  * Fire-and-forget log to system_logs table.
  * Never throws; silently fails if DB is unavailable.
  */
-export function logEvent(entry: LogEntry): void {
+export async function logEvent(entry: LogEntry): Promise<void> {
   try {
     const client = getLogClient();
     if (!client) return;
 
-    client
+    const { error } = await client
       .from("system_logs")
       .insert({
         level: entry.level,
@@ -43,15 +43,11 @@ export function logEvent(entry: LogEntry): void {
         metadata: entry.metadata || {},
         library_id: entry.library_id || null,
         user_id: entry.user_id || null,
-      })
-      .then(({ error }) => {
-        if (error) console.error("[system-logger] Insert failed:", error.message);
-      })
-      .catch(() => {
-        // silently ignore
       });
-  } catch {
-    // Never block caller
+
+    if (error) console.error("[system-logger] Insert failed:", error.message);
+  } catch (e) {
+    console.error("[system-logger] logEvent error:", e);
   }
 }
 
@@ -148,7 +144,7 @@ export function withLogging(
       const shouldLog = status >= 400 || durationMs > 5000 || !isHighVolume;
 
       if (shouldLog) {
-        logEvent({
+        await logEvent({
           level: status >= 500 ? "error" : status >= 400 ? "warn" : "info",
           source,
           message: `${functionName} ${req.method} → ${status} (${durationMs}ms)`,
@@ -166,7 +162,7 @@ export function withLogging(
       return response;
     } catch (error) {
       const durationMs = Date.now() - start;
-      logEvent({
+      await logEvent({
         level: "error",
         source,
         message: `${functionName} ${req.method} CRASHED (${durationMs}ms): ${error instanceof Error ? error.message : String(error)}`,
