@@ -7,20 +7,10 @@ const corsHeaders = {
 };
 
 // ---------------------------------------------------------------------------
-// Enum compatibility
+// Enum constants (unified across Cloud and Self-hosted)
 // ---------------------------------------------------------------------------
-// Cloud + app UI historically used one enum set ("1 - Light", "Miniatures", "0-15 Minutes", ...)
-// Self-hosted schema (deploy/* migrations) uses a different enum set.
-// Detect the environment by SUPABASE_URL and normalize inputs accordingly.
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
-const IS_SELF_HOSTED =
-  SUPABASE_URL.startsWith("http://") ||
-  SUPABASE_URL.includes("kong") ||
-  SUPABASE_URL.includes("localhost") ||
-  SUPABASE_URL.includes("127.0.0.1");
-
-const CLOUD_DIFFICULTY_LEVELS = [
+const DIFFICULTY_LEVELS = [
   "1 - Light",
   "2 - Medium Light",
   "3 - Medium",
@@ -28,15 +18,7 @@ const CLOUD_DIFFICULTY_LEVELS = [
   "5 - Heavy",
 ] as const;
 
-const SELF_HOSTED_DIFFICULTY_LEVELS = [
-  "1 - Very Easy",
-  "2 - Easy",
-  "3 - Medium",
-  "4 - Hard",
-  "5 - Very Hard",
-] as const;
-
-const CLOUD_PLAY_TIME_OPTIONS = [
+const PLAY_TIME_OPTIONS = [
   "0-15 Minutes",
   "15-30 Minutes",
   "30-45 Minutes",
@@ -46,17 +28,7 @@ const CLOUD_PLAY_TIME_OPTIONS = [
   "3+ Hours",
 ] as const;
 
-const SELF_HOSTED_PLAY_TIME_OPTIONS = [
-  "Under 30 Minutes",
-  "30-45 Minutes",
-  "45-60 Minutes",
-  "60-90 Minutes",
-  "90-120 Minutes",
-  "2-3 Hours",
-  "3+ Hours",
-] as const;
-
-const CLOUD_GAME_TYPE_OPTIONS = [
+const GAME_TYPE_OPTIONS = [
   "Board Game",
   "Card Game",
   "Dice Game",
@@ -67,25 +39,13 @@ const CLOUD_GAME_TYPE_OPTIONS = [
   "Other",
 ] as const;
 
-const SELF_HOSTED_GAME_TYPE_OPTIONS = [
-  "Board Game",
-  "Card Game",
-  "Dice Game",
-  "Party Game",
-  "Strategy Game",
-  "Cooperative Game",
-  "Miniatures Game",
-  "Role-Playing Game",
-  "Deck Building",
-  "Area Control",
-  "Worker Placement",
-  "Other",
-] as const;
-
-// Active enum sets for validation + AI prompting
-const DIFFICULTY_LEVELS = (IS_SELF_HOSTED ? SELF_HOSTED_DIFFICULTY_LEVELS : CLOUD_DIFFICULTY_LEVELS) as readonly string[];
-const PLAY_TIME_OPTIONS = (IS_SELF_HOSTED ? SELF_HOSTED_PLAY_TIME_OPTIONS : CLOUD_PLAY_TIME_OPTIONS) as readonly string[];
-const GAME_TYPE_OPTIONS = (IS_SELF_HOSTED ? SELF_HOSTED_GAME_TYPE_OPTIONS : CLOUD_GAME_TYPE_OPTIONS) as readonly string[];
+// Self-hosted detection (used only for Discord deadlock prevention)
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const IS_SELF_HOSTED =
+  SUPABASE_URL.startsWith("http://") ||
+  SUPABASE_URL.includes("kong") ||
+  SUPABASE_URL.includes("localhost") ||
+  SUPABASE_URL.includes("127.0.0.1");
 
 // ---------------------------------------------------------------------------
 // BGG XML API Helper (fast, reliable)
@@ -126,42 +86,24 @@ function parseBggXml(xml: string, bggId: string): {
   if (weightMatch) {
     const w = parseFloat(weightMatch[1]);
     if (w > 0) {
-      if (IS_SELF_HOSTED) {
-        if (w < 1.5) difficulty = "1 - Very Easy";
-        else if (w < 2.25) difficulty = "2 - Easy";
-        else if (w < 3.0) difficulty = "3 - Medium";
-        else if (w < 3.75) difficulty = "4 - Hard";
-        else difficulty = "5 - Very Hard";
-      } else {
-        if (w < 1.5) difficulty = "1 - Light";
-        else if (w < 2.25) difficulty = "2 - Medium Light";
-        else if (w < 3.0) difficulty = "3 - Medium";
-        else if (w < 3.75) difficulty = "4 - Medium Heavy";
-        else difficulty = "5 - Heavy";
-      }
+      if (w < 1.5) difficulty = "1 - Light";
+      else if (w < 2.25) difficulty = "2 - Medium Light";
+      else if (w < 3.0) difficulty = "3 - Medium";
+      else if (w < 3.75) difficulty = "4 - Medium Heavy";
+      else difficulty = "5 - Heavy";
     }
   }
 
   let play_time: string | undefined;
   if (playTimeMatch) {
     const minutes = parseInt(playTimeMatch[1], 10);
-    if (IS_SELF_HOSTED) {
-      if (minutes <= 30) play_time = "Under 30 Minutes";
-      else if (minutes <= 45) play_time = "30-45 Minutes";
-      else if (minutes <= 60) play_time = "45-60 Minutes";
-      else if (minutes <= 90) play_time = "60-90 Minutes";
-      else if (minutes <= 120) play_time = "90-120 Minutes";
-      else if (minutes <= 180) play_time = "2-3 Hours";
-      else play_time = "3+ Hours";
-    } else {
-      if (minutes <= 15) play_time = "0-15 Minutes";
-      else if (minutes <= 30) play_time = "15-30 Minutes";
-      else if (minutes <= 45) play_time = "30-45 Minutes";
-      else if (minutes <= 60) play_time = "45-60 Minutes";
-      else if (minutes <= 120) play_time = "60+ Minutes";
-      else if (minutes <= 180) play_time = "2+ Hours";
-      else play_time = "3+ Hours";
-    }
+    if (minutes <= 15) play_time = "0-15 Minutes";
+    else if (minutes <= 30) play_time = "15-30 Minutes";
+    else if (minutes <= 45) play_time = "30-45 Minutes";
+    else if (minutes <= 60) play_time = "45-60 Minutes";
+    else if (minutes <= 120) play_time = "60+ Minutes";
+    else if (minutes <= 180) play_time = "2+ Hours";
+    else play_time = "3+ Hours";
   }
 
   const decodeEntities = (input: string) =>
@@ -378,76 +320,35 @@ const normalizeEnum = (value: string | undefined, allowed: readonly string[]): s
 
 const normalizeDifficulty = (difficulty: string | undefined): string | undefined => {
   if (!difficulty) return undefined;
-
   const d = difficulty.trim();
-
-  // If it's already valid for this environment, keep it.
-  const direct = normalizeEnum(d, DIFFICULTY_LEVELS);
-  if (direct) return direct;
-
-  // Cross-map between Cloud and Self-hosted vocab.
-  const cloudToSelf: Record<string, string> = {
-    "1 - Light": "1 - Very Easy",
-    "2 - Medium Light": "2 - Easy",
-    "3 - Medium": "3 - Medium",
-    "4 - Medium Heavy": "4 - Hard",
-    "5 - Heavy": "5 - Very Hard",
-  };
-  const selfToCloud: Record<string, string> = {
-    "1 - Very Easy": "1 - Light",
-    "2 - Easy": "2 - Medium Light",
-    "3 - Medium": "3 - Medium",
-    "4 - Hard": "4 - Medium Heavy",
-    "5 - Very Hard": "5 - Heavy",
-  };
-
-  const mapped = IS_SELF_HOSTED ? cloudToSelf[d] : selfToCloud[d];
-  return normalizeEnum(mapped, DIFFICULTY_LEVELS);
+  return normalizeEnum(d, DIFFICULTY_LEVELS);
 };
 
 const normalizePlayTime = (playTime: string | undefined): string | undefined => {
   if (!playTime) return undefined;
-
   const p = playTime.trim();
   const direct = normalizeEnum(p, PLAY_TIME_OPTIONS);
   if (direct) return direct;
 
-  const cloudToSelf: Record<string, string> = {
-    "0-15 Minutes": "Under 30 Minutes",
-    "15-30 Minutes": "Under 30 Minutes",
-    "30-45 Minutes": "30-45 Minutes",
-    "45-60 Minutes": "45-60 Minutes",
-    "60+ Minutes": "60-90 Minutes",
-    "2+ Hours": "2-3 Hours",
-    "3+ Hours": "3+ Hours",
-  };
-  const selfToCloud: Record<string, string> = {
+  // Legacy self-hosted values → unified values
+  const legacyMap: Record<string, string> = {
     "Under 30 Minutes": "15-30 Minutes",
-    "30-45 Minutes": "30-45 Minutes",
-    "45-60 Minutes": "45-60 Minutes",
     "60-90 Minutes": "60+ Minutes",
     "90-120 Minutes": "2+ Hours",
     "2-3 Hours": "2+ Hours",
-    "3+ Hours": "3+ Hours",
   };
-
-  const mapped = IS_SELF_HOSTED ? cloudToSelf[p] : selfToCloud[p];
-  return normalizeEnum(mapped, PLAY_TIME_OPTIONS);
+  const mapped = legacyMap[p];
+  return mapped ? normalizeEnum(mapped, PLAY_TIME_OPTIONS) : undefined;
 };
 
 const normalizeGameType = (gameType: string | undefined): string | undefined => {
   if (!gameType) return undefined;
   const t = gameType.trim();
-
   const direct = normalizeEnum(t, GAME_TYPE_OPTIONS);
   if (direct) return direct;
 
-  const cloudToSelf: Record<string, string> = {
-    "Miniatures": "Miniatures Game",
-    "RPG": "Role-Playing Game",
-    "War Game": "Strategy Game",
-  };
-  const selfToCloud: Record<string, string> = {
+  // Legacy self-hosted values → unified values
+  const legacyMap: Record<string, string> = {
     "Miniatures Game": "Miniatures",
     "Role-Playing Game": "RPG",
     "Strategy Game": "Other",
@@ -456,18 +357,15 @@ const normalizeGameType = (gameType: string | undefined): string | undefined => 
     "Area Control": "Other",
     "Worker Placement": "Other",
   };
-
-  const mapped = IS_SELF_HOSTED ? cloudToSelf[t] : selfToCloud[t];
-  return normalizeEnum(mapped, GAME_TYPE_OPTIONS);
+  const mapped = legacyMap[t];
+  return mapped ? normalizeEnum(mapped, GAME_TYPE_OPTIONS) : undefined;
 };
 
 const normalizeSaleCondition = (saleCondition: string | undefined): string | undefined => {
   if (!saleCondition) return undefined;
   const c = saleCondition.trim();
-  if (!IS_SELF_HOSTED) return c;
-
-  // self-hosted enum uses "New" (not "New/Sealed")
-  if (c === "New/Sealed") return "New";
+  // Legacy self-hosted used "New" instead of "New/Sealed"
+  if (c === "New") return "New/Sealed";
   return c;
 };
 
@@ -834,9 +732,9 @@ export default async function handler(req: Request): Promise<Response> {
         description: bggData.description!.slice(0, 10000),
         image_url: bggData.image_url,
         additional_images: [],
-        difficulty: bggData.difficulty || (IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium"),
+        difficulty: bggData.difficulty || "3 - Medium",
         game_type: "Board Game",
-        play_time: bggData.play_time || (IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes"),
+        play_time: bggData.play_time || "45-60 Minutes",
         min_players: bggData.min_players || 1,
         max_players: bggData.max_players || 4,
         suggested_age: bggData.suggested_age || "10+",
@@ -1010,9 +908,9 @@ export default async function handler(req: Request): Promise<Response> {
               description: enrichedDesc.slice(0, 10000),
               image_url: scrapedImage,
               additional_images: [] as string[],
-              difficulty: IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium",
+              difficulty: "3 - Medium",
               game_type: "Board Game" as const,
-              play_time: IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes",
+              play_time: "45-60 Minutes",
               min_players: 1,
               max_players: 4,
               suggested_age: "10+",
@@ -1118,9 +1016,9 @@ export default async function handler(req: Request): Promise<Response> {
           description: bggData.description?.slice(0, 10000) || `${bggData.title} - imported from BoardGameGeek`,
           image_url: bggData.image_url || null,
           additional_images: [],
-          difficulty: bggData.difficulty || (IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium"),
+          difficulty: bggData.difficulty || "3 - Medium",
           game_type: "Board Game" as const,
-          play_time: bggData.play_time || (IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes"),
+          play_time: bggData.play_time || "45-60 Minutes",
           min_players: bggData.min_players || 1,
           max_players: bggData.max_players || 4,
           suggested_age: bggData.suggested_age || "10+",
@@ -1233,9 +1131,9 @@ export default async function handler(req: Request): Promise<Response> {
                 description: enrichedDesc.slice(0, 10000),
                 image_url: scrapedImage,
                 additional_images: [] as string[],
-                difficulty: IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium",
+                difficulty: "3 - Medium",
                 game_type: "Board Game" as const,
-                play_time: IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes",
+                play_time: "45-60 Minutes",
                 min_players: 1,
                 max_players: 4,
                 suggested_age: "10+",
@@ -1733,9 +1631,9 @@ ${markdown.slice(0, 18000)}`,
 
     // Game data for games table (without admin fields like purchase_price/purchase_date)
     // Normalize enum values to match the current environment's database schema
-    const normalizedDifficulty = normalizeDifficulty(extractedData.difficulty) || (IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium");
+    const normalizedDifficulty = normalizeDifficulty(extractedData.difficulty) || "3 - Medium";
     const normalizedGameType = normalizeGameType(extractedData.game_type) || "Board Game";
-    const normalizedPlayTime = normalizePlayTime(extractedData.play_time) || (IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes");
+    const normalizedPlayTime = normalizePlayTime(extractedData.play_time) || "45-60 Minutes";
     const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
 
     const gameData = {
