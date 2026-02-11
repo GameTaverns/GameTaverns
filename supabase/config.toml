@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.notify-feedback]
 verify_jwt = false
+
+[functions.system-health]
+verify_jwt = false
