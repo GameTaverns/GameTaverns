@@ -805,15 +805,30 @@ EXAMPLE OUTPUT:
 
 // Fetch gallery images from BGG's internal JSON API (no auth required!)
 // Returns high-res image URLs prioritizing gameplay/component photos
+// Also returns box art separately so callers can use it for primary image
+interface GalleryResult {
+  galleryImages: string[];   // gameplay/component photos (best for additional_images)
+  boxArtUrl: string | null;  // best box front image (ideal for primary image_url)
+}
+
 async function fetchBGGGalleryImages(
   bggId: string,
   _firecrawlKey: string | null,
   maxImages = 5
-): Promise<string[]> {
+): Promise<string[]>;
+async function fetchBGGGalleryImages(
+  bggId: string,
+  _firecrawlKey: string | null,
+  maxImages: number,
+  returnDetailed: true
+): Promise<GalleryResult>;
+async function fetchBGGGalleryImages(
+  bggId: string,
+  _firecrawlKey: string | null,
+  maxImages = 5,
+  returnDetailed = false
+): Promise<string[] | GalleryResult> {
   try {
-    // BGG's internal gallery API - returns JSON with categorized images
-    // Categories: Components, Play, BoxFront, BoxBack, Customized, Miscellaneous
-    // We want gameplay (Play) and component images, sorted by popularity ("hot")
     const apiUrl = `https://api.geekdo.com/api/images?ajax=1&gallery=all&nosession=1&objectid=${bggId}&objecttype=thing&pageid=1&showcount=50&sort=hot`;
     
     console.log(`[BulkImport] Fetching gallery via BGG JSON API for BGG ID: ${bggId}`);
@@ -827,17 +842,16 @@ async function fetchBGGGalleryImages(
 
     if (!res.ok) {
       console.warn(`[BulkImport] BGG gallery API returned ${res.status} for ${bggId}`);
-      return [];
+      return returnDetailed ? { galleryImages: [], boxArtUrl: null } : [];
     }
 
     const data = await res.json();
     const images = data?.images;
     if (!Array.isArray(images) || images.length === 0) {
       console.log(`[BulkImport] BGG gallery API returned no images for ${bggId}`);
-      return [];
+      return returnDetailed ? { galleryImages: [], boxArtUrl: null } : [];
     }
 
-    // Categorize images: prioritize Play > Components > Misc/Custom > BoxFront/BoxBack
     const categorized: { url: string; priority: number; isBoxArt: boolean }[] = [];
     const seen = new Set<string>();
 
@@ -852,43 +866,46 @@ async function fetchBGGGalleryImages(
       
       if (/micro|thumb|avatar|_mt|_t$/i.test(cleanUrl)) continue;
       
-      // Determine category priority from BGG metadata
       const href = (img.imagepagehref || "").toLowerCase();
       const caption = (img.caption || "").toLowerCase();
-      let priority = 5; // default
+      let priority = 5;
       let isBoxArt = false;
       if (href.includes("/play") || caption.includes("play") || caption.includes("gameplay")) priority = 1;
       else if (href.includes("/component") || caption.includes("component") || caption.includes("setup")) priority = 2;
       else if (href.includes("/custom") || caption.includes("custom") || caption.includes("painted")) priority = 3;
       else if (href.includes("/miscellaneous") || caption.includes("misc")) priority = 4;
       else if (href.includes("/boxfront") || href.includes("/boxback") || caption.includes("box")) {
-        priority = 6; // Box art deprioritized
+        priority = 6;
         isBoxArt = true;
       }
       
       categorized.push({ url: cleanUrl, priority, isBoxArt });
     }
 
-    // Sort by priority (lower = better), then take top N
     categorized.sort((a, b) => a.priority - b.priority);
     
-    // Prefer non-box-art images; only include box art if we don't have enough gameplay/component shots
     const nonBoxArt = categorized.filter(c => !c.isBoxArt);
     const boxArt = categorized.filter(c => c.isBoxArt);
     
-    // Take non-box-art first, fill remaining slots with box art if needed
+    // For gallery: prefer gameplay/component shots, fill with box art if needed
     const selected = nonBoxArt.slice(0, maxImages);
     if (selected.length < maxImages) {
       selected.push(...boxArt.slice(0, maxImages - selected.length));
     }
     
     const result = selected.map(c => c.url);
+    // Best box art URL (box front preferred) for use as primary image
+    const bestBoxArt = boxArt.length > 0 ? boxArt[0].url : null;
 
     console.log(`[BulkImport] BGG gallery API found ${result.length} images (${nonBoxArt.length} gameplay/components, ${boxArt.length} box art) for BGG ID: ${bggId}`);
+    
+    if (returnDetailed) {
+      return { galleryImages: result, boxArtUrl: bestBoxArt };
+    }
     return result;
   } catch (e) {
     console.error(`[BulkImport] BGG gallery API error for ${bggId}:`, e);
-    return [];
+    return returnDetailed ? { galleryImages: [], boxArtUrl: null } : [];
   }
 }
 
@@ -1968,7 +1985,9 @@ export default async function handler(req: Request): Promise<Response> {
                   console.log(`[BulkImport] Fetching gallery via BGG JSON API for: ${gameInput.bgg_id}`);
                   try {
                     galleryAttempts++;
-                    let galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, null, 5);
+                    const galleryResult = await fetchBGGGalleryImages(gameInput.bgg_id, null, 5, true);
+                    let galleryImages = galleryResult.galleryImages;
+                    let bestBoxArt = galleryResult.boxArtUrl;
                     
                     // Deluxe/special edition: ALWAYS merge with base game gallery
                     // for better gameplay/component image coverage
@@ -1987,13 +2006,17 @@ export default async function handler(req: Request): Promise<Response> {
                             const idMatch = searchXml.match(/id="(\d+)"/);
                             if (idMatch && idMatch[1] !== gameInput.bgg_id) {
                               console.log(`[BulkImport] Found base game BGG ID: ${idMatch[1]}, fetching gallery`);
-                              const baseImages = await fetchBGGGalleryImages(idMatch[1], null, 5);
-                              if (baseImages.length > 0) {
-                                // Merge: deduplicate, edition images first then base game images
+                              const baseResult = await fetchBGGGalleryImages(idMatch[1], null, 5, true);
+                              if (baseResult.galleryImages.length > 0) {
                                 const existingSet = new Set(galleryImages);
-                                const newFromBase = baseImages.filter(u => !existingSet.has(u));
+                                const newFromBase = baseResult.galleryImages.filter(u => !existingSet.has(u));
                                 galleryImages = [...galleryImages, ...newFromBase].slice(0, 5);
                                 console.log(`[BulkImport] Merged galleries: ${galleryImages.length} total (${newFromBase.length} added from base game)`);
+                              }
+                              // If edition has no box art, use base game's box art
+                              if (!bestBoxArt && baseResult.boxArtUrl) {
+                                bestBoxArt = baseResult.boxArtUrl;
+                                console.log(`[BulkImport] Using base game box art as primary`);
                               }
                             }
                           }
@@ -2008,12 +2031,20 @@ export default async function handler(req: Request): Promise<Response> {
                       gameData.additional_images = galleryImages;
                       console.log(`[BulkImport] BGG gallery API added ${galleryImages.length} gallery images`);
                       
-                      // If we have no primary image, use the first gallery image
+                      // If we have no primary image, prefer box art over gameplay/component photos
                       if (!gameData.image_url || isLowQualityBggImageUrl(gameData.image_url)) {
-                        gameData.image_url = galleryImages[0];
-                        console.log(`[BulkImport] Using first gallery image as primary: ${galleryImages[0].slice(-40)}`);
-                        // Remove from additional_images to avoid duplication
-                        gameData.additional_images = galleryImages.slice(1);
+                        if (bestBoxArt) {
+                          // Use box art as primary — it's the canonical product image
+                          gameData.image_url = bestBoxArt;
+                          console.log(`[BulkImport] Using box art as primary: ${bestBoxArt.slice(-40)}`);
+                          // Remove box art from gallery if it's there
+                          gameData.additional_images = galleryImages.filter(u => u !== bestBoxArt);
+                        } else {
+                          // No box art available, fall back to first gallery image
+                          gameData.image_url = galleryImages[0];
+                          console.log(`[BulkImport] Using first gallery image as primary (no box art): ${galleryImages[0].slice(-40)}`);
+                          gameData.additional_images = galleryImages.slice(1);
+                        }
                       }
                     }
                   } catch (e) {
