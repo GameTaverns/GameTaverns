@@ -1312,6 +1312,7 @@ export type Database = {
           error_message: string | null
           failed_items: number
           id: string
+          import_type: string | null
           library_id: string
           processed_items: number
           status: string
@@ -1324,6 +1325,7 @@ export type Database = {
           error_message?: string | null
           failed_items?: number
           id?: string
+          import_type?: string | null
           library_id: string
           processed_items?: number
           status?: string
@@ -1336,6 +1338,7 @@ export type Database = {
           error_message?: string | null
           failed_items?: number
           id?: string
+          import_type?: string | null
           library_id?: string
           processed_items?: number
           status?: string
