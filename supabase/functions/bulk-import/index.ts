@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { aiComplete, isAIConfigured, getAIProviderName } from "../_shared/ai-client.ts";
+import { logEvent } from "../_shared/system-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1682,6 +1683,7 @@ export default async function handler(req: Request): Promise<Response> {
         processed_items: 0,
         successful_items: 0,
         failed_items: 0,
+        import_type: mode,
       })
       .select("id")
       .single();
@@ -1696,6 +1698,16 @@ export default async function handler(req: Request): Promise<Response> {
 
     const jobId = job.id;
     console.log(`[BulkImport] Created job ${jobId}, starting SSE stream`);
+
+    // Log import start
+    logEvent({
+      level: "info",
+      source: "import",
+      message: `Import started: ${mode} with ${totalGames} items (job ${jobId})`,
+      metadata: { function: "bulk-import", mode, total_items: totalGames, job_id: jobId, enhance_with_bgg, enhance_with_ai },
+      library_id: targetLibraryId,
+      user_id: userId,
+    });
 
     // Use streaming response to keep connection alive
     const encoder = new TextEncoder();
@@ -2924,6 +2936,16 @@ Rules:
         console.log(
           `[BulkImport] Complete: imported=${imported} updated=${updated} failed=${failed} plays=${playsImported} breakdown=${JSON.stringify(failureBreakdown)}`
         );
+
+        // Log import completion
+        logEvent({
+          level: failed > 0 ? "warn" : "info",
+          source: "import",
+          message: `Import completed: ${imported} imported, ${failed} failed (job ${jobId})`,
+          metadata: { function: "bulk-import", mode, job_id: jobId, imported, updated, failed, plays_imported: playsImported, failure_breakdown: failureBreakdown },
+          library_id: targetLibraryId,
+          user_id: userId,
+        });
 
         sendProgress({
           type: "complete",

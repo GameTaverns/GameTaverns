@@ -23,6 +23,7 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  Upload,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,19 @@ interface HealthCheck {
   details?: Record<string, unknown>;
 }
 
+interface ImportJob {
+  id: string;
+  library_id: string;
+  status: string;
+  total_items: number;
+  processed_items: number;
+  successful_items: number;
+  failed_items: number;
+  import_type: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface HealthData {
   status: string;
   timestamp: string;
@@ -54,6 +68,10 @@ interface HealthData {
     totalLibraries: number;
     totalSessions: number;
     totalUsers: number;
+  };
+  imports?: {
+    active: ImportJob[];
+    recent: ImportJob[];
   };
 }
 
@@ -421,6 +439,88 @@ export function SystemHealth() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Import Jobs */}
+      {healthQuery.data?.imports && (
+        <Card className="bg-wood-medium/10 border-wood-medium/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-cream text-lg flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Import Jobs
+              {healthQuery.data.imports.active.length > 0 && (
+                <Badge className="bg-yellow-500/20 text-yellow-400 text-xs">
+                  {healthQuery.data.imports.active.length} active
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {healthQuery.data.imports.active.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-cream/80">Active Imports</h4>
+                {healthQuery.data.imports.active.map((job) => (
+                  <div key={job.id} className="flex items-center justify-between p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                    <div className="flex items-center gap-3">
+                      <div className="h-2 w-2 rounded-full bg-yellow-400 animate-pulse" />
+                      <div>
+                        <div className="text-sm text-cream font-medium">
+                          {job.import_type === "bgg_collection" ? "BGG Collection" : job.import_type === "bgg_links" ? "BGG Links" : "CSV"} Import
+                        </div>
+                        <div className="text-xs text-cream/50">
+                          {job.processed_items}/{job.total_items} items · Started {new Date(job.created_at).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-mono text-cream">
+                        {job.total_items > 0 ? Math.round((job.processed_items / job.total_items) * 100) : 0}%
+                      </div>
+                      <div className="text-xs text-cream/50">
+                        {job.successful_items} ok · {job.failed_items} failed
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {healthQuery.data.imports.active.length === 0 && (
+              <div className="text-sm text-cream/40 text-center py-2">No active imports</div>
+            )}
+
+            {healthQuery.data.imports.recent.length > 0 && (
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium text-cream/80">Recent Imports</h4>
+                <div className="divide-y divide-wood-medium/20">
+                  {healthQuery.data.imports.recent.map((job) => (
+                    <div key={job.id} className="flex items-center justify-between py-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs border-wood-medium/60 text-cream/60">
+                          {job.import_type === "bgg_collection" ? "BGG" : job.import_type === "bgg_links" ? "BGG Links" : "CSV"}
+                        </Badge>
+                        <span className="text-cream/60">
+                          {job.successful_items}/{job.total_items} items
+                        </span>
+                        {job.failed_items > 0 && (
+                          <span className="text-red-400">{job.failed_items} failed</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-xs ${job.status === "completed" ? "bg-green-500/20 text-green-400" : job.status === "processing" ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"}`}>
+                          {job.status}
+                        </Badge>
+                        <span className="text-cream/40 font-mono">
+                          {new Date(job.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <Separator className="bg-wood-medium/30" />

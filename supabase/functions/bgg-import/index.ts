@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { logEvent } from "../_shared/system-logger.ts";
 
 // ---------------------------------------------------------------------------
 // Self-hosted detection: when running inside the main router, the game-import
