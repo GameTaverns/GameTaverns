@@ -1980,12 +1980,24 @@ export default async function handler(req: Request): Promise<Response> {
                        galleryWithImages++;
                        gameData.additional_images = aiData.additional_images;
                        console.log(`[BulkImport] Added ${aiData.additional_images.length} gallery images`);
-                       // Use first gallery image as primary if we have none
-                       if (!gameData.image_url || isLowQualityBggImageUrl(gameData.image_url)) {
-                         gameData.image_url = aiData.additional_images[0];
-                         gameData.additional_images = aiData.additional_images.slice(1);
-                         console.log(`[BulkImport] Using first gallery image as primary`);
-                       }
+                       // Prefer box/cover art as primary image for game cards.
+                        if (!gameData.image_url || isLowQualityBggImageUrl(gameData.image_url)) {
+                          try {
+                            const detailed = await fetchBGGGalleryImages(gameInput.bgg_id, null, 5, true);
+                            const primary = detailed.boxArtUrl || aiData.additional_images[0];
+                            if (primary) {
+                              gameData.image_url = normalizeImageUrl(primary);
+                              // Remove primary from gallery if present
+                              gameData.additional_images = aiData.additional_images.filter((u) => u !== primary).slice(0, 8);
+                              console.log(`[BulkImport] Using ${detailed.boxArtUrl ? "box art" : "first gallery"} image as primary`);
+                            }
+                          } catch (e) {
+                            // Fallback to previous behavior
+                            gameData.image_url = normalizeImageUrl(aiData.additional_images[0]);
+                            gameData.additional_images = aiData.additional_images.slice(1);
+                            console.log(`[BulkImport] Using first gallery image as primary (detailed fetch failed)`);
+                          }
+                        }
                      }
                    } catch (e) {
                      console.warn(`[BulkImport] AI enrichment failed for ${gameInput.bgg_id}:`, e);
