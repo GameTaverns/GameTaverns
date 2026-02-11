@@ -36,18 +36,32 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "library-settings":       () => import("./library-settings/index.ts"),
   "profile-update":         () => import("./profile-update/index.ts"),
   "notify-feedback":        () => import("./notify-feedback/index.ts"),
+  "totp-status":            () => import("./totp-status/index.ts"),
+  "totp-setup":             () => import("./totp-setup/index.ts"),
+  "totp-verify":            () => import("./totp-verify/index.ts"),
+  "totp-disable":           () => import("./totp-disable/index.ts"),
+  "manage-users":           () => import("./manage-users/index.ts"),
+  "wishlist":               () => import("./wishlist/index.ts"),
+  "rate-game":              () => import("./rate-game/index.ts"),
+  "discord-config":         () => import("./discord-config/index.ts"),
+  "discord-unlink":         () => import("./discord-unlink/index.ts"),
+  "image-proxy":            () => import("./image-proxy/index.ts"),
+  "manage-account":         () => import("./manage-account/index.ts"),
+  "refresh-images":         () => import("./refresh-images/index.ts"),
+  "signup":                 () => import("./signup/index.ts"),
+  "game-recommendations":   () => import("./game-recommendations/index.ts"),
+  "resolve-username":       () => import("./resolve-username/index.ts"),
+  "sync-achievements":      () => import("./sync-achievements/index.ts"),
+  "discord-notify":         () => import("./discord-notify/index.ts"),
+  "discord-create-event":   () => import("./discord-create-event/index.ts"),
+  "discord-forum-post":     () => import("./discord-forum-post/index.ts"),
+  "discord-delete-thread":  () => import("./discord-delete-thread/index.ts"),
+  "discord-oauth-callback": () => import("./discord-oauth-callback/index.ts"),
+  "discord-send-dm":        () => import("./discord-send-dm/index.ts"),
 };
 
-// These are exported from handlers.ts by name
-const INLINED_HANDLER_NAMES = [
-  "totp-status", "totp-setup", "totp-verify", "totp-disable",
-  "manage-users", "wishlist", "rate-game",
-  "discord-config", "discord-unlink", "image-proxy", "manage-account",
-  "refresh-images", "signup",
-  "game-recommendations", "resolve-username", "sync-achievements",
-  "discord-notify", "discord-create-event", "discord-forum-post",
-  "discord-delete-thread", "discord-oauth-callback", "discord-send-dm",
-];
+// All handlers are now external imports - no inlined handlers remaining
+const INLINED_HANDLER_NAMES: string[] = [];
 
 // bgg-import and game-import need special wiring (deadlock prevention)
 const BGG_GAME_IMPORT_NAMES = ["bgg-import", "game-import"];
