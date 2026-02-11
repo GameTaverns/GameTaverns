@@ -105,7 +105,7 @@ MAIN_DIR="$FUNCTIONS_DIR/main"
 EXTERNAL_HANDLERS=(
   bgg-import bgg-lookup bgg-play-import bgg-sync bgg-sync-cron
   bulk-import clubs condense-descriptions decrypt-messages
-  game-import library-settings membership my-inquiries
+  game-import game-recommendations library-settings membership my-inquiries
   notify-feedback profile-update reply-to-inquiry
   send-auth-email send-inquiry-reply send-message
   verify-email verify-reset-token _shared
