@@ -759,19 +759,119 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // ---------------------------------------------------------------------------
-    // STEP 3: Fallback to Firecrawl + AI for non-BGG URLs or incomplete data
+    // STEP 3: For BGG URLs, try direct HTML scraping BEFORE Firecrawl
     // ---------------------------------------------------------------------------
-    console.log("BGG XML API incomplete or non-BGG URL, falling back to Firecrawl + AI");
+    if (bggId) {
+      console.log(`[GameImport] BGG XML failed, trying direct HTML scrape for ${bggId}`);
+      try {
+        const directRes = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+          },
+        });
+        if (directRes.ok) {
+          const html = await directRes.text();
+          const ogTitleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i) ||
+                               html.match(/<meta\s+content="([^"]+)"\s+property="og:title"/i);
+          const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
+          const scrapedTitle = ogTitleMatch?.[1] || titleTagMatch?.[1]?.replace(/\s*\|.*$/, '').replace(/\s*\u2014.*$/, '').trim();
+          
+          const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
+                               html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i);
+          const scrapedImage = ogImageMatch?.[1] || null;
+          
+          const ogDescMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i) ||
+                              html.match(/<meta\s+content="([^"]+)"\s+property="og:description"/i);
+          const scrapedDesc = ogDescMatch?.[1] || null;
+
+          const isExpansionFromHtml = url.includes('/boardgameexpansion/') || 
+                                      html.includes('boardgameexpansion') ||
+                                      is_expansion === true;
+
+          if (scrapedTitle) {
+            console.log(`[GameImport] Direct HTML scrape success: ${scrapedTitle}`);
+            const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
+            const scrapedGameData = {
+              title: scrapedTitle.slice(0, 500),
+              description: scrapedDesc?.slice(0, 10000) || `${scrapedTitle} - imported from BoardGameGeek`,
+              image_url: scrapedImage,
+              additional_images: [] as string[],
+              difficulty: IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium",
+              game_type: "Board Game" as const,
+              play_time: IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes",
+              min_players: 1,
+              max_players: 4,
+              suggested_age: "10+",
+              bgg_id: bggId,
+              bgg_url: url,
+              library_id: targetLibraryId,
+              is_expansion: isExpansionFromHtml,
+              parent_game_id: parent_game_id || null,
+              is_coming_soon: is_coming_soon === true,
+              is_for_sale: is_for_sale === true,
+              sale_price: is_for_sale ? sale_price || null : null,
+              sale_condition: is_for_sale ? normalizedSaleCondition || null : null,
+              location_room: location_room || null,
+              location_shelf: location_shelf || null,
+              location_misc: location_misc || null,
+              sleeved: sleeved === true,
+              upgraded_components: upgraded_components === true,
+              crowdfunded: crowdfunded === true,
+              inserts: inserts === true,
+            };
+
+            const { data: game, error: insertError } = await supabaseAdmin
+              .from("games")
+              .insert(scrapedGameData)
+              .select()
+              .single();
+
+            if (insertError || !game) {
+              console.error("Insert error (direct scrape):", insertError?.message);
+              return new Response(
+                JSON.stringify({ success: false, error: insertError?.message || "Failed to save game" }),
+                { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+
+            if (purchase_price || purchase_date) {
+              await supabaseAdmin.from("game_admin_data").insert({
+                game_id: game.id,
+                purchase_price: purchase_price ? parseFloat(purchase_price) : null,
+                purchase_date: purchase_date || null,
+              });
+            }
+
+            return new Response(
+              JSON.stringify({ success: true, game: { ...game, mechanics: [], publisher: null } }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          } else {
+            console.warn("[GameImport] Direct HTML scrape got no title from page");
+          }
+        } else {
+          await directRes.text().catch(() => {});
+          console.warn(`[GameImport] Direct HTML scrape returned ${directRes.status}`);
+        }
+      } catch (scrapeErr) {
+        console.error("[GameImport] Direct HTML scrape error:", scrapeErr);
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // STEP 4: Fallback to Firecrawl for non-BGG URLs or when direct scrape failed
+    // ---------------------------------------------------------------------------
+    console.log("Falling back to Firecrawl + AI");
     
     if (!firecrawlKey) {
-      // If no Firecrawl key and no complete BGG data, return what we have from BGG
       if (bggData?.title) {
         console.error("Firecrawl API key not configured, using partial BGG data");
-        // Continue with partial data...
       } else {
-        console.error("Firecrawl API key not configured and no BGG data available");
+        console.error("No data sources available (BGG XML, direct scrape, and Firecrawl all failed)");
         return new Response(
-          JSON.stringify({ success: false, error: "Import service temporarily unavailable. Please try again later." }),
+          JSON.stringify({ success: false, error: "Could not import this game. BGG may be temporarily blocking requests from this server. Please try again later or add the game manually." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -779,7 +879,6 @@ export default async function handler(req: Request): Promise<Response> {
 
     console.log("Scraping with Firecrawl...");
     
-    // Only scrape the main page - no gallery to avoid pulling irrelevant images
     const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
       headers: {
