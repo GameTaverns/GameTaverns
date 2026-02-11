@@ -50,6 +50,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "image-proxy":            () => import("./image-proxy/index.ts"),
   "manage-account":         () => import("./manage-account/index.ts"),
   "refresh-images":         () => import("./refresh-images/index.ts"),
+  "refresh-ratings":        () => import("./refresh-ratings/index.ts"),
   "signup":                 () => import("./signup/index.ts"),
   "game-recommendations":   () => import("./game-recommendations/index.ts"),
   "resolve-username":       () => import("./resolve-username/index.ts"),

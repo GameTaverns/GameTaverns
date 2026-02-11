@@ -2,7 +2,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 /**
@@ -34,7 +35,7 @@ async function fetchBggRating(bggId: string): Promise<number | null> {
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
@@ -86,8 +87,7 @@ export default async function handler(req: Request): Promise<Response> {
     const libraryId = body.library_id || library.id;
     const limit = body.limit || 30;
 
-    // Find games with bgg_id that don't yet have a bgg-community rating
-    // Use a left join approach: get games with bgg_id, then check ratings
+    // Find games with bgg_id
     const { data: games, error: gamesError } = await supabaseAdmin
       .from("games")
       .select("id, title, bgg_id")
@@ -192,4 +192,7 @@ export default async function handler(req: Request): Promise<Response> {
   }
 }
 
-Deno.serve(handler);
+// Self-hosted: export default for main router; guard prevents standalone server conflict
+if (import.meta.main) {
+  Deno.serve(handler);
+}
