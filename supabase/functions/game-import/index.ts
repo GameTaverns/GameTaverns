@@ -220,8 +220,18 @@ async function fetchBGGDataFromXML(
   is_expansion?: boolean;
 }> {
   const bggApiToken = Deno.env.get("BGG_API_TOKEN");
-  const headers: Record<string, string> = { "User-Agent": "GameTaverns/1.0" };
-  if (bggApiToken) headers["Authorization"] = bggApiToken;
+  const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+  const headers: Record<string, string> = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" };
+  if (bggCookie) {
+    headers["Cookie"] = bggCookie;
+  } else if (bggApiToken) {
+    // Legacy: try as cookie value if it looks like one, otherwise as Authorization
+    if (bggApiToken.includes("=") || bggApiToken.includes("SessionID")) {
+      headers["Cookie"] = bggApiToken;
+    } else {
+      headers["Authorization"] = `Bearer ${bggApiToken}`;
+    }
+  }
 
   const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
   const maxAttempts = 6;
@@ -236,8 +246,8 @@ async function fetchBGGDataFromXML(
         console.warn(`[GameImport] BGG XML API returned ${res.status} for ${bggId}${!bggApiToken ? " (no BGG_API_TOKEN configured)" : ""}`);
         // If token caused a 401/403, retry without it
         if ((res.status === 401 || res.status === 403) && bggApiToken) {
-          console.log(`[GameImport] Retrying BGG XML API without token for ${bggId}`);
-          const retryRes = await fetch(xmlUrl, { headers: { "User-Agent": "GameTaverns/1.0" } });
+          console.log(`[GameImport] Retrying BGG XML API without auth for ${bggId}`);
+          const retryRes = await fetch(xmlUrl, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" } });
           if (retryRes.ok) {
             const xml = await retryRes.text();
             if (xml.includes("<item")) {
@@ -879,6 +889,107 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
       
+      // Last resort: if this is a BGG URL, try direct HTML scraping
+      if (bggId) {
+        console.log(`[GameImport] Attempting direct BGG HTML scrape for ${bggId}`);
+        try {
+          const directRes = await fetch(url, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml",
+              "Accept-Language": "en-US,en;q=0.9",
+            },
+          });
+          if (directRes.ok) {
+            const html = await directRes.text();
+            // Extract title from og:title or <title> tag
+            const ogTitleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i) ||
+                                 html.match(/<meta\s+content="([^"]+)"\s+property="og:title"/i);
+            const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
+            const scrapedTitle = ogTitleMatch?.[1] || titleTagMatch?.[1]?.replace(/\s*\|.*$/, '').replace(/\s*\u2014.*$/, '').trim();
+            
+            // Extract image from og:image
+            const ogImageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
+                                 html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i);
+            const scrapedImage = ogImageMatch?.[1] || null;
+            
+            // Extract description from og:description
+            const ogDescMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i) ||
+                                html.match(/<meta\s+content="([^"]+)"\s+property="og:description"/i);
+            const scrapedDesc = ogDescMatch?.[1] || null;
+
+            // Check if it's an expansion from the URL or page content
+            const isExpansionFromHtml = url.includes('/boardgameexpansion/') || 
+                                        html.includes('boardgameexpansion') ||
+                                        is_expansion === true;
+
+            if (scrapedTitle) {
+              console.log(`[GameImport] Direct scrape got title: ${scrapedTitle}`);
+              const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
+              const scrapedGameData = {
+                title: scrapedTitle.slice(0, 500),
+                description: scrapedDesc?.slice(0, 10000) || `${scrapedTitle} - imported from BoardGameGeek`,
+                image_url: scrapedImage,
+                additional_images: [] as string[],
+                difficulty: IS_SELF_HOSTED ? "3 - Medium" : "3 - Medium",
+                game_type: "Board Game" as const,
+                play_time: IS_SELF_HOSTED ? "45-60 Minutes" : "45-60 Minutes",
+                min_players: 1,
+                max_players: 4,
+                suggested_age: "10+",
+                bgg_id: bggId,
+                bgg_url: url,
+                library_id: targetLibraryId,
+                is_expansion: isExpansionFromHtml,
+                parent_game_id: parent_game_id || null,
+                is_coming_soon: is_coming_soon === true,
+                is_for_sale: is_for_sale === true,
+                sale_price: is_for_sale ? sale_price || null : null,
+                sale_condition: is_for_sale ? normalizedSaleCondition || null : null,
+                location_room: location_room || null,
+                location_shelf: location_shelf || null,
+                location_misc: location_misc || null,
+                sleeved: sleeved === true,
+                upgraded_components: upgraded_components === true,
+                crowdfunded: crowdfunded === true,
+                inserts: inserts === true,
+              };
+
+              const { data: game, error: insertError } = await supabaseAdmin
+                .from("games")
+                .insert(scrapedGameData)
+                .select()
+                .single();
+
+              if (insertError || !game) {
+                console.error("Insert error (direct scrape):", insertError?.message);
+                return new Response(
+                  JSON.stringify({ success: false, error: insertError?.message || "Failed to save game" }),
+                  { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
+              }
+
+              if (purchase_price || purchase_date) {
+                await supabaseAdmin.from("game_admin_data").insert({
+                  game_id: game.id,
+                  purchase_price: purchase_price ? parseFloat(purchase_price) : null,
+                  purchase_date: purchase_date || null,
+                });
+              }
+
+              return new Response(
+                JSON.stringify({ success: true, game: { ...game, mechanics: [], publisher: null } }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          } else {
+            await directRes.text().catch(() => {});
+          }
+        } catch (scrapeErr) {
+          console.error("[GameImport] Direct BGG scrape failed:", scrapeErr);
+        }
+      }
+
       return new Response(
         JSON.stringify({ success: false, error: `Failed to scrape page: ${scrapeResponse.status}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
