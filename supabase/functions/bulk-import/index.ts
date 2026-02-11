@@ -2492,12 +2492,13 @@ export default async function handler(req: Request): Promise<Response> {
           }
 
           // Group play rows to batch insert
-          const sessionsToInsert: { game_id: string; played_at: string; import_source: string }[] = [];
+          const sessionsToInsert: { game_id: string; played_at: string; notes: string }[] = [];
 
           for (const play of playLogRows) {
             const gameId = bggIdToGameId.get(play.bgg_id);
             if (!gameId) {
               playsSkipped++;
+              console.log(`[BulkImport] Play skipped: no game found for BGG ID ${play.bgg_id} ("${play.title}")`);
               continue;
             }
 
@@ -2505,9 +2506,11 @@ export default async function handler(req: Request): Promise<Response> {
             sessionsToInsert.push({
               game_id: gameId,
               played_at: `${play.play_date}T12:00:00Z`,
-              import_source: "bgstats_csv",
+              notes: "Imported from CSV",
             });
           }
+
+          console.log(`[BulkImport] Play sessions to insert: ${sessionsToInsert.length} (skipped ${playsSkipped} with no matching game)`);
 
           // Batch insert in chunks of 100
           const chunkSize = 100;
