@@ -28,11 +28,11 @@ END $$;
 -- Game difficulty levels
 DO $$ BEGIN
     CREATE TYPE difficulty_level AS ENUM (
-        '1 - Very Easy',
-        '2 - Easy', 
+        '1 - Light',
+        '2 - Medium Light', 
         '3 - Medium',
-        '4 - Hard',
-        '5 - Very Hard'
+        '4 - Medium Heavy',
+        '5 - Heavy'
     );
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
@@ -44,13 +44,9 @@ DO $$ BEGIN
         'Card Game',
         'Dice Game',
         'Party Game',
-        'Strategy Game',
-        'Cooperative Game',
-        'Miniatures Game',
-        'Role-Playing Game',
-        'Deck Building',
-        'Area Control',
-        'Worker Placement',
+        'War Game',
+        'Miniatures',
+        'RPG',
         'Other'
     );
 EXCEPTION WHEN duplicate_object THEN NULL;
@@ -59,12 +55,12 @@ END $$;
 -- Play time ranges
 DO $$ BEGIN
     CREATE TYPE play_time AS ENUM (
-        'Under 30 Minutes',
+        '0-15 Minutes',
+        '15-30 Minutes',
         '30-45 Minutes',
         '45-60 Minutes',
-        '60-90 Minutes',
-        '90-120 Minutes',
-        '2-3 Hours',
+        '60+ Minutes',
+        '2+ Hours',
         '3+ Hours'
     );
 EXCEPTION WHEN duplicate_object THEN NULL;
@@ -73,7 +69,7 @@ END $$;
 -- Sale condition
 DO $$ BEGIN
     CREATE TYPE sale_condition AS ENUM (
-        'New',
+        'New/Sealed',
         'Like New',
         'Very Good',
         'Good',
