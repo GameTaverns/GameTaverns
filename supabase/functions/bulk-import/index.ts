@@ -2018,12 +2018,12 @@ export default async function handler(req: Request): Promise<Response> {
             }
 
             // Check if game already exists
-            // NOTE: CSV re-imports are commonly used to "refresh" media URLs.
-            // Historically we skipped duplicates entirely; however that prevents image URL
-            // normalization fixes from taking effect for existing rows.
+            // NOTE: CSV re-imports are commonly used to "refresh" media URLs AND
+            // fill in missing metadata (descriptions, player counts, etc.) that
+            // may have been missed on a prior import due to network issues.
             const { data: existing } = await supabaseAdmin
               .from("games")
-              .select("id, title, image_url, additional_images")
+              .select("id, title, image_url, additional_images, description, min_players, max_players, difficulty, play_time, game_type, suggested_age, publisher_id, is_expansion, parent_game_id")
               .eq("title", gameData.title)
               .eq("library_id", targetLibraryId)
               .maybeSingle();
@@ -2049,8 +2049,7 @@ export default async function handler(req: Request): Promise<Response> {
             };
 
             if (existing) {
-              // If this import provides a (normalized) image URL and the existing one looks like
-              // a BGG OpenGraph/Cloudflare-resized variant, update it in-place.
+              // Build a patch of missing/improved data for existing games
               const incomingImage = gameData.image_url || null;
               const existingImage = (existing as any).image_url as string | null;
 
@@ -2065,22 +2064,95 @@ export default async function handler(req: Request): Promise<Response> {
               const shouldUpdateAdditional =
                 !!incomingAdditional?.length && (!existingAdditional || existingAdditional.length === 0);
 
-              if (shouldUpdateImage || shouldUpdateAdditional) {
-                const patch: Record<string, unknown> = {};
-                if (shouldUpdateImage) patch.image_url = incomingImage;
-                if (shouldUpdateAdditional) patch.additional_images = incomingAdditional;
+              // NEW: Also patch description and other metadata when the existing game is missing them
+              const existingDesc = ((existing as any).description as string | null) || "";
+              const shouldUpdateDescription =
+                existingDesc.trim().length === 0 &&
+                gameData.description &&
+                gameData.description.trim().length > 0;
 
+              const patch: Record<string, unknown> = {};
+              if (shouldUpdateImage) patch.image_url = incomingImage;
+              if (shouldUpdateAdditional) patch.additional_images = incomingAdditional;
+              if (shouldUpdateDescription) patch.description = gameData.description;
+
+              // Patch missing numeric/enum fields
+              if (!(existing as any).min_players && gameData.min_players) patch.min_players = gameData.min_players;
+              if (!(existing as any).max_players && gameData.max_players) patch.max_players = gameData.max_players;
+              if (!(existing as any).suggested_age && gameData.suggested_age) patch.suggested_age = gameData.suggested_age;
+              if (!(existing as any).difficulty && gameData.difficulty) patch.difficulty = gameData.difficulty;
+              if (!(existing as any).play_time && gameData.play_time) patch.play_time = gameData.play_time;
+              if (!(existing as any).game_type && gameData.game_type) patch.game_type = gameData.game_type;
+              // Patch expansion status from BGG (authoritative source)
+              if (gameData.is_expansion && !(existing as any).is_expansion) {
+                patch.is_expansion = true;
+              }
+
+              // Handle publisher for existing games missing one
+              if (!(existing as any).publisher_id && gameData.publisher) {
+                const { data: ep } = await supabaseAdmin
+                  .from("publishers")
+                  .select("id")
+                  .eq("name", gameData.publisher)
+                  .maybeSingle();
+                if (ep) {
+                  patch.publisher_id = ep.id;
+                } else {
+                  const { data: np } = await supabaseAdmin
+                    .from("publishers")
+                    .insert({ name: gameData.publisher })
+                    .select("id")
+                    .single();
+                  if (np) patch.publisher_id = np.id;
+                }
+              }
+
+              // Handle mechanics for existing games (add missing ones)
+              if (gameData.mechanics?.length) {
+                const { data: existingMechanics } = await supabaseAdmin
+                  .from("game_mechanics")
+                  .select("mechanic_id")
+                  .eq("game_id", existing.id);
+
+                if (!existingMechanics || existingMechanics.length === 0) {
+                  const mechanicIds: string[] = [];
+                  for (const name of gameData.mechanics) {
+                    const { data: em } = await supabaseAdmin
+                      .from("mechanics")
+                      .select("id")
+                      .eq("name", name)
+                      .maybeSingle();
+                    if (em) {
+                      mechanicIds.push(em.id);
+                    } else {
+                      const { data: nm } = await supabaseAdmin
+                        .from("mechanics")
+                        .insert({ name })
+                        .select("id")
+                        .single();
+                      if (nm) mechanicIds.push(nm.id);
+                    }
+                  }
+                  if (mechanicIds.length > 0) {
+                    await supabaseAdmin.from("game_mechanics").insert(
+                      mechanicIds.map(mid => ({ game_id: existing.id, mechanic_id: mid }))
+                    );
+                  }
+                }
+              }
+
+              if (Object.keys(patch).length > 0) {
                 const { error: updateErr } = await supabaseAdmin
                   .from("games")
                   .update(patch)
                   .eq("id", existing.id);
 
                 if (updateErr) {
-                  console.warn(`[BulkImport] Failed updating existing media for "${gameData.title}":`, updateErr);
-                  // Fall through to previous behavior so the user sees it's a duplicate.
+                  console.warn(`[BulkImport] Failed updating existing data for "${gameData.title}":`, updateErr);
                 } else {
                   updated++;
-                  console.log(`[BulkImport] Updated media for existing game "${gameData.title}"`);
+                  const patchedFields = Object.keys(patch).join(", ");
+                  console.log(`[BulkImport] Updated existing game "${gameData.title}" (patched: ${patchedFields})`);
                   continue;
                 }
               }
