@@ -1625,6 +1625,47 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
+    // ---------------------------------------------------------------------------
+    // Pre-insertion pass: detect expansions by name pattern
+    // If "Base Game: Subtitle" exists and "Base Game" is also in the list,
+    // mark "Base Game: Subtitle" as an expansion with parent_game set.
+    // ---------------------------------------------------------------------------
+    if (gamesToImport.length > 1) {
+      // Build a set of all titles for fast lookup
+      const allTitles = new Set(gamesToImport.map(g => g.title.toLowerCase()));
+      // Sort potential base games longest-first so "Age of Steam: Deluxe" matches before "Age of Steam"
+      const potentialBases = [...allTitles].sort((a, b) => b.length - a.length);
+
+      let preLinked = 0;
+      for (const game of gamesToImport) {
+        // Skip if already marked as expansion with a parent
+        if (game.is_expansion && game.parent_game) continue;
+
+        const titleLower = game.title.toLowerCase();
+        for (const baseTitleLower of potentialBases) {
+          if (baseTitleLower.length < 3) continue;
+          if (titleLower === baseTitleLower) continue; // same game
+          if (!titleLower.startsWith(baseTitleLower)) continue;
+
+          const afterBase = game.title.substring(baseTitleLower.length).trim();
+          // Must have a separator (colon, dash, em-dash, en-dash) followed by content
+          if (/^[:\-–—]/.test(afterBase) && afterBase.replace(/^[:\-–—]\s*/, "").trim().length > 0) {
+            // Find the original-cased title of the base game
+            const baseGame = gamesToImport.find(g => g.title.toLowerCase() === baseTitleLower && g.title.toLowerCase() !== titleLower);
+            if (baseGame) {
+              game.is_expansion = true;
+              game.parent_game = baseGame.title;
+              preLinked++;
+              break;
+            }
+          }
+        }
+      }
+      if (preLinked > 0) {
+        console.log(`[BulkImport] Pre-insertion name-pattern detected ${preLinked} expansions`);
+      }
+    }
+
     const totalGames = gamesToImport.length;
     console.log(`[BulkImport] Total games to process: ${totalGames}`);
     console.log(`[BulkImport] Enhance with BGG: ${enhance_with_bgg}, Enhance with AI: ${enhance_with_ai}`);
@@ -2644,7 +2685,8 @@ export default async function handler(req: Request): Promise<Response> {
         const { data: allLibGames } = await supabaseAdmin
           .from("games")
           .select("id, title, is_expansion, parent_game_id")
-          .eq("library_id", targetLibraryId);
+          .eq("library_id", targetLibraryId)
+          .limit(10000);
 
         if (allLibGames && allLibGames.length > 1) {
           const baseGames = allLibGames.filter(g => !g.is_expansion && !g.parent_game_id);
@@ -2685,7 +2727,8 @@ export default async function handler(req: Request): Promise<Response> {
           const { data: remainingGames } = await supabaseAdmin
             .from("games")
             .select("id, title, is_expansion, parent_game_id")
-            .eq("library_id", targetLibraryId);
+            .eq("library_id", targetLibraryId)
+            .limit(10000);
 
           if (remainingGames && isAIConfigured()) {
             const unlinkedExpansions = remainingGames.filter(g => g.is_expansion && !g.parent_game_id);
