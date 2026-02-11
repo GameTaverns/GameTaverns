@@ -1,5 +1,6 @@
 // Note: We keep serve import for compatibility but export handler for self-hosted router
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { withLogging } from "../_shared/system-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

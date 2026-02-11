@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { withLogging } from "../_shared/system-logger.ts";
 
 // This function is called by pg_cron to trigger BGG sync for all libraries
 // with auto-sync enabled. It iterates through each library and calls the
