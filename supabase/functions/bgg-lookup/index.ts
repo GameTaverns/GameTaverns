@@ -216,7 +216,32 @@ export default async function handler(req: Request): Promise<Response> {
 
     const pageUrl = `https://boardgamegeek.com/boardgame/${encodeURIComponent(bggId)}`;
 
-    // Always use Firecrawl for consistent results (BGG XML API is often blocked)
+    // STEP 1: Try BGG XML API first for canonical box art image
+    // The <image> tag in the thing XML is the authoritative, high-quality box art
+    let xmlImageUrl: string | null = null;
+    try {
+      const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}`;
+      const xmlRes = await fetch(xmlUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "application/xml",
+        },
+      });
+      if (xmlRes.ok) {
+        const xml = await xmlRes.text();
+        if (xml.includes("<item")) {
+          const imgMatch = xml.match(/<image>([^<]+)<\/image>/);
+          if (imgMatch?.[1] && !/(__opengraph|fit-in\/1200x630|__small|__thumb|__micro)/i.test(imgMatch[1])) {
+            xmlImageUrl = imgMatch[1];
+            console.log(`BGG XML provided box art image for ${bggId}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`BGG XML image fetch failed for ${bggId}:`, e);
+    }
+
+    // STEP 2: Use Firecrawl for AI-based metadata extraction
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
     if (!firecrawlKey) {
       console.error("Firecrawl API key not configured");
@@ -263,7 +288,7 @@ export default async function handler(req: Request): Promise<Response> {
             bgg_id: bggId,
             title: null,
             description: null,
-            image_url: null,
+            image_url: xmlImageUrl,
             min_players: null,
             max_players: null,
             suggested_age: null,
@@ -287,7 +312,9 @@ export default async function handler(req: Request): Promise<Response> {
       extractMetaContent(rawHtml, "twitter:title") ||
       null;
 
+    // Image priority: BGG XML box art > pickBestGeekdoImage > og:image fallback
     const imageUrl =
+      xmlImageUrl ||
       pickBestGeekdoImage(rawHtml) ||
       extractMetaContent(rawHtml, "og:image") ||
       extractMetaContent(rawHtml, "twitter:image");

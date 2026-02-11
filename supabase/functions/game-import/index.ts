@@ -341,10 +341,15 @@ async function fetchBGGDataFromXML(
         const isExpansion = html.includes('boardgameexpansion');
         // Use pickBestGeekdoImage for high-quality box art instead of og:image social crops
         const bestImage = pickBestGeekdoImage(html);
+        // Only use og:image as last resort, and reject opengraph crops
+        let fallbackImage = ogImageMatch?.[1] || null;
+        if (fallbackImage && /__opengraph|fit-in\/1200x630|__small|__thumb/i.test(fallbackImage)) {
+          fallbackImage = null;
+        }
         return {
           bgg_id: bggId,
           title,
-          image_url: bestImage || ogImageMatch?.[1],
+          image_url: bestImage || fallbackImage,
           description: ogDescMatch?.[1] || `${title} - imported from BoardGameGeek`,
           is_expansion: isExpansion,
         };
