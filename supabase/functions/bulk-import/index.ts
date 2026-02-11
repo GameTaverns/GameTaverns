@@ -567,35 +567,68 @@ async function fetchBGGXMLData(bggId: string): Promise<{
     }
   }
 
-  // Fallback: Use Google Gemini AI to generate description from game title when BGG XML fails
+  // Fallback: Use shared AI client (Perplexity primary) to generate description when BGG XML fails
   if (partialResult && (!partialResult.description || partialResult.description.length < 50)) {
-    const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
-    if (googleKey) {
+    if (isAIConfigured()) {
       try {
-        console.log(`[BulkImport] Using Google Gemini to generate description for BGG ID ${bggId}`);
-        const bggUrl = `https://boardgamegeek.com/boardgame/${bggId}`;
-        const prompt = `Look up the board game at ${bggUrl} (BGG ID: ${bggId}). Provide a brief 2-3 sentence description of the game including its theme and core mechanics. Also provide: min_players, max_players, suggested_age (e.g. "10+"), and a list of mechanics. Return as JSON with keys: description, min_players, max_players, suggested_age, mechanics (array of strings).`;
+        console.log(`[BulkImport] Using AI (${getAIProviderName()}) to generate description for BGG ID ${bggId}`);
+        const prompt = `You are a board game expert. Look up the board game with BoardGameGeek ID ${bggId} (https://boardgamegeek.com/boardgame/${bggId}). Provide a JSON object with these keys:
+- "description": A 2-3 sentence description of the game including its theme and core mechanics.
+- "min_players": minimum player count (number)
+- "max_players": maximum player count (number)  
+- "suggested_age": recommended age like "10+" (string)
+- "mechanics": array of game mechanic names (strings)
 
-        const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleKey}`;
-        const geminiRes = await fetch(geminiEndpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 1000 },
-          }),
+Return ONLY the JSON object, no extra text.`;
+
+        const result = await aiComplete({
+          messages: [
+            { role: "system", content: "You are a board game encyclopedia. Return only valid JSON." },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 800,
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "game_metadata",
+                description: "Return board game metadata",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    description: { type: "string" },
+                    min_players: { type: "number" },
+                    max_players: { type: "number" },
+                    suggested_age: { type: "string" },
+                    mechanics: { type: "array", items: { type: "string" } },
+                  },
+                  required: ["description"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          ],
         });
 
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          // Try to parse JSON from the response
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (result.success && result.toolCallArguments) {
+          const parsed = result.toolCallArguments as Record<string, unknown>;
+          if (parsed.description && typeof parsed.description === "string") {
+            console.log(`[BulkImport] AI generated description for ${bggId}: ${(parsed.description as string).length} chars`);
+            partialResult.description = parsed.description as string;
+            if (!partialResult.min_players && parsed.min_players) partialResult.min_players = parsed.min_players as number;
+            if (!partialResult.max_players && parsed.max_players) partialResult.max_players = parsed.max_players as number;
+            if (!partialResult.suggested_age && parsed.suggested_age) partialResult.suggested_age = parsed.suggested_age as string;
+            if ((!partialResult.mechanics || partialResult.mechanics.length === 0) && parsed.mechanics) {
+              partialResult.mechanics = parsed.mechanics as string[];
+            }
+          }
+        } else if (result.content && result.content.length > 50) {
+          // Fallback: try to parse raw content
+          const jsonMatch = result.content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             try {
               const parsed = JSON.parse(jsonMatch[0]);
               if (parsed.description) {
-                console.log(`[BulkImport] Google Gemini generated description for ${bggId}: ${parsed.description.length} chars`);
                 partialResult.description = parsed.description;
                 if (!partialResult.min_players && parsed.min_players) partialResult.min_players = parsed.min_players;
                 if (!partialResult.max_players && parsed.max_players) partialResult.max_players = parsed.max_players;
@@ -604,17 +637,14 @@ async function fetchBGGXMLData(bggId: string): Promise<{
                   partialResult.mechanics = parsed.mechanics;
                 }
               }
-            } catch { /* JSON parse failed, use text as-is */ }
+            } catch { /* JSON parse failed */ }
           }
-          if (!partialResult.description && text.length > 50) {
-            partialResult.description = text.slice(0, 2000);
-            console.log(`[BulkImport] Google Gemini raw text fallback for ${bggId}: ${partialResult.description.length} chars`);
+          if (!partialResult.description) {
+            partialResult.description = result.content.slice(0, 2000);
           }
-        } else {
-          console.warn(`[BulkImport] Google Gemini returned ${geminiRes.status} for ${bggId}`);
         }
       } catch (e) {
-        console.warn(`[BulkImport] Google Gemini fallback failed for ${bggId}:`, e);
+        console.warn(`[BulkImport] AI fallback failed for ${bggId}:`, e);
       }
     }
   }
@@ -1982,6 +2012,31 @@ export default async function handler(req: Request): Promise<Response> {
                     }
                   } catch (e) {
                     console.warn(`[BulkImport] Direct gallery scrape failed for ${gameInput.bgg_id}:`, e);
+                  }
+                }
+
+                // FINAL FALLBACK: If we still have no description after all enrichment,
+                // use Perplexity/AI to generate one from the game title
+                if ((!gameData.description || gameData.description.length < 50) && isAIConfigured()) {
+                  const gameTitle = gameData.title || `BGG ID ${gameInput.bgg_id}`;
+                  console.log(`[BulkImport] Final AI description generation for: "${gameTitle}" (${getAIProviderName()})`);
+                  try {
+                    const prompt = `You are a board game expert. The board game "${gameTitle}" has BGG ID ${gameInput.bgg_id} (https://boardgamegeek.com/boardgame/${gameInput.bgg_id}). Write a brief 2-3 sentence description of this game covering its theme and core mechanics.`;
+                    const result = await aiComplete({
+                      messages: [
+                        { role: "system", content: "You are a board game encyclopedia. Write concise, accurate game descriptions." },
+                        { role: "user", content: prompt },
+                      ],
+                      max_tokens: 500,
+                    });
+                    if (result.success && result.content && result.content.length > 30) {
+                      console.log(`[BulkImport] Final AI generated description: ${result.content.length} chars`);
+                      // Now format it with the standard formatter
+                      const formatted = await formatDescriptionWithAI(result.content, gameInput.bgg_id);
+                      gameData.description = formatted || result.content;
+                    }
+                  } catch (e) {
+                    console.warn(`[BulkImport] Final AI description generation failed for "${gameTitle}":`, e);
                   }
                 }
               }
