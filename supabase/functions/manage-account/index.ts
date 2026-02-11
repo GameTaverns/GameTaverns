@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-Deno.serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -39,9 +39,7 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify user
     console.log('manage-account: Verifying user');
-    // In edge runtime we should validate using the JWT directly (no session persistence).
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
       console.error('manage-account: User verification failed', userError);
@@ -57,7 +55,6 @@ Deno.serve(async (req) => {
     const { action, libraryId, confirmationText } = body;
     console.log('manage-account: Received action', action, 'for library', libraryId);
 
-    // Get user's library to verify ownership
     const { data: library, error: libraryError } = await supabase
       .from('libraries')
       .select('id, name, slug, owner_id')
@@ -73,7 +70,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify ownership (except for account deletion which uses different verification)
     if (action !== 'delete_account' && library?.owner_id !== userId) {
       return new Response(JSON.stringify({ error: 'Not authorized' }), {
         status: 403,
@@ -81,7 +77,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create admin client for privileged operations
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -90,26 +85,21 @@ Deno.serve(async (req) => {
     switch (action) {
       case 'clear_library': {
         console.log('manage-account: clear_library action started');
-        // Library must exist for this action
         if (!library) {
-          console.log('manage-account: Library not found');
           return new Response(JSON.stringify({ error: 'Library not found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        // Verify confirmation text matches library name
         console.log('manage-account: Checking confirmation text', confirmationText, 'vs', library.name);
         if (confirmationText?.toLowerCase() !== library.name.toLowerCase()) {
-          console.log('manage-account: Confirmation text mismatch');
           return new Response(JSON.stringify({ error: 'Confirmation text does not match library name' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
 
-        // Delete all games for this library (cascades to related tables)
         console.log('manage-account: Deleting games for library', libraryId);
         const { error: gamesError, count } = await adminClient
           .from('games')
@@ -126,7 +116,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Delete import jobs
         await adminClient
           .from('import_jobs')
           .delete()
@@ -141,7 +130,6 @@ Deno.serve(async (req) => {
       }
 
       case 'delete_library': {
-        // Library must exist for this action
         if (!library) {
           return new Response(JSON.stringify({ error: 'Library not found' }), {
             status: 404,
@@ -149,7 +137,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Verify confirmation text matches library name
         if (confirmationText?.toLowerCase() !== library.name.toLowerCase()) {
           return new Response(JSON.stringify({ error: 'Confirmation text does not match library name' }), {
             status: 400,
@@ -157,31 +144,11 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Delete library settings first
-        await adminClient
-          .from('library_settings')
-          .delete()
-          .eq('library_id', libraryId);
+        await adminClient.from('library_settings').delete().eq('library_id', libraryId);
+        await adminClient.from('library_suspensions').delete().eq('library_id', libraryId);
+        await adminClient.from('import_jobs').delete().eq('library_id', libraryId);
+        await adminClient.from('games').delete().eq('library_id', libraryId);
 
-        // Delete library suspensions
-        await adminClient
-          .from('library_suspensions')
-          .delete()
-          .eq('library_id', libraryId);
-
-        // Delete import jobs
-        await adminClient
-          .from('import_jobs')
-          .delete()
-          .eq('library_id', libraryId);
-
-        // Delete all games (cascades to game-related tables)
-        await adminClient
-          .from('games')
-          .delete()
-          .eq('library_id', libraryId);
-
-        // Delete the library itself
         const { error: deleteError } = await adminClient
           .from('libraries')
           .delete()
@@ -195,19 +162,16 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Delete storage files for this library
         try {
           const { data: files } = await adminClient.storage
             .from('library-logos')
             .list(libraryId);
-          
           if (files && files.length > 0) {
             const filePaths = files.map(f => `${libraryId}/${f.name}`);
             await adminClient.storage.from('library-logos').remove(filePaths);
           }
         } catch (storageError) {
           console.error('Error cleaning up storage:', storageError);
-          // Non-fatal - continue
         }
 
         return new Response(JSON.stringify({ 
@@ -219,8 +183,6 @@ Deno.serve(async (req) => {
       }
 
       case 'delete_account': {
-        // User is already verified from earlier in the function
-        // Check if user is an admin - admins cannot delete their own accounts
         const { data: adminRole } = await adminClient
           .from('user_roles')
           .select('role')
@@ -235,7 +197,6 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Verify confirmation text matches email
         if (confirmationText?.toLowerCase() !== user.email?.toLowerCase()) {
           return new Response(JSON.stringify({ error: 'Confirmation text does not match email address' }), {
             status: 400,
@@ -243,27 +204,18 @@ Deno.serve(async (req) => {
           });
         }
 
-        // Get all user's libraries
         const { data: userLibraries } = await adminClient
           .from('libraries')
           .select('id')
           .eq('owner_id', userId);
 
-        // Delete all user's libraries and their data
         if (userLibraries) {
           for (const lib of userLibraries) {
-            // Delete library settings
             await adminClient.from('library_settings').delete().eq('library_id', lib.id);
-            // Delete library suspensions
             await adminClient.from('library_suspensions').delete().eq('library_id', lib.id);
-            // Delete import jobs
             await adminClient.from('import_jobs').delete().eq('library_id', lib.id);
-            // Delete games
             await adminClient.from('games').delete().eq('library_id', lib.id);
-            // Delete library
             await adminClient.from('libraries').delete().eq('id', lib.id);
-            
-            // Clean up storage
             try {
               const { data: files } = await adminClient.storage
                 .from('library-logos')
@@ -278,13 +230,9 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Delete user roles
         await adminClient.from('user_roles').delete().eq('user_id', userId);
-
-        // Delete user profile
         await adminClient.from('user_profiles').delete().eq('user_id', userId);
 
-        // Finally, delete the auth user
         const { error: deleteUserError } = await adminClient.auth.admin.deleteUser(userId);
         if (deleteUserError) {
           console.error('Error deleting user:', deleteUserError);
@@ -315,4 +263,10 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+};
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
