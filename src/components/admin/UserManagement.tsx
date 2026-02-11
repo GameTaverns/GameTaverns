@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2 } from "lucide-react";
+import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2, MailCheck, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,7 @@ interface UserWithDetails {
   username: string | null;
   created_at: string;
   last_sign_in_at: string | null;
+  email_confirmed_at: string | null;
   role: AppRole;
   is_banned: boolean;
   banned_until: string | null;
@@ -95,6 +96,7 @@ export function UserManagement() {
           username: u.username || null,
           created_at: u.created_at,
           last_sign_in_at: u.last_sign_in_at || null,
+          email_confirmed_at: u.email_confirmed_at || null,
           role: u.roles?.[0] || null,
           is_banned: u.is_banned || false,
           banned_until: u.banned_until || null,
@@ -228,6 +230,28 @@ export function UserManagement() {
     onError: (error) => {
       console.error("Failed to delete user:", error);
       toast.error(error instanceof Error ? error.message : "Failed to delete user");
+    },
+  });
+
+  // Resend confirmation email mutation
+  const resendConfirmationMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      if (isSelfHostedMode()) {
+        await apiClient.post("/admin/resend-confirmation", { userId });
+        return { success: true };
+      }
+      const { data, error } = await supabase.functions.invoke("manage-users", {
+        body: { action: "resend_confirmation", userId },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Confirmation email resent");
+    },
+    onError: (error) => {
+      console.error("Failed to resend confirmation:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to resend confirmation email");
     },
   });
 
@@ -412,6 +436,11 @@ export function UserManagement() {
                         <Ban className="w-3 h-3 mr-1" />
                         Suspended
                       </Badge>
+                    ) : !user.email_confirmed_at ? (
+                      <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                        <Mail className="w-3 h-3 mr-1" />
+                        Unconfirmed
+                      </Badge>
                     ) : (
                       <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
                         <UserCheck className="w-3 h-3 mr-1" />
@@ -493,6 +522,24 @@ export function UserManagement() {
                           </Button>
                         </>
                       ) : null}
+                      
+                      {/* Resend confirmation for unconfirmed users */}
+                      {!user.email_confirmed_at && user.id !== currentUser?.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/20"
+                          onClick={() => resendConfirmationMutation.mutate(user.id)}
+                          disabled={resendConfirmationMutation.isPending}
+                        >
+                          {resendConfirmationMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <RefreshCw className="w-3 h-3 mr-1" />
+                          )}
+                          Resend Confirm
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
