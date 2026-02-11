@@ -1326,7 +1326,7 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
   // Clean malformed URL junk from HTML scraping (e.g., &quot;); trailing garbage)
   let cleaned = url
     .replace(/&quot;.*$/i, "")       // Remove &quot; and everything after
-    .replace(/["');}\s]+$/g, "")     // Remove trailing quotes, parens, brackets, whitespace
+    .replace(/["');},\s]+$/g, "")    // Remove trailing quotes, parens, brackets, commas, whitespace
     .replace(/%22.*$/i, "")          // Remove encoded quote and everything after
     .replace(/[\r\n\t]+/g, "")       // Remove any newlines/tabs
     .trim();
@@ -1501,7 +1501,7 @@ export default async function handler(req: Request): Promise<Response> {
           // BGG ID can be missing in Cloud-export CSVs; derive it from URL when needed
           const bggUrlCandidate = row.bgg_url || row["bgg url"] || row.url || row["bgg_url"] || "";
           const bggIdFromUrl = bggUrlCandidate
-            ? (bggUrlCandidate.match(/boardgame\/(\d+)/)?.[1] || bggUrlCandidate.match(/\bid=(\d+)\b/)?.[1])
+            ? (bggUrlCandidate.match(/\/boardgame\/(\d+)/)?.[1] || bggUrlCandidate.match(/\/boardgameversion\/(\d+)/)?.[1] || bggUrlCandidate.match(/\bid=(\d+)\b/)?.[1])
             : undefined;
 
           // BG Stats uses "bggid" (no underscore)
@@ -1800,34 +1800,92 @@ export default async function handler(req: Request): Promise<Response> {
 
               // Even if we skip description enrichment, we still want to fix cropped/low-quality images
               // when Enhance with BGG is enabled.
-              if (enhance_with_bgg !== false && gameInput.bgg_id && (!gameData.image_url || hasLowQualityImage)) {
-                console.log(`[BulkImport] Replacing low-quality image via BGG XML for: ${gameInput.bgg_id}`);
-                try {
-                  bggXmlAttempts++;
-                  const bggData = await fetchBGGXMLData(gameInput.bgg_id);
-                  if (bggData?.image_url) {
-                    bggXmlWithImage++;
-                    gameData.image_url = normalizeImageUrl(bggData.image_url);
+              const needsImageFix = !gameData.image_url || hasLowQualityImage;
+              
+              if (enhance_with_bgg !== false && needsImageFix) {
+                // Try BGG XML by ID first, then fall back to title-based search
+                let resolvedBggId = gameInput.bgg_id;
+                
+                if (!resolvedBggId && gameData.title) {
+                  // No bgg_id available - try title-based search to get one
+                  console.log(`[BulkImport] No BGG ID for "${gameData.title}", searching by title for image...`);
+                  try {
+                    const bggCookieSearch = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+                    const bggApiTokenSearch = Deno.env.get("BGG_API_TOKEN");
+                    const searchHeaders: Record<string, string> = {
+                      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                    };
+                    if (bggCookieSearch) {
+                      searchHeaders["Cookie"] = bggCookieSearch;
+                    } else if (bggApiTokenSearch) {
+                      searchHeaders["Cookie"] = bggApiTokenSearch.includes("=") ? bggApiTokenSearch : "";
+                      if (!searchHeaders["Cookie"]) searchHeaders["Authorization"] = `Bearer ${bggApiTokenSearch}`;
+                    }
+                    
+                    const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(gameData.title)}&type=boardgame&exact=1`;
+                    const searchRes = await fetch(searchUrl, { headers: searchHeaders });
+                    if (searchRes.ok) {
+                      const xml = await searchRes.text();
+                      const idMatch = xml.match(/<item[^>]*id="(\d+)"/);
+                      if (idMatch) {
+                        resolvedBggId = idMatch[1];
+                        // Also store the bgg_id for this game so it persists
+                        gameData.bgg_id = resolvedBggId;
+                        gameData.bgg_url = `https://boardgamegeek.com/boardgame/${resolvedBggId}`;
+                        console.log(`[BulkImport] Found BGG ID ${resolvedBggId} for "${gameData.title}" via title search`);
+                      }
+                    }
+                  } catch (e) {
+                    console.warn(`[BulkImport] Title search for image failed for "${gameData.title}":`, e);
                   }
-                } catch (e) {
-                  console.warn(`[BulkImport] Image-only XML enrichment failed for ${gameInput.bgg_id}:`, e);
+                }
+
+                if (resolvedBggId) {
+                  console.log(`[BulkImport] Replacing low-quality image via BGG XML for: ${resolvedBggId}`);
+                  try {
+                    bggXmlAttempts++;
+                    const bggData = await fetchBGGXMLData(resolvedBggId);
+                    if (bggData?.image_url) {
+                      bggXmlWithImage++;
+                      gameData.image_url = normalizeImageUrl(bggData.image_url);
+                    }
+                    // Also backfill missing metadata even when description is complete
+                    if (bggData) {
+                      const isEmpty = (val: unknown): boolean => {
+                        if (val === undefined || val === null) return true;
+                        if (typeof val !== "string") return false;
+                        return val.trim() === "" || val.trim().toLowerCase() === "null";
+                      };
+                      if (isEmpty(gameData.difficulty)) gameData.difficulty = bggData.difficulty;
+                      if (isEmpty(gameData.play_time)) gameData.play_time = bggData.play_time;
+                      if (!gameData.min_players) gameData.min_players = bggData.min_players;
+                      if (!gameData.max_players) gameData.max_players = bggData.max_players;
+                      if (isEmpty(gameData.suggested_age)) gameData.suggested_age = bggData.suggested_age;
+                      if (!gameData.mechanics?.length) gameData.mechanics = bggData.mechanics;
+                      if (isEmpty(gameData.publisher)) gameData.publisher = bggData.publisher;
+                      if (bggData.is_expansion && !gameData.is_expansion) gameData.is_expansion = bggData.is_expansion;
+                    }
+                  } catch (e) {
+                    console.warn(`[BulkImport] Image-only XML enrichment failed for ${resolvedBggId}:`, e);
+                  }
                 }
               }
 
               // Fetch gallery images - try Firecrawl first, fall back to direct scrape
                const needsGalleryImages = !gameData.additional_images || gameData.additional_images.length === 0;
-               if (needsGalleryImages && gameInput.bgg_id) {
-                 console.log(`[BulkImport] Fetching gallery images (description already present) for: ${gameInput.bgg_id}`);
+               if (needsGalleryImages && (gameInput.bgg_id || gameData.bgg_id)) {
+                 const galleryBggId = gameInput.bgg_id || gameData.bgg_id!;
+                 console.log(`[BulkImport] Fetching gallery images (description already present) for: ${galleryBggId}`);
                  try {
                    galleryAttempts++;
-                   const galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, firecrawlKey || null, 5);
+                   const galleryImages = await fetchBGGGalleryImages(galleryBggId, firecrawlKey || null, 5);
                    if (galleryImages.length > 0) {
                      galleryWithImages++;
                      gameData.additional_images = galleryImages;
                      console.log(`[BulkImport] Added ${galleryImages.length} gallery images for "${gameData.title}"`);
                    }
                  } catch (e) {
-                   console.warn(`[BulkImport] Gallery fetch failed for ${gameInput.bgg_id}:`, e);
+                   console.warn(`[BulkImport] Gallery fetch failed for ${galleryBggId}:`, e);
                  }
                }
             } else if (gameInput.bgg_id && enhance_with_bgg !== false) {
@@ -2046,7 +2104,7 @@ export default async function handler(req: Request): Promise<Response> {
             // may have been missed on a prior import due to network issues.
             const { data: existing } = await supabaseAdmin
               .from("games")
-              .select("id, title, image_url, additional_images, description, min_players, max_players, difficulty, play_time, game_type, suggested_age, publisher_id, is_expansion, parent_game_id")
+              .select("id, title, image_url, additional_images, description, min_players, max_players, difficulty, play_time, game_type, suggested_age, publisher_id, is_expansion, parent_game_id, bgg_id, bgg_url")
               .eq("title", gameData.title)
               .eq("library_id", targetLibraryId)
               .maybeSingle();
@@ -2111,6 +2169,29 @@ export default async function handler(req: Request): Promise<Response> {
               // Patch expansion status from BGG (authoritative source)
               if (gameData.is_expansion && !(existing as any).is_expansion) {
                 patch.is_expansion = true;
+              }
+
+              // Patch parent_game_id for expansions that weren't linked before
+              if (!(existing as any).parent_game_id && (gameData.is_expansion || (existing as any).is_expansion)) {
+                // Try explicit parent_game from CSV
+                if (gameInput.parent_game) {
+                  const { data: pg } = await supabaseAdmin
+                    .from("games")
+                    .select("id")
+                    .eq("title", gameInput.parent_game)
+                    .eq("library_id", targetLibraryId)
+                    .maybeSingle();
+                  if (pg) {
+                    patch.parent_game_id = pg.id;
+                    console.log(`[BulkImport] Linked existing expansion "${gameData.title}" → "${gameInput.parent_game}"`);
+                  }
+                }
+              }
+
+              // Patch bgg_id if we resolved one via title search
+              if (!(existing as any).bgg_id && gameData.bgg_id) {
+                patch.bgg_id = gameData.bgg_id;
+                if (gameData.bgg_url) patch.bgg_url = gameData.bgg_url;
               }
 
               // Handle publisher for existing games missing one
