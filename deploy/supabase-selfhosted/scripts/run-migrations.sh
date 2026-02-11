@@ -119,6 +119,13 @@ MIGRATION_FILES=(
     "36-fix-loan-trigger-enum.sql"
     "37-fix-loan-status-enums.sql"
     "38-lending-enhancements.sql"
+    "39-clubs.sql"
+    "40-announcement-banner-view.sql"
+    "41-bgg-sync-config.sql"
+    "42-import-type-column.sql"
+    "43-system-logs-columns.sql"
+    "44-bgg-community-rating.sql"
+    "45-system-logs-rls-policies.sql"
 )
 
 SUCCESS_COUNT=0
