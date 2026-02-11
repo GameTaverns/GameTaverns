@@ -412,6 +412,9 @@ async function fetchBGGXMLData(bggId: string): Promise<{
     }
   }
 
+  // Partial result from direct BGG XML (may have metadata but no description)
+  let partialResult: Awaited<ReturnType<typeof fetchBGGXMLData>> | null = null;
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const res = await fetch(xmlUrl, { headers });
@@ -524,7 +527,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
 
       console.log(`[BulkImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars, expansion=${isExpansion})`);
 
-      return {
+      const directResult = {
         bgg_id: bggId,
         image_url: imageMatch?.[1],
         description,
@@ -537,6 +540,16 @@ async function fetchBGGXMLData(bggId: string): Promise<{
         publisher: publisherMatch?.[1],
         is_expansion: isExpansion,
       };
+
+      // If we got a description, return immediately. Otherwise fall through to Jina.
+      if (description && description.length > 50) {
+        return directResult;
+      }
+
+      // Store partial result so Jina can merge missing fields
+      console.log(`[BulkImport] Direct BGG XML returned no/short description for ${bggId}, trying Jina...`);
+      partialResult = directResult;
+      break; // exit retry loop, fall through to Jina
     } catch (e) {
       console.error("[BulkImport] BGG XML error:", e);
       if (attempt < maxAttempts) {
@@ -544,12 +557,10 @@ async function fetchBGGXMLData(bggId: string): Promise<{
         await sleep(backoffMs);
         continue;
       }
-      return { bgg_id: bggId };
     }
   }
 
-  // All direct BGG XML attempts failed — try Jina Reader proxy as fallback
-  // Jina proxies the request from a different IP, bypassing BGG's IP blocks
+  // Try Jina Reader proxy when direct BGG XML failed OR returned incomplete data
   const jinaApiKey = Deno.env.get("JINA_API_KEY") || "";
   if (jinaApiKey || true) {
     // Try Jina even without key (lower rate limits but still works)
@@ -629,7 +640,7 @@ async function fetchBGGXMLData(bggId: string): Promise<{
 
           console.log(`[BulkImport] Jina proxy SUCCESS for ${bggId}: desc=${description?.length || 0} chars, image=${!!imageMatch}`);
 
-          return {
+          const jinaResult = {
             bgg_id: bggId,
             image_url: imageMatch?.[1],
             description,
@@ -642,6 +653,21 @@ async function fetchBGGXMLData(bggId: string): Promise<{
             publisher: publisherMatch?.[1],
             is_expansion: isExpansion,
           };
+
+          // Merge: prefer Jina description, but keep partialResult's other fields if Jina missed them
+          if (partialResult) {
+            return {
+              ...partialResult,
+              ...jinaResult,
+              // Prefer whichever has a longer description
+              description: (jinaResult.description?.length || 0) > (partialResult.description?.length || 0)
+                ? jinaResult.description
+                : partialResult.description,
+              // Prefer whichever has an image
+              image_url: jinaResult.image_url || partialResult.image_url,
+            };
+          }
+          return jinaResult;
         } else {
           console.warn(`[BulkImport] Jina proxy returned non-BGG-XML content for ${bggId}`);
         }
@@ -653,7 +679,8 @@ async function fetchBGGXMLData(bggId: string): Promise<{
     }
   }
 
-  return { bgg_id: bggId };
+  // Return partial result from direct BGG XML if we have one, otherwise minimal
+  return partialResult || { bgg_id: bggId };
 }
 
 // Format a BGG description into structured markdown using AI
@@ -2346,109 +2373,151 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
 
-        // Second pass: Link orphaned expansions to parent games
-        // BGG CSV doesn't have parent_game column, so we infer from title matching
-        console.log(`[BulkImport] Second pass: Linking orphaned expansions...`);
+        // Post-import: Link expansions to parent games (single combined pass)
+        // Step 1: Title-matching (instant, no API calls)
+        // Step 2: AI-powered detection for remaining unlinked games
+        console.log(`[BulkImport] Post-import: Linking expansions...`);
         
-        const { data: expansions } = await supabaseAdmin
-          .from("games")
-          .select("id, title, is_expansion, parent_game_id")
-          .eq("library_id", targetLibraryId)
-          .eq("is_expansion", true)
-          .is("parent_game_id", null);
+        sendProgress({
+          type: "progress",
+          current: totalGames,
+          total: totalGames,
+          imported,
+          failed,
+          currentGame: "Linking expansions to base games...",
+          phase: "linking_expansions",
+        });
 
-        if (expansions && expansions.length > 0) {
-          const { data: baseGames } = await supabaseAdmin
-            .from("games")
-            .select("id, title")
-            .eq("library_id", targetLibraryId)
-            .eq("is_expansion", false);
-
-          if (baseGames && baseGames.length > 0) {
-            let linked = 0;
-            for (const expansion of expansions) {
-              const expTitle = expansion.title;
-              const sortedBases = [...baseGames].sort((a, b) => b.title.length - a.title.length);
-              
-              for (const baseGame of sortedBases) {
-                if (expTitle.toLowerCase().startsWith(baseGame.title.toLowerCase())) {
-                  const afterBase = expTitle.substring(baseGame.title.length).trim();
-                  if (afterBase.match(/^[–:\-–—]/)) {
-                    const { error: linkErr } = await supabaseAdmin
-                      .from("games")
-                      .update({ parent_game_id: baseGame.id })
-                      .eq("id", expansion.id);
-                    
-                    if (!linkErr) {
-                      linked++;
-                      console.log(`[BulkImport] Linked expansion "${expansion.title}" → "${baseGame.title}"`);
-                    }
-                    break;
-                  }
-                }
-              }
-            }
-            console.log(`[BulkImport] Linked ${linked} of ${expansions.length} orphaned expansions`);
-          }
-        }
-
-        // Third pass: Detect potential expansions by title patterns
-        // Games like "Small City: The Big Tiles Expansion" should be marked as expansions
-        // of "Small City" even if BGG didn't flag them
-        console.log(`[BulkImport] Third pass: Detecting expansions by title patterns...`);
-        
         const { data: allLibGames } = await supabaseAdmin
           .from("games")
           .select("id, title, is_expansion, parent_game_id")
           .eq("library_id", targetLibraryId);
 
         if (allLibGames && allLibGames.length > 1) {
-          const nonExpansions = allLibGames.filter(g => !g.is_expansion);
-          // Sort by title length descending to prefer longer (more specific) base game matches
-          const sortedBases = [...nonExpansions].sort((a, b) => b.title.length - a.title.length);
+          const baseGames = allLibGames.filter(g => !g.is_expansion && !g.parent_game_id);
+          const sortedBases = [...baseGames].sort((a, b) => b.title.length - a.title.length);
           
-          let detected = 0;
+          let titleLinked = 0;
+
+          // --- Title-matching pass (covers "Age of Steam: XYZ" → "Age of Steam") ---
           for (const game of allLibGames) {
-            // Skip games already marked as expansions or already linked
-            if (game.is_expansion || game.parent_game_id) continue;
+            // Process both BGG-flagged expansions without parent AND non-expansion games
+            if (game.parent_game_id) continue;
             
             for (const baseGame of sortedBases) {
-              // Don't match against itself
               if (game.id === baseGame.id) continue;
-              // Base game title must be at least 3 chars to avoid false positives
               if (baseGame.title.length < 3) continue;
               
-              const gameTitle = game.title;
-              const baseTitle = baseGame.title;
-              
-              // Check if game title starts with base game title followed by a separator
-              if (gameTitle.toLowerCase().startsWith(baseTitle.toLowerCase())) {
-                const afterBase = gameTitle.substring(baseTitle.length).trim();
-                // Must have a separator: colon, dash, en-dash, em-dash
-                if (afterBase.match(/^[–:\-–—]/)) {
-                  // Additional heuristic: the part after separator should contain
-                  // expansion-like keywords OR be a subtitle (not just a number)
-                  const subtitle = afterBase.replace(/^[–:\-–—]\s*/, "").trim();
-                  if (subtitle.length > 0) {
-                    const { error: updateErr } = await supabaseAdmin
-                      .from("games")
-                      .update({ is_expansion: true, parent_game_id: baseGame.id })
-                      .eq("id", game.id);
-                    
-                    if (!updateErr) {
-                      detected++;
-                      console.log(`[BulkImport] Auto-detected expansion "${game.title}" → "${baseGame.title}"`);
-                    }
-                    break;
+              if (game.title.toLowerCase().startsWith(baseGame.title.toLowerCase())) {
+                const afterBase = game.title.substring(baseGame.title.length).trim();
+                if (afterBase.match(/^[–:\-–—]/) && afterBase.replace(/^[–:\-–—]\s*/, "").trim().length > 0) {
+                  const { error: updateErr } = await supabaseAdmin
+                    .from("games")
+                    .update({ is_expansion: true, parent_game_id: baseGame.id })
+                    .eq("id", game.id);
+                  
+                  if (!updateErr) {
+                    titleLinked++;
+                    console.log(`[BulkImport] Title-linked expansion "${game.title}" → "${baseGame.title}"`);
                   }
+                  break;
                 }
               }
             }
           }
-          console.log(`[BulkImport] Auto-detected ${detected} expansions by title pattern`);
+          console.log(`[BulkImport] Title-matching linked ${titleLinked} expansions`);
+
+          // --- AI pass for remaining unlinked expansions ---
+          // Re-fetch to get updated parent_game_id values after title matching
+          const { data: remainingGames } = await supabaseAdmin
+            .from("games")
+            .select("id, title, is_expansion, parent_game_id")
+            .eq("library_id", targetLibraryId);
+
+          if (remainingGames && isAIConfigured()) {
+            const unlinkedExpansions = remainingGames.filter(g => g.is_expansion && !g.parent_game_id);
+            const currentBases = remainingGames.filter(g => !g.is_expansion && !g.parent_game_id);
+
+            if (unlinkedExpansions.length > 0 && currentBases.length > 0) {
+              console.log(`[BulkImport] AI expansion detection: ${unlinkedExpansions.length} unlinked expansions, ${currentBases.length} base games`);
+
+              // Batch in groups of 30 to stay within token limits
+              const batchSize = 30;
+              let aiLinked = 0;
+
+              for (let bi = 0; bi < unlinkedExpansions.length; bi += batchSize) {
+                const batch = unlinkedExpansions.slice(bi, bi + batchSize);
+                const expansionList = batch.map((g, idx) => `E${idx}: ${g.title}`).join("\n");
+                const baseList = currentBases.map((g, idx) => `B${idx}: ${g.title}`).join("\n");
+
+                try {
+                  const aiResult = await aiComplete({
+                    messages: [
+                      {
+                        role: "system",
+                        content: `You are a board game expert. Match expansions to their base games.
+
+Given a list of EXPANSIONS and BASE GAMES, output a JSON object: { "matches": [ {"expansion_index": 0, "base_index": 2}, ... ] }
+
+Rules:
+- Only include matches you are confident about (>90% sure)
+- "Age of Steam: 1830s Pennsylvania" is an expansion of "Age of Steam"
+- "Catan: Seafarers" is an expansion of "Catan"
+- Don't match games that are unrelated standalone games
+- If unsure, skip it
+- Output ONLY valid JSON, no explanation`,
+                      },
+                      {
+                        role: "user",
+                        content: `EXPANSIONS:\n${expansionList}\n\nBASE GAMES:\n${baseList}`,
+                      },
+                    ],
+                    max_tokens: 2000,
+                  });
+
+                  if (aiResult.success && aiResult.content) {
+                    try {
+                      // Extract JSON from response (handle markdown code blocks)
+                      const jsonStr = aiResult.content.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
+                      const parsed = JSON.parse(jsonStr);
+                      const matches = parsed.matches || parsed;
+
+                      if (Array.isArray(matches)) {
+                        for (const match of matches) {
+                          const expIdx = match.expansion_index ?? match.e;
+                          const baseIdx = match.base_index ?? match.b;
+                          if (typeof expIdx !== "number" || typeof baseIdx !== "number") continue;
+                          if (expIdx < 0 || expIdx >= batch.length) continue;
+                          if (baseIdx < 0 || baseIdx >= currentBases.length) continue;
+
+                          const expansion = batch[expIdx];
+                          const base = currentBases[baseIdx];
+
+                          const { error: linkErr } = await supabaseAdmin
+                            .from("games")
+                            .update({ parent_game_id: base.id })
+                            .eq("id", expansion.id);
+
+                          if (!linkErr) {
+                            aiLinked++;
+                            console.log(`[BulkImport] AI-linked expansion "${expansion.title}" → "${base.title}"`);
+                          }
+                        }
+                      }
+                    } catch (parseErr) {
+                      console.warn(`[BulkImport] AI expansion response parse error:`, parseErr);
+                    }
+                  }
+                } catch (aiErr) {
+                  console.warn(`[BulkImport] AI expansion detection failed for batch:`, aiErr);
+                }
+              }
+              console.log(`[BulkImport] AI-linked ${aiLinked} additional expansions`);
+            }
+          }
         }
 
-        // Fourth pass: Import play history from CSV (BG Stats format)
+        // Post-import: Import play history from CSV (BG Stats format)
         let playsImported = 0;
         let playsSkipped = 0;
         let playsFailed = 0;
