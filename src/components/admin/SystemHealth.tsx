@@ -305,7 +305,9 @@ export function SystemHealth() {
     );
   });
 
-  const uniqueSources = [...new Set((logsQuery.data || []).map((l) => l.source))].sort();
+  const knownSources = ["auth", "games", "sessions", "import", "discord", "system", "achievements", "membership", "messages", "polls", "events", "lending", "bgg", "forum", "clubs"];
+  const dynamicSources = (logsQuery.data || []).map((l) => l.source);
+  const uniqueSources = [...new Set([...knownSources, ...dynamicSources])].sort();
 
   // Group checks
   const groupedChecks: Record<string, HealthCheck[]> = {};
