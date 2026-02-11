@@ -73,6 +73,36 @@ function parseBGGCollectionXML(xml: string): BGGCollectionItem[] {
   return items;
 }
 
+// ---------------------------------------------------------------------------
+// Fetch proper high-quality image from BGG thing XML API
+// The collection XML often returns opengraph (social crop) URLs.
+// The thing XML API always returns the canonical full-quality image.
+// ---------------------------------------------------------------------------
+async function fetchThingImage(bggId: string): Promise<string | null> {
+  const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+  const headers: Record<string, string> = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "application/xml",
+  };
+  if (bggCookie) headers["Cookie"] = bggCookie;
+
+  const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}`;
+  try {
+    const res = await fetch(xmlUrl, { headers });
+    if (!res.ok) return null;
+    const xml = await res.text();
+    const imageMatch = xml.match(/<image>([^<]+)<\/image>/);
+    return imageMatch?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+function isLowQualityBggImage(url: string | undefined): boolean {
+  if (!url) return true;
+  return /__opengraph|fit-in\/1200x630|filters:strip_icc|__thumb|__micro/i.test(url);
+}
+
 async function fetchBGGCollection(
   username: string,
   includeExpansions: boolean,
@@ -312,7 +342,17 @@ export default async function handler(req: Request): Promise<Response> {
               updates.bgg_url = `https://boardgamegeek.com/boardgame/${item.bgg_id}`;
             }
             if (item.image_url && !existing.is_coming_soon) {
-              updates.image_url = item.image_url;
+              // If collection XML returned a low-quality image, fetch from thing XML
+              if (isLowQualityBggImage(item.image_url)) {
+                const betterImage = await fetchThingImage(item.bgg_id);
+                if (betterImage) {
+                  updates.image_url = betterImage;
+                }
+                // Small delay to be nice to BGG API
+                await new Promise(r => setTimeout(r, 200));
+              } else {
+                updates.image_url = item.image_url;
+              }
             }
             if (item.min_players) updates.min_players = item.min_players;
             if (item.max_players) updates.max_players = item.max_players;
@@ -341,11 +381,20 @@ export default async function handler(req: Request): Promise<Response> {
           } else {
             // New game - add it
             const isWishlist = !item.status_own && (item.status_wishlist || item.status_want);
+            
+            // Get proper image: if collection XML returned opengraph crop, fetch from thing XML
+            let imageUrl = item.image_url || item.thumbnail_url || null;
+            if (isLowQualityBggImage(imageUrl)) {
+              const betterImage = await fetchThingImage(item.bgg_id);
+              if (betterImage) imageUrl = betterImage;
+              await new Promise(r => setTimeout(r, 200));
+            }
+            
             const { error } = await supabaseAdmin.from("games").insert({
               title: item.name,
               bgg_id: item.bgg_id,
               bgg_url: `https://boardgamegeek.com/boardgame/${item.bgg_id}`,
-              image_url: item.image_url || item.thumbnail_url || null,
+              image_url: imageUrl,
               min_players: item.min_players || null,
               max_players: item.max_players || null,
               is_expansion: item.is_expansion,

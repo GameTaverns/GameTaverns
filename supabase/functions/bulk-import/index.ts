@@ -1313,10 +1313,13 @@ type GameToImport = {
   copies_owned?: number;
 };
 
-// Convert BGG OpenGraph URLs to higher quality image URLs
 // Sanitize malformed URLs from HTML scraping.
 // IMPORTANT: Do NOT restructure valid BGG CDN URLs — the /img/HASH/ segment is required.
-// Only clean up scraping artifacts and reject known low-quality crops.
+// Do NOT swap __opengraph to __original — each variant has a unique cryptographic signature
+// in the /img/SIGNATURE=/ segment. Swapping the variant name while keeping the old signature
+// produces an invalid URL that BGG CDN rejects with HTTP 400.
+// Instead, just clean scraping artifacts and let isLowQualityBggImageUrl() flag bad URLs
+// so the import can fetch a proper URL from the BGG thing XML API.
 function normalizeImageUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
 
@@ -1337,18 +1340,11 @@ function normalizeImageUrl(url: string | undefined): string | undefined {
     return undefined;
   }
 
-  // For BGG CDN URLs: only swap __opengraph variants to __original when possible,
-  // but preserve the full /img/HASH/ path that BGG requires.
-  if (cleaned.includes("cf.geekdo-images.com") || cleaned.includes("cf.geekdo-static.com")) {
-    // Replace low-quality opengraph variant with original (keeps /img/hash/ intact)
-    if (/__opengraph/i.test(cleaned)) {
-      cleaned = cleaned.replace(/__opengraph[^/]*/i, "__original");
-      // Strip Cloudflare resize params that follow /img/HASH/
-      // e.g., /0x266:1319x958/fit-in/1200x630/filters:strip_icc()/pic123.jpg
-      // These appear AFTER the /img/HASH=/ segment
-      cleaned = cleaned.replace(/(\/img\/[^/]+=?)\/\d+x\d+:\d+x\d+\/fit-in\/\d+x\d+\/filters:[^/]+\//i, "$1/");
-    }
-  }
+  // NOTE: We intentionally do NOT convert __opengraph → __original here.
+  // BGG CDN URLs include a cryptographic signature per variant. Changing the variant
+  // name without updating the signature produces 400 errors from the CDN.
+  // The correct approach is to fetch the proper URL from the BGG thing XML API,
+  // which returns the canonical __original URL with the correct signature.
 
   return cleaned;
 }
