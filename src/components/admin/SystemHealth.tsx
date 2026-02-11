@@ -293,6 +293,21 @@ export function SystemHealth() {
     retry: 1,
   });
 
+  const cancelImportMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      const { error } = await supabase
+        .from("import_jobs")
+        .update({ status: "failed", error_message: "Manually cancelled by admin" })
+        .eq("id", jobId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Import job cancelled");
+      healthQuery.refetch();
+    },
+    onError: (e: Error) => toast.error(`Failed to cancel: ${e.message}`),
+  });
+
   const cleanupMutation = useMutation({
     mutationFn: async (days: number) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -472,13 +487,28 @@ export function SystemHealth() {
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-mono text-cream">
-                        {job.total_items > 0 ? Math.round((job.processed_items / job.total_items) * 100) : 0}%
+                    <div className="text-right flex items-center gap-2">
+                      <div>
+                        <div className="text-sm font-mono text-cream">
+                          {job.total_items > 0 ? Math.round((job.processed_items / job.total_items) * 100) : 0}%
+                        </div>
+                        <div className="text-xs text-cream/50">
+                          {job.successful_items} ok · {job.failed_items} failed
+                        </div>
                       </div>
-                      <div className="text-xs text-cream/50">
-                        {job.successful_items} ok · {job.failed_items} failed
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-400 hover:text-red-300 h-7 px-2 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cancelImportMutation.mutate(job.id);
+                        }}
+                        disabled={cancelImportMutation.isPending}
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1" />
+                        Cancel
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -510,6 +540,17 @@ export function SystemHealth() {
                         <Badge className={`text-xs ${job.status === "completed" ? "bg-green-500/20 text-green-400" : job.status === "processing" ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"}`}>
                           {job.status}
                         </Badge>
+                        {job.status === "processing" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-400 hover:text-red-300 h-6 px-1.5 text-xs"
+                            onClick={() => cancelImportMutation.mutate(job.id)}
+                            disabled={cancelImportMutation.isPending}
+                          >
+                            <XCircle className="h-3 w-3" />
+                          </Button>
+                        )}
                         <span className="text-cream/40 font-mono">
                           {new Date(job.created_at).toLocaleDateString()}
                         </span>
