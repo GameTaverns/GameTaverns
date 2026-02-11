@@ -837,9 +837,8 @@ async function fetchBGGGalleryImages(
       return [];
     }
 
-    // Categorize images: prioritize Play > Components > BoxFront > everything else
-    // BGG categories are in img.imagepagehref or img.caption
-    const categorized: { url: string; priority: number }[] = [];
+    // Categorize images: prioritize Play > Components > Misc/Custom > BoxFront/BoxBack
+    const categorized: { url: string; priority: number; isBoxArt: boolean }[] = [];
     const seen = new Set<string>();
 
     for (const img of images) {
@@ -857,19 +856,35 @@ async function fetchBGGGalleryImages(
       const href = (img.imagepagehref || "").toLowerCase();
       const caption = (img.caption || "").toLowerCase();
       let priority = 5; // default
-      if (href.includes("/play") || caption.includes("play")) priority = 1;
-      else if (href.includes("/component") || caption.includes("component")) priority = 2;
-      else if (href.includes("/boxfront") || href.includes("/boxback") || caption.includes("box")) priority = 3;
-      else if (href.includes("/custom") || caption.includes("custom")) priority = 4;
+      let isBoxArt = false;
+      if (href.includes("/play") || caption.includes("play") || caption.includes("gameplay")) priority = 1;
+      else if (href.includes("/component") || caption.includes("component") || caption.includes("setup")) priority = 2;
+      else if (href.includes("/custom") || caption.includes("custom") || caption.includes("painted")) priority = 3;
+      else if (href.includes("/miscellaneous") || caption.includes("misc")) priority = 4;
+      else if (href.includes("/boxfront") || href.includes("/boxback") || caption.includes("box")) {
+        priority = 6; // Box art deprioritized
+        isBoxArt = true;
+      }
       
-      categorized.push({ url: cleanUrl, priority });
+      categorized.push({ url: cleanUrl, priority, isBoxArt });
     }
 
     // Sort by priority (lower = better), then take top N
     categorized.sort((a, b) => a.priority - b.priority);
-    const result = categorized.slice(0, maxImages).map(c => c.url);
+    
+    // Prefer non-box-art images; only include box art if we don't have enough gameplay/component shots
+    const nonBoxArt = categorized.filter(c => !c.isBoxArt);
+    const boxArt = categorized.filter(c => c.isBoxArt);
+    
+    // Take non-box-art first, fill remaining slots with box art if needed
+    const selected = nonBoxArt.slice(0, maxImages);
+    if (selected.length < maxImages) {
+      selected.push(...boxArt.slice(0, maxImages - selected.length));
+    }
+    
+    const result = selected.map(c => c.url);
 
-    console.log(`[BulkImport] BGG gallery API found ${result.length} images for BGG ID: ${bggId}`);
+    console.log(`[BulkImport] BGG gallery API found ${result.length} images (${nonBoxArt.length} gameplay/components, ${boxArt.length} box art) for BGG ID: ${bggId}`);
     return result;
   } catch (e) {
     console.error(`[BulkImport] BGG gallery API error for ${bggId}:`, e);
@@ -1955,14 +1970,13 @@ export default async function handler(req: Request): Promise<Response> {
                     galleryAttempts++;
                     let galleryImages = await fetchBGGGalleryImages(gameInput.bgg_id, null, 5);
                     
-                    // Deluxe/special edition fallback: if this edition has very few images,
-                    // try searching for the base game's BGG ID via the XML API
-                    if (galleryImages.length < 2 && gameData.title) {
-                      const titleLower = gameData.title.toLowerCase();
+                    // Deluxe/special edition: ALWAYS merge with base game gallery
+                    // for better gameplay/component image coverage
+                    if (gameData.title) {
                       const editionPatterns = /\b(deluxe|collector'?s?|anniversary|big box|kickstarter|premium|special)\s*(edition)?\b/i;
-                      if (editionPatterns.test(titleLower)) {
+                      if (editionPatterns.test(gameData.title)) {
                         const baseTitle = gameData.title.replace(editionPatterns, "").replace(/[:\-–—]\s*$/, "").trim();
-                        console.log(`[BulkImport] Edition detected, trying base title: "${baseTitle}" for more images`);
+                        console.log(`[BulkImport] Edition detected, merging with base title: "${baseTitle}"`);
                         try {
                           const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(baseTitle)}&type=boardgame&exact=1`;
                           const searchRes = await fetch(searchUrl, {
@@ -1974,12 +1988,20 @@ export default async function handler(req: Request): Promise<Response> {
                             if (idMatch && idMatch[1] !== gameInput.bgg_id) {
                               console.log(`[BulkImport] Found base game BGG ID: ${idMatch[1]}, fetching gallery`);
                               const baseImages = await fetchBGGGalleryImages(idMatch[1], null, 5);
-                              if (baseImages.length > galleryImages.length) {
-                                console.log(`[BulkImport] Base game has ${baseImages.length} images vs edition's ${galleryImages.length}, using base`);
-                                galleryImages = baseImages;
+                              if (baseImages.length > 0) {
+                                // Merge: deduplicate, edition images first then base game images
+                                const existingSet = new Set(galleryImages);
+                                const newFromBase = baseImages.filter(u => !existingSet.has(u));
+                                galleryImages = [...galleryImages, ...newFromBase].slice(0, 5);
+                                console.log(`[BulkImport] Merged galleries: ${galleryImages.length} total (${newFromBase.length} added from base game)`);
                               }
                             }
                           }
+                        } catch (e) {
+                          console.warn(`[BulkImport] Base game lookup failed:`, e);
+                        }
+                      }
+                    }
                         } catch (e) {
                           console.warn(`[BulkImport] Base game lookup failed:`, e);
                         }
