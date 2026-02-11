@@ -1,21 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { aiComplete, isAIConfigured, getAIProviderName } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-interface GameData {
-  id: string;
-  title: string;
-  description: string | null;
-  difficulty: string | null;
-  play_time: string | null;
-  game_type: string | null;
-  min_players: number | null;
-  max_players: number | null;
-  mechanics: string[];
-}
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
@@ -32,13 +21,16 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    if (!isAIConfigured()) {
+      // Gracefully degrade: return empty recommendations instead of 500
+      console.warn("[game-recommendations] No AI provider configured, returning empty results");
       return new Response(
-        JSON.stringify({ error: "AI service not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ recommendations: [], message: "AI service not configured" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`[game-recommendations] Using AI provider: ${getAIProviderName()}`);
 
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -113,7 +105,8 @@ export default async function handler(req: Request): Promise<Response> {
 - Similar difficulty/complexity
 - Similar game type/category
 
-Return ONLY a JSON array of game IDs, ordered by relevance (most similar first). Include a brief reason for each recommendation.`;
+Return ONLY a JSON array of game IDs, ordered by relevance (most similar first). Include a brief reason for each recommendation.
+Format: [{"id": "game-uuid", "reason": "brief explanation"}]`;
 
     const userPrompt = `Source game to find recommendations for:
 Title: ${sourceGame.title}
@@ -129,59 +122,38 @@ ${JSON.stringify(gamesForAI, null, 2)}
 Return the top ${limit} most similar games as a JSON array with format:
 [{"id": "game-uuid", "reason": "brief explanation"}]`;
 
-    // Call Lovable AI
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 1000,
-      }),
+    // Call AI via shared client (supports Perplexity, Lovable, OpenAI, etc.)
+    const aiResult = await aiComplete({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 1000,
     });
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded, please try again later" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted" }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await aiResponse.text();
-      console.error("AI API error:", aiResponse.status, errorText);
-      throw new Error(`AI request failed: ${aiResponse.status}`);
-    }
-
-    const aiData = await aiResponse.json();
-    const content = aiData.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error("Empty AI response");
-    }
-
-    // Parse AI response - extract JSON array from response
+    // Parse AI response
     let recommendations: { id: string; reason: string }[] = [];
-    try {
-      // Try to extract JSON from the response (handle markdown code blocks)
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        recommendations = JSON.parse(jsonMatch[0]);
+
+    if (aiResult.success && aiResult.content) {
+      try {
+        const jsonMatch = aiResult.content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          recommendations = JSON.parse(jsonMatch[0]);
+        }
+      } catch (parseError) {
+        console.error("Failed to parse AI response:", aiResult.content);
       }
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", content);
-      // Fallback: return games sorted by mechanic overlap
+    } else if (aiResult.rateLimited) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded, please try again later" }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else {
+      console.warn("[game-recommendations] AI request failed:", aiResult.error);
+    }
+
+    // Fallback: mechanic overlap sorting if AI didn't return results
+    if (recommendations.length === 0) {
       recommendations = gamesForAI
         .map((g: any) => ({
           id: g.id,
@@ -194,11 +166,9 @@ Return the top ${limit} most similar games as a JSON array with format:
     }
 
     // Enrich recommendations with full game data
-    const recommendedIds = recommendations.map((r) => r.id);
-    const enrichedRecommendations = recommendedIds
-      .map((id) => {
-        const game = libraryGames.find((g: any) => g.id === id);
-        const rec = recommendations.find((r) => r.id === id);
+    const enrichedRecommendations = recommendations
+      .map((rec) => {
+        const game = libraryGames.find((g: any) => g.id === rec.id);
         if (!game) return null;
         return {
           id: game.id,
@@ -209,7 +179,7 @@ Return the top ${limit} most similar games as a JSON array with format:
           play_time: game.play_time,
           min_players: game.min_players,
           max_players: game.max_players,
-          reason: rec?.reason || "Similar game",
+          reason: rec.reason || "Similar game",
         };
       })
       .filter(Boolean);
@@ -228,4 +198,6 @@ Return the top ${limit} most similar games as a JSON array with format:
 }
 
 // For Lovable Cloud deployment (direct function invocation)
-Deno.serve(handler);
+if (import.meta.main) {
+  Deno.serve(handler);
+}
