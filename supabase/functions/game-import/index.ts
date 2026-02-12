@@ -495,6 +495,51 @@ function pickBestGeekdoImage(html: string): string | null {
   return filtered[0] ?? null;
 }
 
+// ---------------------------------------------------------------------------
+// findExistingGame - check for duplicate by bgg_url, bgg_id, or slug
+// ---------------------------------------------------------------------------
+async function findExistingGame(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  gameData: { bgg_url?: string | null; bgg_id?: string | null; title?: string },
+  libraryId: string
+): Promise<string | null> {
+  // 1. Check by BGG URL
+  if (gameData.bgg_url) {
+    const { data } = await supabaseAdmin
+      .from("games").select("id")
+      .eq("bgg_url", gameData.bgg_url)
+      .eq("library_id", libraryId)
+      .maybeSingle();
+    if (data?.id) return data.id;
+  }
+  // 2. Check by BGG ID
+  if (gameData.bgg_id) {
+    const { data } = await supabaseAdmin
+      .from("games").select("id")
+      .eq("bgg_id", gameData.bgg_id)
+      .eq("library_id", libraryId)
+      .maybeSingle();
+    if (data?.id) return data.id;
+  }
+  // 3. Check by slug to prevent unique constraint violations
+  if (gameData.title) {
+    const slug = gameData.title.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    if (slug) {
+      const { data } = await supabaseAdmin
+        .from("games").select("id")
+        .eq("slug", slug)
+        .eq("library_id", libraryId)
+        .maybeSingle();
+      if (data?.id) return data.id;
+    }
+  }
+  return null;
+}
+
 // Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
@@ -770,18 +815,8 @@ export default async function handler(req: Request): Promise<Response> {
         library_id: targetLibraryId,
       };
 
-      // Upsert: if we already have a game for this BGG URL in this library, update it
-      let existingId: string | null = null;
-      if (gameData.bgg_url) {
-        const { data: existing, error: existingError } = await supabaseAdmin
-          .from("games")
-          .select("id")
-          .eq("bgg_url", gameData.bgg_url)
-          .eq("library_id", targetLibraryId)
-          .maybeSingle();
-        if (existingError) throw existingError;
-        existingId = existing?.id ?? null;
-      }
+      // Upsert: check by bgg_url, bgg_id, or slug to avoid duplicates
+      const existingId = await findExistingGame(supabaseAdmin, gameData, targetLibraryId);
 
       const write = existingId
         ? supabaseAdmin.from("games").update(gameData).eq("id", existingId).select().single()
@@ -1071,11 +1106,11 @@ export default async function handler(req: Request): Promise<Response> {
           inserts: inserts === true,
         };
 
-        const { data: game, error: insertError } = await supabaseAdmin
-          .from("games")
-          .insert(partialGameData)
-          .select()
-          .single();
+        const partialExistingId = await findExistingGame(supabaseAdmin, partialGameData, targetLibraryId);
+        const partialWrite = partialExistingId
+          ? supabaseAdmin.from("games").update(partialGameData).eq("id", partialExistingId).select().single()
+          : supabaseAdmin.from("games").insert(partialGameData).select().single();
+        const { data: game, error: insertError } = await partialWrite;
 
         if (insertError || !game) {
           console.error("Insert error (partial):", insertError?.message, insertError?.code, insertError?.details, insertError?.hint);
@@ -1186,11 +1221,11 @@ export default async function handler(req: Request): Promise<Response> {
                 inserts: inserts === true,
               };
 
-              const { data: game, error: insertError } = await supabaseAdmin
-                .from("games")
-                .insert(scrapedGameData)
-                .select()
-                .single();
+              const scrapeExistingId = await findExistingGame(supabaseAdmin, scrapedGameData, targetLibraryId);
+              const scrapeWrite = scrapeExistingId
+                ? supabaseAdmin.from("games").update(scrapedGameData).eq("id", scrapeExistingId).select().single()
+                : supabaseAdmin.from("games").insert(scrapedGameData).select().single();
+              const { data: game, error: insertError } = await scrapeWrite;
 
               if (insertError || !game) {
                 console.error("Insert error (direct scrape):", insertError?.message);
@@ -1698,18 +1733,8 @@ ${markdown.slice(0, 18000)}`,
       library_id: targetLibraryId,
     };
 
-    // Upsert: if we already have a game for this BGG URL in this library, update it instead of inserting a duplicate.
-    let existingId: string | null = null;
-    if (gameData.bgg_url) {
-      const { data: existing, error: existingError } = await supabaseAdmin
-        .from("games")
-        .select("id")
-        .eq("bgg_url", gameData.bgg_url)
-        .eq("library_id", targetLibraryId)
-        .maybeSingle();
-      if (existingError) throw existingError;
-      existingId = existing?.id ?? null;
-    }
+    // Upsert: check by bgg_url, bgg_id, or slug to avoid duplicates
+    const existingId = await findExistingGame(supabaseAdmin, { ...gameData, bgg_id: bggId || null }, targetLibraryId);
 
     const write = existingId
       ? supabaseAdmin.from("games").update(gameData).eq("id", existingId).select().single()
