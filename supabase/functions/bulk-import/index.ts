@@ -2647,6 +2647,14 @@ export default async function handler(req: Request): Promise<Response> {
               failed++;
               failureBreakdown.create_failed++;
               errors.push(`Failed to create "${gameData.title}": ${gameError?.message}`);
+              // Update job progress for failed creation
+              await supabaseAdmin.from("import_jobs").update({
+                processed_items: i + 1,
+                successful_items: imported + updated,
+                failed_items: failed,
+                skipped_items: skipped,
+              }).eq("id", jobId);
+              sendProgress({ type: "progress", current: i + 1, total: totalGames, imported: imported + updated, failed, currentGame: gameData.title, phase: "error" });
               continue;
             }
 
