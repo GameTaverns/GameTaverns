@@ -53,6 +53,7 @@ interface ImportJob {
   processed_items: number;
   successful_items: number;
   failed_items: number;
+  skipped_items: number;
   import_type: string | null;
   created_at: string;
   updated_at: string;
@@ -497,7 +498,9 @@ export function SystemHealth() {
                           {job.total_items > 0 ? Math.round((job.processed_items / job.total_items) * 100) : 0}%
                         </div>
                         <div className="text-xs text-cream/50">
-                          {job.successful_items} ok · {job.failed_items} failed
+                          {job.successful_items} ok
+                          {job.skipped_items > 0 && ` · ${job.skipped_items} existed`}
+                          {job.failed_items > 0 && ` · ${job.failed_items} failed`}
                         </div>
                       </div>
                       <Button
@@ -539,6 +542,9 @@ export function SystemHealth() {
                         <span className="text-cream/60">
                           {job.successful_items}/{job.total_items} items
                         </span>
+                        {job.skipped_items > 0 && (
+                          <span className="text-cream/50">{job.skipped_items} existed</span>
+                        )}
                         {job.failed_items > 0 && (
                           <span className="text-red-400">{job.failed_items} failed</span>
                         )}
