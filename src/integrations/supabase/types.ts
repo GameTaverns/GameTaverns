@@ -1315,6 +1315,7 @@ export type Database = {
           import_type: string | null
           library_id: string
           processed_items: number
+          skipped_items: number
           status: string
           successful_items: number
           total_items: number
@@ -1328,6 +1329,7 @@ export type Database = {
           import_type?: string | null
           library_id: string
           processed_items?: number
+          skipped_items?: number
           status?: string
           successful_items?: number
           total_items?: number
@@ -1341,6 +1343,7 @@ export type Database = {
           import_type?: string | null
           library_id?: string
           processed_items?: number
+          skipped_items?: number
           status?: string
           successful_items?: number
           total_items?: number

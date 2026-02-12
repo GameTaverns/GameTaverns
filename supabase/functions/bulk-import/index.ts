@@ -1665,6 +1665,7 @@ export default async function handler(req: Request): Promise<Response> {
         let imported = 0;
         let updated = 0;
         let failed = 0;
+        let skipped = 0;
         const errors: string[] = [];
         const importedGames: { title: string; id?: string }[] = [];
 
@@ -2430,9 +2431,8 @@ export default async function handler(req: Request): Promise<Response> {
                 }
               }
 
-              failed++;
+              skipped++;
               failureBreakdown.already_exists++;
-              errors.push(`"${gameData.title}" already exists`);
               continue;
             }
 
@@ -2606,8 +2606,9 @@ export default async function handler(req: Request): Promise<Response> {
               .from("import_jobs")
               .update({
                 processed_items: i + 1,
-                successful_items: imported,
+                successful_items: imported + updated,
                 failed_items: failed,
+                skipped_items: skipped,
               })
               .eq("id", jobId);
 
@@ -2869,8 +2870,9 @@ Rules:
           .update({
             status: "completed",
             processed_items: totalGames,
-            successful_items: imported,
+            successful_items: imported + updated,
             failed_items: failed,
+            skipped_items: skipped,
           })
           .eq("id", jobId);
 
@@ -2883,7 +2885,7 @@ Rules:
         const errorSummary = summaryParts.length ? summaryParts.join(", ") : "";
 
         console.log(
-          `[BulkImport] Complete: imported=${imported} updated=${updated} failed=${failed} plays=${playsImported} breakdown=${JSON.stringify(failureBreakdown)}`
+          `[BulkImport] Complete: imported=${imported} updated=${updated} skipped=${skipped} failed=${failed} plays=${playsImported} breakdown=${JSON.stringify(failureBreakdown)}`
         );
 
         // Log import completion
@@ -2901,6 +2903,7 @@ Rules:
           success: true,
           imported,
           updated,
+          skipped,
           failed,
           // Keep payload small for SSE, but give enough info for debugging.
           errors: errors.slice(0, 50),

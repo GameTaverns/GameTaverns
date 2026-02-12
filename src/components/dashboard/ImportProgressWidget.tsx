@@ -13,6 +13,7 @@ interface ImportJob {
   processed_items: number;
   successful_items: number;
   failed_items: number;
+  skipped_items: number;
   import_type: string | null;
   created_at: string;
   updated_at: string;
@@ -87,7 +88,9 @@ export function ImportProgressWidget({ libraryIds }: ImportProgressWidgetProps) 
                   <span>{formatType(job.import_type)} Import</span>
                 </div>
                 <span className="text-cream/60 text-xs">
-                  {job.processed_items}/{job.total_items} items · {job.successful_items} ok · {job.failed_items} failed
+                  {job.processed_items}/{job.total_items} items · {job.successful_items} ok
+                  {job.skipped_items > 0 && ` · ${job.skipped_items} existed`}
+                  {job.failed_items > 0 && ` · ${job.failed_items} failed`}
                 </span>
               </div>
               <Progress value={pct} className="h-2" />
@@ -108,6 +111,7 @@ export function ImportProgressWidget({ libraryIds }: ImportProgressWidgetProps) 
                   <span className="text-cream/80">{formatType(job.import_type)}</span>
                   <span className="text-cream/50">
                     {job.successful_items}/{job.total_items} imported
+                    {job.skipped_items > 0 && ` · ${job.skipped_items} existed`}
                     {job.failed_items > 0 && ` · ${job.failed_items} failed`}
                   </span>
                 </div>
