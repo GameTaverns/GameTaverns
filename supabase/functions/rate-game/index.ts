@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Rate limiting configuration
 const RATE_LIMIT_WINDOW_MINUTES = 60;
-const MAX_RATINGS_PER_WINDOW = 10;
+const MAX_RATINGS_PER_WINDOW = 50;
 
 interface RateGameRequest {
   gameId: string;
