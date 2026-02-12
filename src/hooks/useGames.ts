@@ -210,16 +210,13 @@ function groupExpansions(allGames: GameWithRelations[]): GameWithRelations[] {
   const expansionMap = new Map<string, GameWithRelations[]>();
 
   allGames.forEach((game) => {
-    if (game.is_expansion) {
-      // All expansions are grouped - either under their parent or as orphans
-      if (game.parent_game_id) {
-        const expansions = expansionMap.get(game.parent_game_id) || [];
-        expansions.push(game);
-        expansionMap.set(game.parent_game_id, expansions);
-      }
-      // Orphan expansions (is_expansion=true but no parent_game_id) are excluded from baseGames
-      // They can still be accessed via direct URL or search, but won't clutter the main grid
+    if (game.is_expansion && game.parent_game_id) {
+      // Linked expansions are nested under their parent
+      const expansions = expansionMap.get(game.parent_game_id) || [];
+      expansions.push(game);
+      expansionMap.set(game.parent_game_id, expansions);
     } else {
+      // Base games AND orphan expansions (no parent) show as top-level entries
       baseGames.push(game);
     }
   });
