@@ -961,7 +961,6 @@ export default async function handler(req: Request): Promise<Response> {
           const scrapedDesc = ogDescMatch?.[1] || null;
 
           const isExpansionFromHtml = url.includes('/boardgameexpansion/') || 
-                                      html.includes('boardgameexpansion') ||
                                       is_expansion === true;
 
           if (scrapedTitle) {
@@ -1184,7 +1183,6 @@ export default async function handler(req: Request): Promise<Response> {
             const scrapedDesc = ogDescMatch?.[1] || null;
 
             const isExpansionFromHtml = url.includes('/boardgameexpansion/') || 
-                                        html.includes('boardgameexpansion') ||
                                         is_expansion === true;
 
             if (scrapedTitle) {
