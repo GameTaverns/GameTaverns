@@ -289,7 +289,11 @@ async function fetchBGGDataFromXML(
       
       if (title) {
         console.log(`[GameImport] Jina HTML proxy got title: ${title}`);
-        const isExpansion = html.includes('boardgameexpansion');
+        // Only detect expansion if the page's item type explicitly says boardgameexpansion
+        // (avoid false positives from nav links, sidebars, etc.)
+        const itemTypeMatch = html.match(/<meta\s+property="og:type"\s+content="([^"]+)"/i) ||
+                              html.match(/infobox[^>]*type[^>]*boardgameexpansion/i);
+        const isExpansion = itemTypeMatch ? /boardgameexpansion/i.test(itemTypeMatch[1] || itemTypeMatch[0]) : false;
         // Use pickBestGeekdoImage for high-quality box art instead of og:image social crops
         const bestImage = pickBestGeekdoImage(html);
         // Only use og:image as last resort, and reject opengraph crops
