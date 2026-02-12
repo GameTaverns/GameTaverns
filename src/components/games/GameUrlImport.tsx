@@ -104,10 +104,13 @@ export function GameUrlImport({ libraryId }: GameUrlImportProps) {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
+      const wasUpdated = data.action === "updated";
       setLastImportedGameTitle(data.game.title);
       toast({
-        title: "Game Imported!",
-        description: `Successfully imported "${data.game.title}"`,
+        title: wasUpdated ? "Game Updated!" : "Game Added!",
+        description: wasUpdated
+          ? `"${data.game.title}" was already in your library and has been updated with the latest data.`
+          : `Successfully added "${data.game.title}" to your library.`,
       });
       
       // Reset form
@@ -326,7 +329,7 @@ export function GameUrlImport({ libraryId }: GameUrlImportProps) {
             <div className="flex items-center gap-2 p-3 bg-primary/10 text-primary rounded-lg">
               <Check className="h-4 w-4" />
               <span className="text-sm">
-                Last imported: <strong>{lastImportedGameTitle}</strong>
+                Last added: <strong>{lastImportedGameTitle}</strong>
               </span>
             </div>
           )}
