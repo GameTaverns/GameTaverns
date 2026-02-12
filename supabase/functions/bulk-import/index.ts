@@ -108,6 +108,98 @@ const normalizeSaleCondition = (saleCondition: string | undefined): string | und
   return c;
 };
 
+// ---------------------------------------------------------------------------
+// BGG JSON API: Get game info (type, expansion parent) — NO AUTH REQUIRED
+// Uses api.geekdo.com which is publicly accessible unlike xmlapi2
+// ---------------------------------------------------------------------------
+async function fetchBGGGameInfo(bggId: string): Promise<{
+  is_expansion: boolean;
+  parent_bgg_ids: string[];  // BGG IDs of base games this expands
+  description?: string;
+  image_url?: string;
+  min_players?: number;
+  max_players?: number;
+  suggested_age?: string;
+  play_time?: string;
+  difficulty?: string;
+  mechanics?: string[];
+  publisher?: string;
+} | null> {
+  try {
+    const url = `https://api.geekdo.com/api/geekitems?objectid=${bggId}&objecttype=thing`;
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    });
+    if (!res.ok) {
+      console.warn(`[BulkImport] BGG JSON API returned ${res.status} for ${bggId}`);
+      return null;
+    }
+    const data = await res.json();
+    const item = data?.item;
+    if (!item) return null;
+
+    const subtypes: string[] = item.subtypes || [];
+    const isExpansion = subtypes.includes("boardgameexpansion");
+
+    // Extract parent game BGG IDs from "expandsboardgame" links
+    const expandsLinks: { objectid: string; name: string }[] = item.links?.expandsboardgame || [];
+    const parentBggIds = expandsLinks.map((l: any) => String(l.objectid));
+
+    if (isExpansion) {
+      console.log(`[BulkImport] BGG JSON confirms "${item.name}" is expansion, parents: [${parentBggIds.join(", ")}]`);
+    }
+
+    // Extract mechanics
+    const mechanicLinks: { name: string }[] = item.links?.boardgamemechanic || [];
+    const mechanics = mechanicLinks.map((m: any) => m.name);
+
+    // Extract publisher (first one)
+    const publisherLinks: { name: string }[] = item.links?.boardgamepublisher || [];
+    const publisher = publisherLinks.length > 0 ? publisherLinks[0].name : undefined;
+
+    // Map play time
+    const minPlaytime = parseInt(item.minplaytime, 10);
+    const maxPlaytime = parseInt(item.maxplaytime, 10);
+    const avgPlaytime = minPlaytime && maxPlaytime ? Math.round((minPlaytime + maxPlaytime) / 2) : (minPlaytime || maxPlaytime || 0);
+    let play_time: string | undefined;
+    if (avgPlaytime > 0) {
+      if (avgPlaytime <= 15) play_time = "0-15 Minutes";
+      else if (avgPlaytime <= 30) play_time = "15-30 Minutes";
+      else if (avgPlaytime <= 45) play_time = "30-45 Minutes";
+      else if (avgPlaytime <= 60) play_time = "45-60 Minutes";
+      else if (avgPlaytime <= 120) play_time = "60+ Minutes";
+      else if (avgPlaytime <= 180) play_time = "2+ Hours";
+      else play_time = "3+ Hours";
+    }
+
+    // Extract image
+    const image_url = item.images?.original || item.imageurl || undefined;
+
+    // Extract description (HTML entities decoded)
+    const description = item.description
+      ? item.description.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').trim()
+      : undefined;
+
+    return {
+      is_expansion: isExpansion,
+      parent_bgg_ids: parentBggIds,
+      description: description && description.length > 10 ? description : undefined,
+      image_url,
+      min_players: parseInt(item.minplayers, 10) || undefined,
+      max_players: parseInt(item.maxplayers, 10) || undefined,
+      suggested_age: item.minage ? `${item.minage}+` : undefined,
+      play_time,
+      mechanics: mechanics.length > 0 ? mechanics : undefined,
+      publisher,
+    };
+  } catch (e) {
+    console.warn(`[BulkImport] BGG JSON API error for ${bggId}:`, e);
+    return null;
+  }
+}
+
 type ImportMode = "csv" | "bgg_collection" | "bgg_links";
 
 type BulkImportRequest = {
@@ -1221,6 +1313,7 @@ type GameToImport = {
   mechanics?: string[];
   is_expansion?: boolean;
   parent_game?: string;
+  parent_bgg_id?: string;  // BGG ID of the base game (from BGG JSON API)
   is_coming_soon?: boolean;
   is_for_sale?: boolean;
   sale_price?: number;
@@ -1554,45 +1647,43 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // ---------------------------------------------------------------------------
-    // Pre-insertion pass: detect expansions by name pattern
-    // If "Base Game: Subtitle" exists and "Base Game" is also in the list,
-    // mark "Base Game: Subtitle" as an expansion with parent_game set.
+    // Pre-insertion pass: Use BGG JSON API to detect expansions authoritatively
+    // The api.geekdo.com endpoint works WITHOUT auth and provides:
+    // - subtype "boardgameexpansion" to confirm it's an expansion
+    // - "expandsboardgame" links with parent BGG IDs
     // ---------------------------------------------------------------------------
     if (gamesToImport.length > 1) {
-      // Build a set of all titles for fast lookup
-      const allTitles = new Set(gamesToImport.map(g => g.title.toLowerCase()));
-      // Sort potential base games longest-first so "Age of Steam: Deluxe" matches before "Age of Steam"
-      const potentialBases = [...allTitles].sort((a, b) => b.length - a.length);
-
-      let preLinked = 0;
+      let bggDetected = 0;
       for (const game of gamesToImport) {
         // Skip if already marked as expansion with a parent
         if (game.is_expansion && game.parent_game) continue;
+        if (!game.bgg_id) continue;
 
-        const titleLower = game.title.toLowerCase();
-        for (const baseTitleLower of potentialBases) {
-          if (baseTitleLower.length < 3) continue;
-          if (titleLower === baseTitleLower) continue; // same game
-          if (!titleLower.startsWith(baseTitleLower)) continue;
-
-          const afterBase = game.title.substring(baseTitleLower.length).trim();
-          // Must have a separator (colon, dash, em-dash, en-dash) followed by content
-          if (/^[:\-–—]/.test(afterBase) && afterBase.replace(/^[:\-–—]\s*/, "").trim().length > 0) {
-            // Find the original-cased title of the base game
-            const baseGame = gamesToImport.find(g => g.title.toLowerCase() === baseTitleLower && g.title.toLowerCase() !== titleLower);
-            if (baseGame) {
-              game.is_expansion = true;
-              game.parent_game = baseGame.title;
-              preLinked++;
-              break;
+        try {
+          const info = await fetchBGGGameInfo(game.bgg_id);
+          if (info?.is_expansion) {
+            game.is_expansion = true;
+            if (info.parent_bgg_ids.length > 0) {
+              game.parent_bgg_id = info.parent_bgg_ids[0]; // Primary parent
+              // Try to find parent in the import set by BGG ID
+              const parentInSet = gamesToImport.find(g => g.bgg_id === info.parent_bgg_ids[0]);
+              if (parentInSet) {
+                game.parent_game = parentInSet.title;
+              }
             }
+            bggDetected++;
           }
+          // Small delay to avoid hammering BGG API
+          if (gamesToImport.length > 50) await sleep(200);
+        } catch (e) {
+          // Non-critical, continue
         }
       }
-      if (preLinked > 0) {
-        console.log(`[BulkImport] Pre-insertion name-pattern detected ${preLinked} expansions`);
+      if (bggDetected > 0) {
+        console.log(`[BulkImport] BGG JSON API detected ${bggDetected} expansions`);
       }
     }
+
 
     const totalGames = gamesToImport.length;
     console.log(`[BulkImport] Total games to process: ${totalGames}`);
@@ -1732,6 +1823,7 @@ export default async function handler(req: Request): Promise<Response> {
               publisher?: string;
               is_expansion?: boolean;
               parent_game?: string;
+              parent_bgg_id?: string;
               is_coming_soon?: boolean;
               is_for_sale?: boolean;
               sale_price?: number;
@@ -1763,6 +1855,7 @@ export default async function handler(req: Request): Promise<Response> {
               publisher: gameInput.publisher,
               is_expansion: gameInput.is_expansion,
               parent_game: gameInput.parent_game,
+              parent_bgg_id: gameInput.parent_bgg_id,
               is_coming_soon: gameInput.is_coming_soon,
               is_for_sale: gameInput.is_for_sale,
               sale_price: gameInput.sale_price,
@@ -2482,16 +2575,26 @@ export default async function handler(req: Request): Promise<Response> {
 
             // Handle parent game for expansions
             let parentGameId: string | null = null;
-            if (gameData.is_expansion && gameData.parent_game) {
-              const { data: pg } = await supabaseAdmin
-                .from("games")
-                .select("id")
-                .eq("title", gameData.parent_game)
-                .eq("library_id", targetLibraryId)
-                .maybeSingle();
-              
-              if (pg) {
-                parentGameId = pg.id;
+            if (gameData.is_expansion) {
+              // First try: match by parent BGG ID (most reliable)
+              if (gameData.parent_bgg_id) {
+                const { data: pg } = await supabaseAdmin
+                  .from("games")
+                  .select("id")
+                  .eq("bgg_id", gameData.parent_bgg_id)
+                  .eq("library_id", targetLibraryId)
+                  .maybeSingle();
+                if (pg) parentGameId = pg.id;
+              }
+              // Fallback: match by parent game title
+              if (!parentGameId && gameData.parent_game) {
+                const { data: pg } = await supabaseAdmin
+                  .from("games")
+                  .select("id")
+                  .eq("title", gameData.parent_game)
+                  .eq("library_id", targetLibraryId)
+                  .maybeSingle();
+                if (pg) parentGameId = pg.id;
               }
             }
 
@@ -2646,10 +2749,9 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
 
-        // Post-import: Link expansions to parent games (single combined pass)
-        // Step 1: Title-matching (instant, no API calls)
-        // Step 2: AI-powered detection for remaining unlinked games
-        console.log(`[BulkImport] Post-import: Linking expansions...`);
+        // Post-import: Link expansions to parent games using BGG IDs
+        // Only uses authoritative BGG data — no heuristic title matching or AI guessing
+        console.log(`[BulkImport] Post-import: Linking expansions by BGG ID...`);
         
         sendProgress({
           type: "progress",
@@ -2663,133 +2765,52 @@ export default async function handler(req: Request): Promise<Response> {
 
         const { data: allLibGames } = await supabaseAdmin
           .from("games")
-          .select("id, title, is_expansion, parent_game_id")
+          .select("id, title, bgg_id, is_expansion, parent_game_id")
           .eq("library_id", targetLibraryId)
           .limit(10000);
 
         if (allLibGames && allLibGames.length > 1) {
-          const baseGames = allLibGames.filter(g => !g.is_expansion && !g.parent_game_id);
-          const sortedBases = [...baseGames].sort((a, b) => b.title.length - a.title.length);
-          
-          let titleLinked = 0;
+          // Build a map of BGG ID → game ID for fast lookup
+          const bggIdToGameId = new Map<string, string>();
+          for (const g of allLibGames) {
+            if (g.bgg_id) bggIdToGameId.set(g.bgg_id, g.id);
+          }
 
-          // --- Title-matching pass (covers "Age of Steam: XYZ" → "Age of Steam") ---
-          for (const game of allLibGames) {
-            // Process both BGG-flagged expansions without parent AND non-expansion games
-            if (game.parent_game_id) continue;
+          // Find unlinked expansions and try to link via their stored parent_bgg_id
+          const unlinkedExpansions = allLibGames.filter(g => g.is_expansion && !g.parent_game_id && g.bgg_id);
+          let bggLinked = 0;
+
+          for (const expansion of unlinkedExpansions) {
+            if (!expansion.bgg_id) continue;
             
-            for (const baseGame of sortedBases) {
-              if (game.id === baseGame.id) continue;
-              if (baseGame.title.length < 3) continue;
-              
-              if (game.title.toLowerCase().startsWith(baseGame.title.toLowerCase())) {
-                const afterBase = game.title.substring(baseGame.title.length).trim();
-                if (afterBase.match(/^[–:\-–—]/) && afterBase.replace(/^[–:\-–—]\s*/, "").trim().length > 0) {
-                  const { error: updateErr } = await supabaseAdmin
-                    .from("games")
-                    .update({ is_expansion: true, parent_game_id: baseGame.id })
-                    .eq("id", game.id);
-                  
-                  if (!updateErr) {
-                    titleLinked++;
-                    console.log(`[BulkImport] Title-linked expansion "${game.title}" → "${baseGame.title}"`);
-                  }
-                  break;
-                }
-              }
-            }
-          }
-          console.log(`[BulkImport] Title-matching linked ${titleLinked} expansions`);
-
-          // --- AI pass for remaining unlinked expansions ---
-          // Re-fetch to get updated parent_game_id values after title matching
-          const { data: remainingGames } = await supabaseAdmin
-            .from("games")
-            .select("id, title, is_expansion, parent_game_id")
-            .eq("library_id", targetLibraryId)
-            .limit(10000);
-
-          if (remainingGames && isAIConfigured()) {
-            const unlinkedExpansions = remainingGames.filter(g => g.is_expansion && !g.parent_game_id);
-            const currentBases = remainingGames.filter(g => !g.is_expansion && !g.parent_game_id);
-
-            if (unlinkedExpansions.length > 0 && currentBases.length > 0) {
-              console.log(`[BulkImport] AI expansion detection: ${unlinkedExpansions.length} unlinked expansions, ${currentBases.length} base games`);
-
-              // Batch in groups of 30 to stay within token limits
-              const batchSize = 30;
-              let aiLinked = 0;
-
-              for (let bi = 0; bi < unlinkedExpansions.length; bi += batchSize) {
-                const batch = unlinkedExpansions.slice(bi, bi + batchSize);
-                const expansionList = batch.map((g, idx) => `E${idx}: ${g.title}`).join("\n");
-                const baseList = currentBases.map((g, idx) => `B${idx}: ${g.title}`).join("\n");
-
-                try {
-                  const aiResult = await aiComplete({
-                    messages: [
-                      {
-                        role: "system",
-                        content: `You are a board game expert. Match expansions to their base games.
-
-Given a list of EXPANSIONS and BASE GAMES, output a JSON object: { "matches": [ {"expansion_index": 0, "base_index": 2}, ... ] }
-
-Rules:
-- Only include matches you are confident about (>90% sure)
-- "Age of Steam: 1830s Pennsylvania" is an expansion of "Age of Steam"
-- "Catan: Seafarers" is an expansion of "Catan"
-- Don't match games that are unrelated standalone games
-- If unsure, skip it
-- Output ONLY valid JSON, no explanation`,
-                      },
-                      {
-                        role: "user",
-                        content: `EXPANSIONS:\n${expansionList}\n\nBASE GAMES:\n${baseList}`,
-                      },
-                    ],
-                    max_tokens: 2000,
-                  });
-
-                  if (aiResult.success && aiResult.content) {
-                    try {
-                      // Extract JSON from response (handle markdown code blocks)
-                      const jsonStr = aiResult.content.replace(/```json?\s*/g, "").replace(/```/g, "").trim();
-                      const parsed = JSON.parse(jsonStr);
-                      const matches = parsed.matches || parsed;
-
-                      if (Array.isArray(matches)) {
-                        for (const match of matches) {
-                          const expIdx = match.expansion_index ?? match.e;
-                          const baseIdx = match.base_index ?? match.b;
-                          if (typeof expIdx !== "number" || typeof baseIdx !== "number") continue;
-                          if (expIdx < 0 || expIdx >= batch.length) continue;
-                          if (baseIdx < 0 || baseIdx >= currentBases.length) continue;
-
-                          const expansion = batch[expIdx];
-                          const base = currentBases[baseIdx];
-
-                          const { error: linkErr } = await supabaseAdmin
-                            .from("games")
-                            .update({ parent_game_id: base.id })
-                            .eq("id", expansion.id);
-
-                          if (!linkErr) {
-                            aiLinked++;
-                            console.log(`[BulkImport] AI-linked expansion "${expansion.title}" → "${base.title}"`);
-                          }
-                        }
-                      }
-                    } catch (parseErr) {
-                      console.warn(`[BulkImport] AI expansion response parse error:`, parseErr);
+            try {
+              const info = await fetchBGGGameInfo(expansion.bgg_id);
+              if (info && info.parent_bgg_ids.length > 0) {
+                // Try each parent BGG ID until we find one in the library
+                for (const parentBggId of info.parent_bgg_ids) {
+                  const parentGameId = bggIdToGameId.get(parentBggId);
+                  if (parentGameId) {
+                    const { error: linkErr } = await supabaseAdmin
+                      .from("games")
+                      .update({ parent_game_id: parentGameId })
+                      .eq("id", expansion.id);
+                    
+                    if (!linkErr) {
+                      bggLinked++;
+                      const parentGame = allLibGames.find(g => g.id === parentGameId);
+                      console.log(`[BulkImport] BGG-linked expansion "${expansion.title}" → "${parentGame?.title}" (BGG ${parentBggId})`);
                     }
+                    break;
                   }
-                } catch (aiErr) {
-                  console.warn(`[BulkImport] AI expansion detection failed for batch:`, aiErr);
                 }
               }
-              console.log(`[BulkImport] AI-linked ${aiLinked} additional expansions`);
+              // Small delay to be respectful to BGG API
+              if (unlinkedExpansions.length > 20) await sleep(200);
+            } catch (e) {
+              console.warn(`[BulkImport] Post-import BGG lookup failed for "${expansion.title}":`, e);
             }
           }
+          console.log(`[BulkImport] BGG-linked ${bggLinked} expansions to parent games`);
         }
 
         // Post-import: Import play history from CSV (BG Stats format)
