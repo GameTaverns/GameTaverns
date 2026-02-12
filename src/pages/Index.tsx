@@ -59,23 +59,6 @@ const Index = () => {
     setQuadrantFilter(filters);
   }, []);
   
-  // Fetch played game IDs for "unplayed" filter
-  const { data: playedGameIds, isLoading: playedLoading } = useQuery({
-    queryKey: ["played-game-ids", library?.id],
-    queryFn: async () => {
-      if (!library?.id) return new Set<string>();
-      // Get distinct game_ids that have at least one session, scoped to this library
-      const { data, error } = await supabase
-        .from("game_sessions")
-        .select("game_id, games!inner(library_id)")
-        .eq("games.library_id", library.id);
-      if (error) throw error;
-      return new Set((data || []).map((d: any) => d.game_id));
-    },
-    staleTime: 60000,
-    enabled: !!library?.id,
-  });
-
   // Fetch ratings summary for top-rated filter - filtered by library_id to avoid URL length issues
   const { data: ratingsData, isLoading: ratingsLoading } = useQuery({
     queryKey: ["game-ratings-summary", library?.id],
@@ -138,8 +121,7 @@ const Index = () => {
   // Combine loading states - show skeleton when relevant data is loading
   const isLoading = gamesLoading || 
     (filter === "status" && filterValue === "wishlist" && wishlistLoading) ||
-    (filter === "status" && filterValue === "top-rated" && ratingsLoading) ||
-    (filter === "status" && filterValue === "unplayed" && playedLoading);
+    (filter === "status" && filterValue === "top-rated" && ratingsLoading);
 
   // Filter and sort games
   const filteredGames = useMemo(() => {
@@ -185,12 +167,8 @@ const Index = () => {
         result = [];
       }
     } else if (filter === "status" && filterValue === "unplayed") {
-      // Show games that have never been played (no sessions logged)
-      if (playedGameIds) {
-        result = result.filter((g) => !playedGameIds.has(g.id));
-      } else {
-        result = [];
-      }
+      // Show games flagged as unplayed
+      result = result.filter((g) => (g as any).is_unplayed === true);
     } else {
       // Exclude coming soon games from main catalog (only if feature is enabled)
       if (comingSoonFlag) {
@@ -322,7 +300,7 @@ const Index = () => {
     });
 
     return result;
-  }, [games, filter, filterValue, sortBy, sortDir, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter, playedGameIds]);
+  }, [games, filter, filterValue, sortBy, sortDir, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredGames.length / ITEMS_PER_PAGE);

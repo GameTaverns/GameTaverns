@@ -44,6 +44,7 @@ export interface Game {
   upgraded_components: boolean;
   crowdfunded: boolean;
   inserts?: boolean;
+  is_unplayed?: boolean;
   youtube_videos: string[];
   copies_owned: number;
   created_at: string;
