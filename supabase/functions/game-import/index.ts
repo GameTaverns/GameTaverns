@@ -915,6 +915,7 @@ export default async function handler(req: Request): Promise<Response> {
       return new Response(
         JSON.stringify({ 
           success: true, 
+          action: existingId ? "updated" : "created",
           game: {
             ...game,
             mechanics: bggData.mechanics || [],
@@ -1021,7 +1022,7 @@ export default async function handler(req: Request): Promise<Response> {
             }
 
             return new Response(
-              JSON.stringify({ success: true, game: { ...game, mechanics: [], publisher: null } }),
+              JSON.stringify({ success: true, action: "created", game: { ...game, mechanics: [], publisher: null } }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           } else {
@@ -1145,7 +1146,7 @@ export default async function handler(req: Request): Promise<Response> {
         }
 
         return new Response(
-          JSON.stringify({ success: true, game: { ...game, mechanics: bggData.mechanics || [], publisher: bggData.publisher || null } }),
+          JSON.stringify({ success: true, action: partialExistingId ? "updated" : "created", game: { ...game, mechanics: bggData.mechanics || [], publisher: bggData.publisher || null } }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -1244,7 +1245,7 @@ export default async function handler(req: Request): Promise<Response> {
               }
 
               return new Response(
-                JSON.stringify({ success: true, game: { ...game, mechanics: [], publisher: null } }),
+                JSON.stringify({ success: true, action: scrapeExistingId ? "updated" : "created", game: { ...game, mechanics: [], publisher: null } }),
                 { headers: { ...corsHeaders, "Content-Type": "application/json" } }
               );
             }
