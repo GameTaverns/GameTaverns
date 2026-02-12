@@ -59,6 +59,23 @@ const Index = () => {
     setQuadrantFilter(filters);
   }, []);
   
+  // Fetch played game IDs for "unplayed" filter
+  const { data: playedGameIds, isLoading: playedLoading } = useQuery({
+    queryKey: ["played-game-ids", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return new Set<string>();
+      // Get distinct game_ids that have at least one session, scoped to this library
+      const { data, error } = await supabase
+        .from("game_sessions")
+        .select("game_id, games!inner(library_id)")
+        .eq("games.library_id", library.id);
+      if (error) throw error;
+      return new Set((data || []).map((d: any) => d.game_id));
+    },
+    staleTime: 60000,
+    enabled: !!library?.id,
+  });
+
   // Fetch ratings summary for top-rated filter - filtered by library_id to avoid URL length issues
   const { data: ratingsData, isLoading: ratingsLoading } = useQuery({
     queryKey: ["game-ratings-summary", library?.id],
@@ -121,7 +138,8 @@ const Index = () => {
   // Combine loading states - show skeleton when relevant data is loading
   const isLoading = gamesLoading || 
     (filter === "status" && filterValue === "wishlist" && wishlistLoading) ||
-    (filter === "status" && filterValue === "top-rated" && ratingsLoading);
+    (filter === "status" && filterValue === "top-rated" && ratingsLoading) ||
+    (filter === "status" && filterValue === "unplayed" && playedLoading);
 
   // Filter and sort games
   const filteredGames = useMemo(() => {
@@ -163,6 +181,13 @@ const Index = () => {
       // Show games that the current user has voted for (most wanted)
       if (wishlistFlag && myVotes && myVotes.size > 0) {
         result = result.filter((g) => myVotes.has(g.id));
+      } else {
+        result = [];
+      }
+    } else if (filter === "status" && filterValue === "unplayed") {
+      // Show games that have never been played (no sessions logged)
+      if (playedGameIds) {
+        result = result.filter((g) => !playedGameIds.has(g.id));
       } else {
         result = [];
       }
@@ -297,7 +322,7 @@ const Index = () => {
     });
 
     return result;
-  }, [games, filter, filterValue, sortBy, sortDir, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter]);
+  }, [games, filter, filterValue, sortBy, sortDir, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter, playedGameIds]);
 
   // Pagination
   const totalPages = Math.ceil(filteredGames.length / ITEMS_PER_PAGE);
