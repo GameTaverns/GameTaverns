@@ -52,6 +52,20 @@ const IS_SELF_HOSTED =
 // ---------------------------------------------------------------------------
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Decode HTML entities from BGG XML data
+const decodeHtmlEntities = (input: string) =>
+  input
+    .replace(/&#10;/g, "\n")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_m, code) => {
+      const n = Number(code);
+      return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+    });
+
 // Shared XML parsing logic
 function parseBggXml(xml: string, bggId: string): {
   bgg_id: string;
@@ -113,18 +127,7 @@ function parseBggXml(xml: string, bggId: string): {
     else play_time = "3+ Hours";
   }
 
-  const decodeEntities = (input: string) =>
-    input
-      .replace(/&#10;/g, "\n")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&#(\d+);/g, (_m, code) => {
-        const n = Number(code);
-        return Number.isFinite(n) ? String.fromCharCode(n) : _m;
-      });
+  const decodeEntities = decodeHtmlEntities;
 
   let description: string | undefined;
   if (descMatch && descMatch[1]) {
@@ -138,7 +141,7 @@ function parseBggXml(xml: string, bggId: string): {
 
   return {
     bgg_id: bggId,
-    title: titleMatch?.[1],
+    title: titleMatch?.[1] ? decodeEntities(titleMatch[1]) : undefined,
     image_url: imageMatch?.[1],
     description,
     min_players: minPlayersMatch ? parseInt(minPlayersMatch[1], 10) : undefined,
@@ -147,7 +150,7 @@ function parseBggXml(xml: string, bggId: string): {
     play_time,
     difficulty,
     mechanics: mechanics.length > 0 ? mechanics : undefined,
-    publisher: publisherMatch?.[1],
+    publisher: publisherMatch?.[1] ? decodeEntities(publisherMatch[1]) : undefined,
     is_expansion: isExpansion,
     bgg_average_rating,
   };
@@ -523,7 +526,8 @@ async function findExistingGame(
   }
   // 3. Check by slug to prevent unique constraint violations
   if (gameData.title) {
-    const slug = gameData.title.toLowerCase()
+    const decodedTitle = decodeHtmlEntities(gameData.title);
+    const slug = decodedTitle.toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
