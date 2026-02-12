@@ -1633,43 +1633,10 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // ---------------------------------------------------------------------------
-    // Pre-insertion pass: Use BGG JSON API to detect expansions authoritatively
-    // The api.geekdo.com endpoint works WITHOUT auth and provides:
-    // - subtype "boardgameexpansion" to confirm it's an expansion
-    // - "expandsboardgame" links with parent BGG IDs
-    // ---------------------------------------------------------------------------
-    if (gamesToImport.length > 1) {
-      let bggDetected = 0;
-      for (const game of gamesToImport) {
-        // Skip if already marked as expansion with a parent
-        if (game.is_expansion && game.parent_game) continue;
-        if (!game.bgg_id) continue;
-
-        try {
-          const info = await fetchBGGGameInfo(game.bgg_id);
-          if (info?.is_expansion) {
-            game.is_expansion = true;
-            if (info.parent_bgg_ids.length > 0) {
-              game.parent_bgg_id = info.parent_bgg_ids[0]; // Primary parent
-              // Try to find parent in the import set by BGG ID
-              const parentInSet = gamesToImport.find(g => g.bgg_id === info.parent_bgg_ids[0]);
-              if (parentInSet) {
-                game.parent_game = parentInSet.title;
-              }
-            }
-            bggDetected++;
-          }
-          // Small delay to avoid hammering BGG API
-          if (gamesToImport.length > 50) await sleep(200);
-        } catch (e) {
-          // Non-critical, continue
-        }
-      }
-      if (bggDetected > 0) {
-        console.log(`[BulkImport] BGG JSON API detected ${bggDetected} expansions`);
-      }
-    }
+    // NOTE: Expansion detection via BGG JSON API is now done inline during the
+    // per-game import loop (inside the SSE stream) to avoid blocking the entire
+    // import for large collections. See the "inline expansion detection" section
+    // in the game processing loop below.
 
 
     const totalGames = gamesToImport.length;
@@ -1858,6 +1825,28 @@ export default async function handler(req: Request): Promise<Response> {
               purchase_date: gameInput.purchase_date,
               purchase_price: gameInput.purchase_price,
             };
+
+            // ---------------------------------------------------------------
+            // Inline expansion detection via BGG JSON API (moved from pre-pass
+            // to avoid blocking the entire import on large collections)
+            // ---------------------------------------------------------------
+            if (gameData.bgg_id && !(gameData.is_expansion && gameData.parent_game)) {
+              try {
+                const info = await fetchBGGGameInfo(gameData.bgg_id);
+                if (info?.is_expansion) {
+                  gameData.is_expansion = true;
+                  if (info.parent_bgg_ids.length > 0) {
+                    gameData.parent_bgg_id = info.parent_bgg_ids[0];
+                    const parentInSet = gamesToImport.find(g => g.bgg_id === info.parent_bgg_ids[0]);
+                    if (parentInSet) {
+                      gameData.parent_game = parentInSet.title;
+                    }
+                  }
+                }
+              } catch {
+                // Non-critical, continue without expansion detection
+              }
+            }
 
             // Send progress update before BGG enhancement
             sendProgress({ 
