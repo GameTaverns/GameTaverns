@@ -2496,12 +2496,28 @@ export default async function handler(req: Request): Promise<Response> {
                   updated++;
                   const patchedFields = Object.keys(patch).join(", ");
                   console.log(`[BulkImport] Updated existing game "${gameData.title}" (patched: ${patchedFields})`);
+                  // Update job progress for updated games
+                  await supabaseAdmin.from("import_jobs").update({
+                    processed_items: i + 1,
+                    successful_items: imported + updated,
+                    failed_items: failed,
+                    skipped_items: skipped,
+                  }).eq("id", jobId);
+                  sendProgress({ type: "progress", current: i + 1, total: totalGames, imported: imported + updated, failed, currentGame: gameData.title, phase: "updated" });
                   continue;
                 }
               }
 
               skipped++;
               failureBreakdown.already_exists++;
+              // Update job progress for skipped games
+              await supabaseAdmin.from("import_jobs").update({
+                processed_items: i + 1,
+                successful_items: imported + updated,
+                failed_items: failed,
+                skipped_items: skipped,
+              }).eq("id", jobId);
+              sendProgress({ type: "progress", current: i + 1, total: totalGames, imported: imported + updated, failed, currentGame: gameData.title, phase: "skipped" });
               continue;
             }
 
@@ -2712,6 +2728,14 @@ export default async function handler(req: Request): Promise<Response> {
             failureBreakdown.exception++;
             errors.push(`Error importing "${gameInput.title || gameInput.bgg_id}": ${e instanceof Error ? e.message : "Unknown error"}`);
             
+            // Update job progress on error
+            await supabaseAdmin.from("import_jobs").update({
+              processed_items: i + 1,
+              successful_items: imported + updated,
+              failed_items: failed,
+              skipped_items: skipped,
+            }).eq("id", jobId);
+
             // Update progress even on error
             sendProgress({ 
               type: "progress", 
