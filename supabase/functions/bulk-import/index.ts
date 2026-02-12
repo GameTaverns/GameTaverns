@@ -317,21 +317,17 @@ async function lookupBGGByTitle(
   publisher?: string;
 } | null> {
   try {
-    // BGG now requires authentication - prefer session cookie over API token
+    // BGG auth: send both API token and session cookie (matching bgg-sync pattern)
     const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
-    const bggApiToken = Deno.env.get("BGG_API_TOKEN");
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
     const headers: Record<string, string> = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "application/xml",
+      "Referer": "https://boardgamegeek.com/",
+      "Origin": "https://boardgamegeek.com",
     };
-    if (bggCookie) {
-      headers["Cookie"] = bggCookie;
-    } else if (bggApiToken) {
-      if (bggApiToken.includes("=") || bggApiToken.includes("SessionID")) {
-        headers["Cookie"] = bggApiToken;
-      } else {
-        headers["Authorization"] = `Bearer ${bggApiToken}`;
-      }
-    }
+    if (bggApiToken) headers["Authorization"] = `Bearer ${bggApiToken}`;
+    if (bggCookie) headers["Cookie"] = bggCookie;
 
     const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(title)}&type=boardgame&exact=1`;
     const searchRes = await fetch(searchUrl, { headers });
@@ -409,21 +405,17 @@ async function fetchBGGXMLData(bggId: string): Promise<{
   // In that case, you must retry the same request after a short delay.
   const maxAttempts = 8;
 
-  // BGG now requires authentication - prefer session cookie over API token
+  // BGG auth: send both API token and session cookie (matching bgg-sync pattern)
   const bggCookie2 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
-  const bggApiToken = Deno.env.get("BGG_API_TOKEN");
+  const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
   const headers: Record<string, string> = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/xml",
+    "Referer": "https://boardgamegeek.com/",
+    "Origin": "https://boardgamegeek.com",
   };
-  if (bggCookie2) {
-    headers["Cookie"] = bggCookie2;
-  } else if (bggApiToken) {
-    if (bggApiToken.includes("=") || bggApiToken.includes("SessionID")) {
-      headers["Cookie"] = bggApiToken;
-    } else {
-      headers["Authorization"] = `Bearer ${bggApiToken}`;
-    }
-  }
+  if (bggApiToken) headers["Authorization"] = `Bearer ${bggApiToken}`;
+  if (bggCookie2) headers["Cookie"] = bggCookie2;
 
   // Partial result from direct BGG XML (may have metadata but no description)
   let partialResult: Awaited<ReturnType<typeof fetchBGGXMLData>> | null = null;
@@ -1121,24 +1113,19 @@ async function fetchBGGData(
 async function fetchBGGCollection(username: string): Promise<{ id: string; name: string }[]> {
   const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&excludesubtype=boardgameexpansion`;
   
-  // BGG now requires authentication - prefer session cookie
+  // BGG auth: send both API token and session cookie (matching bgg-sync pattern)
   const bggCookie3 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
-  const bggToken = Deno.env.get("BGG_API_TOKEN");
+  const bggToken = Deno.env.get("BGG_API_TOKEN") || "";
   
   const headers: Record<string, string> = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/xml",
+    "Referer": "https://boardgamegeek.com/",
+    "Origin": "https://boardgamegeek.com",
   };
   
-  if (bggCookie3) {
-    headers["Cookie"] = bggCookie3;
-  } else if (bggToken) {
-    if (bggToken.includes("=") || bggToken.includes("SessionID")) {
-      headers["Cookie"] = bggToken;
-    } else {
-      headers["Authorization"] = `Bearer ${bggToken}`;
-    }
-  }
+  if (bggToken) headers["Authorization"] = `Bearer ${bggToken}`;
+  if (bggCookie3) headers["Cookie"] = bggCookie3;
   
   console.log(`[BulkImport] Fetching BGG collection for "${username}", cookie present: ${Boolean(bggCookie3)}, token present: ${Boolean(bggToken)}`);
 
