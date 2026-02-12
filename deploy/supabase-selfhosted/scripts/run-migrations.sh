@@ -128,6 +128,7 @@ MIGRATION_FILES=(
     "45-system-logs-rls-policies.sql"
     "46-import-jobs-admin-policies.sql"
     "47-import-skipped-column.sql"
+    "48-is-unplayed-column.sql"
 )
 
 SUCCESS_COUNT=0
