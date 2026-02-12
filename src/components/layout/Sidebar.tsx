@@ -7,6 +7,7 @@ import {
   Clock, 
   Building2, 
   Star,
+  CircleOff,
   LogIn,
   LogOut,
   User,
@@ -591,6 +592,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
                     <span>Most Wanted</span>
                   </button>
                 )}
+                <button
+                  onClick={() => handleFilterClick("status", "unplayed")}
+                  className={cn(
+                    "sidebar-link w-full text-left text-sm",
+                    isActive("status", "unplayed") && "sidebar-link-active"
+                  )}
+                >
+                  <CircleOff className="h-4 w-4" />
+                  <span>Unplayed</span>
+                </button>
               </nav>
             </CollapsibleContent>
           </Collapsible>
