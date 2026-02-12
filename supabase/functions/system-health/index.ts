@@ -108,9 +108,19 @@ async function checkRealtime(supabaseUrl: string, anonKey: string): Promise<Heal
 async function checkBggApi(): Promise<HealthCheck> {
   const start = Date.now();
   try {
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
+    const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+    const headers: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "application/xml",
+      "Referer": "https://boardgamegeek.com/",
+      "Origin": "https://boardgamegeek.com",
+    };
+    if (bggApiToken) headers["Authorization"] = `Bearer ${bggApiToken}`;
+    if (bggCookie) headers["Cookie"] = bggCookie;
     const resp = await fetch("https://boardgamegeek.com/xmlapi2/thing?id=174430&stats=0", {
       signal: AbortSignal.timeout(15000),
-      headers: { "User-Agent": "GameTaverns/HealthCheck" },
+      headers,
     });
     const latency = Date.now() - start;
     if (resp.status === 429) return { name: "BGG API", group: "external", status: "degraded", latencyMs: latency, message: "Rate limited" };
