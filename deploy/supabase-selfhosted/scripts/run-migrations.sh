@@ -129,6 +129,7 @@ MIGRATION_FILES=(
     "46-import-jobs-admin-policies.sql"
     "47-import-skipped-column.sql"
     "48-is-unplayed-column.sql"
+    "49-cleanup-stuck-imports-cron.sql"
 )
 
 SUCCESS_COUNT=0
