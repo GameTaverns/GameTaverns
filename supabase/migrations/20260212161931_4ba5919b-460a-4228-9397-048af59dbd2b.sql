@@ -1,0 +1,1 @@
+ALTER TABLE public.games ADD COLUMN IF NOT EXISTS is_unplayed BOOLEAN NOT NULL DEFAULT false;
