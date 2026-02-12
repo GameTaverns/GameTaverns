@@ -62,6 +62,7 @@ import { CommunityTab } from "@/components/community/CommunityTab";
 import { ChallengesManager } from "@/components/challenges/ChallengesManager";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
+import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidget";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -629,6 +630,9 @@ const { data: playCount } = useQuery({
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Import Progress */}
+                <ImportProgressWidget libraryIds={myLibraries.map(l => l.id)} />
 
                 {/* My Libraries Card */}
                 <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">

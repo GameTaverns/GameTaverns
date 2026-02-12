@@ -244,8 +244,8 @@ export default async function handler(req: Request): Promise<Response> {
       supabase.from("libraries").select("*", { count: "exact", head: true }),
       supabase.from("game_sessions").select("*", { count: "exact", head: true }),
       supabase.from("user_profiles").select("*", { count: "exact", head: true }),
-      supabase.from("import_jobs").select("id, library_id, status, total_items, processed_items, successful_items, failed_items, import_type, created_at, updated_at").eq("status", "processing"),
-      supabase.from("import_jobs").select("id, library_id, status, total_items, processed_items, successful_items, failed_items, import_type, created_at, updated_at").order("created_at", { ascending: false }).limit(10),
+      supabase.from("import_jobs").select("id, library_id, status, total_items, processed_items, successful_items, failed_items, import_type, created_at, updated_at, libraries(name)").eq("status", "processing"),
+      supabase.from("import_jobs").select("id, library_id, status, total_items, processed_items, successful_items, failed_items, import_type, created_at, updated_at, libraries(name)").order("created_at", { ascending: false }).limit(10),
     ]);
 
     const overallStatus = checks.some((c) => c.status === "down")

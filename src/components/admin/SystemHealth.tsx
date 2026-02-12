@@ -56,6 +56,7 @@ interface ImportJob {
   import_type: string | null;
   created_at: string;
   updated_at: string;
+  libraries?: { name: string } | null;
 }
 
 interface HealthData {
@@ -481,6 +482,9 @@ export function SystemHealth() {
                       <div>
                         <div className="text-sm text-cream font-medium">
                           {job.import_type === "bgg_collection" ? "BGG Collection" : job.import_type === "bgg_links" ? "BGG Links" : "CSV"} Import
+                          {job.libraries?.name && (
+                            <span className="text-cream/50 font-normal ml-1">— {job.libraries.name}</span>
+                          )}
                         </div>
                         <div className="text-xs text-cream/50">
                           {job.processed_items}/{job.total_items} items · Started {new Date(job.created_at).toLocaleTimeString()}
@@ -529,6 +533,9 @@ export function SystemHealth() {
                         <Badge variant="outline" className="text-xs border-wood-medium/60 text-cream/60">
                           {job.import_type === "bgg_collection" ? "BGG" : job.import_type === "bgg_links" ? "BGG Links" : "CSV"}
                         </Badge>
+                        {job.libraries?.name && (
+                          <span className="text-cream/50 truncate max-w-[120px]" title={job.libraries.name}>{job.libraries.name}</span>
+                        )}
                         <span className="text-cream/60">
                           {job.successful_items}/{job.total_items} items
                         </span>
