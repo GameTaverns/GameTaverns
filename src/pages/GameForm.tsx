@@ -88,6 +88,7 @@ const GameForm = () => {
   const [upgradedComponents, setUpgradedComponents] = useState(false);
   const [crowdfunded, setCrowdfunded] = useState(false);
   const [inserts, setInserts] = useState(false);
+  const [isUnplayed, setIsUnplayed] = useState(false);
   const [newMechanic, setNewMechanic] = useState("");
   const [newPublisher, setNewPublisher] = useState("");
   const [youtubeVideos, setYoutubeVideos] = useState<string[]>([]);
@@ -130,6 +131,7 @@ const GameForm = () => {
       setUpgradedComponents(existingGame.upgraded_components || false);
       setCrowdfunded(existingGame.crowdfunded || false);
       setInserts(existingGame.inserts || false);
+      setIsUnplayed((existingGame as any).is_unplayed || false);
       setYoutubeVideos(existingGame.youtube_videos || []);
       setCopiesOwned((existingGame as any).copies_owned ?? 1);
     }
@@ -212,6 +214,7 @@ const GameForm = () => {
       upgraded_components: upgradedComponents,
       crowdfunded,
       inserts,
+      is_unplayed: isUnplayed,
       youtube_videos: youtubeVideos,
       copies_owned: copiesOwned,
     };
@@ -659,6 +662,16 @@ const GameForm = () => {
                     />
                     <label htmlFor="inserts" className="text-sm font-medium cursor-pointer">
                       Inserts
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="isUnplayed"
+                      checked={isUnplayed}
+                      onCheckedChange={(checked) => setIsUnplayed(checked === true)}
+                    />
+                    <label htmlFor="isUnplayed" className="text-sm font-medium cursor-pointer">
+                      Unplayed
                     </label>
                   </div>
                 </div>
