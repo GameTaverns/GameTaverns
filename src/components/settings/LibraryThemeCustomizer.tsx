@@ -6,21 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdateLibrarySettings } from "@/hooks/useLibrary";
 import { useTenant } from "@/contexts/TenantContext";
-
-const FONT_OPTIONS = [
-  { value: "Cinzel", label: "Cinzel (Medieval)" },
-  { value: "Playfair Display", label: "Playfair Display (Elegant)" },
-  { value: "Merriweather", label: "Merriweather (Classic)" },
-  { value: "Roboto Slab", label: "Roboto Slab (Modern)" },
-  { value: "Oswald", label: "Oswald (Bold)" },
-  { value: "Lora", label: "Lora (Readable)" },
-  { value: "Inter", label: "Inter (Clean)" },
-  { value: "Source Sans 3", label: "Source Sans (Professional)" },
-];
+import { GoogleFontPicker } from "./GoogleFontPicker";
 
 interface ColorPickerProps {
   label: string;
@@ -293,57 +282,70 @@ export function LibraryThemeCustomizer() {
           <Card>
             <CardHeader>
               <CardTitle>Fonts</CardTitle>
-              <CardDescription>Choose fonts for your library</CardDescription>
+              <CardDescription>
+                Search across all Google Fonts to find the perfect typefaces for your library
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Display Font (Headings)</Label>
-                  <Select
-                    value={ls.theme_font_display}
-                    onValueChange={(v) => updateLocal('theme_font_display', v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FONT_OPTIONS.map(font => (
-                        <SelectItem key={font.value} value={font.value}>
-                          {font.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div 
-                    className="p-4 border rounded-md text-2xl"
-                    style={{ fontFamily: ls.theme_font_display }}
-                  >
-                    The Quick Brown Fox
-                  </div>
+            <CardContent className="space-y-8">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <GoogleFontPicker
+                  label="Display Font (Headings)"
+                  value={ls.theme_font_display || "MedievalSharp"}
+                  onChange={(v) => updateLocal('theme_font_display', v)}
+                />
+                <GoogleFontPicker
+                  label="Body Font (Text)"
+                  value={ls.theme_font_body || "IM Fell English"}
+                  onChange={(v) => updateLocal('theme_font_body', v)}
+                />
+                <GoogleFontPicker
+                  label="Accent Font (Buttons & Badges)"
+                  value={ls.theme_font_accent || ls.theme_font_body || "IM Fell English"}
+                  onChange={(v) => updateLocal('theme_font_accent', v)}
+                />
+              </div>
+
+              {/* Live preview */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-muted/30 px-4 py-2 border-b">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Live Preview
+                  </span>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label>Body Font (Text)</Label>
-                  <Select
-                    value={ls.theme_font_body}
-                    onValueChange={(v) => updateLocal('theme_font_body', v)}
+                <div className="p-6 space-y-4">
+                  <h2
+                    className="text-3xl font-bold"
+                    style={{ fontFamily: `"${ls.theme_font_display || 'MedievalSharp'}", serif` }}
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FONT_OPTIONS.map(font => (
-                        <SelectItem key={font.value} value={font.value}>
-                          {font.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div 
-                    className="p-4 border rounded-md"
-                    style={{ fontFamily: ls.theme_font_body }}
+                    Welcome to Your Library
+                  </h2>
+                  <p
+                    className="text-base leading-relaxed text-muted-foreground"
+                    style={{ fontFamily: `"${ls.theme_font_body || 'IM Fell English'}", serif` }}
                   >
-                    The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
+                    Browse our carefully curated collection of board games. From strategic euro-games 
+                    to family-friendly party games, there's something for everyone. Each game has been 
+                    lovingly added to our library.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <span
+                      className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+                      style={{ fontFamily: `"${ls.theme_font_accent || ls.theme_font_body || 'IM Fell English'}", sans-serif` }}
+                    >
+                      Browse Games
+                    </span>
+                    <span
+                      className="inline-flex items-center px-3 py-1.5 rounded-md border text-sm font-medium"
+                      style={{ fontFamily: `"${ls.theme_font_accent || ls.theme_font_body || 'IM Fell English'}", sans-serif` }}
+                    >
+                      View Events
+                    </span>
+                    <span
+                      className="inline-flex items-center px-2 py-0.5 rounded-full bg-secondary/20 text-secondary text-xs font-semibold"
+                      style={{ fontFamily: `"${ls.theme_font_accent || ls.theme_font_body || 'IM Fell English'}", sans-serif` }}
+                    >
+                      New
+                    </span>
                   </div>
                 </div>
               </div>

@@ -1955,6 +1955,7 @@ export type Database = {
           theme_dark_sidebar_h: string | null
           theme_dark_sidebar_l: string | null
           theme_dark_sidebar_s: string | null
+          theme_font_accent: string | null
           theme_font_body: string | null
           theme_font_display: string | null
           theme_foreground_h: string | null
@@ -2038,6 +2039,7 @@ export type Database = {
           theme_dark_sidebar_h?: string | null
           theme_dark_sidebar_l?: string | null
           theme_dark_sidebar_s?: string | null
+          theme_font_accent?: string | null
           theme_font_body?: string | null
           theme_font_display?: string | null
           theme_foreground_h?: string | null
@@ -2121,6 +2123,7 @@ export type Database = {
           theme_dark_sidebar_h?: string | null
           theme_dark_sidebar_l?: string | null
           theme_dark_sidebar_s?: string | null
+          theme_font_accent?: string | null
           theme_font_body?: string | null
           theme_font_display?: string | null
           theme_foreground_h?: string | null
