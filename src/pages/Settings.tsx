@@ -1039,7 +1039,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-8" : "grid-cols-1"}`}>
+          <TabsList className={`w-full h-auto flex-wrap gap-1 p-1 ${isAdmin ? "" : ""}`}>
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile

@@ -59,22 +59,22 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               )}
             </div>
 
-            <CardContent className="p-4 flex-1 flex flex-col">
+            <CardContent className="p-2.5 sm:p-4 flex-1 flex flex-col">
               {/* Title - fixed height for uniform cards */}
-              <h3 className="font-display text-lg font-semibold text-foreground line-clamp-2 min-h-[3.5rem] mb-3 group-hover:text-primary transition-colors">
+              <h3 className="font-display text-sm sm:text-lg font-semibold text-foreground line-clamp-2 min-h-[2.5rem] sm:min-h-[3.5rem] mb-2 sm:mb-3 group-hover:text-primary transition-colors">
                 {game.title}
               </h3>
 
-              <hr className="border-border mb-3" />
+              <hr className="border-border mb-2 sm:mb-3" />
 
               {/* Quick Info */}
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+              <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
                 <span className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
+                  <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                   {playerRange}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                   {game.play_time.replace(' Minutes', 'm').replace(' Hours', 'h')}
                 </span>
               </div>
@@ -82,7 +82,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               {/* Rating */}
               <StarRating gameId={game.id} size="sm" showCount={true} interactive={false} />
 
-              <hr className="border-border mb-3" />
+              <hr className="border-border mb-2 sm:mb-3" />
 
               {/* Tags */}
               <div className="flex flex-wrap gap-1.5 mt-auto">

@@ -396,7 +396,7 @@ const Index = () => {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">
               {filter && filterValue ? filterValue : siteConfig.collectionTitle}
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -405,7 +405,7 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
 
             {/* Sort */}
             <div className="flex items-center gap-1">
@@ -433,7 +433,7 @@ const Index = () => {
                 )}
               </Button>
               <Select value={sortBy} onValueChange={handleSortChange}>
-                <SelectTrigger className="w-40 bg-card">
+                <SelectTrigger className="w-32 sm:w-40 bg-card text-sm">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
