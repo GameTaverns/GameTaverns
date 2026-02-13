@@ -109,7 +109,7 @@ export default function PlatformAdmin() {
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-cream mb-2">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-cream mb-2">
             Site Administration
           </h1>
           <p className="text-cream/70">
@@ -118,71 +118,71 @@ export default function PlatformAdmin() {
         </div>
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="bg-wood-medium/30 border border-wood-medium/50">
+          <TabsList className="bg-wood-medium/30 border border-wood-medium/50 h-auto flex-wrap gap-1 p-1">
             <TabsTrigger 
               value="analytics" 
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
-              <Activity className="h-4 w-4 mr-2" />
+              <Activity className="h-4 w-4 mr-1 sm:mr-2" />
               Analytics
             </TabsTrigger>
             <TabsTrigger 
               value="users"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
-              <Users className="h-4 w-4 mr-2" />
+              <Users className="h-4 w-4 mr-1 sm:mr-2" />
               Users
             </TabsTrigger>
             <TabsTrigger 
               value="libraries"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
-              <Database className="h-4 w-4 mr-2" />
+              <Database className="h-4 w-4 mr-1 sm:mr-2" />
               Libraries
             </TabsTrigger>
             <TabsTrigger 
               value="settings"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
-              <Settings className="h-4 w-4 mr-2" />
+              <Settings className="h-4 w-4 mr-1 sm:mr-2" />
               Settings
             </TabsTrigger>
             <TabsTrigger 
               value="feedback"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative text-xs sm:text-sm"
             >
-              <MessageCircle className="h-4 w-4 mr-2" />
+              <MessageCircle className="h-4 w-4 mr-1 sm:mr-2" />
               Feedback
               {unreadFeedbackCount && unreadFeedbackCount > 0 && (
-                <Badge className="ml-2 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground">
+                <Badge className="ml-1 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground">
                   {unreadFeedbackCount}
                 </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger 
               value="clubs"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative text-xs sm:text-sm"
             >
-              <Trophy className="h-4 w-4 mr-2" />
+              <Trophy className="h-4 w-4 mr-1 sm:mr-2" />
               Clubs
               {pendingClubs && pendingClubs.length > 0 && (
-                <Badge className="ml-2 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground">
+                <Badge className="ml-1 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground">
                   {pendingClubs.length}
                 </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger 
               value="health"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
-              <HeartPulse className="h-4 w-4 mr-2" />
+              <HeartPulse className="h-4 w-4 mr-1 sm:mr-2" />
               Health
             </TabsTrigger>
             <TabsTrigger 
               value="premium"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
-              <Crown className="h-4 w-4 mr-2" />
+              <Crown className="h-4 w-4 mr-1 sm:mr-2" />
               Premium
             </TabsTrigger>
           </TabsList>
