@@ -15,7 +15,7 @@ import { ClubForumCard } from "@/components/community/ClubForumCard";
 import { format } from "date-fns";
 
 export default function ClubPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, categorySlug } = useParams<{ slug: string; categorySlug?: string }>();
   const { user } = useAuth();
   const { data: club, isLoading } = useClub(slug || null);
   const { data: clubLibraries = [] } = useClubLibraries(club?.id || null);
@@ -104,7 +104,7 @@ export default function ClubPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="catalog" className="w-full">
+        <Tabs defaultValue={categorySlug ? "forums" : "catalog"} className="w-full">
           <TabsList className="mb-6 bg-wood-dark/60 border border-wood-medium/40">
             <TabsTrigger
               value="catalog"
@@ -311,6 +311,7 @@ export default function ClubPage() {
               clubId={club.id}
               clubSlug={club.slug}
               isOwner={isOwner}
+              activeCategorySlug={categorySlug}
             />
           </TabsContent>
         </Tabs>

@@ -178,6 +178,7 @@ function PlatformRoutes() {
       <Route path="/community/:categorySlug" element={<Community />} />
       <Route path="/community/thread/:threadId" element={<ThreadDetail />} />
       <Route path="/club/:slug" element={<ClubPage />} />
+      <Route path="/club/:slug/forum/:categorySlug" element={<ClubPage />} />
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
       <Route path="/request-club" element={<RequestClub />} />
       <Route path="/join-club" element={<JoinClub />} />

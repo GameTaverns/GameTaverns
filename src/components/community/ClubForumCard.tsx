@@ -4,12 +4,13 @@ import {
   MessageSquare,
   Pin,
   MessageCircle,
+  ArrowLeft,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useClubCategories, useRecentClubThreads, type ForumThread } from "@/hooks/useForum";
+import { useClubCategories, useRecentClubThreads, useCategoryThreads, type ForumThread } from "@/hooks/useForum";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { InlineForumManagement } from "./InlineForumManagement";
 import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
@@ -58,13 +59,69 @@ interface ClubForumCardProps {
   clubId: string;
   clubSlug: string;
   isOwner: boolean;
+  activeCategorySlug?: string;
 }
 
-export function ClubForumCard({ clubId, clubSlug, isOwner }: ClubForumCardProps) {
+export function ClubForumCard({ clubId, clubSlug, isOwner, activeCategorySlug }: ClubForumCardProps) {
   const { data: categories = [], isLoading: categoriesLoading } = useClubCategories(clubId);
   const { data: recentThreads = [], isLoading: threadsLoading } = useRecentClubThreads(clubId, 5);
 
+  const activeCategory = activeCategorySlug
+    ? categories.find((c) => c.slug === activeCategorySlug)
+    : undefined;
+
+  const { data: categoryThreads = [], isLoading: categoryThreadsLoading } = useCategoryThreads(
+    activeCategory?.id,
+    50
+  );
+
   const isLoading = categoriesLoading || threadsLoading;
+
+  // If viewing a specific category, show its threads
+  if (activeCategorySlug && activeCategory) {
+    const Icon = ICON_MAP[activeCategory.icon] || MessageSquare;
+    const colorClass = COLOR_MAP[activeCategory.color] || "text-blue-500";
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Link
+            to={`/club/${clubSlug}`}
+            className="inline-flex items-center gap-1 text-sm text-cream/60 hover:text-cream transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to forum
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Icon className={`h-5 w-5 ${colorClass}`} />
+          <h2 className="text-lg font-display font-bold text-cream">{activeCategory.name}</h2>
+        </div>
+        {activeCategory.description && (
+          <p className="text-sm text-cream/60">{activeCategory.description}</p>
+        )}
+
+        <div className="space-y-2">
+          {categoryThreadsLoading ? (
+            <>
+              <Skeleton className="h-16 w-full bg-wood-medium/40" />
+              <Skeleton className="h-16 w-full bg-wood-medium/40" />
+            </>
+          ) : categoryThreads.length > 0 ? (
+            categoryThreads.map((thread) => (
+              <ClubThreadPreview key={thread.id} thread={thread} clubSlug={clubSlug} />
+            ))
+          ) : (
+            <div className="text-center py-6">
+              <MessageSquare className="h-8 w-8 mx-auto text-cream/40 mb-2" />
+              <p className="text-sm text-cream/60">No threads in this category yet</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -87,7 +144,7 @@ export function ClubForumCard({ clubId, clubSlug, isOwner }: ClubForumCardProps)
             const Icon = ICON_MAP[cat.icon] || MessageSquare;
             const colorClass = COLOR_MAP[cat.color] || "text-blue-500";
             return (
-              <Link key={cat.id} to={`/community/${cat.slug}`}>
+              <Link key={cat.id} to={`/club/${clubSlug}/forum/${cat.slug}`}>
                 <Badge
                   variant="secondary"
                   className="cursor-pointer hover:bg-secondary/80 transition-colors"
