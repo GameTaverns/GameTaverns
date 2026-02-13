@@ -35,15 +35,14 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): P
 }
 
 async function sendEmailSafely(sendFn: () => Promise<void>) {
-  // Never block API responses on SMTP.
-  // We still attempt delivery in the background with a hard timeout.
-  (async () => {
-    try {
-      await withTimeout(sendFn(), SMTP_SEND_TIMEOUT_MS, "SMTP send");
-    } catch (e) {
-      console.error("SMTP send failed (non-blocking):", e);
-    }
-  })();
+  // Must await SMTP delivery — the self-hosted edge runtime terminates the
+  // isolate immediately after the handler returns, so fire-and-forget fails.
+  try {
+    await withTimeout(sendFn(), SMTP_SEND_TIMEOUT_MS, "SMTP send");
+  } catch (e) {
+    console.error("SMTP send failed:", e);
+    // Don't re-throw — we still return success to prevent email enumeration
+  }
 }
 
 export default async function handler(req: Request): Promise<Response> {
