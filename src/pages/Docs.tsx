@@ -247,6 +247,39 @@ export default function Docs() {
                 <Section title="🔄 Cross-Library Trade Matching">
                   <p>List games you're willing to trade and games you want. The system matches your offers against other discoverable libraries using BGG IDs. Find matches on the <strong>Dashboard → Trades</strong> tab.</p>
                 </Section>
+
+                <Section title="🔁 BGG Auto-Sync">
+                  <p>Automatically keep your library in sync with your BoardGameGeek collection. Go to <strong>Library Settings → BGG Sync</strong> and enter your BGG username.</p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li><strong>Frequency</strong> — choose daily or weekly sync</li>
+                    <li><strong>Scope</strong> — sync collection, play history, and/or wishlist</li>
+                    <li><strong>Removal behavior</strong> — flag games removed from BGG as missing, or auto-remove them</li>
+                    <li>Sync status and last-run time visible in settings</li>
+                  </ul>
+                </Section>
+
+                <Section title="📦 Multi-Copy Inventory">
+                  <p>For games you own multiple copies of, use the <strong>Copies</strong> section on any game's detail page. Each copy can have a label, condition, and notes. When approving a loan, you can assign a specific copy to the borrower.</p>
+                </Section>
+
+                <Section title="🏪 For Sale / Marketplace">
+                  <p>Mark games as "For Sale" with a price and condition grade. Enable the feature in <strong>Library Settings → Feature Flags</strong>. Visitors can browse your for-sale list and send inquiries via the messaging system.</p>
+                </Section>
+
+                <Section title="📚 Multiple Libraries">
+                  <p>You can create and manage more than one library from a single account. Switch between them using the library selector on the <strong>Dashboard → Library</strong> tab. Each library has its own collection, members, theme, and settings.</p>
+                </Section>
+
+                <Section title="🏛️ Clubs">
+                  <p>Clubs connect multiple libraries into a shared ecosystem. Create a club from the Dashboard and invite other library owners via invite codes. Club features include:</p>
+                  <ul className="list-disc pl-6 space-y-1">
+                    <li>Combined catalog with ownership attribution</li>
+                    <li>Cross-library game search</li>
+                    <li>Shared event calendar</li>
+                    <li>Club-scoped forum categories</li>
+                  </ul>
+                  <p className="mt-2">Club creation requires platform admin approval. Manage your clubs from <strong>Dashboard → Clubs</strong>.</p>
+                </Section>
               </CardContent>
             </Card>
           </TabsContent>

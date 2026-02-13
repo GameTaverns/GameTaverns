@@ -25,7 +25,12 @@ import {
   DollarSign,
   Download,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  RefreshCw,
+  Copy,
+  Store,
+  Building2,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -188,6 +193,54 @@ export default function Features() {
               "Set current estimated values",
               "BGG marketplace price integration",
               "Total collection value dashboard"
+            ]}
+          />
+
+          <FeatureDetail
+            icon={<Copy className="h-6 w-6" />}
+            title="Multi-Copy Inventory"
+            description="Track multiple copies of the same game with unit-level detail."
+            highlights={[
+              "Label and number each copy",
+              "Track condition per copy",
+              "Assign specific copies to loans",
+              "Notes field for each unit"
+            ]}
+          />
+
+          <FeatureDetail
+            icon={<RefreshCw className="h-6 w-6" />}
+            title="BGG Auto-Sync"
+            description="Keep your library in sync with BoardGameGeek automatically."
+            highlights={[
+              "Daily or weekly sync schedules",
+              "Sync collection, plays, and wishlist",
+              "Configurable removal behavior",
+              "Automatic box art and metadata updates"
+            ]}
+          />
+
+          <FeatureDetail
+            icon={<Store className="h-6 w-6" />}
+            title="For Sale Marketplace"
+            description="List games for sale directly from your library."
+            highlights={[
+              "Set prices and condition grades",
+              "Visible to all library visitors",
+              "Integrated with game messaging",
+              "Toggle on/off per game"
+            ]}
+          />
+
+          <FeatureDetail
+            icon={<Layers className="h-6 w-6" />}
+            title="Multiple Libraries"
+            description="Own and manage more than one library from a single account."
+            highlights={[
+              "Switch between libraries on the dashboard",
+              "Separate collections, members, and settings",
+              "Configurable per-platform limits",
+              "Unified personal profile across libraries"
             ]}
           />
         </div>
@@ -376,6 +429,18 @@ export default function Features() {
               "Competitive leaderboards",
               "Track progress in real-time",
               "Motivate more game nights"
+            ]}
+          />
+
+          <FeatureDetail
+            icon={<Building2 className="h-6 w-6" />}
+            title="Clubs"
+            description="Connect multiple libraries into a shared club ecosystem."
+            highlights={[
+              "Combined catalog across member libraries",
+              "Shared event calendars",
+              "Club-scoped forum categories",
+              "Invite-code access for privacy"
             ]}
           />
         </div>
