@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowUpDown, ArrowUp, ArrowDown, X, AlertTriangle } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
+import { FeatureTip } from "@/components/ui/FeatureTip";
 
 import { QuadrantFilterButton } from "@/components/games/QuadrantFilterButton";
 import { useGames } from "@/hooks/useGames";
@@ -483,7 +484,13 @@ const Index = () => {
         </div>
       ) : (
         <>
-          <GameGrid games={paginatedGames} />
+          <FeatureTip
+            tipId="sidebar-filters"
+            title="Use the sidebar to filter games"
+            description="The left sidebar has filters for game type, difficulty, player count, mechanics, and more. On mobile, tap the menu icon to open it."
+            className="mb-4"
+          />
+          <GameGrid games={paginatedGames} hasActiveFilters={hasActiveFilters} />
         </>
       )}
 
