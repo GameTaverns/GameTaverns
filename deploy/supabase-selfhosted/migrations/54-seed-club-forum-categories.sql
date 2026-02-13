@@ -2,6 +2,14 @@
 -- Pre-seed club forums with the same 4 default categories as the site-wide forum.
 -- Also fix the unique index to account for club_id.
 
+-- Step 0: Remove any duplicate site-wide categories (keep oldest)
+DELETE FROM forum_categories a
+USING forum_categories b
+WHERE a.slug = b.slug
+  AND a.library_id IS NULL AND b.library_id IS NULL
+  AND a.club_id IS NULL AND b.club_id IS NULL
+  AND a.created_at > b.created_at;
+
 -- Step 1: Drop the old unique index that doesn't account for club_id
 DROP INDEX IF EXISTS public.forum_categories_library_slug_unique;
 
