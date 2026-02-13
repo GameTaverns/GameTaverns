@@ -44,6 +44,7 @@ import { supabase } from "@/integrations/backend/client";
 import { isSelfHostedSupabaseStack } from "@/config/runtime";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 import { AnalyticsTab } from "@/components/analytics/AnalyticsTab";
 import { PollsManager } from "@/components/polls/PollsManager";
 import { AccountSettings } from "@/components/settings/AccountSettings";
@@ -67,8 +68,10 @@ import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidge
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { InfoPopover } from "@/components/ui/InfoPopover";
 import { cn } from "@/lib/utils";
+import { useTotpStatus } from "@/hooks/useTotpStatus";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -93,6 +96,7 @@ export default function Dashboard() {
   const { data: myMemberships = [] } = useMyMemberships();
   const { data: myClubs = [] } = useMyClubs();
   const { memberCount } = useLibraryMembership(library?.id);
+  const { status: totpStatus } = useTotpStatus();
   const pendingLoanRequests = myLentLoans.filter((l) => l.status === "requested").length;
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -227,7 +231,11 @@ export default function Dashboard() {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
+      <GuidedTour />
       <AnnouncementBanner />
+      <div className="container mx-auto px-4 pt-3">
+        <TwoFactorBanner />
+      </div>
       {/* Header */}
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
@@ -759,6 +767,7 @@ export default function Dashboard() {
                     memberCount={memberCount ?? 0}
                     hasCustomTheme={!!(librarySettings?.logo_url || librarySettings?.theme_primary_h || librarySettings?.background_image_url)}
                     hasEvents={(eventCount ?? 0) > 0}
+                    has2FA={totpStatus?.isEnabled ?? false}
                   />
                 </div>
 

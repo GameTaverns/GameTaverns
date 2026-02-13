@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
   Check, ChevronDown, ChevronUp, Library, Upload, Palette, 
-  Users, Gamepad2, Star, Calendar, BookOpen, X, Sparkles
+  Gamepad2, Star, X, Sparkles, Shield
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,7 @@ interface OnboardingChecklistProps {
   memberCount: number;
   hasCustomTheme: boolean;
   hasEvents: boolean;
+  has2FA?: boolean;
 }
 
 export function OnboardingChecklist({
@@ -37,6 +38,7 @@ export function OnboardingChecklist({
   memberCount,
   hasCustomTheme,
   hasEvents,
+  has2FA = false,
 }: OnboardingChecklistProps) {
   const [dismissed, setDismissed] = useState(false);
   const [expanded, setExpanded] = useState(true);
@@ -57,6 +59,15 @@ export function OnboardingChecklist({
   const libraryUrl = getLibraryUrl(librarySlug, "/");
 
   const items: ChecklistItem[] = [
+    {
+      id: "setup-2fa",
+      title: "Set up two-factor authentication",
+      description: "Protect your account with an authenticator app for an extra layer of security.",
+      icon: <Shield className="h-4 w-4" />,
+      completed: has2FA,
+      href: "/setup-2fa",
+      action: "Set Up 2FA",
+    },
     {
       id: "add-games",
       title: "Add your first games",
@@ -199,14 +210,14 @@ export function OnboardingChecklist({
                         </p>
                       </div>
                       {!item.completed && item.href && (
-                        <a href={item.href} className="flex-shrink-0">
+                        <Link to={item.href} className="flex-shrink-0">
                           <Button
                             size="sm"
                             className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7"
                           >
                             {item.action}
                           </Button>
-                        </a>
+                        </Link>
                       )}
                     </div>
                   ))}
