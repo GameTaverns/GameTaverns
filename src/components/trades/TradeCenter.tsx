@@ -74,7 +74,7 @@ export function TradeCenter() {
       </div>
 
       <Tabs defaultValue="matches" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
           <TabsTrigger value="matches">
             <Sparkles className="h-4 w-4 mr-1" />
             Matches

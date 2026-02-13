@@ -287,37 +287,9 @@ export default function LibraryGames() {
           </a>
         </div>
 
-                {/* Refresh BGG Ratings Section */}
-                <div className="border-t pt-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-medium mb-1">Refresh BGG Ratings</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Pull community ratings from BoardGameGeek and map them to 5-star ratings
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={handleRefreshRatings}
-                      disabled={isRefreshingRatings}
-                    >
-                      {isRefreshingRatings ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Refreshing...
-                        </>
-                      ) : (
-                        <>
-                          <Star className="h-4 w-4 mr-2" />
-                          Refresh Ratings
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
             <TabsTrigger value="add" className="gap-2">
               <Plus className="h-4 w-4" />
               Quick Add
@@ -398,6 +370,35 @@ export default function LibraryGames() {
                         <>
                           <RefreshCw className="h-4 w-4 mr-2" />
                           Refresh Images
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Refresh BGG Ratings Section */}
+                <div className="border-t pt-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-medium mb-1">Refresh BGG Ratings</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Pull community ratings from BoardGameGeek and map them to 5-star ratings
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleRefreshRatings}
+                      disabled={isRefreshingRatings}
+                    >
+                      {isRefreshingRatings ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Refreshing...
+                        </>
+                      ) : (
+                        <>
+                          <Star className="h-4 w-4 mr-2" />
+                          Refresh Ratings
                         </>
                       )}
                     </Button>

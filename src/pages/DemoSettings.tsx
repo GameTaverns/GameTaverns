@@ -658,7 +658,7 @@ const DemoSettings = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile

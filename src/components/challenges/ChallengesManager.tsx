@@ -92,7 +92,7 @@ export function ChallengesManager({ libraryId, canManage = false }: ChallengesMa
                 New Challenge
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Create Challenge</DialogTitle>
               </DialogHeader>

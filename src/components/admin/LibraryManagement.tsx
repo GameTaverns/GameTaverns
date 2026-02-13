@@ -465,7 +465,7 @@ export function LibraryManagement() {
 
       {/* History Dialog */}
       <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
-        <DialogContent className="bg-wood-dark border-wood-medium max-w-2xl">
+        <DialogContent className="bg-wood-dark border-wood-medium sm:max-w-2xl max-h-[100dvh] sm:max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-cream flex items-center gap-2">
               <History className="w-5 h-5 text-secondary" />
