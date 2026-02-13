@@ -25,6 +25,9 @@ interface UserProgress {
   thread_replies_received: number;
   libraries_joined: number;
   library_forums_active: number;
+  // Shelf of Shame metrics
+  shame_games_played: number;
+  zero_shame: number;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -101,6 +104,8 @@ const handler = async (req: Request): Promise<Response> => {
       thread_replies_received: 0,
       libraries_joined: 0,
       library_forums_active: 0,
+      shame_games_played: 0,
+      zero_shame: 0,
     };
 
     // Games owned (excluding expansions)
@@ -215,6 +220,43 @@ const handler = async (req: Request): Promise<Response> => {
       if (r.thread?.category?.library_id) libraryForumsSet.add(r.thread.category.library_id);
     });
     progress.library_forums_active = libraryForumsSet.size;
+
+    // === Shelf of Shame Metrics ===
+    
+    // Count games that were previously is_unplayed=true but now have at least one session
+    // These are games the user "rescued" from the Shelf of Shame
+    const { data: shameGames } = await supabaseAdmin
+      .from("games")
+      .select("id")
+      .eq("library_id", libraryId)
+      .eq("is_expansion", false)
+      .eq("is_unplayed", false);
+    
+    // Count those that have sessions (played at least once)
+    let shamePlayedCount = 0;
+    if (shameGames && shameGames.length > 0) {
+      // Check which games have sessions — these were "rescued"
+      const gameIds = shameGames.map(g => g.id);
+      const BATCH = 50;
+      for (let i = 0; i < gameIds.length; i += BATCH) {
+        const batch = gameIds.slice(i, i + BATCH);
+        const { count } = await supabaseAdmin
+          .from("game_sessions")
+          .select("game_id", { count: "exact", head: true })
+          .in("game_id", batch);
+        shamePlayedCount += count || 0;
+      }
+    }
+    progress.shame_games_played = shamePlayedCount;
+
+    // Zero shame: no unplayed games at all
+    const { count: unplayedCount } = await supabaseAdmin
+      .from("games")
+      .select("*", { count: "exact", head: true })
+      .eq("library_id", libraryId)
+      .eq("is_expansion", false)
+      .eq("is_unplayed", true);
+    progress.zero_shame = (unplayedCount === 0 && progress.games_owned > 0) ? 1 : 0;
 
     // Get all achievements
     const { data: achievements } = await supabaseAdmin
