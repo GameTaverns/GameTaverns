@@ -488,7 +488,10 @@ export function SystemHealth() {
                           )}
                         </div>
                         <div className="text-xs text-cream/50">
-                          {job.processed_items}/{job.total_items} items · Started {new Date(job.created_at).toLocaleTimeString()}
+                          {job.processed_items}/{job.total_items} items · Started {new Date(job.created_at).toLocaleDateString()}{' '}{new Date(job.created_at).toLocaleTimeString()}
+                          {job.updated_at !== job.created_at && (
+                            <span className="ml-1">· Updated {new Date(job.updated_at).toLocaleTimeString()}</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -564,8 +567,8 @@ export function SystemHealth() {
                             <XCircle className="h-3 w-3" />
                           </Button>
                         )}
-                        <span className="text-cream/40 font-mono">
-                          {new Date(job.created_at).toLocaleDateString()}
+                        <span className="text-cream/40 font-mono whitespace-nowrap" title={`Started: ${new Date(job.created_at).toLocaleString()}\nFinished: ${new Date(job.updated_at).toLocaleString()}`}>
+                          {new Date(job.updated_at).toLocaleDateString()}{' '}{new Date(job.updated_at).toLocaleTimeString()}
                         </span>
                       </div>
                     </div>
