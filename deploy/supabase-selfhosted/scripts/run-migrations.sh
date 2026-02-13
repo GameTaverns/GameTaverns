@@ -133,6 +133,7 @@ MIGRATION_FILES=(
     "50-game-catalog.sql"
     "51-shame-achievements.sql"
     "52-tour-achievement.sql"
+    "53-club-forum-rls.sql"
 )
 
 SUCCESS_COUNT=0
