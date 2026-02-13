@@ -170,9 +170,19 @@ const Index = () => {
       // Show games flagged as unplayed
       result = result.filter((g) => (g as any).is_unplayed === true);
     } else if (filter === "status" && filterValue === "expansions") {
-      // Show all expansions (they are normally nested under parents, so we need the flat list)
-      const allGames = isDemoMode ? [...demoGames] : [...realGames];
-      result = allGames.filter((g) => g.is_expansion);
+      // Show all expansions — they're normally nested under parents in the grouped list,
+      // so we need to extract them from parent.expansions + include orphan expansions
+      const allExpansions: typeof result = [];
+      const grouped = isDemoMode ? groupExpansions([...demoGames]) : realGames;
+      grouped.forEach((g) => {
+        // Orphan expansions (is_expansion but no parent) are top-level
+        if (g.is_expansion) allExpansions.push(g);
+        // Nested expansions under parents
+        if (g.expansions && g.expansions.length > 0) {
+          allExpansions.push(...g.expansions);
+        }
+      });
+      result = allExpansions;
     } else {
       // Exclude coming soon games from main catalog (only if feature is enabled)
       if (comingSoonFlag) {
