@@ -138,20 +138,23 @@ export default async function handler(req: Request): Promise<Response> {
       const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
       await sendEmailSafely(async () => {
-        const isPlainRelay = smtpPort === 25;
+        const useImplicitTls = smtpPort === 465;
         const connection: any = {
           hostname: smtpHost,
           port: smtpPort,
-          tls: smtpPort === 465,
+          tls: useImplicitTls,
         };
 
         if (requiresAuth) {
           connection.auth = { username: smtpUser, password: smtpPass };
         }
 
+        // For non-implicit-TLS ports (25, 587) on the internal Docker network,
+        // skip STARTTLS — the cert is issued for the public hostname, not the
+        // container name, so the TLS handshake will always fail.
         const client = new SMTPClient({
           connection,
-          ...(isPlainRelay
+          ...(!useImplicitTls
             ? { debug: { allowUnsecure: true, noStartTLS: true } }
             : {}),
         });
@@ -280,11 +283,11 @@ export default async function handler(req: Request): Promise<Response> {
       const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
 
       await sendEmailSafely(async () => {
-        const isPlainRelay = smtpPort === 25;
+        const useImplicitTls = smtpPort === 465;
         const connection: any = {
           hostname: smtpHost,
           port: smtpPort,
-          tls: smtpPort === 465,
+          tls: useImplicitTls,
         };
 
         if (requiresAuth) {
@@ -293,7 +296,7 @@ export default async function handler(req: Request): Promise<Response> {
 
         const client = new SMTPClient({
           connection,
-          ...(isPlainRelay
+          ...(!useImplicitTls
             ? { debug: { allowUnsecure: true, noStartTLS: true } }
             : {}),
         });
