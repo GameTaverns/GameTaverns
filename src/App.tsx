@@ -62,6 +62,7 @@ const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
 const LibraryGames = lazy(() => import("./pages/LibraryGames"));
 const PlayStatsPage = lazy(() => import("./pages/PlayStatsPage"));
 const PollPage = lazy(() => import("./pages/PollPage"));
+const SmartPicker = lazy(() => import("./pages/SmartPicker"));
 
 const queryClient = new QueryClient();
 
@@ -187,6 +188,7 @@ function PlatformRoutes() {
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
       <Route path="/request-club" element={<RequestClub />} />
       <Route path="/join-club" element={<JoinClub />} />
+      <Route path="/picker" element={<SmartPicker />} />
       <Route path="/docs" element={<Docs />} />
       {/* Legal & Info pages */}
       <Route path="/legal" element={<Legal />} />
