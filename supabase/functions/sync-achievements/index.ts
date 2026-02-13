@@ -223,19 +223,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     // === Shelf of Shame Metrics ===
     
-    // Count games that were previously is_unplayed=true but now have at least one session
-    // These are games the user "rescued" from the Shelf of Shame
+    // Count games currently marked is_unplayed=true that nonetheless have sessions logged.
+    // These are games the user "rescued" from the Shelf of Shame by playing them.
+    // NOTE: is_unplayed defaults to false, so we must NOT count is_unplayed=false games —
+    // that would match every game in the library and produce false positives.
     const { data: shameGames } = await supabaseAdmin
       .from("games")
       .select("id")
       .eq("library_id", libraryId)
       .eq("is_expansion", false)
-      .eq("is_unplayed", false);
+      .eq("is_unplayed", true);
     
-    // Count those that have sessions (played at least once)
     let shamePlayedCount = 0;
     if (shameGames && shameGames.length > 0) {
-      // Check which games have sessions — these were "rescued"
       const gameIds = shameGames.map(g => g.id);
       const BATCH = 50;
       for (let i = 0; i < gameIds.length; i += BATCH) {
