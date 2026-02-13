@@ -32,7 +32,7 @@ export function Layout({ children, hideSidebar = false }: LayoutProps) {
           isSidebarOpen={sidebarOpen}
           hideSidebarToggle={hideSidebar}
         />
-        <main className="container py-8 px-4 lg:px-8 pb-16 flex-1">
+        <main className="container py-4 sm:py-8 px-3 sm:px-4 lg:px-8 pb-16 flex-1">
           {children}
         </main>
         <Footer />

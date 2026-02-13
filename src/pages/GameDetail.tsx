@@ -392,11 +392,11 @@ const GameDetail = () => {
           {/* Details Section */}
           <div>
             {/* Title with Actions */}
-            <div className="flex items-start justify-between gap-4 mb-2">
-              <h1 className="font-display text-3xl lg:text-4xl font-bold text-foreground">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
+              <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
                 {game.title}
               </h1>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                 {/* Favorite Button - visible to library owners */}
                 <FavoriteButton gameId={game.id} />
                 {/* Mark for Trade Button - visible to authenticated library owners */}

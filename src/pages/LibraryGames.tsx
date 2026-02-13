@@ -274,22 +274,22 @@ export default function LibraryGames() {
           </Button>
         </a>
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-display font-bold">Manage Games</h1>
-            <p className="text-muted-foreground">Add, import, and organize your collection</p>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold">Manage Games</h1>
+            <p className="text-muted-foreground text-sm">Add, import, and organize your collection</p>
           </div>
           <a href={buildUrl("/add")}>
-            <Button>
+            <Button size="sm" className="sm:size-default">
               <Plus className="h-4 w-4 mr-2" />
               Add Game Manually
             </Button>
           </a>
-                </div>
+        </div>
 
                 {/* Refresh BGG Ratings Section */}
                 <div className="border-t pt-6">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h3 className="font-medium mb-1">Refresh BGG Ratings</h3>
                       <p className="text-sm text-muted-foreground">
@@ -377,7 +377,7 @@ export default function LibraryGames() {
 
                 {/* Refresh Images Section */}
                 <div className="border-t pt-6">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h3 className="font-medium mb-1">Refresh Missing Images</h3>
                       <p className="text-sm text-muted-foreground">

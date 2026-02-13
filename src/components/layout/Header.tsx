@@ -116,7 +116,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
         <div className="flex-1" />
 
         {/* Right side actions */}
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-0.5 sm:gap-1 flex-wrap justify-end">
           {/* Social Media Icons */}
           {socialLinks.map((link) => (
             <a
