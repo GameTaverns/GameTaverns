@@ -13,7 +13,7 @@ interface AuthEmailRequest {
   redirectUrl?: string;
 }
 
-const SMTP_SEND_TIMEOUT_MS = 8000;
+const SMTP_SEND_TIMEOUT_MS = 30000;
 
 function generateSecureToken(): string {
   const array = new Uint8Array(32);
