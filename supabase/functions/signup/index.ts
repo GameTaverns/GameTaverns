@@ -84,7 +84,8 @@ function getSmtpClient() {
     tls: useImplicitTls,
   };
 
-  if (requiresAuth) {
+  // Port 25 on the internal Docker relay does not support AUTH
+  if (requiresAuth && smtpPort !== 25) {
     connection.auth = { username: smtpUser, password: smtpPass };
   }
 
