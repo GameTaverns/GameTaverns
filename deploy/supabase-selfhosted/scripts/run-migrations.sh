@@ -130,6 +130,8 @@ MIGRATION_FILES=(
     "47-import-skipped-column.sql"
     "48-is-unplayed-column.sql"
     "49-cleanup-stuck-imports-cron.sql"
+    "50-game-catalog.sql"
+    "51-shame-achievements.sql"
 )
 
 SUCCESS_COUNT=0
