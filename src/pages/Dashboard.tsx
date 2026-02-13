@@ -866,22 +866,6 @@ const { data: playCount } = useQuery({
                   </CardContent>
                 </Card>
 
-          {/* ===== CATALOG TAB (Admin only) ===== */}
-          {isAdmin && (
-            <TabsContent value="catalog">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-display text-2xl text-cream">Game Catalog</h2>
-                  <Link to="/catalog">
-                    <Button className="gap-2 bg-secondary text-secondary-foreground">
-                      <ExternalLink className="h-4 w-4" /> Open Full Catalog
-                    </Button>
-                  </Link>
-                </div>
-                <CatalogBrowseEmbed />
-              </div>
-            </TabsContent>
-          )}
 
                 {/* Group Challenges - Self-hosted feature */}
                 {isSelfHostedSupabaseStack() && (
@@ -950,6 +934,23 @@ const { data: playCount } = useQuery({
               </Card>
             )}
           </TabsContent>
+
+          {/* ===== CATALOG TAB (Admin only) ===== */}
+          {isAdmin && (
+            <TabsContent value="catalog">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-2xl text-cream">Game Catalog</h2>
+                  <Link to="/catalog">
+                    <Button className="gap-2 bg-secondary text-secondary-foreground">
+                      <ExternalLink className="h-4 w-4" /> Open Full Catalog
+                    </Button>
+                  </Link>
+                </div>
+                <CatalogBrowseEmbed />
+              </div>
+            </TabsContent>
+          )}
 
           {/* ===== ANALYTICS TAB ===== */}
           <TabsContent value="analytics">

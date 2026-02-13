@@ -73,6 +73,7 @@ export default function SmartPicker() {
         .select("id, title, image_url, slug, min_players, max_players, play_time, difficulty, is_unplayed, is_expansion, library_id, created_at")
         .in("library_id", libraryIds)
         .eq("is_expansion", false)
+        .eq("is_coming_soon", false)
         .order("title");
 
       if (error) throw error;
@@ -302,15 +303,13 @@ export default function SmartPicker() {
               </Button>
 
               {/* Animated rolling display */}
-              <AnimatePresence mode="wait">
-                {isAnimating && animatingGame && (
+              {isAnimating && animatingGame && (
+                <div className="p-4 rounded-lg bg-muted/50 border border-border text-center overflow-hidden">
                   <motion.div
                     key={animatingGame.id}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 0.7, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    transition={{ duration: 0.08 }}
-                    className="p-4 rounded-lg bg-muted/50 border border-border text-center"
+                    initial={{ y: 30, opacity: 0 }}
+                    animate={{ y: 0, opacity: 0.7 }}
+                    transition={{ duration: 0.06 }}
                   >
                     {animatingGame.image_url && (
                       <img
@@ -321,53 +320,53 @@ export default function SmartPicker() {
                     )}
                     <h3 className="font-display text-lg text-muted-foreground">{animatingGame.title}</h3>
                   </motion.div>
-                )}
+                </div>
+              )}
 
-                {!isAnimating && pickedGame && (
-                  <motion.div
-                    key={"result-" + pickedGame.id}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="p-4 rounded-lg bg-secondary/10 border border-secondary/30 text-center"
-                  >
-                    {pickedGame.image_url && (
-                      <img
-                        src={pickedGame.image_url}
-                        alt={pickedGame.title}
-                        className="w-32 h-32 mx-auto rounded-lg object-cover mb-3"
-                      />
+              {!isAnimating && pickedGame && (
+                <motion.div
+                  key={"result-" + pickedGame.id}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="p-4 rounded-lg bg-secondary/10 border border-secondary/30 text-center"
+                >
+                  {pickedGame.image_url && (
+                    <img
+                      src={pickedGame.image_url}
+                      alt={pickedGame.title}
+                      className="w-32 h-32 mx-auto rounded-lg object-cover mb-3"
+                    />
+                  )}
+                  <h3 className="font-display text-xl font-bold">{pickedGame.title}</h3>
+                  <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                    {pickedGame.play_time && (
+                      <Badge variant="outline" className="text-xs">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {pickedGame.play_time}
+                      </Badge>
                     )}
-                    <h3 className="font-display text-xl font-bold">{pickedGame.title}</h3>
-                    <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
-                      {pickedGame.play_time && (
-                        <Badge variant="outline" className="text-xs">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {pickedGame.play_time}
-                        </Badge>
-                      )}
-                      {pickedGame.min_players && pickedGame.max_players && (
-                        <Badge variant="outline" className="text-xs">
-                          <Users className="h-3 w-3 mr-1" />
-                          {pickedGame.min_players}–{pickedGame.max_players}
-                        </Badge>
-                      )}
-                      {pickedGame.difficulty && (
-                        <Badge variant="outline" className="text-xs">
-                          <Weight className="h-3 w-3 mr-1" />
-                          {pickedGame.difficulty}
-                        </Badge>
-                      )}
-                      {pickedGame.is_unplayed && (
-                        <Badge variant="secondary" className="text-xs">
-                          <BookX className="h-3 w-3 mr-1" />
-                          Unplayed!
-                        </Badge>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    {pickedGame.min_players && pickedGame.max_players && (
+                      <Badge variant="outline" className="text-xs">
+                        <Users className="h-3 w-3 mr-1" />
+                        {pickedGame.min_players}–{pickedGame.max_players}
+                      </Badge>
+                    )}
+                    {pickedGame.difficulty && (
+                      <Badge variant="outline" className="text-xs">
+                        <Weight className="h-3 w-3 mr-1" />
+                        {pickedGame.difficulty}
+                      </Badge>
+                    )}
+                    {pickedGame.is_unplayed && (
+                      <Badge variant="secondary" className="text-xs">
+                        <BookX className="h-3 w-3 mr-1" />
+                        Unplayed!
+                      </Badge>
+                    )}
+                  </div>
+                </motion.div>
+              )}
 
               {/* Top suggestions list */}
               {scoredGames.length > 0 && (
