@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -5,6 +6,7 @@ import {
   Pin,
   MessageCircle,
   ArrowLeft,
+  Plus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +16,7 @@ import { useClubCategories, useRecentClubThreads, useCategoryThreads, type Forum
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { InlineForumManagement } from "./InlineForumManagement";
 import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
+import { CreateThreadDialog } from "./CreateThreadDialog";
 
 const ICON_MAP = FORUM_ICON_MAP;
 const COLOR_MAP: Record<string, string> = FORUM_COLOR_MAP;
@@ -63,6 +66,7 @@ interface ClubForumCardProps {
 }
 
 export function ClubForumCard({ clubId, clubSlug, isOwner, activeCategorySlug }: ClubForumCardProps) {
+  const [createThreadOpen, setCreateThreadOpen] = useState(false);
   const { data: categories = [], isLoading: categoriesLoading } = useClubCategories(clubId);
   const { data: recentThreads = [], isLoading: threadsLoading } = useRecentClubThreads(clubId, 5);
 
@@ -94,13 +98,30 @@ export function ClubForumCard({ clubId, clubSlug, isOwner, activeCategorySlug }:
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Icon className={`h-5 w-5 ${colorClass}`} />
-          <h2 className="text-lg font-display font-bold text-cream">{activeCategory.name}</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Icon className={`h-5 w-5 ${colorClass}`} />
+            <h2 className="text-lg font-display font-bold text-cream">{activeCategory.name}</h2>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setCreateThreadOpen(true)}
+            className="gap-1"
+          >
+            <Plus className="h-4 w-4" />
+            New Thread
+          </Button>
         </div>
         {activeCategory.description && (
           <p className="text-sm text-cream/60">{activeCategory.description}</p>
         )}
+
+        <CreateThreadDialog
+          open={createThreadOpen}
+          onOpenChange={setCreateThreadOpen}
+          categoryId={activeCategory.id}
+          categoryName={activeCategory.name}
+        />
 
         <div className="space-y-2">
           {categoryThreadsLoading ? (
