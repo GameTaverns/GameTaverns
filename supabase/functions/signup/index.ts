@@ -76,21 +76,24 @@ function getSmtpClient() {
   // - `connection.tls: false` => STARTTLS by default (typically 587)
   // For our internal Docker relay on port 25 we need *plain SMTP* (no TLS, no STARTTLS),
   // so we must set `debug.noStartTLS: true` and allow the unencrypted connection.
-  const isPlainRelay = smtpPort === 25;
+  const useImplicitTls = smtpPort === 465;
 
   const connection: any = {
     hostname: smtpHost,
     port: smtpPort,
-    tls: smtpPort === 465,
+    tls: useImplicitTls,
   };
 
   if (requiresAuth) {
     connection.auth = { username: smtpUser, password: smtpPass };
   }
 
+  // For non-implicit-TLS ports (25, 587) on the internal Docker network,
+  // skip STARTTLS — the cert is issued for the public hostname, not the
+  // container name, so the TLS handshake will always fail.
   const client = new SMTPClient({
     connection,
-    ...(isPlainRelay
+    ...(!useImplicitTls
       ? {
           debug: {
             allowUnsecure: true,
