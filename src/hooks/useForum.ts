@@ -71,8 +71,9 @@ export function useLibrariesForumEnabled(libraryIds: string[]) {
 }
 
 export type CreateForumCategoryInput = {
-  scope: "site" | "library";
-  libraryId: string | null;
+  scope: "site" | "library" | "club";
+  libraryId?: string | null;
+  clubId?: string | null;
   name: string;
   description: string | null;
   icon: string;
@@ -95,7 +96,8 @@ export function useCreateForumCategory() {
       const { data, error } = await supabase
         .from("forum_categories")
         .insert({
-          library_id: input.scope === "site" ? null : input.libraryId,
+          library_id: input.scope === "library" ? input.libraryId : null,
+          club_id: input.scope === "club" ? input.clubId : null,
           name: input.name,
           slug,
           description: input.description,
@@ -112,10 +114,12 @@ export function useCreateForumCategory() {
       if (error) throw error;
       return data as ForumCategory;
     },
-    onSuccess: (cat) => {
+    onSuccess: (cat: any) => {
       queryClient.invalidateQueries({ queryKey: ["forum-categories"] });
       if (cat.library_id) {
         queryClient.invalidateQueries({ queryKey: ["forum-categories", "library", cat.library_id] });
+      } else if (cat.club_id) {
+        queryClient.invalidateQueries({ queryKey: ["forum-categories", "club", cat.club_id] });
       } else {
         queryClient.invalidateQueries({ queryKey: ["forum-categories", "site-wide"] });
       }
@@ -147,10 +151,12 @@ export function useSetCategoryArchived() {
       if (error) throw error;
       return data as ForumCategory;
     },
-    onSuccess: (cat) => {
+    onSuccess: (cat: any) => {
       queryClient.invalidateQueries({ queryKey: ["forum-categories"] });
       if (cat.library_id) {
         queryClient.invalidateQueries({ queryKey: ["forum-categories", "library", cat.library_id] });
+      } else if (cat.club_id) {
+        queryClient.invalidateQueries({ queryKey: ["forum-categories", "club", cat.club_id] });
       } else {
         queryClient.invalidateQueries({ queryKey: ["forum-categories", "site-wide"] });
       }
@@ -208,6 +214,7 @@ export interface ForumCategory {
   color: string;
   display_order: number;
   library_id: string | null;
+  club_id: string | null;
   created_by: string | null;
   is_system: boolean;
   is_archived: boolean;
@@ -258,7 +265,7 @@ export interface ForumReply {
   };
 }
 
-// Fetch site-wide categories (library_id is null)
+// Fetch site-wide categories (library_id is null AND club_id is null)
 export function useSiteWideCategories() {
   return useQuery({
     queryKey: ["forum-categories", "site-wide"],
@@ -267,12 +274,78 @@ export function useSiteWideCategories() {
         .from("forum_categories")
         .select("*")
         .is("library_id", null)
+        .is("club_id", null)
         .eq("is_archived", false)
         .order("display_order", { ascending: true });
 
       if (error) throw error;
       return data as ForumCategory[];
     },
+  });
+}
+
+// Fetch club-specific categories
+export function useClubCategories(clubId: string | undefined) {
+  return useQuery({
+    queryKey: ["forum-categories", "club", clubId],
+    queryFn: async () => {
+      if (!clubId) return [];
+
+      const { data, error } = await supabase
+        .from("forum_categories")
+        .select("*")
+        .eq("club_id", clubId)
+        .eq("is_archived", false)
+        .order("display_order", { ascending: true });
+
+      if (error) throw error;
+      return data as ForumCategory[];
+    },
+    enabled: !!clubId,
+  });
+}
+
+// Fetch recent threads across a club's categories
+export function useRecentClubThreads(clubId: string | undefined, limit = 5) {
+  return useQuery({
+    queryKey: ["forum-threads", "club", clubId, "recent", limit],
+    queryFn: async () => {
+      if (!clubId) return [];
+
+      const { data: categories } = await supabase
+        .from("forum_categories")
+        .select("id")
+        .eq("club_id", clubId)
+        .eq("is_archived", false);
+
+      if (!categories || categories.length === 0) return [];
+
+      const categoryIds = categories.map((c) => c.id);
+
+      const { data, error } = await supabase
+        .from("forum_threads")
+        .select("*")
+        .in("category_id", categoryIds)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      const authorIds = [...new Set(data.map((t) => t.author_id))];
+      const threadCategoryIds = [...new Set(data.map((t) => t.category_id))];
+
+      const [authorMap, categoryMap] = await Promise.all([
+        fetchAuthorData(authorIds),
+        fetchCategoriesByIds(threadCategoryIds),
+      ]);
+
+      return data.map((t) => ({
+        ...t,
+        category: categoryMap.get(t.category_id) || undefined,
+        author: authorMap.get(t.author_id) || { display_name: null },
+      })) as ForumThread[];
+    },
+    enabled: !!clubId,
   });
 }
 
