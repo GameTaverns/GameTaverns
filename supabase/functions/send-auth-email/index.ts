@@ -71,7 +71,9 @@ export default async function handler(req: Request): Promise<Response> {
     const smtpPass = Deno.env.get("SMTP_PASS") || "";
     const smtpFrom = Deno.env.get("SMTP_FROM");
 
-    const requiresAuth = smtpPort !== 25;
+    // Always authenticate if credentials are provided — Mailcow rejects
+    // unauthenticated relay even on port 25 for sender verification.
+    const requiresAuth = !!(smtpUser && smtpPass);
 
     if (!smtpHost || !smtpFrom) {
       console.error("Missing SMTP configuration (SMTP_HOST/SMTP_FROM)");
