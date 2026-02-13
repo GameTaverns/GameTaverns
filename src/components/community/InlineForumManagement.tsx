@@ -22,8 +22,9 @@ import { useCreateForumCategory, useSetCategoryArchived, useDeleteForumCategory,
 import { FORUM_ICON_OPTIONS, FORUM_COLOR_OPTIONS, type ForumIconValue, type ForumColorValue } from "@/lib/forumOptions";
 
 interface InlineForumManagementProps {
-  scope: "site" | "library";
+  scope: "site" | "library" | "club";
   libraryId?: string;
+  clubId?: string;
   categories: ForumCategory[];
   isLoading?: boolean;
 }
@@ -102,7 +103,7 @@ function CategoryRow({ category }: { category: ForumCategory }) {
   );
 }
 
-export function InlineForumManagement({ scope, libraryId, categories, isLoading }: InlineForumManagementProps) {
+export function InlineForumManagement({ scope, libraryId, clubId, categories, isLoading }: InlineForumManagementProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -123,6 +124,7 @@ export function InlineForumManagement({ scope, libraryId, categories, isLoading 
       {
         scope,
         libraryId: scope === "library" ? libraryId : undefined,
+        clubId: scope === "club" ? clubId : undefined,
         name: trimmed,
         description: description.trim() || null,
         icon,

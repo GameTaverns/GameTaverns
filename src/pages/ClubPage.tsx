@@ -9,11 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClub, useClubLibraries, useClubGameSearch, useClubEvents } from "@/hooks/useClubs";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { useAuth } from "@/hooks/useAuth";
+import { ClubForumCard } from "@/components/community/ClubForumCard";
 
 import { format } from "date-fns";
 
 export default function ClubPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { user } = useAuth();
   const { data: club, isLoading } = useClub(slug || null);
   const { data: clubLibraries = [] } = useClubLibraries(club?.id || null);
   const { data: clubEvents = [] } = useClubEvents(club?.id || null);
@@ -49,6 +52,8 @@ export default function ClubPage() {
   const upcomingEvents = clubEvents.filter(
     (e) => new Date(e.event_date) >= new Date()
   );
+
+  const isOwner = !!user && club.owner_id === user.id;
 
   // Group games by title for the "who owns it" view
   const gamesByTitle = new Map<string, typeof games>();
@@ -126,6 +131,13 @@ export default function ClubPage() {
                   {upcomingEvents.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="forums"
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Forums
             </TabsTrigger>
           </TabsList>
 
@@ -291,6 +303,15 @@ export default function ClubPage() {
                 })}
               </div>
             )}
+          </TabsContent>
+
+          {/* ── Forums ── */}
+          <TabsContent value="forums">
+            <ClubForumCard
+              clubId={club.id}
+              clubSlug={club.slug}
+              isOwner={isOwner}
+            />
           </TabsContent>
         </Tabs>
       </main>
