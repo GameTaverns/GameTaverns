@@ -68,6 +68,7 @@ import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidge
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { ExploreChecklist } from "@/components/dashboard/ExploreChecklist";
 import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { InfoPopover } from "@/components/ui/InfoPopover";
 import { cn } from "@/lib/utils";
@@ -167,7 +168,7 @@ export default function Dashboard() {
       if (!library?.id) return null;
       const { data, error } = await supabase
         .from("library_settings")
-        .select("logo_url, theme_primary_h, background_image_url")
+        .select("logo_url, theme_primary_h, background_image_url, bgg_username, feature_community_forum")
         .eq("library_id", library.id)
         .maybeSingle();
       if (error) throw error;
@@ -191,7 +192,66 @@ export default function Dashboard() {
     enabled: !!library?.id,
   });
 
-  // Sync tour completions based on real data
+  // Explore checklist: poll count
+  const { data: pollCount } = useQuery({
+    queryKey: ["library-poll-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return 0;
+      const { count, error } = await supabase
+        .from("game_polls")
+        .select("*", { count: "exact", head: true })
+        .eq("library_id", library.id);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!library?.id,
+  });
+
+  // Explore checklist: forum thread count
+  const { data: forumThreadCount } = useQuery({
+    queryKey: ["library-forum-thread-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return 0;
+      const { count, error } = await supabase
+        .from("forum_threads")
+        .select("*, forum_categories!inner(library_id)", { count: "exact", head: true })
+        .eq("forum_categories.library_id", library.id);
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!library?.id,
+  });
+
+  // Explore checklist: user achievements count
+  const { data: userAchievementCount } = useQuery({
+    queryKey: ["user-achievement-count", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const { count, error } = await supabase
+        .from("user_achievements")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Explore checklist: trade listings count
+  const { data: tradeListingCount } = useQuery({
+    queryKey: ["user-trade-listing-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return 0;
+      const { count, error } = await (supabase as any)
+        .from("trade_listings")
+        .select("*, games!inner(library_id)", { count: "exact", head: true })
+        .eq("games.library_id", library.id);
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!library?.id,
+  });
+
   const { setCompletions: setTourCompletions } = useTour();
   const hasCustomTheme = !!(librarySettings?.logo_url || librarySettings?.theme_primary_h || librarySettings?.background_image_url);
   useEffect(() => {
@@ -781,6 +841,21 @@ export default function Dashboard() {
                     hasCustomTheme={!!(librarySettings?.logo_url || librarySettings?.theme_primary_h || librarySettings?.background_image_url)}
                     hasEvents={(eventCount ?? 0) > 0}
                     has2FA={totpStatus?.isEnabled ?? false}
+                  />
+                </div>
+
+                {/* Explore Advanced Features Checklist */}
+                <div className="lg:col-span-3">
+                  <ExploreChecklist
+                    librarySlug={library.slug}
+                    hasPlaySessions={(playCount ?? 0) > 0}
+                    hasPolls={(pollCount ?? 0) > 0}
+                    hasBggSync={!!librarySettings?.bgg_username}
+                    hasForum={(forumThreadCount ?? 0) > 0}
+                    hasClubs={myClubs.length > 0}
+                    hasEvents={(eventCount ?? 0) > 0}
+                    hasAchievements={(userAchievementCount ?? 0) > 0}
+                    hasTrades={(tradeListingCount ?? 0) > 0}
                   />
                 </div>
 
