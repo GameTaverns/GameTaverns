@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare, Users, RefreshCw } from "lucide-react";
+import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare, Users, RefreshCw, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/contexts/TenantContext";
@@ -16,6 +16,23 @@ import { LibraryDiscordSettings } from "@/components/settings/LibraryDiscordSett
 import { LibraryFeatureFlagsAdmin } from "@/components/settings/LibraryFeatureFlagsAdmin";
 import { LibraryMemberManagement } from "@/components/settings/LibraryMemberManagement";
 import { BGGSyncSettings } from "@/components/settings/BGGSyncSettings";
+import { cn } from "@/lib/utils";
+
+// Define tab groups for progressive disclosure
+const ESSENTIAL_TABS = [
+  { value: "general", label: "General", icon: Settings },
+  { value: "theme", label: "Theme", icon: Palette },
+  { value: "branding", label: "Branding", icon: Image },
+  { value: "features", label: "Features", icon: ToggleRight },
+];
+
+const ADVANCED_TABS = [
+  { value: "members", label: "Members", icon: Users },
+  { value: "ratings", label: "Ratings", icon: Star },
+  { value: "wishlist", label: "Wishlist", icon: Heart },
+  { value: "discord", label: "Discord", icon: MessageSquare },
+  { value: "bgg-sync", label: "BGG Sync", icon: RefreshCw },
+];
 
 export default function LibrarySettings() {
   const navigate = useNavigate();
@@ -23,18 +40,22 @@ export default function LibrarySettings() {
   const { library, settings, isLoading, isOwner, tenantSlug } = useTenant();
   const { isAuthenticated, loading: authLoading } = useAuth();
   
-  // Get initial tab from URL param
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "general");
+  
+  // Auto-expand advanced section if an advanced tab is active
+  const isAdvancedTab = ADVANCED_TABS.some(t => t.value === activeTab);
+  const [showAdvanced, setShowAdvanced] = useState(isAdvancedTab);
 
-  // Update tab when URL changes
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
+      if (ADVANCED_TABS.some(t => t.value === tabFromUrl)) {
+        setShowAdvanced(true);
+      }
     }
   }, [tabFromUrl]);
 
-  // Update URL when tab changes
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     const newParams = new URLSearchParams(searchParams);
@@ -46,7 +67,6 @@ export default function LibrarySettings() {
     setSearchParams(newParams, { replace: true });
   };
 
-  // Redirect if not authenticated or not owner
   if (!authLoading && !isAuthenticated) {
     navigate("/login");
     return null;
@@ -105,44 +125,44 @@ export default function LibrarySettings() {
         </a>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
-            <TabsTrigger value="general" className="gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">General</span>
-            </TabsTrigger>
-            <TabsTrigger value="members" className="gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Members</span>
-            </TabsTrigger>
-            <TabsTrigger value="theme" className="gap-2">
-              <Palette className="h-4 w-4" />
-              <span className="hidden sm:inline">Theme</span>
-            </TabsTrigger>
-            <TabsTrigger value="branding" className="gap-2">
-              <Image className="h-4 w-4" />
-              <span className="hidden sm:inline">Branding</span>
-            </TabsTrigger>
-            <TabsTrigger value="ratings" className="gap-2">
-              <Star className="h-4 w-4" />
-              <span className="hidden sm:inline">Ratings</span>
-            </TabsTrigger>
-            <TabsTrigger value="wishlist" className="gap-2">
-              <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">Wishlist</span>
-            </TabsTrigger>
-            <TabsTrigger value="discord" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Discord</span>
-            </TabsTrigger>
-            <TabsTrigger value="bgg-sync" className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              <span className="hidden sm:inline">BGG Sync</span>
-            </TabsTrigger>
-            <TabsTrigger value="features" className="gap-2">
-              <ToggleRight className="h-4 w-4" />
-              <span className="hidden sm:inline">Features</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="space-y-2">
+            {/* Essential tabs - always visible */}
+            <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
+              {ESSENTIAL_TABS.map(tab => (
+                <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
+                  <tab.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {/* Advanced toggle */}
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
+            >
+              <ChevronDown className={cn(
+                "h-3.5 w-3.5 transition-transform duration-200",
+                showAdvanced && "rotate-180"
+              )} />
+              {showAdvanced ? "Hide advanced settings" : "Show advanced settings"}
+              {isAdvancedTab && !showAdvanced && (
+                <span className="ml-1 h-1.5 w-1.5 rounded-full bg-primary" />
+              )}
+            </button>
+
+            {/* Advanced tabs - toggle visibility */}
+            {showAdvanced && (
+              <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
+                {ADVANCED_TABS.map(tab => (
+                  <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
+                    <tab.icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            )}
+          </div>
 
           <TabsContent value="general">
             <LibrarySettingsGeneral />
