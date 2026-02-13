@@ -178,19 +178,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
   }, [completions, currentStep, isActive]);
 
-  // Navigate when step changes
-  useEffect(() => {
-    if (!isActive) return;
-    const step = TOUR_STEPS[currentStep];
-    if (!step) return;
-
-    // Skip navigation for dynamic routes (they're handled by the component)
-    if (step.route.startsWith("__")) return;
-
-    if (location.pathname !== step.route) {
-      navigate(step.route);
-    }
-  }, [currentStep, isActive]);
+  // Navigation is intentionally NOT automatic on step change.
+  // Users navigate via the action button in the GuidedTour component.
 
   const startTour = useCallback(() => {
     setCurrentStep(0);
