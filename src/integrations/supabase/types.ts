@@ -97,6 +97,229 @@ export type Database = {
           },
         ]
       }
+      catalog_corrections: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          field_name: string
+          id: string
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by: string
+          suggested_value: string
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          field_name: string
+          id?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by: string
+          suggested_value: string
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          field_name?: string
+          id?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string
+          suggested_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_corrections_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_corrections_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_mechanics: {
+        Row: {
+          catalog_id: string
+          id: string
+          mechanic_id: string
+        }
+        Insert: {
+          catalog_id: string
+          id?: string
+          mechanic_id: string
+        }
+        Update: {
+          catalog_id?: string
+          id?: string
+          mechanic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_mechanics_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_mechanics_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_mechanics_mechanic_id_fkey"
+            columns: ["mechanic_id"]
+            isOneToOne: false
+            referencedRelation: "mechanics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_publishers: {
+        Row: {
+          catalog_id: string
+          id: string
+          publisher_id: string
+        }
+        Insert: {
+          catalog_id: string
+          id?: string
+          publisher_id: string
+        }
+        Update: {
+          catalog_id?: string
+          id?: string
+          publisher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_publishers_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_publishers_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_publishers_publisher_id_fkey"
+            columns: ["publisher_id"]
+            isOneToOne: false
+            referencedRelation: "publishers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_video_votes: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+          video_id: string
+          vote_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+          video_id: string
+          vote_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+          video_id?: string
+          vote_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_video_votes_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_videos: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          downvotes: number
+          id: string
+          is_featured: boolean
+          source: string | null
+          submitted_by: string | null
+          title: string | null
+          updated_at: string
+          upvotes: number
+          youtube_url: string
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          downvotes?: number
+          id?: string
+          is_featured?: boolean
+          source?: string | null
+          submitted_by?: string | null
+          title?: string | null
+          updated_at?: string
+          upvotes?: number
+          youtube_url: string
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          downvotes?: number
+          id?: string
+          is_featured?: boolean
+          source?: string | null
+          submitted_by?: string | null
+          title?: string | null
+          updated_at?: string
+          upvotes?: number
+          youtube_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_videos_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_videos_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_events: {
         Row: {
           club_id: string
@@ -532,6 +755,87 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: true
             referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_catalog: {
+        Row: {
+          additional_images: string[] | null
+          bgg_community_rating: number | null
+          bgg_id: string | null
+          bgg_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_expansion: boolean
+          max_players: number | null
+          min_players: number | null
+          parent_catalog_id: string | null
+          play_time_minutes: number | null
+          slug: string | null
+          suggested_age: string | null
+          title: string
+          updated_at: string
+          weight: number | null
+          year_published: number | null
+        }
+        Insert: {
+          additional_images?: string[] | null
+          bgg_community_rating?: number | null
+          bgg_id?: string | null
+          bgg_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_expansion?: boolean
+          max_players?: number | null
+          min_players?: number | null
+          parent_catalog_id?: string | null
+          play_time_minutes?: number | null
+          slug?: string | null
+          suggested_age?: string | null
+          title: string
+          updated_at?: string
+          weight?: number | null
+          year_published?: number | null
+        }
+        Update: {
+          additional_images?: string[] | null
+          bgg_community_rating?: number | null
+          bgg_id?: string | null
+          bgg_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_expansion?: boolean
+          max_players?: number | null
+          min_players?: number | null
+          parent_catalog_id?: string | null
+          play_time_minutes?: number | null
+          slug?: string | null
+          suggested_age?: string | null
+          title?: string
+          updated_at?: string
+          weight?: number | null
+          year_published?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_catalog_parent_catalog_id_fkey"
+            columns: ["parent_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "game_catalog_parent_catalog_id_fkey"
+            columns: ["parent_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
             referencedColumns: ["id"]
           },
         ]
@@ -1151,6 +1455,7 @@ export type Database = {
           additional_images: string[] | null
           bgg_id: string | null
           bgg_url: string | null
+          catalog_id: string | null
           copies_owned: number
           created_at: string | null
           crowdfunded: boolean | null
@@ -1190,6 +1495,7 @@ export type Database = {
           additional_images?: string[] | null
           bgg_id?: string | null
           bgg_url?: string | null
+          catalog_id?: string | null
           copies_owned?: number
           created_at?: string | null
           crowdfunded?: boolean | null
@@ -1229,6 +1535,7 @@ export type Database = {
           additional_images?: string[] | null
           bgg_id?: string | null
           bgg_url?: string | null
+          catalog_id?: string | null
           copies_owned?: number
           created_at?: string | null
           crowdfunded?: boolean | null
@@ -1265,6 +1572,20 @@ export type Database = {
           youtube_videos?: string[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "games_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "games_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "games_library_id_fkey"
             columns: ["library_id"]
@@ -2467,6 +2788,22 @@ export type Database = {
           positive_ratings: number | null
           total_ratings: number | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      catalog_popularity: {
+        Row: {
+          bgg_id: string | null
+          catalog_id: string | null
+          image_url: string | null
+          library_count: number | null
+          max_players: number | null
+          min_players: number | null
+          play_time_minutes: number | null
+          slug: string | null
+          title: string | null
+          total_plays: number | null
+          weight: number | null
         }
         Relationships: []
       }
