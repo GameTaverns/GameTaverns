@@ -84,13 +84,12 @@ export default async function handler(req: Request): Promise<Response> {
         const res = await fetch(`${base}/functions/v1/bgg-sync`, {
           method: "POST",
           headers: {
-            // Use service role key as bearer - bgg-sync will verify ownership
-            // For cron, we impersonate the owner
             Authorization: `Bearer ${serviceKey}`,
             apikey: serviceKey,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ library_id: lib.library_id }),
+          signal: AbortSignal.timeout(120_000), // 2 min — BGG API is slow
         });
 
         const data = await res.json().catch(() => ({}));
