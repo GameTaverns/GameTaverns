@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Dices } from "lucide-react";
 import { isLovableCloud } from "@/config/runtime";
 
 const LTN_LOGO_SRC = "/ltn-logo.png";
@@ -17,7 +16,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-3">
-              <Dices className="h-6 w-6 text-primary" />
+              <img src="/favicon.png" alt="GameTaverns" className="h-6 w-6 object-contain" />
               <span className="font-display font-bold text-lg">GameTaverns</span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-sm">

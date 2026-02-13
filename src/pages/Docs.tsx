@@ -78,11 +78,19 @@ export default function Docs() {
   return (
     <Layout>
       <div className="container max-w-4xl py-8 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Library Owner Guide</h1>
-          <p className="text-muted-foreground mt-1">
-            How to get the most out of your GameTaverns library
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Library Owner Guide</h1>
+            <p className="text-muted-foreground mt-1">
+              How to get the most out of your GameTaverns library
+            </p>
+          </div>
+          <a
+            href="/dashboard#overview"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+          >
+            ← Back to Dashboard
+          </a>
         </div>
 
         <Tabs defaultValue="getting-started" className="w-full">
