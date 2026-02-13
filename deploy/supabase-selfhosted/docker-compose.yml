@@ -343,6 +343,10 @@ services:
       - /home/deno/functions/main
       - --port
       - "9000"
+      # Raise per-request wall-clock timeout from default 10 s → 5 min
+      # Required for long-running functions like BGG sync / bulk import
+      - --worker-timeout-ms
+      - "300000"
     # NOTE: The edge-runtime image does not include curl/wget, so traditional
     # HTTP healthchecks fail. We disable the healthcheck here; Kong handles
     # upstream availability and Docker's restart policy recovers crashes.
