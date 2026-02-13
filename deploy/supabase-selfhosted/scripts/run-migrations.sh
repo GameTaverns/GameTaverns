@@ -134,6 +134,7 @@ MIGRATION_FILES=(
     "51-shame-achievements.sql"
     "52-tour-achievement.sql"
     "53-club-forum-rls.sql"
+    "54-seed-club-forum-categories.sql"
 )
 
 SUCCESS_COUNT=0
