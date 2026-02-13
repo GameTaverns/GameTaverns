@@ -1,7 +1,19 @@
 -- Migration: 54-seed-club-forum-categories.sql
 -- Pre-seed club forums with the same 4 default categories as the site-wide forum.
+-- Also fix the unique index to account for club_id.
 
--- Seed for all existing clubs that don't already have categories
+-- Step 1: Drop the old unique index that doesn't account for club_id
+DROP INDEX IF EXISTS public.forum_categories_library_slug_unique;
+
+-- Step 2: Create a new unique index that scopes slugs by library AND club
+CREATE UNIQUE INDEX IF NOT EXISTS forum_categories_scope_slug_unique
+ON public.forum_categories (
+  COALESCE(library_id, '00000000-0000-0000-0000-000000000000'::uuid),
+  COALESCE(club_id, '00000000-0000-0000-0000-000000000000'::uuid),
+  slug
+);
+
+-- Step 3: Seed for all existing clubs that don't already have categories
 INSERT INTO public.forum_categories (name, slug, description, icon, color, display_order, is_system, club_id)
 SELECT 'Announcements', 'announcements', 'Official club announcements and updates', 'Megaphone', 'amber', 1, true, c.id
 FROM public.clubs c
@@ -30,7 +42,7 @@ WHERE NOT EXISTS (
   SELECT 1 FROM public.forum_categories fc WHERE fc.club_id = c.id AND fc.slug = 'marketplace'
 );
 
--- Create a trigger function to auto-seed categories when a new club is approved
+-- Step 4: Create a trigger function to auto-seed categories when a new club is approved
 CREATE OR REPLACE FUNCTION public.seed_club_forum_categories()
 RETURNS TRIGGER AS $$
 BEGIN
