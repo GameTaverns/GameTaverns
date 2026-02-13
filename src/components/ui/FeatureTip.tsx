@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from "framer-motion";
 
 interface FeatureTipProps {
   /** Unique key for localStorage persistence */
@@ -18,15 +18,16 @@ interface FeatureTipProps {
 
 /**
  * A dismissible inline tip that only shows once per user.
- * Wrap around or place next to a feature to explain it.
+ * Supports swipe-to-dismiss on touch devices.
  */
 export function FeatureTip({ tipId, title, description, icon, className }: FeatureTipProps) {
   const [visible, setVisible] = useState(false);
+  const x = useMotionValue(0);
+  const opacity = useTransform(x, [-150, 0, 150], [0, 1, 0]);
 
   useEffect(() => {
     const dismissed = localStorage.getItem(`tip_dismissed_${tipId}`);
     if (!dismissed) {
-      // Small delay so it feels contextual, not instant
       const timer = setTimeout(() => setVisible(true), 800);
       return () => clearTimeout(timer);
     }
@@ -37,15 +38,26 @@ export function FeatureTip({ tipId, title, description, icon, className }: Featu
     setVisible(false);
   };
 
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    if (Math.abs(info.offset.x) > 100) {
+      dismiss();
+    }
+  };
+
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
+          exit={{ opacity: 0, x: 200 }}
+          drag="x"
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.6}
+          onDragEnd={handleDragEnd}
+          style={{ x, opacity }}
           className={cn(
-            "flex items-start gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5 text-sm",
+            "flex items-start gap-3 p-3 rounded-lg border border-primary/20 bg-primary/5 text-sm cursor-grab active:cursor-grabbing touch-pan-y",
             className
           )}
         >
@@ -55,6 +67,7 @@ export function FeatureTip({ tipId, title, description, icon, className }: Featu
           <div className="flex-1 min-w-0">
             <p className="font-medium text-foreground">{title}</p>
             <p className="text-muted-foreground text-xs mt-0.5">{description}</p>
+            <p className="text-muted-foreground/50 text-[10px] mt-1 sm:hidden">Swipe to dismiss</p>
           </div>
           <button
             onClick={dismiss}

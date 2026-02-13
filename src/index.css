@@ -224,9 +224,39 @@
     @apply flex items-center gap-3 px-4 py-2.5 text-sidebar-foreground/80 
            hover:text-sidebar-foreground hover:bg-sidebar-accent 
            rounded-lg transition-colors font-body;
+    min-height: 44px; /* Touch-friendly minimum */
   }
 
   .sidebar-link-active {
     @apply bg-sidebar-accent text-sidebar-primary font-medium;
+  }
+
+  /* Mobile touch target enforcement */
+  @media (pointer: coarse) {
+    button,
+    a,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    input,
+    select,
+    textarea {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Smaller icon-only buttons can use padding instead */
+    button[data-size="icon"],
+    .h-7,
+    .h-8 {
+      min-height: 36px;
+      min-width: 36px;
+    }
+  }
+
+  /* Sticky mobile action bar */
+  .mobile-action-bar {
+    @apply fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur-sm px-4 py-3;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }
