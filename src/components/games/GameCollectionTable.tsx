@@ -409,8 +409,17 @@ export function GameCollectionTable() {
           <TableBody>
             {filteredAndSortedGames.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  {activeLetter ? `No games starting with "${activeLetter}".` : "No games in your library yet."}
+                <TableCell colSpan={7} className="text-center py-12">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-muted-foreground font-medium">
+                      {activeLetter ? `No games starting with "${activeLetter}"` : "Your library is empty"}
+                    </span>
+                    <span className="text-sm text-muted-foreground/70">
+                      {activeLetter
+                        ? "Try a different letter or clear the filter."
+                        : "Use the Import or Add Game buttons above to start building your collection."}
+                    </span>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (

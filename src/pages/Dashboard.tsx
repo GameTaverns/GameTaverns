@@ -65,6 +65,7 @@ import { useMyClubs } from "@/hooks/useClubs";
 import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidget";
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -134,16 +135,45 @@ export default function Dashboard() {
     enabled: !!library?.id,
   });
   
-const { data: playCount } = useQuery({
+  const { data: playCount } = useQuery({
     queryKey: ["library-play-count", library?.id],
     queryFn: async () => {
       if (!library?.id) return 0;
-      // Use join filtering to avoid long URL with game IDs
       const { count, error } = await supabase
         .from("game_sessions")
         .select("*, games!inner(library_id)", { count: "exact", head: true })
         .eq("games.library_id", library.id);
-      
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!library?.id,
+  });
+
+  // Onboarding: check if library has custom theme
+  const { data: librarySettings } = useQuery({
+    queryKey: ["library-settings-onboarding", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return null;
+      const { data, error } = await supabase
+        .from("library_settings")
+        .select("logo_url, theme_primary_h, background_image_url")
+        .eq("library_id", library.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!library?.id,
+  });
+
+  // Onboarding: check if library has any events
+  const { data: eventCount } = useQuery({
+    queryKey: ["library-event-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return 0;
+      const { count, error } = await supabase
+        .from("library_events")
+        .select("*", { count: "exact", head: true })
+        .eq("library_id", library.id);
       if (error) throw error;
       return count || 0;
     },
@@ -674,6 +704,18 @@ const { data: playCount } = useQuery({
 
                 {/* Import Progress */}
                 <ImportProgressWidget libraryIds={myLibraries.map(l => l.id)} />
+
+                {/* Onboarding Checklist */}
+                <div className="lg:col-span-3">
+                  <OnboardingChecklist
+                    librarySlug={library.slug}
+                    gameCount={gameCount ?? 0}
+                    playCount={playCount ?? 0}
+                    memberCount={memberCount ?? 0}
+                    hasCustomTheme={!!(librarySettings?.logo_url || librarySettings?.theme_primary_h || librarySettings?.background_image_url)}
+                    hasEvents={(eventCount ?? 0) > 0}
+                  />
+                </div>
 
                 {/* My Libraries Card */}
                 <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
