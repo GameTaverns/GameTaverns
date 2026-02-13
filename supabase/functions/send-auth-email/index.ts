@@ -229,7 +229,7 @@ export default async function handler(req: Request): Promise<Response> {
           });
           console.log(`Password reset email queued for ${email}`);
         } finally {
-          if (client) await client.close();
+          try { if (client) await client.close(); } catch { /* connection never opened */ }
         }
       });
 
@@ -373,7 +373,7 @@ export default async function handler(req: Request): Promise<Response> {
           });
           console.log(`Email confirmation queued for ${email}`);
         } finally {
-          if (client) await client.close();
+          try { if (client) await client.close(); } catch { /* connection never opened */ }
         }
       });
 

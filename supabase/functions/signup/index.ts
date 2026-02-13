@@ -171,7 +171,7 @@ async function sendConfirmationEmail(params: { email: string; confirmUrl: string
     `,
     });
   } finally {
-    if (client) await client.close();
+    try { if (client) await client.close(); } catch { /* connection never opened */ }
   }
 }
 
