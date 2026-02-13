@@ -136,18 +136,12 @@ export default async function handler(req: Request): Promise<Response> {
       const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
       await sendEmailSafely(async () => {
+        const isPlainRelay = smtpPort === 25;
         const connection: any = {
           hostname: smtpHost,
           port: smtpPort,
           tls: smtpPort === 465,
         };
-
-        // Port 25 = internal relay, no auth, no STARTTLS
-        if (smtpPort === 25) {
-          connection.debug = { noStartTLS: true, allowUnsecure: true };
-        } else if (smtpPort === 587) {
-          connection.starttls = true;
-        }
 
         if (requiresAuth) {
           connection.auth = { username: smtpUser, password: smtpPass };
@@ -155,6 +149,9 @@ export default async function handler(req: Request): Promise<Response> {
 
         const client = new SMTPClient({
           connection,
+          ...(isPlainRelay
+            ? { debug: { allowUnsecure: true, noStartTLS: true } }
+            : {}),
         });
 
         try {
@@ -281,23 +278,23 @@ export default async function handler(req: Request): Promise<Response> {
       const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
 
       await sendEmailSafely(async () => {
+        const isPlainRelay = smtpPort === 25;
         const connection: any = {
           hostname: smtpHost,
           port: smtpPort,
           tls: smtpPort === 465,
         };
 
-        if (smtpPort === 25) {
-          connection.debug = { noStartTLS: true, allowUnsecure: true };
-        } else if (smtpPort === 587) {
-          connection.starttls = true;
-        }
-
         if (requiresAuth) {
           connection.auth = { username: smtpUser, password: smtpPass };
         }
 
-        const client = new SMTPClient({ connection });
+        const client = new SMTPClient({
+          connection,
+          ...(isPlainRelay
+            ? { debug: { allowUnsecure: true, noStartTLS: true } }
+            : {}),
+        });
 
         try {
           const fromAddress = `GameTaverns <${smtpFrom}>`;
