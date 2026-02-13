@@ -16,9 +16,3 @@ INSERT INTO public.achievements (slug, name, description, category, icon, points
 VALUES
   ('zero_shame', 'Zero Shame', 'Have no unplayed games in your library — impossible!', 'collector', '✨', 75, 4, 'zero_shame', 1, true)
 ON CONFLICT (slug) DO NOTHING;
-
--- Tour completion achievement
-INSERT INTO public.achievements (slug, name, description, category, icon, points, tier, requirement_type, requirement_value, is_secret)
-VALUES
-  ('tour_complete', 'Welcome Aboard!', 'Complete the guided onboarding tour', 'explorer', '🗺️', 15, 1, 'tour_complete', 1, false)
-ON CONFLICT (slug) DO NOTHING;
