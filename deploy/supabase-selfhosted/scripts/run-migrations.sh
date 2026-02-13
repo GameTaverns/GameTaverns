@@ -132,6 +132,7 @@ MIGRATION_FILES=(
     "49-cleanup-stuck-imports-cron.sql"
     "50-game-catalog.sql"
     "51-shame-achievements.sql"
+    "52-tour-achievement.sql"
 )
 
 SUCCESS_COUNT=0
