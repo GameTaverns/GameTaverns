@@ -25,7 +25,7 @@ const TOUR_STEPS: TourStep[] = [
     id: "create-library",
     title: "Create Your Library",
     description: "First, create a library. It gets its own subdomain (e.g., yourname.gametaverns.com) where friends can browse your collection.",
-    route: "/dashboard",
+    route: "/create-library",
     completionKey: "has_library",
     actionLabel: "Create Library",
     emoji: "📚",
