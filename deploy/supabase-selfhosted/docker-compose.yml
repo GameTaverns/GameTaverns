@@ -327,6 +327,8 @@ services:
       # Site info for edge functions
       SITE_URL: "${SITE_URL:-https://gametaverns.com}"
       SITE_NAME: "${SITE_NAME:-GameTaverns}"
+      # Raise per-request wall-clock timeout from 10s default to 5 min
+      EDGE_RUNTIME_WORKER_TIMEOUT_MS: "300000"
     volumes:
       # Use absolute path since docker-compose is in deploy/supabase-selfhosted/
       # but functions are at the repo root /opt/gametaverns/supabase/functions
@@ -343,10 +345,6 @@ services:
       - /home/deno/functions/main
       - --port
       - "9000"
-      # Raise per-request wall-clock timeout from default 10 s → 5 min
-      # Required for long-running functions like BGG sync / bulk import
-      - --worker-timeout-ms
-      - "300000"
     # NOTE: The edge-runtime image does not include curl/wget, so traditional
     # HTTP healthchecks fail. We disable the healthcheck here; Kong handles
     # upstream availability and Docker's restart policy recovers crashes.
