@@ -72,6 +72,7 @@ import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { InfoPopover } from "@/components/ui/InfoPopover";
 import { cn } from "@/lib/utils";
 import { useTotpStatus } from "@/hooks/useTotpStatus";
+import { useTour } from "@/contexts/TourContext";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -189,7 +190,19 @@ export default function Dashboard() {
     },
     enabled: !!library?.id,
   });
-  
+
+  // Sync tour completions based on real data
+  const { setCompletions: setTourCompletions } = useTour();
+  const hasCustomTheme = !!(librarySettings?.logo_url || librarySettings?.theme_primary_h || librarySettings?.background_image_url);
+  useEffect(() => {
+    setTourCompletions({
+      has_library: !!library,
+      has_games: (gameCount ?? 0) > 0,
+      has_custom_theme: hasCustomTheme,
+      has_2fa: totpStatus?.isEnabled ?? false,
+    });
+  }, [library, gameCount, hasCustomTheme, totpStatus, setTourCompletions]);
+
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (error) {
@@ -231,7 +244,7 @@ export default function Dashboard() {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
-      <GuidedTour />
+      <GuidedTour librarySlug={library?.slug} />
       <AnnouncementBanner />
       <div className="container mx-auto px-4 pt-3">
         <TwoFactorBanner />
