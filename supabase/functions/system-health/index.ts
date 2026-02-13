@@ -23,7 +23,7 @@ async function pingFunction(
   fnPath: string,
   method = "POST",
   body: string | null = "{}",
-  timeoutMs = 10000,
+  timeoutMs = 4000,
 ): Promise<HealthCheck> {
   const start = Date.now();
   try {
@@ -66,7 +66,7 @@ async function checkAuth(supabaseUrl: string, anonKey: string): Promise<HealthCh
   try {
     const resp = await fetch(`${supabaseUrl}/auth/v1/settings`, {
       headers: { apikey: anonKey },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(5000),
     });
     const latency = Date.now() - start;
     if (resp.ok) return { name: "Auth Service", group: "core", status: "healthy", latencyMs: latency };
@@ -95,7 +95,7 @@ async function checkRealtime(supabaseUrl: string, anonKey: string): Promise<Heal
     const url = supabaseUrl.replace(/\/+$/, "");
     const resp = await fetch(`${url}/realtime/v1/`, {
       headers: { apikey: anonKey },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(5000),
     });
     const latency = Date.now() - start;
     if (resp.status < 500) return { name: "Realtime", group: "core", status: "healthy", latencyMs: latency };

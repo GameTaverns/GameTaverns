@@ -76,12 +76,13 @@ export default async function handler(req: Request): Promise<Response> {
         continue;
       }
 
-      // Call bgg-sync with service role as the owner
+      // Fire-and-forget: trigger bgg-sync without awaiting response
+      // to avoid the edge-runtime 10s worker timeout
       try {
         const base = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-        const res = await fetch(`${base}/functions/v1/bgg-sync`, {
+        fetch(`${base}/functions/v1/bgg-sync`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${serviceKey}`,
@@ -89,18 +90,13 @@ export default async function handler(req: Request): Promise<Response> {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ library_id: lib.library_id }),
-          signal: AbortSignal.timeout(120_000), // 2 min — BGG API is slow
-        });
+        }).catch((err) => console.error(`[BGGSyncCron] Fire-and-forget failed for ${lib.library_id}:`, err));
 
-        const data = await res.json().catch(() => ({}));
         results.push({
           library_id: lib.library_id,
-          status: data.success ? "success" : "error",
-          message: data.message || data.error,
+          status: "triggered",
+          message: "Sync dispatched (fire-and-forget)",
         });
-
-        // Rate limit between libraries to be gentle with BGG
-        await new Promise((r) => setTimeout(r, 5000));
       } catch (err) {
         results.push({
           library_id: lib.library_id,
