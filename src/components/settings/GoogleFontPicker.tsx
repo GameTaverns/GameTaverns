@@ -176,7 +176,7 @@ export function GoogleFontPicker({
             </div>
 
             {/* Font list */}
-            <ScrollArea className="max-h-64">
+            <ScrollArea className="h-64">
               <div className="p-1">
                 {!search.trim() && (
                   <div className="px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
