@@ -96,7 +96,7 @@ export function CreatePollDialog({ libraryId, trigger }: CreatePollDialogProps) 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Game Poll</DialogTitle>
           <DialogDescription>

@@ -496,7 +496,7 @@ const GameDetail = () => {
 
             {/* Tabs for Description and Additional Info */}
             <Tabs defaultValue="description" className="w-full">
-              <TabsList className={`grid w-full mb-4 ${playLogs ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
                 <TabsTrigger value="description">Description</TabsTrigger>
                 <TabsTrigger value="info">Info</TabsTrigger>
                 <TabsTrigger value="location">Location</TabsTrigger>

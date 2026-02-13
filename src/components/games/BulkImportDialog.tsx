@@ -1031,7 +1031,7 @@ export function BulkImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[90vh] h-[100dvh] sm:h-auto overflow-hidden flex flex-col rounded-none sm:rounded-lg p-4 sm:p-6">
+      <DialogContent className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Bulk Import Games</DialogTitle>
           <DialogDescription>

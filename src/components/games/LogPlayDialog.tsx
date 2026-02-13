@@ -143,7 +143,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Log a Play</DialogTitle>
           <DialogDescription>Record a play session for {gameTitle}</DialogDescription>

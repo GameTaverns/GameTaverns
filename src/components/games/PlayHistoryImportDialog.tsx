@@ -200,7 +200,7 @@ export function PlayHistoryImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-lg max-h-[100dvh] sm:max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />

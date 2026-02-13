@@ -553,7 +553,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
         
         {/* Result Dialog */}
         <Dialog open={showResult} onOpenChange={setShowResult}>
-          <DialogContent className="bg-wood-dark border-wood-medium text-cream max-w-md">
+          <DialogContent className="bg-wood-dark border-wood-medium text-cream sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
                 <Sparkles className="h-5 w-5 text-secondary" />
@@ -627,7 +627,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
         
         {/* Game Selector Dialog for Manual Mode */}
         <Dialog open={showGameSelector} onOpenChange={setShowGameSelector}>
-          <DialogContent className="bg-wood-dark border-wood-medium text-cream max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogContent className="bg-wood-dark border-wood-medium text-cream sm:max-w-md max-h-[100dvh] sm:max-h-[80vh] overflow-hidden flex flex-col">
             <DialogHeader>
               <DialogTitle>Select a Game</DialogTitle>
             </DialogHeader>
