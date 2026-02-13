@@ -37,21 +37,19 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): P
   }
 }
 
-function sendEmailSafely(sendFn: () => Promise<void>, email: string) {
-  // Never block API responses on SMTP.
-  // We still attempt delivery in the background with a hard timeout.
-  (async () => {
-    try {
-      await withTimeout(sendFn(), SMTP_SEND_TIMEOUT_MS, "SMTP send");
-      console.log(`[Signup] Email successfully sent to ${email}`);
-    } catch (e: any) {
-      // Log full error details for debugging - this is critical for diagnosing SMTP issues
-      console.error(`[Signup] SMTP send FAILED for ${email}:`, e?.message || e);
-      if (e?.stack) {
-        console.error(`[Signup] Stack trace:`, e.stack);
-      }
+async function sendEmailSafely(sendFn: () => Promise<void>, email: string) {
+  // Must await SMTP delivery — the self-hosted edge runtime terminates the
+  // isolate immediately after the handler returns, so fire-and-forget fails.
+  try {
+    await withTimeout(sendFn(), SMTP_SEND_TIMEOUT_MS, "SMTP send");
+    console.log(`[Signup] Email successfully sent to ${email}`);
+  } catch (e: any) {
+    console.error(`[Signup] SMTP send FAILED for ${email}:`, e?.message || e);
+    if (e?.stack) {
+      console.error(`[Signup] Stack trace:`, e.stack);
     }
-  })();
+    // Don't re-throw — still return success to prevent email enumeration
+  }
 }
 
 function getSmtpClient() {
@@ -321,7 +319,7 @@ async function handler(req: Request): Promise<Response> {
       // Fire-and-forget email sending - don't block the response.
       // IMPORTANT: we also enforce a hard timeout so the function instance
       // doesn't hang on a stuck SMTP connect and get killed by the platform.
-      sendEmailSafely(async () => {
+      await sendEmailSafely(async () => {
         console.log(`[Signup] Attempting confirmation email via SMTP ${Deno.env.get("SMTP_HOST")}:${Deno.env.get("SMTP_PORT") || "465"}`);
         await sendConfirmationEmail({ email, confirmUrl });
       }, email);
