@@ -15,6 +15,7 @@
     /* Typography tokens (overridden by ThemeApplicator/DemoThemeApplicator) */
     --font-display: "MedievalSharp";
     --font-body: "IM Fell English";
+    --font-accent: "IM Fell English";
 
     /* Main background - warm parchment cream */
     --background: 39 45% 94%;
@@ -78,6 +79,7 @@
   .dark {
     --font-display: "MedievalSharp";
     --font-body: "IM Fell English";
+    --font-accent: "IM Fell English";
 
     --background: 25 30% 10%;
     --foreground: 40 40% 90%;

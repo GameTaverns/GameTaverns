@@ -17,6 +17,7 @@ export default {
         // Use CSS variables so live/demo can swap fonts at runtime
         display: ["var(--font-display)", "MedievalSharp", "cursive"],
         body: ["var(--font-body)", "IM Fell English", "serif"],
+        accent: ["var(--font-accent)", "var(--font-body)", "IM Fell English", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
