@@ -366,6 +366,7 @@ export default async function handler(req: Request): Promise<Response> {
         }
 
         // Call send-auth-email to resend the confirmation
+        // Pass userId to avoid redundant listUsers() call which can timeout
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const sendEmailUrl = `${supabaseUrl}/functions/v1/send-auth-email`;
@@ -380,6 +381,7 @@ export default async function handler(req: Request): Promise<Response> {
           body: JSON.stringify({
             type: "email_confirmation",
             email: targetEmail,
+            userId: userId,
           }),
         });
 
