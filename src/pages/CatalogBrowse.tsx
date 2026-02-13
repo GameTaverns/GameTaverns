@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Clock, Weight, BookOpen, ExternalLink, ChevronDown, ChevronUp, Library } from "lucide-react";
+import { Search, Users, Clock, Weight, BookOpen, ExternalLink, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
@@ -88,6 +88,12 @@ export default function CatalogBrowse() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="mb-6">
+          <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Link>
+        </div>
         <div className="text-center mb-8">
           <h1 className="font-display text-4xl font-bold mb-2">Game Catalog</h1>
           <p className="text-muted-foreground text-lg">
