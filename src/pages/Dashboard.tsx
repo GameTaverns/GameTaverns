@@ -67,6 +67,7 @@ import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidge
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { InfoPopover } from "@/components/ui/InfoPopover";
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
@@ -389,7 +390,14 @@ export default function Dashboard() {
           <TabsContent value="clubs">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="font-display text-2xl text-cream">My Clubs</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-display text-2xl text-cream">My Clubs</h2>
+                  <InfoPopover
+                    title="Clubs"
+                    description="Clubs connect multiple board game libraries, letting members search across collections and organize joint events."
+                    className="text-cream/40 hover:text-cream/70"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Link to="/join-club">
                     <Button variant="outline" className="gap-2 text-cream border-wood-medium/50 hover:bg-wood-medium/40">
@@ -459,6 +467,14 @@ export default function Dashboard() {
 
           {/* ===== COMMUNITY TAB ===== */}
           <TabsContent value="community">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="font-display text-2xl text-cream">Community</h2>
+              <InfoPopover
+                title="Community"
+                description="See activity from libraries you follow, discover popular games, and engage with the broader GameTaverns community."
+                className="text-cream/40 hover:text-cream/70"
+              />
+            </div>
             <CommunityTab />
           </TabsContent>
           <TabsContent value="personal">
