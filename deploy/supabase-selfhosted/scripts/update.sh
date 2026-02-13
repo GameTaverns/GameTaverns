@@ -132,7 +132,7 @@ dcp up -d --force-recreate --no-deps functions
 
 echo ""
 echo "Restarting Kong gateway (refresh DNS for recreated containers)..."
-dcp restart kong
+dcp up -d --force-recreate --no-deps kong
 
 # Wait for services to stabilize
 echo ""
