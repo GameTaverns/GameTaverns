@@ -63,6 +63,7 @@ import { ChallengesManager } from "@/components/challenges/ChallengesManager";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
 import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidget";
+import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -573,6 +574,32 @@ const { data: playCount } = useQuery({
                 </CardHeader>
                 <CardContent>
                   <AchievementsDisplay compact />
+                </CardContent>
+              </Card>
+
+              {/* Shelf of Shame Widget */}
+              {library && (
+                <ShelfOfShameWidget libraryId={library.id} />
+              )}
+
+              {/* Smart Picker Card */}
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Gamepad2 className="h-5 w-5 text-secondary" />
+                    Smart Picker
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Find the perfect game for your group
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link to="/picker">
+                    <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                      <Target className="h-4 w-4 mr-2" />
+                      Pick a Game
+                    </Button>
+                  </Link>
                 </CardContent>
               </Card>
 

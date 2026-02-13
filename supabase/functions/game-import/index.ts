@@ -377,6 +377,135 @@ const normalizeGameType = (gameType: string | undefined): string | undefined => 
   return mapped ? normalizeEnum(mapped, GAME_TYPE_OPTIONS) : undefined;
 };
 
+// ---------------------------------------------------------------------------
+// Catalog upsert helper - seeds game_catalog from BGG data on every import
+// ---------------------------------------------------------------------------
+async function upsertCatalogEntry(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  bggId: string,
+  bggData: {
+    title?: string;
+    image_url?: string;
+    description?: string;
+    min_players?: number;
+    max_players?: number;
+    suggested_age?: string;
+    play_time?: string;
+    difficulty?: string;
+    mechanics?: string[];
+    publisher?: string;
+    is_expansion?: boolean;
+    bgg_average_rating?: number;
+  },
+  gameId: string
+): Promise<void> {
+  if (!bggData.title) return;
+
+  try {
+    // Parse weight from difficulty string
+    let weight: number | null = null;
+    if (bggData.difficulty) {
+      const weightMap: Record<string, number> = {
+        "1 - Light": 1.25,
+        "2 - Medium Light": 1.88,
+        "3 - Medium": 2.63,
+        "4 - Medium Heavy": 3.38,
+        "5 - Heavy": 4.25,
+      };
+      weight = weightMap[bggData.difficulty] || null;
+    }
+
+    // Parse play_time_minutes from play_time enum
+    let playTimeMinutes: number | null = null;
+    if (bggData.play_time) {
+      const timeMap: Record<string, number> = {
+        "0-15 Minutes": 15,
+        "15-30 Minutes": 30,
+        "30-45 Minutes": 45,
+        "45-60 Minutes": 60,
+        "60+ Minutes": 90,
+        "2+ Hours": 150,
+        "3+ Hours": 210,
+      };
+      playTimeMinutes = timeMap[bggData.play_time] || null;
+    }
+
+    const catalogData = {
+      bgg_id: bggId,
+      title: bggData.title,
+      image_url: bggData.image_url || null,
+      description: bggData.description?.slice(0, 10000) || null,
+      min_players: bggData.min_players || null,
+      max_players: bggData.max_players || null,
+      play_time_minutes: playTimeMinutes,
+      weight,
+      suggested_age: bggData.suggested_age || null,
+      is_expansion: bggData.is_expansion === true,
+      bgg_url: `https://boardgamegeek.com/boardgame/${bggId}`,
+      bgg_community_rating: bggData.bgg_average_rating || null,
+    };
+
+    const { data: catalogEntry, error: catalogError } = await supabaseAdmin
+      .from("game_catalog")
+      .upsert(catalogData, { onConflict: "bgg_id" })
+      .select("id")
+      .single();
+
+    if (catalogError) {
+      console.error(`[GameImport] Catalog upsert error for ${bggId}:`, catalogError.message);
+      return;
+    }
+
+    // Link the library game to the catalog entry
+    if (catalogEntry?.id) {
+      await supabaseAdmin
+        .from("games")
+        .update({ catalog_id: catalogEntry.id })
+        .eq("id", gameId);
+
+      // Upsert catalog mechanics
+      if (bggData.mechanics && bggData.mechanics.length > 0) {
+        for (const mechanicName of bggData.mechanics) {
+          const { data: mech } = await supabaseAdmin
+            .from("mechanics")
+            .select("id")
+            .eq("name", mechanicName)
+            .maybeSingle();
+          if (mech) {
+            await supabaseAdmin
+              .from("catalog_mechanics")
+              .upsert(
+                { catalog_id: catalogEntry.id, mechanic_id: mech.id },
+                { onConflict: "catalog_id,mechanic_id" }
+              );
+          }
+        }
+      }
+
+      // Upsert catalog publisher
+      if (bggData.publisher) {
+        const { data: pub } = await supabaseAdmin
+          .from("publishers")
+          .select("id")
+          .eq("name", bggData.publisher)
+          .maybeSingle();
+        if (pub) {
+          await supabaseAdmin
+            .from("catalog_publishers")
+            .upsert(
+              { catalog_id: catalogEntry.id, publisher_id: pub.id },
+              { onConflict: "catalog_id,publisher_id" }
+            );
+        }
+      }
+
+      console.log(`[GameImport] Catalog entry upserted for "${bggData.title}" (${bggId}), linked to game ${gameId}`);
+    }
+  } catch (e) {
+    console.error(`[GameImport] Catalog upsert failed for ${bggId}:`, e);
+  }
+}
+
 const normalizeSaleCondition = (saleCondition: string | undefined): string | undefined => {
   if (!saleCondition) return undefined;
   const c = saleCondition.trim();
@@ -866,6 +995,11 @@ export default async function handler(req: Request): Promise<Response> {
             { onConflict: "game_id,guest_identifier" }
           );
         console.log(`[GameImport] Saved BGG rating ${bggData.bgg_average_rating}/10 → ${mapped5Star}/5 for "${game.title}"`);
+      }
+
+      // Upsert into canonical game catalog
+      if (bggId) {
+        await upsertCatalogEntry(supabaseAdmin, bggId, bggData as any, game.id);
       }
 
       console.log("Game imported successfully (fast path):", game.title);
