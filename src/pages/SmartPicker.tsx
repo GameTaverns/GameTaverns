@@ -11,7 +11,10 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Dices, Users, Clock, Weight, BookX, Shuffle, Filter, Sparkles } from "lucide-react";
+import { Dices, Users, Clock, Weight, BookX, Shuffle, Filter, Sparkles, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { GameImage } from "@/components/games/GameImage";
 
 interface PickerGame {
   id: string;
@@ -129,12 +132,40 @@ export default function SmartPicker() {
     });
   }, [filteredGames, prioritizeUnplayed]);
 
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animatingGame, setAnimatingGame] = useState<PickerGame | null>(null);
+
   const handlePick = () => {
     if (scoredGames.length === 0) return;
-    // Weighted random: top-scored games are more likely
-    const topN = Math.min(5, scoredGames.length);
-    const idx = Math.floor(Math.random() * topN);
-    setPickedGame(scoredGames[idx]);
+    
+    setIsAnimating(true);
+    setPickedGame(null);
+    
+    // Roll through games with decreasing speed
+    let iteration = 0;
+    const totalIterations = 20;
+    
+    const rollNext = () => {
+      const randomIdx = Math.floor(Math.random() * scoredGames.length);
+      setAnimatingGame(scoredGames[randomIdx]);
+      iteration++;
+      
+      if (iteration < totalIterations) {
+        // Slow down progressively
+        const delay = 80 + (iteration * iteration * 2);
+        setTimeout(rollNext, delay);
+      } else {
+        // Final pick
+        const topN = Math.min(5, scoredGames.length);
+        const idx = Math.floor(Math.random() * topN);
+        const finalPick = scoredGames[idx];
+        setAnimatingGame(null);
+        setPickedGame(finalPick);
+        setIsAnimating(false);
+      }
+    };
+    
+    rollNext();
   };
 
   if (loading) return null;
@@ -142,6 +173,12 @@ export default function SmartPicker() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="mb-4">
+          <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Link>
+        </div>
         <div className="text-center mb-8">
           <h1 className="font-display text-4xl font-bold mb-2">Smart Game Picker</h1>
           <p className="text-muted-foreground text-lg">
@@ -250,52 +287,87 @@ export default function SmartPicker() {
             <CardContent className="space-y-4">
               <Button
                 onClick={handlePick}
-                disabled={filteredGames.length === 0}
+                disabled={filteredGames.length === 0 || isAnimating}
                 className="w-full gap-2"
                 size="lg"
               >
-                <Dices className="h-5 w-5" />
-                {pickedGame ? "Pick Again" : "Pick a Game!"}
+                {isAnimating ? (
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.5, repeat: Infinity, ease: "linear" }}>
+                    <Dices className="h-5 w-5" />
+                  </motion.div>
+                ) : (
+                  <Dices className="h-5 w-5" />
+                )}
+                {isAnimating ? "Rolling..." : pickedGame ? "Pick Again" : "Pick a Game!"}
               </Button>
 
-              {pickedGame && (
-                <div className="p-4 rounded-lg bg-secondary/10 border border-secondary/30 text-center">
-                  {pickedGame.image_url && (
-                    <img
-                      src={pickedGame.image_url}
-                      alt={pickedGame.title}
-                      className="w-32 h-32 mx-auto rounded-lg object-cover mb-3"
-                    />
-                  )}
-                  <h3 className="font-display text-xl font-bold">{pickedGame.title}</h3>
-                  <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
-                    {pickedGame.play_time && (
-                      <Badge variant="outline" className="text-xs">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {pickedGame.play_time}
-                      </Badge>
+              {/* Animated rolling display */}
+              <AnimatePresence mode="wait">
+                {isAnimating && animatingGame && (
+                  <motion.div
+                    key={animatingGame.id}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 0.7, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={{ duration: 0.08 }}
+                    className="p-4 rounded-lg bg-muted/50 border border-border text-center"
+                  >
+                    {animatingGame.image_url && (
+                      <img
+                        src={animatingGame.image_url}
+                        alt={animatingGame.title}
+                        className="w-24 h-24 mx-auto rounded-lg object-cover mb-2 opacity-60"
+                      />
                     )}
-                    {pickedGame.min_players && pickedGame.max_players && (
-                      <Badge variant="outline" className="text-xs">
-                        <Users className="h-3 w-3 mr-1" />
-                        {pickedGame.min_players}–{pickedGame.max_players}
-                      </Badge>
+                    <h3 className="font-display text-lg text-muted-foreground">{animatingGame.title}</h3>
+                  </motion.div>
+                )}
+
+                {!isAnimating && pickedGame && (
+                  <motion.div
+                    key={"result-" + pickedGame.id}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="p-4 rounded-lg bg-secondary/10 border border-secondary/30 text-center"
+                  >
+                    {pickedGame.image_url && (
+                      <img
+                        src={pickedGame.image_url}
+                        alt={pickedGame.title}
+                        className="w-32 h-32 mx-auto rounded-lg object-cover mb-3"
+                      />
                     )}
-                    {pickedGame.difficulty && (
-                      <Badge variant="outline" className="text-xs">
-                        <Weight className="h-3 w-3 mr-1" />
-                        {pickedGame.difficulty}
-                      </Badge>
-                    )}
-                    {pickedGame.is_unplayed && (
-                      <Badge variant="secondary" className="text-xs">
-                        <BookX className="h-3 w-3 mr-1" />
-                        Unplayed!
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
+                    <h3 className="font-display text-xl font-bold">{pickedGame.title}</h3>
+                    <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+                      {pickedGame.play_time && (
+                        <Badge variant="outline" className="text-xs">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {pickedGame.play_time}
+                        </Badge>
+                      )}
+                      {pickedGame.min_players && pickedGame.max_players && (
+                        <Badge variant="outline" className="text-xs">
+                          <Users className="h-3 w-3 mr-1" />
+                          {pickedGame.min_players}–{pickedGame.max_players}
+                        </Badge>
+                      )}
+                      {pickedGame.difficulty && (
+                        <Badge variant="outline" className="text-xs">
+                          <Weight className="h-3 w-3 mr-1" />
+                          {pickedGame.difficulty}
+                        </Badge>
+                      )}
+                      {pickedGame.is_unplayed && (
+                        <Badge variant="secondary" className="text-xs">
+                          <BookX className="h-3 w-3 mr-1" />
+                          Unplayed!
+                        </Badge>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Top suggestions list */}
               {scoredGames.length > 0 && (

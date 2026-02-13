@@ -64,6 +64,7 @@ import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
 import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidget";
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
+import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -877,18 +878,7 @@ const { data: playCount } = useQuery({
                     </Button>
                   </Link>
                 </div>
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                  <CardContent className="py-6">
-                    <p className="text-cream/70 mb-4">
-                      The Game Catalog is the platform-wide encyclopedia of board games. It powers cross-library search, "Who Has This" lookups, and community metadata corrections.
-                    </p>
-                    <Link to="/catalog">
-                      <Button variant="secondary" className="gap-2">
-                        <BookOpen className="h-4 w-4" /> Browse Catalog
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
+                <CatalogBrowseEmbed />
               </div>
             </TabsContent>
           )}
