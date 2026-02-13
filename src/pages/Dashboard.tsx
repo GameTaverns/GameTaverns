@@ -27,7 +27,8 @@ import {
   DollarSign,
   Target,
   ArrowLeftRight,
-  Ticket
+  Ticket,
+  ChevronDown
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -66,6 +67,7 @@ import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidge
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -99,6 +101,9 @@ export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "personal");
+  const SECONDARY_TABS = ["analytics", "trades", "clubs", "catalog", "danger"];
+  const isSecondaryTab = SECONDARY_TABS.includes(activeTab);
+  const [showMoreTabs, setShowMoreTabs] = useState(isSecondaryTab);
 
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
@@ -287,74 +292,98 @@ export default function Dashboard() {
         </h1>
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="mb-8 bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1">
-            <TabsTrigger 
-              value="personal" 
-              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <User className="h-4 w-4" />
-              Personal
-            </TabsTrigger>
-            <TabsTrigger 
-              value="community" 
-              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Community
-            </TabsTrigger>
-            <TabsTrigger 
-              value="library" 
-              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <Library className="h-4 w-4" />
-              Library
-              {library && (pendingLoanRequests > 0 || unreadCount > 0) && (
-                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                  {pendingLoanRequests + unreadCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger 
-              value="analytics" 
-              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <BarChart3 className="h-4 w-4" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger 
-              value="trades" 
-              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <ArrowLeftRight className="h-4 w-4" />
-              Trades
-            </TabsTrigger>
-            <TabsTrigger 
-              value="clubs" 
-              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <Users className="h-4 w-4" />
-              Clubs
-              {myClubs.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{myClubs.length}</Badge>
-              )}
-            </TabsTrigger>
-            {isAdmin && (
+          <div className="mb-8 space-y-2">
+            {/* Primary tabs - always visible */}
+            <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1">
               <TabsTrigger 
-                value="catalog" 
+                value="personal" 
                 className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
               >
-                <BookOpen className="h-4 w-4" />
-                Catalog
+                <User className="h-4 w-4" />
+                Personal
               </TabsTrigger>
-            )}
-            <TabsTrigger 
-              value="danger" 
-              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+              <TabsTrigger 
+                value="community" 
+                className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Community
+              </TabsTrigger>
+              <TabsTrigger 
+                value="library" 
+                className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+              >
+                <Library className="h-4 w-4" />
+                Library
+                {library && (pendingLoanRequests > 0 || unreadCount > 0) && (
+                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                    {pendingLoanRequests + unreadCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            {/* More tabs toggle */}
+            <button
+              onClick={() => setShowMoreTabs(!showMoreTabs)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cream/60 hover:text-cream transition-colors rounded-md hover:bg-wood-medium/30"
             >
-              <AlertTriangle className="h-4 w-4" />
-              Danger Zone
-            </TabsTrigger>
-          </TabsList>
+              <ChevronDown className={cn(
+                "h-3.5 w-3.5 transition-transform duration-200",
+                showMoreTabs && "rotate-180"
+              )} />
+              {showMoreTabs ? "Fewer options" : "More options"}
+              {isSecondaryTab && !showMoreTabs && (
+                <span className="ml-1 h-1.5 w-1.5 rounded-full bg-secondary" />
+              )}
+            </button>
+
+            {/* Secondary tabs - behind toggle */}
+            {showMoreTabs && (
+              <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1">
+                <TabsTrigger 
+                  value="analytics" 
+                  className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="trades" 
+                  className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+                >
+                  <ArrowLeftRight className="h-4 w-4" />
+                  Trades
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="clubs" 
+                  className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+                >
+                  <Users className="h-4 w-4" />
+                  Clubs
+                  {myClubs.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 text-xs">{myClubs.length}</Badge>
+                  )}
+                </TabsTrigger>
+                {isAdmin && (
+                  <TabsTrigger 
+                    value="catalog" 
+                    className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    Catalog
+                  </TabsTrigger>
+                )}
+                <TabsTrigger 
+                  value="danger" 
+                  className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  Danger Zone
+                </TabsTrigger>
+              </TabsList>
+            )}
+          </div>
 
           {/* ===== CLUBS TAB ===== */}
           <TabsContent value="clubs">
