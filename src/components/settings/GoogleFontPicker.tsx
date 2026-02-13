@@ -72,7 +72,7 @@ export function GoogleFontPicker({
       if (response.ok) {
         const text = await response.text();
         // The metadata endpoint returns JSON with a leading )]}' prefix
-        const json = JSON.parse(text.replace(/^\\)\\]\\}'\n/, ""));
+        const json = JSON.parse(text.replace(/^\)\]\}'\n/, ""));
         const fontNames: string[] = json.familyMetadataList
           ?.map((f: any) => f.family)
           .filter(Boolean) || [];
