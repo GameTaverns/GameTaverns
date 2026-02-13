@@ -59,9 +59,9 @@ function getSmtpClient() {
   const smtpPass = Deno.env.get("SMTP_PASS") || "";
   const smtpFrom = Deno.env.get("SMTP_FROM");
 
-  // Port 25 is commonly used for local, non-TLS relay on the same host.
-  // In that mode, many setups intentionally have no auth.
-  const requiresAuth = smtpPort !== 25;
+  // Always authenticate if credentials are provided — Mailcow rejects
+  // unauthenticated relay even on port 25 for sender verification.
+  const requiresAuth = !!(smtpUser && smtpPass);
 
   if (!smtpHost || !smtpFrom) {
     throw new Error("Email service not configured (missing SMTP_HOST/SMTP_FROM)");
