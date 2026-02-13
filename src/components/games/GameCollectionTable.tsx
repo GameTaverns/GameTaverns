@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Edit, Trash2, Download, Star, ChevronUp, ChevronDown } from "lucide-react";
+import { Edit, Trash2, Download, Star, ChevronUp, ChevronDown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +27,7 @@ import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import type { GameWithRelations } from "@/types/game";
+import { BulkEditDialog } from "@/components/games/BulkEditDialog";
 
 type SortField = "title" | "game_type" | "difficulty" | "players" | "rating";
 type SortDirection = "asc" | "desc";
@@ -42,6 +44,17 @@ export function GameCollectionTable() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<GameWithRelations | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   // Flatten games to include expansions in the list
   const allGames = useMemo(() => {
@@ -121,6 +134,14 @@ export function GameCollectionTable() {
 
     return result;
   }, [allGames, activeLetter, sortField, sortDirection, ratingsData]);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) =>
+      prev.size === filteredAndSortedGames.length
+        ? new Set()
+        : new Set(filteredAndSortedGames.map((g) => g.id))
+    );
+  }, [filteredAndSortedGames]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -296,15 +317,23 @@ export function GameCollectionTable() {
     <div className="space-y-4">
       {/* Toolbar with Alpha Bar */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="text-sm text-muted-foreground">
             Showing {filteredAndSortedGames.length} of {allGames.length} games
             {activeLetter && ` starting with "${activeLetter}"`}
           </div>
-          <Button variant="outline" onClick={exportToCsv}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <Button variant="default" size="sm" onClick={() => setBulkEditOpen(true)}>
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit {selectedIds.size} selected
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={exportToCsv}>
+              <Download className="h-4 w-4 mr-1" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         {/* Alpha Bar */}
@@ -337,6 +366,13 @@ export function GameCollectionTable() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={filteredAndSortedGames.length > 0 && selectedIds.size === filteredAndSortedGames.length}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all"
+                />
+              </TableHead>
               <TableHead
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort("title")}
@@ -373,7 +409,7 @@ export function GameCollectionTable() {
           <TableBody>
             {filteredAndSortedGames.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   {activeLetter ? `No games starting with "${activeLetter}".` : "No games in your library yet."}
                 </TableCell>
               </TableRow>
@@ -381,7 +417,14 @@ export function GameCollectionTable() {
               filteredAndSortedGames.map((game) => {
                 const rating = getRating(game.id);
                 return (
-                  <TableRow key={game.id}>
+                   <TableRow key={game.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(game.id)}
+                        onCheckedChange={() => toggleSelect(game.id)}
+                        aria-label={`Select ${game.title}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {game.is_expansion && (
@@ -461,6 +504,14 @@ export function GameCollectionTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Edit Dialog */}
+      <BulkEditDialog
+        open={bulkEditOpen}
+        onOpenChange={setBulkEditOpen}
+        selectedGameIds={Array.from(selectedIds)}
+        onComplete={() => setSelectedIds(new Set())}
+      />
     </div>
   );
 }
