@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTour } from "@/contexts/TourContext";
 import { useNavigate } from "react-router-dom";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 
 interface GuidedTourProps {
   librarySlug?: string;
@@ -58,9 +59,9 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
       // Dynamic routes based on library slug
       if (!librarySlug) return;
       if (step.route === "__library_games__") {
-        navigate(`/library/${librarySlug}/games`);
+        window.location.href = getLibraryUrl(librarySlug, "/games");
       } else if (step.route === "__library_settings__") {
-        navigate(`/library/${librarySlug}/settings`);
+        window.location.href = getLibraryUrl(librarySlug, "/settings");
       }
     } else {
       navigate(step.route);
