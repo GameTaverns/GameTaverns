@@ -33,10 +33,10 @@ export function GameCard({ game, priority = false }: GameCardProps) {
   const gameUrl = buildUrl(`${basePath}/${game.slug || game.id}`);
 
   return (
-    <div>
-      <div className="relative">
-        <Link to={gameUrl}>
-          <Card className="group overflow-hidden card-elevated card-hover bg-card border-border">
+    <div className="flex flex-col">
+      <div className="relative flex-1 flex flex-col">
+        <Link to={gameUrl} className="flex-1 flex flex-col">
+          <Card className="group overflow-hidden card-elevated card-hover bg-card border-border flex-1 flex flex-col">
             {/* Image - consistent square aspect ratio for uniform grid */}
             <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-muted/50 to-muted flex items-center justify-center">
               {game.image_url ? (
@@ -59,7 +59,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               )}
             </div>
 
-            <CardContent className="p-4">
+            <CardContent className="p-4 flex-1 flex flex-col">
               {/* Title - fixed height for uniform cards */}
               <h3 className="font-display text-lg font-semibold text-foreground line-clamp-2 min-h-[3.5rem] mb-3 group-hover:text-primary transition-colors">
                 {game.title}
@@ -85,7 +85,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               <hr className="border-border mb-3" />
 
               {/* Tags */}
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5 mt-auto">
                 {(game as any).copies_owned > 1 && (
                   <Badge className="text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
                     <Copy className="h-3 w-3 mr-0.5" />
