@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.png", "favicon.ico"],
+      includeAssets: ["gt-logo.png", "favicon.ico"],
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
@@ -55,12 +55,12 @@ export default defineConfig(({ mode }) => {
         start_url: "/",
         icons: [
           {
-            src: "/favicon.png",
+            src: "/gt-logo.png",
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "/favicon.png",
+            src: "/gt-logo.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "any maskable",
