@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { isLovableCloud } from "@/config/runtime";
 
 const LTN_LOGO_SRC = "/ltn-logo.png";
-const BGG_LOGO_SRC = "/bgg-logo.png";
+const BGG_LOGO_SRC = "/bgg-logo.svg";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
