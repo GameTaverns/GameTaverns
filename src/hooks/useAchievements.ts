@@ -38,6 +38,7 @@ export interface AchievementProgress {
   wishlist_votes: number;
   ratings_given: number;
   unique_game_types: number;
+  tour_complete: number;
 }
 
 const TIER_NAMES: Record<number, string> = {
@@ -203,6 +204,8 @@ function getCurrentValue(requirementType: string, progress: AchievementProgress)
       return progress.ratings_given;
     case 'unique_game_types':
       return progress.unique_game_types;
+    case 'tour_complete':
+      return progress.tour_complete;
     default:
       return 0;
   }
