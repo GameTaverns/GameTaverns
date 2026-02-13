@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/backend/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export interface TourStep {
   id: string;
@@ -87,6 +89,7 @@ interface TourContextType {
 const TourContext = createContext<TourContextType | null>(null);
 
 export function TourProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [isActive, setIsActive] = useState(() => {
     return localStorage.getItem("guided_tour_active") === "true";
   });
@@ -186,15 +189,38 @@ export function TourProvider({ children }: { children: ReactNode }) {
     setIsActive(true);
   }, []);
 
-  const endTour = useCallback(() => {
+  const endTour = useCallback(async () => {
     localStorage.setItem("guided_tour_seen", "true");
     localStorage.removeItem("guided_tour_active");
     localStorage.removeItem("guided_tour_step");
     localStorage.removeItem("guided_tour_completions");
     setIsActive(false);
     setHasSeenTour(true);
+
+    // Award tour_complete achievement
+    if (user) {
+      try {
+        const { data: achievement } = await supabase
+          .from("achievements")
+          .select("id")
+          .eq("slug", "tour_complete")
+          .maybeSingle();
+
+        if (achievement) {
+          await supabase
+            .from("user_achievements")
+            .upsert(
+              { user_id: user.id, achievement_id: achievement.id, progress: 1 },
+              { onConflict: "user_id,achievement_id" }
+            );
+        }
+      } catch (e) {
+        console.error("Failed to award tour achievement:", e);
+      }
+    }
+
     navigate("/dashboard");
-  }, [navigate]);
+  }, [navigate, user]);
 
   const deferTour = useCallback(() => {
     localStorage.setItem("guided_tour_deferred", new Date().toISOString());
