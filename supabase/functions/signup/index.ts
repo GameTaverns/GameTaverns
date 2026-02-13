@@ -111,12 +111,13 @@ async function sendConfirmationEmail(params: { email: string; confirmUrl: string
   const { client, smtpFrom } = getSmtpClient();
   const fromAddress = `GameTaverns <${smtpFrom}>`;
 
-  await client.send({
-    from: fromAddress,
-    to: params.email,
-    subject: "Confirm Your GameTaverns Account",
-    content: `Confirm your email by visiting: ${params.confirmUrl}`,
-    html: `
+  try {
+    await client.send({
+      from: fromAddress,
+      to: params.email,
+      subject: "Confirm Your GameTaverns Account",
+      content: `Confirm your email by visiting: ${params.confirmUrl}`,
+      html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -168,9 +169,10 @@ async function sendConfirmationEmail(params: { email: string; confirmUrl: string
 </body>
 </html>
     `,
-  });
-
-  await client.close();
+    });
+  } finally {
+    if (client) await client.close();
+  }
 }
 
 async function handler(req: Request): Promise<Response> {

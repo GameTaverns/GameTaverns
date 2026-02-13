@@ -153,14 +153,15 @@ export default async function handler(req: Request): Promise<Response> {
         // For non-implicit-TLS ports (25, 587) on the internal Docker network,
         // skip STARTTLS — the cert is issued for the public hostname, not the
         // container name, so the TLS handshake will always fail.
-        const client = new SMTPClient({
-          connection,
-          ...(!useImplicitTls
-            ? { debug: { allowUnsecure: true, noStartTLS: true } }
-            : {}),
-        });
-
+        let client: SMTPClient | undefined;
         try {
+          client = new SMTPClient({
+            connection,
+            ...(!useImplicitTls
+              ? { debug: { allowUnsecure: true, noStartTLS: true } }
+              : {}),
+          });
+
           const fromAddress = `GameTaverns <${smtpFrom}>`;
           await client.send({
             from: fromAddress,
@@ -228,7 +229,7 @@ export default async function handler(req: Request): Promise<Response> {
           });
           console.log(`Password reset email queued for ${email}`);
         } finally {
-          await client.close();
+          if (client) await client.close();
         }
       });
 
@@ -296,14 +297,15 @@ export default async function handler(req: Request): Promise<Response> {
           connection.auth = { username: smtpUser, password: smtpPass };
         }
 
-        const client = new SMTPClient({
-          connection,
-          ...(!useImplicitTls
-            ? { debug: { allowUnsecure: true, noStartTLS: true } }
-            : {}),
-        });
-
+        let client: SMTPClient | undefined;
         try {
+          client = new SMTPClient({
+            connection,
+            ...(!useImplicitTls
+              ? { debug: { allowUnsecure: true, noStartTLS: true } }
+              : {}),
+          });
+
           const fromAddress = `GameTaverns <${smtpFrom}>`;
           await client.send({
             from: fromAddress,
@@ -371,7 +373,7 @@ export default async function handler(req: Request): Promise<Response> {
           });
           console.log(`Email confirmation queued for ${email}`);
         } finally {
-          await client.close();
+          if (client) await client.close();
         }
       });
 
