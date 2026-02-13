@@ -327,8 +327,6 @@ services:
       # Site info for edge functions
       SITE_URL: "${SITE_URL:-https://gametaverns.com}"
       SITE_NAME: "${SITE_NAME:-GameTaverns}"
-      # Raise per-request wall-clock timeout from 10s default to 5 min
-      EDGE_RUNTIME_WORKER_TIMEOUT_MS: "300000"
     volumes:
       # Use absolute path since docker-compose is in deploy/supabase-selfhosted/
       # but functions are at the repo root /opt/gametaverns/supabase/functions
