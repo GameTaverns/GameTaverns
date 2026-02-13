@@ -1,11 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
-import { useDemoMode } from "@/contexts/DemoContext";
-import { 
-  loadDemoSiteSettings, 
-  loadDemoThemeSettings, 
-  convertDemoSettingsToSiteSettings 
-} from "./useDemoSiteSettings";
 
 export interface SiteSettings {
   site_name?: string;
@@ -64,17 +58,9 @@ export interface SiteSettings {
 }
 
 export function useSiteSettings() {
-  const { isDemoMode } = useDemoMode();
-
   return useQuery({
-    queryKey: ["site-settings", isDemoMode, isSelfHostedMode()],
+    queryKey: ["site-settings", isSelfHostedMode()],
     queryFn: async (): Promise<SiteSettings> => {
-      // In demo mode, return demo settings from sessionStorage
-      if (isDemoMode) {
-        const siteSettings = loadDemoSiteSettings();
-        const themeSettings = loadDemoThemeSettings();
-        return convertDemoSettingsToSiteSettings(siteSettings, themeSettings);
-      }
 
       // Self-hosted mode with Supabase stack: use PostgREST directly via Kong
       // The Express API doesn't exist in the Supabase self-hosted deployment
@@ -153,7 +139,7 @@ export function useSiteSettings() {
 
       return settings;
     },
-    staleTime: isDemoMode ? 0 : 5 * 60 * 1000, // No cache in demo mode
+    staleTime: 5 * 60 * 1000,
   });
 }
 
