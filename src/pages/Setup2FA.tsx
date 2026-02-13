@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { TotpSetup } from "@/components/auth/TotpSetup";
 import { supabase } from "@/integrations/backend/client";
@@ -72,8 +72,14 @@ export default function Setup2FA() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex flex-col items-center justify-center p-4">
       <TotpSetup onComplete={handleComplete} isRequired={true} />
+      <Link
+        to="/dashboard"
+        className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        ← Back to Dashboard
+      </Link>
     </div>
   );
 }

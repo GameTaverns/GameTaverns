@@ -87,12 +87,35 @@ interface TourContextType {
 const TourContext = createContext<TourContextType | null>(null);
 
 export function TourProvider({ children }: { children: ReactNode }) {
-  const [isActive, setIsActive] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [isActive, setIsActive] = useState(() => {
+    return localStorage.getItem("guided_tour_active") === "true";
+  });
+  const [currentStep, setCurrentStep] = useState(() => {
+    const saved = localStorage.getItem("guided_tour_step");
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [hasSeenTour, setHasSeenTour] = useState(true);
-  const [completions, setCompletions] = useState<Record<string, boolean>>({});
+  const [completions, setCompletions] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem("guided_tour_completions");
+      return saved ? JSON.parse(saved) : {};
+    } catch { return {}; }
+  });
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Persist tour state to localStorage so it survives cross-domain navigation
+  useEffect(() => {
+    localStorage.setItem("guided_tour_active", String(isActive));
+  }, [isActive]);
+
+  useEffect(() => {
+    localStorage.setItem("guided_tour_step", String(currentStep));
+  }, [currentStep]);
+
+  useEffect(() => {
+    localStorage.setItem("guided_tour_completions", JSON.stringify(completions));
+  }, [completions]);
 
   // Check if user has seen the tour
   useEffect(() => {
@@ -114,6 +137,17 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
     setHasSeenTour(false);
   }, []);
+
+  // On resume: skip past already-completed steps
+  useEffect(() => {
+    if (!isActive) return;
+    const step = TOUR_STEPS[currentStep];
+    if (!step) return;
+    if (step.completionKey === "welcome_seen" || step.completionKey === "tour_complete") return;
+    if (completions[step.completionKey] && currentStep < TOUR_STEPS.length - 1) {
+      setCurrentStep((s) => s + 1);
+    }
+  }, [isActive]); // Only on mount/resume, not on every completion change
 
   // Auto-advance when a step's completion key becomes true
   useEffect(() => {
@@ -156,6 +190,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const endTour = useCallback(() => {
     localStorage.setItem("guided_tour_seen", "true");
+    localStorage.removeItem("guided_tour_active");
+    localStorage.removeItem("guided_tour_step");
+    localStorage.removeItem("guided_tour_completions");
     setIsActive(false);
     setHasSeenTour(true);
     navigate("/dashboard");
@@ -163,6 +200,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
   const deferTour = useCallback(() => {
     localStorage.setItem("guided_tour_deferred", new Date().toISOString());
+    localStorage.removeItem("guided_tour_active");
+    localStorage.removeItem("guided_tour_step");
     setIsActive(false);
     setHasSeenTour(true);
   }, []);
