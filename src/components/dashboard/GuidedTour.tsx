@@ -1,226 +1,174 @@
-import { useState, useEffect, useCallback } from "react";
-import { X, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { useEffect } from "react";
+import { X, ChevronRight, Sparkles, SkipForward, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTour } from "@/contexts/TourContext";
+import { useNavigate } from "react-router-dom";
 
-interface TourStep {
-  title: string;
-  description: string;
-  icon?: React.ReactNode;
+interface GuidedTourProps {
+  librarySlug?: string;
 }
 
-const TOUR_STEPS: TourStep[] = [
-  {
-    title: "Welcome to GameTaverns! 🎲",
-    description:
-      "This is your dashboard — the command center for managing your board game library, community, and events. Let's take a quick tour!",
-  },
-  {
-    title: "Create Your Library",
-    description:
-      "Start by creating a library. It gets its own subdomain (e.g., yourname.gametaverns.com) where friends can browse your collection.",
-  },
-  {
-    title: "Import Your Games",
-    description:
-      "Add games manually, import from a CSV file, or sync directly from BoardGameGeek. Your entire collection in one place.",
-  },
-  {
-    title: "Customize Your Theme",
-    description:
-      "Make your library uniquely yours with custom colors, fonts, logos, and background images. Go to Library Settings to get started.",
-  },
-  {
-    title: "Engage Your Community",
-    description:
-      "Enable features like game lending, play logging, polls, events, and forums. Toggle them on in your Library Settings → Feature Flags.",
-  },
-  {
-    title: "Secure Your Account",
-    description:
-      "We recommend setting up two-factor authentication (2FA) to protect your account. You can do this from Account Settings or the checklist below.",
-  },
-  {
-    title: "You're Ready! 🎉",
-    description:
-      "That's the basics! Check the Getting Started checklist on the Library tab for guided next steps. Have fun building your game tavern!",
-  },
-];
+export function GuidedTour({ librarySlug }: GuidedTourProps) {
+  const {
+    isActive,
+    currentStep,
+    steps,
+    startTour,
+    endTour,
+    deferTour,
+    completeStep,
+    skipStep,
+    shouldShowTour,
+    completions,
+  } = useTour();
+  const navigate = useNavigate();
 
-export function GuidedTour() {
-  const [isActive, setIsActive] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [hasSeenTour, setHasSeenTour] = useState(true);
-
+  // Auto-prompt for new users
   useEffect(() => {
-    const seen = localStorage.getItem("guided_tour_seen");
-    const deferred = localStorage.getItem("guided_tour_deferred");
+    if (shouldShowTour) {
+      const timer = setTimeout(() => startTour(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldShowTour, startTour]);
 
-    if (seen === "true") {
-      setHasSeenTour(true);
+  if (!isActive) return null;
+
+  const step = steps[currentStep];
+  const progress = ((currentStep + 1) / steps.length) * 100;
+  const isStepComplete = completions[step.completionKey];
+
+  const handleAction = () => {
+    if (step.id === "welcome") {
+      completeStep("welcome_seen");
+      // Advance immediately for welcome
+      skipStep();
       return;
     }
 
-    // If deferred, check if it's been more than 24 hours
-    if (deferred) {
-      const deferredAt = new Date(deferred).getTime();
-      const now = Date.now();
-      if (now - deferredAt < 24 * 60 * 60 * 1000) {
-        setHasSeenTour(true);
-        return;
+    if (step.id === "complete") {
+      endTour();
+      return;
+    }
+
+    // Navigate to the step's route
+    if (step.route.startsWith("__")) {
+      // Dynamic routes based on library slug
+      if (!librarySlug) return;
+      if (step.route === "__library_games__") {
+        navigate(`/library/${librarySlug}/games`);
+      } else if (step.route === "__library_settings__") {
+        navigate(`/library/${librarySlug}/settings`);
       }
-    }
-
-    setHasSeenTour(false);
-    // Auto-show tour for new users after a brief delay
-    const timer = setTimeout(() => setIsActive(true), 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleNext = useCallback(() => {
-    if (currentStep < TOUR_STEPS.length - 1) {
-      setCurrentStep((s) => s + 1);
     } else {
-      handleComplete();
+      navigate(step.route);
     }
-  }, [currentStep]);
-
-  const handlePrev = useCallback(() => {
-    if (currentStep > 0) setCurrentStep((s) => s - 1);
-  }, [currentStep]);
-
-  const handleComplete = useCallback(() => {
-    localStorage.setItem("guided_tour_seen", "true");
-    setIsActive(false);
-    setHasSeenTour(true);
-  }, []);
-
-  const handleDefer = useCallback(() => {
-    localStorage.setItem("guided_tour_deferred", new Date().toISOString());
-    setIsActive(false);
-    setHasSeenTour(true);
-  }, []);
-
-  if (hasSeenTour && !isActive) return null;
-
-  const step = TOUR_STEPS[currentStep];
-  const progress = ((currentStep + 1) / TOUR_STEPS.length) * 100;
+  };
 
   return (
     <AnimatePresence>
-      {isActive && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
-            onClick={handleDefer}
-          />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        className="fixed z-50 bottom-6 right-6 w-full max-w-sm px-4 sm:px-0"
+      >
+        <Card className="bg-card border-border shadow-2xl shadow-black/30">
+          <CardContent className="pt-5 pb-4">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-secondary" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Tour — Step {currentStep + 1} of {steps.length}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 -mt-1 -mr-1"
+                onClick={deferTour}
+                title="Close tour"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
 
-          {/* Tour Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md px-4"
-          >
-            <Card className="bg-card border-border shadow-2xl">
-              <CardContent className="pt-6 pb-4">
-                {/* Header with close */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-secondary" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Step {currentStep + 1} of {TOUR_STEPS.length}
-                    </span>
-                  </div>
+            {/* Progress */}
+            <Progress value={progress} className="h-1 mb-4" />
+
+            {/* Content */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">{step.emoji}</span>
+                  <h3 className="text-base font-display font-semibold text-foreground">
+                    {step.title}
+                  </h3>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {step.description}
+                </p>
+
+                {isStepComplete && step.id !== "welcome" && step.id !== "complete" && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mt-3 flex items-center gap-2 text-sm text-secondary font-medium"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Done! Moving to next step…
+                  </motion.div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between mt-5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={endTour}
+                className="text-muted-foreground text-xs"
+              >
+                End tour
+              </Button>
+
+              <div className="flex gap-2">
+                {step.id !== "welcome" && step.id !== "complete" && (
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 -mt-1 -mr-1"
-                    onClick={handleDefer}
+                    size="sm"
+                    onClick={skipStep}
+                    className="text-muted-foreground text-xs"
                   >
-                    <X className="h-4 w-4" />
+                    <SkipForward className="h-3 w-3 mr-1" />
+                    Skip
                   </Button>
-                </div>
-
-                {/* Progress */}
-                <Progress value={progress} className="h-1 mb-5" />
-
-                {/* Content */}
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentStep}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2 }}
+                )}
+                {!isStepComplete && (
+                  <Button
+                    size="sm"
+                    onClick={handleAction}
+                    className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
                   >
-                    <h3 className="text-lg font-display font-semibold text-foreground mb-2">
-                      {step.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {step.description}
-                    </p>
-                  </motion.div>
-                </AnimatePresence>
-
-                {/* Actions */}
-                <div className="flex items-center justify-between mt-6">
-                  <div className="flex gap-2">
-                    {currentStep === 0 ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleDefer}
-                        className="text-muted-foreground"
-                      >
-                        Show me later
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handlePrev}
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Back
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {currentStep < TOUR_STEPS.length - 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleComplete}
-                        className="text-muted-foreground"
-                      >
-                        Skip tour
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      onClick={handleNext}
-                      className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
-                    >
-                      {currentStep === TOUR_STEPS.length - 1 ? "Get Started" : "Next"}
-                      {currentStep < TOUR_STEPS.length - 1 && (
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </>
-      )}
+                    {step.actionLabel}
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </AnimatePresence>
   );
 }
