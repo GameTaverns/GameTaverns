@@ -415,17 +415,9 @@ export function Sidebar({ isOpen }: SidebarProps) {
     if (isDemoMode) {
       newParams.demo = "true";
     }
-    // Note: On production subdomains, we don't add ?tenant because we're already on the subdomain
-    // The useTenantUrl hook's buildUrl() handles this correctly for cross-page navigation
-    
-    // If we're not on the library root page, navigate there with filters
-    const libraryRoot = isTenantMode ? "/" : buildUrl("/");
-    if (location.pathname !== "/") {
-      const queryString = new URLSearchParams(newParams).toString();
-      navigate(`${libraryRoot}${libraryRoot.includes("?") ? "&" : "?"}${queryString}`);
-    } else {
-      setSearchParams(newParams);
-    }
+
+    // Stay on the current page — apply filters in-place
+    setSearchParams(newParams);
   };
 
   const isActive = (filter: string, value: string) => {

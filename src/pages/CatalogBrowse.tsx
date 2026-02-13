@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/backend/client";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +35,7 @@ interface CatalogGame {
 
 export default function CatalogBrowse() {
   const { isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [playerCount, setPlayerCount] = useState<number[]>([4]);
   const [maxTime, setMaxTime] = useState<number[]>([240]);
@@ -41,6 +43,9 @@ export default function CatalogBrowse() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>("title");
+
+  const sidebarFilter = searchParams.get("filter");
+  const sidebarValue = searchParams.get("value");
 
   const { data: catalogGames = [], isLoading } = useQuery({
     queryKey: ["catalog-browse"],
@@ -61,6 +66,66 @@ export default function CatalogBrowse() {
   const filtered = useMemo(() => {
     let results = catalogGames.filter(g => {
       if (searchTerm && !g.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      
+      // Apply sidebar filters
+      if (sidebarFilter && sidebarValue) {
+        switch (sidebarFilter) {
+          case "letter":
+            if (sidebarValue === "#") {
+              if (/^[A-Za-z]/.test(g.title)) return false;
+            } else if (!g.title.toUpperCase().startsWith(sidebarValue)) return false;
+            break;
+          case "players": {
+            const match = sidebarValue.match(/(\d+)/);
+            if (match) {
+              const count = parseInt(match[1]);
+              if (sidebarValue.includes("+")) {
+                if (g.max_players && g.max_players < count) return false;
+              } else if (sidebarValue.includes("-")) {
+                const rangeMatch = sidebarValue.match(/(\d+)-(\d+)/);
+                if (rangeMatch) {
+                  const lo = parseInt(rangeMatch[1]);
+                  const hi = parseInt(rangeMatch[2]);
+                  if (g.min_players && g.min_players > hi) return false;
+                  if (g.max_players && g.max_players < lo) return false;
+                }
+              } else {
+                if (g.min_players && count < g.min_players) return false;
+                if (g.max_players && count > g.max_players) return false;
+              }
+            }
+            break;
+          }
+          case "difficulty": {
+            const weightMap: Record<string, [number, number]> = {
+              "1 - Light": [0, 1.5],
+              "2 - Medium Light": [1.5, 2.25],
+              "3 - Medium": [2.25, 3.0],
+              "4 - Medium Heavy": [3.0, 3.75],
+              "5 - Heavy": [3.75, 5.0],
+            };
+            const range = weightMap[sidebarValue];
+            if (range && g.weight != null) {
+              if (g.weight < range[0] || g.weight > range[1]) return false;
+            }
+            break;
+          }
+          case "playtime": {
+            const timeMap: Record<string, number> = {
+              "0-15 Minutes": 15, "15-30 Minutes": 30, "30-45 Minutes": 45,
+              "45-60 Minutes": 60, "60+ Minutes": 90, "2+ Hours": 150, "3+ Hours": 210,
+            };
+            const maxMin = timeMap[sidebarValue];
+            if (maxMin && g.play_time_minutes) {
+              if (sidebarValue.includes("+")) {
+                if (g.play_time_minutes < maxMin * 0.6) return false;
+              } else if (g.play_time_minutes > maxMin) return false;
+            }
+            break;
+          }
+        }
+      }
+
       if (showFilters) {
         const count = playerCount[0];
         if (g.min_players && count < g.min_players) return false;
@@ -83,7 +148,7 @@ export default function CatalogBrowse() {
     });
 
     return results;
-  }, [catalogGames, searchTerm, playerCount, maxTime, weightRange, showFilters, sortBy]);
+  }, [catalogGames, searchTerm, playerCount, maxTime, weightRange, showFilters, sortBy, sidebarFilter, sidebarValue]);
 
   return (
     <Layout>
