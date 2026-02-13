@@ -303,6 +303,15 @@ const { data: playCount } = useQuery({
                 <Badge variant="secondary" className="ml-1 text-xs">{myClubs.length}</Badge>
               )}
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger 
+                value="catalog" 
+                className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+              >
+                <BookOpen className="h-4 w-4" />
+                Catalog
+              </TabsTrigger>
+            )}
             <TabsTrigger 
               value="danger" 
               className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
@@ -856,6 +865,33 @@ const { data: playCount } = useQuery({
                   </CardContent>
                 </Card>
 
+          {/* ===== CATALOG TAB (Admin only) ===== */}
+          {isAdmin && (
+            <TabsContent value="catalog">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-2xl text-cream">Game Catalog</h2>
+                  <Link to="/catalog">
+                    <Button className="gap-2 bg-secondary text-secondary-foreground">
+                      <ExternalLink className="h-4 w-4" /> Open Full Catalog
+                    </Button>
+                  </Link>
+                </div>
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardContent className="py-6">
+                    <p className="text-cream/70 mb-4">
+                      The Game Catalog is the platform-wide encyclopedia of board games. It powers cross-library search, "Who Has This" lookups, and community metadata corrections.
+                    </p>
+                    <Link to="/catalog">
+                      <Button variant="secondary" className="gap-2">
+                        <BookOpen className="h-4 w-4" /> Browse Catalog
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
 
                 {/* Group Challenges - Self-hosted feature */}
                 {isSelfHostedSupabaseStack() && (
