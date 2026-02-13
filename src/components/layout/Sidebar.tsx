@@ -607,7 +607,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
           </Collapsible>
 
           {/* ── Category 2: Game Specs ── */}
-          <Collapsible defaultOpen={["players","difficulty","playtime"].includes(currentFilter || "")} className="mt-1">
+          <Collapsible defaultOpen={["players","difficulty","playtime"].includes(currentFilter || "") || (currentFilter === "status" && currentValue === "expansions")} className="mt-1">
             <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
               <span className="flex items-center gap-2">
                 <Gamepad2 className="h-4 w-4" />
@@ -644,6 +644,18 @@ export function Sidebar({ isOpen }: SidebarProps) {
                   onFilterClick={handleFilterClick}
                   defaultOpen={currentFilter === "playtime"}
                 />
+                <nav className="space-y-0.5 px-1">
+                  <button
+                    onClick={() => handleFilterClick("status", "expansions")}
+                    className={cn(
+                      "sidebar-link w-full text-left text-sm",
+                      isActive("status", "expansions") && "sidebar-link-active"
+                    )}
+                  >
+                    <Puzzle className="h-4 w-4" />
+                    <span>Expansions Only</span>
+                  </button>
+                </nav>
               </div>
             </CollapsibleContent>
           </Collapsible>
