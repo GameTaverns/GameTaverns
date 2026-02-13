@@ -6,13 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
-import { DemoThemeApplicator } from "@/components/DemoThemeApplicator";
 import { TenantThemeApplicator } from "@/components/TenantThemeApplicator";
-import { DemoProvider } from "@/contexts/DemoContext";
 import { TenantProvider, useTenant } from "@/contexts/TenantContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TourProvider } from "@/contexts/TourContext";
-import { DemoGuard } from "@/components/system/DemoGuard";
 import { MaintenanceGuard } from "@/components/system/MaintenanceGuard";
 import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironmentBanner";
 import { MobileAppShell } from "@/components/mobile/MobileAppShell";
@@ -26,8 +23,6 @@ const Settings = lazy(() => import("./pages/Settings"));
 const GameForm = lazy(() => import("./pages/GameForm"));
 const Messages = lazy(() => import("./pages/Messages"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const DemoSettings = lazy(() => import("./pages/DemoSettings"));
-const DemoGameForm = lazy(() => import("./pages/DemoGameForm"));
 const Docs = lazy(() => import("./pages/Docs"));
 const LibrarySuspended = lazy(() => import("./pages/LibrarySuspended"));
 
@@ -76,38 +71,33 @@ const PageLoader = () => (
   </div>
 );
 
-// Wrapper component to check for demo mode and tenant mode
+// Wrapper component to check for tenant mode
 function AppRoutes() {
   const [searchParams] = useSearchParams();
-  const isDemoMode = searchParams.get("demo") === "true" || 
-    window.location.pathname.startsWith("/demo");
   const tenantSlug = searchParams.get("tenant");
 
   return (
     <TenantProvider>
-      <DemoProvider enabled={isDemoMode}>
-        {/* Theme applicators */}
-        <ThemeApplicator />
-        <DemoThemeApplicator />
-        <TenantThemeApplicator />
+      {/* Theme applicators */}
+      <ThemeApplicator />
+      <TenantThemeApplicator />
+      
+      <MobileAppShell>
+        <MaintenanceGuard>
+          <Suspense fallback={<PageLoader />}>
+            <TenantRouteHandler tenantSlugFromParam={tenantSlug} />
+          </Suspense>
+        </MaintenanceGuard>
         
-        <MobileAppShell>
-          <MaintenanceGuard>
-            <Suspense fallback={<PageLoader />}>
-              <TenantRouteHandler isDemoMode={isDemoMode} tenantSlugFromParam={tenantSlug} />
-            </Suspense>
-          </MaintenanceGuard>
-          
-          {/* Testing environment watermark - hidden in production deployments */}
-          {!isProductionDeployment() && <TestingEnvironmentBanner />}
-        </MobileAppShell>
-      </DemoProvider>
+        {/* Testing environment watermark - hidden in production deployments */}
+        {!isProductionDeployment() && <TestingEnvironmentBanner />}
+      </MobileAppShell>
     </TenantProvider>
   );
 }
 
 // Handle routing based on tenant state
-function TenantRouteHandler({ isDemoMode, tenantSlugFromParam }: { isDemoMode: boolean; tenantSlugFromParam: string | null }) {
+function TenantRouteHandler({ tenantSlugFromParam }: { tenantSlugFromParam: string | null }) {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -160,7 +150,7 @@ function TenantRouteHandler({ isDemoMode, tenantSlugFromParam }: { isDemoMode: b
   
   // If tenant detected (via subdomain OR query param), show library routes
   if (isTenantMode) {
-    return <LibraryRoutes isDemoMode={isDemoMode} />;
+    return <LibraryRoutes />;
   }
   
   // Platform mode - show marketing/dashboard routes
@@ -207,26 +197,12 @@ function PlatformRoutes() {
 }
 
 // Routes for individual libraries (library.gametaverns.com or ?tenant=slug)
-function LibraryRoutes({ isDemoMode }: { isDemoMode: boolean }) {
+function LibraryRoutes() {
   return (
     <Routes>
       {/* Public library views */}
       <Route path="/" element={<Index />} />
       <Route path="/game/:slug" element={<GameDetail />} />
-      
-      {/* Demo mode routes */}
-      <Route path="/demo/game/:slug" element={
-        <DemoGuard><GameDetail /></DemoGuard>
-      } />
-      <Route path="/demo/settings" element={
-        <DemoGuard><DemoSettings /></DemoGuard>
-      } />
-      <Route path="/demo/add" element={
-        <DemoGuard><DemoGameForm /></DemoGuard>
-      } />
-      <Route path="/demo/edit/:id" element={
-        <DemoGuard><DemoGameForm /></DemoGuard>
-      } />
       
       {/* Library owner routes - accessed via /settings, /games, etc. */}
       <Route path="/login" element={<Login />} />
