@@ -169,6 +169,10 @@ const Index = () => {
     } else if (filter === "status" && filterValue === "unplayed") {
       // Show games flagged as unplayed
       result = result.filter((g) => (g as any).is_unplayed === true);
+    } else if (filter === "status" && filterValue === "expansions") {
+      // Show all expansions (they are normally nested under parents, so we need the flat list)
+      const allGames = isDemoMode ? [...demoGames] : [...realGames];
+      result = allGames.filter((g) => g.is_expansion);
     } else {
       // Exclude coming soon games from main catalog (only if feature is enabled)
       if (comingSoonFlag) {

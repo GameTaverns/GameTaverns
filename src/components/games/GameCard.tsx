@@ -60,8 +60,8 @@ export function GameCard({ game, priority = false }: GameCardProps) {
             </div>
 
             <CardContent className="p-4">
-              {/* Title */}
-              <h3 className="font-display text-lg font-semibold text-foreground line-clamp-2 mb-3 group-hover:text-primary transition-colors">
+              {/* Title - fixed height for uniform cards */}
+              <h3 className="font-display text-lg font-semibold text-foreground line-clamp-2 min-h-[3.5rem] mb-3 group-hover:text-primary transition-colors">
                 {game.title}
               </h3>
 
