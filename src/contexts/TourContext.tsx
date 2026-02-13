@@ -138,32 +138,41 @@ export function TourProvider({ children }: { children: ReactNode }) {
     setHasSeenTour(false);
   }, []);
 
-  // On resume: skip past already-completed steps
+  // On resume: skip past all already-completed steps in one go
   useEffect(() => {
     if (!isActive) return;
-    const step = TOUR_STEPS[currentStep];
-    if (!step) return;
-    if (step.completionKey === "welcome_seen" || step.completionKey === "tour_complete") return;
-    if (completions[step.completionKey] && currentStep < TOUR_STEPS.length - 1) {
-      setCurrentStep((s) => s + 1);
+    let nextStep = currentStep;
+    while (nextStep < TOUR_STEPS.length - 1) {
+      const step = TOUR_STEPS[nextStep];
+      if (!step) break;
+      // Don't auto-skip welcome or complete — those are manual
+      if (step.completionKey === "welcome_seen" || step.completionKey === "tour_complete") break;
+      if (!completions[step.completionKey]) break;
+      nextStep++;
     }
-  }, [isActive]); // Only on mount/resume, not on every completion change
+    if (nextStep !== currentStep) {
+      setCurrentStep(nextStep);
+    }
+  }, [isActive]); // Only on mount/resume
 
-  // Auto-advance when a step's completion key becomes true
+  // Auto-advance when a step's completion key becomes true (skip multiple if needed)
   useEffect(() => {
     if (!isActive) return;
     const step = TOUR_STEPS[currentStep];
     if (!step) return;
-
-    // Special: welcome step completes on "Let's Go!" click, not data
     if (step.completionKey === "welcome_seen" || step.completionKey === "tour_complete") return;
 
     if (completions[step.completionKey]) {
-      // Step is complete — advance after a brief delay for feedback
+      // Find the next incomplete step
+      let nextStep = currentStep + 1;
+      while (nextStep < TOUR_STEPS.length - 1) {
+        const s = TOUR_STEPS[nextStep];
+        if (s.completionKey === "welcome_seen" || s.completionKey === "tour_complete") break;
+        if (!completions[s.completionKey]) break;
+        nextStep++;
+      }
       const timer = setTimeout(() => {
-        if (currentStep < TOUR_STEPS.length - 1) {
-          setCurrentStep((s) => s + 1);
-        }
+        setCurrentStep(nextStep);
       }, 800);
       return () => clearTimeout(timer);
     }
