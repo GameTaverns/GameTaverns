@@ -53,6 +53,7 @@ import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useUpcomingEvents } from "@/hooks/useLibraryEvents";
 import { Badge } from "@/components/ui/badge";
 import { TenantLogoImage } from "@/components/tenant/TenantLogoImage";
+import { OnboardingSidebarLink } from "@/components/dashboard/OnboardingSidebarLink";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -704,6 +705,9 @@ export function Sidebar({ isOpen }: SidebarProps) {
             </CollapsibleContent>
           </Collapsible>
         </ScrollArea>
+
+        {/* Onboarding Progress - show for authenticated owners */}
+        {isAuthenticated && isOwner && <OnboardingSidebarLink />}
 
         {/* User Section - Only show when authenticated */}
         {isAuthenticated && (

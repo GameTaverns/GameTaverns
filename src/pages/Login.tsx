@@ -130,12 +130,8 @@ const Login = () => {
                 return;
               }
             } else if (data.requiresSetup) {
-              // User needs to set up 2FA (required for all users)
-              console.log("[Login] 2FA requires setup, redirecting to /setup-2fa");
-              setIsLoading(false);
-              setAuthGate("idle");
-              navigate("/setup-2fa", { replace: true });
-              return;
+              // 2FA not yet set up — no longer mandatory, proceed to dashboard
+              console.log("[Login] 2FA not set up, proceeding to dashboard (optional)");
             } else {
               console.log("[Login] 2FA not enabled and not required, proceeding to dashboard");
             }
