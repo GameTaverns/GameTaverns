@@ -194,66 +194,70 @@ const { data: playCount } = useQuery({
       <AnnouncementBanner />
       {/* Header */}
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <img src={logoImage} alt="GameTaverns" className="h-10 w-auto" />
-            <span className="font-display text-2xl font-bold text-cream">
-              GameTaverns
-            </span>
-          </Link>
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2 sm:gap-3">
+              <img src={logoImage} alt="GameTaverns" className="h-8 sm:h-10 w-auto" />
+              <span className="font-display text-lg sm:text-2xl font-bold text-cream">
+                GameTaverns
+              </span>
+            </Link>
+            
+            <div className="flex items-center gap-2 sm:gap-4">
+              <ThemeToggle />
+              <NotificationsDropdown variant="dashboard" />
+              <span className="text-cream/80 hidden md:inline text-sm">{profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email}</span>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handleSignOut}
+                className="text-cream hover:text-white hover:bg-wood-medium/50"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
           
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            
-            <NotificationsDropdown variant="dashboard" />
-            
+          {/* Navigation links row - wraps on mobile */}
+          <div className="flex flex-wrap items-center gap-2 mt-3">
             <Link 
               to="/directory"
-              className="flex items-center gap-2 px-3 py-1.5 bg-secondary/20 hover:bg-secondary/30 rounded-lg text-cream transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/20 hover:bg-secondary/30 rounded-lg text-cream transition-colors text-sm"
             >
               <Globe className="h-4 w-4" />
-              <span className="hidden sm:inline">Browse Libraries</span>
+              <span>Browse Libraries</span>
             </Link>
             
             {library && (
               <a 
                 href={libraryUrl!}
-                className="flex items-center gap-2 px-3 py-1.5 bg-secondary/20 hover:bg-secondary/30 rounded-lg text-cream transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/20 hover:bg-secondary/30 rounded-lg text-cream transition-colors text-sm"
               >
                 <Library className="h-4 w-4" />
-                <span className="hidden sm:inline">My Library</span>
-                <ArrowRight className="h-4 w-4" />
+                <span>My Library</span>
+                <ArrowRight className="h-3.5 w-3.5" />
               </a>
             )}
             {(isAdmin || library) && (
               <Link 
                 to="/docs"
-                className="flex items-center gap-2 px-3 py-1.5 bg-secondary/20 hover:bg-secondary/30 rounded-lg text-cream transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/20 hover:bg-secondary/30 rounded-lg text-cream transition-colors text-sm"
               >
                 <BookOpen className="h-4 w-4" />
-                <span className="hidden sm:inline">Guide</span>
+                <span>Guide</span>
               </Link>
             )}
-            <span className="text-cream/80 hidden sm:inline">{profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email}</span>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={handleSignOut}
-              className="text-cream hover:text-white hover:bg-wood-medium/50"
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
           </div>
         </div>
       </header>
       
       <main className="container mx-auto px-4 py-12">
-        <h1 className="font-display text-4xl font-bold text-cream mb-8">
+        <h1 className="font-display text-2xl sm:text-4xl font-bold text-cream mb-6 sm:mb-8">
           Welcome back, {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0]}
         </h1>
         
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="mb-8 bg-wood-dark/60 border border-wood-medium/40 flex-wrap">
+          <TabsList className="mb-8 bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1">
             <TabsTrigger 
               value="personal" 
               className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
