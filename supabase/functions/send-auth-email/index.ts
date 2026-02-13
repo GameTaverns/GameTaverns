@@ -11,6 +11,7 @@ interface AuthEmailRequest {
   type: 'password_reset' | 'email_confirmation';
   email: string;
   redirectUrl?: string;
+  userId?: string; // Optional: skip listUsers() when caller already knows the user ID
 }
 
 const SMTP_SEND_TIMEOUT_MS = 30000;
@@ -45,6 +46,24 @@ async function sendEmailSafely(sendFn: () => Promise<void>) {
   }
 }
 
+/**
+ * Paginate through auth.admin.listUsers to find a user by email.
+ * The default listUsers() only returns ~50 users, so we must paginate.
+ */
+async function findUserByEmail(supabase: any, email: string) {
+  const normalizedEmail = email.toLowerCase();
+  let page = 1;
+  const perPage = 100;
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error || !data?.users?.length) return null;
+    const found = data.users.find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+    if (found) return found;
+    if (data.users.length < perPage) return null; // last page
+    page++;
+  }
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -55,7 +74,7 @@ export default async function handler(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { type, email, redirectUrl }: AuthEmailRequest = await req.json();
+    const { type, email, redirectUrl, userId: passedUserId }: AuthEmailRequest = await req.json();
 
     if (!email || !type) {
       return new Response(
@@ -92,9 +111,8 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (type === 'password_reset') {
-      // Check if user exists
-      const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
-      const user = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      // Find user by email — paginate to handle large user bases
+      const user = await findUserByEmail(supabase, email);
 
       // Always return success to prevent email enumeration attacks
       if (!user) {
@@ -244,9 +262,14 @@ export default async function handler(req: Request): Promise<Response> {
       const token = generateSecureToken();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
 
-      // Get user ID from email (user was just created)
-      const { data: userData } = await supabase.auth.admin.listUsers();
-      const user = userData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      // Use passed userId if available (from manage-users resend), otherwise search
+      let user: { id: string; email?: string } | null = null;
+      if (passedUserId) {
+        const { data } = await supabase.auth.admin.getUserById(passedUserId);
+        if (data?.user) user = data.user;
+      } else {
+        user = await findUserByEmail(supabase, email);
+      }
 
       if (!user) {
         console.error(`Email confirmation requested but user not found: ${email}`);
