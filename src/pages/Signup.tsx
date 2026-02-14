@@ -151,13 +151,11 @@ export default function Signup() {
       }
 
       toast({
-        title: "Check your email!",
-        description: "We've sent you a confirmation link. Please verify your email to continue.",
+        title: "Account created!",
+        description: "You can now sign in with your credentials.",
       });
       
-      navigate("/login", { 
-        state: { message: "Please check your email and click the confirmation link to activate your account." } 
-      });
+      navigate("/login");
     } catch (error: any) {
       toast({
         title: "Signup failed",
