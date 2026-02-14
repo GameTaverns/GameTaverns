@@ -1,5 +1,3 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -18,14 +16,21 @@ const FEEDBACK_COLORS: Record<string, number> = {
   feature_request: 0x8b5cf6, // Purple
 };
 
+// Discord forum channel IDs for each feedback type
+const FEEDBACK_FORUM_CHANNELS: Record<string, string> = {
+  feedback: "1472011480105746635",
+  bug: "1472011323670794302",
+  feature_request: "1472011413512917033",
+};
+
+const DISCORD_API = "https://discord.com/api/v10";
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
 
     const { type, sender_name, sender_email, message } = await req.json();
@@ -37,48 +42,55 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
     const results: Record<string, unknown> = {};
 
-    // 1. Send Discord DMs to all admins
-    if (botToken) {
-      const { data: admins } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "admin");
-
-      if (admins && admins.length > 0) {
+    // 1. Post to Discord forum channel (name + message only, no email)
+    const channelId = FEEDBACK_FORUM_CHANNELS[type];
+    if (botToken && channelId) {
+      try {
         const embed = {
           title: FEEDBACK_TYPE_LABELS[type] || "📝 Feedback",
-          description: message.substring(0, 2000),
+          description: message.substring(0, 4000),
           color: FEEDBACK_COLORS[type] || 0x3b82f6,
           fields: [
             { name: "From", value: sender_name, inline: true },
-            ...(sender_email ? [{ name: "Email", value: sender_email, inline: true }] : []),
           ],
           footer: { text: "GameTaverns Platform Feedback" },
           timestamp: new Date().toISOString(),
         };
 
-        for (const admin of admins) {
-          try {
-            await fetch(`${supabaseUrl}/functions/v1/discord-send-dm`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${serviceRoleKey}`,
-              },
-              body: JSON.stringify({ user_id: admin.user_id, embed }),
-            });
-          } catch (e) {
-            console.error(`Discord DM to admin ${admin.user_id} failed:`, (e as Error).message);
-          }
+        const threadName = `${sender_name} - ${message.substring(0, 80)}`.substring(0, 100);
+
+        const response = await fetch(`${DISCORD_API}/channels/${channelId}/threads`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: threadName,
+            message: { embeds: [embed] },
+            auto_archive_duration: 1440,
+          }),
+        });
+
+        if (response.ok) {
+          const thread = await response.json();
+          results.discord = { sent: true, thread_id: thread.id };
+        } else {
+          const errorText = await response.text();
+          console.error("Discord forum post failed:", response.status, errorText);
+          results.discord = { sent: false, error: errorText };
         }
-        results.discord = "sent";
+      } catch (e) {
+        console.error("Discord forum post error:", (e as Error).message);
+        results.discord = { sent: false, error: (e as Error).message };
       }
+    } else {
+      results.discord = "not_configured";
     }
 
-    // 2. Send email to admin@gametaverns.com
+    // 2. Send email to admin@gametaverns.com with reply-to as user's email
     const smtpHost = Deno.env.get("SMTP_HOST");
     const smtpFrom = Deno.env.get("SMTP_FROM");
     if (smtpHost && smtpFrom) {
@@ -106,10 +118,16 @@ const handler = async (req: Request): Promise<Response> => {
         const client = new SMTPClient(clientConfig as any);
 
         const typeLabel = FEEDBACK_TYPE_LABELS[type] || "Feedback";
+        const emailHeaders: Record<string, string> = {};
+        if (sender_email) {
+          emailHeaders["Reply-To"] = sender_email;
+        }
+
         await client.send({
           from: smtpFrom,
           to: "admin@gametaverns.com",
           subject: `[GameTaverns] ${typeLabel} from ${sender_name}`,
+          headers: emailHeaders,
           html: `
             <h2>${typeLabel}</h2>
             <p><strong>From:</strong> ${sender_name}${sender_email ? ` (${sender_email})` : ""}</p>
