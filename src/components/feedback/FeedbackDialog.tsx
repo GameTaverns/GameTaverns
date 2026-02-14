@@ -10,7 +10,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -31,6 +30,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSubmitFeedback, FeedbackType } from "@/hooks/usePlatformFeedback";
 import { toast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const feedbackSchema = z.object({
   type: z.enum(["feedback", "bug", "feature_request"]),
@@ -47,8 +51,51 @@ const feedbackTypeLabels: Record<FeedbackType, string> = {
   feature_request: "Feature Request",
 };
 
+/**
+ * Global floating feedback button - renders in bottom-right corner on all pages.
+ * Also exported as FeedbackDialog for inline use in headers.
+ */
+export function GlobalFeedbackButton() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => setOpen(true)}
+            className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Send feedback"
+          >
+            <MessageSquarePlus className="h-5 w-5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="left">Send Feedback</TooltipContent>
+      </Tooltip>
+
+      <FeedbackFormDialog open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+
+/**
+ * Inline feedback button for use in headers/navs (kept for backwards compat).
+ */
 export function FeedbackDialog() {
   const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button variant="outline" size="sm" className="gap-2" onClick={() => setOpen(true)}>
+        <MessageSquarePlus className="h-4 w-4" />
+        Feedback
+      </Button>
+      <FeedbackFormDialog open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+
+function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const submitFeedback = useSubmitFeedback();
 
   const form = useForm<FeedbackFormValues>({
@@ -74,7 +121,7 @@ export function FeedbackDialog() {
         description: "Thank you for your feedback! We'll review it soon.",
       });
       form.reset();
-      setOpen(false);
+      onOpenChange(false);
     } catch (error) {
       toast({
         title: "Error",
@@ -85,17 +132,7 @@ export function FeedbackDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-        >
-          <MessageSquarePlus className="h-4 w-4" />
-          Feedback
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
@@ -176,7 +213,7 @@ export function FeedbackDialog() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>

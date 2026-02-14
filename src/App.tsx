@@ -14,6 +14,7 @@ import { MaintenanceGuard } from "@/components/system/MaintenanceGuard";
 import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironmentBanner";
 import { MobileAppShell } from "@/components/mobile/MobileAppShell";
 import { isProductionDeployment } from "@/config/runtime";
+import { GlobalFeedbackButton } from "@/components/feedback/FeedbackDialog";
 
 // Lazy load route components to reduce initial bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -242,6 +243,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <AppRoutes />
+              <GlobalFeedbackButton />
             </TourProvider>
           </AuthProvider>
         </BrowserRouter>
