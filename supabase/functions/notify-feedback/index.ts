@@ -122,7 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
         await client.send({
           from: smtpFrom,
           to: "admin@gametaverns.com",
-          replyTo: sender_email || undefined,
+          replyTo: sender_email || smtpFrom,
           subject: `[GameTaverns] ${typeLabel} from ${sender_name}`,
           html: `
             <h2>${typeLabel}</h2>
