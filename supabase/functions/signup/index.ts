@@ -238,10 +238,11 @@ async function handler(req: Request): Promise<Response> {
 
     // IMPORTANT: We intentionally do NOT use client-side auth.signUp here, because that
     // triggers the default provider confirmation email. Admin createUser avoids that.
+    // Auto-confirm users immediately — no confirmation email needed
     const { data: created, error: createError } = await supabase.auth.admin.createUser({
       email,
       password,
-      email_confirm: false,
+      email_confirm: true,
       user_metadata: {
         display_name: displayName || email.split("@")[0],
         username: username?.toLowerCase(),
@@ -270,7 +271,6 @@ async function handler(req: Request): Promise<Response> {
     const rollbackUser = async () => {
       console.error(`Rolling back user ${userId} due to signup failure`);
       await supabase.from("user_profiles").delete().eq("user_id", userId);
-      await supabase.from("email_confirmation_tokens").delete().eq("user_id", userId);
       await supabase.auth.admin.deleteUser(userId);
     };
 
@@ -291,49 +291,8 @@ async function handler(req: Request): Promise<Response> {
         });
       }
 
-      // Store token
-      const token = generateSecureToken();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      await supabase
-        .from("email_confirmation_tokens")
-        .delete()
-        .eq("email", email.toLowerCase());
-
-      const { error: tokenError } = await supabase
-        .from("email_confirmation_tokens")
-        .insert({
-          user_id: userId,
-          email: email.toLowerCase(),
-          token,
-          expires_at: expiresAt.toISOString(),
-        });
-
-      if (tokenError) {
-        console.error("Token creation failed:", tokenError);
-        await rollbackUser();
-        return new Response(JSON.stringify({ error: "Failed to create confirmation token" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Build confirmation URL
-      const baseUrl = redirectUrl || "https://gametaverns.com";
-      const confirmUrl = `${baseUrl}/verify-email?token=${token}`;
-      
-      // Fire-and-forget email sending - don't block the response.
-      // IMPORTANT: we also enforce a hard timeout so the function instance
-      // doesn't hang on a stuck SMTP connect and get killed by the platform.
-      await sendEmailSafely(async () => {
-        console.log(`[Signup] Attempting confirmation email via SMTP ${Deno.env.get("SMTP_HOST")}:${Deno.env.get("SMTP_PORT") || "465"}`);
-        await sendConfirmationEmail({ email, confirmUrl });
-      }, email);
-
-      // Return success immediately - user is created, token is stored
-      // Email delivery happens in background
       return new Response(
-        JSON.stringify({ success: true, message: "Account created. Check your email to confirm." }),
+        JSON.stringify({ success: true, message: "Account created! You can now sign in." }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     } catch (innerError) {
