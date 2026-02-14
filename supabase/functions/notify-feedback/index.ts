@@ -118,16 +118,12 @@ const handler = async (req: Request): Promise<Response> => {
         const client = new SMTPClient(clientConfig as any);
 
         const typeLabel = FEEDBACK_TYPE_LABELS[type] || "Feedback";
-        const emailHeaders: Record<string, string> = {};
-        if (sender_email) {
-          emailHeaders["Reply-To"] = sender_email;
-        }
 
         await client.send({
           from: smtpFrom,
           to: "admin@gametaverns.com",
+          replyTo: sender_email || undefined,
           subject: `[GameTaverns] ${typeLabel} from ${sender_name}`,
-          headers: emailHeaders,
           html: `
             <h2>${typeLabel}</h2>
             <p><strong>From:</strong> ${sender_name}${sender_email ? ` (${sender_email})` : ""}</p>
