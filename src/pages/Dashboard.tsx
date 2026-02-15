@@ -28,7 +28,9 @@ import {
   Target,
   ArrowLeftRight,
   Ticket,
-  ChevronDown
+  ChevronDown,
+  Zap,
+  Activity
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -82,11 +84,9 @@ export default function Dashboard() {
   const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();
   const { data: profile } = useUserProfile();
   
-  // Active library selection – defaults to the first (oldest) library
   const [activeLibraryId, setActiveLibraryId] = useState<string | null>(null);
   const library = myLibraries.find((l) => l.id === activeLibraryId) ?? defaultLibrary ?? null;
   
-  // Sync activeLibraryId once libraries load
   useEffect(() => {
     if (!activeLibraryId && defaultLibrary) {
       setActiveLibraryId(defaultLibrary.id);
@@ -107,24 +107,21 @@ export default function Dashboard() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState(tabFromUrl || "personal");
-  const SECONDARY_TABS = ["analytics", "trades", "clubs", "catalog", "danger"];
-  const isSecondaryTab = SECONDARY_TABS.includes(activeTab);
-  const [showMoreTabs, setShowMoreTabs] = useState(isSecondaryTab);
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "overview");
 
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
     }
-    if (!tabFromUrl && activeTab !== "personal") {
-      setActiveTab("personal");
+    if (!tabFromUrl && activeTab !== "overview") {
+      setActiveTab("overview");
     }
   }, [tabFromUrl]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     const newParams = new URLSearchParams(searchParams);
-    if (value === "personal") {
+    if (value === "overview") {
       newParams.delete("tab");
     } else {
       newParams.set("tab", value);
@@ -161,7 +158,6 @@ export default function Dashboard() {
     enabled: !!library?.id,
   });
 
-  // Onboarding: check if library has custom theme
   const { data: librarySettings } = useQuery({
     queryKey: ["library-settings-onboarding", library?.id],
     queryFn: async () => {
@@ -177,7 +173,6 @@ export default function Dashboard() {
     enabled: !!library?.id,
   });
 
-  // Onboarding: check if library has any events
   const { data: eventCount } = useQuery({
     queryKey: ["library-event-count", library?.id],
     queryFn: async () => {
@@ -192,7 +187,6 @@ export default function Dashboard() {
     enabled: !!library?.id,
   });
 
-  // Explore checklist: poll count
   const { data: pollCount } = useQuery({
     queryKey: ["library-poll-count", library?.id],
     queryFn: async () => {
@@ -207,7 +201,6 @@ export default function Dashboard() {
     enabled: !!library?.id,
   });
 
-  // Explore checklist: forum thread count
   const { data: forumThreadCount } = useQuery({
     queryKey: ["library-forum-thread-count", library?.id],
     queryFn: async () => {
@@ -222,7 +215,6 @@ export default function Dashboard() {
     enabled: !!library?.id,
   });
 
-  // Explore checklist: user achievements count
   const { data: userAchievementCount } = useQuery({
     queryKey: ["user-achievement-count", user?.id],
     queryFn: async () => {
@@ -237,7 +229,6 @@ export default function Dashboard() {
     enabled: !!user?.id,
   });
 
-  // Explore checklist: trade listings count
   const { data: tradeListingCount } = useQuery({
     queryKey: ["user-trade-listing-count", library?.id],
     queryFn: async () => {
@@ -294,14 +285,16 @@ export default function Dashboard() {
     return null;
   }
   
-  // Generate proper URLs - uses subdomains in production, query params in preview
   const gamesUrl = library ? getLibraryUrl(library.slug, "/games") : null;
   const settingsUrl = library ? getLibraryUrl(library.slug, "/settings") : null;
   const libraryUrl = library ? getLibraryUrl(library.slug, "/") : null;
   const messagesUrl = library ? getLibraryUrl(library.slug, "/messages") : null;
 
   const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
-  
+
+  // Badge count for Library tab
+  const libraryBadgeCount = (pendingLoanRequests > 0 || unreadCount > 0) ? pendingLoanRequests + unreadCount : 0;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
       <GuidedTour librarySlug={library?.slug} />
@@ -309,6 +302,7 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 pt-3">
         <TwoFactorBanner />
       </div>
+      
       {/* Header */}
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
@@ -335,7 +329,7 @@ export default function Dashboard() {
             </div>
           </div>
           
-          {/* Navigation links row - wraps on mobile */}
+          {/* Navigation links */}
           <div className="flex flex-wrap items-center gap-2 mt-3">
             <Link 
               to="/directory"
@@ -368,703 +362,479 @@ export default function Dashboard() {
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-12">
-        <h1 className="font-display text-2xl sm:text-4xl font-bold text-cream mb-6 sm:mb-8">
+      <main className="container mx-auto px-4 py-8 sm:py-12">
+        <h1 className="font-display text-2xl sm:text-4xl font-bold text-cream mb-6">
           Welcome back, {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0]}
         </h1>
-        
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="mb-8 space-y-2">
-            {/* Primary tabs - always visible */}
-            <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1">
-              <TabsTrigger 
-                value="personal" 
-                className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-              >
-                <User className="h-4 w-4" />
-                Personal
-              </TabsTrigger>
-              <TabsTrigger 
-                value="community" 
-                className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-              >
-                <MessageSquare className="h-4 w-4" />
-                Community
-              </TabsTrigger>
-              <TabsTrigger 
-                value="library" 
-                className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-              >
-                <Library className="h-4 w-4" />
-                Library
-                {library && (pendingLoanRequests > 0 || unreadCount > 0) && (
-                  <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                    {pendingLoanRequests + unreadCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
 
-            {/* More tabs toggle */}
-            <button
-              onClick={() => setShowMoreTabs(!showMoreTabs)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cream/60 hover:text-cream transition-colors rounded-md hover:bg-wood-medium/30"
-            >
-              <ChevronDown className={cn(
-                "h-3.5 w-3.5 transition-transform duration-200",
-                showMoreTabs && "rotate-180"
-              )} />
-              {showMoreTabs ? "Fewer options" : "More options"}
-              {isSecondaryTab && !showMoreTabs && (
-                <span className="ml-1 h-1.5 w-1.5 rounded-full bg-secondary" />
-              )}
-            </button>
+        {/* ===== STATS BAR ===== */}
+        {library && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="bg-wood-medium/30 border border-wood-medium/50 rounded-xl p-4 text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-secondary">{gameCount ?? "--"}</div>
+              <div className="text-xs text-cream/60 mt-1">Games</div>
+            </div>
+            <div className="bg-wood-medium/30 border border-wood-medium/50 rounded-xl p-4 text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-secondary">{playCount ?? "--"}</div>
+              <div className="text-xs text-cream/60 mt-1">Plays</div>
+            </div>
+            <div className="bg-wood-medium/30 border border-wood-medium/50 rounded-xl p-4 text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-secondary">{memberCount ?? 0}</div>
+              <div className="text-xs text-cream/60 mt-1">Members</div>
+            </div>
+            <div className="bg-wood-medium/30 border border-wood-medium/50 rounded-xl p-4 text-center">
+              <div className="text-2xl sm:text-3xl font-bold text-secondary">{unreadCount + pendingLoanRequests}</div>
+              <div className="text-xs text-cream/60 mt-1">Action Items</div>
+            </div>
+          </div>
+        )}
 
-            {/* Secondary tabs - behind toggle */}
-            {showMoreTabs && (
-              <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1">
-                <TabsTrigger 
-                  value="analytics" 
-                  className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  Analytics
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="trades" 
-                  className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-                >
-                  <ArrowLeftRight className="h-4 w-4" />
-                  Trades
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="clubs" 
-                  className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-                >
-                  <Users className="h-4 w-4" />
-                  Clubs
-                  {myClubs.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 text-xs">{myClubs.length}</Badge>
-                  )}
-                </TabsTrigger>
-                {isAdmin && (
-                  <TabsTrigger 
-                    value="catalog" 
-                    className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-                  >
-                    <BookOpen className="h-4 w-4" />
-                    Catalog
-                  </TabsTrigger>
-                )}
-                <TabsTrigger 
-                  value="danger" 
-                  className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  Danger Zone
-                </TabsTrigger>
-              </TabsList>
+        {/* ===== QUICK ACTIONS ===== */}
+        {library && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            <a href={libraryUrl!}>
+              <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 gap-1.5">
+                <ExternalLink className="h-3.5 w-3.5" /> View Library
+              </Button>
+            </a>
+            <a href={gamesUrl!}>
+              <Button size="sm" variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5">
+                <Upload className="h-3.5 w-3.5" /> Manage Games
+              </Button>
+            </a>
+            <a href={settingsUrl!}>
+              <Button size="sm" variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5">
+                <Settings className="h-3.5 w-3.5" /> Settings
+              </Button>
+            </a>
+            <Link to="/picker">
+              <Button size="sm" variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5">
+                <Target className="h-3.5 w-3.5" /> Pick a Game
+              </Button>
+            </Link>
+            {isAdmin && (
+              <Link to="/admin">
+                <Button size="sm" variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5">
+                  <Shield className="h-3.5 w-3.5" /> Admin
+                </Button>
+              </Link>
             )}
           </div>
+        )}
+        
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1 mb-8">
+            <TabsTrigger 
+              value="overview" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
+              <Activity className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger 
+              value="library" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
+              <Library className="h-4 w-4" />
+              Library
+              {libraryBadgeCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {libraryBadgeCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="more" 
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
+              <Zap className="h-4 w-4" />
+              More
+            </TabsTrigger>
+          </TabsList>
 
-          {/* ===== CLUBS TAB ===== */}
-          <TabsContent value="clubs">
+          {/* ===== OVERVIEW TAB (Command Center) ===== */}
+          <TabsContent value="overview">
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-display text-2xl text-cream">My Clubs</h2>
-                  <InfoPopover
-                    title="Clubs"
-                    description="Clubs connect multiple board game libraries, letting members search across collections and organize joint events."
-                    className="text-cream/40 hover:text-cream/70"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Link to="/join-club">
-                    <Button variant="outline" className="gap-2 text-cream border-wood-medium/50 hover:bg-wood-medium/40">
-                      <Ticket className="h-4 w-4" /> Join Club
+              {/* Library Switcher */}
+              {myLibraries.length > 1 && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm text-cream/70 font-medium">Active Library:</span>
+                  {myLibraries.map((lib) => (
+                    <Button
+                      key={lib.id}
+                      size="sm"
+                      variant={lib.id === library?.id ? "default" : "outline"}
+                      className={
+                        lib.id === library?.id
+                          ? "bg-secondary text-secondary-foreground"
+                          : "border-secondary/50 text-cream hover:bg-wood-medium/50"
+                      }
+                      onClick={() => setActiveLibraryId(lib.id)}
+                    >
+                      {lib.name}
                     </Button>
-                  </Link>
-                  <Link to="/request-club">
-                    <Button className="gap-2 bg-secondary text-secondary-foreground">
-                      <Plus className="h-4 w-4" /> Request Club
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-              {myClubs.length === 0 ? (
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                  <CardContent className="py-12 text-center">
-                    <Users className="h-12 w-12 mx-auto text-cream/30 mb-4" />
-                    <h3 className="font-display text-xl mb-2">No Clubs Yet</h3>
-                    <p className="text-cream/60 mb-4">
-                      Clubs connect multiple board game libraries together, letting members search across collections.
-                    </p>
-                    <div className="flex gap-3 justify-center">
-                      <Link to="/request-club">
-                        <Button className="bg-secondary text-secondary-foreground">Request a Club</Button>
-                      </Link>
-                      <Link to="/join-club">
-                        <Button variant="outline" className="text-cream border-wood-medium/50">Join with Code</Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {myClubs.map((club) => (
-                    <Card key={club.id} className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                      <CardHeader>
-                        <CardTitle className="font-display flex items-center gap-2">
-                          {club.name}
-                          <Badge variant={club.status === 'approved' ? 'secondary' : 'outline'} className="text-xs">
-                            {club.status}
-                          </Badge>
-                        </CardTitle>
-                        {club.description && (
-                          <CardDescription className="text-cream/60">{club.description}</CardDescription>
-                        )}
-                      </CardHeader>
-                      <CardContent className="flex gap-2">
-                        <Link to={`/club/${club.slug}`}>
-                          <Button variant="secondary" size="sm" className="gap-1">
-                            <ExternalLink className="h-3 w-3" /> View
-                          </Button>
-                        </Link>
-                        {club.owner_id === user?.id && (
-                          <Link to={`/club/${club.slug}/manage`}>
-                            <Button variant="outline" size="sm" className="gap-1 text-cream border-wood-medium/50">
-                              <Settings className="h-3 w-3" /> Manage
-                            </Button>
-                          </Link>
-                        )}
-                      </CardContent>
-                    </Card>
                   ))}
                 </div>
               )}
-            </div>
-          </TabsContent>
 
-          {/* ===== COMMUNITY TAB ===== */}
-          <TabsContent value="community">
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="font-display text-2xl text-cream">Community</h2>
-              <InfoPopover
-                title="Community"
-                description="See activity from libraries you follow, discover popular games, and engage with the broader GameTaverns community."
-                className="text-cream/40 hover:text-cream/70"
-              />
-            </div>
-            <CommunityTab />
-          </TabsContent>
-          <TabsContent value="personal">
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Admin Card - Only show for site owners */}
-              {isAdmin && (
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-secondary" />
-                      Platform Admin
-                    </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      Manage the GameTaverns platform
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Link to="/admin">
-                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        <Shield className="h-4 w-4 mr-2" />
-                        Admin Dashboard
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              )}
-              
-              {/* My Communities Card */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-secondary" />
-                    My Communities
-                  </CardTitle>
-                  <CardDescription className="text-cream/70">
-                    {(() => {
-                      const totalCount = myMemberships.length + myLibraries.filter(
-                        (lib) => !myMemberships.some((m) => m.library?.id === lib.id)
-                      ).length;
-                      return totalCount > 0
-                        ? `You're part of ${totalCount} ${totalCount === 1 ? 'community' : 'communities'}`
-                        : "Join communities to borrow games and participate in events";
-                    })()}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    // Merge owned libraries + memberships, deduplicating by library id
-                    const ownedEntries = myLibraries.map((lib) => ({
-                      key: `owned-${lib.id}`,
-                      name: lib.name,
-                      slug: lib.slug,
-                      role: 'owner' as const,
-                    }));
-                    const memberEntries = myMemberships
-                      .filter((m) => !myLibraries.some((lib) => lib.id === m.library?.id))
-                      .map((m) => ({
-                        key: `member-${m.id}`,
-                        name: m.library?.name ?? 'Unknown',
-                        slug: m.library?.slug,
-                        role: m.role as string,
-                      }));
-                    const allEntries = [...ownedEntries, ...memberEntries];
+              {/* Import Progress - only shows when active */}
+              <ImportProgressWidget libraryIds={myLibraries.map(l => l.id)} />
 
-                    if (allEntries.length === 0) {
-                      return (
-                        <Link to="/directory">
-                          <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                            <Users className="h-4 w-4 mr-2" />
-                            Browse Communities
-                          </Button>
-                        </Link>
-                      );
-                    }
-
-                    return (
-                      <div className="space-y-2">
-                        {allEntries.slice(0, 5).map((entry) => (
-                          <a
-                            key={entry.key}
-                            href={entry.slug ? getLibraryUrl(entry.slug, "/") : "#"}
-                            className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
-                          >
-                            <span className="text-sm font-medium truncate">
-                              {entry.name}
-                            </span>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              {entry.role === 'owner' && (
-                                <Badge variant="secondary" className="text-xs">Owner</Badge>
-                              )}
-                              {entry.role === 'moderator' && (
-                                <Badge variant="outline" className="text-xs">Mod</Badge>
-                              )}
-                              <ArrowRight className="h-4 w-4 text-cream/60" />
-                            </div>
-                          </a>
-                        ))}
-                        {allEntries.length > 5 && (
-                          <p className="text-xs text-cream/60 text-center pt-2">
-                            +{allEntries.length - 5} more
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-
-              {/* Borrowed Games Card */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-secondary" />
-                    My Borrowed Games
-                    {activeBorrowedLoans.length > 0 && (
-                      <Badge variant="secondary" className="ml-auto">
-                        {activeBorrowedLoans.length}
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <CardDescription className="text-cream/70">
-                    Games you're currently borrowing
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {activeBorrowedLoans.length > 0 ? (
-                    <div className="space-y-2">
-                      {activeBorrowedLoans.slice(0, 3).map((loan) => (
-                        <div 
-                          key={loan.id}
-                          className="flex flex-col p-2 rounded-lg bg-wood-medium/20"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium truncate">
-                              {loan.game?.title || "Unknown Game"}
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              {loan.status}
-                            </Badge>
-                          </div>
-                          {loan.library?.name && (
-                            <span className="text-xs text-cream/60 mt-1">
-                              From: {loan.library.name}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                      {activeBorrowedLoans.length > 3 && (
-                        <p className="text-xs text-cream/60 text-center pt-2">
-                          +{activeBorrowedLoans.length - 3} more
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-center py-4">
-                      <BookOpen className="h-8 w-8 mx-auto mb-2 text-cream/40" />
-                      <p className="text-sm text-cream/60">No active loans</p>
-                      <Link to="/directory" className="mt-2 inline-block">
-                        <Button variant="outline" size="sm" className="border-secondary/50">
-                          Browse Libraries
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Achievements Card */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-secondary" />
-                      Achievements
-                    </CardTitle>
-                    <Link to="/achievements">
-                      <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 -mr-2">
-                        View All
-                        <ArrowRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </Link>
-                  </div>
-                  <CardDescription className="text-cream/70">
-                    Track your progress and unlock badges
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <AchievementsDisplay compact />
-                </CardContent>
-              </Card>
-
-              {/* Shelf of Shame Widget */}
+              {/* Onboarding - auto-hides when done */}
               {library && (
-                <ShelfOfShameWidget libraryId={library.id} />
+                <OnboardingChecklist
+                  librarySlug={library.slug}
+                  gameCount={gameCount ?? 0}
+                  playCount={playCount ?? 0}
+                  memberCount={memberCount ?? 0}
+                  hasCustomTheme={hasCustomTheme}
+                  hasEvents={(eventCount ?? 0) > 0}
+                  has2FA={totpStatus?.isEnabled ?? false}
+                />
               )}
 
-              {/* Smart Picker Card */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Gamepad2 className="h-5 w-5 text-secondary" />
-                    Smart Picker
-                  </CardTitle>
-                  <CardDescription className="text-cream/70">
-                    Find the perfect game for your group
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link to="/picker">
-                    <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                      <Target className="h-4 w-4 mr-2" />
-                      Pick a Game
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-
-              {/* My Inquiries Section - Full Width */}
-              <div className="lg:col-span-3">
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                  <CardContent className="pt-6">
-                    <MyInquiriesSection />
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Account Settings Card - Full Width */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5 text-secondary" />
-                    Account Settings
-                  </CardTitle>
-                  <CardDescription className="text-cream/70">
-                    Manage your profile and login credentials
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <AccountSettings />
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* ===== LIBRARY TAB ===== */}
-          <TabsContent value="library">
-            {library ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Library Switcher - only when user has multiple */}
-                {myLibraries.length > 1 && (
-                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
-                    <CardContent className="py-3 flex items-center gap-3 flex-wrap">
-                      <span className="text-sm text-cream/70 font-medium">Active Library:</span>
-                      {myLibraries.map((lib) => (
-                        <Button
-                          key={lib.id}
-                          size="sm"
-                          variant={lib.id === library.id ? "default" : "outline"}
-                          className={
-                            lib.id === library.id
-                              ? "bg-secondary text-secondary-foreground"
-                              : "border-secondary/50 text-cream hover:bg-wood-medium/50"
-                          }
-                          onClick={() => setActiveLibraryId(lib.id)}
-                        >
-                          {lib.name}
-                        </Button>
-                      ))}
+              {/* Actionable items row - only items that need attention */}
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Pending Loans / Lending */}
+                {library && (pendingLoanRequests > 0 || myLentLoans.length > 0) && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <BookOpen className="h-5 w-5 text-secondary" />
+                        Game Lending
+                        {pendingLoanRequests > 0 && (
+                          <Badge variant="destructive" className="ml-2">
+                            {pendingLoanRequests} pending
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <LendingDashboard libraryId={library.id} />
                     </CardContent>
                   </Card>
                 )}
 
-                {/* Import Progress */}
-                <ImportProgressWidget libraryIds={myLibraries.map(l => l.id)} />
+                {/* Messages - only if unread */}
+                {library && unreadCount > 0 && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Mail className="h-5 w-5 text-secondary" />
+                        Messages
+                        <Badge variant="destructive" className="ml-auto">{unreadCount} new</Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <a href={messagesUrl!}>
+                        <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                          <Mail className="h-4 w-4 mr-2" /> View Messages
+                        </Button>
+                      </a>
+                    </CardContent>
+                  </Card>
+                )}
 
-                {/* Onboarding Checklist */}
-                <div className="lg:col-span-3">
-                  <OnboardingChecklist
-                    librarySlug={library.slug}
-                    gameCount={gameCount ?? 0}
-                    playCount={playCount ?? 0}
-                    memberCount={memberCount ?? 0}
-                    hasCustomTheme={!!(librarySettings?.logo_url || librarySettings?.theme_primary_h || librarySettings?.background_image_url)}
-                    hasEvents={(eventCount ?? 0) > 0}
-                    has2FA={totpStatus?.isEnabled ?? false}
-                  />
-                </div>
-
-                {/* Explore Advanced Features Checklist */}
-                <div className="lg:col-span-3">
-                  <ExploreChecklist
-                    librarySlug={library.slug}
-                    hasPlaySessions={(playCount ?? 0) > 0}
-                    hasPolls={(pollCount ?? 0) > 0}
-                    hasBggSync={!!librarySettings?.bgg_username}
-                    hasForum={(forumThreadCount ?? 0) > 0}
-                    hasClubs={myClubs.length > 0}
-                    hasEvents={(eventCount ?? 0) > 0}
-                    hasAchievements={(userAchievementCount ?? 0) > 0}
-                    hasTrades={(tradeListingCount ?? 0) > 0}
-                  />
-                </div>
-
-                {/* My Libraries Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Library className="h-5 w-5 text-secondary" />
-                      {myLibraries.length > 1 ? 'My Libraries' : 'My Library'}
-                    </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      {myLibraries.length > 1
-                        ? `You own ${myLibraries.length} libraries`
-                        : library.name}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-end">
-                    <div className="space-y-3">
-                      {myLibraries.map((lib) => (
-                        <div key={lib.id} className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20">
-                          <div className="min-w-0 mr-2">
-                            <div className="text-sm font-medium truncate">{lib.name}</div>
-                            <div className="text-xs text-cream/60">{lib.slug}.gametaverns.com</div>
+                {/* Borrowed Games - only if active */}
+                {activeBorrowedLoans.length > 0 && (
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <BookOpen className="h-5 w-5 text-secondary" />
+                        My Borrowed Games
+                        <Badge variant="secondary" className="ml-auto">{activeBorrowedLoans.length}</Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {activeBorrowedLoans.slice(0, 3).map((loan) => (
+                          <div key={loan.id} className="flex flex-col p-2 rounded-lg bg-wood-medium/20">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium truncate">{loan.game?.title || "Unknown Game"}</span>
+                              <Badge variant="outline" className="text-xs">{loan.status}</Badge>
+                            </div>
+                            {loan.library?.name && (
+                              <span className="text-xs text-cream/60 mt-1">From: {loan.library.name}</span>
+                            )}
                           </div>
-                          <a href={getLibraryUrl(lib.slug, "/")} className="flex-shrink-0">
-                            <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                              <ExternalLink className="h-3 w-3 mr-1" />
-                              View
-                            </Button>
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                {/* Manage Games Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Gamepad2 className="h-5 w-5 text-secondary" />
-                      Manage Games
-                    </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      Import, add, and organize your collection
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-end">
-                    <a href={gamesUrl!}>
-                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Import & Manage
-                      </Button>
-                    </a>
-                  </CardContent>
-                </Card>
-                
-                {/* Library Settings Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Palette className="h-5 w-5 text-secondary" />
-                      Library Settings
-                    </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      Theme, branding, and site configuration
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-end">
-                    <a href={settingsUrl!}>
-                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Customize Library
-                      </Button>
-                    </a>
-                  </CardContent>
-                </Card>
-                
-                {/* Messages Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Mail className="h-5 w-5 text-secondary" />
-                      Messages
-                      {unreadCount > 0 && (
-                        <Badge variant="destructive" className="ml-auto">
-                          {unreadCount} new
-                        </Badge>
-                      )}
-                    </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      View inquiries about games for sale
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-end">
-                    <a href={messagesUrl!}>
-                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        <Mail className="h-4 w-4 mr-2" />
-                        View Messages
-                        {unreadCount > 0 && (
-                          <Badge variant="outline" className="ml-2 bg-cream/20">
-                            {unreadCount}
-                          </Badge>
+                        ))}
+                        {activeBorrowedLoans.length > 3 && (
+                          <p className="text-xs text-cream/60 text-center pt-1">+{activeBorrowedLoans.length - 3} more</p>
                         )}
-                      </Button>
-                    </a>
-                  </CardContent>
-                </Card>
-                
-                {/* Ratings & Wishlist Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Star className="h-5 w-5 text-secondary" />
-                      Ratings & Wishlist
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Communities & Fun Tools row */}
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* My Communities */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Users className="h-5 w-5 text-secondary" />
+                      My Communities
                     </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      View user ratings and wishlist requests
-                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-end space-y-2">
-                    <a href={getLibraryUrl(library.slug, "/settings?tab=ratings")}>
-                      <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
-                        <Star className="h-4 w-4 mr-2" />
-                        View Ratings
-                      </Button>
-                    </a>
-                    <a href={getLibraryUrl(library.slug, "/settings?tab=wishlist")}>
-                      <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
-                        <Heart className="h-4 w-4 mr-2" />
-                        View Wishlist
-                      </Button>
-                    </a>
-                  </CardContent>
-                </Card>
-                
-                {/* Stats Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-secondary" />
-                      Library Stats
-                    </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      Your collection at a glance
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col justify-end space-y-4">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
-                        <div className="text-2xl font-bold text-secondary">
-                          {gameCount ?? "--"}
+                  <CardContent>
+                    {(() => {
+                      const ownedEntries = myLibraries.map((lib) => ({
+                        key: `owned-${lib.id}`,
+                        name: lib.name,
+                        slug: lib.slug,
+                        role: 'owner' as const,
+                      }));
+                      const memberEntries = myMemberships
+                        .filter((m) => !myLibraries.some((lib) => lib.id === m.library?.id))
+                        .map((m) => ({
+                          key: `member-${m.id}`,
+                          name: m.library?.name ?? 'Unknown',
+                          slug: m.library?.slug,
+                          role: m.role as string,
+                        }));
+                      const allEntries = [...ownedEntries, ...memberEntries];
+
+                      if (allEntries.length === 0) {
+                        return (
+                          <Link to="/directory">
+                            <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                              <Users className="h-4 w-4 mr-2" /> Browse Communities
+                            </Button>
+                          </Link>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-2">
+                          {allEntries.slice(0, 4).map((entry) => (
+                            <a
+                              key={entry.key}
+                              href={entry.slug ? getLibraryUrl(entry.slug, "/") : "#"}
+                              className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
+                            >
+                              <span className="text-sm font-medium truncate">{entry.name}</span>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {entry.role === 'owner' && <Badge variant="secondary" className="text-xs">Owner</Badge>}
+                                {entry.role === 'moderator' && <Badge variant="outline" className="text-xs">Mod</Badge>}
+                                <ArrowRight className="h-4 w-4 text-cream/60" />
+                              </div>
+                            </a>
+                          ))}
+                          {allEntries.length > 4 && (
+                            <p className="text-xs text-cream/60 text-center pt-1">+{allEntries.length - 4} more</p>
+                          )}
                         </div>
-                        <div className="text-xs text-cream/60">Games</div>
-                      </div>
-                      <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
-                        <div className="text-2xl font-bold text-secondary">
-                          {playCount ?? "--"}
-                        </div>
-                        <div className="text-xs text-cream/60">Plays</div>
-                      </div>
-                      <div className="text-center p-3 bg-wood-medium/20 rounded-lg">
-                        <div className="text-2xl font-bold text-secondary">
-                          {memberCount ?? 0}
-                        </div>
-                        <div className="text-xs text-cream/60">Members</div>
-                      </div>
-                    </div>
-                    <a href={getLibraryUrl(library.slug, "/stats")}>
-                      <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        <BarChart3 className="h-4 w-4 mr-2" />
-                        Monthly Play Stats
-                      </Button>
-                    </a>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
 
-                {/* Lending Dashboard */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
+                {/* Achievements - compact */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Trophy className="h-5 w-5 text-secondary" />
+                        Achievements
+                      </CardTitle>
+                      <Link to="/achievements">
+                        <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 -mr-2">
+                          View All <ArrowRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <AchievementsDisplay compact />
+                  </CardContent>
+                </Card>
+
+                {/* Shelf of Shame */}
+                {library && <ShelfOfShameWidget libraryId={library.id} />}
+              </div>
+
+              {/* Events & Polls - persistent */}
+              {library && (
+                <div className="grid md:grid-cols-2 gap-6">
+                  <UpcomingEventsWidget 
+                    libraryId={library.id} 
+                    isOwner={true}
+                    onCreateEvent={() => setShowCreateEvent(true)}
+                    onEditEvent={(event) => setEditEvent(event)}
+                  />
+                  <Card className="bg-wood-medium/30 border-wood-medium/50">
+                    <CardHeader>
+                      <CardTitle className="text-cream flex items-center gap-2">
+                        <Vote className="h-5 w-5 text-secondary" />
+                        Game Polls
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        Create and manage game night polls
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <PollsManager libraryId={library.id} />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* My Inquiries - full width */}
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <CardContent className="pt-6">
+                  <MyInquiriesSection />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* ===== LIBRARY TAB (Management) ===== */}
+          <TabsContent value="library">
+            {library ? (
+              <div className="space-y-6">
+                {/* Library Switcher */}
+                {myLibraries.length > 1 && (
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-sm text-cream/70 font-medium">Active Library:</span>
+                    {myLibraries.map((lib) => (
+                      <Button
+                        key={lib.id}
+                        size="sm"
+                        variant={lib.id === library.id ? "default" : "outline"}
+                        className={
+                          lib.id === library.id
+                            ? "bg-secondary text-secondary-foreground"
+                            : "border-secondary/50 text-cream hover:bg-wood-medium/50"
+                        }
+                        onClick={() => setActiveLibraryId(lib.id)}
+                      >
+                        {lib.name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Explore Checklist */}
+                <ExploreChecklist
+                  librarySlug={library.slug}
+                  hasPlaySessions={(playCount ?? 0) > 0}
+                  hasPolls={(pollCount ?? 0) > 0}
+                  hasBggSync={!!librarySettings?.bgg_username}
+                  hasForum={(forumThreadCount ?? 0) > 0}
+                  hasClubs={myClubs.length > 0}
+                  hasEvents={(eventCount ?? 0) > 0}
+                  hasAchievements={(userAchievementCount ?? 0) > 0}
+                  hasTrades={(tradeListingCount ?? 0) > 0}
+                />
+
+                {/* Management cards grid */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* My Libraries */}
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Library className="h-5 w-5 text-secondary" />
+                        {myLibraries.length > 1 ? 'My Libraries' : 'My Library'}
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        {myLibraries.length > 1
+                          ? `You own ${myLibraries.length} libraries`
+                          : library.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-end">
+                      <div className="space-y-3">
+                        {myLibraries.map((lib) => (
+                          <div key={lib.id} className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20">
+                            <div className="min-w-0 mr-2">
+                              <div className="text-sm font-medium truncate">{lib.name}</div>
+                              <div className="text-xs text-cream/60">{lib.slug}.gametaverns.com</div>
+                            </div>
+                            <a href={getLibraryUrl(lib.slug, "/")} className="flex-shrink-0">
+                              <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                                <ExternalLink className="h-3 w-3 mr-1" /> View
+                              </Button>
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Messages & Inquiries */}
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Mail className="h-5 w-5 text-secondary" />
+                        Messages
+                        {unreadCount > 0 && <Badge variant="destructive" className="ml-auto">{unreadCount} new</Badge>}
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        Inquiries about games for sale
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-end">
+                      <a href={messagesUrl!}>
+                        <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                          <Mail className="h-4 w-4 mr-2" /> View Messages
+                        </Button>
+                      </a>
+                    </CardContent>
+                  </Card>
+
+                  {/* Ratings & Wishlist */}
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream flex flex-col">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Star className="h-5 w-5 text-secondary" />
+                        Ratings & Wishlist
+                      </CardTitle>
+                      <CardDescription className="text-cream/70">
+                        User ratings and wishlist requests
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-end space-y-2">
+                      <a href={getLibraryUrl(library.slug, "/settings?tab=ratings")}>
+                        <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
+                          <Star className="h-4 w-4 mr-2" /> View Ratings
+                        </Button>
+                      </a>
+                      <a href={getLibraryUrl(library.slug, "/settings?tab=wishlist")}>
+                        <Button variant="outline" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50">
+                          <Heart className="h-4 w-4 mr-2" /> View Wishlist
+                        </Button>
+                      </a>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Lending Dashboard - full width */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <BookOpen className="h-5 w-5 text-secondary" />
                       Game Lending
                       {pendingLoanRequests > 0 && (
-                        <Badge variant="destructive" className="ml-2">
-                          {pendingLoanRequests} pending
-                        </Badge>
+                        <Badge variant="destructive" className="ml-2">{pendingLoanRequests} pending</Badge>
                       )}
                     </CardTitle>
-                    <CardDescription className="text-cream/70">
-                      Manage loan requests and track borrowed games
-                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <LendingDashboard libraryId={library?.id} />
+                    <LendingDashboard libraryId={library.id} />
                   </CardContent>
                 </Card>
 
-
-                {/* Group Challenges - Self-hosted feature */}
+                {/* Group Challenges */}
                 {isSelfHostedSupabaseStack() && (
-                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3">
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Target className="h-5 w-5 text-secondary" />
                         Group Challenges
                       </CardTitle>
                       <CardDescription className="text-cream/70">
-                        Create play goals, game challenges, and competitive leaderboards
+                        Play goals, challenges, and competitive leaderboards
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -1073,34 +843,27 @@ export default function Dashboard() {
                   </Card>
                 )}
 
-                {/* Library switcher at top now handles multi-library navigation */}
+                {/* Random Game Picker */}
+                <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />
 
-                {/* Create another library if under limit */}
+                {/* Create another library */}
                 {myLibraries.length < maxLibraries && (
                   <Card className="bg-wood-medium/30 border-wood-medium/50 border-dashed text-cream">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Plus className="h-5 w-5 text-secondary" />
-                        Create Another Library
-                      </CardTitle>
-                      <CardDescription className="text-cream/70">
-                        You can create up to {maxLibraries} {maxLibraries === 1 ? 'library' : 'libraries'} ({myLibraries.length} used)
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                    <CardContent className="py-6 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Create Another Library</p>
+                        <p className="text-sm text-cream/60">{myLibraries.length}/{maxLibraries} used</p>
+                      </div>
                       <Link to="/create-library">
                         <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Library
+                          <Plus className="h-4 w-4 mr-2" /> Create
                         </Button>
                       </Link>
                     </CardContent>
                   </Card>
                 )}
-
               </div>
             ) : (
-              /* Non-owner: Show Create Library prompt */
               <Card className="bg-wood-medium/30 border-wood-medium/50 border-dashed text-cream">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -1114,8 +877,7 @@ export default function Dashboard() {
                 <CardContent>
                   <Link to="/create-library">
                     <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Library
+                      <Plus className="h-4 w-4 mr-2" /> Create Library
                     </Button>
                   </Link>
                 </CardContent>
@@ -1123,119 +885,208 @@ export default function Dashboard() {
             )}
           </TabsContent>
 
-          {/* ===== CATALOG TAB (Admin only) ===== */}
-          {isAdmin && (
-            <TabsContent value="catalog">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-display text-2xl text-cream">Game Catalog</h2>
-                  <Link to="/catalog">
-                    <Button className="gap-2 bg-secondary text-secondary-foreground">
-                      <ExternalLink className="h-4 w-4" /> Open Full Catalog
-                    </Button>
-                  </Link>
-                </div>
-                <CatalogBrowseEmbed />
-              </div>
-            </TabsContent>
-          )}
-
-          {/* ===== ANALYTICS TAB ===== */}
-          <TabsContent value="analytics">
-            {(isAdmin || library) ? (
-              <AnalyticsTab isAdmin={isAdmin} libraryId={library?.id || null} />
-            ) : (
+          {/* ===== MORE TAB ===== */}
+          <TabsContent value="more">
+            <div className="space-y-6">
+              {/* Sub-sections as collapsible cards */}
+              
+              {/* Community */}
               <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                <CardContent className="py-12 text-center">
-                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-cream/40" />
-                  <h3 className="text-lg font-medium mb-2">Analytics</h3>
-                  <p className="text-cream/60">
-                    Create a library to see analytics about your collection.
-                  </p>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5 text-secondary" />
+                      Community
+                    </CardTitle>
+                    <InfoPopover
+                      title="Community"
+                      description="See activity from libraries you follow, discover popular games, and engage with the broader GameTaverns community."
+                      className="text-cream/40 hover:text-cream/70"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <CommunityTab />
                 </CardContent>
               </Card>
-            )}
-          </TabsContent>
 
-          {/* ===== TRADES TAB ===== */}
-          <TabsContent value="trades">
-            {isSelfHostedSupabaseStack() ? (
-              <TradeCenter />
-            ) : (
+              {/* Clubs */}
               <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                <CardContent className="py-12 text-center">
-                  <ArrowLeftRight className="h-12 w-12 mx-auto mb-4 text-cream/40" />
-                  <h3 className="text-lg font-medium mb-2">Cross-Library Trading</h3>
-                  <p className="text-cream/60">
-                    This feature is only available on self-hosted deployments.
-                  </p>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-secondary" />
+                        My Clubs
+                        {myClubs.length > 0 && <Badge variant="secondary" className="text-xs">{myClubs.length}</Badge>}
+                      </CardTitle>
+                      <InfoPopover
+                        title="Clubs"
+                        description="Clubs connect multiple board game libraries, letting members search across collections and organize joint events."
+                        className="text-cream/40 hover:text-cream/70"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Link to="/join-club">
+                        <Button variant="outline" size="sm" className="text-cream border-wood-medium/50 hover:bg-wood-medium/40 gap-1">
+                          <Ticket className="h-3.5 w-3.5" /> Join
+                        </Button>
+                      </Link>
+                      <Link to="/request-club">
+                        <Button size="sm" className="bg-secondary text-secondary-foreground gap-1">
+                          <Plus className="h-3.5 w-3.5" /> Request
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {myClubs.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Users className="h-10 w-10 mx-auto text-cream/30 mb-3" />
+                      <p className="text-cream/60 text-sm">No clubs yet. Create or join one to connect libraries.</p>
+                    </div>
+                  ) : (
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {myClubs.map((club) => (
+                        <div key={club.id} className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20">
+                          <div className="min-w-0 mr-2">
+                            <div className="text-sm font-medium truncate">{club.name}</div>
+                            <Badge variant={club.status === 'approved' ? 'secondary' : 'outline'} className="text-xs mt-1">
+                              {club.status}
+                            </Badge>
+                          </div>
+                          <div className="flex gap-1.5 flex-shrink-0">
+                            <Link to={`/club/${club.slug}`}>
+                              <Button variant="secondary" size="sm" className="gap-1 h-8">
+                                <ExternalLink className="h-3 w-3" /> View
+                              </Button>
+                            </Link>
+                            {club.owner_id === user?.id && (
+                              <Link to={`/club/${club.slug}/manage`}>
+                                <Button variant="outline" size="sm" className="gap-1 h-8 text-cream border-wood-medium/50">
+                                  <Settings className="h-3 w-3" />
+                                </Button>
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            )}
-          </TabsContent>
 
-          {/* ===== DANGER ZONE TAB ===== */}
-          <TabsContent value="danger">
-            <Card className="bg-wood-medium/30 border-wood-medium/50 border-red-500/30">
-              <CardHeader>
-                <CardTitle className="text-cream flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                  Danger Zone
-                </CardTitle>
-                <CardDescription className="text-cream/70">
-                  Irreversible and destructive actions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DangerZone />
-              </CardContent>
-            </Card>
+              {/* Trades */}
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ArrowLeftRight className="h-5 w-5 text-secondary" />
+                    Cross-Library Trading
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isSelfHostedSupabaseStack() ? (
+                    <TradeCenter />
+                  ) : (
+                    <div className="text-center py-6">
+                      <ArrowLeftRight className="h-10 w-10 mx-auto text-cream/30 mb-3" />
+                      <p className="text-cream/60 text-sm">Available on self-hosted deployments only.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Analytics */}
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-secondary" />
+                    Analytics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(isAdmin || library) ? (
+                    <AnalyticsTab isAdmin={isAdmin} libraryId={library?.id || null} />
+                  ) : (
+                    <div className="text-center py-6">
+                      <BarChart3 className="h-10 w-10 mx-auto text-cream/30 mb-3" />
+                      <p className="text-cream/60 text-sm">Create a library to see analytics.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Catalog - Admin only */}
+              {isAdmin && (
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-secondary" />
+                        Game Catalog
+                      </CardTitle>
+                      <Link to="/catalog">
+                        <Button size="sm" className="bg-secondary text-secondary-foreground gap-1">
+                          <ExternalLink className="h-3.5 w-3.5" /> Full Catalog
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CatalogBrowseEmbed />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Account Settings */}
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-secondary" />
+                    Account Settings
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Manage your profile and login credentials
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AccountSettings />
+                </CardContent>
+              </Card>
+
+              {/* Danger Zone */}
+              <Card className="bg-wood-medium/30 border-wood-medium/50 border-red-500/30 text-cream">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                    Danger Zone
+                  </CardTitle>
+                  <CardDescription className="text-cream/70">
+                    Irreversible and destructive actions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <DangerZone />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
 
-        {/* ===== PERSISTENT EVENTS & POLLS SECTION (outside tabs) ===== */}
+        {/* Create/Edit Event Dialog */}
         {library && (
-          <div className="mt-8 grid md:grid-cols-2 gap-6">
-            {/* Upcoming Events */}
-            <UpcomingEventsWidget 
-              libraryId={library.id} 
-              isOwner={true}
-              onCreateEvent={() => setShowCreateEvent(true)}
-              onEditEvent={(event) => setEditEvent(event)}
-            />
-
-            {/* Game Polls */}
-            <Card className="bg-wood-medium/30 border-wood-medium/50">
-              <CardHeader>
-                <CardTitle className="text-cream flex items-center gap-2">
-                  <Vote className="h-5 w-5 text-secondary" />
-                  Game Polls
-                </CardTitle>
-                <CardDescription className="text-cream/70">
-                  Create and manage game night polls
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PollsManager libraryId={library.id} />
-              </CardContent>
-            </Card>
-
-            {/* Random Game Picker */}
-            <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />
-            
-            {/* Create/Edit Event Dialog */}
-            <CreateEventDialog
-              open={showCreateEvent || !!editEvent}
-              onOpenChange={(open) => {
-                if (!open) {
-                  setShowCreateEvent(false);
-                  setEditEvent(null);
-                }
-              }}
-              libraryId={library.id}
-              editEvent={editEvent}
-            />
-          </div>
+          <CreateEventDialog
+            open={showCreateEvent || !!editEvent}
+            onOpenChange={(open) => {
+              if (!open) {
+                setShowCreateEvent(false);
+                setEditEvent(null);
+              }
+            }}
+            libraryId={library.id}
+            editEvent={editEvent}
+          />
         )}
       </main>
       
