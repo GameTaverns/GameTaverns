@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpDown, ArrowUp, ArrowDown, X, AlertTriangle } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, X, AlertTriangle, Settings, Plus, Upload, BarChart3 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
 import { FeatureTip } from "@/components/ui/FeatureTip";
@@ -11,6 +11,8 @@ import { useGames } from "@/hooks/useGames";
 import { DIFFICULTY_OPTIONS } from "@/types/game";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useWishlist } from "@/hooks/useWishlist";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTenant } from "@/contexts/TenantContext";
@@ -47,7 +49,9 @@ const Index = () => {
   const { forSale: forSaleFlag, comingSoon: comingSoonFlag, wishlist: wishlistFlag, demoMode: demoModeEnabled, isLoading: flagsLoading } = useFeatureFlags();
   const { data: realGames = [], isLoading: gamesLoading } = useGames(!isDemoMode);
   const { myVotes, isLoading: wishlistLoading } = useWishlist();
-  const { library } = useTenant();
+  const { library, isOwner, isTenantMode } = useTenant();
+  const { isAuthenticated } = useAuth();
+  const { buildUrl } = useTenantUrl();
   
   // Quadrant filter state
   const [quadrantFilter, setQuadrantFilter] = useState<{
@@ -393,7 +397,46 @@ const Index = () => {
         </Alert>
       )}
 
-      {/* Page Header */}
+      {/* Owner Quick Actions */}
+      {isAuthenticated && isOwner && isTenantMode && !isDemoMode && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          <a href={buildUrl("/games")}>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Edit Collection
+            </Button>
+          </a>
+          <a href={buildUrl("/add")}>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Game
+            </Button>
+          </a>
+          <a href={buildUrl("/settings")}>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Upload className="h-4 w-4" />
+              Library Settings
+            </Button>
+          </a>
+          <a href={buildUrl("/stats")}>
+            <Button variant="outline" size="sm" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Play Stats
+            </Button>
+          </a>
+        </div>
+      )}
+
+      {/* Feature Discovery Tip - only for owners */}
+      {isAuthenticated && isOwner && isTenantMode && !isDemoMode && (
+        <FeatureTip
+          tipId="owner_edit_collection"
+          title="Manage your collection"
+          description="Use the sidebar links or the buttons above to edit your full collection, add games, or customize your library settings."
+          className="mb-6"
+        />
+      )}
+
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
