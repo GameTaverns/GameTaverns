@@ -300,7 +300,7 @@ const GameDetail = () => {
           {/* Image Gallery Section */}
           <div className="space-y-4">
             {/* Main Image - constrained on mobile to avoid oversized display */}
-            <div className="aspect-[3/2] sm:aspect-square max-h-[45vh] sm:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group mx-auto w-full max-w-[80vw] sm:max-w-none">
+            <div className="aspect-auto sm:aspect-square max-h-[70vh] sm:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group mx-auto w-full sm:max-w-none">
               {allImages.length > 0 ? (
                 <>
                   {(() => {
