@@ -99,10 +99,10 @@ function LibraryTabContent({ libraryId, librarySlug, libraryName, memberRole }: 
         </div>
       )}
 
-      {/* Category Pills */}
+      {/* Parent Category Pills only (not subcategories) */}
       {categories.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {categories.map((cat) => {
+          {categories.filter(cat => !cat.parent_category_id).map((cat) => {
             const Icon = ICON_MAP[cat.icon] || MessageSquare;
             const colorClass = COLOR_MAP[cat.color] || "text-blue-500";
             return (
