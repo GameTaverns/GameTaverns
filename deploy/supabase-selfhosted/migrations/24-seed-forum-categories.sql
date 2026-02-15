@@ -5,17 +5,32 @@
 -- so the seed data may not have been inserted. This migration ensures the categories exist.
 
 -- First, add a unique constraint to prevent duplicate slugs within the same scope
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'forum_categories_library_slug_unique'
-    ) THEN
-        -- Use a partial unique index for site-wide (NULL library_id) and regular unique for library-specific
-        CREATE UNIQUE INDEX forum_categories_library_slug_unique 
-        ON public.forum_categories (COALESCE(library_id, '00000000-0000-0000-0000-000000000000'::uuid), slug);
-    END IF;
-END $$;
+-- Drop old broken index if it exists, then create the correct one
+DROP INDEX IF EXISTS forum_categories_library_slug_unique;
+
+-- Delete stale duplicate "introduce-yourself" categories
+DELETE FROM public.forum_categories WHERE slug = 'introduce-yourself';
+
+-- Fix icons/colors on existing site-wide categories
+UPDATE public.forum_categories SET icon = 'Megaphone', color = 'amber'
+WHERE slug = 'announcements' AND parent_category_id IS NULL;
+UPDATE public.forum_categories SET icon = 'MessageSquare', color = 'blue'
+WHERE slug = 'general' AND parent_category_id IS NULL;
+UPDATE public.forum_categories SET icon = 'Users', color = 'green'
+WHERE slug = 'lfg' AND parent_category_id IS NULL;
+UPDATE public.forum_categories SET icon = 'ShoppingBag', color = 'purple'
+WHERE slug = 'marketplace' AND parent_category_id IS NULL;
+UPDATE public.forum_categories SET icon = 'UserPlus', color = 'cyan', display_order = 5
+WHERE slug = 'introductions' AND parent_category_id IS NULL;
+
+-- Create proper unique index scoped by library + club + parent + slug
+CREATE UNIQUE INDEX IF NOT EXISTS forum_categories_library_slug_unique
+ON public.forum_categories (
+  COALESCE(library_id, '00000000-0000-0000-0000-000000000000'::uuid),
+  COALESCE(club_id, '00000000-0000-0000-0000-000000000000'::uuid),
+  COALESCE(parent_category_id, '00000000-0000-0000-0000-000000000000'::uuid),
+  slug
+);
 
 -- Insert default site-wide categories if they don't exist
 INSERT INTO public.forum_categories (name, slug, description, icon, color, display_order, is_system, library_id)
