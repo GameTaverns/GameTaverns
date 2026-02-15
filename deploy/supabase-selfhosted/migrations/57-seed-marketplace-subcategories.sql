@@ -1,6 +1,14 @@
 -- Migration: 57-seed-marketplace-subcategories.sql
 -- Backfill marketplace subcategories (Buying, Selling, Trading) for all scopes
 -- that are missing them: site-wide, library-scoped, and club-scoped.
+-- Also backfill "Introduce Yourself" category for site-wide forum.
+
+-- Site-wide "Introduce Yourself"
+INSERT INTO public.forum_categories (name, slug, description, icon, color, display_order, is_system, library_id, club_id)
+SELECT 'Introduce Yourself', 'introductions', 'Say hello and tell us about yourself', 'UserPlus', 'cyan', 5, true, NULL, NULL
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.forum_categories WHERE slug = 'introductions' AND library_id IS NULL AND club_id IS NULL AND parent_category_id IS NULL
+);
 
 -- Site-wide marketplace subcategories
 INSERT INTO public.forum_categories (name, slug, description, icon, color, display_order, is_system, library_id, club_id, parent_category_id)

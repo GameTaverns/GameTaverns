@@ -34,6 +34,10 @@ INSERT INTO public.forum_categories (name, slug, description, icon, color, displ
 SELECT 'Marketplace', 'marketplace', 'Buy, sell, and trade board games', 'ShoppingBag', 'purple', 4, true, NULL
 WHERE NOT EXISTS (SELECT 1 FROM public.forum_categories WHERE slug = 'marketplace' AND library_id IS NULL);
 
+INSERT INTO public.forum_categories (name, slug, description, icon, color, display_order, is_system, library_id)
+SELECT 'Introduce Yourself', 'introductions', 'Say hello and tell us about yourself', 'UserPlus', 'cyan', 5, true, NULL
+WHERE NOT EXISTS (SELECT 1 FROM public.forum_categories WHERE slug = 'introductions' AND library_id IS NULL);
+
 -- Verify categories were created
 DO $$
 DECLARE
