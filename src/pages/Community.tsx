@@ -31,7 +31,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { CreateThreadDialog } from "@/components/community/CreateThreadDialog";
 
-import { ShoppingCart, Tag, ArrowLeftRight } from "lucide-react";
+import { ShoppingCart, Tag, ArrowLeftRight, UserPlus } from "lucide-react";
 
 // Map icon names to Lucide components
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -42,6 +42,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   ShoppingCart,
   Tag,
   ArrowLeftRight,
+  UserPlus,
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -49,6 +50,7 @@ const COLOR_MAP: Record<string, string> = {
   blue: "bg-blue-500/20 text-blue-500 border-blue-500/30",
   green: "bg-green-500/20 text-green-500 border-green-500/30",
   purple: "bg-purple-500/20 text-purple-500 border-purple-500/30",
+  cyan: "bg-cyan-500/20 text-cyan-500 border-cyan-500/30",
 };
 
 function SubcategoryChip({ category }: { category: ForumCategory }) {
