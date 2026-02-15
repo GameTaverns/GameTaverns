@@ -136,6 +136,7 @@ MIGRATION_FILES=(
     "53-club-forum-rls.sql"
     "54-seed-club-forum-categories.sql"
     "55-forum-subcategories.sql"
+    "56-seed-library-forum-categories.sql"
 )
 
 SUCCESS_COUNT=0
