@@ -299,8 +299,8 @@ const GameDetail = () => {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Image Gallery Section */}
           <div className="space-y-4">
-            {/* Main Image */}
-            <div className="aspect-square overflow-hidden rounded-lg bg-muted card-elevated relative group">
+            {/* Main Image - constrained on mobile to avoid oversized display */}
+            <div className="aspect-[4/3] sm:aspect-square max-h-[60vh] sm:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group">
               {allImages.length > 0 ? (
                 <>
                   {(() => {
