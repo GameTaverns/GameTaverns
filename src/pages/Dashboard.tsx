@@ -63,6 +63,7 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Footer } from "@/components/layout/Footer";
 import { MyInquiriesSection } from "@/components/dashboard/MyInquiriesSection";
 import { CommunityTab } from "@/components/community/CommunityTab";
+import { CommunityMembersCard } from "@/components/community/CommunityMembersCard";
 import { ChallengesManager } from "@/components/challenges/ChallengesManager";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
@@ -788,72 +789,78 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* Clubs */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5 text-secondary" />
-                        My Clubs
-                        {myClubs.length > 0 && <Badge variant="secondary" className="text-xs">{myClubs.length}</Badge>}
-                      </CardTitle>
-                      <InfoPopover
-                        title="Clubs"
-                        description="Clubs connect multiple board game libraries, letting members search across collections and organize joint events."
-                        className="text-cream/40 hover:text-cream/70"
-                      />
+              {/* Clubs + Members side by side */}
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Clubs - left half */}
+                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="h-5 w-5 text-secondary" />
+                          My Clubs
+                          {myClubs.length > 0 && <Badge variant="secondary" className="text-xs">{myClubs.length}</Badge>}
+                        </CardTitle>
+                        <InfoPopover
+                          title="Clubs"
+                          description="Clubs connect multiple board game libraries, letting members search across collections and organize joint events."
+                          className="text-cream/40 hover:text-cream/70"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Link to="/join-club">
+                          <Button variant="outline" size="sm" className="text-cream border-wood-medium/50 hover:bg-wood-medium/40 gap-1">
+                            <Ticket className="h-3.5 w-3.5" /> Join
+                          </Button>
+                        </Link>
+                        <Link to="/request-club">
+                          <Button size="sm" className="bg-secondary text-secondary-foreground gap-1">
+                            <Plus className="h-3.5 w-3.5" /> Request
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Link to="/join-club">
-                        <Button variant="outline" size="sm" className="text-cream border-wood-medium/50 hover:bg-wood-medium/40 gap-1">
-                          <Ticket className="h-3.5 w-3.5" /> Join
-                        </Button>
-                      </Link>
-                      <Link to="/request-club">
-                        <Button size="sm" className="bg-secondary text-secondary-foreground gap-1">
-                          <Plus className="h-3.5 w-3.5" /> Request
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {myClubs.length === 0 ? (
-                    <div className="text-center py-6">
-                      <Users className="h-10 w-10 mx-auto text-cream/30 mb-3" />
-                      <p className="text-cream/60 text-sm">No clubs yet. Create or join one to connect libraries.</p>
-                    </div>
-                  ) : (
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {myClubs.map((club) => (
-                        <div key={club.id} className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20">
-                          <div className="min-w-0 mr-2">
-                            <div className="text-sm font-medium truncate">{club.name}</div>
-                            <Badge variant={club.status === 'approved' ? 'secondary' : 'outline'} className="text-xs mt-1">
-                              {club.status}
-                            </Badge>
-                          </div>
-                          <div className="flex gap-1.5 flex-shrink-0">
-                            <Link to={`/club/${club.slug}`}>
-                              <Button variant="secondary" size="sm" className="gap-1 h-8">
-                                <ExternalLink className="h-3 w-3" /> View
-                              </Button>
-                            </Link>
-                            {club.owner_id === user?.id && (
-                              <Link to={`/club/${club.slug}/manage`}>
-                                <Button variant="outline" size="sm" className="gap-1 h-8 text-cream border-wood-medium/50">
-                                  <Settings className="h-3 w-3" />
+                  </CardHeader>
+                  <CardContent>
+                    {myClubs.length === 0 ? (
+                      <div className="text-center py-6">
+                        <Users className="h-10 w-10 mx-auto text-cream/30 mb-3" />
+                        <p className="text-cream/60 text-sm">No clubs yet. Create or join one to connect libraries.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {myClubs.map((club) => (
+                          <div key={club.id} className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20">
+                            <div className="min-w-0 mr-2">
+                              <div className="text-sm font-medium truncate">{club.name}</div>
+                              <Badge variant={club.status === 'approved' ? 'secondary' : 'outline'} className="text-xs mt-1">
+                                {club.status}
+                              </Badge>
+                            </div>
+                            <div className="flex gap-1.5 flex-shrink-0">
+                              <Link to={`/club/${club.slug}`}>
+                                <Button variant="secondary" size="sm" className="gap-1 h-8">
+                                  <ExternalLink className="h-3 w-3" /> View
                                 </Button>
                               </Link>
-                            )}
+                              {club.owner_id === user?.id && (
+                                <Link to={`/club/${club.slug}/manage`}>
+                                  <Button variant="outline" size="sm" className="gap-1 h-8 text-cream border-wood-medium/50">
+                                    <Settings className="h-3 w-3" />
+                                  </Button>
+                                </Link>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Community Members - right half */}
+                <CommunityMembersCard />
+              </div>
             </div>
           </TabsContent>
 
