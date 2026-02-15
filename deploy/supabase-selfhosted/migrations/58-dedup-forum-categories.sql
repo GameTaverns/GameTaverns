@@ -1,7 +1,8 @@
 -- Migration: 58-dedup-forum-categories.sql
 -- Deduplicate forum categories and ensure proper parent→child hierarchy.
+-- Must be safe to re-run on every update.sh.
 
--- Step 1: Remove exact duplicate rows (same slug + same scope + same parent), keep oldest
+-- Step 1: Remove exact duplicate rows (same slug + same parent + same scope), keep oldest
 DELETE FROM public.forum_categories a
 USING public.forum_categories b
 WHERE a.slug = b.slug
