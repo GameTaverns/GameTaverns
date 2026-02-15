@@ -299,8 +299,8 @@ const GameDetail = () => {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Image Gallery Section */}
           <div className="space-y-4">
-            {/* Main Image - aspect-ratio container prevents oversized display on tablets/foldables */}
-            <div className="aspect-[4/3] lg:aspect-square overflow-hidden rounded-lg bg-muted card-elevated relative group w-full">
+            {/* Main Image - short aspect ratio on mobile, square on desktop, hard max-h safety */}
+            <div className="aspect-[3/2] max-h-[40vh] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full">
               {allImages.length > 0 ? (
                 <>
                   {(() => {
