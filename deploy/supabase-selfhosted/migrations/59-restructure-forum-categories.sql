@@ -159,4 +159,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+-- ============================================================
+-- CLEANUP: Remove orphaned top-level duplicates
+-- If a category slug (announcements, general, lfg, introductions)
+-- exists BOTH as a top-level category AND as a subcategory under
+-- general-parent in the same scope, delete the top-level duplicate.
+-- ============================================================
+
+DELETE FROM public.forum_categories dup
+WHERE dup.parent_category_id IS NULL
+  AND dup.slug IN ('announcements', 'general', 'lfg', 'introductions')
+  AND EXISTS (
+    SELECT 1 FROM public.forum_categories sub
+    JOIN public.forum_categories gp ON sub.parent_category_id = gp.id
+      AND gp.slug = 'general-parent'
+    WHERE sub.slug = dup.slug
+      AND COALESCE(sub.library_id::text, '') = COALESCE(dup.library_id::text, '')
+      AND COALESCE(sub.club_id::text, '') = COALESCE(dup.club_id::text, '')
+  );
+
 NOTIFY pgrst, 'reload schema';
