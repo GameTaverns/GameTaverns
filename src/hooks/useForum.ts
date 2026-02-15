@@ -816,6 +816,41 @@ export function useToggleThreadLock() {
   });
 }
 
+// Move a thread to a different category
+export function useMoveThread() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ threadId, categoryId }: { threadId: string; categoryId: string }) => {
+      const { data, error } = await supabase
+        .from("forum_threads")
+        .update({ category_id: categoryId, updated_at: new Date().toISOString() })
+        .eq("id", threadId)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["forum-thread", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["forum-threads"] });
+      toast({
+        title: "Thread moved",
+        description: "The thread has been moved to the new category.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error moving thread",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 // Delete a thread
 export function useDeleteThread() {
   const queryClient = useQueryClient();

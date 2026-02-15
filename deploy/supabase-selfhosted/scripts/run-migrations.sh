@@ -137,6 +137,7 @@ MIGRATION_FILES=(
     "54-seed-club-forum-categories.sql"
     "55-forum-subcategories.sql"
     "56-seed-library-forum-categories.sql"
+    "57-seed-marketplace-subcategories.sql"
 )
 
 SUCCESS_COUNT=0
