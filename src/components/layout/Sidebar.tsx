@@ -477,41 +477,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <span>Full Collection</span>
             </Link>
             
-            {/* Owner quick links */}
-            {isAuthenticated && isOwner && isTenantMode && (
-              <>
-                <Link
-                  to={buildUrl("/games")}
-                  className={cn(
-                    "sidebar-link",
-                    location.pathname === "/games" && "sidebar-link-active"
-                  )}
-                >
-                  <Settings className="h-5 w-5" />
-                  <span>Edit Collection</span>
-                </Link>
-                <Link
-                  to={buildUrl("/add")}
-                  className={cn(
-                    "sidebar-link",
-                    location.pathname === "/add" && "sidebar-link-active"
-                  )}
-                >
-                  <Plus className="h-5 w-5" />
-                  <span>Add Game</span>
-                </Link>
-                <Link
-                  to={buildUrl("/settings")}
-                  className={cn(
-                    "sidebar-link",
-                    location.pathname === "/settings" && "sidebar-link-active"
-                  )}
-                >
-                  <Palette className="h-5 w-5" />
-                  <span>Library Settings</span>
-                </Link>
-              </>
-            )}
+            {/* Owner quick links removed — use top admin bar instead */}
             {comingSoon && (
               <button
                 onClick={() => handleFilterClick("status", "coming-soon")}
