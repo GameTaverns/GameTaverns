@@ -300,7 +300,7 @@ const GameDetail = () => {
           {/* Image Gallery Section */}
           <div className="space-y-4">
             {/* Main Image - constrained on mobile to avoid oversized display */}
-            <div className="max-h-[45vh] sm:max-h-[50vh] lg:max-h-none sm:aspect-square overflow-hidden rounded-lg bg-muted card-elevated relative group mx-auto w-full max-w-sm sm:max-w-md lg:max-w-none">
+            <div className="max-h-[50vh] lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full">
               {allImages.length > 0 ? (
                 <>
                   {(() => {
