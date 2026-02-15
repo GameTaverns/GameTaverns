@@ -14,7 +14,8 @@ BEGIN
     ('Announcements', 'announcements', 'Official announcements and updates', 'Megaphone', 'amber', 1, true, NEW.id),
     ('General Discussion', 'general', 'Chat about anything board game related', 'MessageSquare', 'blue', 2, true, NEW.id),
     ('Looking for Group', 'lfg', 'Find players for your next game night', 'Users', 'green', 3, true, NEW.id),
-    ('Marketplace', 'marketplace', 'Buy, sell, and trade board games', 'ShoppingBag', 'purple', 4, true, NEW.id)
+    ('Marketplace', 'marketplace', 'Buy, sell, and trade board games', 'ShoppingBag', 'purple', 4, true, NEW.id),
+    ('Introduce Yourself', 'introductions', 'Say hello and tell us about yourself', 'UserPlus', 'cyan', 5, true, NEW.id)
   ON CONFLICT DO NOTHING;
 
   -- Now seed marketplace subcategories
@@ -69,6 +70,13 @@ SELECT 'Marketplace', 'marketplace', 'Buy, sell, and trade board games', 'Shoppi
 FROM public.libraries l
 WHERE NOT EXISTS (
   SELECT 1 FROM public.forum_categories fc WHERE fc.library_id = l.id AND fc.slug = 'marketplace' AND fc.parent_category_id IS NULL
+);
+
+INSERT INTO public.forum_categories (name, slug, description, icon, color, display_order, is_system, library_id)
+SELECT 'Introduce Yourself', 'introductions', 'Say hello and tell us about yourself', 'UserPlus', 'cyan', 5, true, l.id
+FROM public.libraries l
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.forum_categories fc WHERE fc.library_id = l.id AND fc.slug = 'introductions' AND fc.parent_category_id IS NULL
 );
 
 -- Step 4: Backfill marketplace subcategories for all existing libraries
