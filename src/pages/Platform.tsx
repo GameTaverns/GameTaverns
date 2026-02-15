@@ -30,7 +30,7 @@ export default function Platform() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium">
       {/* Header */}
       <header className="border-b border-border/30 bg-muted/50 dark:bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -41,7 +41,7 @@ export default function Platform() {
             </span>
           </Link>
           
-          <nav className="flex items-center gap-2 sm:gap-4">
+          <nav className="flex items-center gap-1 sm:gap-4 flex-shrink-0">
             <ThemeToggle />
             <FeedbackDialog />
             {isAuthenticated ? (
@@ -74,7 +74,7 @@ export default function Platform() {
       
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
-        <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground mb-6">
+        <h1 className="font-display text-3xl sm:text-5xl md:text-7xl font-bold text-foreground mb-6">
           Your Board Game Collection,
           <br />
           <span className="text-secondary">Beautifully Organized</span>
