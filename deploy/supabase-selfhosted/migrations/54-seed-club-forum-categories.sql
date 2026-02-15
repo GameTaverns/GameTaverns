@@ -1,6 +1,8 @@
 -- Migration: 54-seed-club-forum-categories.sql
 -- Pre-seed club forums with the same default categories as the site-wide forum.
 -- Also fix the unique index to account for club_id.
+-- NOTE: NOT EXISTS checks must NOT filter on parent_category_id IS NULL
+-- because migration 59 restructures categories under general-parent.
 
 -- Step 0: Remove any duplicate site-wide categories (keep oldest)
 DELETE FROM forum_categories a
@@ -8,20 +10,23 @@ USING forum_categories b
 WHERE a.slug = b.slug
   AND a.library_id IS NULL AND b.library_id IS NULL
   AND a.club_id IS NULL AND b.club_id IS NULL
+  AND a.parent_category_id IS NOT DISTINCT FROM b.parent_category_id
   AND a.created_at > b.created_at;
 
 -- Step 1: Drop the old unique index that doesn't account for club_id
 DROP INDEX IF EXISTS public.forum_categories_library_slug_unique;
 
--- Step 2: Create a new unique index that scopes slugs by library AND club
+-- Step 2: Create a new unique index that scopes slugs by library AND club AND parent
 CREATE UNIQUE INDEX IF NOT EXISTS forum_categories_scope_slug_unique
 ON public.forum_categories (
   COALESCE(library_id, '00000000-0000-0000-0000-000000000000'::uuid),
   COALESCE(club_id, '00000000-0000-0000-0000-000000000000'::uuid),
+  COALESCE(parent_category_id, '00000000-0000-0000-0000-000000000000'::uuid),
   slug
 );
 
 -- Step 3: Seed for all existing clubs that don't already have categories
+-- Do NOT filter on parent_category_id — categories may exist as subcategories
 INSERT INTO public.forum_categories (name, slug, description, icon, color, display_order, is_system, club_id)
 SELECT 'Announcements', 'announcements', 'Official club announcements and updates', 'Megaphone', 'amber', 1, true, c.id
 FROM public.clubs c
@@ -58,6 +63,7 @@ WHERE NOT EXISTS (
 );
 
 -- Step 4: Create a trigger function to auto-seed categories when a new club is approved
+-- (will be overwritten by migration 59 with hierarchical version)
 CREATE OR REPLACE FUNCTION public.seed_club_forum_categories()
 RETURNS TRIGGER AS $$
 BEGIN
