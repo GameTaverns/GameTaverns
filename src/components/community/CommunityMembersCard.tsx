@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLibraryMembers } from "@/hooks/useLibraryMembership";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
