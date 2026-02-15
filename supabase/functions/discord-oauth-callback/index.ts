@@ -70,7 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
     try {
       const stateData = JSON.parse(atob(state));
       userId = stateData.user_id;
-      returnUrl = "/settings";
+      returnUrl = "/dashboard";
       appOrigin = stateData.app_origin;
       
       if (appOrigin) {
@@ -81,7 +81,6 @@ const handler = async (req: Request): Promise<Response> => {
               (originUrl.hostname.endsWith('.gametaverns.com') || originUrl.hostname.endsWith('.gamehavens.com'))) {
             const mainDomain = hostParts.slice(-2).join('.');
             appOrigin = `${originUrl.protocol}//${mainDomain}`;
-            returnUrl = "/dashboard";
           }
         } catch {
           // Keep original appOrigin if parsing fails
