@@ -280,3 +280,13 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }
+
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
