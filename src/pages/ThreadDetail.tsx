@@ -10,7 +10,8 @@ import {
   Eye,
   Reply,
   MoreVertical,
-  Trash2
+  Trash2,
+  FolderInput
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,6 +37,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   useThread, 
   useThreadReplies, 
@@ -43,7 +59,12 @@ import {
   useToggleThreadPin,
   useToggleThreadLock,
   useDeleteThread,
-  type ForumReply 
+  useMoveThread,
+  useSiteWideCategories,
+  useLibraryCategories,
+  useClubCategories,
+  type ForumReply,
+  type ForumCategory
 } from "@/hooks/useForum";
 import { useThreadRepliesRealtime } from "@/hooks/useForumRealtime";
 import { useAuth } from "@/hooks/useAuth";
@@ -134,6 +155,90 @@ function ReplyForm({ threadId, isLocked }: { threadId: string; isLocked: boolean
   );
 }
 
+function flattenCategories(categories: ForumCategory[]): ForumCategory[] {
+  const result: ForumCategory[] = [];
+  for (const cat of categories) {
+    result.push(cat);
+    if (cat.children?.length) {
+      result.push(...flattenCategories(cat.children));
+    }
+  }
+  return result;
+}
+
+function MoveThreadDialog({
+  open,
+  onOpenChange,
+  thread,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  thread: { id: string; category_id: string; category?: ForumCategory };
+}) {
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const moveThread = useMoveThread();
+
+  // Determine scope from the thread's current category
+  const libraryId = thread.category?.library_id || undefined;
+  const clubId = thread.category?.club_id || undefined;
+
+  // Fetch categories for the same scope
+  const { data: siteCategories = [] } = useSiteWideCategories();
+  const { data: libraryCategories = [] } = useLibraryCategories(libraryId);
+  const { data: clubCategories = [] } = useClubCategories(clubId);
+
+  const rawCategories = libraryId
+    ? libraryCategories
+    : clubId
+    ? clubCategories
+    : siteCategories;
+
+  const allCategories = flattenCategories(rawCategories).filter(
+    (c) => !c.is_archived && c.id !== thread.category_id
+  );
+
+  const handleMove = () => {
+    if (!selectedCategoryId) return;
+    moveThread.mutate(
+      { threadId: thread.id, categoryId: selectedCategoryId },
+      { onSuccess: () => { onOpenChange(false); setSelectedCategoryId(""); } }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Move Thread</DialogTitle>
+          <DialogDescription>
+            Select a category to move this thread to.
+          </DialogDescription>
+        </DialogHeader>
+        <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select category..." />
+          </SelectTrigger>
+          <SelectContent>
+            {allCategories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.id}>
+                {cat.parent_category_id ? `  ↳ ${cat.name}` : cat.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleMove} disabled={!selectedCategoryId || moveThread.isPending}>
+            {moveThread.isPending ? "Moving..." : "Move Thread"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ThreadDetail() {
   const { threadId } = useParams();
   const navigate = useNavigate();
@@ -150,6 +255,7 @@ export default function ThreadDetail() {
   const deleteThread = useDeleteThread();
   
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
 
   const handleDelete = () => {
     if (!thread) return;
@@ -257,6 +363,10 @@ export default function ThreadDetail() {
                       </>
                     )}
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowMoveDialog(true)}>
+                    <FolderInput className="h-4 w-4 mr-2" />
+                    Move to category...
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
@@ -291,6 +401,15 @@ export default function ThreadDetail() {
             </div>
           </div>
         </div>
+
+        {/* Move Thread Dialog */}
+        {canModerate && (
+          <MoveThreadDialog
+            open={showMoveDialog}
+            onOpenChange={setShowMoveDialog}
+            thread={thread}
+          />
+        )}
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
