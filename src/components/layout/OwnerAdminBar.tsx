@@ -1,4 +1,4 @@
-import { LayoutGrid, BarChart3, Users, MessageSquare } from "lucide-react";
+import { LayoutGrid, BarChart3, MessageSquare } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useDemoMode } from "@/contexts/DemoContext";
@@ -24,7 +24,6 @@ export function OwnerAdminBar() {
   const links = [
     { href: "/games", icon: LayoutGrid, label: "Manage Collection" },
     { href: "/community", icon: MessageSquare, label: "Community" },
-    { href: getPlatformUrl("/dashboard/settings?tab=members"), icon: Users, label: "Members" },
     { href: getPlatformUrl("/dashboard?tab=more"), icon: BarChart3, label: "Analytics" },
   ];
 
