@@ -656,14 +656,14 @@ export default function Dashboard() {
 
               {/* Events & Polls - persistent */}
               {library && (
-                <div className="grid md:grid-cols-2 gap-6">
-                  <UpcomingEventsWidget 
+                <div className="grid md:grid-cols-2 gap-6 overflow-hidden">
+                  <UpcomingEventsWidget
                     libraryId={library.id} 
                     isOwner={true}
                     onCreateEvent={() => setShowCreateEvent(true)}
                     onEditEvent={(event) => setEditEvent(event)}
                   />
-                  <Card className="bg-wood-medium/30 border-wood-medium/50">
+                  <Card className="bg-wood-medium/30 border-wood-medium/50 overflow-hidden">
                     <CardHeader>
                       <CardTitle className="text-cream flex items-center gap-2">
                         <Vote className="h-5 w-5 text-secondary" />
@@ -673,7 +673,7 @@ export default function Dashboard() {
                         Create and manage game night polls
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                       <PollsManager libraryId={library.id} />
                     </CardContent>
                   </Card>
