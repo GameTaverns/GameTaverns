@@ -316,7 +316,7 @@ const GameDetail = () => {
                          alt={game.title}
                          loading="eager"
                          priority={true}
-                         className="h-full w-full object-contain"
+                         className="h-full w-full object-cover"
                          fallback={
                            <div className="flex h-full items-center justify-center bg-muted">
                              <span className="text-8xl text-muted-foreground/50">🎲</span>
