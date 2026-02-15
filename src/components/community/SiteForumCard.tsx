@@ -97,7 +97,7 @@ export function SiteForumCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Category Pills */}
+        {/* Parent Category Pills only (not subcategories) */}
         <div className="flex flex-wrap gap-2">
           {isLoading ? (
             <>
@@ -106,7 +106,7 @@ export function SiteForumCard() {
               <Skeleton className="h-6 w-16 bg-wood-medium/40" />
             </>
           ) : (
-            categories.map((cat) => {
+            categories.filter(cat => !cat.parent_category_id).map((cat) => {
               const Icon = ICON_MAP[cat.icon] || MessageSquare;
               const colorClass = COLOR_MAP[cat.color] || "text-blue-500";
               return (
