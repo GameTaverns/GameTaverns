@@ -34,14 +34,8 @@ export function PollsManager({ libraryId }: PollsManagerProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header with create buttons */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Game Polls</h2>
-          <p className="text-muted-foreground">
-            Create polls to help your group decide what to play
-          </p>
-        </div>
+      {/* Create button */}
+      <div className="flex justify-end">
         <CreatePollDialog
           libraryId={libraryId}
           trigger={
