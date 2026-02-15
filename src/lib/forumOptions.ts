@@ -25,8 +25,10 @@ import {
   Plane,
   Briefcase,
   ShoppingBag,
+  ShoppingCart,
   Tag,
   Repeat,
+  ArrowLeftRight,
   Calendar,
   Trophy,
   PartyPopper,
@@ -74,8 +76,10 @@ export const FORUM_ICON_OPTIONS = [
   
   // Commerce
   { value: "ShoppingBag", label: "Marketplace" },
+  { value: "ShoppingCart", label: "Buying" },
   { value: "Tag", label: "Deals/Sales" },
   { value: "Repeat", label: "Trades" },
+  { value: "ArrowLeftRight", label: "Trading" },
   
   // Events & Activities
   { value: "Calendar", label: "Events" },
@@ -153,8 +157,10 @@ export const FORUM_ICON_MAP: Record<string, React.ElementType> = {
   Plane,
   Briefcase,
   ShoppingBag,
+  ShoppingCart,
   Tag,
   Repeat,
+  ArrowLeftRight,
   Calendar,
   Trophy,
   PartyPopper,
