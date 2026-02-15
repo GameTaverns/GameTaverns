@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { 
   MessageSquare, 
   ArrowRight,
@@ -10,6 +9,7 @@ import { useSiteWideCategories, type ForumCategory } from "@/hooks/useForum";
 import { useAuth } from "@/hooks/useAuth";
 import { InlineForumManagement } from "./InlineForumManagement";
 import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
+import { getPlatformUrl } from "@/hooks/useTenantUrl";
 
 const ICON_MAP = FORUM_ICON_MAP;
 
@@ -42,8 +42,8 @@ function SubcategoryRow({ category }: { category: ForumCategory }) {
   const colorClass = COLOR_MAP[category.color] || "text-blue-500";
 
   return (
-    <Link
-      to={`/community/${category.slug}`}
+    <a
+      href={getPlatformUrl(`/community/${category.slug}`)}
       className="flex items-center gap-4 px-4 py-3 hover:bg-wood-medium/30 transition-colors border-b border-wood-medium/30 last:border-b-0 group"
     >
       <div className="flex-shrink-0">
@@ -59,7 +59,7 @@ function SubcategoryRow({ category }: { category: ForumCategory }) {
           </p>
         )}
       </div>
-    </Link>
+    </a>
   );
 }
 
@@ -93,12 +93,12 @@ function CategorySection({ category }: { category: ForumCategory }) {
           ))}
         </div>
       ) : (
-        <Link
-          to={`/community/${category.slug}`}
+        <a
+          href={getPlatformUrl(`/community/${category.slug}`)}
           className="block px-4 py-3 bg-wood-dark/20 hover:bg-wood-medium/30 transition-colors text-sm text-cream/60"
         >
           Browse threads →
-        </Link>
+        </a>
       )}
     </div>
   );
@@ -124,7 +124,7 @@ export function SiteForumCard() {
                 isLoading={categoriesLoading}
               />
             )}
-            <Link to="/community">
+            <a href={getPlatformUrl("/community")}>
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -133,7 +133,7 @@ export function SiteForumCard() {
                 View All
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </CardHeader>
