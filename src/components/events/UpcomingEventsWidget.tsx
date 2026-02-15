@@ -182,7 +182,7 @@ export function UpcomingEventsWidget({
   
   return (
     <>
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>

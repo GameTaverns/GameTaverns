@@ -32,10 +32,10 @@ export default function Platform() {
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium">
       {/* Header */}
       <header className="border-b border-border/30 bg-muted/50 dark:bg-wood-dark/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <img src={logoImage} alt="GameTaverns" className="h-10 w-auto" />
-            <span className="font-display text-2xl font-bold text-foreground">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
+          <Link to="/" className="flex items-center gap-2 min-w-0 flex-shrink-1">
+            <img src={logoImage} alt="GameTaverns" className="h-8 w-auto flex-shrink-0" />
+            <span className="font-display text-lg sm:text-2xl font-bold text-foreground truncate">
               GameTaverns
             </span>
           </Link>
