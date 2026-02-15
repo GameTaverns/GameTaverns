@@ -550,6 +550,7 @@ export type Database = {
           is_system: boolean | null
           library_id: string | null
           name: string
+          parent_category_id: string | null
           rules: string | null
           slug: string
           updated_at: string | null
@@ -567,6 +568,7 @@ export type Database = {
           is_system?: boolean | null
           library_id?: string | null
           name: string
+          parent_category_id?: string | null
           rules?: string | null
           slug: string
           updated_at?: string | null
@@ -584,6 +586,7 @@ export type Database = {
           is_system?: boolean | null
           library_id?: string | null
           name?: string
+          parent_category_id?: string | null
           rules?: string | null
           slug?: string
           updated_at?: string | null
@@ -615,6 +618,13 @@ export type Database = {
             columns: ["library_id"]
             isOneToOne: false
             referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_categories_parent_category_id_fkey"
+            columns: ["parent_category_id"]
+            isOneToOne: false
+            referencedRelation: "forum_categories"
             referencedColumns: ["id"]
           },
         ]

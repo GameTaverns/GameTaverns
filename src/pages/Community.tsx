@@ -31,12 +31,17 @@ import { useTenant } from "@/contexts/TenantContext";
 import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { CreateThreadDialog } from "@/components/community/CreateThreadDialog";
 
+import { ShoppingCart, Tag, ArrowLeftRight } from "lucide-react";
+
 // Map icon names to Lucide components
 const ICON_MAP: Record<string, React.ElementType> = {
   Megaphone,
   MessageSquare,
   Users,
   ShoppingBag,
+  ShoppingCart,
+  Tag,
+  ArrowLeftRight,
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -46,28 +51,51 @@ const COLOR_MAP: Record<string, string> = {
   purple: "bg-purple-500/20 text-purple-500 border-purple-500/30",
 };
 
+function SubcategoryChip({ category }: { category: ForumCategory }) {
+  const Icon = ICON_MAP[category.icon] || MessageSquare;
+  return (
+    <Link
+      to={`/community/${category.slug}`}
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-muted/60 hover:bg-primary hover:text-primary-foreground transition-colors border border-border"
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {category.name}
+    </Link>
+  );
+}
+
 function CategoryCard({ category }: { category: ForumCategory }) {
   const Icon = ICON_MAP[category.icon] || MessageSquare;
   const colorClass = COLOR_MAP[category.color] || COLOR_MAP.blue;
+  const hasChildren = category.children && category.children.length > 0;
 
   return (
-    <Link to={`/community/${category.slug}`}>
-      <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg border ${colorClass}`}>
-              <Icon className="h-5 w-5" />
+    <div className="space-y-2">
+      <Link to={`/community/${category.slug}`}>
+        <Card className="hover:bg-accent/50 transition-colors cursor-pointer h-full">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg border ${colorClass}`}>
+                <Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">{category.name}</CardTitle>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-lg">{category.name}</CardTitle>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <CardDescription>{category.description}</CardDescription>
-        </CardContent>
-      </Card>
-    </Link>
+          </CardHeader>
+          <CardContent>
+            <CardDescription>{category.description}</CardDescription>
+          </CardContent>
+        </Card>
+      </Link>
+      {hasChildren && (
+        <div className="flex flex-wrap gap-2 pl-2">
+          {category.children!.map((sub) => (
+            <SubcategoryChip key={sub.id} category={sub} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -119,7 +147,9 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
   const categories = isTenantMode ? libraryCategories : siteCategories;
   const categoriesLoading = isTenantMode ? libraryCategoriesLoading : siteCategoriesLoading;
   
-  const category = categories.find((c) => c.slug === categorySlug);
+  // Search both top-level and children for the slug
+  const category = categories.find((c) => c.slug === categorySlug)
+    || categories.flatMap((c) => c.children || []).find((c) => c.slug === categorySlug);
   const { data: threads = [], isLoading: threadsLoading } = useCategoryThreads(category?.id, 50);
   const [showCreateThread, setShowCreateThread] = useState(false);
   

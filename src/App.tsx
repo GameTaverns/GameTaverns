@@ -63,7 +63,16 @@ const SmartPicker = lazy(() => import("./pages/SmartPicker"));
 const CatalogBrowse = lazy(() => import("./pages/CatalogBrowse"));
 const Install = lazy(() => import("./pages/Install"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes before data is considered stale
+      gcTime: 10 * 60 * 1000, // 10 minutes garbage collection
+      refetchOnWindowFocus: false, // Don't refetch on every tab switch
+      retry: 1, // Only retry once on failure
+    },
+  },
+});
 
 // Simple loading fallback
 const PageLoader = () => (
