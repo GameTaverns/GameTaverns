@@ -148,5 +148,14 @@ echo ""
 echo "Service Status:"
 dcp ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || dcp ps
 echo ""
+
+# Post changelog to Discord (if webhook configured)
+if [ -f "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/post-changelog.sh" ]; then
+    echo ""
+    echo "Posting changelog to Discord..."
+    bash "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/post-changelog.sh" || echo -e "${YELLOW}Changelog post skipped or failed${NC}"
+fi
+
+echo ""
 echo "Check logs: source $INSTALL_DIR/deploy/supabase-selfhosted/scripts/compose.sh && gt_logs"
 echo ""
