@@ -28,6 +28,8 @@ import {
   Search,
   Gauge,
   X,
+  Plus,
+  Palette,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
@@ -474,6 +476,42 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <Library className="h-5 w-5" />
               <span>Full Collection</span>
             </Link>
+            
+            {/* Owner quick links */}
+            {isAuthenticated && isOwner && isTenantMode && (
+              <>
+                <Link
+                  to={buildUrl("/games")}
+                  className={cn(
+                    "sidebar-link",
+                    location.pathname === "/games" && "sidebar-link-active"
+                  )}
+                >
+                  <Settings className="h-5 w-5" />
+                  <span>Edit Collection</span>
+                </Link>
+                <Link
+                  to={buildUrl("/add")}
+                  className={cn(
+                    "sidebar-link",
+                    location.pathname === "/add" && "sidebar-link-active"
+                  )}
+                >
+                  <Plus className="h-5 w-5" />
+                  <span>Add Game</span>
+                </Link>
+                <Link
+                  to={buildUrl("/settings")}
+                  className={cn(
+                    "sidebar-link",
+                    location.pathname === "/settings" && "sidebar-link-active"
+                  )}
+                >
+                  <Palette className="h-5 w-5" />
+                  <span>Library Settings</span>
+                </Link>
+              </>
+            )}
             {comingSoon && (
               <button
                 onClick={() => handleFilterClick("status", "coming-soon")}
