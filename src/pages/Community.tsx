@@ -24,8 +24,10 @@ import {
 } from "@/hooks/useForum";
 import { useCategoryThreadsRealtime } from "@/hooks/useForumRealtime";
 import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/hooks/useAuth";
 import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { CreateThreadDialog } from "@/components/community/CreateThreadDialog";
+import { InlineForumManagement } from "@/components/community/InlineForumManagement";
 import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
 
 const ICON_MAP = FORUM_ICON_MAP;
@@ -306,35 +308,49 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
 }
 
 function ForumHome() {
-  const { library, isTenantMode } = useTenant();
+  const { library, isTenantMode, isOwner } = useTenant();
+  const { isAdmin } = useAuth();
   
   const { data: siteCategories = [], isLoading: siteCategoriesLoading } = useSiteWideCategories();
   const { data: libraryCategories = [], isLoading: libraryCategoriesLoading } = useLibraryCategories(library?.id);
   
   const categories = isTenantMode ? libraryCategories : siteCategories;
-  const isLoading = isTenantMode ? libraryCategoriesLoading : siteCategoriesLoading;
+  const categoriesLoading = isTenantMode ? libraryCategoriesLoading : siteCategoriesLoading;
   
   const forumTitle = isTenantMode && library ? `${library.name} Forums` : "Community Forums";
   const forumDescription = isTenantMode 
     ? "Discuss games, share tips, and connect with fellow members"
     : "Discuss board games, find players, and connect with the community";
 
+  // Show manage button for site admins (site-wide) or library owners (library forums)
+  const canManage = isTenantMode ? isOwner : isAdmin;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <a href={getPlatformUrl("/dashboard?tab=community")}>
-          <Button variant="ghost" className="-ml-2">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
-        </a>
-        <div>
-          <h1 className="text-3xl font-bold">{forumTitle}</h1>
-          <p className="text-muted-foreground mt-1">{forumDescription}</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <a href={getPlatformUrl("/dashboard?tab=community")}>
+            <Button variant="ghost" className="-ml-2">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </a>
+          <div>
+            <h1 className="text-3xl font-bold">{forumTitle}</h1>
+            <p className="text-muted-foreground mt-1">{forumDescription}</p>
+          </div>
         </div>
+        {canManage && (
+          <InlineForumManagement
+            scope={isTenantMode ? "library" : "site"}
+            libraryId={isTenantMode ? library?.id : undefined}
+            categories={categories}
+            isLoading={categoriesLoading}
+          />
+        )}
       </div>
 
-      {isLoading ? (
+      {categoriesLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-40 w-full" />
           <Skeleton className="h-40 w-full" />
