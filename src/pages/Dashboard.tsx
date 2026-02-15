@@ -301,7 +301,7 @@ export default function Dashboard() {
   }, [tabFromUrl]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
+    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
       <GuidedTour librarySlug={library?.slug} />
       <AnnouncementBanner />
       <div className="container mx-auto px-4 pt-3">
