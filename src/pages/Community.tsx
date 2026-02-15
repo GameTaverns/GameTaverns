@@ -228,6 +228,34 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
         </Card>
       )}
 
+      {/* Subcategories */}
+      {category.children && category.children.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground px-1">Subcategories</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {category.children.map((sub) => {
+              const SubIcon = ICON_MAP[sub.icon] || MessageSquare;
+              const subColor = COLOR_MAP[sub.color] || COLOR_MAP.blue;
+              return (
+                <Link key={sub.id} to={`/community/${sub.slug}`}>
+                  <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
+                    <CardContent className="py-3 flex items-center gap-3">
+                      <div className={`p-1.5 rounded border ${subColor}`}>
+                        <SubIcon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{sub.name}</p>
+                        <p className="text-xs text-muted-foreground">{sub.description}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Threads */}
       {threadsLoading ? (
         <div className="space-y-2">
