@@ -17,8 +17,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RichTextEditor, RichTextContent } from "@/components/community/RichTextEditor";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,9 +67,7 @@ function ReplyCard({ reply }: { reply: ForumReply }) {
             {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
           </span>
         </div>
-        <div className="prose prose-sm max-w-none dark:prose-invert">
-          <p className="whitespace-pre-wrap">{reply.content}</p>
-        </div>
+        <RichTextContent html={reply.content} />
       </div>
     </div>
   );
@@ -80,12 +78,14 @@ function ReplyForm({ threadId, isLocked }: { threadId: string; isLocked: boolean
   const createReply = useCreateReply();
   const { isAuthenticated } = useAuth();
 
+  const hasContent = content.replace(/<[^>]*>/g, "").trim().length > 0;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!hasContent) return;
 
     createReply.mutate(
-      { threadId, content: content.trim() },
+      { threadId, content },
       {
         onSuccess: () => setContent(""),
       }
@@ -118,14 +118,14 @@ function ReplyForm({ threadId, isLocked }: { threadId: string; isLocked: boolean
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <Textarea
+      <RichTextEditor
+        content={content}
+        onChange={setContent}
         placeholder="Write your reply..."
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        rows={4}
+        minHeight="120px"
       />
       <div className="flex justify-end">
-        <Button type="submit" disabled={!content.trim() || createReply.isPending}>
+        <Button type="submit" disabled={!hasContent || createReply.isPending}>
           <Reply className="h-4 w-4 mr-2" />
           {createReply.isPending ? "Posting..." : "Post Reply"}
         </Button>
@@ -316,9 +316,7 @@ export default function ThreadDetail() {
         {/* Thread Content */}
         <Card>
           <CardContent className="py-6">
-            <div className="prose prose-sm max-w-none dark:prose-invert">
-              <p className="whitespace-pre-wrap">{thread.content}</p>
-            </div>
+            <RichTextContent html={thread.content} />
           </CardContent>
         </Card>
 

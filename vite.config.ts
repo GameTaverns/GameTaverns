@@ -85,6 +85,13 @@ export default defineConfig(({ mode }) => {
           "recharts": ["recharts"],
           "framer-motion": ["framer-motion"],
           "react-query": ["@tanstack/react-query"],
+          "tiptap": [
+            "@tiptap/react",
+            "@tiptap/starter-kit",
+            "@tiptap/extension-underline",
+            "@tiptap/extension-image",
+            "@tiptap/extension-placeholder",
+          ],
           "radix-ui": [
             "@radix-ui/react-dialog",
             "@radix-ui/react-dropdown-menu",

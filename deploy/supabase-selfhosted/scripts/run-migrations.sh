@@ -135,6 +135,7 @@ MIGRATION_FILES=(
     "52-tour-achievement.sql"
     "53-club-forum-rls.sql"
     "54-seed-club-forum-categories.sql"
+    "55-forum-subcategories.sql"
 )
 
 SUCCESS_COUNT=0

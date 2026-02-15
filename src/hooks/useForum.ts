@@ -215,12 +215,14 @@ export interface ForumCategory {
   display_order: number;
   library_id: string | null;
   club_id: string | null;
+  parent_category_id: string | null;
   created_by: string | null;
   is_system: boolean;
   is_archived: boolean;
   rules: string | null;
   created_at: string;
   updated_at: string;
+  children?: ForumCategory[];
 }
 
 export interface ForumThread {
@@ -265,6 +267,18 @@ export interface ForumReply {
   };
 }
 
+// Helper: nest flat categories into parent → children tree
+function nestCategories(flat: ForumCategory[]): ForumCategory[] {
+  const topLevel = flat.filter((c) => !c.parent_category_id);
+  const children = flat.filter((c) => !!c.parent_category_id);
+  return topLevel.map((parent) => ({
+    ...parent,
+    children: children
+      .filter((c) => c.parent_category_id === parent.id)
+      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)),
+  }));
+}
+
 // Fetch site-wide categories (library_id is null AND club_id is null)
 export function useSiteWideCategories() {
   return useQuery({
@@ -279,7 +293,7 @@ export function useSiteWideCategories() {
         .order("display_order", { ascending: true });
 
       if (error) throw error;
-      return data as ForumCategory[];
+      return nestCategories(data as ForumCategory[]);
     },
   });
 }
@@ -299,7 +313,7 @@ export function useClubCategories(clubId: string | undefined) {
         .order("display_order", { ascending: true });
 
       if (error) throw error;
-      return data as ForumCategory[];
+      return nestCategories(data as ForumCategory[]);
     },
     enabled: !!clubId,
   });
@@ -364,7 +378,7 @@ export function useLibraryCategories(libraryId: string | undefined) {
         .order("display_order", { ascending: true });
 
       if (error) throw error;
-      return data as ForumCategory[];
+      return nestCategories(data as ForumCategory[]);
     },
     enabled: !!libraryId,
   });
