@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
 import { usePlatformStats, formatStatNumber } from "@/hooks/usePlatformStats";
-import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Footer } from "@/components/layout/Footer";
 import logoImage from "@/assets/logo.png";
@@ -43,7 +42,6 @@ export default function Platform() {
           
           <nav className="flex items-center gap-1 sm:gap-4 flex-shrink-0">
             <ThemeToggle />
-            <FeedbackDialog />
             {isAuthenticated ? (
               <>
                 <Link to="/dashboard">

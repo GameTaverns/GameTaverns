@@ -367,7 +367,7 @@ export default function Dashboard() {
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-8 sm:py-12">
+      <main className="container mx-auto px-4 py-8 sm:py-12 max-w-full">
         <h1 className="font-display text-2xl sm:text-4xl font-bold text-cream mb-6">
           Welcome back, {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0]}
         </h1>

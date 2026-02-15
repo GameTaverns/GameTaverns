@@ -154,7 +154,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             <NotificationsDropdown />
           )}
           
-          <FeedbackDialog />
+          
           
           <ThemeToggle />
           

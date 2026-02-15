@@ -64,10 +64,11 @@ export function GlobalFeedbackButton() {
         <TooltipTrigger asChild>
           <button
             onClick={() => setOpen(true)}
-            className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="fixed bottom-6 right-6 z-50 flex h-auto items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-3 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="Send feedback"
           >
             <MessageSquarePlus className="h-5 w-5" />
+            <span className="text-sm font-medium">Feedback</span>
           </button>
         </TooltipTrigger>
         <TooltipContent side="left">Send Feedback</TooltipContent>
