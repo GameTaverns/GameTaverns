@@ -63,6 +63,18 @@ BEGIN
       ('Looking for Group', 'lfg', 'Find players for your next game night', 'Users', 'green', 3, true, NEW.id),
       ('Marketplace', 'marketplace', 'Buy, sell, and trade board games', 'ShoppingBag', 'purple', 4, true, NEW.id)
     ON CONFLICT DO NOTHING;
+
+    -- Seed marketplace subcategories
+    INSERT INTO public.forum_categories (name, slug, description, icon, color, display_order, is_system, club_id, parent_category_id)
+    SELECT sub.name, sub.slug, sub.description, sub.icon, 'purple', sub.display_order, true, NEW.id, fc.id
+    FROM (VALUES
+      ('Buying', 'buying', 'Looking to buy board games', 'ShoppingCart', 1),
+      ('Selling', 'selling', 'Board games for sale', 'Tag', 2),
+      ('Trading', 'trading', 'Trade board games with others', 'ArrowLeftRight', 3)
+    ) AS sub(name, slug, description, icon, display_order)
+    CROSS JOIN public.forum_categories fc
+    WHERE fc.slug = 'marketplace' AND fc.club_id = NEW.id AND fc.parent_category_id IS NULL
+    ON CONFLICT DO NOTHING;
   END IF;
   RETURN NEW;
 END;
