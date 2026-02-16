@@ -279,12 +279,10 @@ export default function LibraryGames() {
             <h1 className="text-2xl sm:text-3xl font-display font-bold">Manage Games</h1>
             <p className="text-muted-foreground text-sm">Add, import, and organize your collection</p>
           </div>
-          <a href={buildUrl("/add")}>
-            <Button size="sm" className="sm:size-default">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Game Manually
-            </Button>
-          </a>
+          <Button size="sm" className="sm:size-default" onClick={() => setActiveTab("add")}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Game
+          </Button>
         </div>
 
 
