@@ -5,18 +5,18 @@ import { supabase } from "@/integrations/backend/client";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Clock, Weight, BookOpen, ExternalLink, ChevronDown, ChevronUp, ArrowLeft, Palette, PenTool, Filter, Menu, Plus, Loader2, Check } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Search, Users, Clock, Weight, BookOpen, ChevronDown, ChevronUp, Menu, LayoutGrid, List } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
-import { WhoHasThis } from "@/components/catalog/WhoHasThis";
 import { CatalogSidebar } from "@/components/catalog/CatalogSidebar";
+import { CatalogGameGrid } from "@/components/catalog/CatalogGameGrid";
+import { CatalogGameList } from "@/components/catalog/CatalogGameList";
+import { CatalogPagination } from "@/components/catalog/CatalogPagination";
 
 interface CatalogGame {
   id: string;
@@ -52,9 +52,11 @@ export default function CatalogBrowse() {
   const [maxTime, setMaxTime] = useState<number[]>([240]);
   const [weightRange, setWeightRange] = useState<number[]>([1, 5]);
   const [showFilters, setShowFilters] = useState(false);
-  
   const [sortBy, setSortBy] = useState<string>("title");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = viewMode === "list" ? 50 : 24;
 
   const sidebarFilter = searchParams.get("filter");
   const sidebarValue = searchParams.get("value");
@@ -62,13 +64,23 @@ export default function CatalogBrowse() {
   const { data: catalogGames = [], isLoading } = useQuery({
     queryKey: ["catalog-browse"],
     queryFn: async (): Promise<CatalogGame[]> => {
-      const { data, error } = await supabase
-        .from("game_catalog")
-        .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age")
-        .order("title")
-        .limit(1000);
+      // Fetch all games using pagination to avoid the 1000-row limit
+      let allData: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      while (true) {
+        const { data: batch, error } = await supabase
+          .from("game_catalog")
+          .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age")
+          .order("title")
+          .range(from, from + batchSize - 1);
+        if (error) throw error;
+        allData = allData.concat(batch || []);
+        if (!batch || batch.length < batchSize) break;
+        from += batchSize;
+      }
 
-      if (error) throw error;
+      const data = allData;
 
       const catalogIds = (data || []).map(g => g.id);
 
@@ -279,6 +291,28 @@ export default function CatalogBrowse() {
     return results;
   }, [catalogGames, searchTerm, playerCount, maxTime, weightRange, showFilters, sortBy, sidebarFilter, sidebarValue]);
 
+  // Pagination
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginatedGames = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, currentPage, PAGE_SIZE]);
+
+  // Reset page when filters change
+  const handleSearchChange = (val: string) => { setSearchTerm(val); setCurrentPage(1); };
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const handleViewToggle = (mode: "grid" | "list") => {
+    setViewMode(mode);
+    setCurrentPage(1);
+  };
+
+  const handleAddGame = (gameId: string) => {
+    addFromCatalog.mutate({ catalogId: gameId, libraryId: myLibrary?.id });
+  };
+
   return (
     <Layout hideSidebar>
       {/* Mobile sidebar toggle */}
@@ -309,7 +343,7 @@ export default function CatalogBrowse() {
       {/* Main content - offset by sidebar width */}
       <div className="lg:ml-72">
         <div className="container mx-auto px-4 py-8 max-w-7xl">
-          {/* Header matching library style */}
+          {/* Header */}
           <div className="mb-8">
             <h1 className="font-display text-3xl font-bold">GameTaverns Library</h1>
             <p className="text-muted-foreground">
@@ -325,11 +359,11 @@ export default function CatalogBrowse() {
                 <Input
                   placeholder="Search games, designers, or artists..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-10"
                 />
               </div>
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setCurrentPage(1); }}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -341,13 +375,36 @@ export default function CatalogBrowse() {
                   <SelectItem value="year">Newest First</SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* View mode toggle */}
+              <div className="flex border border-border rounded-md">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  size="icon"
+                  className="h-9 w-9 rounded-r-none"
+                  onClick={() => handleViewToggle("grid")}
+                  title="Grid view"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  size="icon"
+                  className="h-9 w-9 rounded-l-none"
+                  onClick={() => handleViewToggle("list")}
+                  title="List view"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+
               <Button
                 variant="outline"
                 onClick={() => setShowFilters(!showFilters)}
                 className="gap-2"
               >
                 {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                Filters
+                <span className="hidden sm:inline">Filters</span>
               </Button>
             </div>
 
@@ -358,26 +415,26 @@ export default function CatalogBrowse() {
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <Users className="h-4 w-4" /> Players: {playerCount[0]}
                     </Label>
-                    <Slider value={playerCount} onValueChange={setPlayerCount} min={1} max={10} step={1} />
+                    <Slider value={playerCount} onValueChange={(v) => { setPlayerCount(v); setCurrentPage(1); }} min={1} max={10} step={1} />
                   </div>
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <Clock className="h-4 w-4" /> Max Time: {maxTime[0]} min
                     </Label>
-                    <Slider value={maxTime} onValueChange={setMaxTime} min={15} max={240} step={15} />
+                    <Slider value={maxTime} onValueChange={(v) => { setMaxTime(v); setCurrentPage(1); }} min={15} max={240} step={15} />
                   </div>
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <Weight className="h-4 w-4" /> Complexity: {weightRange[0].toFixed(1)} – {weightRange[1].toFixed(1)}
                     </Label>
-                    <Slider value={weightRange} onValueChange={setWeightRange} min={1} max={5} step={0.5} />
+                    <Slider value={weightRange} onValueChange={(v) => { setWeightRange(v); setCurrentPage(1); }} min={1} max={5} step={0.5} />
                   </div>
                 </CardContent>
               </Card>
             )}
           </div>
 
-          {/* Game Grid */}
+          {/* Game display */}
           {isLoading ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -390,99 +447,30 @@ export default function CatalogBrowse() {
                 </Card>
               ))}
             </div>
+          ) : viewMode === "grid" ? (
+            <CatalogGameGrid
+              games={paginatedGames}
+              isAuthenticated={isAuthenticated}
+              addingId={addFromCatalog.variables?.catalogId}
+              isPending={addFromCatalog.isPending}
+              onAdd={handleAddGame}
+            />
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filtered.map((game) => (
-                <div key={game.id} className="relative group">
-                  <Link
-                    to={`/catalog/${game.slug || game.id}`}
-                    className="block"
-                  >
-                    <Card className="overflow-hidden card-hover cursor-pointer h-full">
-                      {game.image_url ? (
-                        <img
-                          src={game.image_url}
-                          alt={game.title}
-                          className="w-full h-40 object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-40 bg-muted flex items-center justify-center">
-                          <BookOpen className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                      )}
-                      <CardContent className="pt-3 space-y-2">
-                        <h3 className="font-display font-semibold text-sm truncate group-hover:text-primary transition-colors">{game.title}</h3>
-                        <div className="flex flex-wrap gap-1.5">
-                          {game.min_players != null && game.max_players != null && (
-                            <Badge variant="outline" className="text-[10px]">
-                              <Users className="h-3 w-3 mr-0.5" />
-                              {game.min_players}–{game.max_players}
-                            </Badge>
-                          )}
-                          {game.play_time_minutes != null && (
-                            <Badge variant="outline" className="text-[10px]">
-                              <Clock className="h-3 w-3 mr-0.5" />
-                              {game.play_time_minutes}m
-                            </Badge>
-                          )}
-                          {game.weight != null && (
-                            <Badge variant="outline" className="text-[10px]">
-                              <Weight className="h-3 w-3 mr-0.5" />
-                              {game.weight.toFixed(1)}
-                            </Badge>
-                          )}
-                          {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                            <Badge variant="secondary" className="text-[10px]">
-                              BGG ★ {game.bgg_community_rating.toFixed(1)}
-                            </Badge>
-                          )}
-                          {game.community_rating != null && (
-                            <Badge variant="default" className="text-[10px]">
-                              ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})
-                            </Badge>
-                          )}
-                        </div>
-
-                        {game.designers.length > 0 && (
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            <PenTool className="h-2.5 w-2.5 inline mr-0.5" />
-                            {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
-                          </p>
-                        )}
-
-                        {game.year_published && (
-                          <p className="text-xs text-muted-foreground">{game.year_published}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Link>
-
-                  {/* Add to Library button */}
-                  {isAuthenticated && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-2 right-2 z-10 bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-8 w-8"
-                      title="Add to my library"
-                      disabled={addFromCatalog.isPending && addFromCatalog.variables?.catalogId === game.id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary?.id });
-                      }}
-                    >
-                      {addFromCatalog.isPending && addFromCatalog.variables?.catalogId === game.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Plus className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
+            <CatalogGameList
+              games={paginatedGames}
+              isAuthenticated={isAuthenticated}
+              addingId={addFromCatalog.variables?.catalogId}
+              isPending={addFromCatalog.isPending}
+              onAdd={handleAddGame}
+            />
           )}
+
+          {/* Pagination */}
+          <CatalogPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
 
           {filtered.length === 0 && !isLoading && (
             <div className="text-center py-12">
