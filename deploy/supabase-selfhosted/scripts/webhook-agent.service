@@ -1,0 +1,19 @@
+[Unit]
+Description=GameTaverns Webhook Agent
+Documentation=https://gametaverns.com
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/bin/bash /opt/gametaverns/deploy/supabase-selfhosted/scripts/webhook-agent.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gametaverns-agent
+Environment=GT_AGENT_POLL_INTERVAL=5
+
+[Install]
+WantedBy=multi-user.target

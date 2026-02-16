@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   RefreshCw,
   Database,
@@ -16,12 +16,31 @@ import {
   Server,
   Zap,
   FileText,
+  Play,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ScriptInfo {
   id: string;
@@ -34,6 +53,17 @@ interface ScriptInfo {
   estimatedTime: string;
   requiresRoot: boolean;
   warning?: string;
+  canRunRemotely: boolean;
+}
+
+interface CommandStatus {
+  id: string;
+  script_id: string;
+  status: string;
+  output: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
 }
 
 const SCRIPTS: ScriptInfo[] = [
@@ -49,6 +79,7 @@ const SCRIPTS: ScriptInfo[] = [
     whenToRun: "After pushing new code to Git, or when a new release is available.",
     estimatedTime: "3–8 minutes",
     requiresRoot: true,
+    canRunRemotely: true,
   },
   {
     id: "backup",
@@ -61,6 +92,7 @@ const SCRIPTS: ScriptInfo[] = [
     whenToRun: "Before any major update or change. Also runs automatically as part of update.sh.",
     estimatedTime: "1–3 minutes",
     requiresRoot: true,
+    canRunRemotely: true,
   },
   {
     id: "migrations",
@@ -73,6 +105,7 @@ const SCRIPTS: ScriptInfo[] = [
     whenToRun: "When you need to apply database changes without a full update. Usually handled by update.sh automatically.",
     estimatedTime: "30 seconds – 2 minutes",
     requiresRoot: true,
+    canRunRemotely: true,
   },
 
   // === MAINTENANCE ===
@@ -88,6 +121,7 @@ const SCRIPTS: ScriptInfo[] = [
     estimatedTime: "2–5 minutes",
     requiresRoot: true,
     warning: "This REPLACES your current database with the backup. All data since the backup will be lost.",
+    canRunRemotely: false, // Interactive — requires SSH
   },
   {
     id: "render-kong",
@@ -100,6 +134,7 @@ const SCRIPTS: ScriptInfo[] = [
     whenToRun: "After rotating ANON_KEY or SERVICE_ROLE_KEY in your .env file.",
     estimatedTime: "< 5 seconds",
     requiresRoot: true,
+    canRunRemotely: true,
   },
   {
     id: "setup-ssl",
@@ -112,6 +147,7 @@ const SCRIPTS: ScriptInfo[] = [
     whenToRun: "During initial setup, or when SSL certificates need renewal or reconfiguration.",
     estimatedTime: "1–3 minutes",
     requiresRoot: true,
+    canRunRemotely: true,
   },
   {
     id: "create-admin",
@@ -124,18 +160,7 @@ const SCRIPTS: ScriptInfo[] = [
     whenToRun: "When you need to grant admin access to a user account.",
     estimatedTime: "< 30 seconds",
     requiresRoot: true,
-  },
-  {
-    id: "compose",
-    name: "Docker Compose Shortcuts",
-    description:
-      "Sources helpful shell aliases for managing the Docker stack: gt_ps (status), gt_logs (logs), gt_restart (restart all), and gt_exec (exec into containers).",
-    command: "source /opt/gametaverns/deploy/supabase-selfhosted/scripts/compose.sh",
-    icon: <Terminal className="h-5 w-5" />,
-    category: "maintenance",
-    whenToRun: "Anytime you need quick access to Docker Compose commands for the stack.",
-    estimatedTime: "Instant",
-    requiresRoot: false,
+    canRunRemotely: false, // Interactive
   },
   {
     id: "preflight",
@@ -148,6 +173,7 @@ const SCRIPTS: ScriptInfo[] = [
     whenToRun: "Before initial installation or when troubleshooting environment issues.",
     estimatedTime: "< 30 seconds",
     requiresRoot: true,
+    canRunRemotely: true,
   },
   {
     id: "rebuild-frontend",
@@ -161,6 +187,7 @@ const SCRIPTS: ScriptInfo[] = [
     whenToRun: "When you've only changed frontend code and want a faster deploy than full update.sh.",
     estimatedTime: "1–3 minutes",
     requiresRoot: true,
+    canRunRemotely: true,
   },
   {
     id: "restart-functions",
@@ -174,6 +201,7 @@ const SCRIPTS: ScriptInfo[] = [
     whenToRun: "After modifying edge function code, or when functions are returning stale/cached responses.",
     estimatedTime: "30 seconds",
     requiresRoot: true,
+    canRunRemotely: true,
   },
 
   // === DANGER ===
@@ -189,6 +217,7 @@ const SCRIPTS: ScriptInfo[] = [
     estimatedTime: "1–2 minutes",
     requiresRoot: true,
     warning: "Stops and removes containers. Will cause downtime.",
+    canRunRemotely: true,
   },
   {
     id: "nuclear-reset",
@@ -202,6 +231,7 @@ const SCRIPTS: ScriptInfo[] = [
     estimatedTime: "2–5 minutes",
     requiresRoot: true,
     warning: "THIS WILL DELETE EVERYTHING. All data, all backups, all configuration. This cannot be undone.",
+    canRunRemotely: false, // Blocked for safety
   },
 ];
 
@@ -251,8 +281,116 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function ScriptCard({ script }: { script: ScriptInfo }) {
+function RunButton({ script, onRun, runningCommands }: {
+  script: ScriptInfo;
+  onRun: (scriptId: string) => void;
+  runningCommands: Record<string, CommandStatus>;
+}) {
+  const cmd = runningCommands[script.id];
+  const isRunning = cmd?.status === "pending" || cmd?.status === "running";
+  const isDone = cmd?.status === "completed";
+  const isFailed = cmd?.status === "failed";
+
+  if (!script.canRunRemotely) {
+    return (
+      <Badge variant="outline" className="text-[10px] border-wood-medium/30 text-cream/40">
+        SSH only
+      </Badge>
+    );
+  }
+
+  if (isRunning) {
+    return (
+      <Button size="sm" variant="outline" disabled className="gap-1.5 text-xs border-amber-500/30 text-amber-400">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        {cmd?.status === "running" ? "Running…" : "Queued…"}
+      </Button>
+    );
+  }
+
+  if (isDone) {
+    return (
+      <Button size="sm" variant="outline" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-400" onClick={() => onRun(script.id)}>
+        <CheckCircle2 className="h-3 w-3" />
+        Done — Run Again
+      </Button>
+    );
+  }
+
+  if (isFailed) {
+    return (
+      <Button size="sm" variant="outline" className="gap-1.5 text-xs border-red-500/30 text-red-400" onClick={() => onRun(script.id)}>
+        <XCircle className="h-3 w-3" />
+        Failed — Retry
+      </Button>
+    );
+  }
+
+  if (script.category === "danger") {
+    return (
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs border-red-500/30 text-red-400 hover:bg-red-500/20">
+            <Play className="h-3 w-3" />
+            Run
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-400">⚠️ Confirm: {script.name}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {script.warning || script.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => onRun(script.id)}>
+              Yes, Run It
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
+
+  return (
+    <Button size="sm" variant="outline" className="gap-1.5 text-xs border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20" onClick={() => onRun(script.id)}>
+      <Play className="h-3 w-3" />
+      Run
+    </Button>
+  );
+}
+
+function CommandOutput({ command }: { command: CommandStatus }) {
+  const [showOutput, setShowOutput] = useState(false);
+
+  if (!command.output) return null;
+
+  return (
+    <div className="mt-2">
+      <button
+        onClick={() => setShowOutput(!showOutput)}
+        className="flex items-center gap-1 text-[11px] text-cream/50 hover:text-cream/70 transition-colors"
+      >
+        {showOutput ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        {showOutput ? "Hide output" : "Show output"}
+      </button>
+      {showOutput && (
+        <ScrollArea className="mt-1.5 max-h-48 rounded-lg bg-black/40 border border-wood-medium/20 p-2.5">
+          <pre className="text-[11px] text-cream/60 whitespace-pre-wrap font-mono">{command.output}</pre>
+        </ScrollArea>
+      )}
+    </div>
+  );
+}
+
+function ScriptCard({ script, onRun, runningCommands }: {
+  script: ScriptInfo;
+  onRun: (scriptId: string) => void;
+  runningCommands: Record<string, CommandStatus>;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const cmd = runningCommands[script.id];
 
   return (
     <Card
@@ -284,11 +422,12 @@ function ScriptCard({ script }: { script: ScriptInfo }) {
               </CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge variant="outline" className="text-[10px] gap-1 border-wood-medium/30">
+          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <Badge variant="outline" className="text-[10px] gap-1 border-wood-medium/30 hidden sm:flex">
               <Clock className="h-2.5 w-2.5" />
               {script.estimatedTime}
             </Badge>
+            <RunButton script={script} onRun={onRun} runningCommands={runningCommands} />
           </div>
         </div>
       </CardHeader>
@@ -319,6 +458,10 @@ function ScriptCard({ script }: { script: ScriptInfo }) {
             </div>
           </div>
 
+          {cmd && (cmd.status === "completed" || cmd.status === "failed") && (
+            <CommandOutput command={cmd} />
+          )}
+
           {script.requiresRoot && (
             <p className="text-[10px] text-cream/40 flex items-center gap-1">
               <Shield className="h-3 w-3" /> Requires root (sudo)
@@ -332,20 +475,141 @@ function ScriptCard({ script }: { script: ScriptInfo }) {
 
 export function ServerManagement() {
   const categories = ["routine", "maintenance", "danger"] as const;
+  const { toast } = useToast();
+  const [runningCommands, setRunningCommands] = useState<Record<string, CommandStatus>>({});
+  const [agentConnected, setAgentConnected] = useState<boolean | null>(null);
+
+  // Check agent status by looking for recent completed commands
+  useEffect(() => {
+    const checkAgent = async () => {
+      try {
+        const { data } = await supabase.functions.invoke("server-command", {
+          body: { action: "list" },
+        });
+        // If we can reach the function, agent connectivity is checked via recent commands
+        if (data?.commands) {
+          const hasRecent = data.commands.some((c: CommandStatus) =>
+            c.status === "completed" || c.status === "running"
+          );
+          setAgentConnected(hasRecent ? true : null); // null = unknown
+        }
+      } catch {
+        setAgentConnected(null);
+      }
+    };
+    checkAgent();
+  }, []);
+
+  // Poll for running command updates
+  useEffect(() => {
+    const activeCommands = Object.values(runningCommands).filter(
+      (c) => c.status === "pending" || c.status === "running"
+    );
+
+    if (activeCommands.length === 0) return;
+
+    const interval = setInterval(async () => {
+      for (const cmd of activeCommands) {
+        try {
+          const response = await supabase.functions.invoke("server-command", {
+            body: { action: "list" },
+          });
+
+          // Parse the response to find our command
+          if (response.data?.commands) {
+            const updated = response.data.commands.find((c: CommandStatus) => c.id === cmd.id);
+            if (updated && updated.status !== cmd.status) {
+              setRunningCommands((prev) => ({
+                ...prev,
+                [updated.script_id]: updated,
+              }));
+
+              if (updated.status === "completed") {
+                setAgentConnected(true);
+                toast({ title: `✓ ${SCRIPTS.find(s => s.id === updated.script_id)?.name} completed` });
+              } else if (updated.status === "failed") {
+                toast({
+                  title: `✗ ${SCRIPTS.find(s => s.id === updated.script_id)?.name} failed`,
+                  variant: "destructive",
+                });
+              }
+            }
+          }
+        } catch {
+          // Silently retry
+        }
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [runningCommands, toast]);
+
+  const handleRun = useCallback(async (scriptId: string) => {
+    try {
+      const response = await supabase.functions.invoke("server-command", {
+        body: { action: "run", script_id: scriptId },
+      });
+
+      if (response.error) {
+        toast({ title: "Failed to queue command", description: String(response.error), variant: "destructive" });
+        return;
+      }
+
+      if (response.data?.error) {
+        toast({ title: "Error", description: response.data.error, variant: "destructive" });
+        return;
+      }
+
+      if (response.data?.command) {
+        setRunningCommands((prev) => ({
+          ...prev,
+          [scriptId]: response.data.command,
+        }));
+        toast({ title: `Queued: ${SCRIPTS.find(s => s.id === scriptId)?.name}`, description: "Waiting for server agent to pick it up…" });
+      }
+    } catch (err) {
+      toast({ title: "Network error", description: String(err), variant: "destructive" });
+    }
+  }, [toast]);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-secondary/20">
-          <Terminal className="h-5 w-5 text-secondary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-secondary/20">
+            <Terminal className="h-5 w-5 text-secondary" />
+          </div>
+          <div>
+            <h3 className="font-display text-base font-bold text-cream">Server Management</h3>
+            <p className="text-xs text-cream/50">
+              Run scripts remotely or copy commands for SSH. Click a card to expand details.
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-display text-base font-bold text-cream">Server Management</h3>
-          <p className="text-xs text-cream/50">
-            Reference guide for all deployment and maintenance scripts. Click a card to expand details and copy the command.
-          </p>
+        <div className="flex items-center gap-2">
+          <div className={`h-2 w-2 rounded-full ${
+            agentConnected === true ? "bg-emerald-400" :
+            agentConnected === false ? "bg-red-400" :
+            "bg-amber-400 animate-pulse"
+          }`} />
+          <span className="text-[11px] text-cream/50">
+            {agentConnected === true ? "Agent connected" :
+             agentConnected === false ? "Agent offline" :
+             "Agent status unknown"}
+          </span>
         </div>
       </div>
+
+      {agentConnected === null && (
+        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <p className="text-xs text-amber-300 leading-relaxed">
+            <strong>Setup required:</strong> To use the Run buttons, install the webhook agent on your server:
+          </p>
+          <code className="block mt-1.5 text-[11px] text-emerald-400 bg-black/30 p-2 rounded font-mono">
+            sudo cp /opt/gametaverns/deploy/supabase-selfhosted/scripts/webhook-agent.service /etc/systemd/system/gametaverns-agent.service && sudo systemctl daemon-reload && sudo systemctl enable --now gametaverns-agent
+          </code>
+        </div>
+      )}
 
       {categories.map((cat) => {
         const config = categoryConfig[cat];
@@ -362,7 +626,12 @@ export function ServerManagement() {
 
             <div className="grid gap-2">
               {scripts.map((script) => (
-                <ScriptCard key={script.id} script={script} />
+                <ScriptCard
+                  key={script.id}
+                  script={script}
+                  onRun={handleRun}
+                  runningCommands={runningCommands}
+                />
               ))}
             </div>
           </div>
@@ -373,8 +642,8 @@ export function ServerManagement() {
 
       <div className="p-3 rounded-lg bg-wood-dark/40 border border-wood-medium/20">
         <p className="text-xs text-cream/50 leading-relaxed">
-          <strong className="text-cream/70">Quick Reference:</strong> For most updates, just run{" "}
-          <code className="text-emerald-400 bg-black/30 px-1 py-0.5 rounded text-[11px]">sudo update.sh</code> — it
+          <strong className="text-cream/70">Quick Reference:</strong> For most updates, just click{" "}
+          <span className="text-emerald-400 font-medium">Run</span> on "Update Application" — it
           handles git pull, backup, migrations, frontend rebuild, edge function sync, and service restart all in one command.
         </p>
       </div>

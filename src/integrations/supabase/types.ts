@@ -2798,6 +2798,39 @@ export type Database = {
         }
         Relationships: []
       }
+      server_commands: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          output: string | null
+          requested_by: string
+          script_id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          output?: string | null
+          requested_by: string
+          script_id: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          output?: string | null
+          requested_by?: string
+          script_id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           created_at: string
