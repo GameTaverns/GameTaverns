@@ -48,7 +48,7 @@ export default function CatalogBrowse() {
   const [maxTime, setMaxTime] = useState<number[]>([240]);
   const [weightRange, setWeightRange] = useState<number[]>([1, 5]);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  
   const [sortBy, setSortBy] = useState<string>("title");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -389,115 +389,70 @@ export default function CatalogBrowse() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filtered.map((game) => (
-                <Card
+                <Link
                   key={game.id}
-                  className="overflow-hidden card-hover cursor-pointer group"
-                  onClick={() => setSelectedGame(selectedGame === game.id ? null : game.id)}
+                  to={`/catalog/${game.slug || game.id}`}
+                  className="group"
                 >
-                  {game.image_url ? (
-                    <img
-                      src={game.image_url}
-                      alt={game.title}
-                      className="w-full h-40 object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-40 bg-muted flex items-center justify-center">
-                      <BookOpen className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                  )}
-                  <CardContent className="pt-3 space-y-2">
-                    <h3 className="font-display font-semibold text-sm truncate">{game.title}</h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {game.min_players != null && game.max_players != null && (
-                        <Badge variant="outline" className="text-[10px]">
-                          <Users className="h-3 w-3 mr-0.5" />
-                          {game.min_players}–{game.max_players}
-                        </Badge>
-                      )}
-                      {game.play_time_minutes != null && (
-                        <Badge variant="outline" className="text-[10px]">
-                          <Clock className="h-3 w-3 mr-0.5" />
-                          {game.play_time_minutes}m
-                        </Badge>
-                      )}
-                      {game.weight != null && (
-                        <Badge variant="outline" className="text-[10px]">
-                          <Weight className="h-3 w-3 mr-0.5" />
-                          {game.weight.toFixed(1)}
-                        </Badge>
-                      )}
-                      {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          BGG ★ {game.bgg_community_rating.toFixed(1)}
-                        </Badge>
-                      )}
-                      {game.community_rating != null && (
-                        <Badge variant="default" className="text-[10px]">
-                          ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})
-                        </Badge>
-                      )}
-                    </div>
-
-                    {game.designers.length > 0 && (
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        <PenTool className="h-2.5 w-2.5 inline mr-0.5" />
-                        {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
-                      </p>
-                    )}
-
-                    {game.year_published && (
-                      <p className="text-xs text-muted-foreground">{game.year_published}</p>
-                    )}
-
-                    {/* Expanded details */}
-                    {selectedGame === game.id && (
-                      <div className="pt-2 border-t border-border space-y-3">
-                        {game.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-4">{game.description}</p>
-                        )}
-                        {game.designers.length > 0 && (
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
-                              <PenTool className="h-3 w-3" /> Designer{game.designers.length > 1 ? "s" : ""}
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {game.designers.map(d => (
-                                <Link key={d} to={`/catalog?filter=designer&value=${encodeURIComponent(d)}`} onClick={e => e.stopPropagation()}>
-                                  <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{d}</Badge>
-                                </Link>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {game.artists.length > 0 && (
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
-                              <Palette className="h-3 w-3" /> Artist{game.artists.length > 1 ? "s" : ""}
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {game.artists.map(a => (
-                                <Link key={a} to={`/catalog?filter=artist&value=${encodeURIComponent(a)}`} onClick={e => e.stopPropagation()}>
-                                  <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{a}</Badge>
-                                </Link>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex gap-2">
-                          {game.bgg_url && (
-                            <a href={game.bgg_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                              <Button variant="outline" size="sm" className="text-xs gap-1">
-                                <ExternalLink className="h-3 w-3" /> BGG
-                              </Button>
-                            </a>
-                          )}
-                        </div>
-                        <WhoHasThis catalogId={game.id} gameTitle={game.title} />
+                  <Card className="overflow-hidden card-hover cursor-pointer h-full">
+                    {game.image_url ? (
+                      <img
+                        src={game.image_url}
+                        alt={game.title}
+                        className="w-full h-40 object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-40 bg-muted flex items-center justify-center">
+                        <BookOpen className="h-8 w-8 text-muted-foreground" />
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                    <CardContent className="pt-3 space-y-2">
+                      <h3 className="font-display font-semibold text-sm truncate group-hover:text-primary transition-colors">{game.title}</h3>
+                      <div className="flex flex-wrap gap-1.5">
+                        {game.min_players != null && game.max_players != null && (
+                          <Badge variant="outline" className="text-[10px]">
+                            <Users className="h-3 w-3 mr-0.5" />
+                            {game.min_players}–{game.max_players}
+                          </Badge>
+                        )}
+                        {game.play_time_minutes != null && (
+                          <Badge variant="outline" className="text-[10px]">
+                            <Clock className="h-3 w-3 mr-0.5" />
+                            {game.play_time_minutes}m
+                          </Badge>
+                        )}
+                        {game.weight != null && (
+                          <Badge variant="outline" className="text-[10px]">
+                            <Weight className="h-3 w-3 mr-0.5" />
+                            {game.weight.toFixed(1)}
+                          </Badge>
+                        )}
+                        {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            BGG ★ {game.bgg_community_rating.toFixed(1)}
+                          </Badge>
+                        )}
+                        {game.community_rating != null && (
+                          <Badge variant="default" className="text-[10px]">
+                            ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})
+                          </Badge>
+                        )}
+                      </div>
+
+                      {game.designers.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          <PenTool className="h-2.5 w-2.5 inline mr-0.5" />
+                          {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
+                        </p>
+                      )}
+
+                      {game.year_published && (
+                        <p className="text-xs text-muted-foreground">{game.year_published}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}
