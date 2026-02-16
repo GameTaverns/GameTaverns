@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart } from "lucide-react";
+import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart, Mail } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,7 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   loan_rejected: <BookOpen className="h-4 w-4 text-destructive" />,
   achievement_earned: <Trophy className="h-4 w-4 text-yellow-500" />,
   event_reminder: <Calendar className="h-4 w-4 text-orange-500" />,
-  message_received: <MessageSquare className="h-4 w-4 text-indigo-500" />,
+  message_received: <Mail className="h-4 w-4 text-indigo-500" />,
   wishlist_alert: <Heart className="h-4 w-4 text-pink-500" />,
   forum_reply: <MessageSquare className="h-4 w-4 text-green-500" />,
 };
@@ -41,12 +41,10 @@ function getNotificationPath(notification: Notification): string | null {
     case "loan_approved":
     case "loan_rejected":
     case "loan_returned":
-      // Navigate to dashboard lending tab
-      return "/dashboard?tab=lending";
+      return "/dashboard";
     case "achievement_earned":
       return "/achievements";
     case "event_reminder":
-      // Navigate to dashboard events section
       return "/dashboard";
     case "message_received":
       return "/messages";
@@ -108,11 +106,15 @@ function NotificationItem({
 
 interface NotificationsDropdownProps {
   variant?: "default" | "dashboard";
+  /** Pass unread message count to combine with notification count */
+  unreadMessageCount?: number;
 }
 
-export function NotificationsDropdown({ variant = "default" }: NotificationsDropdownProps) {
+export function NotificationsDropdown({ variant = "default", unreadMessageCount = 0 }: NotificationsDropdownProps) {
   const navigate = useNavigate();
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+
+  const totalUnread = unreadCount + unreadMessageCount;
 
   const handleMarkRead = (notificationId: string) => {
     markAsRead.mutate(notificationId);
@@ -134,38 +136,66 @@ export function NotificationsDropdown({ variant = "default" }: NotificationsDrop
           )}
         >
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
+          {totalUnread > 0 && (
             <Badge
               variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
             >
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {totalUnread > 9 ? "9+" : totalUnread}
             </Badge>
           )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Notifications</span>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto py-1 px-2 text-xs"
-              onClick={() => markAllAsRead.mutate()}
-            >
-              <CheckCheck className="h-3 w-3 mr-1" />
-              Mark all read
-            </Button>
-          )}
+          <span>Inbox</span>
+          <div className="flex items-center gap-2">
+            {unreadMessageCount > 0 && (
+              <Badge variant="outline" className="text-[10px] gap-1">
+                <Mail className="h-3 w-3" /> {unreadMessageCount}
+              </Badge>
+            )}
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto py-1 px-2 text-xs"
+                onClick={() => markAllAsRead.mutate()}
+              >
+                <CheckCheck className="h-3 w-3 mr-1" />
+                Mark all read
+              </Button>
+            )}
+          </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+
+        {/* Messages section if there are unread messages */}
+        {unreadMessageCount > 0 && (
+          <>
+            <DropdownMenuItem
+              className="flex items-start gap-3 p-3 cursor-pointer bg-accent/30"
+              onClick={() => navigate("/dashboard")}
+            >
+              <div className="flex-shrink-0 mt-0.5"><Mail className="h-4 w-4 text-indigo-500" /></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">Unread Messages</p>
+                <p className="text-xs text-muted-foreground">{unreadMessageCount} new message{unreadMessageCount > 1 ? 's' : ''} in your library inbox</p>
+              </div>
+              <div className="flex-shrink-0 mt-1">
+                <div className="h-2 w-2 rounded-full bg-primary" />
+              </div>
+            </DropdownMenuItem>
+            {notifications.length > 0 && <DropdownMenuSeparator />}
+          </>
+        )}
+
         <ScrollArea className="h-[300px]">
           {isLoading ? (
             <div className="p-4 text-center text-muted-foreground text-sm">
               Loading...
             </div>
-          ) : notifications.length === 0 ? (
+          ) : notifications.length === 0 && unreadMessageCount === 0 ? (
             <div className="p-8 text-center">
               <Bell className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">No notifications yet</p>
