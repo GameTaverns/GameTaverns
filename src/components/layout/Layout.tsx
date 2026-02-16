@@ -20,7 +20,7 @@ export function Layout({ children, hideSidebar = false }: LayoutProps) {
   const showSidebar = isTenantMode && !hideSidebar;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <OwnerAdminBar />
       <AnnouncementBanner />
       <AppHeader onMenuClick={() => setSidebarOpen(!sidebarOpen)} showMenuToggle={showSidebar} />
