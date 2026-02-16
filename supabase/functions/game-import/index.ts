@@ -777,6 +777,19 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
+    // Detect collection/user URLs — these need the bulk import flow, not single game import
+    const collectionMatch = url.match(/boardgamegeek\.com\/(?:collection\/user|user)\/([^\/\?#]+)/i);
+    if (collectionMatch) {
+      const username = decodeURIComponent(collectionMatch[1]);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `"${username}" looks like a BGG profile or collection URL. To import a full collection, use the "BGG Collection" import tab and enter the username "${username}" instead.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     console.log("Importing game from URL:", url);
 
     // Extract BGG ID for validation and primary data source
