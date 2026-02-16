@@ -34,6 +34,10 @@ interface CatalogGame {
   suggested_age: string | null;
   designers: string[];
   artists: string[];
+  mechanics: string[];
+  publishers: string[];
+  community_rating: number | null;
+  community_rating_count: number;
 }
 
 export default function CatalogBrowse() {
@@ -56,56 +60,75 @@ export default function CatalogBrowse() {
       const { data, error } = await supabase
         .from("game_catalog")
         .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age")
-        .eq("is_expansion", false)
         .order("title")
         .limit(1000);
 
       if (error) throw error;
 
-      // Fetch all catalog designers and artists in bulk
       const catalogIds = (data || []).map(g => g.id);
-      
-      const [designersRes, artistsRes] = await Promise.all([
-        supabase
-          .from("catalog_designers")
-          .select("catalog_id, designer:designers(name)")
-          .in("catalog_id", catalogIds),
-        supabase
-          .from("catalog_artists")
-          .select("catalog_id, artist:artists(name)")
-          .in("catalog_id", catalogIds),
+
+      const [designersRes, artistsRes, mechanicsRes, publishersRes] = await Promise.all([
+        supabase.from("catalog_designers").select("catalog_id, designer:designers(name)").in("catalog_id", catalogIds),
+        supabase.from("catalog_artists").select("catalog_id, artist:artists(name)").in("catalog_id", catalogIds),
+        supabase.from("catalog_mechanics").select("catalog_id, mechanic:mechanics(name)").in("catalog_id", catalogIds),
+        supabase.from("catalog_publishers").select("catalog_id, publisher:publishers(name)").in("catalog_id", catalogIds),
       ]);
 
-      const designerMap = new Map<string, string[]>();
-      for (const row of designersRes.data || []) {
-        const name = (row as any).designer?.name;
-        if (name) {
-          const list = designerMap.get(row.catalog_id) || [];
-          list.push(name);
-          designerMap.set(row.catalog_id, list);
+      // Aggregate community ratings across all libraries
+      // game_ratings -> game_id -> games.catalog_id
+      const { data: ratingsData } = await supabase
+        .from("games")
+        .select("catalog_id, game_ratings(rating)")
+        .in("catalog_id", catalogIds)
+        .not("catalog_id", "is", null);
+
+      const ratingMap = new Map<string, { sum: number; count: number }>();
+      for (const game of ratingsData || []) {
+        if (!game.catalog_id) continue;
+        const ratings = (game as any).game_ratings as { rating: number }[] || [];
+        for (const r of ratings) {
+          const existing = ratingMap.get(game.catalog_id) || { sum: 0, count: 0 };
+          existing.sum += r.rating;
+          existing.count += 1;
+          ratingMap.set(game.catalog_id, existing);
         }
       }
 
-      const artistMap = new Map<string, string[]>();
-      for (const row of artistsRes.data || []) {
-        const name = (row as any).artist?.name;
-        if (name) {
-          const list = artistMap.get(row.catalog_id) || [];
-          list.push(name);
-          artistMap.set(row.catalog_id, list);
+      const buildMap = (rows: any[], key: string) => {
+        const map = new Map<string, string[]>();
+        for (const row of rows) {
+          const name = (row as any)[key]?.name;
+          if (name) {
+            const list = map.get(row.catalog_id) || [];
+            list.push(name);
+            map.set(row.catalog_id, list);
+          }
         }
-      }
+        return map;
+      };
 
-      return (data || []).map(g => ({
-        ...g,
-        designers: designerMap.get(g.id) || [],
-        artists: artistMap.get(g.id) || [],
-      }));
+      const designerMap = buildMap(designersRes.data || [], "designer");
+      const artistMap = buildMap(artistsRes.data || [], "artist");
+      const mechanicMap = buildMap(mechanicsRes.data || [], "mechanic");
+      const publisherMap = buildMap(publishersRes.data || [], "publisher");
+
+      return (data || []).map(g => {
+        const r = ratingMap.get(g.id);
+        return {
+          ...g,
+          designers: designerMap.get(g.id) || [],
+          artists: artistMap.get(g.id) || [],
+          mechanics: mechanicMap.get(g.id) || [],
+          publishers: publisherMap.get(g.id) || [],
+          community_rating: r ? r.sum / r.count : null,
+          community_rating_count: r?.count || 0,
+        };
+      });
     },
     staleTime: 1000 * 60 * 10,
   });
 
-  // Build unique designer/artist lists for filter dropdowns
+  // Build unique lists for filter dropdowns
   const allDesigners = useMemo(() => {
     const set = new Set<string>();
     catalogGames.forEach(g => g.designers.forEach(d => set.add(d)));
@@ -118,8 +141,27 @@ export default function CatalogBrowse() {
     return [...set].sort();
   }, [catalogGames]);
 
+  const allMechanics = useMemo(() => {
+    const map = new Map<string, string>();
+    catalogGames.forEach(g => g.mechanics.forEach(m => map.set(m, m)));
+    return [...map.values()].sort().map(name => ({ id: name, name }));
+  }, [catalogGames]);
+
+  const allPublishers = useMemo(() => {
+    const map = new Map<string, string>();
+    catalogGames.forEach(g => g.publishers.forEach(p => map.set(p, p)));
+    return [...map.values()].sort().map(name => ({ id: name, name }));
+  }, [catalogGames]);
+
   const filtered = useMemo(() => {
+    // For "expansions" status filter, show expansions; otherwise hide them
+    const showExpansions = sidebarFilter === "status" && sidebarValue === "expansions";
+
     let results = catalogGames.filter(g => {
+      // Expansion filter
+      if (!showExpansions && g.is_expansion) return false;
+      if (showExpansions && !g.is_expansion) return false;
+
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         const matchTitle = g.title.toLowerCase().includes(term);
@@ -131,6 +173,13 @@ export default function CatalogBrowse() {
       // Apply sidebar filters
       if (sidebarFilter && sidebarValue) {
         switch (sidebarFilter) {
+          case "status":
+            if (sidebarValue === "top-rated") {
+              // Only games with community ratings
+              if (!g.community_rating && !g.bgg_community_rating) return false;
+            }
+            // "expansions" handled above
+            break;
           case "letter":
             if (sidebarValue === "#") {
               if (/^[A-Za-z]/.test(g.title)) return false;
@@ -184,6 +233,12 @@ export default function CatalogBrowse() {
             }
             break;
           }
+          case "mechanic":
+            if (!g.mechanics.includes(sidebarValue)) return false;
+            break;
+          case "publisher":
+            if (!g.publishers.includes(sidebarValue)) return false;
+            break;
           case "designer":
             if (!g.designers.some(d => d === sidebarValue)) return false;
             break;
@@ -206,8 +261,14 @@ export default function CatalogBrowse() {
     });
 
     results.sort((a, b) => {
+      if (sidebarFilter === "status" && sidebarValue === "top-rated") {
+        const aRating = a.community_rating ?? a.bgg_community_rating ?? 0;
+        const bRating = b.community_rating ?? b.bgg_community_rating ?? 0;
+        return bRating - aRating;
+      }
       switch (sortBy) {
         case "rating": return (b.bgg_community_rating ?? 0) - (a.bgg_community_rating ?? 0);
+        case "community": return (b.community_rating ?? 0) - (a.community_rating ?? 0);
         case "weight": return (a.weight ?? 3) - (b.weight ?? 3);
         case "year": return (b.year_published ?? 0) - (a.year_published ?? 0);
         default: return a.title.localeCompare(b.title);
@@ -236,7 +297,7 @@ export default function CatalogBrowse() {
         <div className="flex gap-6">
           {/* Sidebar */}
           <aside className="hidden lg:block w-56 shrink-0">
-            <CatalogSidebar designers={allDesigners} artists={allArtists} />
+            <CatalogSidebar designers={allDesigners} artists={allArtists} mechanics={allMechanics} publishers={allPublishers} />
           </aside>
 
           {/* Main content */}
@@ -274,7 +335,8 @@ export default function CatalogBrowse() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="title">A–Z</SelectItem>
-                <SelectItem value="rating">Top Rated</SelectItem>
+                <SelectItem value="rating">BGG Rated</SelectItem>
+                <SelectItem value="community">Community Rated</SelectItem>
                 <SelectItem value="weight">Lightest First</SelectItem>
                 <SelectItem value="year">Newest First</SelectItem>
               </SelectContent>
@@ -373,7 +435,12 @@ export default function CatalogBrowse() {
                     )}
                     {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
                       <Badge variant="secondary" className="text-[10px]">
-                        ★ {game.bgg_community_rating.toFixed(1)}
+                        BGG ★ {game.bgg_community_rating.toFixed(1)}
+                      </Badge>
+                    )}
+                    {game.community_rating != null && (
+                      <Badge variant="default" className="text-[10px]">
+                        ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})
                       </Badge>
                     )}
                   </div>
