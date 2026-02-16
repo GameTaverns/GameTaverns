@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Clock, Weight, BookOpen, ExternalLink, ChevronDown, ChevronUp, ArrowLeft, Palette, PenTool, Filter } from "lucide-react";
+import { Search, Users, Clock, Weight, BookOpen, ExternalLink, ChevronDown, ChevronUp, ArrowLeft, Palette, PenTool, Filter, Menu } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
@@ -50,6 +50,7 @@ export default function CatalogBrowse() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>("title");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const sidebarFilter = searchParams.get("filter");
   const sidebarValue = searchParams.get("value");
@@ -153,12 +154,11 @@ export default function CatalogBrowse() {
     return [...map.values()].sort().map(name => ({ id: name, name }));
   }, [catalogGames]);
 
+  // For "expansions" status filter, show expansions; otherwise hide them
   const filtered = useMemo(() => {
-    // For "expansions" status filter, show expansions; otherwise hide them
     const showExpansions = sidebarFilter === "status" && sidebarValue === "expansions";
 
     let results = catalogGames.filter(g => {
-      // Expansion filter
       if (!showExpansions && g.is_expansion) return false;
       if (showExpansions && !g.is_expansion) return false;
 
@@ -170,15 +170,12 @@ export default function CatalogBrowse() {
         if (!matchTitle && !matchDesigner && !matchArtist) return false;
       }
       
-      // Apply sidebar filters
       if (sidebarFilter && sidebarValue) {
         switch (sidebarFilter) {
           case "status":
             if (sidebarValue === "top-rated") {
-              // Only games with community ratings
               if (!g.community_rating && !g.bgg_community_rating) return false;
             }
-            // "expansions" handled above
             break;
           case "letter":
             if (sidebarValue === "#") {
@@ -279,245 +276,239 @@ export default function CatalogBrowse() {
   }, [catalogGames, searchTerm, playerCount, maxTime, weightRange, showFilters, sortBy, sidebarFilter, sidebarValue]);
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="mb-6">
-          <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
-        </div>
-        <div className="text-center mb-8">
-          <h1 className="font-display text-4xl font-bold mb-2">Game Catalog</h1>
-          <p className="text-muted-foreground text-lg">
-            Browse {catalogGames.length} games across the platform
-          </p>
-        </div>
+    <Layout hideSidebar>
+      {/* Mobile sidebar toggle */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="lg:hidden fixed top-20 left-4 z-50 p-2 rounded-lg bg-sidebar-accent border border-sidebar-border"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
 
-        <div className="flex gap-6">
-          {/* Sidebar */}
-          <aside className="hidden lg:block w-56 shrink-0">
-            <CatalogSidebar designers={allDesigners} artists={allArtists} mechanics={allMechanics} publishers={allPublishers} />
-          </aside>
+      {/* Sidebar overlay for mobile */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-black/50"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-          {/* Main content */}
-          <div className="flex-1 min-w-0">
+      {/* Sidebar */}
+      <CatalogSidebar
+        designers={allDesigners}
+        artists={allArtists}
+        mechanics={allMechanics}
+        publishers={allPublishers}
+        isOpen={sidebarOpen}
+      />
 
-        {/* Active filter indicator */}
-        {sidebarFilter && sidebarValue && (
-          <div className="mb-4 flex items-center gap-2">
-            <Badge variant="secondary" className="gap-1">
-              {sidebarFilter === "designer" && <PenTool className="h-3 w-3" />}
-              {sidebarFilter === "artist" && <Palette className="h-3 w-3" />}
-              {sidebarFilter}: {sidebarValue}
-            </Badge>
-            <Link to="/catalog">
-              <Button variant="ghost" size="sm" className="text-xs">Clear filter</Button>
-            </Link>
+      {/* Main content - offset by sidebar width */}
+      <div className="lg:ml-72">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          {/* Header matching library style */}
+          <div className="mb-8">
+            <h1 className="font-display text-3xl font-bold">GameTaverns Library</h1>
+            <p className="text-muted-foreground">
+              {filtered.length} games in collection
+            </p>
           </div>
-        )}
 
-        {/* Search & Filter Bar */}
-        <div className="space-y-4 mb-8">
-          <div className="flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search games, designers, or artists..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          {/* Search & Sort Bar */}
+          <div className="space-y-4 mb-8">
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search games, designers, or artists..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="title">Title</SelectItem>
+                  <SelectItem value="rating">BGG Rated</SelectItem>
+                  <SelectItem value="community">Community Rated</SelectItem>
+                  <SelectItem value="weight">Lightest First</SelectItem>
+                  <SelectItem value="year">Newest First</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => setShowFilters(!showFilters)}
+                className="gap-2"
+              >
+                {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                Filters
+              </Button>
             </div>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="title">A–Z</SelectItem>
-                <SelectItem value="rating">BGG Rated</SelectItem>
-                <SelectItem value="community">Community Rated</SelectItem>
-                <SelectItem value="weight">Lightest First</SelectItem>
-                <SelectItem value="year">Newest First</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
-            >
-              {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              Filters
-            </Button>
-          </div>
 
-          {showFilters && (
-            <Card>
-              <CardContent className="pt-4 grid sm:grid-cols-3 gap-6">
-                <div className="space-y-3">
-                  <Label className="flex items-center gap-2 text-sm font-medium">
-                    <Users className="h-4 w-4" /> Players: {playerCount[0]}
-                  </Label>
-                  <Slider value={playerCount} onValueChange={setPlayerCount} min={1} max={10} step={1} />
-                </div>
-                <div className="space-y-3">
-                  <Label className="flex items-center gap-2 text-sm font-medium">
-                    <Clock className="h-4 w-4" /> Max Time: {maxTime[0]} min
-                  </Label>
-                  <Slider value={maxTime} onValueChange={setMaxTime} min={15} max={240} step={15} />
-                </div>
-                <div className="space-y-3">
-                  <Label className="flex items-center gap-2 text-sm font-medium">
-                    <Weight className="h-4 w-4" /> Complexity: {weightRange[0].toFixed(1)} – {weightRange[1].toFixed(1)}
-                  </Label>
-                  <Slider value={weightRange} onValueChange={setWeightRange} min={1} max={5} step={0.5} />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <p className="text-sm text-muted-foreground mb-4">{filtered.length} games found</p>
-
-        {/* Game Grid */}
-        {isLoading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <div className="h-40 bg-muted rounded-t-lg" />
-                <CardContent className="pt-3 space-y-2">
-                  <div className="h-4 bg-muted rounded w-3/4" />
-                  <div className="h-3 bg-muted rounded w-1/2" />
+            {showFilters && (
+              <Card>
+                <CardContent className="pt-4 grid sm:grid-cols-3 gap-6">
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2 text-sm font-medium">
+                      <Users className="h-4 w-4" /> Players: {playerCount[0]}
+                    </Label>
+                    <Slider value={playerCount} onValueChange={setPlayerCount} min={1} max={10} step={1} />
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2 text-sm font-medium">
+                      <Clock className="h-4 w-4" /> Max Time: {maxTime[0]} min
+                    </Label>
+                    <Slider value={maxTime} onValueChange={setMaxTime} min={15} max={240} step={15} />
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2 text-sm font-medium">
+                      <Weight className="h-4 w-4" /> Complexity: {weightRange[0].toFixed(1)} – {weightRange[1].toFixed(1)}
+                    </Label>
+                    <Slider value={weightRange} onValueChange={setWeightRange} min={1} max={5} step={0.5} />
+                  </div>
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map((game) => (
-              <Card
-                key={game.id}
-                className="overflow-hidden card-hover cursor-pointer group"
-                onClick={() => setSelectedGame(selectedGame === game.id ? null : game.id)}
-              >
-                {game.image_url ? (
-                  <img
-                    src={game.image_url}
-                    alt={game.title}
-                    className="w-full h-40 object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-40 bg-muted flex items-center justify-center">
-                    <BookOpen className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                )}
-                <CardContent className="pt-3 space-y-2">
-                  <h3 className="font-display font-semibold text-sm truncate">{game.title}</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {game.min_players != null && game.max_players != null && (
-                      <Badge variant="outline" className="text-[10px]">
-                        <Users className="h-3 w-3 mr-0.5" />
-                        {game.min_players}–{game.max_players}
-                      </Badge>
-                    )}
-                    {game.play_time_minutes != null && (
-                      <Badge variant="outline" className="text-[10px]">
-                        <Clock className="h-3 w-3 mr-0.5" />
-                        {game.play_time_minutes}m
-                      </Badge>
-                    )}
-                    {game.weight != null && (
-                      <Badge variant="outline" className="text-[10px]">
-                        <Weight className="h-3 w-3 mr-0.5" />
-                        {game.weight.toFixed(1)}
-                      </Badge>
-                    )}
-                    {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        BGG ★ {game.bgg_community_rating.toFixed(1)}
-                      </Badge>
-                    )}
-                    {game.community_rating != null && (
-                      <Badge variant="default" className="text-[10px]">
-                        ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})
-                      </Badge>
-                    )}
-                  </div>
 
-                  {/* Designer/Artist preview */}
-                  {game.designers.length > 0 && (
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      <PenTool className="h-2.5 w-2.5 inline mr-0.5" />
-                      {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
-                    </p>
-                  )}
-
-                  {game.year_published && (
-                    <p className="text-xs text-muted-foreground">{game.year_published}</p>
-                  )}
-
-                  {/* Expanded details */}
-                  {selectedGame === game.id && (
-                    <div className="pt-2 border-t border-border space-y-3">
-                      {game.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-4">{game.description}</p>
-                      )}
-                      {game.designers.length > 0 && (
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
-                            <PenTool className="h-3 w-3" /> Designer{game.designers.length > 1 ? "s" : ""}
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {game.designers.map(d => (
-                              <Link key={d} to={`/catalog?filter=designer&value=${encodeURIComponent(d)}`} onClick={e => e.stopPropagation()}>
-                                <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{d}</Badge>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {game.artists.length > 0 && (
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
-                            <Palette className="h-3 w-3" /> Artist{game.artists.length > 1 ? "s" : ""}
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {game.artists.map(a => (
-                              <Link key={a} to={`/catalog?filter=artist&value=${encodeURIComponent(a)}`} onClick={e => e.stopPropagation()}>
-                                <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{a}</Badge>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        {game.bgg_url && (
-                          <a href={game.bgg_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                            <Button variant="outline" size="sm" className="text-xs gap-1">
-                              <ExternalLink className="h-3 w-3" /> BGG
-                            </Button>
-                          </a>
-                        )}
-                      </div>
-                      {/* Who Has This */}
-                      <WhoHasThis catalogId={game.id} gameTitle={game.title} />
+          {/* Game Grid */}
+          {isLoading ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <div className="h-40 bg-muted rounded-t-lg" />
+                  <CardContent className="pt-3 space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-3 bg-muted rounded w-1/2" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filtered.map((game) => (
+                <Card
+                  key={game.id}
+                  className="overflow-hidden card-hover cursor-pointer group"
+                  onClick={() => setSelectedGame(selectedGame === game.id ? null : game.id)}
+                >
+                  {game.image_url ? (
+                    <img
+                      src={game.image_url}
+                      alt={game.title}
+                      className="w-full h-40 object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-40 bg-muted flex items-center justify-center">
+                      <BookOpen className="h-8 w-8 text-muted-foreground" />
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                  <CardContent className="pt-3 space-y-2">
+                    <h3 className="font-display font-semibold text-sm truncate">{game.title}</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {game.min_players != null && game.max_players != null && (
+                        <Badge variant="outline" className="text-[10px]">
+                          <Users className="h-3 w-3 mr-0.5" />
+                          {game.min_players}–{game.max_players}
+                        </Badge>
+                      )}
+                      {game.play_time_minutes != null && (
+                        <Badge variant="outline" className="text-[10px]">
+                          <Clock className="h-3 w-3 mr-0.5" />
+                          {game.play_time_minutes}m
+                        </Badge>
+                      )}
+                      {game.weight != null && (
+                        <Badge variant="outline" className="text-[10px]">
+                          <Weight className="h-3 w-3 mr-0.5" />
+                          {game.weight.toFixed(1)}
+                        </Badge>
+                      )}
+                      {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          BGG ★ {game.bgg_community_rating.toFixed(1)}
+                        </Badge>
+                      )}
+                      {game.community_rating != null && (
+                        <Badge variant="default" className="text-[10px]">
+                          ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})
+                        </Badge>
+                      )}
+                    </div>
 
-        {filtered.length === 0 && !isLoading && (
-          <div className="text-center py-12">
-            <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="font-display text-xl mb-2">No games found</h3>
-            <p className="text-muted-foreground">Try adjusting your search or filters</p>
-          </div>
-        )}
-          </div>
+                    {game.designers.length > 0 && (
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        <PenTool className="h-2.5 w-2.5 inline mr-0.5" />
+                        {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
+                      </p>
+                    )}
+
+                    {game.year_published && (
+                      <p className="text-xs text-muted-foreground">{game.year_published}</p>
+                    )}
+
+                    {/* Expanded details */}
+                    {selectedGame === game.id && (
+                      <div className="pt-2 border-t border-border space-y-3">
+                        {game.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-4">{game.description}</p>
+                        )}
+                        {game.designers.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
+                              <PenTool className="h-3 w-3" /> Designer{game.designers.length > 1 ? "s" : ""}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {game.designers.map(d => (
+                                <Link key={d} to={`/catalog?filter=designer&value=${encodeURIComponent(d)}`} onClick={e => e.stopPropagation()}>
+                                  <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{d}</Badge>
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {game.artists.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
+                              <Palette className="h-3 w-3" /> Artist{game.artists.length > 1 ? "s" : ""}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {game.artists.map(a => (
+                                <Link key={a} to={`/catalog?filter=artist&value=${encodeURIComponent(a)}`} onClick={e => e.stopPropagation()}>
+                                  <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{a}</Badge>
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          {game.bgg_url && (
+                            <a href={game.bgg_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                              <Button variant="outline" size="sm" className="text-xs gap-1">
+                                <ExternalLink className="h-3 w-3" /> BGG
+                              </Button>
+                            </a>
+                          )}
+                        </div>
+                        <WhoHasThis catalogId={game.id} gameTitle={game.title} />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {filtered.length === 0 && !isLoading && (
+            <div className="text-center py-12">
+              <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="font-display text-xl mb-2">No games found</h3>
+              <p className="text-muted-foreground">Try adjusting your search or filters</p>
+            </div>
+          )}
         </div>
       </div>
     </Layout>

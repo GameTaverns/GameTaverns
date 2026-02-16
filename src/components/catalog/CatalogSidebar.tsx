@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +22,11 @@ import {
   TrendingUp,
   Search,
   X,
+  Library,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
+import logoImage from "@/assets/logo.png";
 
 // Mechanic category groupings — same as library sidebar
 const MECHANIC_CATEGORIES: Record<string, string[]> = {
@@ -76,12 +78,16 @@ interface CatalogSidebarProps {
   artists: string[];
   mechanics: { id: string; name: string }[];
   publishers: { id: string; name: string }[];
+  isOpen: boolean;
 }
 
-export function CatalogSidebar({ designers, artists, mechanics, publishers }: CatalogSidebarProps) {
+export function CatalogSidebar({ designers, artists, mechanics, publishers, isOpen }: CatalogSidebarProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeFilter = searchParams.get("filter");
   const activeValue = searchParams.get("value");
+
+  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "mechanic", "publisher", "designer", "artist"].includes(activeFilter || "");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(isAdvancedFilterActive);
 
   const setFilter = (filter: string, value: string) => {
     setSearchParams({ filter, value });
@@ -95,183 +101,245 @@ export function CatalogSidebar({ designers, artists, mechanics, publishers }: Ca
     activeFilter === filter && activeValue === value;
 
   return (
-    <div className="w-full">
-      {/* Active filter */}
-      {activeFilter && activeValue && (
-        <div className="px-3 py-2 mb-2">
-          <div className="flex items-center justify-between gap-1">
-            <Badge variant="secondary" className="text-xs gap-1 truncate max-w-[160px]">
-              {activeFilter}: {activeValue}
-            </Badge>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={clearFilter}>
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-40 h-screen w-72 wood-grain border-r border-sidebar-border transition-transform duration-300 lg:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full"
       )}
-
-      <ScrollArea className="h-[calc(100vh-14rem)]">
-        {/* Quick Filters */}
-        <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Quick Filters
+    >
+      <div className="flex h-full flex-col">
+        {/* Header with logo */}
+        <div className="flex flex-col items-center border-b border-sidebar-border px-6 py-4">
+          <Link
+            to="/catalog"
+            className="flex items-center gap-2 text-center hover:opacity-80 transition-opacity"
+          >
+            <img src={logoImage} alt="GameTaverns" className="h-8 w-auto" />
+            <span className="font-display text-lg font-semibold text-sidebar-foreground">
+              GameTaverns Library
+            </span>
+          </Link>
         </div>
-        <nav className="space-y-0.5 px-1 mb-2">
-          <button
-            onClick={() => setFilter("status", "top-rated")}
-            className={cn(
-              "flex items-center gap-2 w-full text-left text-sm px-3 py-1.5 rounded-md transition-colors hover:bg-accent",
-              isActive("status", "top-rated") && "bg-accent font-medium"
-            )}
-          >
-            <TrendingUp className="h-4 w-4" />
-            <span>Top Rated</span>
-          </button>
-          <button
-            onClick={() => setFilter("status", "expansions")}
-            className={cn(
-              "flex items-center gap-2 w-full text-left text-sm px-3 py-1.5 rounded-md transition-colors hover:bg-accent",
-              isActive("status", "expansions") && "bg-accent font-medium"
-            )}
-          >
-            <Puzzle className="h-4 w-4" />
-            <span>Expansions</span>
-          </button>
-        </nav>
 
-        <div className="border-t border-border/50 mx-3 mb-2" />
-
-        {/* Advanced Filters */}
-        <div className="space-y-1">
-          {/* A-Z */}
-          <FilterSection
-            title="A-Z"
-            icon={<ALargeSmall className="h-3.5 w-3.5" />}
-            defaultOpen={activeFilter === "letter"}
-          >
-            <div className="grid grid-cols-7 gap-0.5 px-1">
-              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("").map((letter) => (
-                <button
-                  key={letter}
-                  onClick={() => setFilter("letter", letter)}
-                  className={cn(
-                    "flex items-center justify-center h-7 w-7 rounded text-xs font-medium transition-colors hover:bg-accent",
-                    isActive("letter", letter) ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  {letter}
-                </button>
-              ))}
-            </div>
-          </FilterSection>
-
-          {/* Players */}
-          <ChipFilterSection
-            title="Players"
-            icon={<Users className="h-3.5 w-3.5" />}
-            options={["1 Player", "2 Players", "3-4 Players", "5-6 Players", "7+ Players"]}
-            filterKey="players"
-            isActive={isActive}
-            onFilterClick={setFilter}
-            defaultOpen={activeFilter === "players"}
-          />
-
-          {/* Difficulty */}
-          <ChipFilterSection
-            title="Difficulty"
-            icon={<Gauge className="h-3.5 w-3.5" />}
-            options={DIFFICULTY_OPTIONS as unknown as string[]}
-            filterKey="difficulty"
-            isActive={isActive}
-            onFilterClick={setFilter}
-            defaultOpen={activeFilter === "difficulty"}
-          />
-
-          {/* Play Time */}
-          <ChipFilterSection
-            title="Play Time"
-            icon={<Clock className="h-3.5 w-3.5" />}
-            options={PLAY_TIME_OPTIONS as unknown as string[]}
-            filterKey="playtime"
-            isActive={isActive}
-            onFilterClick={setFilter}
-            defaultOpen={activeFilter === "playtime"}
-          />
-
-          {/* Mechanics */}
-          {mechanics.length > 0 && (
-            <FilterSection
-              title="Mechanics"
-              icon={<Puzzle className="h-3.5 w-3.5" />}
-              defaultOpen={activeFilter === "mechanic"}
-            >
-              <MechanicsFilter
-                mechanics={mechanics}
-                isActive={isActive}
-                onFilterClick={setFilter}
-              />
-            </FilterSection>
-          )}
-
-          {/* Publishers */}
-          {publishers.length > 0 && (
-            <FilterSection
-              title="Publishers"
-              icon={<Building2 className="h-3.5 w-3.5" />}
-              defaultOpen={activeFilter === "publisher"}
-            >
-              <div className="max-h-40 overflow-y-auto px-1">
-                {publishers.map((pub) => (
-                  <button
-                    key={pub.id}
-                    onClick={() => setFilter("publisher", pub.name)}
-                    className={cn(
-                      "flex items-center w-full text-left text-xs px-2 py-1 rounded transition-colors hover:bg-accent truncate",
-                      isActive("publisher", pub.name) && "bg-accent font-medium"
-                    )}
-                  >
-                    {pub.name}
-                  </button>
-                ))}
+        <ScrollArea className="flex-1 px-4 py-6">
+          {/* Active filter indicator */}
+          {activeFilter && activeValue && (
+            <div className="px-3 py-2 mb-2">
+              <div className="flex items-center justify-between gap-1">
+                <Badge variant="secondary" className="text-xs gap-1 truncate max-w-[160px]">
+                  {activeFilter}: {activeValue}
+                </Badge>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={clearFilter}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
               </div>
-            </FilterSection>
+            </div>
           )}
 
-          {/* Designers */}
-          {designers.length > 0 && (
-            <FilterSection
-              title={`Designers (${designers.length})`}
-              icon={<PenTool className="h-3.5 w-3.5" />}
-              defaultOpen={activeFilter === "designer"}
+          {/* Navigation */}
+          <nav className="space-y-1">
+            <Link
+              to="/catalog"
+              className={cn(
+                "sidebar-link",
+                !activeFilter && "sidebar-link-active"
+              )}
             >
-              <SearchableList
-                items={designers}
-                filterKey="designer"
-                isActive={isActive}
-                onFilterClick={setFilter}
-                placeholder="Search designers..."
-              />
-            </FilterSection>
-          )}
+              <Library className="h-5 w-5" />
+              <span>Full Collection</span>
+            </Link>
+          </nav>
 
-          {/* Artists */}
-          {artists.length > 0 && (
-            <FilterSection
-              title={`Artists (${artists.length})`}
-              icon={<Palette className="h-3.5 w-3.5" />}
-              defaultOpen={activeFilter === "artist"}
-            >
-              <SearchableList
-                items={artists}
-                filterKey="artist"
-                isActive={isActive}
-                onFilterClick={setFilter}
-                placeholder="Search artists..."
-              />
-            </FilterSection>
-          )}
-        </div>
-      </ScrollArea>
-    </div>
+          <div className="mt-4 border-t border-sidebar-border/50" />
+
+          {/* Quick Filters */}
+          <div className="mt-3">
+            <div className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+              Quick Filters
+            </div>
+            <nav className="space-y-0.5 px-1">
+              <button
+                onClick={() => setFilter("status", "top-rated")}
+                className={cn(
+                  "sidebar-link w-full text-left text-sm",
+                  isActive("status", "top-rated") && "sidebar-link-active"
+                )}
+              >
+                <TrendingUp className="h-4 w-4" />
+                <span>Top Rated</span>
+              </button>
+              <button
+                onClick={() => setFilter("status", "expansions")}
+                className={cn(
+                  "sidebar-link w-full text-left text-sm",
+                  isActive("status", "expansions") && "sidebar-link-active"
+                )}
+              >
+                <Puzzle className="h-4 w-4" />
+                <span>Expansions</span>
+              </button>
+            </nav>
+          </div>
+
+          {/* Advanced Filters */}
+          <Collapsible
+            open={showAdvancedFilters}
+            onOpenChange={setShowAdvancedFilters}
+            className="mt-3"
+          >
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors rounded-lg hover:bg-sidebar-accent/30">
+              <span className="flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Advanced Filters
+              </span>
+              <ChevronDown className={cn(
+                "h-3.5 w-3.5 transition-transform duration-200",
+                showAdvancedFilters && "rotate-180"
+              )} />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-1 space-y-1">
+                {/* A-Z */}
+                <Collapsible defaultOpen={activeFilter === "letter"}>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+                    <span className="flex items-center gap-2">
+                      <ALargeSmall className="h-4 w-4" />
+                      A-Z
+                    </span>
+                    <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="grid grid-cols-7 gap-0.5 px-3 mt-0.5">
+                      {"ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("").map((letter) => (
+                        <button
+                          key={letter}
+                          onClick={() => setFilter("letter", letter)}
+                          className={cn(
+                            "flex items-center justify-center h-8 w-8 rounded text-sm font-medium transition-colors",
+                            "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            isActive("letter", letter)
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                              : "text-sidebar-foreground/70"
+                          )}
+                        >
+                          {letter}
+                        </button>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Players */}
+                <ChipFilterSection
+                  title="Players"
+                  icon={<Users className="h-3.5 w-3.5" />}
+                  options={["1 Player", "2 Players", "3-4 Players", "5-6 Players", "7+ Players"]}
+                  filterKey="players"
+                  isActive={isActive}
+                  onFilterClick={setFilter}
+                  defaultOpen={activeFilter === "players"}
+                />
+
+                {/* Difficulty */}
+                <ChipFilterSection
+                  title="Difficulty"
+                  icon={<Gauge className="h-3.5 w-3.5" />}
+                  options={DIFFICULTY_OPTIONS as unknown as string[]}
+                  filterKey="difficulty"
+                  isActive={isActive}
+                  onFilterClick={setFilter}
+                  defaultOpen={activeFilter === "difficulty"}
+                />
+
+                {/* Play Time */}
+                <ChipFilterSection
+                  title="Play Time"
+                  icon={<Clock className="h-3.5 w-3.5" />}
+                  options={PLAY_TIME_OPTIONS as unknown as string[]}
+                  filterKey="playtime"
+                  isActive={isActive}
+                  onFilterClick={setFilter}
+                  defaultOpen={activeFilter === "playtime"}
+                />
+
+                {/* Mechanics */}
+                {mechanics.length > 0 && (
+                  <FilterSection
+                    title="Mechanics"
+                    icon={<Puzzle className="h-3.5 w-3.5" />}
+                    defaultOpen={activeFilter === "mechanic"}
+                  >
+                    <MechanicsFilter
+                      mechanics={mechanics}
+                      isActive={isActive}
+                      onFilterClick={setFilter}
+                    />
+                  </FilterSection>
+                )}
+
+                {/* Publishers */}
+                {publishers.length > 0 && (
+                  <FilterSection
+                    title="Publishers"
+                    icon={<Building2 className="h-3.5 w-3.5" />}
+                    defaultOpen={activeFilter === "publisher"}
+                  >
+                    <div className="max-h-40 overflow-y-auto px-2">
+                      {publishers.map((pub) => (
+                        <button
+                          key={pub.id}
+                          onClick={() => setFilter("publisher", pub.name)}
+                          className={cn(
+                            "sidebar-link text-xs w-full text-left py-1",
+                            isActive("publisher", pub.name) && "sidebar-link-active"
+                          )}
+                        >
+                          {pub.name}
+                        </button>
+                      ))}
+                    </div>
+                  </FilterSection>
+                )}
+
+                {/* Designers */}
+                {designers.length > 0 && (
+                  <FilterSection
+                    title={`Designers (${designers.length})`}
+                    icon={<PenTool className="h-3.5 w-3.5" />}
+                    defaultOpen={activeFilter === "designer"}
+                  >
+                    <SearchableList
+                      items={designers}
+                      filterKey="designer"
+                      isActive={isActive}
+                      onFilterClick={setFilter}
+                      placeholder="Search designers..."
+                    />
+                  </FilterSection>
+                )}
+
+                {/* Artists */}
+                {artists.length > 0 && (
+                  <FilterSection
+                    title={`Artists (${artists.length})`}
+                    icon={<Palette className="h-3.5 w-3.5" />}
+                    defaultOpen={activeFilter === "artist"}
+                  >
+                    <SearchableList
+                      items={artists}
+                      filterKey="artist"
+                      isActive={isActive}
+                      onFilterClick={setFilter}
+                      placeholder="Search artists..."
+                    />
+                  </FilterSection>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </ScrollArea>
+      </div>
+    </aside>
   );
 }
 
@@ -289,16 +357,18 @@ function FilterSection({
   children: React.ReactNode;
 }) {
   return (
-    <Collapsible defaultOpen={defaultOpen}>
-      <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+    <Collapsible defaultOpen={defaultOpen} className="mt-4">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
         <span className="flex items-center gap-2">
           {icon}
           {title}
         </span>
         <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-0.5 px-3">
-        {children}
+      <CollapsibleContent className="mt-0.5">
+        <nav className="space-y-0.5">
+          {children}
+        </nav>
       </CollapsibleContent>
     </Collapsible>
   );
@@ -323,7 +393,7 @@ function ChipFilterSection({
 }) {
   return (
     <Collapsible defaultOpen={defaultOpen}>
-      <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
         <span className="flex items-center gap-2">
           {icon}
           {title}
@@ -339,8 +409,8 @@ function ChipFilterSection({
               className={cn(
                 "px-2 py-0.5 rounded-full text-xs font-medium transition-colors border",
                 isActive(filterKey, opt)
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border text-muted-foreground hover:bg-accent"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary"
+                  : "border-sidebar-border text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
             >
               {opt}
@@ -374,18 +444,18 @@ function SearchableList({
   }, [items, search]);
 
   return (
-    <div className="space-y-1">
-      <div className="relative">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+    <div className="space-y-1 px-3">
+      <div className="relative mb-1">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-sidebar-foreground/40" />
         <Input
           placeholder={placeholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-7 pl-6 pr-6 text-xs"
+          className="h-7 pl-7 pr-6 text-xs bg-sidebar-accent/30 border-sidebar-border"
         />
         {search && (
           <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2">
-            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+            <X className="h-3 w-3 text-sidebar-foreground/40 hover:text-sidebar-foreground" />
           </button>
         )}
       </div>
@@ -395,8 +465,8 @@ function SearchableList({
             key={item}
             onClick={() => onFilterClick(filterKey, item)}
             className={cn(
-              "flex items-center w-full text-left text-xs px-2 py-1 rounded transition-colors hover:bg-accent truncate",
-              isActive(filterKey, item) && "bg-accent font-medium"
+              "sidebar-link text-xs w-full text-left py-1",
+              isActive(filterKey, item) && "sidebar-link-active"
             )}
             title={item}
           >
@@ -404,7 +474,7 @@ function SearchableList({
           </button>
         ))}
         {items.length > 50 && !search && (
-          <p className="text-[10px] text-muted-foreground px-2 py-1">Search to find more...</p>
+          <p className="text-[10px] text-sidebar-foreground/40 px-2 py-1">Search to find more...</p>
         )}
       </div>
     </div>
@@ -460,27 +530,27 @@ function MechanicsFilter({
 
   return (
     <div className="space-y-1">
-      <div className="relative">
-        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+      <div className="relative px-3 mb-1">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-3 w-3 text-sidebar-foreground/40" />
         <Input
           placeholder="Search mechanics..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-7 pl-6 pr-6 text-xs"
+          className="h-7 pl-7 pr-6 text-xs bg-sidebar-accent/30 border-sidebar-border"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2">
-            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+          <button onClick={() => setSearch("")} className="absolute right-5 top-1/2 -translate-y-1/2">
+            <X className="h-3 w-3 text-sidebar-foreground/40 hover:text-sidebar-foreground" />
           </button>
         )}
       </div>
-      <div className="max-h-56 overflow-y-auto">
+      <div className="max-h-56 overflow-y-auto px-2">
         {Object.entries(filtered).map(([category, mechs]) => (
           <Collapsible key={category} defaultOpen={mechs.some((m) => isActive("mechanic", m))}>
-            <CollapsibleTrigger className="flex w-full items-center justify-between px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-2 py-1 text-[11px] font-semibold text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors">
               <span>{category}</span>
               <span className="flex items-center gap-1">
-                <span className="text-muted-foreground/50">{mechs.length}</span>
+                <span className="text-sidebar-foreground/30">{mechs.length}</span>
                 <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </span>
             </CollapsibleTrigger>
@@ -493,8 +563,8 @@ function MechanicsFilter({
                     className={cn(
                       "px-1.5 py-0.5 rounded text-[10px] transition-colors border",
                       isActive("mechanic", mech)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "border-border text-muted-foreground/60 hover:bg-accent"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary"
+                        : "border-sidebar-border text-sidebar-foreground/60 hover:bg-sidebar-accent"
                     )}
                   >
                     {mech}
