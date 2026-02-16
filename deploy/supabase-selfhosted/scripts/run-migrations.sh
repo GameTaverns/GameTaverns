@@ -192,6 +192,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
         ALREADY_APPLIED=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
           psql -U postgres -d postgres -tAc \
           "SELECT 1 FROM public.schema_migrations WHERE name = '$migration';" 2>/dev/null || echo "")
+        ALREADY_APPLIED=$(echo "$ALREADY_APPLIED" | tr -d ' \r\n')
         
         if [ "$ALREADY_APPLIED" = "1" ]; then
             SKIP_COUNT=$((SKIP_COUNT + 1))
