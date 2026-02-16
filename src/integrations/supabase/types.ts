@@ -329,6 +329,48 @@ export type Database = {
           },
         ]
       }
+      catalog_scraper_state: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          last_error: string | null
+          last_run_at: string | null
+          next_bgg_id: number
+          total_added: number
+          total_errors: number
+          total_processed: number
+          total_skipped: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_error?: string | null
+          last_run_at?: string | null
+          next_bgg_id?: number
+          total_added?: number
+          total_errors?: number
+          total_processed?: number
+          total_skipped?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_error?: string | null
+          last_run_at?: string | null
+          next_bgg_id?: number
+          total_added?: number
+          total_errors?: number
+          total_processed?: number
+          total_skipped?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       catalog_video_votes: {
         Row: {
           created_at: string

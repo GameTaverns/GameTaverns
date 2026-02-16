@@ -132,6 +132,7 @@ EXTERNAL_HANDLERS=(
   discord-delete-thread discord-oauth-callback discord-send-dm
   system-health
   catalog-backfill
+  catalog-scraper
   resume-imports
   server-command
 )
