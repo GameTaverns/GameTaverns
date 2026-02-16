@@ -140,3 +140,6 @@ verify_jwt = false
 
 [functions.resume-imports]
 verify_jwt = false
+
+[functions.catalog-backfill]
+verify_jwt = false
