@@ -548,10 +548,11 @@ export function BulkImportDialog({
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("[BulkImport] Error response:", errorText);
+        console.error("[BulkImport] Error response (HTTP", response.status, "):", errorText);
         let errorData: any = {};
         try { errorData = JSON.parse(errorText); } catch { /* ignore */ }
-        throw new Error(errorData.error || "Import failed");
+        const serverMsg = errorData.error || errorData.message || errorText?.substring(0, 200) || "Unknown error";
+        throw new Error(`Import failed (HTTP ${response.status}): ${serverMsg}`);
       }
 
       // Check if it's a streaming response
