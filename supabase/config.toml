@@ -137,3 +137,6 @@ verify_jwt = false
 
 [functions.system-health]
 verify_jwt = false
+
+[functions.resume-imports]
+verify_jwt = false

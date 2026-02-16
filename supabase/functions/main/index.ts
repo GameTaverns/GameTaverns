@@ -62,6 +62,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "discord-oauth-callback": () => import("./discord-oauth-callback/index.ts"),
   "discord-send-dm":        () => import("./discord-send-dm/index.ts"),
   "system-health":          () => import("./system-health/index.ts"),
+  "resume-imports":         () => import("./resume-imports/index.ts"),
 };
 
 // All handlers are now external imports - no inlined handlers remaining

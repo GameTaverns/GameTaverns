@@ -140,6 +140,7 @@ MIGRATION_FILES=(
     "57-seed-marketplace-subcategories.sql"
     "58-dedup-forum-categories.sql"
     "59-restructure-forum-categories.sql"
+    "60-import-pause-resume.sql"
 )
 
 SUCCESS_COUNT=0
