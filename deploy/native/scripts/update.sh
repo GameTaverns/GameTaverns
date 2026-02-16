@@ -99,24 +99,17 @@ npm ci --silent 2>/dev/null || npm install --silent
 echo -e "${YELLOW}[INFO]${NC} Building backend..."
 npm run build
 
-# Run database migrations
+# Run database migrations (delegate to tracked migration runner)
 echo -e "${YELLOW}[INFO]${NC} Applying database migrations..."
-if [[ -f "${INSTALL_DIR}/deploy/native/migrations/01-schema.sql" ]]; then
-    # Run migrations idempotently (CREATE IF NOT EXISTS, etc.)
-    if sudo -u postgres psql -d gametaverns -f ${INSTALL_DIR}/deploy/native/migrations/01-schema.sql > /dev/null 2>&1; then
-        echo -e "${GREEN}[OK]${NC} Database schema applied"
+if [[ -x "${INSTALL_DIR}/deploy/supabase-selfhosted/scripts/run-migrations.sh" ]]; then
+    if "${INSTALL_DIR}/deploy/supabase-selfhosted/scripts/run-migrations.sh"; then
+        echo -e "${GREEN}[OK]${NC} Database migrations completed"
     else
-        echo -e "${YELLOW}[WARN]${NC} Schema migration had warnings (may be normal for existing tables)"
+        echo -e "${RED}[ERROR]${NC} Database migrations failed"
+        echo "Check migration logs above for details"
     fi
-fi
-
-# Apply 2FA migration if exists
-if [[ -f "${INSTALL_DIR}/deploy/native/migrations/02-totp-2fa.sql" ]]; then
-    if sudo -u postgres psql -d gametaverns -f ${INSTALL_DIR}/deploy/native/migrations/02-totp-2fa.sql > /dev/null 2>&1; then
-        echo -e "${GREEN}[OK]${NC} 2FA migration applied"
-    else
-        echo -e "${YELLOW}[WARN]${NC} 2FA migration had warnings (may be normal for existing tables)"
-    fi
+else
+    echo -e "${YELLOW}[WARN]${NC} Migration runner not found at deploy/supabase-selfhosted/scripts/run-migrations.sh"
 fi
 
 # Verify critical tables exist
