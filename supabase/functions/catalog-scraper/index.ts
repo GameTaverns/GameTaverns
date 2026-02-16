@@ -407,7 +407,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   // Update state
-  const { error: updateErr } = await admin.from("catalog_scraper_state").update({
+  console.log(`[catalog-scraper] Updating state: next_bgg_id=${currentId}, supabaseUrl=${supabaseUrl}`);
+  const updatePayload = {
     next_bgg_id: currentId,
     total_processed: state.total_processed + (currentId - startBggId),
     total_added: state.total_added + totalAdded,
@@ -416,7 +417,15 @@ const handler = async (req: Request): Promise<Response> => {
     last_run_at: new Date().toISOString(),
     last_error: lastError,
     updated_at: new Date().toISOString(),
-  }).eq("id", "default");
+  };
+  console.log(`[catalog-scraper] Update payload:`, JSON.stringify(updatePayload));
+  const { data: updateData, error: updateErr, count: updateCount, status: updateStatus, statusText: updateStatusText } = await admin
+    .from("catalog_scraper_state")
+    .update(updatePayload)
+    .eq("id", "default")
+    .select();
+
+  console.log(`[catalog-scraper] Update result: status=${updateStatus} statusText=${updateStatusText} count=${updateCount} data=${JSON.stringify(updateData)} error=${JSON.stringify(updateErr)}`);
 
   if (updateErr) {
     console.error(`[catalog-scraper] FAILED to update state:`, updateErr);
