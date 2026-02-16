@@ -39,8 +39,8 @@ export function PollsManager({ libraryId }: PollsManagerProps) {
         <CreatePollDialog
           libraryId={libraryId}
           trigger={
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1.5">
+              <Plus className="h-3 w-3" />
               Create Poll
             </Button>
           }
