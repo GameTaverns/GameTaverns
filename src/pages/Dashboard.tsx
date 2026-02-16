@@ -25,8 +25,10 @@ import {
   BarChart3,
   Calendar,
   Shuffle,
-  BookX,
   HelpCircle,
+  ChevronDown,
+  Eye,
+  Gamepad2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -63,6 +65,26 @@ import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { InfoPopover } from "@/components/ui/InfoPopover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+// Admin panel imports
+import { UserManagement } from "@/components/admin/UserManagement";
+import { LibraryManagement } from "@/components/admin/LibraryManagement";
+import { PlatformSettings } from "@/components/admin/PlatformSettings";
+import { PlatformAnalytics } from "@/components/admin/PlatformAnalytics";
+import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
+import { ClubsManagement } from "@/components/admin/ClubsManagement";
+import { SystemHealth } from "@/components/admin/SystemHealth";
+import { PremiumRoadmap } from "@/components/admin/PremiumRoadmap";
+import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
+import { usePendingClubs } from "@/hooks/useClubs";
+import { Activity, Database, MessageCircle, HeartPulse, Crown } from "lucide-react";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -93,6 +115,11 @@ export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "library");
+
+  // Admin sub-tab state
+  const [adminSubTab, setAdminSubTab] = useState("analytics");
+  const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
+  const { data: pendingClubs } = usePendingClubs();
 
   useEffect(() => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
@@ -151,6 +178,11 @@ export default function Dashboard() {
   const statsUrl = library ? getLibraryUrl(library.slug, "/stats") : null;
   const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
 
+  // Uniform card class for consistency
+  const cardClass = "bg-wood-medium/30 border-wood-medium/50 text-cream";
+  const btnPrimary = "bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1.5";
+  const btnOutline = "border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-7 gap-1.5";
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
       <AnnouncementBanner />
@@ -185,7 +217,32 @@ export default function Dashboard() {
                 <Globe className="h-3.5 w-3.5" />
                 <span>Directory</span>
               </Link>
-              {library && (
+
+              {/* My Library - dropdown if multiple, direct link if single */}
+              {myLibraries.length > 1 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream hover:bg-transparent h-auto text-xs"
+                    >
+                      <Library className="h-3.5 w-3.5" />
+                      <span>My Library</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {myLibraries.map((lib) => (
+                      <DropdownMenuItem key={lib.id} asChild>
+                        <a href={getLibraryUrl(lib.slug, "/")} className="cursor-pointer">
+                          <Library className="h-3.5 w-3.5 mr-2" />
+                          {lib.name}
+                        </a>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : library ? (
                 <a
                   href={libraryUrl!}
                   className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
@@ -193,37 +250,60 @@ export default function Dashboard() {
                   <Library className="h-3.5 w-3.5" />
                   <span>My Library</span>
                 </a>
-              )}
+              ) : null}
 
               <div className="h-4 w-px bg-wood-medium/40 hidden sm:block" />
 
               <ThemeToggle />
-              {/* Messages icon */}
+
+              {/* Messages dropdown */}
               {library && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
-                  onClick={() => {
-                    const url = getLibraryUrl(library.slug, "/messages");
-                    if (url) window.location.href = url;
-                  }}
-                >
-                  <Mail className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
                     >
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </Badge>
-                  )}
-                </Button>
+                      <Mail className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                        >
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <div className="px-3 py-2 text-sm font-medium">Messages</div>
+                    {unreadCount > 0 ? (
+                      <DropdownMenuItem asChild>
+                        <a href={getLibraryUrl(library.slug, "/messages")} className="cursor-pointer gap-2">
+                          <Mail className="h-4 w-4 text-indigo-500" />
+                          <div>
+                            <p className="text-sm font-medium">{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</p>
+                            <p className="text-xs text-muted-foreground">View in {library.name}</p>
+                          </div>
+                        </a>
+                      </DropdownMenuItem>
+                    ) : (
+                      <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                        No unread messages
+                      </div>
+                    )}
+                    <DropdownMenuItem asChild>
+                      <a href={getLibraryUrl(library.slug, "/messages")} className="cursor-pointer text-xs justify-center text-muted-foreground">
+                        View all messages
+                      </a>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
+
               <NotificationsDropdown variant="dashboard" />
-              <span className="text-cream/80 hidden md:inline text-xs">
-                {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email}
-              </span>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -237,7 +317,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-5xl">
+      <main className="container mx-auto px-4 py-6 max-w-6xl">
         <h1 className="font-display text-xl sm:text-2xl font-bold text-cream mb-5">
           Welcome back, {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0]}
         </h1>
@@ -317,42 +397,43 @@ export default function Dashboard() {
             )}
 
             {!library ? (
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <Card className={cardClass}>
                 <CardContent className="py-8 text-center">
                   <Library className="h-10 w-10 mx-auto text-cream/30 mb-3" />
                   <p className="text-sm text-cream/70 mb-4">You don't have a library yet. Create one to get started!</p>
                   <Link to="/create-library">
-                    <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs">
-                      <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Library
+                    <Button className={btnPrimary}>
+                      <Plus className="h-3.5 w-3.5" /> Create Library
                     </Button>
                   </Link>
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Games Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Games Card - clearer labels */}
+                <Card className={cardClass}>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="flex items-center gap-2 text-sm">
-                      <Library className="h-4 w-4 text-secondary" />
-                      Games
+                      <Gamepad2 className="h-4 w-4 text-secondary" />
+                      My Games
                     </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Add, manage, or browse your collection</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-col gap-1.5">
                       <a href={getLibraryUrl(library.slug, "/add")}>
-                        <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1">
-                          <Plus className="h-3 w-3" /> Add Game
+                        <Button size="sm" className={`w-full ${btnPrimary}`}>
+                          <Plus className="h-3 w-3" /> Add New Game
                         </Button>
                       </a>
                       <a href={gamesUrl!}>
-                        <Button variant="outline" size="sm" className="border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-7 gap-1">
-                          <Settings className="h-3 w-3" /> Manage
+                        <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
+                          <Settings className="h-3 w-3" /> Manage Collection
                         </Button>
                       </a>
                       <a href={libraryUrl!}>
-                        <Button variant="outline" size="sm" className="border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-7 gap-1">
-                          <ExternalLink className="h-3 w-3" /> View
+                        <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
+                          <Eye className="h-3 w-3" /> View Public Page
                         </Button>
                       </a>
                     </div>
@@ -360,7 +441,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Lending Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className={cardClass}>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <BookOpen className="h-4 w-4 text-secondary" />
@@ -369,6 +450,7 @@ export default function Dashboard() {
                         <Badge variant="destructive" className="text-[10px]">{pendingLoanRequests} pending</Badge>
                       )}
                     </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Track loans and borrow requests</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
                     <LendingDashboard libraryId={library.id} />
@@ -376,7 +458,7 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Events Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className={cardClass}>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-2">
@@ -385,7 +467,7 @@ export default function Dashboard() {
                       </span>
                       <Button
                         size="sm"
-                        className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1"
+                        className={btnPrimary}
                         onClick={() => setShowCreateEvent(true)}
                       >
                         <Plus className="h-3 w-3" /> Create
@@ -403,12 +485,13 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Polls Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream overflow-hidden">
+                <Card className={`${cardClass} overflow-hidden`}>
                   <CardHeader className="px-4 pt-4 pb-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <Vote className="h-4 w-4 text-secondary" />
                       Polls
                     </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Create and manage game night polls</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4 overflow-x-auto">
                     <PollsManager libraryId={library.id} />
@@ -419,12 +502,13 @@ export default function Dashboard() {
                 <ShelfOfShameWidget libraryId={library.id} />
 
                 {/* Random Picker Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className={cardClass}>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <Shuffle className="h-4 w-4 text-secondary" />
                       Random Picker
                     </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Can't decide? Let fate choose!</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
                     <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />
@@ -432,23 +516,24 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Ratings & Wishlist Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className={cardClass}>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <Star className="h-4 w-4 text-secondary" />
                       Ratings & Wishlist
                     </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Community feedback and wanted games</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <div className="flex gap-2">
-                      <a href={getLibraryUrl(library.slug, "/settings?tab=ratings")} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-8 gap-1.5">
-                          <Star className="h-3.5 w-3.5" /> Ratings
+                    <div className="flex flex-col gap-1.5">
+                      <a href={getLibraryUrl(library.slug, "/settings?tab=ratings")}>
+                        <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
+                          <Star className="h-3.5 w-3.5" /> View Ratings
                         </Button>
                       </a>
-                      <a href={getLibraryUrl(library.slug, "/settings?tab=wishlist")} className="flex-1">
-                        <Button variant="outline" size="sm" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-8 gap-1.5">
-                          <Heart className="h-3.5 w-3.5" /> Wishlist
+                      <a href={getLibraryUrl(library.slug, "/settings?tab=wishlist")}>
+                        <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
+                          <Heart className="h-3.5 w-3.5" /> View Wishlist
                         </Button>
                       </a>
                     </div>
@@ -456,16 +541,17 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Settings Card */}
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className={cardClass}>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <Settings className="h-4 w-4 text-secondary" />
                       Library Settings
                     </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Customize your library configuration</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
                     <a href={settingsUrl!}>
-                      <Button variant="outline" size="sm" className="w-full border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-8 gap-1.5">
+                      <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
                         <Settings className="h-3.5 w-3.5" /> Manage Settings
                       </Button>
                     </a>
@@ -474,14 +560,14 @@ export default function Dashboard() {
 
                 {/* Create Another Library */}
                 {myLibraries.length < maxLibraries && (
-                  <Card className="bg-wood-medium/30 border-wood-medium/50 border-dashed text-cream">
+                  <Card className={`${cardClass} border-dashed`}>
                     <CardContent className="py-4 px-4 flex items-center justify-between">
                       <div>
                         <p className="font-medium text-sm">Create Another Library</p>
                         <p className="text-xs text-cream/60">{myLibraries.length}/{maxLibraries} used</p>
                       </div>
                       <Link to="/create-library">
-                        <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1">
+                        <Button size="sm" className={btnPrimary}>
                           <Plus className="h-3.5 w-3.5" /> Create
                         </Button>
                       </Link>
@@ -494,9 +580,9 @@ export default function Dashboard() {
 
           {/* ==================== COMMUNITY TAB ==================== */}
           <TabsContent value="community">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Forums */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream md:col-span-2">
+              <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -517,7 +603,7 @@ export default function Dashboard() {
               </Card>
 
               {/* Clubs */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <Card className={cardClass}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm">
@@ -527,12 +613,12 @@ export default function Dashboard() {
                     </CardTitle>
                     <div className="flex gap-1.5">
                       <Link to="/join-club">
-                        <Button variant="outline" size="sm" className="text-cream border-wood-medium/50 hover:bg-wood-medium/40 gap-1 text-xs h-7">
+                        <Button variant="outline" size="sm" className={`text-cream ${btnOutline}`}>
                           <Ticket className="h-3 w-3" /> Join
                         </Button>
                       </Link>
                       <Link to="/request-club">
-                        <Button size="sm" className="bg-secondary text-secondary-foreground gap-1 text-xs h-7">
+                        <Button size="sm" className={btnPrimary}>
                           <Plus className="h-3 w-3" /> Request
                         </Button>
                       </Link>
@@ -574,13 +660,14 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* My Communities (replaces Directory card) */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              {/* My Communities */}
+              <Card className={cardClass}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Globe className="h-4 w-4 text-secondary" />
                     My Communities
                   </CardTitle>
+                  <CardDescription className="text-cream/60 text-xs">Libraries you own or belong to</CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 pb-4">
                   {(() => {
@@ -596,7 +683,7 @@ export default function Dashboard() {
                     if (allEntries.length === 0) {
                       return (
                         <Link to="/directory">
-                          <Button size="sm" className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs gap-1.5">
+                          <Button size="sm" className={`w-full ${btnPrimary}`}>
                             <Users className="h-3.5 w-3.5" /> Browse Communities
                           </Button>
                         </Link>
@@ -626,12 +713,13 @@ export default function Dashboard() {
               <CommunityMembersCard />
 
               {/* Trades */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <Card className={cardClass}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <ArrowLeftRight className="h-4 w-4 text-secondary" />
                     Trading
                   </CardTitle>
+                  <CardDescription className="text-cream/60 text-xs">Buy, sell, and trade games</CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 pb-4">
                   {isSelfHostedSupabaseStack() ? (
@@ -647,12 +735,13 @@ export default function Dashboard() {
 
               {/* Challenges */}
               {library && isSelfHostedSupabaseStack() && (
-                <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <Card className={cardClass}>
                   <CardHeader className="px-4 pt-4 pb-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <Target className="h-4 w-4 text-secondary" />
                       Challenges
                     </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Community gaming challenges</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4"><ChallengesManager libraryId={library.id} canManage={true} /></CardContent>
                 </Card>
@@ -662,9 +751,9 @@ export default function Dashboard() {
 
           {/* ==================== PERSONAL TAB ==================== */}
           <TabsContent value="personal">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Account Settings */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream md:col-span-2">
+              <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Settings className="h-4 w-4 text-secondary" />
@@ -676,7 +765,7 @@ export default function Dashboard() {
               </Card>
 
               {/* Achievements */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <Card className={cardClass}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm">
@@ -694,24 +783,26 @@ export default function Dashboard() {
               </Card>
 
               {/* My Inquiries */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <Card className={cardClass}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Mail className="h-4 w-4 text-secondary" />
                     My Inquiries
                   </CardTitle>
+                  <CardDescription className="text-cream/60 text-xs">Messages you've sent to other libraries</CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 pb-4"><MyInquiriesSection /></CardContent>
               </Card>
 
               {/* Borrowed Games */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+              <Card className={cardClass}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <BookOpen className="h-4 w-4 text-secondary" />
                     Borrowed Games
                     {activeBorrowedLoans.length > 0 && <Badge variant="secondary" className="ml-auto text-[10px]">{activeBorrowedLoans.length}</Badge>}
                   </CardTitle>
+                  <CardDescription className="text-cream/60 text-xs">Games you're currently borrowing</CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 pb-4">
                   {activeBorrowedLoans.length === 0 ? (
@@ -741,38 +832,27 @@ export default function Dashboard() {
 
           {/* ==================== ANALYTICS TAB ==================== */}
           <TabsContent value="analytics">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Play Stats */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream md:col-span-2">
+              <Card className={`${cardClass} md:col-span-2 lg:col-span-2`}>
                 <CardHeader className="px-4 pt-4 pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      <BarChart3 className="h-4 w-4 text-secondary" />
-                      Play Statistics
-                    </CardTitle>
-                    {library && statsUrl && (
-                      <a href={statsUrl}>
-                        <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
-                          Full Stats <ArrowRight className="h-3 w-3" />
-                        </Button>
-                      </a>
-                    )}
-                  </div>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <BarChart3 className="h-4 w-4 text-secondary" />
+                    Play Statistics
+                  </CardTitle>
                   <CardDescription className="text-cream/70 text-xs">Track your play sessions and collection insights</CardDescription>
                 </CardHeader>
                 <CardContent className="px-4 pb-4">
                   {library ? (
                     <div className="space-y-3">
-                      <p className="text-xs text-cream/60">View detailed play statistics, most played games, and session history on the full stats page.</p>
-                      <div className="flex flex-wrap gap-2">
-                        {statsUrl && (
-                          <a href={statsUrl}>
-                            <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1.5">
-                              <BarChart3 className="h-3 w-3" /> View Play Stats
-                            </Button>
-                          </a>
-                        )}
-                      </div>
+                      <p className="text-xs text-cream/60">View detailed play statistics, most played games, and session history.</p>
+                      {statsUrl && (
+                        <a href={statsUrl}>
+                          <Button size="sm" className={btnPrimary}>
+                            <BarChart3 className="h-3 w-3" /> View Play Stats
+                          </Button>
+                        </a>
+                      )}
                     </div>
                   ) : (
                     <p className="text-xs text-cream/60 text-center py-4">Create a library to start tracking play statistics.</p>
@@ -780,8 +860,8 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* Library Insights (future expansion) */}
-              <Card className="bg-wood-medium/30 border-wood-medium/50 border-dashed text-cream">
+              {/* Library Insights */}
+              <Card className={`${cardClass} border-dashed`}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm text-cream/50">
                     <BarChart3 className="h-4 w-4" />
@@ -809,25 +889,64 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* ==================== ADMIN TAB (admin only) ==================== */}
+          {/* ==================== ADMIN TAB (admin only) - embedded panel ==================== */}
           {isAdmin && (
             <TabsContent value="admin">
-              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-                <CardHeader className="px-4 pt-4 pb-2">
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <Shield className="h-4 w-4 text-secondary" />
-                    Site Administration
-                  </CardTitle>
-                  <CardDescription className="text-cream/70 text-xs">Platform management tools</CardDescription>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <Link to="/admin">
-                    <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-8 gap-1.5">
-                      <Shield className="h-3.5 w-3.5" /> Open Admin Panel
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <Shield className="h-5 w-5 text-secondary" />
+                  <h2 className="font-display text-lg font-bold text-cream">Site Administration</h2>
+                </div>
+
+                {/* Admin sub-tabs */}
+                <Tabs value={adminSubTab} onValueChange={setAdminSubTab} className="w-full">
+                  <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1 mb-4 overflow-x-auto no-scrollbar">
+                    <TabsTrigger value="analytics" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <Activity className="h-3 w-3" /> Analytics
+                    </TabsTrigger>
+                    <TabsTrigger value="users" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <Users className="h-3 w-3" /> Users
+                    </TabsTrigger>
+                    <TabsTrigger value="libraries" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <Database className="h-3 w-3" /> Libraries
+                    </TabsTrigger>
+                    <TabsTrigger value="settings" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <Settings className="h-3 w-3" /> Settings
+                    </TabsTrigger>
+                    <TabsTrigger value="feedback" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative">
+                      <MessageCircle className="h-3 w-3" /> Feedback
+                      {unreadFeedbackCount && unreadFeedbackCount > 0 && (
+                        <Badge className="ml-1 h-4 min-w-[16px] px-1 text-[10px] bg-destructive text-destructive-foreground">
+                          {unreadFeedbackCount}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="clubs" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative">
+                      <Trophy className="h-3 w-3" /> Clubs
+                      {pendingClubs && pendingClubs.length > 0 && (
+                        <Badge className="ml-1 h-4 min-w-[16px] px-1 text-[10px] bg-destructive text-destructive-foreground">
+                          {pendingClubs.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="health" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <HeartPulse className="h-3 w-3" /> Health
+                    </TabsTrigger>
+                    <TabsTrigger value="premium" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <Crown className="h-3 w-3" /> Premium
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="analytics"><PlatformAnalytics /></TabsContent>
+                  <TabsContent value="users"><UserManagement /></TabsContent>
+                  <TabsContent value="libraries"><LibraryManagement /></TabsContent>
+                  <TabsContent value="settings"><PlatformSettings /></TabsContent>
+                  <TabsContent value="feedback"><FeedbackManagement /></TabsContent>
+                  <TabsContent value="clubs"><ClubsManagement /></TabsContent>
+                  <TabsContent value="health"><SystemHealth /></TabsContent>
+                  <TabsContent value="premium"><PremiumRoadmap /></TabsContent>
+                </Tabs>
+              </div>
             </TabsContent>
           )}
         </Tabs>
