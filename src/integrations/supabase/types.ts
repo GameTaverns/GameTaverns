@@ -59,6 +59,24 @@ export type Database = {
         }
         Relationships: []
       }
+      artists: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       borrower_ratings: {
         Row: {
           created_at: string
@@ -93,6 +111,46 @@ export type Database = {
             columns: ["loan_id"]
             isOneToOne: true
             referencedRelation: "game_loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_artists: {
+        Row: {
+          artist_id: string
+          catalog_id: string
+          id: string
+        }
+        Insert: {
+          artist_id: string
+          catalog_id: string
+          id?: string
+        }
+        Update: {
+          artist_id?: string
+          catalog_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_artists_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_artists_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
             referencedColumns: ["id"]
           },
         ]
@@ -147,6 +205,46 @@ export type Database = {
             columns: ["catalog_id"]
             isOneToOne: false
             referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalog_designers: {
+        Row: {
+          catalog_id: string
+          designer_id: string
+          id: string
+        }
+        Insert: {
+          catalog_id: string
+          designer_id: string
+          id?: string
+        }
+        Update: {
+          catalog_id?: string
+          designer_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_designers_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_designers_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_designers_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
             referencedColumns: ["id"]
           },
         ]
@@ -530,6 +628,24 @@ export type Database = {
         }
         Relationships: []
       }
+      designers: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       email_confirmation_tokens: {
         Row: {
           confirmed_at: string | null
@@ -793,6 +909,46 @@ export type Database = {
           },
         ]
       }
+      game_artists: {
+        Row: {
+          artist_id: string
+          game_id: string
+          id: string
+        }
+        Insert: {
+          artist_id: string
+          game_id: string
+          id?: string
+        }
+        Update: {
+          artist_id?: string
+          game_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_artists_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_artists_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_catalog: {
         Row: {
           additional_images: string[] | null
@@ -915,6 +1071,46 @@ export type Database = {
           },
           {
             foreignKeyName: "game_copies_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_designers: {
+        Row: {
+          designer_id: string
+          game_id: string
+          id: string
+        }
+        Insert: {
+          designer_id: string
+          game_id: string
+          id?: string
+        }
+        Update: {
+          designer_id?: string
+          game_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_designers_designer_id_fkey"
+            columns: ["designer_id"]
+            isOneToOne: false
+            referencedRelation: "designers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_designers_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_designers_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games_public"
