@@ -82,6 +82,19 @@ else
     git reset --hard origin/$BRANCH
 fi
 
+# Pause any active import jobs so they aren't killed mid-processing
+echo ""
+echo "Pausing active import jobs..."
+PAUSED_COUNT=$(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T db \
+  psql -U postgres -d postgres -tAc \
+  "UPDATE public.import_jobs SET status = 'paused', error_message = 'Paused for system update' WHERE status = 'processing' RETURNING id;" 2>/dev/null | wc -l)
+PAUSED_COUNT=$(echo "$PAUSED_COUNT" | tr -d ' ')
+if [ "$PAUSED_COUNT" -gt 0 ]; then
+    echo -e "${YELLOW}Paused ${PAUSED_COUNT} active import job(s)${NC}"
+else
+    echo "No active imports to pause"
+fi
+
 echo ""
 echo "Rebuilding frontend..."
 dcp build --no-cache app
@@ -117,6 +130,7 @@ EXTERNAL_HANDLERS=(
   discord-notify discord-create-event discord-forum-post
   discord-delete-thread discord-oauth-callback discord-send-dm
   system-health
+  resume-imports
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   if [ -d "$FUNCTIONS_DIR/$handler" ]; then
@@ -138,6 +152,23 @@ dcp up -d --force-recreate --no-deps kong
 echo ""
 echo "Waiting for services to stabilize..."
 sleep 15
+
+# Resume paused import jobs
+if [ "$PAUSED_COUNT" -gt 0 ] 2>/dev/null; then
+    echo ""
+    echo "Resuming paused import jobs..."
+    # Source .env to get keys for the resume call
+    set -a; source "$ENV_FILE"; set +a
+    RESUME_URL="${API_EXTERNAL_URL:-http://kong:8000}/functions/v1/resume-imports"
+    SERVICE_KEY="${SERVICE_ROLE_KEY:-}"
+    if [ -n "$SERVICE_KEY" ]; then
+        RESUME_RESULT=$(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T functions \
+          sh -c "wget -q -O - --header='Content-Type: application/json' --header='Authorization: Bearer ${SERVICE_KEY}' --post-data='{}' 'http://localhost:8000/resume-imports'" 2>/dev/null || echo '{"error":"resume call failed"}')
+        echo -e "${GREEN}Resume result: ${RESUME_RESULT}${NC}"
+    else
+        echo -e "${YELLOW}No SERVICE_ROLE_KEY found — manually resume imports if needed${NC}"
+    fi
+fi
 
 # Check status
 echo ""

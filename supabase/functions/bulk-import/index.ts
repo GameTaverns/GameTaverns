@@ -1651,6 +1651,26 @@ export default async function handler(req: Request): Promise<Response> {
     console.log(`[BulkImport] Enhance with BGG: ${enhance_with_bgg}, Enhance with AI: ${enhance_with_ai}`);
     console.log(`[BulkImport] Firecrawl key present: ${!!firecrawlKey}, AI configured: ${isAIConfigured()}, Provider: ${getAIProviderName()}`);
 
+    // Build resumable metadata — stores enough info to re-trigger this import
+    // For BGG collection: just need username + options (collection can be re-fetched)
+    // For CSV/links: store the parsed items list so we can resume from offset
+    const resumeMetadata: Record<string, unknown> = {
+      mode,
+      enhance_with_bgg: enhance_with_bgg !== false,
+      enhance_with_ai: Boolean(enhance_with_ai),
+      default_options: default_options || null,
+      bgg_username: bgg_username || null,
+    };
+    // For CSV and BGG links, store the minimal item identifiers needed to resume
+    // (title + bgg_id only — not full enriched data, keeps JSONB small)
+    if (mode === "csv" || mode === "bgg_links") {
+      resumeMetadata.items = gamesToImport.map(g => ({
+        title: g.title,
+        bgg_id: g.bgg_id || undefined,
+        bgg_url: g.bgg_url || undefined,
+      }));
+    }
+
     // Create import job
     console.log(`[BulkImport] Creating import job for library: ${targetLibraryId}`);
     const { data: job, error: jobError } = await supabaseAdmin
@@ -1663,6 +1683,7 @@ export default async function handler(req: Request): Promise<Response> {
         successful_items: 0,
         failed_items: 0,
         import_type: mode,
+        import_metadata: resumeMetadata,
       })
       .select("id")
       .single();
@@ -1762,6 +1783,28 @@ export default async function handler(req: Request): Promise<Response> {
         // Process each game
         console.log(`[BulkImport] Beginning game loop`);
         for (let i = 0; i < gamesToImport.length; i++) {
+          // Check if job was paused (e.g. by update.sh) every 5 items
+          if (i > 0 && i % 5 === 0) {
+            const { data: jobCheck } = await supabaseAdmin
+              .from("import_jobs")
+              .select("status")
+              .eq("id", jobId)
+              .single();
+            if (jobCheck?.status === "paused") {
+              console.log(`[BulkImport] Job ${jobId} was paused at item ${i}/${gamesToImport.length}. Halting gracefully.`);
+              sendProgress({
+                type: "paused",
+                current: i,
+                total: totalGames,
+                imported,
+                failed,
+                message: "Import paused for system update. It will resume automatically.",
+              });
+              closeStream();
+              return; // Exit the loop — resume-imports will pick this up later
+            }
+          }
+
           const gameInput = gamesToImport[i];
           console.log(`[BulkImport] Processing game ${i + 1}/${gamesToImport.length}: ${gameInput.title || gameInput.bgg_id}`);
 

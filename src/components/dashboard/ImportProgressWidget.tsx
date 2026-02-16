@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Upload, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, XCircle, PauseCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -32,7 +32,7 @@ export function ImportProgressWidget({ libraryIds }: ImportProgressWidgetProps) 
         .from("import_jobs")
         .select("*")
         .in("library_id", libraryIds)
-        .eq("status", "processing")
+        .in("status", ["processing", "paused"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -80,12 +80,20 @@ export function ImportProgressWidget({ libraryIds }: ImportProgressWidgetProps) 
       <CardContent className="space-y-3">
         {activeJobs.map((job) => {
           const pct = job.total_items > 0 ? Math.round((job.processed_items / job.total_items) * 100) : 0;
+          const isPaused = job.status === "paused";
           return (
             <div key={job.id} className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-yellow-400" />
+                  {isPaused ? (
+                    <PauseCircle className="h-3.5 w-3.5 text-blue-400" />
+                  ) : (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-yellow-400" />
+                  )}
                   <span>{formatType(job.import_type)} Import</span>
+                  {isPaused && (
+                    <span className="text-xs text-blue-400 font-medium">Paused — will resume after update</span>
+                  )}
                 </div>
                 <span className="text-cream/60 text-xs">
                   {job.processed_items}/{job.total_items} items · {job.successful_items} ok

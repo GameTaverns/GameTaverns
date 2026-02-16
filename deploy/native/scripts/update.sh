@@ -56,6 +56,17 @@ else
     echo -e "${YELLOW}[WARN]${NC} Backup script not found, skipping backup"
 fi
 
+# Pause any active import jobs so they aren't killed mid-processing
+echo -e "${YELLOW}[INFO]${NC} Pausing active import jobs..."
+PAUSED_COUNT=$(sudo -u postgres psql -d gametaverns -tAc \
+  "UPDATE public.import_jobs SET status = 'paused', error_message = 'Paused for system update' WHERE status = 'processing' RETURNING id;" 2>/dev/null | wc -l)
+PAUSED_COUNT=$(echo "$PAUSED_COUNT" | tr -d ' ')
+if [ "$PAUSED_COUNT" -gt 0 ]; then
+    echo -e "${GREEN}[OK]${NC} Paused ${PAUSED_COUNT} active import job(s)"
+else
+    echo -e "${GREEN}[OK]${NC} No active imports to pause"
+fi
+
 # Pull latest code
 echo -e "${YELLOW}[INFO]${NC} Pulling latest code..."
 git config --global --add safe.directory "${INSTALL_DIR}" 2>/dev/null || true
@@ -139,6 +150,18 @@ if curl -s http://localhost:3001/health > /dev/null 2>&1; then
     echo -e "${GREEN}[OK]${NC} Update completed successfully!"
     echo ""
     echo "Version: $(git describe --tags 2>/dev/null || git rev-parse --short HEAD)"
+    
+    # Resume paused import jobs
+    if [ "$PAUSED_COUNT" -gt 0 ] 2>/dev/null; then
+        echo ""
+        echo -e "${YELLOW}[INFO]${NC} Resuming ${PAUSED_COUNT} paused import job(s)..."
+        # The resume endpoint re-triggers paused imports
+        RESUME_RESULT=$(curl -s -X POST http://localhost:3001/functions/v1/resume-imports \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $(grep SERVICE_ROLE_KEY /opt/gametaverns/.env 2>/dev/null | cut -d= -f2)" \
+          -d '{}' 2>/dev/null || echo '{"error":"resume call failed"}')
+        echo -e "${GREEN}[OK]${NC} Resume result: ${RESUME_RESULT}"
+    fi
 else
     echo ""
     echo -e "${YELLOW}[WARN]${NC} Update completed but API may still be starting."
