@@ -150,6 +150,37 @@ MIGRATION_FILES=(
     "61-forum-categories-definitive.sql"
 )
 
+# -- Backfill: if this is an existing installation (core tables exist) but
+#    schema_migrations is empty, mark all known migrations as already applied
+#    so they are skipped instead of re-run.
+TRACKER_COUNT=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+  psql -U postgres -d postgres -tAc \
+  "SELECT count(*) FROM public.schema_migrations;" 2>/dev/null || echo "0")
+TRACKER_COUNT=$(echo "$TRACKER_COUNT" | tr -d ' \r\n')
+
+CORE_EXISTS=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+  psql -U postgres -d postgres -tAc \
+  "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='libraries';" 2>/dev/null || echo "")
+CORE_EXISTS=$(echo "$CORE_EXISTS" | tr -d ' \r\n')
+
+if [ "$TRACKER_COUNT" = "0" ] && [ "$CORE_EXISTS" = "1" ]; then
+    echo -e "${BLUE}Existing installation detected — backfilling migration tracker...${NC}"
+    BACKFILL_SQL="INSERT INTO public.schema_migrations (name) VALUES "
+    FIRST=true
+    for mig in "${MIGRATION_FILES[@]}"; do
+        if [ "$FIRST" = true ]; then
+            BACKFILL_SQL+="('$mig')"
+            FIRST=false
+        else
+            BACKFILL_SQL+=",('$mig')"
+        fi
+    done
+    BACKFILL_SQL+=" ON CONFLICT DO NOTHING;"
+    docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+      psql -U postgres -d postgres -c "$BACKFILL_SQL" > /dev/null 2>&1
+    echo -e "${GREEN}✓ Marked ${#MIGRATION_FILES[@]} migrations as already applied${NC}"
+fi
+
 SUCCESS_COUNT=0
 WARNING_COUNT=0
 SKIP_COUNT=0
