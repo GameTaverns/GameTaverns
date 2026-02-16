@@ -406,8 +406,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
   }
 
-  // Update state
-  console.log(`[catalog-scraper] Updating state: next_bgg_id=${currentId}, supabaseUrl=${supabaseUrl}`);
+  // Update state — use direct REST call as fallback if client silently fails
   const updatePayload = {
     next_bgg_id: currentId,
     total_processed: state.total_processed + (currentId - startBggId),
@@ -418,18 +417,47 @@ const handler = async (req: Request): Promise<Response> => {
     last_error: lastError,
     updated_at: new Date().toISOString(),
   };
-  console.log(`[catalog-scraper] Update payload:`, JSON.stringify(updatePayload));
-  const { data: updateData, error: updateErr, count: updateCount, status: updateStatus, statusText: updateStatusText } = await admin
+
+  console.log(`[catalog-scraper] Updating state to next_bgg_id=${currentId}`);
+
+  // Try Supabase client first
+  const { data: updateData, error: updateErr } = await admin
     .from("catalog_scraper_state")
     .update(updatePayload)
     .eq("id", "default")
     .select();
 
-  console.log(`[catalog-scraper] Update result: status=${updateStatus} statusText=${updateStatusText} count=${updateCount} data=${JSON.stringify(updateData)} error=${JSON.stringify(updateErr)}`);
-
-  if (updateErr) {
-    console.error(`[catalog-scraper] FAILED to update state:`, updateErr);
+  if (updateErr || !updateData || updateData.length === 0) {
+    console.warn(`[catalog-scraper] Client update failed (err=${JSON.stringify(updateErr)}, rows=${updateData?.length}), trying direct REST`);
+    // Fallback: direct PostgREST PATCH
+    try {
+      const restUrl = `${supabaseUrl}/rest/v1/catalog_scraper_state?id=eq.default`;
+      const patchResp = await fetch(restUrl, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": serviceKey,
+          "Authorization": `Bearer ${serviceKey}`,
+          "Prefer": "return=representation",
+        },
+        body: JSON.stringify(updatePayload),
+      });
+      const patchBody = await patchResp.text();
+      console.log(`[catalog-scraper] REST fallback: ${patchResp.status} ${patchBody.substring(0, 200)}`);
+    } catch (restErr) {
+      console.error(`[catalog-scraper] REST fallback also failed:`, restErr);
+    }
+  } else {
+    console.log(`[catalog-scraper] State updated OK: next_bgg_id=${updateData[0]?.next_bgg_id}`);
   }
+
+  // Verify the update actually persisted
+  const { data: verify } = await admin
+    .from("catalog_scraper_state")
+    .select("next_bgg_id")
+    .eq("id", "default")
+    .single();
+  console.log(`[catalog-scraper] Verify: next_bgg_id=${verify?.next_bgg_id} (expected ${currentId})`);
 
   const result = {
     success: true,
