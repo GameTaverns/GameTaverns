@@ -65,7 +65,7 @@ export default function Docs() {
 
   if (loading || libraryLoading) {
     return (
-      <Layout>
+      <Layout hideSidebar>
         <div className="container max-w-4xl py-12 text-center text-muted-foreground">Loading...</div>
       </Layout>
     );
@@ -76,7 +76,7 @@ export default function Docs() {
   }
 
   return (
-    <Layout>
+    <Layout hideSidebar>
       <div className="container max-w-4xl py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
