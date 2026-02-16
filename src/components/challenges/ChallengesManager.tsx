@@ -87,8 +87,8 @@ export function ChallengesManager({ libraryId, canManage = false }: ChallengesMa
         {canManage && (
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-1" />
+              <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1.5">
+                <Plus className="h-3 w-3" />
                 New Challenge
               </Button>
             </DialogTrigger>
