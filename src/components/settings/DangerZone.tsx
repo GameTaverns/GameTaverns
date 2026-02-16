@@ -228,17 +228,7 @@ export function DangerZone() {
 
   return (
     <>
-      <Card className="border-destructive/50 bg-destructive/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
-            Danger Zone
-          </CardTitle>
-          <CardDescription>
-            These actions are irreversible. Please proceed with caution.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="space-y-4">
           {/* Library selector when user owns multiple libraries */}
           {hasMultipleLibraries && (
             <div className="p-4 border border-border rounded-lg bg-background space-y-2">
@@ -326,8 +316,7 @@ export function DangerZone() {
               Delete Account
             </Button>
           </div>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={currentAction !== null} onOpenChange={(open) => !open && handleClose()}>
