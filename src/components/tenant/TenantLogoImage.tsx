@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { directImageUrl, proxiedImageUrl } from "@/lib/utils";
 
 interface TenantLogoImageProps {
@@ -17,6 +17,12 @@ interface TenantLogoImageProps {
 export function TenantLogoImage({ url, alt, className, fallback }: TenantLogoImageProps) {
   const [useProxyFallback, setUseProxyFallback] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  // Reset state when the URL changes so stale error flags don't block a new image
+  useEffect(() => {
+    setUseProxyFallback(false);
+    setFailed(false);
+  }, [url]);
 
   const src = useProxyFallback ? proxiedImageUrl(url) : directImageUrl(url);
 
