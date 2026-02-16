@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2 } from "lucide-react";
@@ -14,8 +15,9 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
 import { GameImage } from "@/components/games/GameImage";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary } from "@/hooks/useLibrary";
+import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
+import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
 
 
 interface CatalogGameFull {
@@ -48,7 +50,9 @@ export default function CatalogGameDetail() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { data: myLibrary } = useMyLibrary();
+  const { data: myLibraries = [] } = useMyLibraries();
   const addFromCatalog = useAddFromCatalog();
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const { data: game, isLoading } = useQuery({
     queryKey: ["catalog-game", slug],
@@ -246,9 +250,15 @@ export default function CatalogGameDetail() {
             {/* Action buttons */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
               {/* Add to Library */}
-              {isAuthenticated && myLibrary && (
+              {isAuthenticated && (myLibrary || myLibraries.length > 0) && (
                 <Button
-                  onClick={() => addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary.id })}
+                  onClick={() => {
+                    if (myLibraries.length > 1) {
+                      setPickerOpen(true);
+                    } else {
+                      addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary?.id });
+                    }
+                  }}
                   disabled={addFromCatalog.isPending}
                   className="gap-2"
                 >
@@ -413,6 +423,20 @@ export default function CatalogGameDetail() {
           </div>
         </div>
       </div>
+      {game && (
+        <LibraryPickerDialog
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          libraries={myLibraries}
+          onSelect={(libraryId) => {
+            addFromCatalog.mutate({ catalogId: game.id, libraryId }, {
+              onSettled: () => setPickerOpen(false),
+            });
+          }}
+          isPending={addFromCatalog.isPending}
+          gameTitle={game.title}
+        />
+      )}
     </Layout>
   );
 }
