@@ -26,6 +26,7 @@ import {
   Upload,
   Palette,
   Wrench,
+  Star,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -338,12 +339,13 @@ export function SystemHealth() {
       if (!session) throw new Error("Not authenticated");
       const { url: supabaseUrl, anonKey } = getSupabaseConfig();
       const url = `${supabaseUrl}/functions/v1/catalog-backfill`;
-      const batchSize = 5;
+      const batchSize = mode === "sync-ratings" ? 50 : 5;
       let offset = 0;
       let totalProcessed = 0;
       let totalDesigners = 0;
       let totalArtists = 0;
       let totalLinked = 0;
+      let totalRatingsUpdated = 0;
       let hasMore = true;
       const allErrors: string[] = [];
 
@@ -366,21 +368,30 @@ export function SystemHealth() {
         totalDesigners += data.designersAdded || 0;
         totalArtists += data.artistsAdded || 0;
         totalLinked += data.linked || 0;
+        totalRatingsUpdated += data.ratingsUpdated || 0;
         if (data.errors?.length) allErrors.push(...data.errors);
         hasMore = data.hasMore === true;
         offset = data.nextOffset || offset + batchSize;
 
         // Show progress toast every batch
         if (hasMore) {
-          const skipped = data.skipped || 0;
-          toast.info(`Backfill progress: ${totalProcessed} enriched, ${skipped} already done, ${totalDesigners} designers, ${totalArtists} artists...`);
+          if (mode === "sync-ratings") {
+            toast.info(`Rating sync progress: ${totalProcessed} checked, ${totalRatingsUpdated} updated...`);
+          } else {
+            const skipped = data.skipped || 0;
+            toast.info(`Backfill progress: ${totalProcessed} enriched, ${skipped} already done, ${totalDesigners} designers, ${totalArtists} artists...`);
+          }
         }
       }
 
-      return { processed: totalProcessed, designersAdded: totalDesigners, artistsAdded: totalArtists, linked: totalLinked, errors: allErrors };
+      return { mode, processed: totalProcessed, designersAdded: totalDesigners, artistsAdded: totalArtists, linked: totalLinked, ratingsUpdated: totalRatingsUpdated, errors: allErrors };
     },
     onSuccess: (data) => {
-      toast.success(`Backfill complete: ${data.processed} processed, ${data.designersAdded} designers, ${data.artistsAdded} artists, ${data.linked} linked`);
+      if (data.mode === "sync-ratings") {
+        toast.success(`Rating sync complete: ${data.processed} checked, ${data.ratingsUpdated} ratings updated`);
+      } else {
+        toast.success(`Backfill complete: ${data.processed} processed, ${data.designersAdded} designers, ${data.artistsAdded} artists, ${data.linked} linked`);
+      }
       if (data.errors?.length) {
         toast.warning(`Backfill warnings (${data.errors.length}): ${data.errors.slice(0, 3).join(" | ")}`);
       }
@@ -696,6 +707,31 @@ export function SystemHealth() {
                 <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
               ) : (
                 <><Database className="h-3.5 w-3.5 mr-1" /> Run Link</>
+              )}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
+            <div className="flex items-center gap-3">
+              <Star className="h-5 w-5 text-secondary" />
+              <div>
+                <div className="text-sm text-cream font-medium">Sync Ratings to Catalog</div>
+                <div className="text-xs text-cream/50">
+                  Aggregates BGG community ratings from library games into catalog entries.
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs shrink-0"
+              onClick={() => backfillMutation.mutate("sync-ratings")}
+              disabled={backfillMutation.isPending}
+            >
+              {backfillMutation.isPending ? (
+                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+              ) : (
+                <><Star className="h-3.5 w-3.5 mr-1" /> Sync Ratings</>
               )}
             </Button>
           </div>
