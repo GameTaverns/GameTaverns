@@ -29,7 +29,7 @@ export function OwnerAdminBar() {
 
   return (
     <div className="bg-muted/80 border-b border-border text-xs">
-      <div className="flex items-center justify-between px-4 py-1.5 lg:px-8">
+      <div className="container mx-auto flex items-center justify-between px-4 py-1.5">
         <span className="text-muted-foreground font-medium">Owner View</span>
         <nav className="flex items-center gap-3">
           {links.map((link) => (
