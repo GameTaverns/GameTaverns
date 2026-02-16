@@ -23,21 +23,24 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
-import { useTenant } from "@/contexts/TenantContext";
-import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
+import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { supabase } from "@/integrations/backend/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { MyInquiriesSection } from "@/components/dashboard/MyInquiriesSection";
+import { useMyLibraries } from "@/hooks/useLibrary";
 
 const Inbox = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const { library, isOwner, isLoading: tenantLoading } = useTenant();
-  const { buildUrl } = useTenantUrl();
+  const { data: myLibraries = [], isLoading: librariesLoading } = useMyLibraries();
   const queryClient = useQueryClient();
 
-  // Fetch messages for the current library (only if owner)
-  const { data: messages = [], isLoading: messagesLoading } = useMessages(isOwner ? library?.id : undefined);
+  // Use the first owned library for received messages
+  const library = myLibraries[0] || null;
+  const isOwner = !!library;
+
+  // Fetch messages for the user's library
+  const { data: messages = [], isLoading: messagesLoading } = useMessages(library?.id);
   const markRead = useMarkMessageRead();
   const deleteMessage = useDeleteMessage();
   const { toast } = useToast();
@@ -46,7 +49,7 @@ const Inbox = () => {
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
 
-  if (authLoading || tenantLoading) {
+  if (authLoading || librariesLoading) {
     return (
       <Layout>
         <div className="max-w-4xl mx-auto">
@@ -62,7 +65,7 @@ const Inbox = () => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={buildUrl("/login")} replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const handleMarkRead = async (id: string) => {
@@ -215,7 +218,7 @@ const Inbox = () => {
                               <Badge variant="outline" className="text-xs">Re: {message.game.title}</Badge>
                               <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(buildUrl(`/game/${message.game?.slug || message.game_id}`));
+                                navigate(`/game/${message.game?.slug || message.game_id}`);
                               }}>
                                 <ExternalLink className="h-3 w-3 mr-1" />View
                               </Button>
