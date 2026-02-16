@@ -81,6 +81,12 @@ echo ""
 sleep 5
 
 # Run migrations in order
+# -- Migration tracker bootstrap (always runs) --
+echo -n "Ensuring migration tracker... "
+docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+  psql -U postgres -d postgres -f "/docker-entrypoint-initdb.d/00-migration-tracker.sql" \
+  > /dev/null 2>&1 && echo -e "${GREEN}✓${NC}" || echo -e "${YELLOW}⚠${NC}"
+
 MIGRATION_FILES=(
     "01-extensions.sql"
     "02-enums.sql"
@@ -150,6 +156,16 @@ ERROR_COUNT=0
 
 for migration in "${MIGRATION_FILES[@]}"; do
     if [ -f "$MIGRATIONS_DIR/$migration" ]; then
+        # Check if migration was already applied
+        ALREADY_APPLIED=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+          psql -U postgres -d postgres -tAc \
+          "SELECT 1 FROM public.schema_migrations WHERE name = '$migration';" 2>/dev/null || echo "")
+        
+        if [ "$ALREADY_APPLIED" = "1" ]; then
+            SKIP_COUNT=$((SKIP_COUNT + 1))
+            continue
+        fi
+
         echo -n "Running: $migration ... "
 
         # Sanity check: confirm file is mounted into the db container
@@ -232,6 +248,11 @@ for migration in "${MIGRATION_FILES[@]}"; do
         else
             echo -e "${GREEN}✓${NC}"
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+            # Record migration as applied
+            docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
+              psql -U postgres -d postgres -c \
+              "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" \
+              > /dev/null 2>&1 || true
         fi
     else
         echo -e "${YELLOW}⚠ $migration not found, skipping${NC}"
@@ -247,7 +268,7 @@ if [ $WARNING_COUNT -gt 0 ]; then
     echo -e "  ${YELLOW}⚠ Warnings:${NC}    $WARNING_COUNT (often OK for 'already exists')"
 fi
 if [ $SKIP_COUNT -gt 0 ]; then
-    echo -e "  ⊘ Skipped:     $SKIP_COUNT"
+    echo -e "  ${BLUE}⊘ Already applied:${NC} $SKIP_COUNT"
 fi
 if [ $ERROR_COUNT -gt 0 ]; then
     echo -e "  ${RED}✗ Errors:${NC}      $ERROR_COUNT"
