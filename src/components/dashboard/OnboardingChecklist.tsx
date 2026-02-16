@@ -41,7 +41,7 @@ export function OnboardingChecklist({
   has2FA = false,
 }: OnboardingChecklistProps) {
   const [dismissed, setDismissed] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   // Check localStorage for dismissal
   useEffect(() => {
@@ -127,12 +127,20 @@ export function OnboardingChecklist({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
     >
-      <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3 overflow-hidden">
-        <CardHeader className="pb-3">
+      <Card className={cn(
+        "bg-wood-medium/30 border-wood-medium/50 text-cream lg:col-span-3 overflow-hidden transition-all",
+        !expanded && !allComplete && "border-secondary/50 shadow-[0_0_12px_-3px_hsl(var(--secondary)/0.3)]"
+      )}>
+        <CardHeader className={cn("pb-3 cursor-pointer select-none", !expanded && "pb-4")} onClick={() => setExpanded(!expanded)}>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-5 w-5 text-secondary" />
+              <Sparkles className={cn("h-5 w-5 text-secondary", !expanded && !allComplete && "animate-pulse")} />
               {allComplete ? "You're all set! 🎉" : "Getting Started"}
+              {!expanded && !allComplete && (
+                <span className="text-xs font-normal text-cream/50 ml-1">
+                  {completedCount}/{items.length} completed — click to expand
+                </span>
+              )}
             </CardTitle>
             <div className="flex items-center gap-1">
               <Button
