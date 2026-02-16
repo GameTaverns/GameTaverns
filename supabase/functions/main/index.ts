@@ -65,6 +65,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "resume-imports":         () => import("./resume-imports/index.ts"),
   "catalog-backfill":       () => import("./catalog-backfill/index.ts"),
   "catalog-scraper":        () => import("./catalog-scraper/index.ts"),
+  "add-from-catalog":       () => import("./add-from-catalog/index.ts"),
   "server-command":         () => import("./server-command/index.ts"),
 };
 

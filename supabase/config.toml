@@ -144,6 +144,9 @@ verify_jwt = false
 [functions.catalog-backfill]
 verify_jwt = false
 
+[functions.add-from-catalog]
+verify_jwt = false
+
 [functions.catalog-scraper]
 verify_jwt = false
 
