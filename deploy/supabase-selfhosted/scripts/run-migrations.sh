@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
 # Run Database Migrations for GameTaverns Self-Hosted
-# Version: 2.3.2 - Schema Parity Audit
-# Audited: 2026-02-02
+# Version: 2.4.0 - Robust Tracker Fix
+# Audited: 2026-02-16
 # =============================================================================
 
 set -e
@@ -36,8 +36,6 @@ source "$INSTALL_DIR/.env"
 set +a
 
 # Some Postgres images require password auth even for local socket connections.
-# The self-hosted stack stores the DB superuser password in POSTGRES_PASSWORD.
-# We pass it explicitly to avoid psql hanging on an interactive password prompt.
 if [ -n "${POSTGRES_PASSWORD:-}" ]; then
     export PGPASSWORD="$POSTGRES_PASSWORD"
 fi
@@ -56,12 +54,45 @@ if ! docker compose version > /dev/null 2>&1; then
     exit 1
 fi
 
+# Helper: run psql inside the db container with proper env and clean output
+# Usage: db_query "SQL" -> prints cleaned result (no whitespace/control chars)
+db_query() {
+    local result
+    result=$(docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+      exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
+      psql -U postgres -d postgres -tAc "$1" 2>/dev/null || echo "")
+    # Strip ALL whitespace, carriage returns, newlines, and control characters
+    echo "$result" | tr -d '[:space:][:cntrl:]'
+}
+
+# Helper: run psql file inside the db container
+db_file() {
+    docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+      exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
+      psql -U postgres -d postgres -f "$1" 2>&1
+}
+
+# Helper: run psql command inside the db container
+db_cmd() {
+    docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+      exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
+      psql -U postgres -d postgres -c "$1" 2>&1
+}
+
+# Helper: run psql with ON_ERROR_STOP
+db_migrate() {
+    docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+      exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
+      psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "$1" 2>&1
+}
+
 # Wait for database to be ready
 echo -e "${BLUE}Waiting for database to be ready...${NC}"
 MAX_RETRIES=90
 RETRY_COUNT=0
 
-until docker compose exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; do
+until docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+  exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         echo -e "${RED}Error: Database not ready after $MAX_RETRIES attempts${NC}"
@@ -80,12 +111,17 @@ echo ""
 # Ensure PostgreSQL has fully initialized (roles, etc)
 sleep 5
 
-# Run migrations in order
-# -- Migration tracker bootstrap (always runs) --
+# -- Migration tracker bootstrap --
+# Create the tracker table directly via SQL instead of relying on mounted file
 echo -n "Ensuring migration tracker... "
-docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
-  psql -U postgres -d postgres -f "/docker-entrypoint-initdb.d/00-migration-tracker.sql" \
-  > /dev/null 2>&1 && echo -e "${GREEN}✓${NC}" || echo -e "${YELLOW}⚠${NC}"
+db_cmd "CREATE TABLE IF NOT EXISTS public.schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now()); GRANT SELECT, INSERT ON public.schema_migrations TO postgres;" > /dev/null 2>&1
+TRACKER_CHECK=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='schema_migrations';")
+if [ "$TRACKER_CHECK" = "1" ]; then
+    echo -e "${GREEN}✓${NC}"
+else
+    echo -e "${RED}✗ Failed to create migration tracker!${NC}"
+    exit 1
+fi
 
 MIGRATION_FILES=(
     "01-extensions.sql"
@@ -108,6 +144,7 @@ MIGRATION_FILES=(
     "19-library-settings-insert-policy.sql"
     "20-featured-achievement.sql"
     "21-fix-libraries-recursion.sql"
+    "21-designers-artists.sql"
     "22-forum-tables.sql"
     "23-notifications-realtime.sql"
     "24-seed-forum-categories.sql"
@@ -148,20 +185,17 @@ MIGRATION_FILES=(
     "59-restructure-forum-categories.sql"
     "60-import-pause-resume.sql"
     "61-forum-categories-definitive.sql"
+    "61-dashboard-layouts.sql"
 )
 
 # -- Backfill: if this is an existing installation (core tables exist) but
 #    schema_migrations is empty, mark all known migrations as already applied
 #    so they are skipped instead of re-run.
-TRACKER_COUNT=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
-  psql -U postgres -d postgres -tAc \
-  "SELECT count(*) FROM public.schema_migrations;" 2>/dev/null || echo "0")
-TRACKER_COUNT=$(echo "$TRACKER_COUNT" | tr -d ' \r\n')
+TRACKER_COUNT=$(db_query "SELECT count(*) FROM public.schema_migrations;")
+# Default to 0 if empty
+TRACKER_COUNT=${TRACKER_COUNT:-0}
 
-CORE_EXISTS=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
-  psql -U postgres -d postgres -tAc \
-  "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='libraries';" 2>/dev/null || echo "")
-CORE_EXISTS=$(echo "$CORE_EXISTS" | tr -d ' \r\n')
+CORE_EXISTS=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='libraries';")
 
 if [ "$TRACKER_COUNT" = "0" ] && [ "$CORE_EXISTS" = "1" ]; then
     echo -e "${BLUE}Existing installation detected — backfilling migration tracker...${NC}"
@@ -176,8 +210,7 @@ if [ "$TRACKER_COUNT" = "0" ] && [ "$CORE_EXISTS" = "1" ]; then
         fi
     done
     BACKFILL_SQL+=" ON CONFLICT DO NOTHING;"
-    docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
-      psql -U postgres -d postgres -c "$BACKFILL_SQL" > /dev/null 2>&1
+    db_cmd "$BACKFILL_SQL" > /dev/null 2>&1
     echo -e "${GREEN}✓ Marked ${#MIGRATION_FILES[@]} migrations as already applied${NC}"
 fi
 
@@ -189,10 +222,7 @@ ERROR_COUNT=0
 for migration in "${MIGRATION_FILES[@]}"; do
     if [ -f "$MIGRATIONS_DIR/$migration" ]; then
         # Check if migration was already applied
-        ALREADY_APPLIED=$(docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
-          psql -U postgres -d postgres -tAc \
-          "SELECT 1 FROM public.schema_migrations WHERE name = '$migration';" 2>/dev/null || echo "")
-        ALREADY_APPLIED=$(echo "$ALREADY_APPLIED" | tr -d ' \r\n')
+        ALREADY_APPLIED=$(db_query "SELECT 1 FROM public.schema_migrations WHERE name = '$migration';")
         
         if [ "$ALREADY_APPLIED" = "1" ]; then
             SKIP_COUNT=$((SKIP_COUNT + 1))
@@ -202,7 +232,8 @@ for migration in "${MIGRATION_FILES[@]}"; do
         echo -n "Running: $migration ... "
 
         # Sanity check: confirm file is mounted into the db container
-        if ! docker compose exec -T db sh -lc "test -f /docker-entrypoint-initdb.d/$migration"; then
+        if ! docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+          exec -T db sh -lc "test -f /docker-entrypoint-initdb.d/$migration"; then
             echo -e "${RED}✗ Error${NC}"
             echo "    Migration file is not visible inside db container: /docker-entrypoint-initdb.d/$migration"
             echo "    Host path checked: $MIGRATIONS_DIR/$migration"
@@ -216,9 +247,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
 
         set +e
         # Run psql in background and capture PID
-        docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
-          psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" \
-          > "$LOG_FILE" 2>&1 &
+        db_migrate "/docker-entrypoint-initdb.d/$migration" > "$LOG_FILE" 2>&1 &
         PSQL_PID=$!
         
         # Manual timeout: wait 90 seconds max
@@ -263,6 +292,8 @@ for migration in "${MIGRATION_FILES[@]}"; do
                 echo -e "${YELLOW}⚠ Warning${NC}"
                 echo "    $ERROR_MSG"
                 WARNING_COUNT=$((WARNING_COUNT + 1))
+                # Still mark as applied — it's a harmless "already exists" error
+                db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
             else
                 echo -e "${RED}✗ Error${NC}"
                 echo "    $ERROR_MSG"
@@ -273,6 +304,8 @@ for migration in "${MIGRATION_FILES[@]}"; do
             if echo "$OUTPUT" | grep -qiE "already exists|duplicate"; then
                 echo -e "${YELLOW}⚠ Warning (already exists)${NC}"
                 WARNING_COUNT=$((WARNING_COUNT + 1))
+                # Still mark as applied
+                db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
             else
                 echo -e "${RED}✗ Error (exit code: $EXIT_CODE)${NC}"
                 echo "    $(echo "$OUTPUT" | tail -n 3 | tr '\n' ' ' | sed 's/  */ /g')"
@@ -282,10 +315,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
             echo -e "${GREEN}✓${NC}"
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
             # Record migration as applied
-            docker compose exec -T -e PGPASSWORD="$PGPASSWORD" db \
-              psql -U postgres -d postgres -c \
-              "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" \
-              > /dev/null 2>&1 || true
+            db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
         fi
     else
         echo -e "${YELLOW}⚠ $migration not found, skipping${NC}"
@@ -320,8 +350,8 @@ TABLES=(
 
 MISSING_TABLES=0
 for table in "${TABLES[@]}"; do
-    if docker compose exec -T db psql -U postgres -d postgres -tAc \
-        "SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = '$table';" 2>/dev/null | grep -q 1; then
+    TABLE_EXISTS=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = '$table';")
+    if [ "$TABLE_EXISTS" = "1" ]; then
         echo -e "  ${GREEN}✓${NC} $table"
     else
         echo -e "  ${RED}✗${NC} $table (missing)"
