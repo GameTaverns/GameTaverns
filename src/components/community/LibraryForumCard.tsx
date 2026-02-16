@@ -224,17 +224,19 @@ export function LibraryForumCard() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4 bg-wood-dark/60 border border-wood-medium/40 flex-wrap h-auto gap-1 p-1">
-            {librariesWithForums.map((membership) => (
-              <TabsTrigger
-                key={membership.library!.id}
-                value={membership.library!.id}
-                className="text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-              >
-                {membership.library!.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          {librariesWithForums.length > 1 && (
+            <TabsList className="mb-4 bg-wood-dark/60 border border-wood-medium/40 flex-wrap h-auto gap-1 p-1">
+              {librariesWithForums.map((membership) => (
+                <TabsTrigger
+                  key={membership.library!.id}
+                  value={membership.library!.id}
+                  className="text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+                >
+                  {membership.library!.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          )}
 
           {librariesWithForums.map((membership) => (
             <TabsContent key={membership.library!.id} value={membership.library!.id}>
