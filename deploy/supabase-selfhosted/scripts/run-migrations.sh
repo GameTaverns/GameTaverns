@@ -197,16 +197,13 @@ MIGRATION_FILES=(
     "62-server-commands.sql"
 )
 
-# -- Backfill: if this is an existing installation (core tables exist) but
-#    schema_migrations is empty, mark only BASELINE migrations as already applied.
-#    Newer migrations (post-tracker) will be checked and run normally.
-TRACKER_COUNT=$(db_query "SELECT count(*) FROM public.schema_migrations;")
-TRACKER_COUNT=${TRACKER_COUNT:-0}
-
+# -- Backfill: if this is an existing installation (core tables exist),
+#    ALWAYS ensure baseline migrations are marked as applied.
+#    This runs every time (ON CONFLICT DO NOTHING) so it's safe to repeat.
 CORE_EXISTS=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='libraries';")
 
-if [ "$TRACKER_COUNT" = "0" ] && [ "$CORE_EXISTS" = "1" ]; then
-    echo -e "${BLUE}Existing installation detected — backfilling baseline migrations...${NC}"
+if [ "$CORE_EXISTS" = "1" ]; then
+    echo -e "${BLUE}Ensuring baseline migrations are marked as applied...${NC}"
     BACKFILL_SQL="INSERT INTO public.schema_migrations (name) VALUES "
     FIRST=true
     for mig in "${BASELINE_MIGRATIONS[@]}"; do
@@ -219,8 +216,7 @@ if [ "$TRACKER_COUNT" = "0" ] && [ "$CORE_EXISTS" = "1" ]; then
     done
     BACKFILL_SQL+=" ON CONFLICT DO NOTHING;"
     db_cmd "$BACKFILL_SQL" > /dev/null 2>&1
-    echo -e "${GREEN}✓ Marked ${#BASELINE_MIGRATIONS[@]} baseline migrations as applied${NC}"
-    echo -e "${BLUE}  Post-baseline migrations will be checked and run as needed.${NC}"
+    echo -e "${GREEN}✓ Baseline migrations ensured${NC}"
 fi
 
 # -- Also fix existing installs where ALL migrations were incorrectly backfilled.
