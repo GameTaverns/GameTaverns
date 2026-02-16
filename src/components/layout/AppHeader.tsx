@@ -8,6 +8,7 @@ import {
   Mail,
   Menu,
   X,
+  BookOpen,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -131,7 +132,25 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   </Link>
                 )}
 
-                {/* My Library / Dashboard - show Dashboard when on a library subdomain */}
+                {/* Catalog */}
+                {isSubdomain ? (
+                  <a
+                    href={getPlatformUrl("/catalog")}
+                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    <span>Catalog</span>
+                  </a>
+                ) : (
+                  <Link
+                    to="/catalog"
+                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    <span>Catalog</span>
+                  </Link>
+                )}
+
                 {isSubdomain ? (
                   <a
                     href={getPlatformUrl("/dashboard")}
@@ -227,6 +246,27 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
 
             {isAuthenticated && (
               <NotificationsDropdown variant="dashboard" />
+            )}
+
+            {/* Catalog link for non-authenticated users */}
+            {!isAuthenticated && (
+              isSubdomain ? (
+                <a
+                  href={getPlatformUrl("/catalog")}
+                  className="flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  <span>Catalog</span>
+                </a>
+              ) : (
+                <Link
+                  to="/catalog"
+                  className="flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  <span>Catalog</span>
+                </Link>
+              )
             )}
 
             {/* Sign in / Sign out */}
