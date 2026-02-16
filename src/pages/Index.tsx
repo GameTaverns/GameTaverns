@@ -397,35 +397,7 @@ const Index = () => {
         </Alert>
       )}
 
-      {/* Owner Quick Actions */}
-      {isAuthenticated && isOwner && isTenantMode && !isDemoMode && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          <a href={buildUrl("/games")}>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Edit Collection
-            </Button>
-          </a>
-          <a href={buildUrl("/add")}>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Game
-            </Button>
-          </a>
-          <a href={buildUrl("/settings")}>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Upload className="h-4 w-4" />
-              Library Settings
-            </Button>
-          </a>
-          <a href={buildUrl("/stats")}>
-            <Button variant="outline" size="sm" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Play Stats
-            </Button>
-          </a>
-        </div>
-      )}
+      {/* Owner quick actions removed — available from dashboard */}
 
       {/* Feature Discovery Tip - only for owners */}
       {isAuthenticated && isOwner && isTenantMode && !isDemoMode && (

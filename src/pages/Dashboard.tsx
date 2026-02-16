@@ -59,6 +59,7 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Footer } from "@/components/layout/Footer";
 import { MyInquiriesSection } from "@/components/dashboard/MyInquiriesSection";
 import { CommunityTab } from "@/components/community/CommunityTab";
+import { AnalyticsTab } from "@/components/analytics/AnalyticsTab";
 import { CommunityMembersCard } from "@/components/community/CommunityMembersCard";
 import { ChallengesManager } from "@/components/challenges/ChallengesManager";
 import { TradeCenter } from "@/components/trades/TradeCenter";
@@ -280,13 +281,13 @@ export default function Dashboard() {
                     <div className="px-3 py-2 text-sm font-medium">Messages</div>
                     {unreadCount > 0 ? (
                       <DropdownMenuItem asChild>
-                        <a href={getLibraryUrl(library.slug, "/messages")} className="cursor-pointer gap-2">
+                        <Link to="/dashboard?tab=personal" className="cursor-pointer gap-2">
                           <Mail className="h-4 w-4 text-indigo-500" />
                           <div>
                             <p className="text-sm font-medium">{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</p>
                             <p className="text-xs text-muted-foreground">View in {library.name}</p>
                           </div>
-                        </a>
+                        </Link>
                       </DropdownMenuItem>
                     ) : (
                       <div className="px-3 py-4 text-center text-xs text-muted-foreground">
@@ -294,9 +295,9 @@ export default function Dashboard() {
                       </div>
                     )}
                     <DropdownMenuItem asChild>
-                      <a href={getLibraryUrl(library.slug, "/messages")} className="cursor-pointer text-xs justify-center text-muted-foreground">
+                      <Link to="/dashboard?tab=personal" className="cursor-pointer text-xs justify-center text-muted-foreground">
                         View all messages
-                      </a>
+                      </Link>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -410,7 +411,7 @@ export default function Dashboard() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Games Card - clearer labels */}
+                {/* Games Card */}
                 <Card className={cardClass}>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="flex items-center gap-2 text-sm">
@@ -437,23 +438,6 @@ export default function Dashboard() {
                         </Button>
                       </a>
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Lending Card */}
-                <Card className={cardClass}>
-                  <CardHeader className="pb-2 px-4 pt-4">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      <BookOpen className="h-4 w-4 text-secondary" />
-                      Lending
-                      {pendingLoanRequests > 0 && (
-                        <Badge variant="destructive" className="text-[10px]">{pendingLoanRequests} pending</Badge>
-                      )}
-                    </CardTitle>
-                    <CardDescription className="text-cream/60 text-xs">Track loans and borrow requests</CardDescription>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4">
-                    <LendingDashboard libraryId={library.id} />
                   </CardContent>
                 </Card>
 
@@ -498,20 +482,20 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Shelf of Shame */}
-                <ShelfOfShameWidget libraryId={library.id} />
-
-                {/* Random Picker Card */}
+                {/* Lending Card */}
                 <Card className={cardClass}>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="flex items-center gap-2 text-sm">
-                      <Shuffle className="h-4 w-4 text-secondary" />
-                      Random Picker
+                      <BookOpen className="h-4 w-4 text-secondary" />
+                      Lending
+                      {pendingLoanRequests > 0 && (
+                        <Badge variant="destructive" className="text-[10px]">{pendingLoanRequests} pending</Badge>
+                      )}
                     </CardTitle>
-                    <CardDescription className="text-cream/60 text-xs">Can't decide? Let fate choose!</CardDescription>
+                    <CardDescription className="text-cream/60 text-xs">Track loans and borrow requests</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />
+                    <LendingDashboard libraryId={library.id} />
                   </CardContent>
                 </Card>
 
@@ -537,6 +521,23 @@ export default function Dashboard() {
                         </Button>
                       </a>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Shelf of Shame */}
+                <ShelfOfShameWidget libraryId={library.id} />
+
+                {/* Random Picker Card */}
+                <Card className={cardClass}>
+                  <CardHeader className="pb-2 px-4 pt-4">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <Shuffle className="h-4 w-4 text-secondary" />
+                      Random Picker
+                    </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Can't decide? Let fate choose!</CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />
                   </CardContent>
                 </Card>
 
@@ -832,47 +833,16 @@ export default function Dashboard() {
 
           {/* ==================== ANALYTICS TAB ==================== */}
           <TabsContent value="analytics">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Play Stats */}
-              <Card className={`${cardClass} md:col-span-2 lg:col-span-2`}>
-                <CardHeader className="px-4 pt-4 pb-2">
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <BarChart3 className="h-4 w-4 text-secondary" />
-                    Play Statistics
-                  </CardTitle>
-                  <CardDescription className="text-cream/70 text-xs">Track your play sessions and collection insights</CardDescription>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  {library ? (
-                    <div className="space-y-3">
-                      <p className="text-xs text-cream/60">View detailed play statistics, most played games, and session history.</p>
-                      {statsUrl && (
-                        <a href={statsUrl}>
-                          <Button size="sm" className={btnPrimary}>
-                            <BarChart3 className="h-3 w-3" /> View Play Stats
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-cream/60 text-center py-4">Create a library to start tracking play statistics.</p>
-                  )}
+            {library ? (
+              <AnalyticsTab isAdmin={isAdmin} libraryId={library.id} />
+            ) : (
+              <Card className={cardClass}>
+                <CardContent className="py-8 text-center">
+                  <BarChart3 className="h-10 w-10 mx-auto text-cream/30 mb-3" />
+                  <p className="text-sm text-cream/60">Create a library to start tracking analytics.</p>
                 </CardContent>
               </Card>
-
-              {/* Library Insights */}
-              <Card className={`${cardClass} border-dashed`}>
-                <CardHeader className="px-4 pt-4 pb-2">
-                  <CardTitle className="flex items-center gap-2 text-sm text-cream/50">
-                    <BarChart3 className="h-4 w-4" />
-                    Library Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <p className="text-xs text-cream/40 text-center py-4">Collection growth, popular games, lending trends — coming soon.</p>
-                </CardContent>
-              </Card>
-            </div>
+            )}
           </TabsContent>
 
           {/* ==================== DANGER ZONE TAB ==================== */}
