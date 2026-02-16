@@ -10,8 +10,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout/Layout";
 import { GameUrlImport } from "@/components/games/GameUrlImport";
 import { BulkImportDialog } from "@/components/games/BulkImportDialog";
-import { CategoryManager } from "@/components/games/CategoryManager";
-import { GameCollectionTable } from "@/components/games/GameCollectionTable";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
@@ -276,13 +274,9 @@ export default function LibraryGames() {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold">Manage Games</h1>
-            <p className="text-muted-foreground text-sm">Add, import, and organize your collection</p>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold">Add Games</h1>
+            <p className="text-muted-foreground text-sm">Add and import games to your collection</p>
           </div>
-          <Button size="sm" className="sm:size-default" onClick={() => setActiveTab("add")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Game
-          </Button>
         </div>
 
 
@@ -295,10 +289,6 @@ export default function LibraryGames() {
             <TabsTrigger value="import" className="gap-2">
               <Upload className="h-4 w-4" />
               Bulk Import
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="gap-2">
-              <Tag className="h-4 w-4" />
-              Categories
             </TabsTrigger>
           </TabsList>
 
@@ -406,24 +396,7 @@ export default function LibraryGames() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="categories">
-            <CategoryManager />
-          </TabsContent>
         </Tabs>
-
-        {/* Collection Table - Always visible below tabs */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Full Collection</CardTitle>
-            <CardDescription>
-              View, edit, and manage all games in your library
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <GameCollectionTable />
-          </CardContent>
-        </Card>
-
         <BulkImportDialog
           open={showBulkImport}
           onOpenChange={setShowBulkImport}

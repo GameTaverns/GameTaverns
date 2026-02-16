@@ -418,16 +418,16 @@ export default function Dashboard() {
                       <Gamepad2 className="h-4 w-4 text-secondary" />
                       My Games
                     </CardTitle>
-                    <CardDescription className="text-cream/60 text-xs">Add, manage, or browse your collection</CardDescription>
+                    <CardDescription className="text-cream/60 text-xs">Add or manage your collection</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
                     <div className="flex flex-col gap-1.5">
-                      <a href={getLibraryUrl(library.slug, "/add")}>
+                      <a href={getLibraryUrl(library.slug, "/games")}>
                         <Button size="sm" className={`w-full ${btnPrimary}`}>
-                          <Plus className="h-3 w-3" /> Add New Game
+                          <Plus className="h-3 w-3" /> Add Games
                         </Button>
                       </a>
-                      <a href={gamesUrl!}>
+                      <a href={getLibraryUrl(library.slug, "/manage")}>
                         <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
                           <Settings className="h-3 w-3" /> Manage Collection
                         </Button>
