@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   Database,
@@ -27,6 +27,10 @@ import {
   Palette,
   Wrench,
   Star,
+  Play,
+  Pause,
+  RotateCcw,
+  BookOpen,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,6 +93,18 @@ interface SystemLog {
   metadata: Record<string, unknown>;
   library_id: string | null;
   user_id: string | null;
+}
+
+interface ScraperState {
+  next_bgg_id: number;
+  total_processed: number;
+  total_added: number;
+  total_skipped: number;
+  total_errors: number;
+  is_enabled: boolean;
+  last_run_at: string | null;
+  last_error: string | null;
+  catalog_count: number;
 }
 
 const statusColors: Record<string, string> = {
@@ -278,6 +294,7 @@ export function SystemHealth() {
   const [logLevel, setLogLevel] = useState<string>("all");
   const [logSearch, setLogSearch] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const queryClient = useQueryClient();
 
   const healthQuery = useQuery({
     queryKey: ["system-health"],
@@ -425,6 +442,107 @@ export function SystemHealth() {
       }
     },
     onError: (e: Error) => toast.error(`Backfill failed: ${e.message}`),
+  });
+
+  // Catalog Scraper
+
+  const scraperQuery = useQuery<ScraperState>({
+    queryKey: ["catalog-scraper-status"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-scraper`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "status" }),
+      });
+      if (!r.ok) throw new Error(`Status check failed: ${r.status}`);
+      return r.json();
+    },
+    refetchInterval: autoRefresh ? 30000 : false,
+    retry: 1,
+  });
+
+  const scraperToggleMutation = useMutation({
+    mutationFn: async (action: "enable" | "disable") => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-scraper`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      });
+      if (!r.ok) throw new Error(`Toggle failed: ${r.status}`);
+      return r.json();
+    },
+    onSuccess: (data) => {
+      toast.success(data.is_enabled ? "Catalog scraper enabled" : "Catalog scraper paused");
+      queryClient.invalidateQueries({ queryKey: ["catalog-scraper-status"] });
+    },
+    onError: (e: Error) => toast.error(`Toggle failed: ${e.message}`),
+  });
+
+  const scraperResetMutation = useMutation({
+    mutationFn: async (nextBggId: number) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-scraper`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "reset", next_bgg_id: nextBggId }),
+      });
+      if (!r.ok) throw new Error(`Reset failed: ${r.status}`);
+      return r.json();
+    },
+    onSuccess: (data) => {
+      toast.success(`Scraper position reset to BGG ID ${data.next_bgg_id}`);
+      queryClient.invalidateQueries({ queryKey: ["catalog-scraper-status"] });
+    },
+    onError: (e: Error) => toast.error(`Reset failed: ${e.message}`),
+  });
+
+  const scraperRunOnceMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      // Temporarily enable, run one batch, then check status
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-scraper`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "scrape" }),
+      });
+      if (!r.ok) throw new Error(`Run failed: ${r.status}`);
+      return r.json();
+    },
+    onSuccess: (data) => {
+      if (data.skipped) {
+        toast.info("Scraper is disabled — enable it first or use the manual run");
+      } else {
+        toast.success(`Scraper batch complete: ${data.added} added, ${data.skipped} skipped in range ${data.bgg_id_range}`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["catalog-scraper-status"] });
+    },
+    onError: (e: Error) => toast.error(`Run failed: ${e.message}`),
   });
 
   const filteredLogs = (logsQuery.data || []).filter((log) => {
@@ -676,6 +794,138 @@ export function SystemHealth() {
           </CardContent>
         </Card>
       )}
+
+      {/* Catalog Scraper */}
+      <Card className="bg-wood-medium/10 border-wood-medium/40">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BookOpen className="h-5 w-5 text-secondary" />
+              <div>
+                <CardTitle className="text-cream text-lg">Catalog Scraper</CardTitle>
+                <CardDescription className="text-cream/50">
+                  Automated BGG game discovery — adds new games to the catalog
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {scraperQuery.data && (
+                <Badge className={scraperQuery.data.is_enabled ? "bg-green-500/20 text-green-400" : "bg-muted/20 text-muted-foreground"}>
+                  {scraperQuery.data.is_enabled ? "Active" : "Paused"}
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => scraperQuery.refetch()}
+                disabled={scraperQuery.isFetching}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${scraperQuery.isFetching ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {scraperQuery.isError && (
+            <div className="text-sm text-red-400 p-3 rounded bg-red-500/10 border border-red-500/30">
+              Failed to load scraper status: {scraperQuery.error?.message}
+            </div>
+          )}
+
+          {scraperQuery.data && (
+            <>
+              {/* Stats grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                  <div className="text-lg font-bold text-cream">{scraperQuery.data.catalog_count?.toLocaleString() || "—"}</div>
+                  <div className="text-xs text-cream/50">Catalog Total</div>
+                </div>
+                <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                  <div className="text-lg font-bold text-cream">{scraperQuery.data.total_added.toLocaleString()}</div>
+                  <div className="text-xs text-cream/50">Games Added</div>
+                </div>
+                <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                  <div className="text-lg font-bold text-cream">{scraperQuery.data.next_bgg_id.toLocaleString()}</div>
+                  <div className="text-xs text-cream/50">Next BGG ID</div>
+                </div>
+                <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                  <div className="text-lg font-bold text-cream">{scraperQuery.data.total_processed.toLocaleString()}</div>
+                  <div className="text-xs text-cream/50">IDs Scanned</div>
+                </div>
+              </div>
+
+              {/* Progress info */}
+              <div className="flex flex-wrap gap-4 text-xs text-cream/50">
+                <span>Skipped: {scraperQuery.data.total_skipped.toLocaleString()}</span>
+                <span>Errors: {scraperQuery.data.total_errors.toLocaleString()}</span>
+                {scraperQuery.data.last_run_at && (
+                  <span>Last run: {new Date(scraperQuery.data.last_run_at).toLocaleString()}</span>
+                )}
+              </div>
+
+              {scraperQuery.data.last_error && (
+                <div className="text-xs text-yellow-400 p-2 rounded bg-yellow-500/10 border border-yellow-500/30 truncate" title={scraperQuery.data.last_error}>
+                  Last error: {scraperQuery.data.last_error}
+                </div>
+              )}
+
+              {/* Controls */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={scraperQuery.data.is_enabled ? "destructive" : "default"}
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => scraperToggleMutation.mutate(scraperQuery.data!.is_enabled ? "disable" : "enable")}
+                  disabled={scraperToggleMutation.isPending}
+                >
+                  {scraperQuery.data.is_enabled ? (
+                    <><Pause className="h-3.5 w-3.5 mr-1" /> Pause Scraper</>
+                  ) : (
+                    <><Play className="h-3.5 w-3.5 mr-1" /> Enable Scraper</>
+                  )}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => scraperRunOnceMutation.mutate()}
+                  disabled={scraperRunOnceMutation.isPending}
+                >
+                  {scraperRunOnceMutation.isPending ? (
+                    <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+                  ) : (
+                    <><Zap className="h-3.5 w-3.5 mr-1" /> Run Once</>
+                  )}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => {
+                    const id = prompt("Enter BGG ID to jump to:", String(scraperQuery.data!.next_bgg_id));
+                    if (id && !isNaN(Number(id))) scraperResetMutation.mutate(Number(id));
+                  }}
+                  disabled={scraperResetMutation.isPending}
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset Position
+                </Button>
+              </div>
+
+              <div className="text-xs text-cream/40">
+                Runs every 5 minutes via cron. Each run fetches 3 batches of 20 BGG IDs (only 3 API calls with ~3s delays between).
+                At this rate, ~17k IDs/day are scanned.
+              </div>
+            </>
+          )}
+
+          {scraperQuery.isLoading && (
+            <div className="text-sm text-cream/50 text-center py-4">Loading scraper status...</div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Maintenance Actions */}
       <Card className="bg-wood-medium/10 border-wood-medium/40">
