@@ -57,12 +57,12 @@ fi
 # Helper: run psql inside the db container with proper env and clean output
 # Usage: db_query "SQL" -> prints cleaned result (no whitespace/control chars)
 db_query() {
-    local result
-    result=$(docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+    local raw
+    raw=$(docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
       exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
-      psql -U postgres -d postgres -tAc "$1" 2>/dev/null || echo "")
-    # Strip ALL whitespace, carriage returns, newlines, and control characters
-    echo "$result" | tr -d '[:space:][:cntrl:]'
+      psql -U postgres -d postgres -tAc "$1" 2>/dev/null) || true
+    # Strip everything that isn't a printable ASCII character
+    echo "$raw" | tr -cd '[:print:]' | tr -d ' '
 }
 
 # Helper: run psql file inside the db container
@@ -243,7 +243,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
     if [ -f "$MIGRATIONS_DIR/$migration" ]; then
         # Check if migration was already applied
         ALREADY_APPLIED=$(db_query "SELECT 1 FROM public.schema_migrations WHERE name = '$migration';")
-        
+
         if [ "$ALREADY_APPLIED" = "1" ]; then
             SKIP_COUNT=$((SKIP_COUNT + 1))
             continue
@@ -253,66 +253,36 @@ for migration in "${MIGRATION_FILES[@]}"; do
 
         # Sanity check: confirm file is mounted into the db container
         if ! docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
-          exec -T db sh -lc "test -f /docker-entrypoint-initdb.d/$migration"; then
+          exec -T db sh -lc "test -f /docker-entrypoint-initdb.d/$migration" 2>/dev/null; then
             echo -e "${RED}✗ Error${NC}"
             echo "    Migration file is not visible inside db container: /docker-entrypoint-initdb.d/$migration"
-            echo "    Host path checked: $MIGRATIONS_DIR/$migration"
             ERROR_COUNT=$((ERROR_COUNT + 1))
             continue
         fi
 
-        # Run migration in background with fallback timeout
         LOG_FILE="/tmp/gametaverns-migration-${migration}.log"
         rm -f "$LOG_FILE"
 
         set +e
-        # Run psql in background and capture PID
-        db_migrate "/docker-entrypoint-initdb.d/$migration" > "$LOG_FILE" 2>&1 &
-        PSQL_PID=$!
-        
-        # Manual timeout: wait 90 seconds max
-        TIMEOUT=90
-        ELAPSED=0
-        EXIT_CODE=0
-        
-        while kill -0 $PSQL_PID 2>/dev/null; do
-            if [ $ELAPSED -ge $TIMEOUT ]; then
-                echo -e "${RED}✗ Timeout (${TIMEOUT}s)${NC}"
-                echo "    Migration did not complete within ${TIMEOUT} seconds"
-                echo "    Last 20 log lines:"
-                tail -n 20 "$LOG_FILE" 2>/dev/null || echo "    (no log output)"
-                kill -9 $PSQL_PID 2>/dev/null || true
-                ((ERROR_COUNT++))
-                EXIT_CODE=124
-                break
-            fi
-            sleep 1
-            ((ELAPSED++))
-            # Show progress every 10 seconds
-            if [ $((ELAPSED % 10)) -eq 0 ]; then
-                echo "  ... still running (${ELAPSED}s / ${TIMEOUT}s) ..."
-            fi
-        done
-        
-        # Get exit code if process finished naturally
-        if [ $EXIT_CODE -ne 124 ]; then
-            wait $PSQL_PID
-            EXIT_CODE=$?
-        fi
+        # Run migration synchronously with timeout
+        timeout 90 docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+          exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
+          psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" \
+          > "$LOG_FILE" 2>&1
+        EXIT_CODE=$?
         set -e
 
-        # Capture the last output lines for error reporting
         OUTPUT=$(tail -n 50 "$LOG_FILE" 2>/dev/null || true)
-        
-        # Check for actual errors (not just notices) - case insensitive
-        if echo "$OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
+
+        if [ $EXIT_CODE -eq 124 ]; then
+            echo -e "${RED}✗ Timeout (90s)${NC}"
+            ERROR_COUNT=$((ERROR_COUNT + 1))
+        elif echo "$OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
             ERROR_MSG=$(echo "$OUTPUT" | grep -iE "^ERROR:|^FATAL:" | head -1)
-            # Check if it's a duplicate/exists warning
             if echo "$ERROR_MSG" | grep -qiE "already exists|duplicate|does not exist"; then
                 echo -e "${YELLOW}⚠ Warning${NC}"
                 echo "    $ERROR_MSG"
                 WARNING_COUNT=$((WARNING_COUNT + 1))
-                # Still mark as applied — it's a harmless "already exists" error
                 db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
             else
                 echo -e "${RED}✗ Error${NC}"
@@ -320,11 +290,9 @@ for migration in "${MIGRATION_FILES[@]}"; do
                 ERROR_COUNT=$((ERROR_COUNT + 1))
             fi
         elif [ $EXIT_CODE -ne 0 ]; then
-            # Non-zero exit code but no ERROR in output
             if echo "$OUTPUT" | grep -qiE "already exists|duplicate"; then
                 echo -e "${YELLOW}⚠ Warning (already exists)${NC}"
                 WARNING_COUNT=$((WARNING_COUNT + 1))
-                # Still mark as applied
                 db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
             else
                 echo -e "${RED}✗ Error (exit code: $EXIT_CODE)${NC}"
@@ -334,9 +302,10 @@ for migration in "${MIGRATION_FILES[@]}"; do
         else
             echo -e "${GREEN}✓${NC}"
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-            # Record migration as applied
             db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
         fi
+
+        rm -f "$LOG_FILE"
     else
         echo -e "${YELLOW}⚠ $migration not found, skipping${NC}"
         SKIP_COUNT=$((SKIP_COUNT + 1))
