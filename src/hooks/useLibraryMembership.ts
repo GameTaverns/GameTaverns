@@ -249,33 +249,33 @@ export function useMyMemberships() {
       
       if (membershipsError) throw membershipsError;
       
-      // Fetch owned library
-      const { data: ownedLibrary, error: ownedError } = await supabase
+      // Fetch owned libraries (user may own multiple)
+      const { data: ownedLibraries, error: ownedError } = await supabase
         .from("libraries")
         .select("id, name, slug, description, created_at")
-        .eq("owner_id", user.id)
-        .maybeSingle();
+        .eq("owner_id", user.id);
       
       if (ownedError) throw ownedError;
       
-      // Combine: owned library first (as "owner" role), then memberships
+      // Combine: owned libraries first (as "owner" role), then memberships
       const results: MembershipWithLibrary[] = [];
       
-      if (ownedLibrary) {
-        // Check if the owned library isn't already in memberships
-        const alreadyMember = memberships?.some(m => m.library?.id === ownedLibrary.id);
-        if (!alreadyMember) {
-          results.push({
-            id: `owned-${ownedLibrary.id}`,
-            role: 'owner',
-            joined_at: ownedLibrary.created_at,
-            library: {
-              id: ownedLibrary.id,
-              name: ownedLibrary.name,
-              slug: ownedLibrary.slug,
-              description: ownedLibrary.description,
-            },
-          });
+      if (ownedLibraries) {
+        for (const ownedLibrary of ownedLibraries) {
+          const alreadyMember = memberships?.some(m => m.library?.id === ownedLibrary.id);
+          if (!alreadyMember) {
+            results.push({
+              id: `owned-${ownedLibrary.id}`,
+              role: 'owner',
+              joined_at: ownedLibrary.created_at,
+              library: {
+                id: ownedLibrary.id,
+                name: ownedLibrary.name,
+                slug: ownedLibrary.slug,
+                description: ownedLibrary.description,
+              },
+            });
+          }
         }
       }
       
