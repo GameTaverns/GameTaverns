@@ -281,7 +281,7 @@ export default function Dashboard() {
                     <div className="px-3 py-2 text-sm font-medium">Messages</div>
                     {unreadCount > 0 ? (
                       <DropdownMenuItem asChild>
-                        <Link to="/dashboard?tab=personal" className="cursor-pointer gap-2">
+                        <Link to="/inbox" className="cursor-pointer gap-2">
                           <Mail className="h-4 w-4 text-indigo-500" />
                           <div>
                             <p className="text-sm font-medium">{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</p>
@@ -295,7 +295,7 @@ export default function Dashboard() {
                       </div>
                     )}
                     <DropdownMenuItem asChild>
-                      <Link to="/dashboard?tab=personal" className="cursor-pointer text-xs justify-center text-muted-foreground">
+                      <Link to="/inbox" className="cursor-pointer text-xs justify-center text-muted-foreground">
                         View all messages
                       </Link>
                     </DropdownMenuItem>
