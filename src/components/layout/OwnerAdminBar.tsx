@@ -22,7 +22,7 @@ export function OwnerAdminBar() {
   }
 
   const links = [
-    { href: "/games", icon: LayoutGrid, label: "Manage Collection" },
+    { href: "/manage", icon: LayoutGrid, label: "Manage Collection" },
     { href: "/community", icon: MessageSquare, label: "Community" },
     { href: getPlatformUrl("/dashboard?tab=settings"), icon: BarChart3, label: "Analytics" },
   ];
