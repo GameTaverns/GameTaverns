@@ -206,21 +206,17 @@ CORE_EXISTS=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND ta
 
 if [ "$CORE_EXISTS" = "1" ]; then
     echo -e "${BLUE}Ensuring baseline migrations are marked as applied...${NC}"
-    BACKFILL_SQL="INSERT INTO public.schema_migrations (name) VALUES "
-    FIRST=true
+    BACKFILL_FAIL=0
     for mig in "${BASELINE_MIGRATIONS[@]}"; do
-        if [ "$FIRST" = true ]; then
-            BACKFILL_SQL+="('$mig')"
-            FIRST=false
-        else
-            BACKFILL_SQL+=",('$mig')"
-        fi
+        db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$mig') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || {
+            echo -e "${YELLOW}  ⚠ Could not mark $mig${NC}"
+            BACKFILL_FAIL=1
+        }
     done
-    BACKFILL_SQL+=" ON CONFLICT DO NOTHING;"
-    if db_cmd "$BACKFILL_SQL" > /dev/null 2>&1; then
+    if [ "$BACKFILL_FAIL" -eq 0 ]; then
         echo -e "${GREEN}✓ Baseline migrations ensured${NC}"
     else
-        echo -e "${YELLOW}⚠ Baseline backfill had warnings (continuing anyway)${NC}"
+        echo -e "${YELLOW}⚠ Some baseline entries failed (continuing anyway)${NC}"
     fi
 fi
 
