@@ -30,7 +30,7 @@ export default function ClubPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-cream">Loading club...</div>
       </div>
     );
@@ -38,7 +38,7 @@ export default function ClubPage() {
 
   if (!club) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-display text-cream mb-4">Club Not Found</h1>
           <Link to="/directory">
@@ -64,7 +64,7 @@ export default function ClubPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-6">
