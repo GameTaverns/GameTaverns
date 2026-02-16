@@ -420,11 +420,10 @@ const handler = async (req: Request): Promise<Response> => {
 
   console.log(`[catalog-scraper] Updating state to next_bgg_id=${currentId}`);
 
-  // Try Supabase client first
+  // Use upsert (which works reliably) instead of update
   const { data: updateData, error: updateErr } = await admin
     .from("catalog_scraper_state")
-    .update(updatePayload)
-    .eq("id", "default")
+    .upsert({ id: "default", ...updatePayload }, { onConflict: "id" })
     .select();
 
   if (updateErr || !updateData || updateData.length === 0) {
