@@ -24,6 +24,8 @@ import {
   ChevronDown,
   ChevronRight,
   Upload,
+  Palette,
+  Wrench,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -330,6 +332,33 @@ export function SystemHealth() {
     },
   });
 
+  const backfillMutation = useMutation({
+    mutationFn: async (mode: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const url = `${supabaseUrl}/functions/v1/catalog-backfill`;
+      const r = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mode }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: r.statusText }));
+        throw new Error(err.error || r.statusText);
+      }
+      return r.json();
+    },
+    onSuccess: (data) => {
+      toast.success(`Backfill complete: ${data.processed || 0} entries processed, ${data.enriched || 0} enriched`);
+    },
+    onError: (e: Error) => toast.error(`Backfill failed: ${e.message}`),
+  });
+
   const filteredLogs = (logsQuery.data || []).filter((log) => {
     if (!logSearch) return true;
     const search = logSearch.toLowerCase();
@@ -579,6 +608,70 @@ export function SystemHealth() {
           </CardContent>
         </Card>
       )}
+
+      {/* Maintenance Actions */}
+      <Card className="bg-wood-medium/10 border-wood-medium/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-cream text-lg flex items-center gap-2">
+            <Wrench className="h-5 w-5" />
+            Maintenance Actions
+          </CardTitle>
+          <CardDescription className="text-cream/50">
+            One-time data enrichment and cleanup tasks
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
+            <div className="flex items-center gap-3">
+              <Palette className="h-5 w-5 text-secondary" />
+              <div>
+                <div className="text-sm text-cream font-medium">Backfill Designers & Artists</div>
+                <div className="text-xs text-cream/50">
+                  Re-fetches BGG data for all catalog entries to populate designer and artist metadata across all libraries.
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs shrink-0"
+              onClick={() => backfillMutation.mutate("enrich")}
+              disabled={backfillMutation.isPending}
+            >
+              {backfillMutation.isPending ? (
+                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+              ) : (
+                <><Palette className="h-3.5 w-3.5 mr-1" /> Run Backfill</>
+              )}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
+            <div className="flex items-center gap-3">
+              <Database className="h-5 w-5 text-secondary" />
+              <div>
+                <div className="text-sm text-cream font-medium">Link Games to Catalog</div>
+                <div className="text-xs text-cream/50">
+                  Links existing games (by BGG ID) to catalog entries and backfills missing catalog data.
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs shrink-0"
+              onClick={() => backfillMutation.mutate("default")}
+              disabled={backfillMutation.isPending}
+            >
+              {backfillMutation.isPending ? (
+                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+              ) : (
+                <><Database className="h-3.5 w-3.5 mr-1" /> Run Link</>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Separator className="bg-wood-medium/30" />
 
