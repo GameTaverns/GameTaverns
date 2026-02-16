@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { aiComplete, isAIConfigured, getAIProviderName } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,14 +40,37 @@ function parseBggXml(xml: string) {
   };
 }
 
+async function upsertDesignersByName(admin: ReturnType<typeof createClient>, names: string[]) {
+  const ids: string[] = [];
+  for (const name of names) {
+    const { data: existing } = await admin.from("designers").select("id").eq("name", name).maybeSingle();
+    if (existing?.id) { ids.push(existing.id); continue; }
+    const { data: inserted } = await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single();
+    if (inserted?.id) ids.push(inserted.id);
+  }
+  return ids;
+}
+
+async function upsertArtistsByName(admin: ReturnType<typeof createClient>, names: string[]) {
+  const ids: string[] = [];
+  for (const name of names) {
+    const { data: existing } = await admin.from("artists").select("id").eq("name", name).maybeSingle();
+    if (existing?.id) { ids.push(existing.id); continue; }
+    const { data: inserted } = await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
+    if (inserted?.id) ids.push(inserted.id);
+  }
+  return ids;
+}
+
 /**
- * Catalog Backfill v2 — populates game_catalog with designers, artists,
+ * Catalog Backfill — populates game_catalog with designers, artists,
  * and enriched descriptions from existing games with bgg_id.
- * 
+ *
  * Modes:
- * - default: Link unlinked games + backfill designers/artists from BGG XML
- * - mode=enrich: Re-fetch BGG XML for ALL catalog entries to add designers/artists
- * - mode=descriptions: Re-generate AI descriptions for catalog entries missing them
+ * - default: Link unlinked games to catalog entries
+ * - enrich: Re-fetch BGG XML to add designers/artists (processes batch_size entries per call)
+ *
+ * Params: { mode, batch_size (default 5), offset (default 0) }
  */
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -90,53 +112,63 @@ const handler = async (req: Request): Promise<Response> => {
 
     const body = await req.json().catch(() => ({}));
     const mode = body.mode || "default";
-    const batchSize = body.batch_size || 50;
+    const batchSize = Math.min(body.batch_size || 5, 10); // Cap at 10 for timeout safety
+    const offset = body.offset || 0;
 
     // =====================================================================
     // MODE: enrich — Re-fetch BGG XML for catalog entries to add designers/artists
     // =====================================================================
     if (mode === "enrich") {
-      const { data: catalogEntries } = await admin
+      // Find catalog entries that are MISSING designers or artists
+      const { data: catalogEntries, error: catErr } = await admin
         .from("game_catalog")
         .select("id, bgg_id, title")
         .not("bgg_id", "is", null)
         .order("title")
-        .limit(batchSize);
+        .range(offset, offset + batchSize - 1);
+
+      if (catErr) {
+        return new Response(JSON.stringify({ error: catErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       if (!catalogEntries || catalogEntries.length === 0) {
-        return new Response(JSON.stringify({ success: true, processed: 0, message: "No catalog entries" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(JSON.stringify({
+          success: true, processed: 0, designersAdded: 0, artistsAdded: 0,
+          message: "No more catalog entries to process", hasMore: false,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       let processed = 0;
       let designersAdded = 0;
       let artistsAdded = 0;
+      let skipped = 0;
       const errors: string[] = [];
 
       for (const entry of catalogEntries) {
         try {
-          // Check if already has designers
+          // Check if already has both designers and artists
           const { count: dCount } = await admin
             .from("catalog_designers").select("id", { count: "exact", head: true }).eq("catalog_id", entry.id);
           const { count: aCount } = await admin
             .from("catalog_artists").select("id", { count: "exact", head: true }).eq("catalog_id", entry.id);
 
           if ((dCount || 0) > 0 && (aCount || 0) > 0) {
-            processed++;
-            continue; // Already enriched
+            skipped++;
+            continue;
           }
 
           // Fetch BGG XML
           const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${entry.bgg_id}&stats=1`;
           const res = await fetch(xmlUrl, {
-            headers: { "User-Agent": "Mozilla/5.0", Accept: "application/xml" },
+            headers: { "User-Agent": "Mozilla/5.0 (compatible; GameTaverns/1.0)", Accept: "application/xml" },
           });
 
           if (!res.ok) {
             if (res.status === 429) {
-              await sleep(5000);
-              continue;
+              errors.push(`${entry.title}: Rate limited (429)`);
+              break; // Stop batch on rate limit
             }
             errors.push(`${entry.title}: HTTP ${res.status}`);
             continue;
@@ -144,58 +176,65 @@ const handler = async (req: Request): Promise<Response> => {
 
           const xml = await res.text();
           if (!xml.includes("<item")) {
-            await sleep(1000);
+            errors.push(`${entry.title}: No item data in response`);
             continue;
           }
 
           const parsed = parseBggXml(xml);
 
           // Upsert designers
-          for (const name of parsed.designers) {
-            const { data: existing } = await admin.from("designers").select("id").eq("name", name).maybeSingle();
-            const id = existing?.id || (await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single()).data?.id;
-            if (id) {
-              await admin.from("catalog_designers").upsert({ catalog_id: entry.id, designer_id: id }, { onConflict: "catalog_id,designer_id" });
-              designersAdded++;
-            }
+          const designerIds = await upsertDesignersByName(admin, parsed.designers);
+          for (const designerId of designerIds) {
+            await admin.from("catalog_designers").upsert(
+              { catalog_id: entry.id, designer_id: designerId },
+              { onConflict: "catalog_id,designer_id" }
+            );
+            designersAdded++;
           }
 
           // Upsert artists
-          for (const name of parsed.artists) {
-            const { data: existing } = await admin.from("artists").select("id").eq("name", name).maybeSingle();
-            const id = existing?.id || (await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single()).data?.id;
-            if (id) {
-              await admin.from("catalog_artists").upsert({ catalog_id: entry.id, artist_id: id }, { onConflict: "catalog_id,artist_id" });
-              artistsAdded++;
-            }
+          const artistIds = await upsertArtistsByName(admin, parsed.artists);
+          for (const artistId of artistIds) {
+            await admin.from("catalog_artists").upsert(
+              { catalog_id: entry.id, artist_id: artistId },
+              { onConflict: "catalog_id,artist_id" }
+            );
+            artistsAdded++;
           }
 
-          // Also backfill game_designers/game_artists for all games linked to this catalog entry
+          // Also backfill game_designers/game_artists for linked games
           const { data: linkedGames } = await admin.from("games").select("id").eq("catalog_id", entry.id);
           if (linkedGames) {
             for (const game of linkedGames) {
-              for (const name of parsed.designers) {
-                const { data: d } = await admin.from("designers").select("id").eq("name", name).maybeSingle();
-                if (d) await admin.from("game_designers").upsert({ game_id: game.id, designer_id: d.id }, { onConflict: "game_id,designer_id" });
+              for (const dId of designerIds) {
+                await admin.from("game_designers").upsert(
+                  { game_id: game.id, designer_id: dId },
+                  { onConflict: "game_id,designer_id" }
+                );
               }
-              for (const name of parsed.artists) {
-                const { data: a } = await admin.from("artists").select("id").eq("name", name).maybeSingle();
-                if (a) await admin.from("game_artists").upsert({ game_id: game.id, artist_id: a.id }, { onConflict: "game_id,artist_id" });
+              for (const aId of artistIds) {
+                await admin.from("game_artists").upsert(
+                  { game_id: game.id, artist_id: aId },
+                  { onConflict: "game_id,artist_id" }
+                );
               }
             }
           }
 
           processed++;
-          // Rate limit
-          await sleep(500);
+          // Brief rate-limit pause between BGG requests
+          await sleep(300);
         } catch (e) {
           errors.push(`${entry.title}: ${e instanceof Error ? e.message : String(e)}`);
         }
       }
 
+      const hasMore = catalogEntries.length === batchSize;
+
       return new Response(JSON.stringify({
-        success: true, mode: "enrich", processed, designersAdded, artistsAdded,
-        total: catalogEntries.length, errors: errors.slice(0, 10),
+        success: true, mode: "enrich", processed, skipped, designersAdded, artistsAdded,
+        total: catalogEntries.length, offset, nextOffset: offset + batchSize,
+        hasMore, errors: errors.slice(0, 10),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -207,11 +246,11 @@ const handler = async (req: Request): Promise<Response> => {
       .select("id, bgg_id, title, image_url, description, min_players, max_players, play_time, difficulty, is_expansion, bgg_url, suggested_age, publisher_id")
       .not("bgg_id", "is", null)
       .is("catalog_id", null)
-      .limit(500);
+      .limit(batchSize);
 
     if (fetchErr) throw fetchErr;
     if (!unlinkedGames || unlinkedGames.length === 0) {
-      return new Response(JSON.stringify({ success: true, processed: 0, message: "All games already linked" }), {
+      return new Response(JSON.stringify({ success: true, processed: 0, linked: 0, message: "All games already linked", hasMore: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -301,8 +340,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    const hasMore = unlinkedGames.length === batchSize;
+
     return new Response(
-      JSON.stringify({ success: true, unique_bgg_ids: byBggId.size, processed, linked, errors: errors.slice(0, 10) }),
+      JSON.stringify({ success: true, unique_bgg_ids: byBggId.size, processed, linked, hasMore, errors: errors.slice(0, 10) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

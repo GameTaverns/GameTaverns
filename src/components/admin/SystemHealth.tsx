@@ -338,23 +338,48 @@ export function SystemHealth() {
       if (!session) throw new Error("Not authenticated");
       const { url: supabaseUrl, anonKey } = getSupabaseConfig();
       const url = `${supabaseUrl}/functions/v1/catalog-backfill`;
-      const r = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: anonKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ mode }),
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({ error: r.statusText }));
-        throw new Error(err.error || r.statusText);
+      const batchSize = 5;
+      let offset = 0;
+      let totalProcessed = 0;
+      let totalDesigners = 0;
+      let totalArtists = 0;
+      let totalLinked = 0;
+      let hasMore = true;
+      const allErrors: string[] = [];
+
+      while (hasMore) {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: anonKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ mode, batch_size: batchSize, offset }),
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({ error: r.statusText }));
+          throw new Error(err.error || r.statusText);
+        }
+        const data = await r.json();
+        totalProcessed += data.processed || 0;
+        totalDesigners += data.designersAdded || 0;
+        totalArtists += data.artistsAdded || 0;
+        totalLinked += data.linked || 0;
+        if (data.errors?.length) allErrors.push(...data.errors);
+        hasMore = data.hasMore === true;
+        offset = data.nextOffset || offset + batchSize;
+
+        // Show progress toast every batch
+        if (hasMore) {
+          toast.info(`Backfill progress: ${totalProcessed} processed, ${totalDesigners} designers, ${totalArtists} artists...`);
+        }
       }
-      return r.json();
+
+      return { processed: totalProcessed, designersAdded: totalDesigners, artistsAdded: totalArtists, linked: totalLinked, errors: allErrors };
     },
     onSuccess: (data) => {
-      toast.success(`Backfill complete: ${data.processed || 0} entries processed, ${data.enriched || 0} enriched`);
+      toast.success(`Backfill complete: ${data.processed} processed, ${data.designersAdded} designers, ${data.artistsAdded} artists, ${data.linked} linked`);
     },
     onError: (e: Error) => toast.error(`Backfill failed: ${e.message}`),
   });
