@@ -11,12 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Users, Clock, Weight, BookOpen, ChevronDown, ChevronUp, Menu, LayoutGrid, List } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary } from "@/hooks/useLibrary";
+import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
 import { CatalogSidebar } from "@/components/catalog/CatalogSidebar";
 import { CatalogGameGrid } from "@/components/catalog/CatalogGameGrid";
 import { CatalogGameList } from "@/components/catalog/CatalogGameList";
 import { CatalogPagination } from "@/components/catalog/CatalogPagination";
+import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
 
 interface CatalogGame {
   id: string;
@@ -45,7 +46,10 @@ interface CatalogGame {
 export default function CatalogBrowse() {
   const { isAuthenticated } = useAuth();
   const { data: myLibrary } = useMyLibrary();
+  const { data: myLibraries = [] } = useMyLibraries();
   const addFromCatalog = useAddFromCatalog();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingCatalogId, setPendingCatalogId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [playerCount, setPlayerCount] = useState<number[]>([4]);
@@ -310,7 +314,23 @@ export default function CatalogBrowse() {
   };
 
   const handleAddGame = (gameId: string) => {
-    addFromCatalog.mutate({ catalogId: gameId, libraryId: myLibrary?.id });
+    if (myLibraries.length > 1) {
+      setPendingCatalogId(gameId);
+      setPickerOpen(true);
+    } else {
+      addFromCatalog.mutate({ catalogId: gameId, libraryId: myLibrary?.id });
+    }
+  };
+
+  const handlePickerSelect = (libraryId: string) => {
+    if (pendingCatalogId) {
+      addFromCatalog.mutate({ catalogId: pendingCatalogId, libraryId }, {
+        onSettled: () => {
+          setPickerOpen(false);
+          setPendingCatalogId(null);
+        },
+      });
+    }
   };
 
   return (
@@ -481,6 +501,14 @@ export default function CatalogBrowse() {
           )}
         </div>
       </div>
+      <LibraryPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        libraries={myLibraries}
+        onSelect={handlePickerSelect}
+        isPending={addFromCatalog.isPending}
+        gameTitle={catalogGames.find(g => g.id === pendingCatalogId)?.title}
+      />
     </Layout>
   );
 }
