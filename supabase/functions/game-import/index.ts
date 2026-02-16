@@ -79,6 +79,8 @@ function parseBggXml(xml: string, bggId: string): {
   difficulty?: string;
   mechanics?: string[];
   publisher?: string;
+  designers?: string[];
+  artists?: string[];
   is_expansion?: boolean;
   bgg_average_rating?: number;
 } {
@@ -93,7 +95,6 @@ function parseBggXml(xml: string, bggId: string): {
   const playTimeMatch = xml.match(/<playingtime[^>]*value="(\d+)"/);
   const weightMatch = xml.match(/<averageweight[^>]*value="([\d.]+)"/);
   const typeMatch = xml.match(/<item[^>]*type="([^"]+)"/);
-  // BGG community average rating (inside <statistics><ratings><average value="X.XX"/>)
   const avgRatingMatch = xml.match(/<average[^>]*value="([\d.]+)"/);
   let bgg_average_rating: number | undefined;
   if (avgRatingMatch) {
@@ -103,6 +104,13 @@ function parseBggXml(xml: string, bggId: string): {
   const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
   const mechanics = [...mechanicsMatches].map((m) => m[1]);
   const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
+
+  // Extract designers and artists
+  const designerMatches = xml.matchAll(/<link[^>]*type="boardgamedesigner"[^>]*value="([^"]+)"/g);
+  const designers = [...designerMatches].map((m) => decodeHtmlEntities(m[1]));
+  const artistMatches = xml.matchAll(/<link[^>]*type="boardgameartist"[^>]*value="([^"]+)"/g);
+  const artists = [...artistMatches].map((m) => decodeHtmlEntities(m[1]));
+
   let difficulty: string | undefined;
   if (weightMatch) {
     const w = parseFloat(weightMatch[1]);
@@ -137,7 +145,7 @@ function parseBggXml(xml: string, bggId: string): {
 
   const isExpansion = typeMatch?.[1] === "boardgameexpansion";
 
-  console.log(`[GameImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars, expansion=${isExpansion}, bgg_rating=${bgg_average_rating || 'N/A'})`);
+  console.log(`[GameImport] BGG XML extracted data for ${bggId} (desc=${description?.length || 0} chars, expansion=${isExpansion}, bgg_rating=${bgg_average_rating || 'N/A'}, designers=${designers.length}, artists=${artists.length})`);
 
   return {
     bgg_id: bggId,
@@ -151,6 +159,8 @@ function parseBggXml(xml: string, bggId: string): {
     difficulty,
     mechanics: mechanics.length > 0 ? mechanics : undefined,
     publisher: publisherMatch?.[1] ? decodeEntities(publisherMatch[1]) : undefined,
+    designers: designers.length > 0 ? designers : undefined,
+    artists: artists.length > 0 ? artists : undefined,
     is_expansion: isExpansion,
     bgg_average_rating,
   };
@@ -170,6 +180,8 @@ async function fetchBGGDataFromXML(
   difficulty?: string;
   mechanics?: string[];
   publisher?: string;
+  designers?: string[];
+  artists?: string[];
   is_expansion?: boolean;
   bgg_average_rating?: number;
 }> {
@@ -394,6 +406,8 @@ async function upsertCatalogEntry(
     difficulty?: string;
     mechanics?: string[];
     publisher?: string;
+    designers?: string[];
+    artists?: string[];
     is_expansion?: boolean;
     bgg_average_rating?: number;
   },
@@ -496,6 +510,54 @@ async function upsertCatalogEntry(
               { catalog_id: catalogEntry.id, publisher_id: pub.id },
               { onConflict: "catalog_id,publisher_id" }
             );
+        }
+      }
+
+      // Upsert catalog designers
+      if (bggData.designers && bggData.designers.length > 0) {
+        for (const designerName of bggData.designers) {
+          const { data: existing } = await supabaseAdmin
+            .from("designers")
+            .select("id")
+            .eq("name", designerName)
+            .maybeSingle();
+          const designerId = existing?.id || (await supabaseAdmin
+            .from("designers")
+            .upsert({ name: designerName }, { onConflict: "name" })
+            .select("id")
+            .single()).data?.id;
+          if (designerId) {
+            await supabaseAdmin
+              .from("catalog_designers")
+              .upsert(
+                { catalog_id: catalogEntry.id, designer_id: designerId },
+                { onConflict: "catalog_id,designer_id" }
+              );
+          }
+        }
+      }
+
+      // Upsert catalog artists
+      if (bggData.artists && bggData.artists.length > 0) {
+        for (const artistName of bggData.artists) {
+          const { data: existing } = await supabaseAdmin
+            .from("artists")
+            .select("id")
+            .eq("name", artistName)
+            .maybeSingle();
+          const artistId = existing?.id || (await supabaseAdmin
+            .from("artists")
+            .upsert({ name: artistName }, { onConflict: "name" })
+            .select("id")
+            .single()).data?.id;
+          if (artistId) {
+            await supabaseAdmin
+              .from("catalog_artists")
+              .upsert(
+                { catalog_id: catalogEntry.id, artist_id: artistId },
+                { onConflict: "catalog_id,artist_id" }
+              );
+          }
         }
       }
 
@@ -797,6 +859,23 @@ export default async function handler(req: Request): Promise<Response> {
     const bggId = bggIdMatch?.[1];
 
     // ---------------------------------------------------------------------------
+    // STEP 0: Check catalog first for pre-existing enriched data
+    // ---------------------------------------------------------------------------
+    let catalogData: any = null;
+    if (bggId) {
+      const { data: existingCatalog } = await supabaseAdmin
+        .from("game_catalog")
+        .select("id, title, description, image_url, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_community_rating")
+        .eq("bgg_id", bggId)
+        .maybeSingle();
+
+      if (existingCatalog?.description && existingCatalog.description.includes("Quick Gameplay Overview")) {
+        catalogData = existingCatalog;
+        console.log(`[GameImport] Found enriched catalog entry for BGG ${bggId}: "${existingCatalog.title}"`);
+      }
+    }
+
+    // ---------------------------------------------------------------------------
     // STEP 1: Try BGG XML API first (fast, ~0.5s, reliable descriptions)
     // ---------------------------------------------------------------------------
     let bggData: {
@@ -811,17 +890,30 @@ export default async function handler(req: Request): Promise<Response> {
       difficulty?: string;
       mechanics?: string[];
       publisher?: string;
+      designers?: string[];
+      artists?: string[];
       is_expansion?: boolean;
+      bgg_average_rating?: number;
     } | null = null;
 
     if (bggId) {
       console.log("Fetching data from BGG XML API for:", bggId);
       bggData = await fetchBGGDataFromXML(bggId);
       
+      // If we have a catalog entry with enriched description, use that instead
+      if (catalogData && bggData) {
+        console.log(`[GameImport] Using catalog description for "${catalogData.title}" instead of raw BGG`);
+        bggData.description = catalogData.description;
+        // Also fill in any missing fields from catalog
+        if (!bggData.image_url && catalogData.image_url) bggData.image_url = catalogData.image_url;
+        if (!bggData.min_players && catalogData.min_players) bggData.min_players = catalogData.min_players;
+        if (!bggData.max_players && catalogData.max_players) bggData.max_players = catalogData.max_players;
+        if (!bggData.suggested_age && catalogData.suggested_age) bggData.suggested_age = catalogData.suggested_age;
+      }
+
       if (bggData.title && bggData.description) {
-        console.log(`BGG XML API returned complete data for ${bggData.title} (${bggData.description.length} chars)`);
+        console.log(`BGG data ready for ${bggData.title} (${bggData.description.length} chars)`);
       } else if (bggData.title) {
-        // For expansions/promos that lack descriptions, generate a basic one
         console.log(`BGG XML API returned title-only data for ${bggId}, generating description`);
         bggData.description = `${bggData.title} - a board game${bggData.is_expansion ? ' expansion' : ''} imported from BoardGameGeek.`;
       } else {
@@ -836,10 +928,12 @@ export default async function handler(req: Request): Promise<Response> {
     const hasCompleteData = bggData?.title;
 
     if (hasCompleteData && bggData) {
-      console.log("Using BGG XML API data (fast path) + AI enrichment");
+      // Skip AI enrichment if catalog already has formatted description
+      const skipAIEnrichment = catalogData && bggData.description?.includes("Quick Gameplay Overview");
+      console.log(`Using BGG data (fast path)${skipAIEnrichment ? ' with catalog description' : ' + AI enrichment'}`);
 
-      // Enrich description with AI to produce formatted "Quick Gameplay Overview"
-      if (bggData.description) {
+      // Enrich description with AI only if catalog doesn't have it
+      if (bggData.description && !skipAIEnrichment) {
         bggData.description = await enrichDescriptionWithAI(
           bggData.title!,
           bggData.description,
@@ -992,7 +1086,47 @@ export default async function handler(req: Request): Promise<Response> {
         await supabaseAdmin.from("game_mechanics").insert(mechanicLinks);
       }
 
-      // Insert BGG community rating mapped to 5-star scale
+      // Link designers
+      if (bggData.designers && bggData.designers.length > 0) {
+        for (const designerName of bggData.designers) {
+          const { data: existing } = await supabaseAdmin
+            .from("designers")
+            .select("id")
+            .eq("name", designerName)
+            .maybeSingle();
+          const designerId = existing?.id || (await supabaseAdmin
+            .from("designers")
+            .upsert({ name: designerName }, { onConflict: "name" })
+            .select("id")
+            .single()).data?.id;
+          if (designerId) {
+            await supabaseAdmin
+              .from("game_designers")
+              .upsert({ game_id: game.id, designer_id: designerId }, { onConflict: "game_id,designer_id" });
+          }
+        }
+      }
+
+      // Link artists
+      if (bggData.artists && bggData.artists.length > 0) {
+        for (const artistName of bggData.artists) {
+          const { data: existing } = await supabaseAdmin
+            .from("artists")
+            .select("id")
+            .eq("name", artistName)
+            .maybeSingle();
+          const artistId = existing?.id || (await supabaseAdmin
+            .from("artists")
+            .upsert({ name: artistName }, { onConflict: "name" })
+            .select("id")
+            .single()).data?.id;
+          if (artistId) {
+            await supabaseAdmin
+              .from("game_artists")
+              .upsert({ game_id: game.id, artist_id: artistId }, { onConflict: "game_id,artist_id" });
+          }
+        }
+      }
       if (bggData.bgg_average_rating && bggData.bgg_average_rating > 0) {
         const mapped5Star = Math.max(1, Math.min(5, Math.round(bggData.bgg_average_rating / 2)));
         await supabaseAdmin

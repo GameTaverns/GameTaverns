@@ -159,6 +159,14 @@ async function fetchBGGGameInfo(bggId: string): Promise<{
     const publisherLinks: { name: string }[] = item.links?.boardgamepublisher || [];
     const publisher = publisherLinks.length > 0 ? publisherLinks[0].name : undefined;
 
+    // Extract designers
+    const designerLinks: { name: string }[] = item.links?.boardgamedesigner || [];
+    const designerNames = designerLinks.map((d: any) => d.name);
+
+    // Extract artists
+    const artistLinks: { name: string }[] = item.links?.boardgameartist || [];
+    const artistNames = artistLinks.map((a: any) => a.name);
+
     // Map play time
     const minPlaytime = parseInt(item.minplaytime, 10);
     const maxPlaytime = parseInt(item.maxplaytime, 10);
@@ -193,6 +201,8 @@ async function fetchBGGGameInfo(bggId: string): Promise<{
       play_time,
       mechanics: mechanics.length > 0 ? mechanics : undefined,
       publisher,
+      designers: designerNames.length > 0 ? designerNames : undefined,
+      artists: artistNames.length > 0 ? artistNames : undefined,
     };
   } catch (e) {
     console.warn(`[BulkImport] BGG JSON API error for ${bggId}:`, e);
@@ -495,7 +505,13 @@ async function fetchBGGXMLData(bggId: string): Promise<{
       // Extract publisher (first one)
       const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
 
-      // Map weight to difficulty
+      // Extract designers
+      const designerMatches = xml.matchAll(/<link[^>]*type="boardgamedesigner"[^>]*value="([^"]+)"/g);
+      const designers = [...designerMatches].map((m) => m[1]);
+
+      // Extract artists
+      const artistMatches = xml.matchAll(/<link[^>]*type="boardgameartist"[^>]*value="([^"]+)"/g);
+      const artists = [...artistMatches].map((m) => m[1]);
       let difficulty: string | undefined;
       if (weightMatch) {
         const w = parseFloat(weightMatch[1]);
@@ -556,6 +572,8 @@ async function fetchBGGXMLData(bggId: string): Promise<{
         difficulty,
         mechanics: mechanics.length > 0 ? mechanics : undefined,
         publisher: publisherMatch?.[1],
+        designers: designers.length > 0 ? designers : undefined,
+        artists: artists.length > 0 ? artists : undefined,
         is_expansion: isExpansion,
         bgg_average_rating,
       };
@@ -2532,6 +2550,23 @@ export default async function handler(req: Request): Promise<Response> {
                     );
                   }
                 }
+
+                // Link designers on update
+                if (gameData.designers && gameData.designers.length > 0) {
+                  for (const designerName of gameData.designers) {
+                    const { data: ex } = await supabaseAdmin.from("designers").select("id").eq("name", designerName).maybeSingle();
+                    const did = ex?.id || (await supabaseAdmin.from("designers").upsert({ name: designerName }, { onConflict: "name" }).select("id").single()).data?.id;
+                    if (did) await supabaseAdmin.from("game_designers").upsert({ game_id: existing.id, designer_id: did }, { onConflict: "game_id,designer_id" });
+                  }
+                }
+                // Link artists on update
+                if (gameData.artists && gameData.artists.length > 0) {
+                  for (const artistName of gameData.artists) {
+                    const { data: ex } = await supabaseAdmin.from("artists").select("id").eq("name", artistName).maybeSingle();
+                    const aid = ex?.id || (await supabaseAdmin.from("artists").upsert({ name: artistName }, { onConflict: "name" }).select("id").single()).data?.id;
+                    if (aid) await supabaseAdmin.from("game_artists").upsert({ game_id: existing.id, artist_id: aid }, { onConflict: "game_id,artist_id" });
+                  }
+                }
               }
 
               if (Object.keys(patch).length > 0) {
@@ -2713,6 +2748,28 @@ export default async function handler(req: Request): Promise<Response> {
               await supabaseAdmin.from("game_mechanics").insert(
                 mechanicIds.map(mid => ({ game_id: newGame.id, mechanic_id: mid }))
               );
+            }
+
+            // Link designers
+            if (gameData.designers && gameData.designers.length > 0) {
+              for (const designerName of gameData.designers) {
+                const { data: existing } = await supabaseAdmin.from("designers").select("id").eq("name", designerName).maybeSingle();
+                const designerId = existing?.id || (await supabaseAdmin.from("designers").upsert({ name: designerName }, { onConflict: "name" }).select("id").single()).data?.id;
+                if (designerId) {
+                  await supabaseAdmin.from("game_designers").upsert({ game_id: newGame.id, designer_id: designerId }, { onConflict: "game_id,designer_id" });
+                }
+              }
+            }
+
+            // Link artists
+            if (gameData.artists && gameData.artists.length > 0) {
+              for (const artistName of gameData.artists) {
+                const { data: existing } = await supabaseAdmin.from("artists").select("id").eq("name", artistName).maybeSingle();
+                const artistId = existing?.id || (await supabaseAdmin.from("artists").upsert({ name: artistName }, { onConflict: "name" }).select("id").single()).data?.id;
+                if (artistId) {
+                  await supabaseAdmin.from("game_artists").upsert({ game_id: newGame.id, artist_id: artistId }, { onConflict: "game_id,artist_id" });
+                }
+              }
             }
 
             // Create admin data if purchase info exists (from BGG CSV acquisitiondate/pricepaid fields)
