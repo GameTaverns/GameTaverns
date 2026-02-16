@@ -143,3 +143,6 @@ verify_jwt = false
 
 [functions.catalog-backfill]
 verify_jwt = false
+
+[functions.server-command]
+verify_jwt = false
