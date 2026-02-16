@@ -31,12 +31,26 @@ function parseBggXml(xml: string) {
   const descMatch = xml.match(/<description[^>]*>([\s\S]*?)<\/description>/i);
   const description = descMatch?.[1] ? decodeHtmlEntities(descMatch[1]).trim().slice(0, 5000) : undefined;
 
+  // Extract BGG community average rating (10-point scale)
+  const ratingMatch = xml.match(/<average\s+value="([^"]+)"/);
+  const bggRating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
+  const bggCommunityRating = bggRating && !isNaN(bggRating) && bggRating > 0
+    ? Math.round(bggRating * 10) / 10  // Keep original 10-point scale with 1 decimal
+    : null;
+
+  // Extract weight
+  const weightMatch = xml.match(/<averageweight\s+value="([^"]+)"/);
+  const weight = weightMatch ? parseFloat(weightMatch[1]) : null;
+  const parsedWeight = weight && !isNaN(weight) && weight > 0 ? Math.round(weight * 100) / 100 : null;
+
   return {
     mechanics,
     publisher: publisherMatch?.[1] ? decodeHtmlEntities(publisherMatch[1]) : undefined,
     designers,
     artists,
     description,
+    bggCommunityRating,
+    weight: parsedWeight,
   };
 }
 
@@ -167,8 +181,12 @@ const handler = async (req: Request): Promise<Response> => {
           console.log("[catalog-backfill]", entry.title, "existing designers:", dCount, "artists:", aCount);
 
           if ((dCount || 0) > 0 && (aCount || 0) > 0) {
-            skipped++;
-            continue;
+            // Check if also has rating — if so, fully enriched
+            const hasCatalogRating = await admin.from("game_catalog").select("bgg_community_rating").eq("id", entry.id).single();
+            if (hasCatalogRating.data?.bgg_community_rating && hasCatalogRating.data.bgg_community_rating > 0) {
+              skipped++;
+              continue;
+            }
           }
 
           // Fetch BGG XML with retry
@@ -227,7 +245,16 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           const parsed = parseBggXml(xml);
-          console.log("[catalog-backfill]", entry.title, "=> designers:", parsed.designers.length, "artists:", parsed.artists.length);
+          console.log("[catalog-backfill]", entry.title, "=> designers:", parsed.designers.length, "artists:", parsed.artists.length, "rating:", parsed.bggCommunityRating, "weight:", parsed.weight);
+
+          // Update catalog entry with BGG community rating and weight if available
+          const catalogUpdate: Record<string, unknown> = {};
+          if (parsed.bggCommunityRating !== null) catalogUpdate.bgg_community_rating = parsed.bggCommunityRating;
+          if (parsed.weight !== null) catalogUpdate.weight = parsed.weight;
+          if (parsed.description) catalogUpdate.description = parsed.description;
+          if (Object.keys(catalogUpdate).length > 0) {
+            await admin.from("game_catalog").update(catalogUpdate).eq("id", entry.id);
+          }
 
           // Upsert designers
           const designerIds = await upsertDesignersByName(admin, parsed.designers);
@@ -282,6 +309,79 @@ const handler = async (req: Request): Promise<Response> => {
         success: true, mode: "enrich", processed, skipped, designersAdded, artistsAdded,
         total: catalogEntries.length, offset, nextOffset: offset + batchSize,
         hasMore, errors: errors.slice(0, 20),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
+    // MODE: sync-ratings — Aggregate user ratings from libraries into catalog
+    // =====================================================================
+    if (mode === "sync-ratings") {
+      // Get catalog entries with linked games, in batches
+      const { data: catalogEntries, error: catErr } = await admin
+        .from("game_catalog")
+        .select("id")
+        .order("title")
+        .range(offset, offset + batchSize - 1);
+
+      if (catErr) {
+        return new Response(JSON.stringify({ error: catErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!catalogEntries || catalogEntries.length === 0) {
+        return new Response(JSON.stringify({
+          success: true, processed: 0, ratingsUpdated: 0, message: "No more entries", hasMore: false,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      let ratingsUpdated = 0;
+      let processed = 0;
+
+      for (const entry of catalogEntries) {
+        // Find all games linked to this catalog entry
+        const { data: linkedGames } = await admin.from("games").select("id").eq("catalog_id", entry.id);
+        if (!linkedGames || linkedGames.length === 0) continue;
+
+        const gameIds = linkedGames.map(g => g.id);
+        // Get all non-bgg-community ratings for these games
+        const { data: ratings } = await admin
+          .from("game_ratings")
+          .select("rating")
+          .in("game_id", gameIds)
+          .neq("guest_identifier", "bgg-community");
+
+        if (ratings && ratings.length > 0) {
+          const avg = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+          // Store as community_rating (separate from bgg_community_rating which comes from BGG)
+          // For now, we don't have a separate column, so we'll skip if bgg_community_rating already exists
+        }
+
+        // Also check if bgg_community_rating is missing but we have bgg-community entries in game_ratings
+        const { data: bggRatings } = await admin
+          .from("game_ratings")
+          .select("rating")
+          .in("game_id", gameIds)
+          .eq("guest_identifier", "bgg-community")
+          .limit(1);
+
+        if (bggRatings && bggRatings.length > 0) {
+          // Convert 5-star back to 10-point for catalog display
+          const bgg10 = bggRatings[0].rating * 2;
+          const { data: current } = await admin.from("game_catalog").select("bgg_community_rating").eq("id", entry.id).single();
+          if (!current?.bgg_community_rating || current.bgg_community_rating <= 0) {
+            await admin.from("game_catalog").update({ bgg_community_rating: bgg10 }).eq("id", entry.id);
+            ratingsUpdated++;
+          }
+        }
+
+        processed++;
+      }
+
+      const hasMore = catalogEntries.length === batchSize;
+      return new Response(JSON.stringify({
+        success: true, mode: "sync-ratings", processed, ratingsUpdated,
+        offset, nextOffset: offset + batchSize, hasMore,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
