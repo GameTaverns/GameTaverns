@@ -73,13 +73,14 @@ else
     # Discard ALL local changes to prevent merge conflicts
     echo "Resetting local changes..."
     git reset --hard HEAD
-    git fetch --all
+    git fetch --all --prune
     
-    # Force sync to remote (main or master)
-    BRANCH=$(git remote show origin | grep 'HEAD branch' | awk '{print $NF}')
+    # Determine remote branch (avoid slow network call to 'git remote show')
+    BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
     BRANCH=${BRANCH:-main}
     echo "Syncing to origin/$BRANCH..."
     git reset --hard origin/$BRANCH
+    echo "Now at: $(git log --oneline -1)"
 fi
 
 # Pause any active import jobs so they aren't killed mid-processing
