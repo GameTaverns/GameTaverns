@@ -8,7 +8,8 @@ import {
   Lock,
   MessageCircle,
   Plus,
-  Eye
+  Eye,
+  Shield
 } from "lucide-react";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { Layout } from "@/components/layout/Layout";
@@ -29,6 +30,8 @@ import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { CreateThreadDialog } from "@/components/community/CreateThreadDialog";
 import { InlineForumManagement } from "@/components/community/InlineForumManagement";
 import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
+import { useMyClubs } from "@/hooks/useClubs";
+import { useClubCategories, type ForumCategory as ClubForumCategory } from "@/hooks/useForum";
 
 const ICON_MAP = FORUM_ICON_MAP;
 const COLOR_MAP: Record<string, string> = FORUM_COLOR_MAP;
@@ -307,9 +310,96 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
   );
 }
 
+function ClubForumSection({ clubId, clubName, clubSlug }: { clubId: string; clubName: string; clubSlug: string }) {
+  const { data: categories = [], isLoading } = useClubCategories(clubId);
+
+  if (isLoading) {
+    return <Skeleton className="h-40 w-full" />;
+  }
+
+  if (categories.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Shield className="h-4 w-4 text-muted-foreground" />
+        <Link to={`/club/${clubSlug}`} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          {clubName}
+        </Link>
+      </div>
+      {categories.map((category) => (
+        <ClubCategorySection key={category.id} category={category} clubSlug={clubSlug} />
+      ))}
+    </div>
+  );
+}
+
+/** SMF-style section for club categories on the community page */
+function ClubCategorySection({ category, clubSlug }: { category: ClubForumCategory; clubSlug: string }) {
+  const Icon = ICON_MAP[category.icon] || MessageSquare;
+  const headerColor = HEADER_COLOR_MAP[category.color] || HEADER_COLOR_MAP.blue;
+  const hasChildren = category.children && category.children.length > 0;
+
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <div className={`flex items-center gap-3 px-4 py-2.5 border-b border-border ${headerColor} bg-opacity-60`}>
+        <div className="p-1.5 rounded border border-current/20">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display font-bold text-sm uppercase tracking-wide">
+            {category.name}
+          </h3>
+          {category.description && (
+            <p className="text-xs opacity-80 mt-0.5">{category.description}</p>
+          )}
+        </div>
+      </div>
+
+      {hasChildren ? (
+        <div className="bg-card">
+          {category.children!.map((sub) => (
+            <Link
+              key={sub.id}
+              to={`/club/${clubSlug}/forum/${sub.slug}`}
+              className="flex items-center gap-4 px-4 py-3 hover:bg-accent/40 transition-colors border-b border-border/50 last:border-b-0 group"
+            >
+              <div className="flex-shrink-0">
+                {(() => {
+                  const SubIcon = ICON_MAP[sub.icon] || MessageSquare;
+                  const subColor = COLOR_MAP[sub.color] || "text-blue-500";
+                  return <SubIcon className={`h-5 w-5 ${subColor}`} />;
+                })()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm group-hover:text-primary transition-colors">
+                  {sub.name}
+                </p>
+                {sub.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                    {sub.description}
+                  </p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <Link
+          to={`/club/${clubSlug}/forum/${category.slug}`}
+          className="block px-4 py-3 bg-card hover:bg-accent/40 transition-colors text-sm text-muted-foreground"
+        >
+          Browse threads →
+        </Link>
+      )}
+    </div>
+  );
+}
+
 function ForumHome() {
   const { library, isTenantMode, isOwner } = useTenant();
   const { isAdmin } = useAuth();
+  const { data: myClubs = [] } = useMyClubs();
   
   const { data: siteCategories = [], isLoading: siteCategoriesLoading } = useSiteWideCategories();
   const { data: libraryCategories = [], isLoading: libraryCategoriesLoading } = useLibraryCategories(library?.id);
@@ -324,6 +414,9 @@ function ForumHome() {
 
   // Show manage button for site admins (site-wide) or library owners (library forums)
   const canManage = isTenantMode ? isOwner : isAdmin;
+
+  // Filter to approved/active clubs
+  const activeClubs = myClubs.filter((c) => c.status === "approved" && c.is_active);
 
   return (
     <div className="space-y-6">
@@ -369,6 +462,18 @@ function ForumHome() {
         <div className="space-y-4">
           {categories.map((category) => (
             <CategorySection key={category.id} category={category} />
+          ))}
+        </div>
+      )}
+
+      {/* Club Forums */}
+      {activeClubs.length > 0 && (
+        <div className="space-y-6">
+          <div className="border-t border-border pt-6">
+            <h2 className="text-xl font-bold font-display mb-4">Club Forums</h2>
+          </div>
+          {activeClubs.map((club) => (
+            <ClubForumSection key={club.id} clubId={club.id} clubName={club.name} clubSlug={club.slug} />
           ))}
         </div>
       )}
