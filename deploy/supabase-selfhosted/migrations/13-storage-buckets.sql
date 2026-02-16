@@ -120,6 +120,10 @@ BEGIN
     USING (
         bucket_id = 'library-logos'
         AND public.has_role(auth.uid(), 'admin')
+    )
+    WITH CHECK (
+        bucket_id = 'library-logos'
+        AND public.has_role(auth.uid(), 'admin')
     );
 
     RAISE NOTICE 'Storage policies created successfully';
