@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Clock, Weight, BookOpen, ExternalLink, ChevronDown, ChevronUp, ArrowLeft, Palette, PenTool } from "lucide-react";
+import { Search, Users, Clock, Weight, BookOpen, ExternalLink, ChevronDown, ChevronUp, ArrowLeft, Palette, PenTool, Filter } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
+import { CatalogSidebar } from "@/components/catalog/CatalogSidebar";
 
 interface CatalogGame {
   id: string;
@@ -218,7 +219,7 @@ export default function CatalogBrowse() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-6">
           <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-4 w-4" />
@@ -231,6 +232,15 @@ export default function CatalogBrowse() {
             Browse {catalogGames.length} games across the platform
           </p>
         </div>
+
+        <div className="flex gap-6">
+          {/* Sidebar */}
+          <aside className="hidden lg:block w-56 shrink-0">
+            <CatalogSidebar designers={allDesigners} artists={allArtists} />
+          </aside>
+
+          {/* Main content */}
+          <div className="flex-1 min-w-0">
 
         {/* Active filter indicator */}
         {sidebarFilter && sidebarValue && (
@@ -440,6 +450,8 @@ export default function CatalogBrowse() {
             <p className="text-muted-foreground">Try adjusting your search or filters</p>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </Layout>
   );
