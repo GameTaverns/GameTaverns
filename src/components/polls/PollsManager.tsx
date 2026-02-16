@@ -48,11 +48,11 @@ export function PollsManager({ libraryId }: PollsManagerProps) {
       </div>
 
       <Tabs defaultValue="all" className="w-full">
-        <TabsList>
-          <TabsTrigger value="all">All ({polls?.length || 0})</TabsTrigger>
-          <TabsTrigger value="open">Open ({openPolls.length})</TabsTrigger>
-          <TabsTrigger value="quick">Quick Votes ({quickPolls.length})</TabsTrigger>
-          <TabsTrigger value="game_night">Game Nights ({gameNights.length})</TabsTrigger>
+        <TabsList className="h-auto flex-wrap gap-0.5 p-0.5">
+          <TabsTrigger value="all" className="text-[11px] h-6 px-2">All ({polls?.length || 0})</TabsTrigger>
+          <TabsTrigger value="open" className="text-[11px] h-6 px-2">Open ({openPolls.length})</TabsTrigger>
+          <TabsTrigger value="quick" className="text-[11px] h-6 px-2">Quick ({quickPolls.length})</TabsTrigger>
+          <TabsTrigger value="game_night" className="text-[11px] h-6 px-2">Nights ({gameNights.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-6">
