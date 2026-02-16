@@ -195,6 +195,8 @@ MIGRATION_FILES=(
     "61-forum-categories-definitive.sql"
     "61-dashboard-layouts.sql"
     "62-server-commands.sql"
+    "61-catalog-scraper.sql"
+    "63-backfill-catalog-junctions.sql"
 )
 
 # -- Backfill: if this is an existing installation (core tables exist),
