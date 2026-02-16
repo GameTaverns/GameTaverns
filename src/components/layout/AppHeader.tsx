@@ -6,6 +6,8 @@ import {
   HelpCircle,
   ChevronDown,
   Mail,
+  Menu,
+  X,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -25,7 +27,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function AppHeader() {
+interface AppHeaderProps {
+  onMenuClick?: () => void;
+  showMenuToggle?: boolean;
+}
+
+export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProps) {
   const { user, signOut, isAuthenticated } = useAuth();
   const { tenantSlug } = useTenant();
   const { data: defaultLibrary } = useMyLibrary();
@@ -69,7 +76,19 @@ export function AppHeader() {
     <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm sticky top-0 z-30">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          {LogoLink}
+          <div className="flex items-center gap-2">
+            {showMenuToggle && onMenuClick && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
+                onClick={onMenuClick}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
+            {LogoLink}
+          </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
             {isAuthenticated && (
