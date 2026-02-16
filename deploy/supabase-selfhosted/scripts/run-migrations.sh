@@ -217,8 +217,11 @@ if [ "$CORE_EXISTS" = "1" ]; then
         fi
     done
     BACKFILL_SQL+=" ON CONFLICT DO NOTHING;"
-    db_cmd "$BACKFILL_SQL" > /dev/null 2>&1
-    echo -e "${GREEN}✓ Baseline migrations ensured${NC}"
+    if db_cmd "$BACKFILL_SQL" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Baseline migrations ensured${NC}"
+    else
+        echo -e "${YELLOW}⚠ Baseline backfill had warnings (continuing anyway)${NC}"
+    fi
 fi
 
 # -- Also fix existing installs where ALL migrations were incorrectly backfilled.
@@ -228,7 +231,7 @@ if [ "$DESIGNERS_EXISTS" != "1" ]; then
     DESIGNERS_MARKED=$(db_query "SELECT 1 FROM public.schema_migrations WHERE name='21-designers-artists.sql';")
     if [ "$DESIGNERS_MARKED" = "1" ]; then
         echo -e "${YELLOW}⚠ Fixing incorrectly backfilled migration: 21-designers-artists.sql${NC}"
-        db_cmd "DELETE FROM public.schema_migrations WHERE name='21-designers-artists.sql';" > /dev/null 2>&1
+        db_cmd "DELETE FROM public.schema_migrations WHERE name='21-designers-artists.sql';" > /dev/null 2>&1 || true
     fi
 fi
 
