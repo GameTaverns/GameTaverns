@@ -159,7 +159,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-cream">Loading...</div>
       </div>
     );
@@ -179,7 +179,7 @@ export default function Dashboard() {
   const btnOutline = "border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-7 gap-1.5";
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
+    <div className="min-h-screen overflow-x-hidden bg-background">
       <AnnouncementBanner />
       <div className="container mx-auto px-4 pt-3">
         <TwoFactorBanner />

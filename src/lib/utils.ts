@@ -7,6 +7,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Decode HTML entities in strings (e.g., from BGG scraping).
+ * Handles &amp;quot; &amp;amp; &amp;#039; &amp;lt; &amp;gt; etc.
+ */
+let _decodeEl: HTMLTextAreaElement | null = null;
+export function decodeHtmlEntities(str: string): string {
+  if (!str || (!str.includes("&") && !str.includes("&#"))) return str;
+  if (!_decodeEl) _decodeEl = document.createElement("textarea");
+  _decodeEl.innerHTML = str;
+  return _decodeEl.value;
+}
+
+/**
  * Clean and normalize BGG image URLs.
  * BGG CDN often has encoded parentheses that need to be normalized.
  * 

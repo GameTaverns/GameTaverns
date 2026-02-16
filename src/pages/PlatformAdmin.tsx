@@ -76,7 +76,7 @@ export default function PlatformAdmin() {
   
   if (authLoading || roleLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-cream">Loading...</div>
       </div>
     );
@@ -87,7 +87,7 @@ export default function PlatformAdmin() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
+    <div className="min-h-screen bg-background">
       <AnnouncementBanner />
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">

@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, Clock, Weight, BookOpen, PenTool, Plus, Loader2 } from "lucide-react";
+import { decodeHtmlEntities } from "@/lib/utils";
 
 export interface CatalogGameItem {
   id: string;
@@ -36,14 +37,14 @@ export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, o
           <Link to={`/catalog/${game.slug || game.id}`} className="block">
             <Card className="overflow-hidden card-hover cursor-pointer h-full">
               {game.image_url ? (
-                <img src={game.image_url} alt={game.title} className="w-full h-40 object-cover" loading="lazy" />
+                <img src={game.image_url} alt={decodeHtmlEntities(game.title)} className="w-full h-40 object-cover" loading="lazy" />
               ) : (
                 <div className="w-full h-40 bg-muted flex items-center justify-center">
                   <BookOpen className="h-8 w-8 text-muted-foreground" />
                 </div>
               )}
               <CardContent className="pt-3 space-y-2">
-                <h3 className="font-display font-semibold text-sm truncate group-hover:text-primary transition-colors">{game.title}</h3>
+                <h3 className="font-display font-semibold text-sm truncate group-hover:text-primary transition-colors">{decodeHtmlEntities(game.title)}</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {game.min_players != null && game.max_players != null && (
                     <Badge variant="outline" className="text-[10px]"><Users className="h-3 w-3 mr-0.5" />{game.min_players}–{game.max_players}</Badge>

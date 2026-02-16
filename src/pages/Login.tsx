@@ -269,7 +269,7 @@ const Login = () => {
   // Show 2FA verification screen
   if (requires2FA && pendingAccessToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center p-4">
         <TotpVerify 
           accessToken={pendingAccessToken}
           onSuccess={handle2FASuccess}

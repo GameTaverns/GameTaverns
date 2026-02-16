@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, Clock, Weight, Plus, Loader2, BookOpen } from "lucide-react";
 import type { CatalogGameItem } from "./CatalogGameGrid";
+import { decodeHtmlEntities } from "@/lib/utils";
 
 interface CatalogGameListProps {
   games: CatalogGameItem[];
@@ -41,7 +42,7 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{game.title}</p>
+              <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{decodeHtmlEntities(game.title)}</p>
               <p className="text-[10px] text-muted-foreground truncate">
                 {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
                 {game.year_published ? ` · ${game.year_published}` : ""}
