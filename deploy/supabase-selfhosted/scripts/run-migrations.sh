@@ -123,7 +123,10 @@ else
     exit 1
 fi
 
-MIGRATION_FILES=(
+# -- Baseline migrations: these existed BEFORE the tracker was introduced.
+#    On first backfill, ONLY these get marked as already applied.
+#    Anything after this list will be checked/run normally.
+BASELINE_MIGRATIONS=(
     "01-extensions.sql"
     "02-enums.sql"
     "03-core-tables.sql"
@@ -144,6 +147,11 @@ MIGRATION_FILES=(
     "19-library-settings-insert-policy.sql"
     "20-featured-achievement.sql"
     "21-fix-libraries-recursion.sql"
+)
+
+# Full ordered list of all migrations
+MIGRATION_FILES=(
+    "${BASELINE_MIGRATIONS[@]}"
     "21-designers-artists.sql"
     "22-forum-tables.sql"
     "23-notifications-realtime.sql"
@@ -186,22 +194,22 @@ MIGRATION_FILES=(
     "60-import-pause-resume.sql"
     "61-forum-categories-definitive.sql"
     "61-dashboard-layouts.sql"
+    "62-server-commands.sql"
 )
 
 # -- Backfill: if this is an existing installation (core tables exist) but
-#    schema_migrations is empty, mark all known migrations as already applied
-#    so they are skipped instead of re-run.
+#    schema_migrations is empty, mark only BASELINE migrations as already applied.
+#    Newer migrations (post-tracker) will be checked and run normally.
 TRACKER_COUNT=$(db_query "SELECT count(*) FROM public.schema_migrations;")
-# Default to 0 if empty
 TRACKER_COUNT=${TRACKER_COUNT:-0}
 
 CORE_EXISTS=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='libraries';")
 
 if [ "$TRACKER_COUNT" = "0" ] && [ "$CORE_EXISTS" = "1" ]; then
-    echo -e "${BLUE}Existing installation detected — backfilling migration tracker...${NC}"
+    echo -e "${BLUE}Existing installation detected — backfilling baseline migrations...${NC}"
     BACKFILL_SQL="INSERT INTO public.schema_migrations (name) VALUES "
     FIRST=true
-    for mig in "${MIGRATION_FILES[@]}"; do
+    for mig in "${BASELINE_MIGRATIONS[@]}"; do
         if [ "$FIRST" = true ]; then
             BACKFILL_SQL+="('$mig')"
             FIRST=false
@@ -211,7 +219,19 @@ if [ "$TRACKER_COUNT" = "0" ] && [ "$CORE_EXISTS" = "1" ]; then
     done
     BACKFILL_SQL+=" ON CONFLICT DO NOTHING;"
     db_cmd "$BACKFILL_SQL" > /dev/null 2>&1
-    echo -e "${GREEN}✓ Marked ${#MIGRATION_FILES[@]} migrations as already applied${NC}"
+    echo -e "${GREEN}✓ Marked ${#BASELINE_MIGRATIONS[@]} baseline migrations as applied${NC}"
+    echo -e "${BLUE}  Post-baseline migrations will be checked and run as needed.${NC}"
+fi
+
+# -- Also fix existing installs where ALL migrations were incorrectly backfilled.
+#    If designers table doesn't exist but 21-designers-artists.sql is marked applied, remove it.
+DESIGNERS_EXISTS=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='designers';")
+if [ "$DESIGNERS_EXISTS" != "1" ]; then
+    DESIGNERS_MARKED=$(db_query "SELECT 1 FROM public.schema_migrations WHERE name='21-designers-artists.sql';")
+    if [ "$DESIGNERS_MARKED" = "1" ]; then
+        echo -e "${YELLOW}⚠ Fixing incorrectly backfilled migration: 21-designers-artists.sql${NC}"
+        db_cmd "DELETE FROM public.schema_migrations WHERE name='21-designers-artists.sql';" > /dev/null 2>&1
+    fi
 fi
 
 SUCCESS_COUNT=0
