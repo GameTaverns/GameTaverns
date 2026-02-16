@@ -339,6 +339,21 @@ export function SystemHealth() {
       if (!session) throw new Error("Not authenticated");
       const { url: supabaseUrl, anonKey } = getSupabaseConfig();
       const url = `${supabaseUrl}/functions/v1/catalog-backfill`;
+      // Test mode: single request, no loop
+      if (mode === "test") {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: anonKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ mode: "test" }),
+        });
+        const data = await r.json();
+        return { mode: "test", ...data };
+      }
+
       const batchSize = mode === "sync-ratings" ? 50 : 5;
       let offset = 0;
       let totalProcessed = 0;
@@ -387,13 +402,19 @@ export function SystemHealth() {
       return { mode, processed: totalProcessed, designersAdded: totalDesigners, artistsAdded: totalArtists, linked: totalLinked, ratingsUpdated: totalRatingsUpdated, errors: allErrors };
     },
     onSuccess: (data) => {
+      if (data.mode === "test") {
+        toast.success("BGG test complete — check console for details");
+        console.log("[catalog-backfill test]", data);
+        return;
+      }
       if (data.mode === "sync-ratings") {
         toast.success(`Rating sync complete: ${data.processed} checked, ${data.ratingsUpdated} ratings updated`);
       } else {
         toast.success(`Backfill complete: ${data.processed} processed, ${data.designersAdded} designers, ${data.artistsAdded} artists, ${data.linked} linked`);
       }
       if (data.errors?.length) {
-        toast.warning(`Backfill warnings (${data.errors.length}): ${data.errors.slice(0, 3).join(" | ")}`);
+        console.warn("[catalog-backfill errors]", data.errors);
+        toast.warning(`Backfill warnings (${data.errors.length}): ${data.errors.slice(0, 5).join(" | ")}`, { duration: 15000 });
       }
     },
     onError: (e: Error) => toast.error(`Backfill failed: ${e.message}`),
@@ -661,6 +682,31 @@ export function SystemHealth() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
+            <div className="flex items-center gap-3">
+              <Zap className="h-5 w-5 text-secondary" />
+              <div>
+                <div className="text-sm text-cream font-medium">Test BGG Connection</div>
+                <div className="text-xs text-cream/50">
+                  Tests a single BGG API fetch to diagnose connectivity issues. Check browser console for full results.
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs shrink-0"
+              onClick={() => backfillMutation.mutate("test")}
+              disabled={backfillMutation.isPending}
+            >
+              {backfillMutation.isPending ? (
+                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Testing...</>
+              ) : (
+                <><Zap className="h-3.5 w-3.5 mr-1" /> Test</>
+              )}
+            </Button>
+          </div>
+
           <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
             <div className="flex items-center gap-3">
               <Palette className="h-5 w-5 text-secondary" />
