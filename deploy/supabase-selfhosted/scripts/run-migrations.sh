@@ -126,7 +126,7 @@ fi
 
 # Full ordered list of all migrations (no baseline backfill - the loop handles "already exists" gracefully)
 MIGRATION_FILES=(
-    "01-extensions.sql"
+    # "01-extensions.sql"  -- SKIP: acquires exclusive locks that conflict with running services
     "02-enums.sql"
     "03-core-tables.sql"
     "04-games-tables.sql"
