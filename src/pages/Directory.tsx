@@ -21,6 +21,7 @@ import {
   Clock,
   BookOpen,
   ExternalLink,
+  ArrowLeft,
 } from "lucide-react";
 
 export default function Directory() {
@@ -156,6 +157,15 @@ export default function Directory() {
         
         {/* Header */}
         <div className="mb-8">
+          {user && (
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Dashboard
+            </Link>
+          )}
           <h1 className="font-display text-3xl font-bold text-foreground mb-2">
             Library Directory
           </h1>
