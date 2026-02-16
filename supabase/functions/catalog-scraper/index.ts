@@ -407,7 +407,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   // Update state
-  await admin.from("catalog_scraper_state").update({
+  const { error: updateErr } = await admin.from("catalog_scraper_state").update({
     next_bgg_id: currentId,
     total_processed: state.total_processed + (currentId - startBggId),
     total_added: state.total_added + totalAdded,
@@ -417,6 +417,10 @@ const handler = async (req: Request): Promise<Response> => {
     last_error: lastError,
     updated_at: new Date().toISOString(),
   }).eq("id", "default");
+
+  if (updateErr) {
+    console.error(`[catalog-scraper] FAILED to update state:`, updateErr);
+  }
 
   const result = {
     success: true,
