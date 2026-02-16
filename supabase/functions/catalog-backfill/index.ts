@@ -139,6 +139,45 @@ const handler = async (req: Request): Promise<Response> => {
     // =====================================================================
     // MODE: enrich — Re-fetch BGG XML for catalog entries to add designers/artists
     // =====================================================================
+    // MODE: test — single BGG fetch diagnostic
+    if (mode === "test") {
+      const testBggId = body.bgg_id || "174430"; // default: Gloomhaven
+      const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${testBggId}&stats=1`;
+      console.log("[catalog-backfill] TEST mode, fetching:", xmlUrl);
+      try {
+        const res = await fetch(xmlUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; GameTaverns/1.0)",
+            Accept: "application/xml",
+          },
+        });
+        const status = res.status;
+        const text = await res.text();
+        const hasItem = text.includes("<item");
+        let parsed = null;
+        if (hasItem) parsed = parseBggXml(text);
+        return new Response(JSON.stringify({
+          success: true, mode: "test", bgg_id: testBggId,
+          http_status: status, response_length: text.length,
+          has_item_data: hasItem,
+          parsed_preview: parsed ? {
+            designers: parsed.designers.length,
+            artists: parsed.artists.length,
+            rating: parsed.bggCommunityRating,
+            weight: parsed.weight,
+            description_length: parsed.description?.length || 0,
+          } : null,
+          raw_preview: text.slice(0, 500),
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({
+          success: false, mode: "test", bgg_id: testBggId,
+          error: e instanceof Error ? e.message : String(e),
+          error_type: e instanceof Error ? e.constructor.name : typeof e,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     if (mode === "enrich") {
       const { data: catalogEntries, error: catErr } = await admin
         .from("game_catalog")
