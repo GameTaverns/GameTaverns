@@ -375,6 +375,13 @@ export function SystemHealth() {
           body: JSON.stringify({ mode, batch_size: batchSize, offset }),
         });
         if (!r.ok) {
+          // On timeout/520, stop looping but return partial results instead of throwing
+          if (r.status >= 500) {
+            console.warn(`[catalog-backfill] Server error ${r.status} at offset ${offset}, returning partial results`);
+            allErrors.push(`Server ${r.status} at offset ${offset} — restart backfill to continue from here`);
+            hasMore = false;
+            break;
+          }
           const err = await r.json().catch(() => ({ error: r.statusText }));
           throw new Error(err.error || r.statusText);
         }
