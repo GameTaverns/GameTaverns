@@ -131,6 +131,7 @@ EXTERNAL_HANDLERS=(
   discord-notify discord-create-event discord-forum-post
   discord-delete-thread discord-oauth-callback discord-send-dm
   system-health
+  catalog-backfill
   resume-imports
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
