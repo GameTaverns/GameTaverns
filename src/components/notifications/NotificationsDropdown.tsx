@@ -106,7 +106,7 @@ function NotificationItem({
 
 interface NotificationsDropdownProps {
   variant?: "default" | "dashboard";
-  /** Pass unread message count to combine with notification count */
+  /** @deprecated Messages now have their own header icon */
   unreadMessageCount?: number;
 }
 

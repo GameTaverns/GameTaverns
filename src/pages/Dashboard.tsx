@@ -26,6 +26,7 @@ import {
   Calendar,
   Shuffle,
   BookX,
+  HelpCircle,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -168,9 +169,58 @@ export default function Dashboard() {
               </span>
             </Link>
 
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Header nav links */}
+              <Link
+                to="/docs"
+                className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                <span>Help</span>
+              </Link>
+              <Link
+                to="/directory"
+                className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                <span>Directory</span>
+              </Link>
+              {library && (
+                <a
+                  href={libraryUrl!}
+                  className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                >
+                  <Library className="h-3.5 w-3.5" />
+                  <span>My Library</span>
+                </a>
+              )}
+
+              <div className="h-4 w-px bg-wood-medium/40 hidden sm:block" />
+
               <ThemeToggle />
-              <NotificationsDropdown variant="dashboard" unreadMessageCount={unreadCount} />
+              {/* Messages icon */}
+              {library && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
+                  onClick={() => {
+                    const url = getLibraryUrl(library.slug, "/messages");
+                    if (url) window.location.href = url;
+                  }}
+                >
+                  <Mail className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              )}
+              <NotificationsDropdown variant="dashboard" />
               <span className="text-cream/80 hidden md:inline text-xs">
                 {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email}
               </span>
@@ -183,49 +233,6 @@ export default function Dashboard() {
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
-          </div>
-
-          {/* Compact nav links */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar">
-            <Link
-              to="/directory"
-              className="flex items-center gap-1 px-2 py-1 bg-secondary/20 hover:bg-secondary/30 rounded text-cream transition-colors text-xs whitespace-nowrap"
-            >
-              <Globe className="h-3 w-3" />
-              <span>Directory</span>
-            </Link>
-            {library && (
-              <a
-                href={libraryUrl!}
-                className="flex items-center gap-1 px-2 py-1 bg-secondary/20 hover:bg-secondary/30 rounded text-cream transition-colors text-xs whitespace-nowrap"
-              >
-                <Library className="h-3 w-3" />
-                <span>My Library</span>
-              </a>
-            )}
-            <Link
-              to="/picker"
-              className="flex items-center gap-1 px-2 py-1 bg-secondary/20 hover:bg-secondary/30 rounded text-cream transition-colors text-xs whitespace-nowrap"
-            >
-              <Shuffle className="h-3 w-3" />
-              <span>Picker</span>
-            </Link>
-            <Link
-              to="/docs"
-              className="flex items-center gap-1 px-2 py-1 bg-secondary/20 hover:bg-secondary/30 rounded text-cream transition-colors text-xs whitespace-nowrap"
-            >
-              <BookOpen className="h-3 w-3" />
-              <span>Guide</span>
-            </Link>
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className="flex items-center gap-1 px-2 py-1 bg-secondary/20 hover:bg-secondary/30 rounded text-cream transition-colors text-xs whitespace-nowrap"
-              >
-                <Shield className="h-3 w-3" />
-                <span>Admin</span>
-              </Link>
-            )}
           </div>
         </div>
       </header>
@@ -274,6 +281,15 @@ export default function Dashboard() {
               <AlertTriangle className="h-3.5 w-3.5" />
               Danger
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger
+                value="admin"
+                className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                Admin
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* ==================== LIBRARY TAB ==================== */}
@@ -792,6 +808,28 @@ export default function Dashboard() {
               <CardContent className="px-4 pb-4"><DangerZone /></CardContent>
             </Card>
           </TabsContent>
+
+          {/* ==================== ADMIN TAB (admin only) ==================== */}
+          {isAdmin && (
+            <TabsContent value="admin">
+              <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+                <CardHeader className="px-4 pt-4 pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Shield className="h-4 w-4 text-secondary" />
+                    Site Administration
+                  </CardTitle>
+                  <CardDescription className="text-cream/70 text-xs">Platform management tools</CardDescription>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <Link to="/admin">
+                    <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-8 gap-1.5">
+                      <Shield className="h-3.5 w-3.5" /> Open Admin Panel
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Create/Edit Event Dialog */}
