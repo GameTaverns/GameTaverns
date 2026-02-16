@@ -252,8 +252,8 @@ for migration in "${MIGRATION_FILES[@]}"; do
         echo -n "Running: $migration ... "
 
         # Sanity check: confirm file is mounted into the db container
-        if ! docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
-          exec -T db sh -lc "test -f /docker-entrypoint-initdb.d/$migration" 2>/dev/null; then
+        if ! timeout 10 docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+          exec -T db test -f "/docker-entrypoint-initdb.d/$migration" 2>/dev/null; then
             echo -e "${RED}✗ Error${NC}"
             echo "    Migration file is not visible inside db container: /docker-entrypoint-initdb.d/$migration"
             ERROR_COUNT=$((ERROR_COUNT + 1))
