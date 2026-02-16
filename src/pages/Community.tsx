@@ -31,7 +31,10 @@ import { CreateThreadDialog } from "@/components/community/CreateThreadDialog";
 import { InlineForumManagement } from "@/components/community/InlineForumManagement";
 import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
 import { useMyClubs } from "@/hooks/useClubs";
-import { useClubCategories, type ForumCategory as ClubForumCategory } from "@/hooks/useForum";
+import { useClubCategories, useLibrariesForumEnabled, type ForumCategory as ClubForumCategory } from "@/hooks/useForum";
+import { useMyMemberships } from "@/hooks/useLibraryMembership";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { Library as LibraryIcon } from "lucide-react";
 
 const ICON_MAP = FORUM_ICON_MAP;
 const COLOR_MAP: Record<string, string> = FORUM_COLOR_MAP;
@@ -396,11 +399,104 @@ function ClubCategorySection({ category, clubSlug }: { category: ClubForumCatego
   );
 }
 
+/** Library forum section for the platform community page */
+function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryId: string; libraryName: string; librarySlug: string }) {
+  const { data: categories = [], isLoading } = useLibraryCategories(libraryId);
+
+  if (isLoading) {
+    return <Skeleton className="h-40 w-full" />;
+  }
+
+  if (categories.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <LibraryIcon className="h-4 w-4 text-muted-foreground" />
+        <a href={getLibraryUrl(librarySlug, "/community")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          {libraryName}
+        </a>
+      </div>
+      {categories.map((category) => {
+        const Icon = ICON_MAP[category.icon] || MessageSquare;
+        const headerColor = HEADER_COLOR_MAP[category.color] || HEADER_COLOR_MAP.blue;
+        const hasChildren = category.children && category.children.length > 0;
+
+        return (
+          <div key={category.id} className="rounded-lg border border-border overflow-hidden">
+            <div className={`flex items-center gap-3 px-4 py-2.5 border-b border-border ${headerColor} bg-opacity-60`}>
+              <div className="p-1.5 rounded border border-current/20">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-display font-bold text-sm uppercase tracking-wide">
+                  {category.name}
+                </h3>
+                {category.description && (
+                  <p className="text-xs opacity-80 mt-0.5">{category.description}</p>
+                )}
+              </div>
+            </div>
+
+            {hasChildren ? (
+              <div className="bg-card">
+                {category.children!.map((sub) => {
+                  const SubIcon = ICON_MAP[sub.icon] || MessageSquare;
+                  const subColor = COLOR_MAP[sub.color] || "text-blue-500";
+                  return (
+                    <a
+                      key={sub.id}
+                      href={getLibraryUrl(librarySlug, `/community/${sub.slug}`)}
+                      className="flex items-center gap-4 px-4 py-3 hover:bg-accent/40 transition-colors border-b border-border/50 last:border-b-0 group"
+                    >
+                      <div className="flex-shrink-0">
+                        <SubIcon className={`h-5 w-5 ${subColor}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm group-hover:text-primary transition-colors">
+                          {sub.name}
+                        </p>
+                        {sub.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {sub.description}
+                          </p>
+                        )}
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            ) : (
+              <a
+                href={getLibraryUrl(librarySlug, `/community/${category.slug}`)}
+                className="block px-4 py-3 bg-card hover:bg-accent/40 transition-colors text-sm text-muted-foreground"
+              >
+                Browse threads →
+              </a>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ForumHome() {
   const { library, isTenantMode, isOwner } = useTenant();
   const { isAdmin } = useAuth();
   const { data: myClubs = [] } = useMyClubs();
   
+  const { data: memberships = [] } = useMyMemberships();
+  
+  const allLibraryIds = memberships
+    .filter(m => m.library)
+    .map(m => m.library!.id);
+  const { data: forumEnabledMap } = useLibrariesForumEnabled(allLibraryIds);
+  
+  const librariesWithForums = memberships.filter(m => 
+    m.library && forumEnabledMap?.get(m.library.id) === true
+  );
+
   const { data: siteCategories = [], isLoading: siteCategoriesLoading } = useSiteWideCategories();
   const { data: libraryCategories = [], isLoading: libraryCategoriesLoading } = useLibraryCategories(library?.id);
   
@@ -462,6 +558,23 @@ function ForumHome() {
         <div className="space-y-4">
           {categories.map((category) => (
             <CategorySection key={category.id} category={category} />
+          ))}
+        </div>
+      )}
+
+      {/* Library Forums */}
+      {!isTenantMode && librariesWithForums.length > 0 && (
+        <div className="space-y-6">
+          <div className="border-t border-border pt-6">
+            <h2 className="text-xl font-bold font-display mb-4">My Library Forums</h2>
+          </div>
+          {librariesWithForums.map((membership) => (
+            <LibraryForumSection
+              key={membership.library!.id}
+              libraryId={membership.library!.id}
+              libraryName={membership.library!.name}
+              librarySlug={membership.library!.slug}
+            />
           ))}
         </div>
       )}
