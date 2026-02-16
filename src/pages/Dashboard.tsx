@@ -83,9 +83,10 @@ import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
 import { PremiumRoadmap } from "@/components/admin/PremiumRoadmap";
 import { ServerManagement } from "@/components/admin/ServerManagement";
+import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 import { usePendingClubs } from "@/hooks/useClubs";
-import { Activity, Database, MessageCircle, HeartPulse, Crown, Terminal } from "lucide-react";
+import { Activity, Database, MessageCircle, HeartPulse, Crown, Terminal, BookMarked } from "lucide-react";
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -784,6 +785,9 @@ export default function Dashboard() {
                     <TabsTrigger value="server" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
                       <Terminal className="h-3 w-3" /> Server
                     </TabsTrigger>
+                    <TabsTrigger value="catalog" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <BookMarked className="h-3 w-3" /> Catalog
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="analytics"><PlatformAnalytics /></TabsContent>
@@ -795,6 +799,7 @@ export default function Dashboard() {
                   <TabsContent value="health"><SystemHealth /></TabsContent>
                   <TabsContent value="premium"><PremiumRoadmap /></TabsContent>
                   <TabsContent value="server"><ServerManagement /></TabsContent>
+                  <TabsContent value="catalog"><CatalogBrowseEmbed /></TabsContent>
                 </Tabs>
               </div>
             </TabsContent>

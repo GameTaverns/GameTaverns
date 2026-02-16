@@ -380,6 +380,9 @@ export function SystemHealth() {
     },
     onSuccess: (data) => {
       toast.success(`Backfill complete: ${data.processed} processed, ${data.designersAdded} designers, ${data.artistsAdded} artists, ${data.linked} linked`);
+      if (data.errors?.length) {
+        toast.warning(`Backfill warnings (${data.errors.length}): ${data.errors.slice(0, 3).join(" | ")}`);
+      }
     },
     onError: (e: Error) => toast.error(`Backfill failed: ${e.message}`),
   });

@@ -159,24 +159,58 @@ const handler = async (req: Request): Promise<Response> => {
             continue;
           }
 
-          // Fetch BGG XML
+          // Fetch BGG XML with retry
           const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${entry.bgg_id}&stats=1`;
-          const res = await fetch(xmlUrl, {
-            headers: { "User-Agent": "Mozilla/5.0 (compatible; GameTaverns/1.0)", Accept: "application/xml" },
-          });
+          let res: Response | null = null;
+          let fetchAttempts = 0;
+          const maxAttempts = 3;
+
+          while (fetchAttempts < maxAttempts) {
+            fetchAttempts++;
+            try {
+              res = await fetch(xmlUrl, {
+                headers: {
+                  "User-Agent": "Mozilla/5.0 (compatible; GameTaverns/1.0)",
+                  Accept: "application/xml",
+                },
+              });
+
+              if (res.status === 429) {
+                const waitMs = fetchAttempts * 2000; // 2s, 4s, 6s
+                errors.push(`${entry.title}: Rate limited (429), retry ${fetchAttempts}/${maxAttempts}, waiting ${waitMs}ms`);
+                await sleep(waitMs);
+                res = null;
+                continue;
+              }
+
+              if (res.status === 202) {
+                // BGG returns 202 when data is being prepared
+                errors.push(`${entry.title}: BGG returned 202 (queued), retry ${fetchAttempts}/${maxAttempts}`);
+                await sleep(3000);
+                res = null;
+                continue;
+              }
+
+              break; // Success or non-retryable error
+            } catch (fetchErr) {
+              errors.push(`${entry.title}: Fetch error attempt ${fetchAttempts}: ${fetchErr instanceof Error ? fetchErr.message : String(fetchErr)}`);
+              if (fetchAttempts < maxAttempts) await sleep(2000);
+            }
+          }
+
+          if (!res) {
+            errors.push(`${entry.title}: All ${maxAttempts} fetch attempts failed`);
+            continue;
+          }
 
           if (!res.ok) {
-            if (res.status === 429) {
-              errors.push(`${entry.title}: Rate limited (429)`);
-              break; // Stop batch on rate limit
-            }
             errors.push(`${entry.title}: HTTP ${res.status}`);
             continue;
           }
 
           const xml = await res.text();
           if (!xml.includes("<item")) {
-            errors.push(`${entry.title}: No item data in response`);
+            errors.push(`${entry.title}: No item data in response (${xml.length} chars)`);
             continue;
           }
 
@@ -222,8 +256,8 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           processed++;
-          // Brief rate-limit pause between BGG requests
-          await sleep(300);
+          // Rate-limit pause between BGG requests
+          await sleep(500);
         } catch (e) {
           errors.push(`${entry.title}: ${e instanceof Error ? e.message : String(e)}`);
         }
@@ -234,7 +268,7 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({
         success: true, mode: "enrich", processed, skipped, designersAdded, artistsAdded,
         total: catalogEntries.length, offset, nextOffset: offset + batchSize,
-        hasMore, errors: errors.slice(0, 10),
+        hasMore, errors: errors.slice(0, 20),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
