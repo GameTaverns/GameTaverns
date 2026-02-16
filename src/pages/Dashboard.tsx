@@ -57,7 +57,7 @@ import { useMyMemberships } from "@/hooks/useLibraryMembership";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Footer } from "@/components/layout/Footer";
-import { MyInquiriesSection } from "@/components/dashboard/MyInquiriesSection";
+
 import { CommunityTab } from "@/components/community/CommunityTab";
 import { AnalyticsTab } from "@/components/analytics/AnalyticsTab";
 import { CommunityMembersCard } from "@/components/community/CommunityMembersCard";
@@ -783,16 +783,24 @@ export default function Dashboard() {
                 <CardContent className="px-4 pb-4"><AchievementsDisplay compact /></CardContent>
               </Card>
 
-              {/* My Inquiries */}
+              {/* Inbox Link */}
               <Card className={cardClass}>
                 <CardHeader className="px-4 pt-4 pb-2">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Mail className="h-4 w-4 text-secondary" />
-                    My Inquiries
+                    Messages
                   </CardTitle>
-                  <CardDescription className="text-cream/60 text-xs">Messages you've sent to other libraries</CardDescription>
+                  <CardDescription className="text-cream/60 text-xs">View your inbox</CardDescription>
                 </CardHeader>
-                <CardContent className="px-4 pb-4"><MyInquiriesSection /></CardContent>
+                <CardContent className="px-4 pb-4">
+                  <Link to="/inbox">
+                    <Button variant="outline" size="sm" className="w-full border-secondary/50 text-cream gap-2">
+                      <Mail className="h-3.5 w-3.5" />
+                      Open Inbox
+                      <ArrowRight className="h-3 w-3 ml-auto" />
+                    </Button>
+                  </Link>
+                </CardContent>
               </Card>
 
               {/* Borrowed Games */}

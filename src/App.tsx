@@ -23,6 +23,7 @@ const Login = lazy(() => import("./pages/Login"));
 const Settings = lazy(() => import("./pages/Settings"));
 const GameForm = lazy(() => import("./pages/GameForm"));
 const Messages = lazy(() => import("./pages/Messages"));
+const Inbox = lazy(() => import("./pages/Inbox"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Docs = lazy(() => import("./pages/Docs"));
 const LibrarySuspended = lazy(() => import("./pages/LibrarySuspended"));
@@ -180,6 +181,7 @@ function PlatformRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/inbox" element={<Inbox />} />
       <Route path="/dashboard/editor" element={<DashboardEditor />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />

@@ -47,7 +47,7 @@ function getNotificationPath(notification: Notification): string | null {
     case "event_reminder":
       return "/dashboard";
     case "message_received":
-      return "/messages";
+      return "/inbox";
     case "wishlist_alert":
       if (metadata?.game_id) {
         return `/games/${metadata.game_id}`;
