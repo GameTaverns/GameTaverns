@@ -1,13 +1,12 @@
 #!/bin/bash
 # =============================================================================
 # Run Database Migrations for GameTaverns Self-Hosted
-# Version: 2.5.0 - Simplified: skip already-applied, only run new
+# Version: 2.6.0 - Stop ALL services to prevent lock contention
 # Audited: 2026-02-16
 # =============================================================================
 
 set -e
 
-# Check if running as root
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root: sudo ./run-migrations.sh"
     exit 1
@@ -49,58 +48,36 @@ if ! docker compose version > /dev/null 2>&1; then
     exit 1
 fi
 
-# Helper: run psql query, return clean output
-db_query() {
-    local raw
-    raw=$(docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
-      exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
-      psql -U postgres -d postgres -tAc "$1" 2>/dev/null) || true
-    echo "$raw" | tr -cd '[:print:]' | tr -d ' '
-}
-
-# Helper: run psql command
-db_cmd() {
-    docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
-      exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
-      psql -U postgres -d postgres -c "$1" 2>&1
-}
-
-# Wait for database
 # =============================================================================
-# Stop services that hold locks (PostgREST, Auth, Realtime, Storage, Functions)
-# They reconnect instantly after pg_terminate, so we must stop them entirely.
+# Stop ALL services except db to guarantee zero lock contention.
+# Kong, PostgREST, Auth, Realtime, Storage, Functions, Meta all connect to
+# postgres and can hold locks that block DDL (CREATE TABLE, ALTER TABLE, etc.)
 # =============================================================================
-echo -e "${BLUE}Stopping services that hold DB locks...${NC}"
-LOCK_SERVICES="rest auth realtime storage functions"
-for svc in $LOCK_SERVICES; do
+echo -e "${BLUE}Stopping all services except database...${NC}"
+STOP_SERVICES="kong rest auth realtime storage functions meta imgproxy app"
+for svc in $STOP_SERVICES; do
     docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
       stop "$svc" > /dev/null 2>&1 || true
 done
 echo -e "${GREEN}✓ Services stopped${NC}"
-echo ""
 
-echo -e "${BLUE}Waiting for database to be ready...${NC}"
-MAX_RETRIES=90
-RETRY_COUNT=0
-until docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
-  exec -T db pg_isready -U postgres -d postgres > /dev/null 2>&1; do
-    RETRY_COUNT=$((RETRY_COUNT + 1))
-    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        echo -e "${RED}Error: Database not ready after $MAX_RETRIES attempts${NC}"
-        # Restart services before exiting
-        for svc in $LOCK_SERVICES; do
-            docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
-              start "$svc" > /dev/null 2>&1 || true
-        done
-        exit 1
-    fi
-    echo "  Database not ready, waiting... ($RETRY_COUNT/$MAX_RETRIES)"
-    sleep 2
-done
-echo -e "${GREEN}✓ Database is ready!${NC}"
-echo ""
-
+# Kill any remaining connections to the database
+echo -e "${BLUE}Terminating remaining database connections...${NC}"
+docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+  exec -T db psql -U postgres -d postgres -tAc \
+  "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='postgres' AND pid != pg_backend_pid();" \
+  > /dev/null 2>&1 || true
 sleep 2
+echo -e "${GREEN}✓ Connections cleared${NC}"
+echo ""
+
+# Helper: run psql query, return clean output
+db_query() {
+    local raw
+    raw=$(docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+      exec -T db psql -U postgres -d postgres -tAc "$1" 2>/dev/null) || true
+    echo "$raw" | tr -cd '[:print:]' | tr -d ' '
+}
 
 # =============================================================================
 # Detect existing vs fresh install
@@ -110,10 +87,6 @@ CORE_EXISTS=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND ta
 if [ "$CORE_EXISTS" = "1" ]; then
     echo -e "${GREEN}✓ Existing installation detected — only running NEW migrations${NC}"
     echo ""
-
-    # For existing installs, ONLY run migrations that add new tables/features.
-    # Everything up to 60 is already applied. We skip anything that could
-    # acquire exclusive locks (ALTER ROLE, CREATE EXTENSION) or re-seed data.
     MIGRATION_FILES=(
         "61-dashboard-layouts.sql"
         "62-server-commands.sql"
@@ -123,8 +96,6 @@ if [ "$CORE_EXISTS" = "1" ]; then
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
     echo ""
-
-    # Fresh install: run everything in order
     MIGRATION_FILES=(
         "01-extensions.sql"
         "02-enums.sql"
@@ -214,22 +185,11 @@ for migration in "${MIGRATION_FILES[@]}"; do
     LOG_FILE="/tmp/gametaverns-migration-${migration}.log"
     rm -f "$LOG_FILE"
 
-    # Kill idle backends that might hold locks
-    docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
-      exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
-      psql -U postgres -d postgres -tAc \
-      "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='postgres' AND pid != pg_backend_pid() AND state != 'active';" \
-      > /dev/null 2>&1 || true
-
-    sleep 2
-
     set +e
-    # PGOPTIONS injects lock_timeout + statement_timeout into the session
-    # so they apply to every statement in the -f file
-    timeout 90 docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+    timeout 60 docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
       exec -T \
       -e PGPASSWORD="${PGPASSWORD:-}" \
-      -e PGOPTIONS="-c lock_timeout=10000 -c statement_timeout=60000" \
+      -e PGOPTIONS="-c lock_timeout=10000 -c statement_timeout=50000" \
       db \
       psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
       -f "/docker-entrypoint-initdb.d/$migration" \
@@ -240,7 +200,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
     OUTPUT=$(tail -n 50 "$LOG_FILE" 2>/dev/null || true)
 
     if [ $EXIT_CODE -eq 124 ]; then
-        echo -e "${RED}✗ Timeout (90s)${NC}"
+        echo -e "${RED}✗ Timeout (60s)${NC}"
         ERROR_COUNT=$((ERROR_COUNT + 1))
     elif echo "$OUTPUT" | grep -qiE "^ERROR:|^FATAL:"; then
         ERROR_MSG=$(echo "$OUTPUT" | grep -iE "^ERROR:|^FATAL:" | head -1)
@@ -317,13 +277,11 @@ fi
 echo ""
 
 # =============================================================================
-# Restart services we stopped earlier
+# Restart ALL services
 # =============================================================================
-echo -e "${BLUE}Restarting services...${NC}"
-for svc in $LOCK_SERVICES; do
-    docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
-      start "$svc" > /dev/null 2>&1 || true
-done
+echo -e "${BLUE}Restarting all services...${NC}"
+docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+  start $STOP_SERVICES > /dev/null 2>&1 || true
 echo -e "${GREEN}✓ All services restarted${NC}"
 echo ""
 
