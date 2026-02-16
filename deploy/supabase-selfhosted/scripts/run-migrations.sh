@@ -123,10 +123,8 @@ else
     exit 1
 fi
 
-# -- Baseline migrations: these existed BEFORE the tracker was introduced.
-#    On first backfill, ONLY these get marked as already applied.
-#    Anything after this list will be checked/run normally.
-BASELINE_MIGRATIONS=(
+# Full ordered list of all migrations (no baseline backfill - the loop handles "already exists" gracefully)
+MIGRATION_FILES=(
     "01-extensions.sql"
     "02-enums.sql"
     "03-core-tables.sql"
@@ -147,11 +145,6 @@ BASELINE_MIGRATIONS=(
     "19-library-settings-insert-policy.sql"
     "20-featured-achievement.sql"
     "21-fix-libraries-recursion.sql"
-)
-
-# Full ordered list of all migrations
-MIGRATION_FILES=(
-    "${BASELINE_MIGRATIONS[@]}"
     "21-designers-artists.sql"
     "22-forum-tables.sql"
     "23-notifications-realtime.sql"
@@ -198,38 +191,6 @@ MIGRATION_FILES=(
     "61-catalog-scraper.sql"
     "63-backfill-catalog-junctions.sql"
 )
-
-# -- Backfill: if this is an existing installation (core tables exist),
-#    ALWAYS ensure baseline migrations are marked as applied.
-#    This runs every time (ON CONFLICT DO NOTHING) so it's safe to repeat.
-CORE_EXISTS=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='libraries';")
-
-if [ "$CORE_EXISTS" = "1" ]; then
-    echo -e "${BLUE}Ensuring baseline migrations are marked as applied...${NC}"
-    BACKFILL_FAIL=0
-    for mig in "${BASELINE_MIGRATIONS[@]}"; do
-        db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$mig') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || {
-            echo -e "${YELLOW}  ⚠ Could not mark $mig${NC}"
-            BACKFILL_FAIL=1
-        }
-    done
-    if [ "$BACKFILL_FAIL" -eq 0 ]; then
-        echo -e "${GREEN}✓ Baseline migrations ensured${NC}"
-    else
-        echo -e "${YELLOW}⚠ Some baseline entries failed (continuing anyway)${NC}"
-    fi
-fi
-
-# -- Also fix existing installs where ALL migrations were incorrectly backfilled.
-#    If designers table doesn't exist but 21-designers-artists.sql is marked applied, remove it.
-DESIGNERS_EXISTS=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='designers';")
-if [ "$DESIGNERS_EXISTS" != "1" ]; then
-    DESIGNERS_MARKED=$(db_query "SELECT 1 FROM public.schema_migrations WHERE name='21-designers-artists.sql';")
-    if [ "$DESIGNERS_MARKED" = "1" ]; then
-        echo -e "${YELLOW}⚠ Fixing incorrectly backfilled migration: 21-designers-artists.sql${NC}"
-        db_cmd "DELETE FROM public.schema_migrations WHERE name='21-designers-artists.sql';" > /dev/null 2>&1 || true
-    fi
-fi
 
 SUCCESS_COUNT=0
 WARNING_COUNT=0
