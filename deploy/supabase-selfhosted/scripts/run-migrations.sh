@@ -147,6 +147,7 @@ MIGRATION_FILES=(
     "58-dedup-forum-categories.sql"
     "59-restructure-forum-categories.sql"
     "60-import-pause-resume.sql"
+    "61-forum-categories-definitive.sql"
 )
 
 SUCCESS_COUNT=0
