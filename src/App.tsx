@@ -58,6 +58,7 @@ const JoinClub = lazy(() => import("./pages/JoinClub"));
 // Library admin pages
 const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
 const LibraryGames = lazy(() => import("./pages/LibraryGames"));
+const ManageGames = lazy(() => import("./pages/ManageGames"));
 const PlayStatsPage = lazy(() => import("./pages/PlayStatsPage"));
 const PollPage = lazy(() => import("./pages/PollPage"));
 const SmartPicker = lazy(() => import("./pages/SmartPicker"));
@@ -223,6 +224,7 @@ function LibraryRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/settings" element={<LibrarySettings />} />
       <Route path="/games" element={<LibraryGames />} />
+      <Route path="/manage" element={<ManageGames />} />
       <Route path="/add" element={<GameForm />} />
       <Route path="/edit/:id" element={<GameForm />} />
       <Route path="/messages" element={<Messages />} />
