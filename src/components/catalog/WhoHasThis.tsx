@@ -23,7 +23,7 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
       // Find all games linked to this catalog entry, join with libraries
       let query = supabase
         .from("games")
-        .select("library_id, libraries!inner(id, name, slug, is_listed)")
+        .select("library_id, libraries!inner(id, name, slug, is_active)")
         .eq("catalog_id", catalogId)
         .eq("is_expansion", false);
 
@@ -36,8 +36,8 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
       for (const row of data || []) {
         const lib = row.libraries as any;
         if (!lib || seen.has(lib.id)) continue;
-        // Only show listed (public) libraries
-        if (lib.is_listed === false) continue;
+        // Only show active (public) libraries
+        if (lib.is_active === false) continue;
         seen.add(lib.id);
         results.push({
           library_id: lib.id,

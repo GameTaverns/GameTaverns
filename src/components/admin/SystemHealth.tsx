@@ -372,7 +372,8 @@ export function SystemHealth() {
 
         // Show progress toast every batch
         if (hasMore) {
-          toast.info(`Backfill progress: ${totalProcessed} processed, ${totalDesigners} designers, ${totalArtists} artists...`);
+          const skipped = data.skipped || 0;
+          toast.info(`Backfill progress: ${totalProcessed} enriched, ${skipped} already done, ${totalDesigners} designers, ${totalArtists} artists...`);
         }
       }
 
