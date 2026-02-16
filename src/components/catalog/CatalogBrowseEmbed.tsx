@@ -33,13 +33,24 @@ export function CatalogBrowseEmbed() {
   const { data: catalogGames = [], isLoading } = useQuery({
     queryKey: ["catalog-browse-embed"],
     queryFn: async (): Promise<CatalogGame[]> => {
-      const { data, error } = await supabase
-        .from("game_catalog")
-        .select("id, title, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, bgg_url, bgg_community_rating")
-        .eq("is_expansion", false)
-        .order("title")
-        .limit(500);
-      if (error) throw error;
+      // Fetch all games using pagination to avoid row limits
+      let allData: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      while (true) {
+        const { data: batch, error } = await supabase
+          .from("game_catalog")
+          .select("id, title, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, bgg_url, bgg_community_rating")
+          .eq("is_expansion", false)
+          .order("title")
+          .range(from, from + batchSize - 1);
+        if (error) throw error;
+        allData = allData.concat(batch || []);
+        if (!batch || batch.length < batchSize) break;
+        from += batchSize;
+      }
+
+      const data = allData;
 
       const catalogIds = (data || []).map(g => g.id);
 
