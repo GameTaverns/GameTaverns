@@ -64,6 +64,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "system-health":          () => import("./system-health/index.ts"),
   "resume-imports":         () => import("./resume-imports/index.ts"),
   "catalog-backfill":       () => import("./catalog-backfill/index.ts"),
+  "server-command":         () => import("./server-command/index.ts"),
 };
 
 // All handlers are now external imports - no inlined handlers remaining

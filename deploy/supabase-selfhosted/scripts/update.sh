@@ -133,6 +133,7 @@ EXTERNAL_HANDLERS=(
   system-health
   catalog-backfill
   resume-imports
+  server-command
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   if [ -d "$FUNCTIONS_DIR/$handler" ]; then
