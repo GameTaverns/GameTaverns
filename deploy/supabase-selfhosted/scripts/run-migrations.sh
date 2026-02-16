@@ -148,7 +148,7 @@ MIGRATION_FILES=(
     "21-designers-artists.sql"
     "22-forum-tables.sql"
     "23-notifications-realtime.sql"
-    "24-seed-forum-categories.sql"
+    # 24-seed-forum-categories.sql        -- SKIP: re-seeds forum data
     "25-forum-postgrest-fix.sql"
     "26-achievements-sync.sql"
     "27-fix-forum-categories-rls.sql"
@@ -178,14 +178,14 @@ MIGRATION_FILES=(
     "51-shame-achievements.sql"
     "52-tour-achievement.sql"
     "53-club-forum-rls.sql"
-    "54-seed-club-forum-categories.sql"
+    # 54-seed-club-forum-categories.sql   -- SKIP: re-seeds forum data
     "55-forum-subcategories.sql"
-    "56-seed-library-forum-categories.sql"
-    "57-seed-marketplace-subcategories.sql"
-    "58-dedup-forum-categories.sql"
-    "59-restructure-forum-categories.sql"
+    # 56-seed-library-forum-categories.sql -- SKIP: re-seeds forum data
+    # 57-seed-marketplace-subcategories.sql -- SKIP: re-seeds forum data
+    # 58-dedup-forum-categories.sql        -- SKIP: destructive dedup
+    # 59-restructure-forum-categories.sql  -- SKIP: destructive restructure
     "60-import-pause-resume.sql"
-    "61-forum-categories-definitive.sql"
+    # 61-forum-categories-definitive.sql   -- SKIP: destructive re-seed
     "61-dashboard-layouts.sql"
     "62-server-commands.sql"
     "61-catalog-scraper.sql"
