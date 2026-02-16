@@ -93,14 +93,11 @@ if [ "$CORE_EXISTS" = "1" ]; then
     echo -e "${GREEN}✓ Existing installation detected — only running NEW migrations${NC}"
     echo ""
 
-    # For existing installs, ONLY run migrations that add new tables/features.
-    # Everything up to 60 is already applied. We skip anything that could
-    # acquire exclusive locks (ALTER ROLE, CREATE EXTENSION) or re-seed data.
+    # For existing installs, everything through 63 is already applied.
+    # Only add NEW migrations here (64+) as they are created.
     MIGRATION_FILES=(
-        "61-dashboard-layouts.sql"
-        "62-server-commands.sql"
-        "61-catalog-scraper.sql"
-        "63-backfill-catalog-junctions.sql"
+        # Add future migrations here, e.g.:
+        # "64-some-new-feature.sql"
     )
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
