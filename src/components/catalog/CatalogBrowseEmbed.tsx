@@ -1,13 +1,12 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Clock, Weight, BookOpen, ExternalLink, PenTool, Palette } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { WhoHasThis } from "@/components/catalog/WhoHasThis";
+import { Search, Users, Clock, Weight, BookOpen, PenTool } from "lucide-react";
 
 interface CatalogGame {
   id: string;
@@ -29,7 +28,7 @@ interface CatalogGame {
 export function CatalogBrowseEmbed() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("title");
-  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  
 
   const { data: catalogGames = [], isLoading } = useQuery({
     queryKey: ["catalog-browse-embed"],
@@ -147,10 +146,13 @@ export function CatalogBrowseEmbed() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-1">
           {filtered.map((game) => (
-            <Card
+            <Link
               key={game.id}
-              className="overflow-hidden card-hover cursor-pointer group"
-              onClick={() => setSelectedGame(selectedGame === game.id ? null : game.id)}
+              to={`/catalog/${game.id}`}
+              className="group"
+            >
+            <Card
+              className="overflow-hidden card-hover cursor-pointer h-full"
             >
               {game.image_url ? (
                 <img src={game.image_url} alt={game.title} className="w-full h-36 object-cover" loading="lazy" />
@@ -187,47 +189,9 @@ export function CatalogBrowseEmbed() {
                     {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
                   </p>
                 )}
-                {selectedGame === game.id && (
-                  <div className="pt-2 border-t border-border space-y-3">
-                    {game.description && <p className="text-xs text-muted-foreground line-clamp-4">{game.description}</p>}
-                    {game.designers.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
-                          <PenTool className="h-3 w-3" /> Designer{game.designers.length > 1 ? "s" : ""}
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {game.designers.map(d => (
-                            <Badge key={d} variant="outline" className="text-[10px]">{d}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {game.artists.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
-                          <Palette className="h-3 w-3" /> Artist{game.artists.length > 1 ? "s" : ""}
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {game.artists.map(a => (
-                            <Badge key={a} variant="outline" className="text-[10px]">{a}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      {game.bgg_url && (
-                        <a href={game.bgg_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
-                          <Button variant="outline" size="sm" className="text-xs gap-1">
-                            <ExternalLink className="h-3 w-3" /> BGG
-                          </Button>
-                        </a>
-                      )}
-                    </div>
-                    <WhoHasThis catalogId={game.id} gameTitle={game.title} />
-                  </div>
-                )}
               </CardContent>
             </Card>
+            </Link>
           ))}
         </div>
       )}

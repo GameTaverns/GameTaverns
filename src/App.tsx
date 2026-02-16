@@ -63,6 +63,7 @@ const PlayStatsPage = lazy(() => import("./pages/PlayStatsPage"));
 const PollPage = lazy(() => import("./pages/PollPage"));
 const SmartPicker = lazy(() => import("./pages/SmartPicker"));
 const CatalogBrowse = lazy(() => import("./pages/CatalogBrowse"));
+const CatalogGameDetail = lazy(() => import("./pages/CatalogGameDetail"));
 const Install = lazy(() => import("./pages/Install"));
 const DashboardEditor = lazy(() => import("./components/dashboard/editor/DashboardEditorPage"));
 
@@ -199,6 +200,7 @@ function PlatformRoutes() {
       <Route path="/join-club" element={<JoinClub />} />
       <Route path="/picker" element={<SmartPicker />} />
       <Route path="/catalog" element={<CatalogBrowse />} />
+      <Route path="/catalog/:slug" element={<CatalogGameDetail />} />
       <Route path="/install" element={<Install />} />
       <Route path="/docs" element={<Docs />} />
       {/* Legal & Info pages */}
