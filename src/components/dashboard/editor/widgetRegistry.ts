@@ -42,26 +42,29 @@ export const DEFAULT_LAYOUT = {
   tabs: [
     {
       id: "overview",
-      label: "Overview",
-      icon: "Activity",
+      label: "My Library",
+      icon: "BookOpen",
       widgets: [
         "import-progress", "onboarding", "lending", "messages", "borrowed",
-        "communities", "achievements", "shelf-of-shame", "events", "polls",
-        "inquiries", "explore", "ratings-wishlist", "challenges", "random-picker",
-        "create-library",
+        "shelf-of-shame", "events", "polls", "communities",
       ],
     },
     {
       id: "community",
       label: "Community",
-      icon: "MessageSquare",
-      widgets: ["forums", "clubs", "community-members"],
+      icon: "Users",
+      widgets: [
+        "forums", "clubs", "community-members", "challenges", "inquiries", "trades",
+      ],
     },
     {
-      id: "more",
-      label: "More",
-      icon: "Zap",
-      widgets: ["trades", "analytics", "catalog", "account-settings", "danger-zone"],
+      id: "settings",
+      label: "Settings",
+      icon: "Settings",
+      widgets: [
+        "account-settings", "achievements", "analytics", "ratings-wishlist",
+        "catalog", "danger-zone",
+      ],
     },
   ],
 };

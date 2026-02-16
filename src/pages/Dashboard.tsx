@@ -707,6 +707,9 @@ export default function Dashboard() {
     if (tabFromUrl === "library") {
       handleTabChange(defaultTabId);
     }
+    if (tabFromUrl === "more") {
+      handleTabChange("settings");
+    }
   }, [tabFromUrl]);
 
   return (
@@ -818,14 +821,29 @@ export default function Dashboard() {
             </a>
             <a href={settingsUrl!}>
               <Button size="sm" variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5">
-                <Settings className="h-3.5 w-3.5" /> Settings
+                <Settings className="h-3.5 w-3.5" /> Library Settings
               </Button>
             </a>
             <Link to="/picker">
               <Button size="sm" variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5">
-                <Target className="h-3.5 w-3.5" /> Pick a Game
+                <Gamepad2 className="h-3.5 w-3.5" /> Random Game
               </Button>
             </Link>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5"
+              onClick={() => handleTabChange("overview")}
+            >
+              <Star className="h-3.5 w-3.5" /> Explore Features
+            </Button>
+            {myLibraries.length < maxLibraries && (
+              <Link to="/create-library">
+                <Button size="sm" variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5">
+                  <Plus className="h-3.5 w-3.5" /> New Library
+                </Button>
+              </Link>
+            )}
             {isAdmin && (
               <Link to="/admin">
                 <Button size="sm" variant="outline" className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5">
