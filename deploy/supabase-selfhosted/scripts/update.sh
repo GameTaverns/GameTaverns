@@ -133,6 +133,7 @@ EXTERNAL_HANDLERS=(
   system-health
   catalog-backfill
   catalog-scraper
+  add-from-catalog
   resume-imports
   server-command
 )
