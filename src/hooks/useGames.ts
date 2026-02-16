@@ -320,6 +320,20 @@ export function useGame(slugOrId: string | undefined) {
       const mechanics =
         gameMechanics?.map((gm: { mechanic: Mechanic | null }) => gm.mechanic).filter((m): m is Mechanic => m !== null) || [];
 
+      // Fetch designers
+      const { data: gameDesigners } = await supabase
+        .from("game_designers")
+        .select("designer:designers(id, name)")
+        .eq("game_id", game.id);
+      const designers = gameDesigners?.map((gd: any) => gd.designer).filter(Boolean) || [];
+
+      // Fetch artists
+      const { data: gameArtists } = await supabase
+        .from("game_artists")
+        .select("artist:artists(id, name)")
+        .eq("game_id", game.id);
+      const artists = gameArtists?.map((ga: any) => ga.artist).filter(Boolean) || [];
+
       return {
         ...game,
         admin_data: canAccessAdminData ? normalizeAdminData((game as any).admin_data) : null,
@@ -328,6 +342,8 @@ export function useGame(slugOrId: string | undefined) {
         play_time: game.play_time as PlayTime,
         additional_images: game.additional_images || [],
         mechanics,
+        designers,
+        artists,
       };
     },
     enabled: !!slugOrId && !!libraryId,

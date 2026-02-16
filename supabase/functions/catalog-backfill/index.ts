@@ -1,14 +1,54 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { aiComplete, isAIConfigured, getAIProviderName } from "../_shared/ai-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const decodeHtmlEntities = (input: string) =>
+  input
+    .replace(/&#10;/g, "\n")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_m, code) => {
+      const n = Number(code);
+      return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+    });
+
+function parseBggXml(xml: string) {
+  const mechanicsMatches = xml.matchAll(/<link[^>]*type="boardgamemechanic"[^>]*value="([^"]+)"/g);
+  const mechanics = [...mechanicsMatches].map((m) => decodeHtmlEntities(m[1]));
+  const publisherMatch = xml.match(/<link[^>]*type="boardgamepublisher"[^>]*value="([^"]+)"/);
+  const designerMatches = xml.matchAll(/<link[^>]*type="boardgamedesigner"[^>]*value="([^"]+)"/g);
+  const designers = [...designerMatches].map((m) => decodeHtmlEntities(m[1]));
+  const artistMatches = xml.matchAll(/<link[^>]*type="boardgameartist"[^>]*value="([^"]+)"/g);
+  const artists = [...artistMatches].map((m) => decodeHtmlEntities(m[1]));
+  const descMatch = xml.match(/<description[^>]*>([\s\S]*?)<\/description>/i);
+  const description = descMatch?.[1] ? decodeHtmlEntities(descMatch[1]).trim().slice(0, 5000) : undefined;
+
+  return {
+    mechanics,
+    publisher: publisherMatch?.[1] ? decodeHtmlEntities(publisherMatch[1]) : undefined,
+    designers,
+    artists,
+    description,
+  };
+}
+
 /**
- * Catalog Backfill — populates game_catalog from existing games with bgg_id.
- * Called once (or periodically) by admin to seed the canonical catalog
- * from games that were imported before the catalog existed.
+ * Catalog Backfill v2 — populates game_catalog with designers, artists,
+ * and enriched descriptions from existing games with bgg_id.
+ * 
+ * Modes:
+ * - default: Link unlinked games + backfill designers/artists from BGG XML
+ * - mode=enrich: Re-fetch BGG XML for ALL catalog entries to add designers/artists
+ * - mode=descriptions: Re-generate AI descriptions for catalog entries missing them
  */
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -19,8 +59,7 @@ const handler = async (req: Request): Promise<Response> => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Auth required" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -32,32 +71,137 @@ const handler = async (req: Request): Promise<Response> => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify admin
     const { data: { user }, error: userErr } = await supabaseUser.auth.getUser();
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: roleData } = await createClient(supabaseUrl, serviceKey)
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-
-    if (!roleData) {
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    // Find games with bgg_id but no catalog_id
+    const { data: roleData } = await admin
+      .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+    if (!roleData) {
+      return new Response(JSON.stringify({ error: "Admin access required" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const mode = body.mode || "default";
+    const batchSize = body.batch_size || 50;
+
+    // =====================================================================
+    // MODE: enrich — Re-fetch BGG XML for catalog entries to add designers/artists
+    // =====================================================================
+    if (mode === "enrich") {
+      const { data: catalogEntries } = await admin
+        .from("game_catalog")
+        .select("id, bgg_id, title")
+        .not("bgg_id", "is", null)
+        .order("title")
+        .limit(batchSize);
+
+      if (!catalogEntries || catalogEntries.length === 0) {
+        return new Response(JSON.stringify({ success: true, processed: 0, message: "No catalog entries" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      let processed = 0;
+      let designersAdded = 0;
+      let artistsAdded = 0;
+      const errors: string[] = [];
+
+      for (const entry of catalogEntries) {
+        try {
+          // Check if already has designers
+          const { count: dCount } = await admin
+            .from("catalog_designers").select("id", { count: "exact", head: true }).eq("catalog_id", entry.id);
+          const { count: aCount } = await admin
+            .from("catalog_artists").select("id", { count: "exact", head: true }).eq("catalog_id", entry.id);
+
+          if ((dCount || 0) > 0 && (aCount || 0) > 0) {
+            processed++;
+            continue; // Already enriched
+          }
+
+          // Fetch BGG XML
+          const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${entry.bgg_id}&stats=1`;
+          const res = await fetch(xmlUrl, {
+            headers: { "User-Agent": "Mozilla/5.0", Accept: "application/xml" },
+          });
+
+          if (!res.ok) {
+            if (res.status === 429) {
+              await sleep(5000);
+              continue;
+            }
+            errors.push(`${entry.title}: HTTP ${res.status}`);
+            continue;
+          }
+
+          const xml = await res.text();
+          if (!xml.includes("<item")) {
+            await sleep(1000);
+            continue;
+          }
+
+          const parsed = parseBggXml(xml);
+
+          // Upsert designers
+          for (const name of parsed.designers) {
+            const { data: existing } = await admin.from("designers").select("id").eq("name", name).maybeSingle();
+            const id = existing?.id || (await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single()).data?.id;
+            if (id) {
+              await admin.from("catalog_designers").upsert({ catalog_id: entry.id, designer_id: id }, { onConflict: "catalog_id,designer_id" });
+              designersAdded++;
+            }
+          }
+
+          // Upsert artists
+          for (const name of parsed.artists) {
+            const { data: existing } = await admin.from("artists").select("id").eq("name", name).maybeSingle();
+            const id = existing?.id || (await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single()).data?.id;
+            if (id) {
+              await admin.from("catalog_artists").upsert({ catalog_id: entry.id, artist_id: id }, { onConflict: "catalog_id,artist_id" });
+              artistsAdded++;
+            }
+          }
+
+          // Also backfill game_designers/game_artists for all games linked to this catalog entry
+          const { data: linkedGames } = await admin.from("games").select("id").eq("catalog_id", entry.id);
+          if (linkedGames) {
+            for (const game of linkedGames) {
+              for (const name of parsed.designers) {
+                const { data: d } = await admin.from("designers").select("id").eq("name", name).maybeSingle();
+                if (d) await admin.from("game_designers").upsert({ game_id: game.id, designer_id: d.id }, { onConflict: "game_id,designer_id" });
+              }
+              for (const name of parsed.artists) {
+                const { data: a } = await admin.from("artists").select("id").eq("name", name).maybeSingle();
+                if (a) await admin.from("game_artists").upsert({ game_id: game.id, artist_id: a.id }, { onConflict: "game_id,artist_id" });
+              }
+            }
+          }
+
+          processed++;
+          // Rate limit
+          await sleep(500);
+        } catch (e) {
+          errors.push(`${entry.title}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      return new Response(JSON.stringify({
+        success: true, mode: "enrich", processed, designersAdded, artistsAdded,
+        total: catalogEntries.length, errors: errors.slice(0, 10),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
+    // DEFAULT MODE: Link unlinked games to catalog
+    // =====================================================================
     const { data: unlinkedGames, error: fetchErr } = await admin
       .from("games")
       .select("id, bgg_id, title, image_url, description, min_players, max_players, play_time, difficulty, is_expansion, bgg_url, suggested_age, publisher_id")
@@ -72,7 +216,6 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Group by bgg_id to avoid duplicate upserts
     const byBggId = new Map<string, typeof unlinkedGames>();
     for (const game of unlinkedGames) {
       if (!game.bgg_id) continue;
@@ -85,24 +228,13 @@ const handler = async (req: Request): Promise<Response> => {
     let linked = 0;
     const errors: string[] = [];
 
-    // Parse weight from difficulty enum
     const weightMap: Record<string, number> = {
-      "1 - Light": 1.25,
-      "2 - Medium Light": 1.88,
-      "3 - Medium": 2.63,
-      "4 - Medium Heavy": 3.38,
-      "5 - Heavy": 4.25,
+      "1 - Light": 1.25, "2 - Medium Light": 1.88, "3 - Medium": 2.63,
+      "4 - Medium Heavy": 3.38, "5 - Heavy": 4.25,
     };
-
-    // Parse play_time_minutes from play_time enum
     const timeMap: Record<string, number> = {
-      "0-15 Minutes": 15,
-      "15-30 Minutes": 30,
-      "30-45 Minutes": 45,
-      "45-60 Minutes": 60,
-      "60+ Minutes": 90,
-      "2+ Hours": 150,
-      "3+ Hours": 210,
+      "0-15 Minutes": 15, "15-30 Minutes": 30, "30-45 Minutes": 45,
+      "45-60 Minutes": 60, "60+ Minutes": 90, "2+ Hours": 150, "3+ Hours": 210,
     };
 
     for (const [bggId, games] of byBggId) {
@@ -128,45 +260,38 @@ const handler = async (req: Request): Promise<Response> => {
           .select("id")
           .single();
 
-        if (upsertErr) {
-          errors.push(`${bggId}: ${upsertErr.message}`);
-          continue;
-        }
+        if (upsertErr) { errors.push(`${bggId}: ${upsertErr.message}`); continue; }
 
-        // Link all games with this bgg_id to the catalog entry
         if (entry?.id) {
           const gameIds = games.map(g => g.id);
-          await admin
-            .from("games")
-            .update({ catalog_id: entry.id })
-            .in("id", gameIds);
+          await admin.from("games").update({ catalog_id: entry.id }).in("id", gameIds);
           linked += gameIds.length;
 
-          // Backfill catalog_mechanics from game_mechanics
-          const { data: mechs } = await admin
-            .from("game_mechanics")
-            .select("mechanic_id")
-            .eq("game_id", firstGame.id);
-
-          if (mechs && mechs.length > 0) {
+          // Backfill catalog_mechanics
+          const { data: mechs } = await admin.from("game_mechanics").select("mechanic_id").eq("game_id", firstGame.id);
+          if (mechs) {
             for (const m of mechs) {
-              await admin
-                .from("catalog_mechanics")
-                .upsert(
-                  { catalog_id: entry.id, mechanic_id: m.mechanic_id },
-                  { onConflict: "catalog_id,mechanic_id" }
-                );
+              await admin.from("catalog_mechanics").upsert({ catalog_id: entry.id, mechanic_id: m.mechanic_id }, { onConflict: "catalog_id,mechanic_id" });
             }
           }
 
           // Backfill catalog_publishers
           if (firstGame.publisher_id) {
-            await admin
-              .from("catalog_publishers")
-              .upsert(
-                { catalog_id: entry.id, publisher_id: firstGame.publisher_id },
-                { onConflict: "catalog_id,publisher_id" }
-              );
+            await admin.from("catalog_publishers").upsert({ catalog_id: entry.id, publisher_id: firstGame.publisher_id }, { onConflict: "catalog_id,publisher_id" });
+          }
+
+          // Backfill designers/artists from game tables
+          const { data: gDesigners } = await admin.from("game_designers").select("designer_id").eq("game_id", firstGame.id);
+          if (gDesigners) {
+            for (const d of gDesigners) {
+              await admin.from("catalog_designers").upsert({ catalog_id: entry.id, designer_id: d.designer_id }, { onConflict: "catalog_id,designer_id" });
+            }
+          }
+          const { data: gArtists } = await admin.from("game_artists").select("artist_id").eq("game_id", firstGame.id);
+          if (gArtists) {
+            for (const a of gArtists) {
+              await admin.from("catalog_artists").upsert({ catalog_id: entry.id, artist_id: a.artist_id }, { onConflict: "catalog_id,artist_id" });
+            }
           }
         }
 
@@ -177,13 +302,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        unique_bgg_ids: byBggId.size,
-        processed,
-        linked,
-        errors: errors.slice(0, 10),
-      }),
+      JSON.stringify({ success: true, unique_bgg_ids: byBggId.size, processed, linked, errors: errors.slice(0, 10) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

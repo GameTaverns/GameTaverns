@@ -584,6 +584,26 @@ const GameDetail = () => {
                         </TableCell>
                       </TableRow>
                     )}
+                    {(game as any).designers?.length > 0 && (
+                      <TableRow>
+                        <TableCell className="font-medium text-muted-foreground">
+                          Designer{(game as any).designers.length > 1 ? 's' : ''}
+                        </TableCell>
+                        <TableCell className="text-foreground">
+                          {(game as any).designers.map((d: any) => d.name).join(", ")}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {(game as any).artists?.length > 0 && (
+                      <TableRow>
+                        <TableCell className="font-medium text-muted-foreground">
+                          Artist{(game as any).artists.length > 1 ? 's' : ''}
+                        </TableCell>
+                        <TableCell className="text-foreground">
+                          {(game as any).artists.map((a: any) => a.name).join(", ")}
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {game.mechanics.length > 0 && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
