@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Clock, Weight, BookOpen, ExternalLink } from "lucide-react";
+import { Search, Users, Clock, Weight, BookOpen, ExternalLink, PenTool, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
 
@@ -22,6 +22,8 @@ interface CatalogGame {
   year_published: number | null;
   bgg_url: string | null;
   bgg_community_rating: number | null;
+  designers: string[];
+  artists: string[];
 }
 
 export function CatalogBrowseEmbed() {
@@ -39,14 +41,57 @@ export function CatalogBrowseEmbed() {
         .order("title")
         .limit(500);
       if (error) throw error;
-      return data || [];
+
+      const catalogIds = (data || []).map(g => g.id);
+
+      const [designersRes, artistsRes] = await Promise.all([
+        supabase
+          .from("catalog_designers")
+          .select("catalog_id, designer:designers(name)")
+          .in("catalog_id", catalogIds),
+        supabase
+          .from("catalog_artists")
+          .select("catalog_id, artist:artists(name)")
+          .in("catalog_id", catalogIds),
+      ]);
+
+      const designerMap = new Map<string, string[]>();
+      for (const row of designersRes.data || []) {
+        const name = (row as any).designer?.name;
+        if (name) {
+          const list = designerMap.get(row.catalog_id) || [];
+          list.push(name);
+          designerMap.set(row.catalog_id, list);
+        }
+      }
+
+      const artistMap = new Map<string, string[]>();
+      for (const row of artistsRes.data || []) {
+        const name = (row as any).artist?.name;
+        if (name) {
+          const list = artistMap.get(row.catalog_id) || [];
+          list.push(name);
+          artistMap.set(row.catalog_id, list);
+        }
+      }
+
+      return (data || []).map(g => ({
+        ...g,
+        designers: designerMap.get(g.id) || [],
+        artists: artistMap.get(g.id) || [],
+      }));
     },
     staleTime: 1000 * 60 * 10,
   });
 
   const filtered = useMemo(() => {
     let results = catalogGames.filter(g => {
-      if (searchTerm && !g.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        return g.title.toLowerCase().includes(term) ||
+          g.designers.some(d => d.toLowerCase().includes(term)) ||
+          g.artists.some(a => a.toLowerCase().includes(term));
+      }
       return true;
     });
     results.sort((a, b) => {
@@ -66,7 +111,7 @@ export function CatalogBrowseEmbed() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search catalog..."
+            placeholder="Search games, designers, or artists..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -136,9 +181,39 @@ export function CatalogBrowseEmbed() {
                     <Badge variant="secondary" className="text-[10px]">★ {game.bgg_community_rating.toFixed(1)}</Badge>
                   )}
                 </div>
+                {game.designers.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    <PenTool className="h-2.5 w-2.5 inline mr-0.5" />
+                    {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
+                  </p>
+                )}
                 {selectedGame === game.id && (
                   <div className="pt-2 border-t border-border space-y-3">
                     {game.description && <p className="text-xs text-muted-foreground line-clamp-4">{game.description}</p>}
+                    {game.designers.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
+                          <PenTool className="h-3 w-3" /> Designer{game.designers.length > 1 ? "s" : ""}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {game.designers.map(d => (
+                            <Badge key={d} variant="outline" className="text-[10px]">{d}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {game.artists.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
+                          <Palette className="h-3 w-3" /> Artist{game.artists.length > 1 ? "s" : ""}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {game.artists.map(a => (
+                            <Badge key={a} variant="outline" className="text-[10px]">{a}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       {game.bgg_url && (
                         <a href={game.bgg_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>

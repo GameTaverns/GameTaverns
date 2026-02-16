@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Clock, Weight, BookOpen, ExternalLink, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
+import { Search, Users, Clock, Weight, BookOpen, ExternalLink, ChevronDown, ChevronUp, ArrowLeft, Palette, PenTool } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
@@ -31,6 +31,8 @@ interface CatalogGame {
   bgg_url: string | null;
   bgg_community_rating: number | null;
   suggested_age: string | null;
+  designers: string[];
+  artists: string[];
 }
 
 export default function CatalogBrowse() {
@@ -58,14 +60,72 @@ export default function CatalogBrowse() {
         .limit(1000);
 
       if (error) throw error;
-      return data || [];
+
+      // Fetch all catalog designers and artists in bulk
+      const catalogIds = (data || []).map(g => g.id);
+      
+      const [designersRes, artistsRes] = await Promise.all([
+        supabase
+          .from("catalog_designers")
+          .select("catalog_id, designer:designers(name)")
+          .in("catalog_id", catalogIds),
+        supabase
+          .from("catalog_artists")
+          .select("catalog_id, artist:artists(name)")
+          .in("catalog_id", catalogIds),
+      ]);
+
+      const designerMap = new Map<string, string[]>();
+      for (const row of designersRes.data || []) {
+        const name = (row as any).designer?.name;
+        if (name) {
+          const list = designerMap.get(row.catalog_id) || [];
+          list.push(name);
+          designerMap.set(row.catalog_id, list);
+        }
+      }
+
+      const artistMap = new Map<string, string[]>();
+      for (const row of artistsRes.data || []) {
+        const name = (row as any).artist?.name;
+        if (name) {
+          const list = artistMap.get(row.catalog_id) || [];
+          list.push(name);
+          artistMap.set(row.catalog_id, list);
+        }
+      }
+
+      return (data || []).map(g => ({
+        ...g,
+        designers: designerMap.get(g.id) || [],
+        artists: artistMap.get(g.id) || [],
+      }));
     },
     staleTime: 1000 * 60 * 10,
   });
 
+  // Build unique designer/artist lists for filter dropdowns
+  const allDesigners = useMemo(() => {
+    const set = new Set<string>();
+    catalogGames.forEach(g => g.designers.forEach(d => set.add(d)));
+    return [...set].sort();
+  }, [catalogGames]);
+
+  const allArtists = useMemo(() => {
+    const set = new Set<string>();
+    catalogGames.forEach(g => g.artists.forEach(a => set.add(a)));
+    return [...set].sort();
+  }, [catalogGames]);
+
   const filtered = useMemo(() => {
     let results = catalogGames.filter(g => {
-      if (searchTerm && !g.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        const matchTitle = g.title.toLowerCase().includes(term);
+        const matchDesigner = g.designers.some(d => d.toLowerCase().includes(term));
+        const matchArtist = g.artists.some(a => a.toLowerCase().includes(term));
+        if (!matchTitle && !matchDesigner && !matchArtist) return false;
+      }
       
       // Apply sidebar filters
       if (sidebarFilter && sidebarValue) {
@@ -123,6 +183,12 @@ export default function CatalogBrowse() {
             }
             break;
           }
+          case "designer":
+            if (!g.designers.some(d => d === sidebarValue)) return false;
+            break;
+          case "artist":
+            if (!g.artists.some(a => a === sidebarValue)) return false;
+            break;
         }
       }
 
@@ -166,13 +232,27 @@ export default function CatalogBrowse() {
           </p>
         </div>
 
+        {/* Active filter indicator */}
+        {sidebarFilter && sidebarValue && (
+          <div className="mb-4 flex items-center gap-2">
+            <Badge variant="secondary" className="gap-1">
+              {sidebarFilter === "designer" && <PenTool className="h-3 w-3" />}
+              {sidebarFilter === "artist" && <Palette className="h-3 w-3" />}
+              {sidebarFilter}: {sidebarValue}
+            </Badge>
+            <Link to="/catalog">
+              <Button variant="ghost" size="sm" className="text-xs">Clear filter</Button>
+            </Link>
+          </div>
+        )}
+
         {/* Search & Filter Bar */}
         <div className="space-y-4 mb-8">
           <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search games..."
+                placeholder="Search games, designers, or artists..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -287,6 +367,15 @@ export default function CatalogBrowse() {
                       </Badge>
                     )}
                   </div>
+
+                  {/* Designer/Artist preview */}
+                  {game.designers.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      <PenTool className="h-2.5 w-2.5 inline mr-0.5" />
+                      {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
+                    </p>
+                  )}
+
                   {game.year_published && (
                     <p className="text-xs text-muted-foreground">{game.year_published}</p>
                   )}
@@ -296,6 +385,34 @@ export default function CatalogBrowse() {
                     <div className="pt-2 border-t border-border space-y-3">
                       {game.description && (
                         <p className="text-xs text-muted-foreground line-clamp-4">{game.description}</p>
+                      )}
+                      {game.designers.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
+                            <PenTool className="h-3 w-3" /> Designer{game.designers.length > 1 ? "s" : ""}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {game.designers.map(d => (
+                              <Link key={d} to={`/catalog?filter=designer&value=${encodeURIComponent(d)}`} onClick={e => e.stopPropagation()}>
+                                <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{d}</Badge>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {game.artists.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
+                            <Palette className="h-3 w-3" /> Artist{game.artists.length > 1 ? "s" : ""}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {game.artists.map(a => (
+                              <Link key={a} to={`/catalog?filter=artist&value=${encodeURIComponent(a)}`} onClick={e => e.stopPropagation()}>
+                                <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-accent">{a}</Badge>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
                       )}
                       <div className="flex gap-2">
                         {game.bgg_url && (
