@@ -62,6 +62,7 @@ const PollPage = lazy(() => import("./pages/PollPage"));
 const SmartPicker = lazy(() => import("./pages/SmartPicker"));
 const CatalogBrowse = lazy(() => import("./pages/CatalogBrowse"));
 const Install = lazy(() => import("./pages/Install"));
+const DashboardEditor = lazy(() => import("./components/dashboard/editor/DashboardEditorPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -179,6 +180,7 @@ function PlatformRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard/editor" element={<DashboardEditor />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />
       <Route path="/admin" element={<PlatformAdmin />} />
