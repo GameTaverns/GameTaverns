@@ -131,8 +131,16 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   </Link>
                 )}
 
-                {/* My Library */}
-                {myLibraries.length > 1 ? (
+                {/* My Library / Dashboard - show Dashboard when on a library subdomain */}
+                {isSubdomain ? (
+                  <a
+                    href={getPlatformUrl("/dashboard")}
+                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <Library className="h-3.5 w-3.5" />
+                    <span>Dashboard</span>
+                  </a>
+                ) : myLibraries.length > 1 ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
