@@ -196,10 +196,21 @@ for migration in "${MIGRATION_FILES[@]}"; do
     LOG_FILE="/tmp/gametaverns-migration-${migration}.log"
     rm -f "$LOG_FILE"
 
+    # Kill any backends that might hold locks (skip our own pid)
+    docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+      exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
+      psql -U postgres -d postgres -tAc \
+      "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='postgres' AND pid != pg_backend_pid() AND state != 'active';" \
+      > /dev/null 2>&1 || true
+
+    sleep 1
+
     set +e
     timeout 90 docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
       exec -T -e PGPASSWORD="${PGPASSWORD:-}" db \
-      psql -v ON_ERROR_STOP=1 -U postgres -d postgres -f "/docker-entrypoint-initdb.d/$migration" \
+      psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+      -c "SET lock_timeout = '10s'; SET statement_timeout = '60s';" \
+      -f "/docker-entrypoint-initdb.d/$migration" \
       > "$LOG_FILE" 2>&1
     EXIT_CODE=$?
     set -e
