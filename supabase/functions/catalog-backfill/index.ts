@@ -73,6 +73,7 @@ async function upsertArtistsByName(admin: ReturnType<typeof createClient>, names
  * Params: { mode, batch_size (default 5), offset (default 0) }
  */
 const handler = async (req: Request): Promise<Response> => {
+  console.log("[catalog-backfill] Handler invoked", req.method);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -80,6 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.log("[catalog-backfill] No auth header");
       return new Response(JSON.stringify({ error: "Auth required" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -88,6 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    console.log("[catalog-backfill] Env loaded, URL:", supabaseUrl ? "set" : "MISSING", "serviceKey:", serviceKey ? "set" : "MISSING");
 
     const supabaseUser = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -95,16 +98,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { data: { user }, error: userErr } = await supabaseUser.auth.getUser();
     if (userErr || !user) {
+      console.log("[catalog-backfill] Auth failed:", userErr?.message);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    console.log("[catalog-backfill] User authenticated:", user.id);
 
     const admin = createClient(supabaseUrl, serviceKey);
 
     const { data: roleData } = await admin
       .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
     if (!roleData) {
+      console.log("[catalog-backfill] Not admin");
       return new Response(JSON.stringify({ error: "Admin access required" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -112,14 +118,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const body = await req.json().catch(() => ({}));
     const mode = body.mode || "default";
-    const batchSize = Math.min(body.batch_size || 5, 10); // Cap at 10 for timeout safety
+    const batchSize = Math.min(body.batch_size || 5, 10);
     const offset = body.offset || 0;
+    console.log("[catalog-backfill] Mode:", mode, "batchSize:", batchSize, "offset:", offset);
 
     // =====================================================================
     // MODE: enrich — Re-fetch BGG XML for catalog entries to add designers/artists
     // =====================================================================
     if (mode === "enrich") {
-      // Find catalog entries that are MISSING designers or artists
       const { data: catalogEntries, error: catErr } = await admin
         .from("game_catalog")
         .select("id, bgg_id, title")
@@ -128,10 +134,13 @@ const handler = async (req: Request): Promise<Response> => {
         .range(offset, offset + batchSize - 1);
 
       if (catErr) {
+        console.error("[catalog-backfill] Catalog query error:", catErr.message);
         return new Response(JSON.stringify({ error: catErr.message }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      console.log("[catalog-backfill] Found", catalogEntries?.length || 0, "catalog entries at offset", offset);
 
       if (!catalogEntries || catalogEntries.length === 0) {
         return new Response(JSON.stringify({
@@ -148,11 +157,14 @@ const handler = async (req: Request): Promise<Response> => {
 
       for (const entry of catalogEntries) {
         try {
+          console.log("[catalog-backfill] Processing:", entry.title, "bgg_id:", entry.bgg_id);
           // Check if already has both designers and artists
           const { count: dCount } = await admin
             .from("catalog_designers").select("id", { count: "exact", head: true }).eq("catalog_id", entry.id);
           const { count: aCount } = await admin
             .from("catalog_artists").select("id", { count: "exact", head: true }).eq("catalog_id", entry.id);
+
+          console.log("[catalog-backfill]", entry.title, "existing designers:", dCount, "artists:", aCount);
 
           if ((dCount || 0) > 0 && (aCount || 0) > 0) {
             skipped++;
@@ -215,6 +227,7 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           const parsed = parseBggXml(xml);
+          console.log("[catalog-backfill]", entry.title, "=> designers:", parsed.designers.length, "artists:", parsed.artists.length);
 
           // Upsert designers
           const designerIds = await upsertDesignersByName(admin, parsed.designers);
