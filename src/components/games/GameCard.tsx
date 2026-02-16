@@ -1,15 +1,18 @@
 import { Link } from "react-router-dom";
-import { Users, Clock, DollarSign, Youtube, Copy } from "lucide-react";
+import { Users, Clock, DollarSign, Youtube, Copy, Play } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ExpansionList } from "./ExpansionList";
 import { WishlistButton } from "./WishlistButton";
 import { FavoriteButton } from "./FavoriteButton";
 import { StarRating } from "./StarRating";
 import { GameImage } from "./GameImage";
+import { LogPlayDialog } from "./LogPlayDialog";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
+import { useAuth } from "@/contexts/AuthContext";
 import type { GameWithRelations } from "@/types/game";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +25,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
   const { isDemoMode } = useDemoMode();
   const { wishlist, forSale, comingSoon } = useFeatureFlags();
   const { buildUrl } = useTenantUrl();
+  const { isAuthenticated } = useAuth();
   
   const playerRange = game.min_players === game.max_players
     ? `${game.min_players}`
@@ -122,6 +126,19 @@ export function GameCard({ game, priority = false }: GameCardProps) {
 
         {/* Action Buttons - Outside Link to prevent click conflicts */}
         <div className="absolute top-2 right-2 z-10 flex gap-1">
+          {/* Log Play - only for authenticated users */}
+          {isAuthenticated && !isDemoMode && (
+            <LogPlayDialog gameId={game.id} gameTitle={game.title}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-8 w-8"
+                title="Log a play"
+              >
+                <Play className="h-3.5 w-3.5" />
+              </Button>
+            </LogPlayDialog>
+          )}
           {/* Favorite Button - only visible to library owners */}
           <FavoriteButton 
             gameId={game.id} 

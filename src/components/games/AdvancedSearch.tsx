@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, X, SlidersHorizontal, Loader2, ChevronDown, Users, Clock, Gauge, Tag, Heart, DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -279,10 +279,25 @@ export function AdvancedSearch({ onFiltersChange, totalResults, className }: Adv
   const [searchValue, setSearchValue] = useState("");
   const [mechanicSearch, setMechanicSearch] = useState("");
   const [filters, setFilters] = useState<AdvancedFilters>(defaultFilters);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   const { data: allMechanics = [], isLoading: mechanicsLoading } = useMechanics();
   
   const debouncedSearch = useDebounce(searchValue, 300);
+
+  // Global "/" keyboard shortcut to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     setFilters(prev => ({ ...prev, search: debouncedSearch }));
@@ -395,7 +410,8 @@ export function AdvancedSearch({ onFiltersChange, totalResults, className }: Adv
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search games..."
+          ref={searchInputRef}
+          placeholder="Search games... (press / to focus)"
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           className="pl-10 pr-10"
