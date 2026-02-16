@@ -143,14 +143,19 @@ const handler = async (req: Request): Promise<Response> => {
     if (mode === "test") {
       const testBggId = body.bgg_id || "174430"; // default: Gloomhaven
       const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${testBggId}&stats=1`;
-      console.log("[catalog-backfill] TEST mode, fetching:", xmlUrl);
+      const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
+      const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+      const testHeaders: Record<string, string> = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "application/xml",
+        Referer: "https://boardgamegeek.com/",
+        Origin: "https://boardgamegeek.com",
+      };
+      if (bggApiToken) testHeaders["Authorization"] = `Bearer ${bggApiToken}`;
+      if (bggCookie) testHeaders["Cookie"] = bggCookie;
+      console.log("[catalog-backfill] TEST mode, fetching:", xmlUrl, "hasToken:", !!bggApiToken, "hasCookie:", !!bggCookie);
       try {
-        const res = await fetch(xmlUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; GameTaverns/1.0)",
-            Accept: "application/xml",
-          },
-        });
+        const res = await fetch(xmlUrl, { headers: testHeaders });
         const status = res.status;
         const text = await res.text();
         const hasItem = text.includes("<item");
@@ -177,6 +182,19 @@ const handler = async (req: Request): Promise<Response> => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
+
+    // Build BGG auth headers once for all fetches
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
+    const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+    const bggHeaders: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "application/xml",
+      Referer: "https://boardgamegeek.com/",
+      Origin: "https://boardgamegeek.com",
+    };
+    if (bggApiToken) bggHeaders["Authorization"] = `Bearer ${bggApiToken}`;
+    if (bggCookie) bggHeaders["Cookie"] = bggCookie;
+    console.log("[catalog-backfill] BGG auth - hasToken:", !!bggApiToken, "hasCookie:", !!bggCookie);
 
     if (mode === "enrich") {
       const { data: catalogEntries, error: catErr } = await admin
@@ -237,12 +255,7 @@ const handler = async (req: Request): Promise<Response> => {
           while (fetchAttempts < maxAttempts) {
             fetchAttempts++;
             try {
-              res = await fetch(xmlUrl, {
-                headers: {
-                  "User-Agent": "Mozilla/5.0 (compatible; GameTaverns/1.0)",
-                  Accept: "application/xml",
-                },
-              });
+              res = await fetch(xmlUrl, { headers: bggHeaders });
 
               if (res.status === 429) {
                 const waitMs = fetchAttempts * 2000; // 2s, 4s, 6s
