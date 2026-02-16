@@ -413,16 +413,22 @@ export function BulkImportDialog({
         }
         payload.csv_data = csvData;
       } else if (mode === "bgg_collection") {
-        if (!bggUsername.trim()) {
+        // Extract username from BGG profile URL if user pasted a link
+        let parsedUsername = bggUsername.trim();
+        const bggUrlMatch = parsedUsername.match(/boardgamegeek\.com\/user\/([^\/\?#]+)/i);
+        if (bggUrlMatch) {
+          parsedUsername = decodeURIComponent(bggUrlMatch[1]);
+        }
+        if (!parsedUsername) {
           toast({
             title: "Username required",
-            description: "Please enter a BoardGameGeek username",
+            description: "Please enter a BoardGameGeek username or profile URL",
             variant: "destructive",
           });
           setIsImporting(false);
           return;
         }
-        payload.bgg_username = bggUsername.trim();
+        payload.bgg_username = parsedUsername;
       } else if (mode === "bgg_links") {
         const links = bggLinks
           .split("\n")
@@ -1131,9 +1137,9 @@ Ticket to Ride,9209`}
 
               <TabsContent value="bgg_collection" className="mt-0 space-y-4">
                 <div className="space-y-2">
-                  <Label>BoardGameGeek Username</Label>
+                  <Label>BoardGameGeek Username or Profile URL</Label>
                   <Input
-                    placeholder="Enter BGG username"
+                    placeholder="e.g. johndoe or https://boardgamegeek.com/user/johndoe"
                     value={bggUsername}
                     onChange={(e) => setBggUsername(e.target.value)}
                     disabled={isImporting}

@@ -1604,8 +1604,15 @@ export default async function handler(req: Request): Promise<Response> {
         }
       }
     } else if (mode === "bgg_collection" && bgg_username) {
-      console.log(`Fetching BGG collection for: ${bgg_username}`);
-      const collection = await fetchBGGCollection(bgg_username);
+      // Extract username from BGG profile URL if user pasted a link
+      let parsedUsername = bgg_username.trim();
+      const bggUrlMatch = parsedUsername.match(/boardgamegeek\.com\/user\/([^\/\?#]+)/i);
+      if (bggUrlMatch) {
+        parsedUsername = decodeURIComponent(bggUrlMatch[1]);
+        console.log(`[BulkImport] Extracted username "${parsedUsername}" from URL`);
+      }
+      console.log(`Fetching BGG collection for: ${parsedUsername}`);
+      const collection = await fetchBGGCollection(parsedUsername);
       console.log(`Found ${collection.length} games in collection`);
       
       for (const game of collection) {
