@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { withLogging } from "../_shared/system-logger.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -181,6 +182,15 @@ async function handler(req: Request): Promise<Response> {
   }
 
   try {
+    // Rate limit: max 5 signups per IP per 15 minutes
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
+      || "unknown";
+    const rl = checkRateLimit("signup", clientIp, { maxRequests: 5, windowMs: 15 * 60_000 });
+    if (!rl.allowed) {
+      return rateLimitResponse(rl, corsHeaders, "Too many signup attempts. Please try again later.");
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);

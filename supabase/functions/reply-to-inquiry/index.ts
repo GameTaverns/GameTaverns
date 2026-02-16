@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,6 +93,12 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     console.log("[reply-to-inquiry] User authenticated:", user.id);
+
+    // Rate limit: max 20 replies per user per hour
+    const rl = checkRateLimit("reply-to-inquiry", user.id, { maxRequests: 20, windowMs: 60 * 60_000 });
+    if (!rl.allowed) {
+      return rateLimitResponse(rl, corsHeaders, "Too many replies. Please try again later.");
+    }
 
     const { message_id, reply_text } = await req.json();
 

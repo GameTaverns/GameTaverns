@@ -646,6 +646,13 @@ export function useCreateThread() {
     }) => {
       if (!user) throw new Error("Must be logged in");
 
+      // Input validation
+      const trimmedTitle = title.trim();
+      const strippedContent = content.replace(/<[^>]*>/g, "").trim();
+      if (!trimmedTitle || trimmedTitle.length > 200) throw new Error("Title must be 1-200 characters");
+      if (!strippedContent) throw new Error("Content cannot be empty");
+      if (content.length > 50000) throw new Error("Content is too long");
+
       const { data, error } = await supabase
         .from("forum_threads")
         .insert({
@@ -694,6 +701,11 @@ export function useCreateReply() {
       parentReplyId?: string;
     }) => {
       if (!user) throw new Error("Must be logged in");
+
+      // Input validation
+      const strippedContent = content.replace(/<[^>]*>/g, "").trim();
+      if (!strippedContent) throw new Error("Reply cannot be empty");
+      if (content.length > 50000) throw new Error("Reply is too long");
 
       const { data, error } = await supabase
         .from("forum_replies")
