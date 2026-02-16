@@ -521,11 +521,9 @@ export function BulkImportDialog({
       const { url: apiUrl, anonKey } = getSupabaseConfig();
       console.log("[BulkImport] Supabase config: url=", apiUrl, "anonKey present=", !!anonKey);
 
-      // Self-hosted Edge Runtime uses a router as the main service, and Kong
-      // already strips `/functions/v1/` before forwarding to the runtime.
-      // So we always call `/functions/v1/bulk-import` (NOT `/main/bulk-import`).
-      const bulkImportPath = "bulk-import";
-      const fullUrl = `${apiUrl}/functions/v1/${bulkImportPath}`;
+      // Self-hosted Edge Runtime uses a consolidated router (`main`).
+      // Kong routes to the `main` function, which dispatches by sub-path.
+      const fullUrl = `${apiUrl}/functions/v1/main/bulk-import`;
       console.log("[BulkImport] Fetching:", fullUrl);
 
       // Use streaming fetch
