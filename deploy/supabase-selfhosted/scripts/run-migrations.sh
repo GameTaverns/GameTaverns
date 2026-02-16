@@ -66,6 +66,19 @@ db_cmd() {
 }
 
 # Wait for database
+# =============================================================================
+# Stop services that hold locks (PostgREST, Auth, Realtime, Storage, Functions)
+# They reconnect instantly after pg_terminate, so we must stop them entirely.
+# =============================================================================
+echo -e "${BLUE}Stopping services that hold DB locks...${NC}"
+LOCK_SERVICES="rest auth realtime storage functions"
+for svc in $LOCK_SERVICES; do
+    docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+      stop "$svc" > /dev/null 2>&1 || true
+done
+echo -e "${GREEN}✓ Services stopped${NC}"
+echo ""
+
 echo -e "${BLUE}Waiting for database to be ready...${NC}"
 MAX_RETRIES=90
 RETRY_COUNT=0
@@ -74,6 +87,11 @@ until docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-comp
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         echo -e "${RED}Error: Database not ready after $MAX_RETRIES attempts${NC}"
+        # Restart services before exiting
+        for svc in $LOCK_SERVICES; do
+            docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+              start "$svc" > /dev/null 2>&1 || true
+        done
         exit 1
     fi
     echo "  Database not ready, waiting... ($RETRY_COUNT/$MAX_RETRIES)"
@@ -82,7 +100,7 @@ done
 echo -e "${GREEN}✓ Database is ready!${NC}"
 echo ""
 
-sleep 3
+sleep 2
 
 # =============================================================================
 # Detect existing vs fresh install
@@ -295,6 +313,20 @@ if [ $MISSING_TABLES -eq 0 ]; then
     echo -e "${GREEN}✓ All core tables verified${NC}"
 else
     echo -e "${RED}✗ $MISSING_TABLES core table(s) missing${NC}"
-    exit 1
 fi
 echo ""
+
+# =============================================================================
+# Restart services we stopped earlier
+# =============================================================================
+echo -e "${BLUE}Restarting services...${NC}"
+for svc in $LOCK_SERVICES; do
+    docker compose --env-file "$INSTALL_DIR/.env" -f "$COMPOSE_DIR/docker-compose.yml" \
+      start "$svc" > /dev/null 2>&1 || true
+done
+echo -e "${GREEN}✓ All services restarted${NC}"
+echo ""
+
+if [ $MISSING_TABLES -gt 0 ]; then
+    exit 1
+fi
