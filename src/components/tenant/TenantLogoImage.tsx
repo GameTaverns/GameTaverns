@@ -9,12 +9,32 @@ interface TenantLogoImageProps {
 }
 
 /**
+ * Convert absolute Supabase storage URLs to same-origin relative paths.
+ * Stored URLs may point to a Cloud/Lovable domain that doesn't resolve on
+ * self-hosted deployments. Extracting the `/storage/…` path lets the
+ * browser resolve it against the current origin (apex or subdomain).
+ */
+function toLocalStorageUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    // Match any Supabase-style storage path, regardless of host
+    const match = u.pathname.match(/(\/storage\/v1\/object\/public\/.+)/);
+    if (match) return match[1];
+  } catch {
+    // not a valid URL – return as-is
+  }
+  return url;
+}
+
+/**
  * Tenant logo image with the same hotlink-protection handling as game images.
+ * - Rewrites absolute storage URLs to same-origin paths
  * - Tries direct URL first
  * - Falls back to proxy for BGG CDN
  * - Uses referrerPolicy=no-referrer for best compatibility
  */
 export function TenantLogoImage({ url, alt, className, fallback }: TenantLogoImageProps) {
+  const localUrl = toLocalStorageUrl(url);
   const [useProxyFallback, setUseProxyFallback] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -22,9 +42,9 @@ export function TenantLogoImage({ url, alt, className, fallback }: TenantLogoIma
   useEffect(() => {
     setUseProxyFallback(false);
     setFailed(false);
-  }, [url]);
+  }, [localUrl]);
 
-  const src = useProxyFallback ? proxiedImageUrl(url) : directImageUrl(url);
+  const src = useProxyFallback ? proxiedImageUrl(localUrl) : directImageUrl(localUrl);
 
   if (failed) return <>{fallback ?? null}</>;
 
