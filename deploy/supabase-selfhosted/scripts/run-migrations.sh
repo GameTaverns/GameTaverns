@@ -112,10 +112,11 @@ echo ""
 sleep 5
 
 # -- Migration tracker bootstrap --
-# Create the tracker table directly via SQL instead of relying on mounted file
+# Use 'gt_migrations' to avoid conflict with Supabase's built-in 'schema_migrations' table
+TRACKER_TABLE="gt_migrations"
 echo -n "Ensuring migration tracker... "
-db_cmd "CREATE TABLE IF NOT EXISTS public.schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now()); GRANT SELECT, INSERT ON public.schema_migrations TO postgres;" > /dev/null 2>&1
-TRACKER_CHECK=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='schema_migrations';")
+db_cmd "CREATE TABLE IF NOT EXISTS public.${TRACKER_TABLE} (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now()); GRANT SELECT, INSERT ON public.${TRACKER_TABLE} TO postgres;" > /dev/null 2>&1
+TRACKER_CHECK=$(db_query "SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='${TRACKER_TABLE}';")
 if [ "$TRACKER_CHECK" = "1" ]; then
     echo -e "${GREEN}✓${NC}"
 else
@@ -200,7 +201,7 @@ ERROR_COUNT=0
 for migration in "${MIGRATION_FILES[@]}"; do
     if [ -f "$MIGRATIONS_DIR/$migration" ]; then
         # Check if migration was already applied
-        ALREADY_APPLIED=$(db_query "SELECT 1 FROM public.schema_migrations WHERE name = '$migration';")
+        ALREADY_APPLIED=$(db_query "SELECT 1 FROM public.${TRACKER_TABLE} WHERE name = '$migration';")
 
         if [ "$ALREADY_APPLIED" = "1" ]; then
             SKIP_COUNT=$((SKIP_COUNT + 1))
@@ -233,7 +234,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
                 echo -e "${YELLOW}⚠ Warning${NC}"
                 echo "    $ERROR_MSG"
                 WARNING_COUNT=$((WARNING_COUNT + 1))
-                db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
+                db_cmd "INSERT INTO public.${TRACKER_TABLE} (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
             else
                 echo -e "${RED}✗ Error${NC}"
                 echo "    $ERROR_MSG"
@@ -243,7 +244,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
             if echo "$OUTPUT" | grep -qiE "already exists|duplicate"; then
                 echo -e "${YELLOW}⚠ Warning (already exists)${NC}"
                 WARNING_COUNT=$((WARNING_COUNT + 1))
-                db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
+                db_cmd "INSERT INTO public.${TRACKER_TABLE} (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
             else
                 echo -e "${RED}✗ Error (exit code: $EXIT_CODE)${NC}"
                 echo "    $(echo "$OUTPUT" | tail -n 3 | tr '\n' ' ' | sed 's/  */ /g')"
@@ -252,7 +253,7 @@ for migration in "${MIGRATION_FILES[@]}"; do
         else
             echo -e "${GREEN}✓${NC}"
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-            db_cmd "INSERT INTO public.schema_migrations (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
+            db_cmd "INSERT INTO public.${TRACKER_TABLE} (name) VALUES ('$migration') ON CONFLICT DO NOTHING;" > /dev/null 2>&1 || true
         fi
 
         rm -f "$LOG_FILE"
