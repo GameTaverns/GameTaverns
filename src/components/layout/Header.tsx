@@ -1,5 +1,5 @@
 import { Link, useSearchParams, useLocation } from "react-router-dom";
-import { Menu, X, FlaskConical, User, Globe, ArrowLeft } from "lucide-react";
+import { Menu, X, FlaskConical, User, Globe, ArrowLeft, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -205,6 +205,17 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
                 <span className="hidden sm:inline">Browse Libraries</span>
               </Link>
             )
+          )}
+
+          {/* Catalog link */}
+          {!isDemoMode && (
+            <Link
+              to="/catalog"
+              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Catalog</span>
+            </Link>
           )}
           
           {/* Tenant subdomain: Dashboard link for authenticated users */}

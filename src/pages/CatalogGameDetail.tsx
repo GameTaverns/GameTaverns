@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar } from "lucide-react";
+import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Layout } from "@/components/layout/Layout";
@@ -13,6 +13,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
 import { GameImage } from "@/components/games/GameImage";
+import { useAuth } from "@/hooks/useAuth";
+import { useMyLibrary } from "@/hooks/useLibrary";
+import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
 
 
 interface CatalogGameFull {
@@ -43,6 +46,9 @@ interface CatalogGameFull {
 export default function CatalogGameDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { data: myLibrary } = useMyLibrary();
+  const addFromCatalog = useAddFromCatalog();
 
   const { data: game, isLoading } = useQuery({
     queryKey: ["catalog-game", slug],
@@ -237,12 +243,31 @@ export default function CatalogGameDetail() {
               ))}
             </div>
 
-            {/* BGG Link */}
-            {game.bgg_url && (
-              <a href={game.bgg_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mb-6 text-sm text-primary hover:underline font-medium">
-                <ExternalLink className="h-4 w-4" /> View on BoardGameGeek
-              </a>
-            )}
+            {/* Action buttons */}
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              {/* Add to Library */}
+              {isAuthenticated && myLibrary && (
+                <Button
+                  onClick={() => addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary.id })}
+                  disabled={addFromCatalog.isPending}
+                  className="gap-2"
+                >
+                  {addFromCatalog.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  Add to My Library
+                </Button>
+              )}
+
+              {/* BGG Link */}
+              {game.bgg_url && (
+                <a href={game.bgg_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">
+                  <ExternalLink className="h-4 w-4" /> View on BoardGameGeek
+                </a>
+              )}
+            </div>
 
             {/* Tabs */}
             <Tabs defaultValue="description" className="w-full">
