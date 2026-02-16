@@ -459,7 +459,7 @@ export default function CatalogBrowse() {
                   </Link>
 
                   {/* Add to Library button */}
-                  {isAuthenticated && myLibrary && (
+                  {isAuthenticated && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -469,7 +469,7 @@ export default function CatalogBrowse() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary.id });
+                        addFromCatalog.mutate({ catalogId: game.id, libraryId: myLibrary?.id });
                       }}
                     >
                       {addFromCatalog.isPending && addFromCatalog.variables?.catalogId === game.id ? (
