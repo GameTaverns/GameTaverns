@@ -79,10 +79,10 @@ RUN apk add --no-cache curl
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx config
-COPY nginx/app.conf /etc/nginx/conf.d/default.conf
+COPY deploy/supabase-selfhosted/nginx/app.conf /etc/nginx/conf.d/default.conf
 
 # Copy runtime config injection script
-COPY scripts/inject-config.sh /docker-entrypoint.d/40-inject-config.sh
+COPY deploy/supabase-selfhosted/scripts/inject-config.sh /docker-entrypoint.d/40-inject-config.sh
 RUN chmod +x /docker-entrypoint.d/40-inject-config.sh
 
 # Set proper permissions for nginx
