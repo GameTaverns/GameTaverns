@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   LogOut,
   Library,
@@ -9,6 +9,7 @@ import {
   Menu,
   X,
   BookOpen,
+  ArrowLeft,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -41,7 +42,9 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   const library = defaultLibrary ?? null;
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const isCatalogPage = location.pathname.startsWith("/catalog");
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -132,23 +135,43 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   </Link>
                 )}
 
-                {/* Catalog */}
-                {isSubdomain ? (
-                  <a
-                    href={getPlatformUrl("/catalog")}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <BookOpen className="h-3.5 w-3.5" />
-                    <span>Catalog</span>
-                  </a>
+                {/* Catalog / Dashboard toggle */}
+                {isCatalogPage ? (
+                  isSubdomain ? (
+                    <a
+                      href={getPlatformUrl("/dashboard")}
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>Dashboard</span>
+                    </a>
+                  ) : (
+                    <Link
+                      to="/dashboard"
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>Dashboard</span>
+                    </Link>
+                  )
                 ) : (
-                  <Link
-                    to="/catalog"
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <BookOpen className="h-3.5 w-3.5" />
-                    <span>Catalog</span>
-                  </Link>
+                  isSubdomain ? (
+                    <a
+                      href={getPlatformUrl("/catalog")}
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      <span>Catalog</span>
+                    </a>
+                  ) : (
+                    <Link
+                      to="/catalog"
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      <span>Catalog</span>
+                    </Link>
+                  )
                 )}
 
                 {isSubdomain ? (
