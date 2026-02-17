@@ -12,7 +12,9 @@ import {
   usePublicProfileCommunities,
   usePublicProfileAchievements,
   useFollowCounts,
+  useFeaturedAchievement,
 } from "@/hooks/usePublicProfile";
+import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import logoImage from "@/assets/logo.png";
 import { format } from "date-fns";
 
@@ -36,6 +38,7 @@ export default function UserProfile() {
   const { data: communities } = usePublicProfileCommunities(profile?.user_id);
   const { data: achievements } = usePublicProfileAchievements(profile?.user_id);
   const { data: followCounts } = useFollowCounts(profile?.user_id);
+  const { data: featuredAchievement } = useFeaturedAchievement(profile?.featured_achievement_id);
 
   if (isLoading) return <ProfileSkeleton />;
 
@@ -84,8 +87,9 @@ export default function UserProfile() {
               </Avatar>
 
               <div className="flex-1 min-w-0 pt-2">
-                <h1 className="font-display text-2xl font-bold text-foreground truncate">
+                <h1 className="font-display text-2xl font-bold text-foreground truncate flex items-center gap-2">
                   {profile.display_name || profile.username}
+                  <FeaturedBadge achievement={featuredAchievement ?? null} size="md" />
                 </h1>
                 <p className="text-muted-foreground text-sm">@{profile.username}</p>
               </div>
