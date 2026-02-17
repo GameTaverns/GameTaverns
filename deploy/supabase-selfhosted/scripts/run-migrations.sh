@@ -97,6 +97,7 @@ if [ "$CORE_EXISTS" = "1" ]; then
     # Only add NEW migrations here (66+) as they are created.
     MIGRATION_FILES=(
         "66-avatars-bucket.sql"
+        "67-activity-events.sql"
     )
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
@@ -172,6 +173,7 @@ else
         "64-catalog-dedup.sql"
         "65-social-profiles.sql"
         "66-avatars-bucket.sql"
+        "67-activity-events.sql"
     )
 fi
 
