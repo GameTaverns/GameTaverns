@@ -223,7 +223,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   const BATCH_SIZE = 20; // BGG supports up to 20 IDs per thing request
-  const BATCHES_PER_RUN = body.batches || 3; // 3 batches of 20 = 60 IDs per cron run
+  const BATCHES_PER_RUN = body.batches || 10; // 10 batches of 20 = 200 IDs per cron run
   const startBggId = state.next_bgg_id;
   let currentId = startBggId;
   let totalAdded = 0;
@@ -307,6 +307,15 @@ const handler = async (req: Request): Promise<Response> => {
     // Parse all items from the response
     const games = parseBggItems(xml);
     console.log(`[catalog-scraper] Batch ${batch + 1}: fetched ${games.length} items from BGG IDs ${ids[0]}-${ids[ids.length - 1]}`);
+
+    // Gap-skipping: if BGG returned 0 items for this range, jump ahead aggressively
+    if (games.length === 0 && newIds.length > 0) {
+      const GAP_JUMP = 100;
+      console.log(`[catalog-scraper] No items found in range, jumping ahead by ${GAP_JUMP}`);
+      currentId += GAP_JUMP;
+      totalSkipped += GAP_JUMP;
+      continue;
+    }
 
     for (const game of games) {
       // Skip if already in catalog
@@ -402,7 +411,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Rate-limit pause between BGG API calls
     if (batch < BATCHES_PER_RUN - 1) {
-      await sleep(3000);
+      await sleep(1500);
     }
   }
 
