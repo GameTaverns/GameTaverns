@@ -96,6 +96,7 @@ if [ "$CORE_EXISTS" = "1" ]; then
     # For existing installs, everything through 65 is already applied.
     # Only add NEW migrations here (66+) as they are created.
     MIGRATION_FILES=(
+        "66-avatars-bucket.sql"
     )
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
@@ -170,6 +171,7 @@ else
         "63-backfill-catalog-junctions.sql"
         "64-catalog-dedup.sql"
         "65-social-profiles.sql"
+        "66-avatars-bucket.sql"
     )
 fi
 
