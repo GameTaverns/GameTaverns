@@ -29,13 +29,14 @@ import {
   Gauge,
   X,
   Plus,
+  PenTool,
   Palette,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS, GENRE_OPTIONS } from "@/types/game";
-import { useMechanics, usePublishers } from "@/hooks/useGames";
+import { useMechanics, usePublishers, useDesigners, useArtists } from "@/hooks/useGames";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useAuth } from "@/hooks/useAuth";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -353,7 +354,7 @@ function SidebarUpcomingEvents({ libraryId }: { libraryId: string }) {
 }
 
 export function Sidebar({ isOpen }: SidebarProps) {
-  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "type", "genre", "mechanic", "publisher"].includes(
+  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "type", "genre", "mechanic", "publisher", "designer", "artist"].includes(
     new URLSearchParams(window.location.search).get("filter") || ""
   );
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(isAdvancedFilterActive);
@@ -362,6 +363,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: dbMechanics = [] } = useMechanics();
   const { data: dbPublishers = [] } = usePublishers();
+  const { data: dbDesigners = [] } = useDesigners();
+  const { data: dbArtists = [] } = useArtists();
   const { isDemoMode, demoGames } = useDemoMode();
   const { isAuthenticated, user, signOut, isAdmin } = useAuth();
   const { data: settings } = useSiteSettings();
@@ -394,6 +397,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
     });
     return Array.from(pubMap.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [isDemoMode, dbPublishers, demoGames]);
+
+  const designers = useMemo(() => {
+    if (!isDemoMode) return dbDesigners;
+    return [];
+  }, [isDemoMode, dbDesigners]);
+
+  const artists = useMemo(() => {
+    if (!isDemoMode) return dbArtists;
+    return [];
+  }, [isDemoMode, dbArtists]);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -705,6 +718,66 @@ export function Sidebar({ isOpen }: SidebarProps) {
                     ))}
                   </div>
                 </FilterSection>
+                {/* Designers */}
+                {designers.length > 0 && (
+                  <FilterSection title={`Designers (${designers.length})`} icon={<PenTool className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "designer"}>
+                    <div className="max-h-40 overflow-y-auto px-2">
+                      <Input
+                        placeholder="Search designers..."
+                        className="h-6 text-xs mb-1 bg-sidebar-accent/30 border-sidebar-border"
+                        onChange={(e) => {
+                          const container = e.target.closest('.max-h-40');
+                          const buttons = container?.querySelectorAll('button');
+                          buttons?.forEach(btn => {
+                            btn.style.display = btn.textContent?.toLowerCase().includes(e.target.value.toLowerCase()) ? '' : 'none';
+                          });
+                        }}
+                      />
+                      {designers.map((d) => (
+                        <button
+                          key={d.id}
+                          onClick={() => handleFilterClick("designer", d.name)}
+                          className={cn(
+                            "sidebar-link text-xs w-full text-left py-1",
+                            isActive("designer", d.name) && "sidebar-link-active"
+                          )}
+                        >
+                          {d.name}
+                        </button>
+                      ))}
+                    </div>
+                  </FilterSection>
+                )}
+                {/* Artists */}
+                {artists.length > 0 && (
+                  <FilterSection title={`Artists (${artists.length})`} icon={<Palette className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "artist"}>
+                    <div className="max-h-40 overflow-y-auto px-2">
+                      <Input
+                        placeholder="Search artists..."
+                        className="h-6 text-xs mb-1 bg-sidebar-accent/30 border-sidebar-border"
+                        onChange={(e) => {
+                          const container = e.target.closest('.max-h-40');
+                          const buttons = container?.querySelectorAll('button');
+                          buttons?.forEach(btn => {
+                            btn.style.display = btn.textContent?.toLowerCase().includes(e.target.value.toLowerCase()) ? '' : 'none';
+                          });
+                        }}
+                      />
+                      {artists.map((a) => (
+                        <button
+                          key={a.id}
+                          onClick={() => handleFilterClick("artist", a.name)}
+                          className={cn(
+                            "sidebar-link text-xs w-full text-left py-1",
+                            isActive("artist", a.name) && "sidebar-link-active"
+                          )}
+                        >
+                          {a.name}
+                        </button>
+                      ))}
+                    </div>
+                  </FilterSection>
+                )}
               </div>
             </CollapsibleContent>
           </Collapsible>

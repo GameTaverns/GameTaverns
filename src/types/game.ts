@@ -72,6 +72,8 @@ export interface GameAdminData {
 export interface GameWithRelations extends Game {
   publisher: Publisher | null;
   mechanics: Mechanic[];
+  designers?: { id: string; name: string }[];
+  artists?: { id: string; name: string }[];
   expansions?: GameWithRelations[];
   parent_game?: { id: string; title: string; slug: string | null } | null;
   admin_data?: GameAdminData | null;
