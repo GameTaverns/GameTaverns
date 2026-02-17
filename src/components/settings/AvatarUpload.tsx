@@ -3,7 +3,6 @@ import { Camera, Link, Loader2, X, Upload } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -12,7 +11,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateUserProfile } from "@/hooks/useLibrary";
-import { apiClient, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase } from "@/lib/supabase";
 
 interface AvatarUploadProps {
   currentAvatarUrl: string | null;
@@ -53,24 +52,27 @@ export function AvatarUpload({ currentAvatarUrl, displayName }: AvatarUploadProp
 
     setIsUploading(true);
     try {
-      const base64 = await fileToBase64(file);
+      const userId = user?.id;
+      if (!userId) throw new Error("Not authenticated");
 
-      if (isSelfHostedMode()) {
-        const result = await apiClient.post<{ url: string }>("/uploads/image", {
-          data: base64,
-          filename: file.name,
-          folder: "avatars",
-        });
-        await saveAvatarUrl(result.url);
-      } else {
-        // Supabase storage path
-        const result = await apiClient.post<{ url: string }>("/uploads/image", {
-          data: base64,
-          filename: file.name,
-          folder: "avatars",
-        });
-        await saveAvatarUrl(result.url);
-      }
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filePath = `${userId}/avatar.${ext}`;
+
+      // Remove old avatar if exists
+      await supabase.storage.from('avatars').remove([filePath]);
+
+      // Upload new avatar
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      await saveAvatarUrl(publicUrl);
     } catch (error: any) {
       console.error("Avatar upload error:", error);
       toast({ title: "Upload failed", description: error.message || "Could not upload avatar", variant: "destructive" });
@@ -212,11 +214,3 @@ export function AvatarUpload({ currentAvatarUrl, displayName }: AvatarUploadProp
   );
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
