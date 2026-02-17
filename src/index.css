@@ -11,6 +11,10 @@
 */
 
 @layer base {
+  html {
+    font-size: 87.5%; /* 14px base instead of 16px (~12.5% reduction) */
+  }
+
   :root {
     /* Typography tokens (overridden by ThemeApplicator/DemoThemeApplicator) */
     --font-display: "MedievalSharp";
