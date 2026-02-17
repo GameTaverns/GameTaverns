@@ -98,6 +98,7 @@ if [ "$CORE_EXISTS" = "1" ]; then
     MIGRATION_FILES=(
         "66-avatars-bucket.sql"
         "67-activity-events.sql"
+        "68-activity-triggers.sql"
     )
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
@@ -174,6 +175,7 @@ else
         "65-social-profiles.sql"
         "66-avatars-bucket.sql"
         "67-activity-events.sql"
+        "68-activity-triggers.sql"
     )
 fi
 
