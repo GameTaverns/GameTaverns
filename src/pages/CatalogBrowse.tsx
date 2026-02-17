@@ -65,10 +65,10 @@ export default function CatalogBrowse() {
   const sidebarFilter = searchParams.get("filter");
   const sidebarValue = searchParams.get("value");
 
-  const { data: catalogGames = [], isLoading } = useQuery({
-    queryKey: ["catalog-browse"],
-    queryFn: async (): Promise<CatalogGame[]> => {
-      // Fetch all games using pagination to avoid the 1000-row limit
+  // Phase 1: Fetch just the game catalog (fast — no junction tables)
+  const { data: rawGames = [], isLoading } = useQuery({
+    queryKey: ["catalog-browse-raw"],
+    queryFn: async () => {
       let allData: any[] = [];
       let from = 0;
       const batchSize = 1000;
@@ -83,12 +83,17 @@ export default function CatalogBrowse() {
         if (!batch || batch.length < batchSize) break;
         from += batchSize;
       }
+      return allData;
+    },
+    staleTime: 1000 * 60 * 10,
+  });
 
-      const data = allData;
+  // Phase 2: Fetch junction tables + ratings (deferred — loads after games appear)
+  const { data: metadata } = useQuery({
+    queryKey: ["catalog-browse-metadata"],
+    queryFn: async () => {
+      const catalogIdSet = new Set(rawGames.map(g => g.id));
 
-      const catalogIdSet = new Set((data || []).map(g => g.id));
-
-      // Fetch ALL junction records (no .in() filter to avoid URL length limits with 4000+ IDs)
       const fetchAllJunction = async (table: string, selectStr: string) => {
         let all: any[] = [];
         let from = 0;
@@ -103,7 +108,6 @@ export default function CatalogBrowse() {
           if (!batch || batch.length < batchSize) break;
           from += batchSize;
         }
-        // Filter client-side to only include records for current catalog entries
         return all.filter(r => catalogIdSet.has(r.catalog_id));
       };
 
@@ -114,8 +118,6 @@ export default function CatalogBrowse() {
         fetchAllJunction("catalog_publishers", "catalog_id, publisher:publishers(name)"),
       ]);
 
-      // Aggregate community ratings across all libraries
-      // game_ratings -> game_id -> games.catalog_id
       const { data: ratingsData } = await supabase
         .from("games")
         .select("catalog_id, game_ratings(rating)")
@@ -147,26 +149,33 @@ export default function CatalogBrowse() {
         return map;
       };
 
-      const designerMap = buildMap(designersRows, "designer");
-      const artistMap = buildMap(artistsRows, "artist");
-      const mechanicMap = buildMap(mechanicsRows, "mechanic");
-      const publisherMap = buildMap(publishersRows, "publisher");
-
-      return (data || []).map(g => {
-        const r = ratingMap.get(g.id);
-        return {
-          ...g,
-          designers: designerMap.get(g.id) || [],
-          artists: artistMap.get(g.id) || [],
-          mechanics: mechanicMap.get(g.id) || [],
-          publishers: publisherMap.get(g.id) || [],
-          community_rating: r ? r.sum / r.count : null,
-          community_rating_count: r?.count || 0,
-        };
-      });
+      return {
+        designerMap: buildMap(designersRows, "designer"),
+        artistMap: buildMap(artistsRows, "artist"),
+        mechanicMap: buildMap(mechanicsRows, "mechanic"),
+        publisherMap: buildMap(publishersRows, "publisher"),
+        ratingMap,
+      };
     },
+    enabled: rawGames.length > 0,
     staleTime: 1000 * 60 * 10,
   });
+
+  // Merge raw games with metadata (games show immediately, metadata fills in)
+  const catalogGames: CatalogGame[] = useMemo(() => {
+    return rawGames.map(g => {
+      const r = metadata?.ratingMap.get(g.id);
+      return {
+        ...g,
+        designers: metadata?.designerMap.get(g.id) || [],
+        artists: metadata?.artistMap.get(g.id) || [],
+        mechanics: metadata?.mechanicMap.get(g.id) || [],
+        publishers: metadata?.publisherMap.get(g.id) || [],
+        community_rating: r ? r.sum / r.count : null,
+        community_rating_count: r?.count || 0,
+      };
+    });
+  }, [rawGames, metadata]);
 
   // Build unique lists for filter dropdowns
   const allDesigners = useMemo(() => {
