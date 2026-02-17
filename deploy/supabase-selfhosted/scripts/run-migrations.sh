@@ -96,7 +96,6 @@ if [ "$CORE_EXISTS" = "1" ]; then
     # For existing installs, everything through 65 is already applied.
     # Only add NEW migrations here (66+) as they are created.
     MIGRATION_FILES=(
-        "66-avatars-bucket.sql"
         "67-activity-events.sql"
         "68-activity-triggers.sql"
     )
