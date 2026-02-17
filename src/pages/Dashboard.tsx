@@ -58,6 +58,7 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Footer } from "@/components/layout/Footer";
 
 import { CommunityTab } from "@/components/community/CommunityTab";
+import { SocialTab } from "@/components/social/SocialTab";
 import { AnalyticsTab } from "@/components/analytics/AnalyticsTab";
 import { CommunityMembersCard } from "@/components/community/CommunityMembersCard";
 import { ChallengesManager } from "@/components/challenges/ChallengesManager";
@@ -209,6 +210,13 @@ export default function Dashboard() {
             >
               <Users className="h-3.5 w-3.5" />
               Community
+            </TabsTrigger>
+            <TabsTrigger
+              value="social"
+              className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              Social
             </TabsTrigger>
             <TabsTrigger
               value="personal"
@@ -617,6 +625,11 @@ export default function Dashboard() {
                 </Card>
               )}
             </div>
+          </TabsContent>
+
+          {/* ==================== SOCIAL TAB ==================== */}
+          <TabsContent value="social">
+            <SocialTab currentUserId={user?.id} />
           </TabsContent>
 
           {/* ==================== PERSONAL TAB ==================== */}
