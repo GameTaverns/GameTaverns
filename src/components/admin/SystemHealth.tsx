@@ -405,6 +405,26 @@ export function SystemHealth() {
         return { mode: "test", ...data };
       }
 
+      // Refresh BGG ratings: calls refresh-ratings function directly
+      if (mode === "refresh-bgg-ratings") {
+        const refreshUrl = `${supabaseUrl}/functions/v1/refresh-ratings`;
+        const r = await fetch(refreshUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: anonKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ limit: 100 }),
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({ error: r.statusText }));
+          throw new Error(err.error || r.statusText);
+        }
+        const data = await r.json();
+        return { mode: "refresh-bgg-ratings", ...data };
+      }
+
       const batchSize = mode === "sync-ratings" ? 50 : 5;
       let offset = 0;
       let totalProcessed = 0;
@@ -463,6 +483,10 @@ export function SystemHealth() {
       if (data.mode === "test") {
         toast.success("BGG test complete — check console for details");
         console.log("[catalog-backfill test]", data);
+        return;
+      }
+      if (data.mode === "refresh-bgg-ratings") {
+        toast.success(`BGG ratings refreshed: ${data.updated || 0} updated, ${data.remaining || 0} remaining`);
         return;
       }
       if (data.mode === "sync-ratings") {
@@ -1282,9 +1306,9 @@ export function SystemHealth() {
             <div className="flex items-center gap-3">
               <Star className="h-5 w-5 text-secondary" />
               <div>
-                <div className="text-sm text-cream font-medium">Sync Ratings to Catalog</div>
+                <div className="text-sm text-cream font-medium">Refresh BGG Ratings</div>
                 <div className="text-xs text-cream/50">
-                  Aggregates BGG community ratings from library games into catalog entries.
+                  Fetches BGG community average ratings for catalog entries missing them (30 per batch).
                 </div>
               </div>
             </div>
@@ -1292,13 +1316,13 @@ export function SystemHealth() {
               variant="outline"
               size="sm"
               className="text-xs shrink-0"
-              onClick={() => backfillMutation.mutate("sync-ratings")}
+              onClick={() => backfillMutation.mutate("refresh-bgg-ratings")}
               disabled={backfillMutation.isPending}
             >
               {backfillMutation.isPending ? (
                 <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
               ) : (
-                <><Star className="h-3.5 w-3.5 mr-1" /> Sync Ratings</>
+                <><Star className="h-3.5 w-3.5 mr-1" /> Refresh Ratings</>
               )}
             </Button>
           </div>
