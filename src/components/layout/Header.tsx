@@ -207,15 +207,25 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             )
           )}
 
-          {/* Catalog link */}
+          {/* Catalog / Dashboard link */}
           {!isDemoMode && (
-            <Link
-              to="/catalog"
-              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
-            >
-              <BookOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Catalog</span>
-            </Link>
+            location.pathname.startsWith("/catalog") && isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Link>
+            ) : (
+              <Link
+                to="/catalog"
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+              >
+                <BookOpen className="h-4 w-4" />
+                <span className="hidden sm:inline">Catalog</span>
+              </Link>
+            )
           )}
           
           {/* Tenant subdomain: Dashboard link for authenticated users */}
