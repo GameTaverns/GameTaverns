@@ -318,33 +318,72 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     for (const game of games) {
-      // Skip if already in catalog
+      // Skip if already in catalog (by bgg_id)
       if (existingIds.has(game.bggId)) {
         totalSkipped++;
         continue;
       }
 
       try {
-        // Create catalog entry
-        const { data: entry, error: upsertErr } = await admin
+        // Check if a title-match entry exists with NULL bgg_id (from library imports)
+        const { data: titleMatch } = await admin
           .from("game_catalog")
-          .upsert({
-            bgg_id: game.bggId,
-            title: game.title,
-            description: game.description,
-            image_url: game.imageUrl,
-            min_players: game.minPlayers,
-            max_players: game.maxPlayers,
-            play_time_minutes: game.playTimeMinutes,
-            suggested_age: game.suggestedAge,
-            year_published: game.yearPublished,
-            bgg_community_rating: game.bggCommunityRating,
-            weight: game.weight,
-            is_expansion: game.isExpansion,
-            bgg_url: game.bggUrl,
-          }, { onConflict: "bgg_id" })
           .select("id")
-          .single();
+          .eq("title", game.title)
+          .is("bgg_id", null)
+          .limit(1)
+          .maybeSingle();
+
+        let entry: { id: string } | null = null;
+        let upsertErr: any = null;
+
+        if (titleMatch) {
+          // Update existing NULL-bgg_id entry with full BGG data
+          const { data, error } = await admin
+            .from("game_catalog")
+            .update({
+              bgg_id: game.bggId,
+              description: game.description,
+              image_url: game.imageUrl,
+              min_players: game.minPlayers,
+              max_players: game.maxPlayers,
+              play_time_minutes: game.playTimeMinutes,
+              suggested_age: game.suggestedAge,
+              year_published: game.yearPublished,
+              bgg_community_rating: game.bggCommunityRating,
+              weight: game.weight,
+              is_expansion: game.isExpansion,
+              bgg_url: game.bggUrl,
+            })
+            .eq("id", titleMatch.id)
+            .select("id")
+            .single();
+          entry = data;
+          upsertErr = error;
+        } else {
+          // Create new catalog entry
+          const { data, error } = await admin
+            .from("game_catalog")
+            .upsert({
+              bgg_id: game.bggId,
+              title: game.title,
+              description: game.description,
+              image_url: game.imageUrl,
+              min_players: game.minPlayers,
+              max_players: game.maxPlayers,
+              play_time_minutes: game.playTimeMinutes,
+              suggested_age: game.suggestedAge,
+              year_published: game.yearPublished,
+              bgg_community_rating: game.bggCommunityRating,
+              weight: game.weight,
+              is_expansion: game.isExpansion,
+              bgg_url: game.bggUrl,
+            }, { onConflict: "bgg_id" })
+            .select("id")
+            .single();
+          entry = data;
+          upsertErr = error;
+        }
 
         if (upsertErr || !entry?.id) {
           totalErrors++;
