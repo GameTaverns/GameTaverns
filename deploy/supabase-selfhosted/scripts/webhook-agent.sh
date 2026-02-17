@@ -66,6 +66,7 @@ get_script_command() {
         nuclear-reset)     echo "BLOCKED" ;;
         rebuild-frontend)  echo "docker compose --env-file $INSTALL_DIR/.env -f $COMPOSE_DIR/docker-compose.yml build --no-cache app && docker compose --env-file $INSTALL_DIR/.env -f $COMPOSE_DIR/docker-compose.yml up -d app" ;;
         restart-functions) echo "docker compose --env-file $INSTALL_DIR/.env -f $COMPOSE_DIR/docker-compose.yml up -d --force-recreate --no-deps functions && docker compose --env-file $INSTALL_DIR/.env -f $COMPOSE_DIR/docker-compose.yml up -d --force-recreate --no-deps kong" ;;
+        rebuild-server)    echo "docker compose --env-file $INSTALL_DIR/.env -f $COMPOSE_DIR/docker-compose.yml build --no-cache server && docker compose --env-file $INSTALL_DIR/.env -f $COMPOSE_DIR/docker-compose.yml up -d server" ;;
         *)                 echo "UNKNOWN" ;;
     esac
 }

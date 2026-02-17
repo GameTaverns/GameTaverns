@@ -9,6 +9,7 @@ const ALLOWED_SCRIPTS = [
   "update", "backup", "migrations", "restore", "render-kong",
   "setup-ssl", "create-admin", "preflight", "rebuild-frontend",
   "restart-functions", "clean-install", "nuclear-reset",
+  "rebuild-server",
 ];
 
 export default async function handler(req: Request): Promise<Response> {
