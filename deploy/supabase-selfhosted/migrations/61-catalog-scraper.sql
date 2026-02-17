@@ -41,10 +41,10 @@ WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-scraper-cron');
 
 SELECT cron.schedule(
   'catalog-scraper-cron',
-  '*/5 * * * *',
+  '*/2 * * * *',
   $$
   SELECT net.http_post(
-    url := 'http://functions:8000/v1/catalog-scraper',
+    url := 'http://kong:8000/functions/v1/catalog-scraper',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
