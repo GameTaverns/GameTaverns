@@ -14,16 +14,22 @@ router.use(authMiddleware, adminMiddleware);
 // List users with profile data
 router.get('/users', async (req: Request, res: Response) => {
   try {
+    // Use user_profiles as the base and LEFT JOIN users to catch all accounts
+    // This ensures users who have a profile but a missing users row (or vice versa) still appear
     const result = await pool.query(`
-      SELECT u.id, u.email, u.created_at,
-             NULL::timestamptz as last_sign_in_at,
+      SELECT COALESCE(u.id, up.user_id) as id,
+             u.email,
+             COALESCE(u.created_at, up.created_at) as created_at,
+             u.last_sign_in_at,
+             u.email_confirmed_at,
              up.display_name, up.username,
              ARRAY_AGG(ur.role) FILTER (WHERE ur.role IS NOT NULL) as roles
-      FROM users u
-      LEFT JOIN user_profiles up ON u.id = up.user_id
-      LEFT JOIN user_roles ur ON u.id = ur.user_id
-      GROUP BY u.id, up.display_name, up.username
-      ORDER BY u.created_at DESC
+      FROM user_profiles up
+      FULL OUTER JOIN users u ON u.id = up.user_id
+      LEFT JOIN user_roles ur ON COALESCE(u.id, up.user_id) = ur.user_id
+      WHERE COALESCE(u.id, up.user_id) IS NOT NULL
+      GROUP BY u.id, up.user_id, u.email, u.created_at, u.last_sign_in_at, u.email_confirmed_at, up.created_at, up.display_name, up.username
+      ORDER BY COALESCE(u.created_at, up.created_at) DESC
     `);
     
     res.json(result.rows);

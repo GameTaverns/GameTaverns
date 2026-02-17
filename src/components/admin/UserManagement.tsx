@@ -9,13 +9,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2, MailCheck, RefreshCw, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2, MailCheck, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 
 // 5-Tier Role Hierarchy
 type AppRole = "admin" | "staff" | "owner" | "moderator" | null;
+type SortField = "display_name" | "email" | "created_at" | "last_sign_in_at" | "status" | "role";
+type SortDir = "asc" | "desc";
 
 interface UserWithDetails {
   id: string;
@@ -54,6 +56,8 @@ export function UserManagement() {
   const [suspendReason, setSuspendReason] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState<SortField>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const USERS_PER_PAGE = 25;
 
   // Get current user's role
@@ -386,9 +390,52 @@ export function UserManagement() {
             u.role?.toLowerCase().includes(q)
           );
         });
-        const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+
+        // Sort
+        const getStatusOrder = (u: UserWithDetails) => u.is_banned ? 2 : !u.email_confirmed_at ? 1 : 0;
+        const sortedUsers = [...filteredUsers].sort((a, b) => {
+          let cmp = 0;
+          switch (sortField) {
+            case "display_name":
+              cmp = (a.display_name || "").localeCompare(b.display_name || "");
+              break;
+            case "email":
+              cmp = (a.email || "").localeCompare(b.email || "");
+              break;
+            case "created_at":
+              cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+              break;
+            case "last_sign_in_at":
+              cmp = (a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : 0) - (b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : 0);
+              break;
+            case "status":
+              cmp = getStatusOrder(a) - getStatusOrder(b);
+              break;
+            case "role":
+              cmp = getRoleTier(a.role) - getRoleTier(b.role);
+              break;
+          }
+          return sortDir === "asc" ? cmp : -cmp;
+        });
+
+        const totalPages = Math.max(1, Math.ceil(sortedUsers.length / USERS_PER_PAGE));
         const safePage = Math.min(currentPage, totalPages);
-        const paginatedUsers = filteredUsers.slice((safePage - 1) * USERS_PER_PAGE, safePage * USERS_PER_PAGE);
+        const paginatedUsers = sortedUsers.slice((safePage - 1) * USERS_PER_PAGE, safePage * USERS_PER_PAGE);
+
+        const toggleSort = (field: SortField) => {
+          if (sortField === field) {
+            setSortDir(d => d === "asc" ? "desc" : "asc");
+          } else {
+            setSortField(field);
+            setSortDir(field === "created_at" || field === "last_sign_in_at" ? "desc" : "asc");
+          }
+          setCurrentPage(1);
+        };
+
+        const SortIcon = ({ field }: { field: SortField }) => {
+          if (sortField !== field) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+          return sortDir === "asc" ? <ArrowUp className="w-3 h-3 ml-1" /> : <ArrowDown className="w-3 h-3 ml-1" />;
+        };
 
         return (
           <>
@@ -416,12 +463,24 @@ export function UserManagement() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-wood-medium/30 hover:bg-wood-medium/40">
-                    <TableHead className="text-cream/70">User</TableHead>
-                    <TableHead className="text-cream/70">Email</TableHead>
-                    <TableHead className="text-cream/70">Joined</TableHead>
-                    <TableHead className="text-cream/70">Last Active</TableHead>
-                    <TableHead className="text-cream/70">Status</TableHead>
-                    <TableHead className="text-cream/70">Role</TableHead>
+                    <TableHead className="text-cream/70 cursor-pointer select-none" onClick={() => toggleSort("display_name")}>
+                      <span className="flex items-center">User<SortIcon field="display_name" /></span>
+                    </TableHead>
+                    <TableHead className="text-cream/70 cursor-pointer select-none" onClick={() => toggleSort("email")}>
+                      <span className="flex items-center">Email<SortIcon field="email" /></span>
+                    </TableHead>
+                    <TableHead className="text-cream/70 cursor-pointer select-none" onClick={() => toggleSort("created_at")}>
+                      <span className="flex items-center">Joined<SortIcon field="created_at" /></span>
+                    </TableHead>
+                    <TableHead className="text-cream/70 cursor-pointer select-none" onClick={() => toggleSort("last_sign_in_at")}>
+                      <span className="flex items-center">Last Active<SortIcon field="last_sign_in_at" /></span>
+                    </TableHead>
+                    <TableHead className="text-cream/70 cursor-pointer select-none" onClick={() => toggleSort("status")}>
+                      <span className="flex items-center">Status<SortIcon field="status" /></span>
+                    </TableHead>
+                    <TableHead className="text-cream/70 cursor-pointer select-none" onClick={() => toggleSort("role")}>
+                      <span className="flex items-center">Role<SortIcon field="role" /></span>
+                    </TableHead>
                     <TableHead className="text-cream/70">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
