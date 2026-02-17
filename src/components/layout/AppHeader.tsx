@@ -10,13 +10,14 @@ import {
   X,
   BookOpen,
   ArrowLeft,
+  User,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
+import { useMyLibrary, useMyLibraries, useUserProfile } from "@/hooks/useLibrary";
 import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
@@ -39,6 +40,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   const { tenantSlug } = useTenant();
   const { data: defaultLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
+  const { data: profile } = useUserProfile();
   const library = defaultLibrary ?? null;
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const navigate = useNavigate();
@@ -294,14 +296,35 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
 
             {/* Sign in / Sign out */}
             {isAuthenticated ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleSignOut}
-                className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
+              <>
+                {profile?.username && (
+                  isSubdomain ? (
+                    <a
+                      href={getPlatformUrl(`/u/${profile.username}`)}
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    >
+                      <User className="h-3.5 w-3.5" />
+                      <span>{profile.display_name || profile.username}</span>
+                    </a>
+                  ) : (
+                    <Link
+                      to={`/u/${profile.username}`}
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    >
+                      <User className="h-3.5 w-3.5" />
+                      <span>{profile.display_name || profile.username}</span>
+                    </Link>
+                  )
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleSignOut}
+                  className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </>
             ) : (
               isSubdomain ? (
                 <a
