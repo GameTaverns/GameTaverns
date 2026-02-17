@@ -12,6 +12,7 @@ import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/cl
 import { DiscordLinkCard } from "./DiscordLinkCard";
 import { TwoFactorSettings } from "./TwoFactorSettings";
 import { FeaturedBadgeSelector } from "./FeaturedBadgeSelector";
+import { AvatarUpload } from "./AvatarUpload";
 
 export function AccountSettings() {
   const { user } = useAuth();
@@ -153,6 +154,12 @@ export function AccountSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Avatar */}
+          <AvatarUpload
+            currentAvatarUrl={profile?.avatar_url || null}
+            displayName={profile?.display_name || null}
+          />
+
           {/* Email (read-only) */}
           <div className="space-y-2">
             <Label htmlFor="email" className="flex items-center gap-2">
