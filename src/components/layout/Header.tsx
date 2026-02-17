@@ -117,14 +117,14 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
 
         {/* Right side actions */}
         <nav className="flex items-center gap-0.5 sm:gap-1 justify-end overflow-x-auto no-scrollbar">
-          {/* Social Media Icons */}
+          {/* Social Media Icons - hidden on mobile */}
           {socialLinks.map((link) => (
             <a
               key={link.label}
               href={formatUrl(link)}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+              className="hidden sm:inline-flex p-2 text-muted-foreground hover:text-foreground transition-colors"
               aria-label={link.label}
             >
               <link.icon className="h-4 w-4" />
@@ -132,7 +132,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           ))}
           
           {socialLinks.length > 0 && (
-            <div className="w-px h-4 bg-border mx-1" />
+            <div className="hidden sm:block w-px h-4 bg-border mx-1" />
           )}
           
           {/* Join Community button - show for authenticated non-owners viewing a library */}
@@ -158,22 +158,24 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           
           <ThemeToggle />
           
+          {/* === Desktop-only nav links (hidden on mobile — accessible via sidebar hamburger) === */}
+          
           {/* Demo mode navigation */}
           {isDemoMode && location.pathname !== "/demo/settings" && (
             <Link 
               to="/demo/settings" 
-              className="flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+              className="hidden sm:flex items-center gap-1.5 px-2 py-1 text-sm font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
             >
               <FlaskConical className="h-4 w-4" />
-              <span className="hidden sm:inline">Demo Settings</span>
+              <span>Demo Settings</span>
             </Link>
           )}
           
-          {/* Home link for tenant subdomains - goes to the library's own home page */}
+          {/* Home link for tenant subdomains */}
           {tenantSlug && !isDemoMode && (
             <a
               href="/"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+              className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
               Home
             </a>
@@ -181,7 +183,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           
           {/* Home link - shown outside tenant context OR in demo mode */}
           {(!tenantSlug || isDemoMode) && (
-            <Link to={homeUrl} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
+            <Link to={homeUrl} className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
               Home
             </Link>
           )}
@@ -191,18 +193,18 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             location.pathname === "/directory" && isAuthenticated ? (
               <Link
                 to="/dashboard"
-                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+                className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Back to Dashboard</span>
+                <span>Back to Dashboard</span>
               </Link>
             ) : (
               <Link
                 to="/directory"
-                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+                className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <Globe className="h-4 w-4" />
-                <span className="hidden sm:inline">Browse Libraries</span>
+                <span>Browse Libraries</span>
               </Link>
             )
           )}
@@ -212,18 +214,18 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
             location.pathname.startsWith("/catalog") && isAuthenticated ? (
               <Link
                 to="/dashboard"
-                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+                className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Dashboard</span>
+                <span>Dashboard</span>
               </Link>
             ) : (
               <Link
                 to="/catalog"
-                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+                className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <BookOpen className="h-4 w-4" />
-                <span className="hidden sm:inline">Catalog</span>
+                <span>Catalog</span>
               </Link>
             )
           )}
@@ -232,7 +234,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           {tenantSlug && !isDemoMode && isAuthenticated && (
             <a
               href={getPlatformUrl("/dashboard")}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+              className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
               Dashboard
             </a>
@@ -250,9 +252,9 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           
           {/* User display name with featured badge when viewing libraries */}
           {tenantSlug && isAuthenticated && (profile?.display_name || (user as any)?.user_metadata?.display_name) && (
-            <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground px-2">
+            <span className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground px-2">
               <User className="h-4 w-4" />
-              <span className="hidden sm:inline">{profile?.display_name || (user as any)?.user_metadata?.display_name}</span>
+              <span>{profile?.display_name || (user as any)?.user_metadata?.display_name}</span>
               {profile?.featured_achievement && (
                 <FeaturedBadge achievement={profile.featured_achievement} size="xs" />
               )}
@@ -260,7 +262,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           )}
           {/* Only show Demo link if demo mode is enabled, not in production, and not already in demo */}
           {demoModeEnabled && !isDemoMode && !isProductionDeployment() && (
-            <Link to="/?demo=true" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
+            <Link to="/?demo=true" className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
               Demo
             </Link>
           )}

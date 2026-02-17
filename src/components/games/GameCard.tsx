@@ -41,8 +41,8 @@ export function GameCard({ game, priority = false }: GameCardProps) {
       <div className="relative flex-1 flex flex-col">
         <Link to={gameUrl} className="flex-1 flex flex-col">
           <Card className="group overflow-hidden card-elevated card-hover bg-card border-border flex-1 flex flex-col">
-            {/* Image - consistent square aspect ratio for uniform grid */}
-            <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-muted/50 to-muted flex items-center justify-center">
+            {/* Image - 3:4 on mobile for compact cards, square on larger screens */}
+            <div className="relative aspect-[3/4] sm:aspect-square overflow-hidden bg-gradient-to-b from-muted/50 to-muted flex items-center justify-center">
               {game.image_url ? (
                 <GameImage
                   imageUrl={game.image_url}
@@ -63,16 +63,16 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               )}
             </div>
 
-            <CardContent className="p-2.5 sm:p-4 flex-1 flex flex-col">
+            <CardContent className="p-1.5 sm:p-4 flex-1 flex flex-col">
               {/* Title - fixed height for uniform cards */}
-              <h3 className="font-display text-sm sm:text-lg font-semibold text-foreground line-clamp-2 min-h-[2.5rem] sm:min-h-[3.5rem] mb-2 sm:mb-3 group-hover:text-primary transition-colors">
+              <h3 className="font-display text-xs sm:text-lg font-semibold text-foreground line-clamp-2 min-h-[2rem] sm:min-h-[3.5rem] mb-1 sm:mb-3 group-hover:text-primary transition-colors">
                 {game.title}
               </h3>
 
-              <hr className="border-border mb-2 sm:mb-3" />
+              <hr className="border-border mb-1 sm:mb-3" />
 
               {/* Quick Info */}
-              <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3">
+              <div className="flex items-center gap-1.5 sm:gap-4 text-[10px] sm:text-sm text-muted-foreground mb-1 sm:mb-3">
                 <span className="flex items-center gap-1">
                   <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                   {playerRange}
@@ -84,12 +84,14 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               </div>
 
               {/* Rating */}
-              <StarRating gameId={game.id} size="sm" showCount={true} interactive={false} />
+              <div className="hidden sm:block">
+                <StarRating gameId={game.id} size="sm" showCount={true} interactive={false} />
+              </div>
 
-              <hr className="border-border mb-2 sm:mb-3" />
+              <hr className="border-border mb-1 sm:mb-3" />
 
-              {/* Tags */}
-              <div className="flex flex-wrap gap-1.5 mt-auto">
+              {/* Tags - hidden on mobile for compactness */}
+              <div className="hidden sm:flex flex-wrap gap-1.5 mt-auto">
                 {(game as any).copies_owned > 1 && (
                   <Badge className="text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
                     <Copy className="h-3 w-3 mr-0.5" />
