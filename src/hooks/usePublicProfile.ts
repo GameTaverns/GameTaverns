@@ -8,6 +8,8 @@ export interface PublicProfile {
   avatar_url: string | null;
   bio: string | null;
   featured_achievement_id: string | null;
+  banner_url: string | null;
+  banner_gradient: string | null;
   member_since: string;
   games_owned: number;
   expansions_owned: number;
@@ -21,6 +23,7 @@ export interface PublicProfileCommunity {
   name: string;
   slug: string;
   role: string;
+  type: "library" | "club";
 }
 
 export function usePublicProfile(username: string | undefined) {
@@ -59,6 +62,8 @@ export function usePublicProfileCommunities(userId: string | undefined) {
     queryFn: async (): Promise<PublicProfileCommunity[]> => {
       if (!userId) return [];
 
+      const communities: PublicProfileCommunity[] = [];
+
       // Get libraries the user owns
       const { data: ownedLibs } = await supabase
         .from("libraries")
@@ -66,19 +71,17 @@ export function usePublicProfileCommunities(userId: string | undefined) {
         .eq("owner_id", userId)
         .eq("is_active", true);
 
+      if (ownedLibs) {
+        for (const lib of ownedLibs) {
+          communities.push({ id: lib.id, name: lib.name, slug: lib.slug, role: "owner", type: "library" });
+        }
+      }
+
       // Get libraries the user is a member of
       const { data: memberships } = await supabase
         .from("library_members")
         .select("library_id, role")
         .eq("user_id", userId);
-
-      const communities: PublicProfileCommunity[] = [];
-
-      if (ownedLibs) {
-        for (const lib of ownedLibs) {
-          communities.push({ id: lib.id, name: lib.name, slug: lib.slug, role: "owner" });
-        }
-      }
 
       if (memberships && memberships.length > 0) {
         const libIds = memberships
@@ -96,11 +99,54 @@ export function usePublicProfileCommunities(userId: string | undefined) {
             for (const lib of libs) {
               const membership = memberships.find((m) => m.library_id === lib.id);
               communities.push({
-                id: lib.id,
-                name: lib.name,
-                slug: lib.slug,
-                role: membership?.role || "member",
+                id: lib.id, name: lib.name, slug: lib.slug,
+                role: membership?.role || "member", type: "library",
               });
+            }
+          }
+        }
+      }
+
+      // Get clubs the user owns
+      const { data: ownedClubs } = await supabase
+        .from("clubs")
+        .select("id, name, slug")
+        .eq("owner_id", userId)
+        .eq("is_active", true);
+
+      if (ownedClubs) {
+        for (const club of ownedClubs) {
+          communities.push({ id: club.id, name: club.name, slug: club.slug, role: "owner", type: "club" });
+        }
+      }
+
+      // Get clubs via library membership (user's libraries that are in clubs)
+      const userLibIds = [
+        ...(ownedLibs || []).map((l) => l.id),
+        ...(memberships || []).map((m) => m.library_id),
+      ];
+
+      if (userLibIds.length > 0) {
+        const { data: clubMemberships } = await supabase
+          .from("club_libraries")
+          .select("club_id")
+          .in("library_id", userLibIds);
+
+        if (clubMemberships && clubMemberships.length > 0) {
+          const existingClubIds = new Set(communities.filter((c) => c.type === "club").map((c) => c.id));
+          const newClubIds = [...new Set(clubMemberships.map((m) => m.club_id))].filter((id) => !existingClubIds.has(id));
+
+          if (newClubIds.length > 0) {
+            const { data: clubs } = await supabase
+              .from("clubs")
+              .select("id, name, slug")
+              .in("id", newClubIds)
+              .eq("is_active", true);
+
+            if (clubs) {
+              for (const club of clubs) {
+                communities.push({ id: club.id, name: club.name, slug: club.slug, role: "member", type: "club" });
+              }
             }
           }
         }

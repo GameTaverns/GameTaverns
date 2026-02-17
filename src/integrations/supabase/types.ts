@@ -3035,6 +3035,8 @@ export type Database = {
       user_profiles: {
         Row: {
           avatar_url: string | null
+          banner_gradient: string | null
+          banner_url: string | null
           bio: string | null
           created_at: string
           discord_user_id: string | null
@@ -3047,6 +3049,8 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          banner_gradient?: string | null
+          banner_url?: string | null
           bio?: string | null
           created_at?: string
           discord_user_id?: string | null
@@ -3059,6 +3063,8 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          banner_gradient?: string | null
+          banner_url?: string | null
           bio?: string | null
           created_at?: string
           discord_user_id?: string | null
@@ -3750,6 +3756,8 @@ export type Database = {
           achievement_points: number | null
           achievements_earned: number | null
           avatar_url: string | null
+          banner_gradient: string | null
+          banner_url: string | null
           bio: string | null
           display_name: string | null
           expansions_owned: number | null

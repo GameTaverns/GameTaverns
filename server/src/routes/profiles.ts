@@ -110,6 +110,8 @@ router.put('/me', authMiddleware, async (req: Request, res: Response) => {
       bio: z.string().max(500).optional().nullable(),
       avatar_url: z.string().url().optional().nullable(),
       featured_achievement_id: z.string().uuid().optional().nullable(),
+      banner_url: z.string().url().optional().nullable(),
+      banner_gradient: z.string().max(200).optional().nullable(),
     });
     
     const data = schema.parse(req.body);
@@ -162,9 +164,16 @@ router.put('/me', authMiddleware, async (req: Request, res: Response) => {
       values.push(data.avatar_url);
     }
     if (data.featured_achievement_id !== undefined) {
-      // Explicitly allow setting to NULL to clear the badge
       updateFields.push(`featured_achievement_id = $${paramIndex++}`);
       values.push(data.featured_achievement_id);
+    }
+    if (data.banner_url !== undefined) {
+      updateFields.push(`banner_url = $${paramIndex++}`);
+      values.push(data.banner_url);
+    }
+    if (data.banner_gradient !== undefined) {
+      updateFields.push(`banner_gradient = $${paramIndex++}`);
+      values.push(data.banner_gradient);
     }
 
     if (updateFields.length === 0) {
