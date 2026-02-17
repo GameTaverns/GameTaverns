@@ -136,6 +136,7 @@ EXTERNAL_HANDLERS=(
   add-from-catalog
   resume-imports
   server-command
+  catalog-format-descriptions
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   if [ -d "$FUNCTIONS_DIR/$handler" ]; then
