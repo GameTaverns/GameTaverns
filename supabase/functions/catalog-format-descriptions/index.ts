@@ -47,9 +47,9 @@ async function authorize(req: Request, supabaseUrl: string, serviceKey: string):
 }
 
 /** Build the batched prompt for N games */
-function buildBatchPrompt(entries: { title: string; description: string }[]): string {
-  return entries.map((e, i) =>
-    `---GAME---\nTitle: ${e.title}\nDescription:\n${e.description.substring(0, 2000)}`
+function buildBatchPrompt(entries: { title: string; description: string | null }[]): string {
+  return entries.map((e) =>
+    `---GAME---\nTitle: ${e.title}\nDescription:\n${e.description ? e.description.substring(0, 2000) : "(No description available — please research and write one)"}`
   ).join("\n\n");
 }
 
@@ -102,7 +102,7 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
 
 /** Process a single batch of games through AI */
 async function processBatch(
-  entries: { id: string; title: string; description: string }[],
+  entries: { id: string; title: string; description: string | null }[],
   admin: ReturnType<typeof createClient>,
   dryRun: boolean,
 ): Promise<{ updated: number; errors: string[]; results: { title: string; status: string }[] }> {
@@ -280,13 +280,12 @@ export default async function handler(req: Request): Promise<Response> {
   const totalLimit = Math.min(body.totalLimit || batchSize * workers, 500);
   const dryRun = body.dryRun === true;
 
-  // Fetch all candidates for this run
+  // Fetch candidates: games that DON'T already have the correct format
+  // This includes games with no description, empty description, or unformatted description
   const { data: entries, error: fetchErr } = await admin
     .from("game_catalog")
     .select("id, title, description, bgg_id")
-    .not("description", "is", null)
-    .not("description", "like", "%Quick Gameplay Overview%")
-    .gt("description", "")
+    .or("description.is.null,description.eq.,description.not.like.%Quick Gameplay Overview%")
     .order("created_at", { ascending: true })
     .limit(totalLimit);
 
@@ -296,8 +295,7 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  // Use all entries — AI will generate descriptions even for short/stub entries
-  const candidates = (entries || []).filter(e => e.description);
+  const candidates = entries || [];
 
   if (candidates.length === 0) {
     console.log("[catalog-format] No unformatted catalog descriptions found");
