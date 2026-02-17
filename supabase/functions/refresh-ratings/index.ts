@@ -14,20 +14,16 @@ const corsHeaders = {
 async function fetchBggRating(bggId: string): Promise<{ rating: number | null; error?: string }> {
   try {
     const headers: Record<string, string> = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       Accept: "application/xml",
+      Referer: "https://boardgamegeek.com/",
+      Origin: "https://boardgamegeek.com",
     };
 
-    // Use BGG session cookie if available (helps avoid rate limiting)
     const bggCookie = Deno.env.get("BGG_SESSION_COOKIE");
-    if (bggCookie) {
-      headers["Cookie"] = `bggusername=; bggpassword=; SessionID=${bggCookie}`;
-    }
-
     const bggToken = Deno.env.get("BGG_API_TOKEN");
-    if (bggToken) {
-      headers["Cookie"] = (headers["Cookie"] || "") + `; bggtoken=${bggToken}`;
-    }
+    if (bggToken) headers["Authorization"] = `Bearer ${bggToken}`;
+    if (bggCookie) headers["Cookie"] = bggCookie;
 
     const url = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}&stats=1`;
     const res = await fetch(url, { headers });
@@ -139,28 +135,26 @@ export default async function handler(req: Request): Promise<Response> {
       const bggIds = batch.map(e => e.bgg_id).filter(Boolean).join(",");
       
       try {
-        const headers: Record<string, string> = {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      const bggHeaders: Record<string, string> = {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           Accept: "application/xml",
+          Referer: "https://boardgamegeek.com/",
+          Origin: "https://boardgamegeek.com",
         };
 
         const bggCookie = Deno.env.get("BGG_SESSION_COOKIE");
-        if (bggCookie) {
-          headers["Cookie"] = `bggusername=; bggpassword=; SessionID=${bggCookie}`;
-        }
         const bggToken = Deno.env.get("BGG_API_TOKEN");
-        if (bggToken) {
-          headers["Cookie"] = (headers["Cookie"] || "") + `; bggtoken=${bggToken}`;
-        }
+        if (bggToken) bggHeaders["Authorization"] = `Bearer ${bggToken}`;
+        if (bggCookie) bggHeaders["Cookie"] = bggCookie;
 
         const url = `https://boardgamegeek.com/xmlapi2/thing?id=${bggIds}&stats=1`;
-        const res = await fetch(url, { headers });
+        let res = await fetch(url, { headers: bggHeaders });
 
         if (res.status === 202) {
           console.log(`[refresh-ratings] BGG returned 202 for batch, retrying after delay...`);
           await new Promise(r => setTimeout(r, 3000));
           // Retry once
-          const retry = await fetch(url, { headers });
+          const retry = await fetch(url, { headers: bggHeaders });
           if (!retry.ok) {
             errors.push(`Batch ${bggIds.substring(0, 30)}... HTTP ${retry.status} on retry`);
             failed += batch.length;
