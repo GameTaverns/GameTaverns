@@ -27,7 +27,7 @@ export default function ManageGames() {
 
   if (isLoading || authLoading) {
     return (
-      <Layout>
+      <Layout hideSidebar>
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -37,7 +37,7 @@ export default function ManageGames() {
 
   if (!isAuthenticated) {
     return (
-      <Layout>
+      <Layout hideSidebar>
         <div className="text-center py-16">
           <h1 className="text-2xl font-display font-bold mb-4">Sign in required</h1>
           <p className="text-muted-foreground mb-6">Please sign in on the main site to manage this library.</p>
@@ -49,7 +49,7 @@ export default function ManageGames() {
 
   if (!library || !settings) {
     return (
-      <Layout>
+      <Layout hideSidebar>
         <div className="text-center py-16">
           <h1 className="text-2xl font-display font-bold mb-4">Library Not Found</h1>
           <p className="text-muted-foreground mb-6">The library you're looking for doesn't exist or is not active.</p>
@@ -61,7 +61,7 @@ export default function ManageGames() {
 
   if (!isOwner) {
     return (
-      <Layout>
+      <Layout hideSidebar>
         <div className="text-center py-16">
           <h1 className="text-2xl font-display font-bold mb-4">Access Denied</h1>
           <p className="text-muted-foreground mb-6">You don't have permission to manage this library's games.</p>
@@ -72,7 +72,7 @@ export default function ManageGames() {
   }
 
   return (
-    <Layout>
+    <Layout hideSidebar>
       <div className="max-w-5xl mx-auto">
         <a href={getMainPlatformUrl("/dashboard?tab=library")}>
           <Button variant="ghost" className="mb-6 -ml-2">

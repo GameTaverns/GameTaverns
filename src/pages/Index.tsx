@@ -140,7 +140,18 @@ const Index = () => {
     if (filter === "status" && filterValue === "coming-soon") {
       // Only filter by coming-soon if the feature is enabled
       if (comingSoonFlag) {
-        result = result.filter((g) => g.is_coming_soon);
+        // Include both base games and expansions that are coming soon
+        const allComingSoon: typeof result = [];
+        const grouped = isDemoMode ? groupExpansions([...demoGames]) : realGames;
+        grouped.forEach((g) => {
+          if (g.is_coming_soon) allComingSoon.push(g);
+          if (g.expansions && g.expansions.length > 0) {
+            g.expansions.forEach((exp) => {
+              if (exp.is_coming_soon) allComingSoon.push(exp);
+            });
+          }
+        });
+        result = allComingSoon;
       } else {
         // Feature is disabled, show no results for this filter
         result = [];
