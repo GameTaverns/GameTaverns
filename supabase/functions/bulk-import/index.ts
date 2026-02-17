@@ -2888,6 +2888,7 @@ export default async function handler(req: Request): Promise<Response> {
                     game_id: newGame.id,
                     rating: mapped5Star,
                     guest_identifier: "bgg-community",
+                    source: "bgg",
                     ip_address: null,
                     device_fingerprint: null,
                   },

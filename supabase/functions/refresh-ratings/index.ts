@@ -144,6 +144,7 @@ export default async function handler(req: Request): Promise<Response> {
             {
               game_id: game.id,
               guest_identifier: "bgg-community",
+              source: "bgg",
               rating,
             },
             { onConflict: "game_id,guest_identifier" }
