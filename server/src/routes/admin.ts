@@ -25,7 +25,7 @@ router.get('/users', async (req: Request, res: Response) => {
              up.display_name, up.username,
              ARRAY_AGG(ur.role) FILTER (WHERE ur.role IS NOT NULL) as roles
       FROM user_profiles up
-      FULL OUTER JOIN users u ON u.id = up.user_id
+      FULL OUTER JOIN auth.users u ON u.id = up.user_id
       LEFT JOIN user_roles ur ON COALESCE(u.id, up.user_id) = ur.user_id
       WHERE COALESCE(u.id, up.user_id) IS NOT NULL
       GROUP BY u.id, up.user_id, u.email, u.created_at, u.last_sign_in_at, u.email_confirmed_at, up.created_at, up.display_name, up.username
@@ -51,7 +51,7 @@ router.post('/users', async (req: Request, res: Response) => {
     const { email, password, role } = schema.parse(req.body);
     
     // Check if exists
-    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    const existing = await pool.query('SELECT id FROM auth.users WHERE email = $1', [email.toLowerCase()]);
     if (existing.rows.length > 0) {
       res.status(409).json({ error: 'Email already exists' });
       return;
@@ -60,7 +60,7 @@ router.post('/users', async (req: Request, res: Response) => {
     const passwordHash = await hashPassword(password);
     
     const userResult = await pool.query(
-      'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email, created_at',
+      'INSERT INTO auth.users (email, password_hash) VALUES ($1, $2) RETURNING id, email, created_at',
       [email.toLowerCase(), passwordHash]
     );
     
@@ -153,8 +153,8 @@ router.delete('/users/:id', async (req: Request, res: Response) => {
     const profileResult = await pool.query('DELETE FROM user_profiles WHERE user_id = $1 RETURNING username', [id]);
     console.log(`[Admin] Deleted profile rows:`, profileResult.rowCount, profileResult.rows);
 
-    console.log(`[Admin] Deleting users row for ${id}`);
-    const userResult = await pool.query('DELETE FROM users WHERE id = $1 RETURNING email', [id]);
+    console.log(`[Admin] Deleting auth.users row for ${id}`);
+    const userResult = await pool.query('DELETE FROM auth.users WHERE id = $1 RETURNING email', [id]);
     console.log(`[Admin] Deleted user rows:`, userResult.rowCount, userResult.rows);
     
     console.log(`[Admin] User ${id} deleted successfully`);
