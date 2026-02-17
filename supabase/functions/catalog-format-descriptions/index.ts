@@ -233,27 +233,34 @@ export default async function handler(req: Request): Promise<Response> {
   // =========================================================================
   if (action === "status") {
     const { count: totalCount } = await admin
+      .from("game_catalog").select("id", { count: "exact", head: true });
+
+    const { count: totalWithDesc } = await admin
       .from("game_catalog").select("id", { count: "exact", head: true })
-      .not("description", "is", null);
+      .not("description", "is", null)
+      .neq("description", "");
 
     const { count: formattedCount } = await admin
       .from("game_catalog").select("id", { count: "exact", head: true })
       .not("description", "is", null)
       .like("description", "%Quick Gameplay Overview%");
 
-    const { data: unfmtSample } = await admin
-      .from("game_catalog")
-      .select("id")
+    const { count: unformattedCount } = await admin
+      .from("game_catalog").select("id", { count: "exact", head: true })
       .not("description", "is", null)
-      .not("description", "like", "%Quick Gameplay Overview%")
-      .limit(1000);
+      .neq("description", "")
+      .not("description", "like", "%Quick Gameplay Overview%");
 
-    const unformattedCount = (unfmtSample || []).length;
+    const { count: noDescCount } = await admin
+      .from("game_catalog").select("id", { count: "exact", head: true })
+      .or("description.is.null,description.eq.");
 
     return new Response(JSON.stringify({
-      total_with_description: totalCount,
+      total_catalog: totalCount,
+      total_with_description: totalWithDesc,
       formatted: formattedCount,
       unformatted: unformattedCount,
+      no_description: noDescCount,
       ai_configured: isAIConfigured(),
       ai_provider: isAIConfigured() ? getAIProviderName() : null,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -289,8 +296,8 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  // Filter out very short personal notes
-  const candidates = (entries || []).filter(e => e.description && e.description.length >= 50);
+  // Use all entries — AI will generate descriptions even for short/stub entries
+  const candidates = (entries || []).filter(e => e.description);
 
   if (candidates.length === 0) {
     console.log("[catalog-format] No unformatted catalog descriptions found");

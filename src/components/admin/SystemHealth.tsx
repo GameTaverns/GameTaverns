@@ -548,9 +548,11 @@ export function SystemHealth() {
 
   // Description Formatter
   interface FormatterStatus {
+    total_catalog: number;
     total_with_description: number;
     formatted: number;
     unformatted: number;
+    no_description: number;
     ai_configured: boolean;
     ai_provider: string | null;
   }
@@ -1015,25 +1017,29 @@ export function SystemHealth() {
           )}
 
           {formatterQuery.data && (() => {
-            const { formatted, unformatted, total_with_description, ai_provider } = formatterQuery.data;
+            const { formatted, unformatted, total_catalog, total_with_description, no_description, ai_provider } = formatterQuery.data;
             const total = (formatted || 0) + (unformatted || 0);
             const pct = total > 0 ? Math.round(((formatted || 0) / total) * 100) : 0;
 
             return (
               <>
                 {/* Stats grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
-                    <div className="text-lg font-bold text-cream">{(formatted || 0).toLocaleString()}</div>
+                    <div className="text-lg font-bold text-cream">{(total_catalog || 0).toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Catalog Total</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-green-400">{(formatted || 0).toLocaleString()}</div>
                     <div className="text-xs text-cream/50">Formatted</div>
                   </div>
                   <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
-                    <div className="text-lg font-bold text-cream">{(unformatted || 0).toLocaleString()}</div>
-                    <div className="text-xs text-cream/50">Unformatted</div>
+                    <div className="text-lg font-bold text-yellow-400">{(unformatted || 0).toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Needs Formatting</div>
                   </div>
                   <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
-                    <div className="text-lg font-bold text-cream">{(total_with_description || 0).toLocaleString()}</div>
-                    <div className="text-xs text-cream/50">With Description</div>
+                    <div className="text-lg font-bold text-cream/50">{(no_description || 0).toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">No Description</div>
                   </div>
                   <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
                     <div className="text-lg font-bold text-cream">{pct}%</div>
