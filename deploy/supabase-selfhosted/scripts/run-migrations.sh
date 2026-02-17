@@ -96,8 +96,7 @@ if [ "$CORE_EXISTS" = "1" ]; then
     # For existing installs, everything through 65 is already applied.
     # Only add NEW migrations here (66+) as they are created.
     MIGRATION_FILES=(
-        "67-activity-events.sql"
-        "68-activity-triggers.sql"
+        # 66-68 applied manually; add future migrations (69+) here
     )
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
