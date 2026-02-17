@@ -9,7 +9,7 @@ UPDATE public.game_ratings SET source = 'bgg' WHERE guest_identifier = 'bgg-comm
 
 CREATE INDEX IF NOT EXISTS idx_game_ratings_source ON public.game_ratings(source);
 
--- 2. Recreate summary view with source breakdowns
+-- 2. Recreate summary view — only includes visitor + bgg-user ratings (excludes old bgg-community)
 DROP VIEW IF EXISTS public.game_ratings_summary;
 CREATE VIEW public.game_ratings_summary WITH (security_invoker=on) AS
   SELECT game_id,
@@ -17,11 +17,15 @@ CREATE VIEW public.game_ratings_summary WITH (security_invoker=on) AS
     (count(*))::integer AS rating_count,
     round(avg(rating) FILTER (WHERE source = 'visitor'), 1) AS visitor_average,
     (count(*) FILTER (WHERE source = 'visitor'))::integer AS visitor_count,
-    round(avg(rating) FILTER (WHERE source = 'bgg'), 1) AS bgg_average,
-    (count(*) FILTER (WHERE source = 'bgg'))::integer AS bgg_count
+    round(avg(rating) FILTER (WHERE source = 'bgg-user'), 1) AS bgg_user_average,
+    (count(*) FILTER (WHERE source = 'bgg-user'))::integer AS bgg_user_count
   FROM game_ratings
+  WHERE source IN ('visitor', 'bgg-user')
   GROUP BY game_id;
 GRANT SELECT ON public.game_ratings_summary TO anon, authenticated;
+
+-- Delete old bgg-community ratings from library game_ratings
+DELETE FROM public.game_ratings WHERE guest_identifier = 'bgg-community';
 
 -- Recreate library view to include source
 DROP VIEW IF EXISTS public.game_ratings_library_view;

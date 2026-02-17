@@ -3296,8 +3296,8 @@ export type Database = {
       game_ratings_summary: {
         Row: {
           average_rating: number | null
-          bgg_average: number | null
-          bgg_count: number | null
+          bgg_user_average: number | null
+          bgg_user_count: number | null
           game_id: string | null
           rating_count: number | null
           visitor_average: number | null

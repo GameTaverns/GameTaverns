@@ -8,7 +8,7 @@ const corsHeaders = {
 
 /**
  * Fetches the BGG community average rating for a game via the XML API.
- * Maps BGG's 10-point scale to our 5-star scale: Math.round(bggRating / 2), clamped 1–5.
+ * Returns the raw BGG 10-point scale rating (stored on game_catalog.bgg_community_rating).
  */
 async function fetchBggRating(bggId: string): Promise<number | null> {
   try {
@@ -27,7 +27,7 @@ async function fetchBggRating(bggId: string): Promise<number | null> {
     if (!match) return null;
     const bggRating = parseFloat(match[1]);
     if (isNaN(bggRating) || bggRating <= 0) return null;
-    return Math.max(1, Math.min(5, Math.round(bggRating / 2)));
+    return bggRating;
   } catch {
     return null;
   }
@@ -61,97 +61,54 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const userId = user.id;
-
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify library ownership (use limit(1) since user may own multiple libraries)
-    const { data: libraries } = await supabaseAdmin
-      .from("libraries")
-      .select("id")
-      .eq("owner_id", userId)
-      .limit(1);
-
-    const library = libraries?.[0];
-
-    if (!library) {
-      return new Response(
-        JSON.stringify({ error: "You must own a library to refresh ratings" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const body = await req.json().catch(() => ({}));
-    const libraryId = body.library_id || library.id;
     const limit = body.limit || 30;
 
-    // Find games with bgg_id
-    const { data: games, error: gamesError } = await supabaseAdmin
-      .from("games")
-      .select("id, title, bgg_id")
-      .eq("library_id", libraryId)
+    // Refresh BGG community ratings on the catalog (not library games)
+    // Find catalog entries with a bgg_id that either have no rating or need updating
+    const { data: catalogEntries, error: catalogError } = await supabaseAdmin
+      .from("game_catalog")
+      .select("id, title, bgg_id, bgg_community_rating")
       .not("bgg_id", "is", null)
+      .is("bgg_community_rating", null)
       .limit(limit);
 
-    if (gamesError) {
+    if (catalogError) {
       return new Response(
-        JSON.stringify({ error: gamesError.message }),
+        JSON.stringify({ error: catalogError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!games || games.length === 0) {
+    if (!catalogEntries || catalogEntries.length === 0) {
       return new Response(
-        JSON.stringify({ updated: 0, processed: 0, remaining: 0 }),
+        JSON.stringify({ updated: 0, processed: 0, remaining: 0, message: "All catalog entries already have BGG ratings" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check which games already have bgg-community ratings
-    const gameIds = games.map(g => g.id);
-    const { data: existingRatings } = await supabaseAdmin
-      .from("game_ratings")
-      .select("game_id")
-      .eq("guest_identifier", "bgg-community")
-      .in("game_id", gameIds);
-
-    const hasRating = new Set((existingRatings || []).map(r => r.game_id));
-    const needsRating = games.filter(g => !hasRating.has(g.id));
-
-    if (needsRating.length === 0) {
-      return new Response(
-        JSON.stringify({ updated: 0, processed: games.length, remaining: 0, message: "All games already have BGG ratings" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log(`Processing ${needsRating.length} games for BGG rating refresh`);
+    console.log(`Processing ${catalogEntries.length} catalog entries for BGG rating refresh`);
 
     let updated = 0;
     let failed = 0;
 
-    for (const game of needsRating) {
-      if (!game.bgg_id) continue;
+    for (const entry of catalogEntries) {
+      if (!entry.bgg_id) continue;
 
-      const rating = await fetchBggRating(game.bgg_id);
+      const rating = await fetchBggRating(entry.bgg_id);
       if (rating !== null) {
-        const { error: upsertError } = await supabaseAdmin
-          .from("game_ratings")
-          .upsert(
-            {
-              game_id: game.id,
-              guest_identifier: "bgg-community",
-              source: "bgg",
-              rating,
-            },
-            { onConflict: "game_id,guest_identifier" }
-          );
+        const { error: updateError } = await supabaseAdmin
+          .from("game_catalog")
+          .update({ bgg_community_rating: rating })
+          .eq("id", entry.id);
 
-        if (upsertError) {
-          console.error(`Failed to upsert rating for ${game.title}:`, upsertError);
+        if (updateError) {
+          console.error(`Failed to update catalog rating for ${entry.title}:`, updateError);
           failed++;
         } else {
           updated++;
@@ -164,25 +121,15 @@ export default async function handler(req: Request): Promise<Response> {
       await new Promise(r => setTimeout(r, 250));
     }
 
-    // Count remaining games without bgg-community rating
-    const { data: allBggGames } = await supabaseAdmin
-      .from("games")
-      .select("id")
-      .eq("library_id", libraryId)
-      .not("bgg_id", "is", null);
-
-    const allIds = (allBggGames || []).map(g => g.id);
-    const { data: allRatings } = await supabaseAdmin
-      .from("game_ratings")
-      .select("game_id")
-      .eq("guest_identifier", "bgg-community")
-      .in("game_id", allIds.slice(0, 1000));
-
-    const ratedSet = new Set((allRatings || []).map(r => r.game_id));
-    const remaining = allIds.filter(id => !ratedSet.has(id)).length;
+    // Count remaining catalog entries without rating
+    const { count: remaining } = await supabaseAdmin
+      .from("game_catalog")
+      .select("id", { count: "exact", head: true })
+      .not("bgg_id", "is", null)
+      .is("bgg_community_rating", null);
 
     return new Response(
-      JSON.stringify({ updated, failed, processed: needsRating.length, remaining }),
+      JSON.stringify({ updated, failed, processed: catalogEntries.length, remaining: remaining || 0 }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

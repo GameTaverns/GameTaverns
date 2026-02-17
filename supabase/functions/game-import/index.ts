@@ -1127,23 +1127,9 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
       }
-      if (bggData.bgg_average_rating && bggData.bgg_average_rating > 0) {
-        const mapped5Star = Math.max(1, Math.min(5, Math.round(bggData.bgg_average_rating / 2)));
-        await supabaseAdmin
-          .from("game_ratings")
-          .upsert(
-            {
-              game_id: game.id,
-              rating: mapped5Star,
-              guest_identifier: "bgg-community",
-              source: "bgg",
-              ip_address: null,
-              device_fingerprint: null,
-            },
-            { onConflict: "game_id,guest_identifier" }
-          );
-        console.log(`[GameImport] Saved BGG rating ${bggData.bgg_average_rating}/10 → ${mapped5Star}/5 for "${game.title}"`);
-      }
+      // NOTE: BGG community ratings are no longer saved into library game_ratings.
+      // Library ratings come from user personal BGG ratings (during collection import)
+      // and visitor ratings. BGG community average is stored only on game_catalog.bgg_community_rating.
 
       // Upsert into canonical game catalog
       if (bggId) {

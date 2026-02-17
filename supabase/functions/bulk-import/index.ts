@@ -1128,8 +1128,9 @@ async function fetchBGGData(
 }
 
 // Fetch BGG collection for a user
-async function fetchBGGCollection(username: string): Promise<{ id: string; name: string }[]> {
-  const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&excludesubtype=boardgameexpansion`;
+async function fetchBGGCollection(username: string): Promise<{ id: string; name: string; userRating?: number }[]> {
+  // Request stats=1 to get the user's personal rating for each game
+  const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&excludesubtype=boardgameexpansion&stats=1`;
   
   // BGG auth: send both API token and session cookie (matching bgg-sync pattern)
   const bggCookie3 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
@@ -1145,7 +1146,7 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
   if (bggToken) headers["Authorization"] = `Bearer ${bggToken}`;
   if (bggCookie3) headers["Cookie"] = bggCookie3;
   
-  console.log(`[BulkImport] Fetching BGG collection for "${username}", cookie present: ${Boolean(bggCookie3)}, token present: ${Boolean(bggToken)}`);
+  console.log(`[BulkImport] Fetching BGG collection for "${username}" (with stats), cookie present: ${Boolean(bggCookie3)}, token present: ${Boolean(bggToken)}`);
 
   let xml = "";
   let directSuccess = false;
@@ -1156,7 +1157,6 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
     const res = await fetch(collectionUrl, { headers });
     
     if (res.status === 202) {
-      // BGG is processing the request, wait and retry
       console.log(`[BulkImport] BGG collection 202 (processing), retrying in 3s...`);
       await new Promise(r => setTimeout(r, 3000));
       attempts++;
@@ -1165,7 +1165,7 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
     
     if (res.status === 401 || res.status === 403) {
       console.warn(`[BulkImport] BGG collection API returned ${res.status} — auth failed`);
-      await res.text().catch(() => {}); // consume body
+      await res.text().catch(() => {});
       break;
     }
     
@@ -1190,24 +1190,39 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
     );
   }
 
-  // Check for error messages in the response
   if (xml.includes("<error>") || xml.includes("Invalid username")) {
     throw new Error(`BGG username "${username}" not found. Please check the username is correct.`);
   }
   
-  const games: { id: string; name: string }[] = [];
+  const games: { id: string; name: string; userRating?: number }[] = [];
   
-  const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>[\s\S]*?<name[^>]*>([^<]+)<\/name>[\s\S]*?<\/item>/g;
+  // Parse each <item> block, extracting objectid, name, and user's personal rating
+  const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>([\s\S]*?)<\/item>/g;
   let match;
   while ((match = itemRegex.exec(xml)) !== null) {
-    games.push({ id: match[1], name: match[2] });
+    const bggId = match[1];
+    const itemBlock = match[2];
+    const nameMatch = itemBlock.match(/<name[^>]*>([^<]+)<\/name>/);
+    const name = nameMatch ? nameMatch[1] : `BGG #${bggId}`;
+    
+    // Extract user's personal rating: <rating value="N"> (not <average>)
+    // BGG XML: <stats><rating value="7.5"><average value="..."/></rating></stats>
+    let userRating: number | undefined;
+    const ratingMatch = itemBlock.match(/<rating\s+value="([\d.]+)"/);
+    if (ratingMatch) {
+      const r = parseFloat(ratingMatch[1]);
+      if (r > 0) userRating = r;
+    }
+    
+    games.push({ id: bggId, name, userRating });
   }
   
+  const ratedCount = games.filter(g => g.userRating).length;
   if (games.length === 0 && xml.includes("<items")) {
     console.log(`BGG collection for ${username} is empty or has no owned games`);
   }
   
-  console.log(`[BulkImport] Parsed ${games.length} games from BGG collection for "${username}"`);
+  console.log(`[BulkImport] Parsed ${games.length} games from BGG collection for "${username}" (${ratedCount} with user ratings)`);
   return games;
 }
 
@@ -1634,11 +1649,17 @@ export default async function handler(req: Request): Promise<Response> {
       console.log(`Found ${collection.length} games in collection`);
       
       for (const game of collection) {
-        gamesToImport.push({
+        const importItem: Record<string, unknown> = {
           title: game.name,
           bgg_id: game.id,
           bgg_url: `https://boardgamegeek.com/boardgame/${game.id}`,
-        });
+        };
+        // Pass user's personal BGG rating through as metadata
+        if (game.userRating) {
+          (importItem as any)._bgg_user_rating = game.userRating;
+          (importItem as any)._bgg_username = parsedUsername;
+        }
+        gamesToImport.push(importItem as any);
       }
     } else if (mode === "bgg_links" && bgg_links && bgg_links.length > 0) {
       for (const link of bgg_links) {
@@ -2878,23 +2899,25 @@ export default async function handler(req: Request): Promise<Response> {
               }
             }
 
-            // Insert BGG community rating mapped to 5-star scale
-            if (gameData.bgg_average_rating && gameData.bgg_average_rating > 0) {
-              const mapped5Star = Math.max(1, Math.min(5, Math.round(gameData.bgg_average_rating / 2)));
+            // Insert BGG user's personal rating (mapped to 5-star scale) if available from collection import
+            const bggUserRating = (gameInput as any)._bgg_user_rating;
+            const bggUsername = (gameInput as any)._bgg_username;
+            if (bggUserRating && bggUserRating > 0 && bggUsername) {
+              const mapped5Star = Math.max(1, Math.min(5, Math.round(bggUserRating / 2)));
               await supabaseAdmin
                 .from("game_ratings")
                 .upsert(
                   {
                     game_id: newGame.id,
                     rating: mapped5Star,
-                    guest_identifier: "bgg-community",
-                    source: "bgg",
+                    guest_identifier: `bgg-user-${bggUsername}`,
+                    source: "bgg-user",
                     ip_address: null,
                     device_fingerprint: null,
                   },
                   { onConflict: "game_id,guest_identifier" }
                 );
-              console.log(`[BulkImport] Saved BGG rating ${gameData.bgg_average_rating}/10 → ${mapped5Star}/5 for "${newGame.title}"`);
+              console.log(`[BulkImport] Saved BGG user rating ${bggUserRating}/10 → ${mapped5Star}/5 for "${newGame.title}" (user: ${bggUsername})`);
             }
 
             imported++;
