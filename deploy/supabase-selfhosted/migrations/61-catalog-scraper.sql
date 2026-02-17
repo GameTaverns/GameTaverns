@@ -26,6 +26,9 @@ INSERT INTO public.catalog_scraper_state (id, next_bgg_id, is_enabled)
 VALUES ('default', 1, false)
 ON CONFLICT (id) DO NOTHING;
 
+-- Grants (required for PostgREST visibility)
+GRANT ALL ON public.catalog_scraper_state TO authenticated, service_role, anon;
+
 -- RLS
 ALTER TABLE public.catalog_scraper_state ENABLE ROW LEVEL SECURITY;
 
