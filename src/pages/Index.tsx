@@ -41,7 +41,7 @@ import {
 type SortOption = "title" | "difficulty" | "playtime" | "newest" | "rating";
 type SortDir = "asc" | "desc";
 
-const GRID_PAGE_SIZE = 20;
+const GRID_PAGE_SIZE = 30;
 const LIST_PAGE_SIZE = 50;
 
 const Index = () => {
