@@ -97,6 +97,7 @@ if [ "$CORE_EXISTS" = "1" ]; then
     # Only add NEW migrations here (64+) as they are created.
     MIGRATION_FILES=(
         "64-catalog-dedup.sql"
+        "65-social-profiles.sql"
     )
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
@@ -170,6 +171,7 @@ else
         "61-catalog-scraper.sql"
         "63-backfill-catalog-junctions.sql"
         "64-catalog-dedup.sql"
+        "65-social-profiles.sql"
     )
 fi
 
