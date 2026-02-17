@@ -240,7 +240,7 @@ const GameForm = () => {
         });
         toast({ title: "Game created!" });
       }
-      navigate(buildUrl("/games"));
+      navigate(buildUrl("/manage"));
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -262,9 +262,9 @@ const GameForm = () => {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto">
-        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate(buildUrl("/games"))}>
+        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate(buildUrl("/manage"))}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Games
+          Back to Manage
         </Button>
 
         <Card className="card-elevated">

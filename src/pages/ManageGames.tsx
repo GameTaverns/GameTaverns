@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Tag, Loader2 } from "lucide-react";
+import { ArrowLeft, Tag, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -86,6 +86,12 @@ export default function ManageGames() {
             <h1 className="text-2xl sm:text-3xl font-display font-bold">Manage Collection</h1>
             <p className="text-muted-foreground text-sm">Edit, organize, and manage your existing games</p>
           </div>
+          <a href={buildUrl("/add")}>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Game Manually
+            </Button>
+          </a>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
