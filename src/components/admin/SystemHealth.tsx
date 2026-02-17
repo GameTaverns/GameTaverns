@@ -351,6 +351,39 @@ export function SystemHealth() {
     },
   });
 
+  // Backfill status query
+  interface BackfillStatus {
+    total_with_bgg: number;
+    enriched: number;
+    has_designers: number;
+    has_artists: number;
+    has_rating: number;
+    remaining: number;
+    percent: number;
+  }
+
+  const backfillStatusQuery = useQuery<BackfillStatus>({
+    queryKey: ["catalog-backfill-status"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-backfill`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mode: "status" }),
+      });
+      if (!r.ok) throw new Error(`Status check failed: ${r.status}`);
+      return r.json();
+    },
+    refetchInterval: autoRefresh ? 30000 : false,
+    retry: 1,
+  });
+
   const backfillMutation = useMutation({
     mutationFn: async (mode: string) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -441,6 +474,8 @@ export function SystemHealth() {
         console.warn("[catalog-backfill errors]", data.errors);
         toast.warning(`Backfill warnings (${data.errors.length}): ${data.errors.slice(0, 5).join(" | ")}`, { duration: 15000 });
       }
+      // Refresh status after backfill completes
+      queryClient.invalidateQueries({ queryKey: ["catalog-backfill-status"] });
     },
     onError: (e: Error) => toast.error(`Backfill failed: ${e.message}`),
   });
@@ -1149,20 +1184,74 @@ export function SystemHealth() {
                 </div>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs shrink-0"
-              onClick={() => backfillMutation.mutate("enrich")}
-              disabled={backfillMutation.isPending}
-            >
-              {backfillMutation.isPending ? (
-                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
-              ) : (
-                <><Palette className="h-3.5 w-3.5 mr-1" /> Run Backfill</>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => backfillStatusQuery.refetch()}
+                disabled={backfillStatusQuery.isFetching}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${backfillStatusQuery.isFetching ? "animate-spin" : ""}`} />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs shrink-0"
+                onClick={() => backfillMutation.mutate("enrich")}
+                disabled={backfillMutation.isPending}
+              >
+                {backfillMutation.isPending ? (
+                  <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+                ) : (
+                  <><Palette className="h-3.5 w-3.5 mr-1" /> Run Backfill</>
+                )}
+              </Button>
+            </div>
           </div>
+
+          {/* Backfill Progress */}
+          {backfillStatusQuery.data && (() => {
+            const s = backfillStatusQuery.data;
+            return (
+              <div className="ml-8 space-y-3">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{s.total_with_bgg.toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Total (w/ BGG ID)</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-green-400">{s.enriched.toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Fully Enriched</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-yellow-400">{s.remaining.toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Remaining</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{s.has_rating.toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Have Rating</div>
+                  </div>
+                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{s.percent}%</div>
+                    <div className="text-xs text-cream/50">Complete</div>
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div className="w-full bg-wood-medium/30 rounded-full h-2">
+                  <div
+                    className="bg-secondary h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${s.percent}%` }}
+                  />
+                </div>
+                <div className="flex gap-4 text-xs text-cream/50">
+                  <span>Has Designers: {s.has_designers.toLocaleString()}</span>
+                  <span>Has Artists: {s.has_artists.toLocaleString()}</span>
+                  <span>~{Math.ceil(s.remaining / 5)} batches remaining (5/batch, 0.5s delay each)</span>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
             <div className="flex items-center gap-3">

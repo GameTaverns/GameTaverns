@@ -155,51 +155,57 @@ export function CatalogBrowseEmbed() {
           ))}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 max-h-[600px] overflow-y-auto pr-1">
           {filtered.map((game) => (
             <Link
               key={game.id}
               to={`/catalog/${game.id}`}
-              className="group"
+              className="group flex"
             >
-            <Card
-              className="overflow-hidden card-hover cursor-pointer h-full"
-            >
-              {game.image_url ? (
-                <img src={game.image_url} alt={game.title} className="w-full h-36 object-cover" loading="lazy" />
-              ) : (
-                <div className="w-full h-36 bg-muted flex items-center justify-center">
-                  <BookOpen className="h-8 w-8 text-muted-foreground" />
-                </div>
-              )}
-              <CardContent className="pt-3 space-y-2">
-                <h3 className="font-display font-semibold text-sm truncate">{game.title}</h3>
-                <div className="flex flex-wrap gap-1.5">
+            <Card className="group overflow-hidden card-elevated card-hover bg-card border-border flex-1 flex flex-col">
+              <div className="relative aspect-[3/4] sm:aspect-square overflow-hidden bg-gradient-to-b from-muted/50 to-muted flex items-center justify-center">
+                {game.image_url ? (
+                  <img src={game.image_url} alt={game.title} className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-muted">
+                    <span className="text-4xl text-muted-foreground/50">🎲</span>
+                  </div>
+                )}
+              </div>
+              <CardContent className="p-1.5 sm:p-4 flex-1 flex flex-col">
+                <h3 className="font-display text-xs sm:text-lg font-semibold text-foreground line-clamp-2 min-h-[2rem] sm:min-h-[3.5rem] mb-1 sm:mb-3 group-hover:text-primary transition-colors">{game.title}</h3>
+                <hr className="border-border mb-1 sm:mb-3" />
+                <div className="flex items-center gap-1.5 sm:gap-4 text-[10px] sm:text-sm text-muted-foreground mb-1 sm:mb-3">
                   {game.min_players != null && game.max_players != null && (
-                    <Badge variant="outline" className="text-[10px]">
-                      <Users className="h-3 w-3 mr-0.5" />{game.min_players}–{game.max_players}
-                    </Badge>
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                      {game.min_players}–{game.max_players}
+                    </span>
                   )}
                   {game.play_time_minutes != null && (
-                    <Badge variant="outline" className="text-[10px]">
-                      <Clock className="h-3 w-3 mr-0.5" />{game.play_time_minutes}m
-                    </Badge>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                      {game.play_time_minutes}m
+                    </span>
                   )}
+                </div>
+                <hr className="border-border mb-1 sm:mb-3" />
+                <div className="hidden sm:flex flex-wrap gap-1.5 mt-auto">
                   {game.weight != null && (
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-xs">
                       <Weight className="h-3 w-3 mr-0.5" />{game.weight.toFixed(1)}
                     </Badge>
                   )}
                   {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                    <Badge variant="secondary" className="text-[10px]">★ {game.bgg_community_rating.toFixed(1)}</Badge>
+                    <Badge variant="secondary" className="text-xs">★ {game.bgg_community_rating.toFixed(1)}</Badge>
+                  )}
+                  {game.designers.length > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      <PenTool className="h-3 w-3 mr-0.5" />
+                      {game.designers[0]}{game.designers.length > 1 ? ` +${game.designers.length - 1}` : ""}
+                    </Badge>
                   )}
                 </div>
-                {game.designers.length > 0 && (
-                  <p className="text-[10px] text-muted-foreground truncate">
-                    <PenTool className="h-2.5 w-2.5 inline mr-0.5" />
-                    {game.designers.slice(0, 2).join(", ")}{game.designers.length > 2 ? ` +${game.designers.length - 2}` : ""}
-                  </p>
-                )}
               </CardContent>
             </Card>
             </Link>

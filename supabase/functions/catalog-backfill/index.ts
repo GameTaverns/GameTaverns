@@ -137,6 +137,53 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("[catalog-backfill] Mode:", mode, "batchSize:", batchSize, "offset:", offset);
 
     // =====================================================================
+    // MODE: status — Return enrichment progress counts
+    // =====================================================================
+    if (mode === "status") {
+      // Total catalog entries with bgg_id (enrichable)
+      const { count: totalWithBgg } = await admin
+        .from("game_catalog")
+        .select("id", { count: "exact", head: true })
+        .not("bgg_id", "is", null);
+
+      // Entries that have at least one designer AND one artist (fully enriched)
+      // Use a raw approach: count distinct catalog_ids in both junction tables
+      const { data: designerCatalogIds } = await admin
+        .from("catalog_designers")
+        .select("catalog_id");
+      const { data: artistCatalogIds } = await admin
+        .from("catalog_artists")
+        .select("catalog_id");
+
+      const designerSet = new Set((designerCatalogIds || []).map(r => r.catalog_id));
+      const artistSet = new Set((artistCatalogIds || []).map(r => r.catalog_id));
+      
+      // Entries with both designers and artists
+      let enrichedCount = 0;
+      for (const id of designerSet) {
+        if (artistSet.has(id)) enrichedCount++;
+      }
+
+      // Entries with rating
+      const { count: withRating } = await admin
+        .from("game_catalog")
+        .select("id", { count: "exact", head: true })
+        .not("bgg_id", "is", null)
+        .not("bgg_community_rating", "is", null)
+        .gt("bgg_community_rating", 0);
+
+      return new Response(JSON.stringify({
+        total_with_bgg: totalWithBgg || 0,
+        enriched: enrichedCount,
+        has_designers: designerSet.size,
+        has_artists: artistSet.size,
+        has_rating: withRating || 0,
+        remaining: (totalWithBgg || 0) - enrichedCount,
+        percent: totalWithBgg ? Math.round((enrichedCount / totalWithBgg) * 100) : 0,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
     // MODE: enrich — Re-fetch BGG XML for catalog entries to add designers/artists
     // =====================================================================
     // MODE: test — single BGG fetch diagnostic
