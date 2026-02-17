@@ -10,109 +10,154 @@ const corsHeaders = {
  * Catalog Format Descriptions — Batch AI formatter for game_catalog entries
  *
  * Finds catalog entries whose descriptions lack the "Quick Gameplay Overview"
- * format and rewrites them using AI. Designed to run as a periodic batch job
- * or be triggered manually from the admin panel.
+ * format and rewrites them using AI. Runs on a cron schedule behind the scraper.
  *
- * POST { batchSize?: number, dryRun?: boolean }
+ * Actions:
+ * - GET or POST with no action: run a formatting batch (default 5 items)
+ * - POST { action: "status" }: return counts of formatted vs unformatted
+ * - POST { batchSize: N, dryRun: boolean }: control batch behavior
  */
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "";
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
 
-    if (!supabaseUrl || !serviceKey) {
-      return new Response(JSON.stringify({ error: "Missing env config" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  if (!supabaseUrl || !serviceKey) {
+    return new Response(JSON.stringify({ error: "Missing env config" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Auth: accept service_role key OR admin user JWT
+  const authHeader = req.headers.get("Authorization") || "";
+  let isAuthorized = authHeader.includes(serviceKey);
+
+  if (!isAuthorized) {
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    if (anonKey && authHeader) {
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
       });
-    }
-
-    // Auth: accept service_role key OR admin user JWT
-    const authHeader = req.headers.get("Authorization") || "";
-    let isAuthorized = authHeader.includes(serviceKey);
-
-    if (!isAuthorized) {
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-      if (anonKey && authHeader) {
-        const userClient = createClient(supabaseUrl, anonKey, {
-          global: { headers: { Authorization: authHeader } },
-        });
-        const { data: { user } } = await userClient.auth.getUser();
-        if (user) {
-          const adminClient = createClient(supabaseUrl, serviceKey);
-          const { data: roleData } = await adminClient
-            .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
-          if (roleData) isAuthorized = true;
-        }
+      const { data: { user } } = await userClient.auth.getUser();
+      if (user) {
+        const adminClient = createClient(supabaseUrl, serviceKey);
+        const { data: roleData } = await adminClient
+          .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+        if (roleData) isAuthorized = true;
       }
     }
+  }
 
-    if (!isAuthorized) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!isAIConfigured()) {
-      return new Response(JSON.stringify({ error: "AI service not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
+  if (!isAuthorized) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  }
 
-    const body = await req.json().catch(() => ({}));
-    const batchSize = Math.min(body.batchSize || 5, 20);
-    const dryRun = body.dryRun === true;
+  const admin = createClient(supabaseUrl, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 
-    // Find catalog entries that need formatting:
-    // - Have a description
-    // - Description does NOT contain "Quick Gameplay Overview"
-    // - Description is not just personal notes (skip very short ones < 50 chars)
-    const { data: entries, error: fetchErr } = await admin
-      .from("game_catalog")
-      .select("id, title, description, bgg_id")
+  const body = await req.json().catch(() => ({}));
+  const action = body.action || "format";
+
+  // =========================================================================
+  // STATUS — Show formatting progress
+  // =========================================================================
+  if (action === "status") {
+    const { count: totalCount } = await admin
+      .from("game_catalog").select("id", { count: "exact", head: true })
+      .not("description", "is", null);
+
+    const { count: formattedCount } = await admin
+      .from("game_catalog").select("id", { count: "exact", head: true })
+      .not("description", "is", null)
+      .like("description", "%Quick Gameplay Overview%");
+
+    const { count: needsFormatting } = await admin
+      .from("game_catalog").select("id", { count: "exact", head: true })
       .not("description", "is", null)
       .not("description", "like", "%Quick Gameplay Overview%")
-      .gt("description", "")  // not empty
-      .order("created_at", { ascending: true })
-      .limit(batchSize);
+      .gte("description", new Array(51).join("x").replace(/x/g, "_")); // length >= 50 proxy
 
-    if (fetchErr) {
-      return new Response(JSON.stringify({ error: "Failed to fetch entries", details: fetchErr.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // More accurate: use raw count
+    const { data: unfmtSample } = await admin
+      .from("game_catalog")
+      .select("id")
+      .not("description", "is", null)
+      .not("description", "like", "%Quick Gameplay Overview%")
+      .limit(1000);
 
-    // Filter out very short personal notes
-    const candidates = (entries || []).filter(e => e.description && e.description.length >= 50);
+    const unformattedCount = (unfmtSample || []).length;
 
-    if (candidates.length === 0) {
-      return new Response(JSON.stringify({
-        success: true, message: "No unformatted catalog descriptions found", updated: 0,
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    return new Response(JSON.stringify({
+      total_with_description: totalCount,
+      formatted: formattedCount,
+      unformatted: unformattedCount,
+      ai_configured: isAIConfigured(),
+      ai_provider: isAIConfigured() ? getAIProviderName() : null,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
 
-    console.log(`[catalog-format] Processing ${candidates.length} entries using ${getAIProviderName()}`);
+  // =========================================================================
+  // FORMAT — Main batch processing
+  // =========================================================================
+  if (!isAIConfigured()) {
+    return new Response(JSON.stringify({ error: "AI service not configured" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
-    let updated = 0;
-    const errors: string[] = [];
-    const results: { title: string; status: string }[] = [];
+  const batchSize = Math.min(body.batchSize || 5, 20);
+  const dryRun = body.dryRun === true;
 
-    for (const entry of candidates) {
-      try {
-        console.log(`[catalog-format] Formatting: ${entry.title}`);
+  // Find catalog entries that need formatting:
+  // - Have a description
+  // - Description does NOT contain "Quick Gameplay Overview"
+  // - Description length >= 50 chars (skip personal notes)
+  const { data: entries, error: fetchErr } = await admin
+    .from("game_catalog")
+    .select("id, title, description, bgg_id")
+    .not("description", "is", null)
+    .not("description", "like", "%Quick Gameplay Overview%")
+    .gt("description", "")
+    .order("created_at", { ascending: true })
+    .limit(batchSize);
 
-        const aiResult = await aiComplete({
-          messages: [
-            {
-              role: "system",
-              content: `You are a board game description editor. Rewrite the given description into this EXACT format:
+  if (fetchErr) {
+    return new Response(JSON.stringify({ error: "Failed to fetch entries", details: fetchErr.message }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Filter out very short personal notes
+  const candidates = (entries || []).filter(e => e.description && e.description.length >= 50);
+
+  if (candidates.length === 0) {
+    console.log("[catalog-format] No unformatted catalog descriptions found");
+    return new Response(JSON.stringify({
+      success: true, message: "No unformatted catalog descriptions found", updated: 0,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  console.log(`[catalog-format] Processing ${candidates.length} entries using ${getAIProviderName()}`);
+
+  let updated = 0;
+  const errors: string[] = [];
+  const results: { title: string; status: string }[] = [];
+
+  for (const entry of candidates) {
+    try {
+      console.log(`[catalog-format] Formatting: ${entry.title}`);
+
+      const aiResult = await aiComplete({
+        messages: [
+          {
+            role: "system",
+            content: `You are a board game description editor. Rewrite the given description into this EXACT format:
 
 1. Opening paragraph: 2-3 sentences about the game's theme and what makes it special/unique.
 2. "## Quick Gameplay Overview" header
@@ -129,90 +174,88 @@ CRITICAL RULES:
 - Use proper markdown: ## for headers, **bold** for labels, - for bullet points
 - Be factual and informative, not promotional
 - Do NOT include any markdown code fences or JSON wrapping — return ONLY the formatted description text`
-            },
-            {
-              role: "user",
-              content: `Rewrite this description for the board game "${entry.title}":\n\n${entry.description}`
-            }
-          ],
-          max_tokens: 800,
-        });
-
-        if (!aiResult.success) {
-          console.error(`[catalog-format] AI error for ${entry.title}:`, aiResult.error);
-          if (aiResult.rateLimited) {
-            errors.push(`Rate limited at ${entry.title}`);
-            results.push({ title: entry.title, status: "rate_limited" });
-            break;
+          },
+          {
+            role: "user",
+            content: `Rewrite this description for the board game "${entry.title}":\n\n${entry.description.substring(0, 3000)}`
           }
-          errors.push(`AI failed for ${entry.title}`);
-          results.push({ title: entry.title, status: "ai_error" });
-          continue;
+        ],
+        max_tokens: 800,
+      });
+
+      if (!aiResult.success) {
+        console.error(`[catalog-format] AI error for ${entry.title}:`, aiResult.error);
+        if (aiResult.rateLimited) {
+          errors.push(`Rate limited at ${entry.title}`);
+          results.push({ title: entry.title, status: "rate_limited" });
+          break;
         }
-
-        let newDescription = aiResult.content?.trim();
-        if (!newDescription) {
-          errors.push(`Empty AI response for ${entry.title}`);
-          results.push({ title: entry.title, status: "empty_response" });
-          continue;
-        }
-
-        // Strip markdown code fences if the AI wrapped the output
-        if (newDescription.startsWith("```")) {
-          newDescription = newDescription.replace(/^```(?:markdown)?\n?/, "").replace(/\n?```$/, "").trim();
-        }
-
-        // Validate format
-        if (!newDescription.includes("Quick Gameplay Overview")) {
-          console.warn(`[catalog-format] Output missing format header for ${entry.title}, using anyway`);
-        }
-
-        if (dryRun) {
-          console.log(`[catalog-format] DRY RUN — would update ${entry.title}:\n${newDescription.substring(0, 200)}...`);
-          results.push({ title: entry.title, status: "dry_run" });
-          updated++;
-          continue;
-        }
-
-        const { error: updateErr } = await admin
-          .from("game_catalog")
-          .update({ description: newDescription })
-          .eq("id", entry.id);
-
-        if (updateErr) {
-          errors.push(`Update failed for ${entry.title}: ${updateErr.message}`);
-          results.push({ title: entry.title, status: "update_error" });
-          continue;
-        }
-
-        updated++;
-        results.push({ title: entry.title, status: "updated" });
-        console.log(`[catalog-format] Updated: ${entry.title}`);
-
-        // Delay between AI calls
-        await new Promise(r => setTimeout(r, 1000));
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        errors.push(`${entry.title}: ${msg}`);
-        results.push({ title: entry.title, status: "error" });
+        errors.push(`AI failed for ${entry.title}`);
+        results.push({ title: entry.title, status: "ai_error" });
+        continue;
       }
+
+      let newDescription = aiResult.content?.trim();
+      if (!newDescription) {
+        errors.push(`Empty AI response for ${entry.title}`);
+        results.push({ title: entry.title, status: "empty_response" });
+        continue;
+      }
+
+      // Strip markdown code fences if the AI wrapped the output
+      if (newDescription.startsWith("```")) {
+        newDescription = newDescription.replace(/^```(?:markdown)?\n?/, "").replace(/\n?```$/, "").trim();
+      }
+
+      if (!newDescription.includes("Quick Gameplay Overview")) {
+        console.warn(`[catalog-format] Output missing format header for ${entry.title}, using anyway`);
+      }
+
+      if (dryRun) {
+        console.log(`[catalog-format] DRY RUN — would update ${entry.title}:\n${newDescription.substring(0, 200)}...`);
+        results.push({ title: entry.title, status: "dry_run" });
+        updated++;
+        continue;
+      }
+
+      const { error: updateErr } = await admin
+        .from("game_catalog")
+        .update({ description: newDescription })
+        .eq("id", entry.id);
+
+      if (updateErr) {
+        errors.push(`Update failed for ${entry.title}: ${updateErr.message}`);
+        results.push({ title: entry.title, status: "update_error" });
+        continue;
+      }
+
+      updated++;
+      results.push({ title: entry.title, status: "updated" });
+      console.log(`[catalog-format] Updated: ${entry.title}`);
+
+      // Delay between AI calls to avoid rate limits
+      await new Promise(r => setTimeout(r, 1500));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`${entry.title}: ${msg}`);
+      results.push({ title: entry.title, status: "error" });
     }
-
-    return new Response(JSON.stringify({
-      success: true,
-      updated,
-      processed: candidates.length,
-      dryRun,
-      results,
-      errors: errors.length > 0 ? errors : undefined,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-  } catch (error) {
-    console.error("[catalog-format] Error:", error);
-    return new Response(JSON.stringify({ error: "Processing failed" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
   }
+
+  const result = {
+    success: true,
+    updated,
+    processed: candidates.length,
+    dryRun,
+    results,
+    errors: errors.length > 0 ? errors : undefined,
+  };
+
+  console.log(`[catalog-format] Done:`, JSON.stringify({ updated, processed: candidates.length }));
+
+  return new Response(JSON.stringify(result), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
 
 if (import.meta.main) {
