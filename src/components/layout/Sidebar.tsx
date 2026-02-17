@@ -721,7 +721,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 {/* Designers */}
                 {designers.length > 0 && (
                   <FilterSection title={`Designers (${designers.length})`} icon={<PenTool className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "designer"}>
-                    <div className="max-h-40 overflow-y-auto px-2">
+                    <div className="max-h-64 overflow-y-auto px-2">
                       <Input
                         placeholder="Search designers..."
                         className="h-6 text-xs mb-1 bg-sidebar-accent/30 border-sidebar-border"
@@ -751,7 +751,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 {/* Artists */}
                 {artists.length > 0 && (
                   <FilterSection title={`Artists (${artists.length})`} icon={<Palette className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "artist"}>
-                    <div className="max-h-40 overflow-y-auto px-2">
+                    <div className="max-h-64 overflow-y-auto px-2">
                       <Input
                         placeholder="Search artists..."
                         className="h-6 text-xs mb-1 bg-sidebar-accent/30 border-sidebar-border"
