@@ -915,8 +915,8 @@ export function SystemHealth() {
               </div>
 
               <div className="text-xs text-cream/40">
-                Runs every 5 minutes via cron. Each run fetches 3 batches of 20 BGG IDs (only 3 API calls with ~3s delays between).
-                At this rate, ~17k IDs/day are scanned.
+                Runs every 2 minutes via cron. Each run fetches 10 batches of 20 BGG IDs (10 API calls with ~1.5s delays between).
+                At this rate, ~144k IDs/day are scanned. Empty ID ranges are automatically skipped in jumps of 100.
               </div>
             </>
           )}
