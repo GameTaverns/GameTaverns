@@ -251,6 +251,16 @@ const Index = () => {
           case "genre":
             result = result.filter((g) => (g as any).genre === filterValue);
             break;
+          case "designer":
+            result = result.filter((g) =>
+              (g as any).designers?.some((d: any) => d.name === filterValue)
+            );
+            break;
+          case "artist":
+            result = result.filter((g) =>
+              (g as any).artists?.some((a: any) => a.name === filterValue)
+            );
+            break;
         }
       }
     }

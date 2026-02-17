@@ -86,13 +86,32 @@ export default function CatalogBrowse() {
 
       const data = allData;
 
-      const catalogIds = (data || []).map(g => g.id);
+      const catalogIdSet = new Set((data || []).map(g => g.id));
 
-      const [designersRes, artistsRes, mechanicsRes, publishersRes] = await Promise.all([
-        supabase.from("catalog_designers").select("catalog_id, designer:designers(name)").in("catalog_id", catalogIds),
-        supabase.from("catalog_artists").select("catalog_id, artist:artists(name)").in("catalog_id", catalogIds),
-        supabase.from("catalog_mechanics").select("catalog_id, mechanic:mechanics(name)").in("catalog_id", catalogIds),
-        supabase.from("catalog_publishers").select("catalog_id, publisher:publishers(name)").in("catalog_id", catalogIds),
+      // Fetch ALL junction records (no .in() filter to avoid URL length limits with 4000+ IDs)
+      const fetchAllJunction = async (table: string, selectStr: string) => {
+        let all: any[] = [];
+        let from = 0;
+        const batchSize = 1000;
+        while (true) {
+          const { data: batch, error } = await (supabase as any)
+            .from(table)
+            .select(selectStr)
+            .range(from, from + batchSize - 1);
+          if (error) throw error;
+          all = all.concat(batch || []);
+          if (!batch || batch.length < batchSize) break;
+          from += batchSize;
+        }
+        // Filter client-side to only include records for current catalog entries
+        return all.filter(r => catalogIdSet.has(r.catalog_id));
+      };
+
+      const [designersRows, artistsRows, mechanicsRows, publishersRows] = await Promise.all([
+        fetchAllJunction("catalog_designers", "catalog_id, designer:designers(name)"),
+        fetchAllJunction("catalog_artists", "catalog_id, artist:artists(name)"),
+        fetchAllJunction("catalog_mechanics", "catalog_id, mechanic:mechanics(name)"),
+        fetchAllJunction("catalog_publishers", "catalog_id, publisher:publishers(name)"),
       ]);
 
       // Aggregate community ratings across all libraries
@@ -100,7 +119,7 @@ export default function CatalogBrowse() {
       const { data: ratingsData } = await supabase
         .from("games")
         .select("catalog_id, game_ratings(rating)")
-        .in("catalog_id", catalogIds)
+        .in("catalog_id", [...catalogIdSet])
         .not("catalog_id", "is", null);
 
       const ratingMap = new Map<string, { sum: number; count: number }>();
@@ -128,10 +147,10 @@ export default function CatalogBrowse() {
         return map;
       };
 
-      const designerMap = buildMap(designersRes.data || [], "designer");
-      const artistMap = buildMap(artistsRes.data || [], "artist");
-      const mechanicMap = buildMap(mechanicsRes.data || [], "mechanic");
-      const publisherMap = buildMap(publishersRes.data || [], "publisher");
+      const designerMap = buildMap(designersRows, "designer");
+      const artistMap = buildMap(artistsRows, "artist");
+      const mechanicMap = buildMap(mechanicsRows, "mechanic");
+      const publisherMap = buildMap(publishersRows, "publisher");
 
       return (data || []).map(g => {
         const r = ratingMap.get(g.id);

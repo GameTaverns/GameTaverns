@@ -30,6 +30,12 @@ export function useGames(enabled = true) {
             admin_data:game_admin_data(*),
             game_mechanics(
               mechanic:mechanics(id, name)
+            ),
+            game_designers(
+              designer:designers(id, name)
+            ),
+            game_artists(
+              artist:artists(id, name)
             )
           `
           )
@@ -86,6 +92,46 @@ export function useGames(enabled = true) {
         }
       });
 
+      // Batch-fetch designers
+      const allDesignerLinks: any[] = [];
+      for (let i = 0; i < gameIds.length; i += BATCH_SIZE) {
+        const batch = gameIds.slice(i, i + BATCH_SIZE);
+        const { data } = await supabase
+          .from("game_designers")
+          .select(`game_id, designer:designers(id, name)`)
+          .in("game_id", batch);
+        if (data) allDesignerLinks.push(...data);
+      }
+
+      const designersMap = new Map<string, { id: string; name: string }[]>();
+      allDesignerLinks.forEach((gd: any) => {
+        if (gd.designer) {
+          const existing = designersMap.get(gd.game_id) || [];
+          existing.push(gd.designer);
+          designersMap.set(gd.game_id, existing);
+        }
+      });
+
+      // Batch-fetch artists
+      const allArtistLinks: any[] = [];
+      for (let i = 0; i < gameIds.length; i += BATCH_SIZE) {
+        const batch = gameIds.slice(i, i + BATCH_SIZE);
+        const { data } = await supabase
+          .from("game_artists")
+          .select(`game_id, artist:artists(id, name)`)
+          .in("game_id", batch);
+        if (data) allArtistLinks.push(...data);
+      }
+
+      const artistsMap = new Map<string, { id: string; name: string }[]>();
+      allArtistLinks.forEach((ga: any) => {
+        if (ga.artist) {
+          const existing = artistsMap.get(ga.game_id) || [];
+          existing.push(ga.artist);
+          artistsMap.set(ga.game_id, existing);
+        }
+      });
+
       const gamesWithRelations = (games || []).map((game) => ({
         ...game,
         // Location fields are excluded from public view for security
@@ -104,6 +150,8 @@ export function useGames(enabled = true) {
         is_coming_soon: game.is_coming_soon === true,
         is_for_sale: game.is_for_sale === true,
         mechanics: mechanicsMap.get(game.id!) || [],
+        designers: designersMap.get(game.id!) || [],
+        artists: artistsMap.get(game.id!) || [],
         expansions: [] as GameWithRelations[],
       }));
 
@@ -199,6 +247,12 @@ function processGames(games: any[]): GameWithRelations[] {
     mechanics: (game.game_mechanics || [])
       .map((gm: { mechanic: Mechanic | null }) => gm.mechanic)
       .filter((m): m is Mechanic => m !== null),
+    designers: (game.game_designers || [])
+      .map((gd: any) => gd.designer)
+      .filter(Boolean),
+    artists: (game.game_artists || [])
+      .map((ga: any) => ga.artist)
+      .filter(Boolean),
     expansions: [] as GameWithRelations[],
   }));
 
@@ -374,6 +428,34 @@ export function usePublishers() {
         .order("name");
       if (error) throw error;
       return data || [];
+    },
+  });
+}
+
+export function useDesigners() {
+  return useQuery({
+    queryKey: ["designers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("designers")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return (data || []) as { id: string; name: string }[];
+    },
+  });
+}
+
+export function useArtists() {
+  return useQuery({
+    queryKey: ["artists"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("artists")
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return (data || []) as { id: string; name: string }[];
     },
   });
 }
