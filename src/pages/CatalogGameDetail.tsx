@@ -43,6 +43,8 @@ interface CatalogGameFull {
   publishers: string[];
   expansions: { id: string; title: string; slug: string | null; image_url: string | null }[];
   parent: { id: string; title: string; slug: string | null } | null;
+  community_rating: number | null;
+  community_rating_count: number;
 }
 
 export default function CatalogGameDetail() {
@@ -78,7 +80,7 @@ export default function CatalogGameDetail() {
       if (!data) return null;
 
       // Fetch related data in parallel
-      const [designersRes, artistsRes, mechanicsRes, publishersRes, expansionsRes, parentRes] = await Promise.all([
+      const [designersRes, artistsRes, mechanicsRes, publishersRes, expansionsRes, parentRes, ratingsRes] = await Promise.all([
         supabase.from("catalog_designers").select("designer:designers(name)").eq("catalog_id", data.id),
         supabase.from("catalog_artists").select("artist:artists(name)").eq("catalog_id", data.id),
         supabase.from("catalog_mechanics").select("mechanic:mechanics(name)").eq("catalog_id", data.id),
@@ -87,7 +89,10 @@ export default function CatalogGameDetail() {
         data.parent_catalog_id
           ? supabase.from("game_catalog").select("id, title, slug").eq("id", data.parent_catalog_id).maybeSingle()
           : Promise.resolve({ data: null }),
+        supabase.from("catalog_ratings_summary").select("visitor_average, visitor_count").eq("catalog_id", data.id).maybeSingle(),
       ]);
+
+      const ratingRow = ratingsRes.data;
 
       return {
         ...data,
@@ -97,6 +102,8 @@ export default function CatalogGameDetail() {
         publishers: (publishersRes.data || []).map((r: any) => r.publisher?.name).filter(Boolean),
         expansions: expansionsRes.data || [],
         parent: parentRes.data || null,
+        community_rating: ratingRow?.visitor_count && ratingRow.visitor_count > 0 ? Number(ratingRow.visitor_average) : null,
+        community_rating_count: ratingRow?.visitor_count || 0,
       };
     },
     enabled: !!slug,
@@ -232,6 +239,9 @@ export default function CatalogGameDetail() {
               )}
               {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
                 <Badge variant="secondary">BGG ★ {game.bgg_community_rating.toFixed(1)}</Badge>
+              )}
+              {game.community_rating != null && (
+                <Badge className="bg-primary/20 text-primary border-primary/30">GT ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})</Badge>
               )}
               {game.is_expansion && <Badge variant="default">Expansion</Badge>}
             </div>
@@ -378,6 +388,12 @@ export default function CatalogGameDetail() {
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">BGG Rating</TableCell>
                         <TableCell className="text-foreground">★ {game.bgg_community_rating.toFixed(1)} / 10</TableCell>
+                      </TableRow>
+                    )}
+                    {game.community_rating != null && (
+                      <TableRow>
+                        <TableCell className="font-medium text-muted-foreground">GameTaverns Rating</TableCell>
+                        <TableCell className="text-foreground">★ {game.community_rating.toFixed(1)} / 5 ({game.community_rating_count} ratings)</TableCell>
                       </TableRow>
                     )}
                   </TableBody>

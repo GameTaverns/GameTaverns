@@ -118,21 +118,19 @@ export default function CatalogBrowse() {
         fetchAllJunction("catalog_publishers", "catalog_id, publisher:publishers(name)"),
       ]);
 
+      // Fetch catalog ratings from the dedicated catalog_ratings_summary view
       const { data: ratingsData } = await supabase
-        .from("games")
-        .select("catalog_id, game_ratings(rating)")
-        .in("catalog_id", [...catalogIdSet])
-        .not("catalog_id", "is", null);
+        .from("catalog_ratings_summary")
+        .select("catalog_id, average_rating, rating_count, visitor_average, visitor_count");
 
-      const ratingMap = new Map<string, { sum: number; count: number }>();
-      for (const game of ratingsData || []) {
-        if (!game.catalog_id) continue;
-        const ratings = (game as any).game_ratings as { rating: number }[] || [];
-        for (const r of ratings) {
-          const existing = ratingMap.get(game.catalog_id) || { sum: 0, count: 0 };
-          existing.sum += r.rating;
-          existing.count += 1;
-          ratingMap.set(game.catalog_id, existing);
+      const ratingMap = new Map<string, { avg: number; count: number }>();
+      for (const row of ratingsData || []) {
+        if (!row.catalog_id || !catalogIdSet.has(row.catalog_id)) continue;
+        if (row.visitor_count && row.visitor_count > 0) {
+          ratingMap.set(row.catalog_id, {
+            avg: Number(row.visitor_average) || 0,
+            count: row.visitor_count,
+          });
         }
       }
 
@@ -171,7 +169,7 @@ export default function CatalogBrowse() {
         artists: metadata?.artistMap.get(g.id) || [],
         mechanics: metadata?.mechanicMap.get(g.id) || [],
         publishers: metadata?.publisherMap.get(g.id) || [],
-        community_rating: r ? r.sum / r.count : null,
+        community_rating: r ? r.avg : null,
         community_rating_count: r?.count || 0,
       };
     });
