@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Trophy, Gamepad2, Dices, BookOpen, Users, Calendar, Star, Activity } from "lucide-react";
+import { ArrowLeft, Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -80,17 +80,24 @@ export default function UserProfile() {
     .toUpperCase()
     .slice(0, 2);
 
+  const bannerStyle = profile.banner_url
+    ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+    : {};
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
       <ProfileHeader />
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
-        {/* Profile Card */}
+        {/* Profile Card with Banner */}
         <Card className="bg-card/90 backdrop-blur-sm border-border overflow-hidden">
-          <div className="h-24 bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10" />
+          <div
+            className={`h-32 ${!profile.banner_url ? 'bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10' : ''}`}
+            style={bannerStyle}
+          />
           <CardContent className="relative pt-0 pb-6 px-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-12">
-              <Avatar className="h-24 w-24 border-4 border-card shadow-lg">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-14">
+              <Avatar className="h-28 w-28 border-4 border-card shadow-lg">
                 <AvatarImage src={profile.avatar_url || undefined} alt={profile.display_name || profile.username} />
                 <AvatarFallback className="text-2xl font-display bg-primary/20 text-primary">
                   {initials}
@@ -133,14 +140,28 @@ export default function UserProfile() {
           </CardContent>
         </Card>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard icon={Gamepad2} label="Games" value={profile.games_owned} />
-          <StatCard icon={BookOpen} label="Expansions" value={profile.expansions_owned} />
-          <StatCard icon={Dices} label="Sessions" value={profile.sessions_logged} />
-          <StatCard icon={Trophy} label="Achievements" value={profile.achievements_earned} />
-        </div>
+        {/* Recent Activity - prominent position */}
+        <Card className="bg-card/90 backdrop-blur-sm border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-display flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!activityEvents || activityEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No activity yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {activityEvents.map((event) => (
+                  <ActivityFeedItem key={event.id} event={event} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
+        {/* Achievements & Communities side by side */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Achievements */}
           <Card className="bg-card/90 backdrop-blur-sm border-border">
@@ -185,7 +206,7 @@ export default function UserProfile() {
             </CardContent>
           </Card>
 
-          {/* Communities */}
+          {/* Communities & Clubs */}
           <Card className="bg-card/90 backdrop-blur-sm border-border">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-display flex items-center gap-2">
@@ -195,16 +216,23 @@ export default function UserProfile() {
             </CardHeader>
             <CardContent>
               {!communities || communities.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Not a member of any public communities.</p>
+                <p className="text-sm text-muted-foreground">Not a member of any communities or clubs.</p>
               ) : (
                 <div className="space-y-2">
                   {communities.map((c) => (
                     <Link
-                      key={c.id}
-                      to={`//${c.slug}.${window.location.host}`}
+                      key={`${c.type}-${c.id}`}
+                      to={c.type === "library" ? `//${c.slug}.${window.location.host}` : `/clubs/${c.slug}`}
                       className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
                     >
-                      <span className="text-sm font-medium text-foreground truncate">{c.name}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        {c.type === "club" ? (
+                          <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        ) : (
+                          <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        )}
+                        <span className="text-sm font-medium text-foreground truncate">{c.name}</span>
+                      </div>
                       <Badge variant="outline" className="text-[10px] capitalize shrink-0">
                         {c.role}
                       </Badge>
@@ -216,24 +244,21 @@ export default function UserProfile() {
           </Card>
         </div>
 
-        {/* Activity Timeline */}
+        {/* Gameplay Stats */}
         <Card className="bg-card/90 backdrop-blur-sm border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-display flex items-center gap-2">
-              <Activity className="h-4 w-4 text-primary" />
-              Recent Activity
+              <Dices className="h-4 w-4 text-primary" />
+              Collection & Play Stats
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!activityEvents || activityEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No activity yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {activityEvents.map((event) => (
-                  <ActivityFeedItem key={event.id} event={event} />
-                ))}
-              </div>
-            )}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatCard icon={Dices} label="Games" value={profile.games_owned} />
+              <StatCard icon={BookOpen} label="Expansions" value={profile.expansions_owned} />
+              <StatCard icon={Activity} label="Sessions" value={profile.sessions_logged} />
+              <StatCard icon={Trophy} label="Achievements" value={profile.achievements_earned} />
+            </div>
           </CardContent>
         </Card>
       </main>
@@ -265,17 +290,15 @@ function ProfileHeader() {
 
 function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
   return (
-    <Card className="bg-card/90 backdrop-blur-sm border-border">
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Icon className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <div className="text-xl font-bold text-foreground">{value}</div>
-          <div className="text-xs text-muted-foreground">{label}</div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+      <div className="p-2 rounded-lg bg-primary/10">
+        <Icon className="h-5 w-5 text-primary" />
+      </div>
+      <div>
+        <div className="text-xl font-bold text-foreground">{value}</div>
+        <div className="text-xs text-muted-foreground">{label}</div>
+      </div>
+    </div>
   );
 }
 
@@ -285,10 +308,10 @@ function ProfileSkeleton() {
       <ProfileHeader />
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         <Card className="bg-card/90 backdrop-blur-sm border-border">
-          <div className="h-24 bg-muted" />
+          <div className="h-32 bg-muted" />
           <CardContent className="pt-0 pb-6 px-6">
-            <div className="flex items-end gap-4 -mt-12">
-              <Skeleton className="h-24 w-24 rounded-full" />
+            <div className="flex items-end gap-4 -mt-14">
+              <Skeleton className="h-28 w-28 rounded-full" />
               <div className="space-y-2 pt-2">
                 <Skeleton className="h-6 w-48" />
                 <Skeleton className="h-4 w-32" />
@@ -296,15 +319,12 @@ function ProfileSkeleton() {
             </div>
           </CardContent>
         </Card>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="bg-card/90">
-              <CardContent className="p-4">
-                <Skeleton className="h-10 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="bg-card/90">
+          <CardContent className="p-6">
+            <Skeleton className="h-6 w-40 mb-4" />
+            <Skeleton className="h-20 w-full" />
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
