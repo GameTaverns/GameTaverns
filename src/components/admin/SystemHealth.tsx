@@ -405,24 +405,53 @@ export function SystemHealth() {
         return { mode: "test", ...data };
       }
 
-      // Refresh BGG ratings: calls refresh-ratings function directly
+      // Refresh BGG ratings: loops until all entries are processed
       if (mode === "refresh-bgg-ratings") {
         const refreshUrl = `${supabaseUrl}/functions/v1/refresh-ratings`;
-        const r = await fetch(refreshUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            apikey: anonKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ limit: 100 }),
-        });
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({ error: r.statusText }));
-          throw new Error(err.error || r.statusText);
+        let totalUpdated = 0;
+        let totalFailed = 0;
+        let totalProcessed = 0;
+        let remaining = 1; // start truthy
+        let iterations = 0;
+        const maxIterations = 100; // safety cap
+
+        while (remaining > 0 && iterations < maxIterations) {
+          iterations++;
+          const r = await fetch(refreshUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: anonKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ limit: 100 }),
+          });
+          if (!r.ok) {
+            if (r.status >= 500) break; // stop on server errors, return partial
+            const err = await r.json().catch(() => ({ error: r.statusText }));
+            throw new Error(err.error || r.statusText);
+          }
+          const data = await r.json();
+          totalUpdated += data.updated || 0;
+          totalFailed += data.failed || 0;
+          totalProcessed += data.processed || 0;
+          remaining = data.remaining || 0;
+
+          // If nothing was updated this round, stop to avoid infinite loop
+          if ((data.updated || 0) === 0 && (data.processed || 0) === 0) break;
+
+          // Brief pause between batches
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
-        const data = await r.json();
-        return { mode: "refresh-bgg-ratings", ...data };
+
+        return {
+          mode: "refresh-bgg-ratings",
+          updated: totalUpdated,
+          failed: totalFailed,
+          processed: totalProcessed,
+          remaining,
+          iterations,
+        };
       }
 
       const batchSize = mode === "sync-ratings" ? 50 : 5;
