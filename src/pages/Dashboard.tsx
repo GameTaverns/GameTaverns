@@ -711,7 +711,7 @@ export default function Dashboard() {
           {/* ==================== ANALYTICS TAB ==================== */}
           <TabsContent value="analytics">
             {library ? (
-              <AnalyticsTab isAdmin={isAdmin} libraryId={library.id} />
+              <AnalyticsTab isAdmin={isAdmin} libraryId={library.id} libraryName={library.name} />
             ) : (
               <Card className={cardClass}>
                 <CardContent className="py-8 text-center">
