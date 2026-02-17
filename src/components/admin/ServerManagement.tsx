@@ -190,6 +190,20 @@ const SCRIPTS: ScriptInfo[] = [
     canRunRemotely: true,
   },
   {
+    id: "rebuild-server",
+    name: "Rebuild Server (Express) Only",
+    description:
+      "Rebuilds and redeploys just the Express API server container without touching the frontend, database, or other services. Use after backend route changes.",
+    command:
+      'docker compose --env-file /opt/gametaverns/.env -f /opt/gametaverns/deploy/supabase-selfhosted/docker-compose.yml build --no-cache server && docker compose --env-file /opt/gametaverns/.env -f /opt/gametaverns/deploy/supabase-selfhosted/docker-compose.yml up -d server',
+    icon: <Server className="h-5 w-5" />,
+    category: "maintenance",
+    whenToRun: "When you've only changed Express/backend routes and want a faster deploy than full update.sh.",
+    estimatedTime: "1–2 minutes",
+    requiresRoot: true,
+    canRunRemotely: true,
+  },
+  {
     id: "restart-functions",
     name: "Restart Edge Functions",
     description:
