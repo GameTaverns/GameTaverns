@@ -8,6 +8,7 @@ import { useLibraryMembers } from "@/hooks/useLibraryMembership";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
 import { supabase } from "@/lib/supabase";
+import { UserLink } from "@/components/social/UserLink";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -107,7 +108,7 @@ export function CommunityMembersCard() {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {roleIcon(member.role)}
-                      <span className="text-sm truncate">{displayName}</span>
+                      <UserLink username={member.user_profiles?.username} displayName={displayName} className="text-sm truncate" />
                       {isSelf && <Badge variant="outline" className="text-[10px] h-4 border-cream/30">You</Badge>}
                     </div>
 

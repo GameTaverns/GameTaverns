@@ -69,6 +69,7 @@ import {
 import { useThreadRepliesRealtime } from "@/hooks/useForumRealtime";
 import { useAuth } from "@/hooks/useAuth";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
+import { UserLink } from "@/components/social/UserLink";
 
 function ReplyCard({ reply }: { reply: ForumReply }) {
   const initials = reply.author?.display_name
@@ -82,7 +83,7 @@ function ReplyCard({ reply }: { reply: ForumReply }) {
       </Avatar>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium">{reply.author?.display_name || "Unknown"}</span>
+          <UserLink username={reply.author?.username} displayName={reply.author?.display_name} className="font-medium" />
           <FeaturedBadge achievement={reply.author?.featured_badge ?? null} size="xs" />
           <span className="text-sm text-muted-foreground">
             {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
@@ -385,7 +386,7 @@ export default function ThreadDetail() {
               <Avatar className="h-6 w-6">
                 <AvatarFallback className="text-xs">{authorInitials}</AvatarFallback>
               </Avatar>
-              <span>{thread.author?.display_name || "Unknown"}</span>
+              <UserLink username={thread.author?.username} displayName={thread.author?.display_name} />
               <FeaturedBadge achievement={thread.author?.featured_badge ?? null} size="sm" />
             </div>
             <span>•</span>

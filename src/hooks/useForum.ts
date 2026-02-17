@@ -240,6 +240,7 @@ export interface ForumThread {
   updated_at: string;
   author?: {
     display_name: string | null;
+    username?: string | null;
     featured_badge?: {
       name: string;
       icon: string | null;
@@ -259,6 +260,7 @@ export interface ForumReply {
   updated_at: string;
   author?: {
     display_name: string | null;
+    username?: string | null;
     featured_badge?: {
       name: string;
       icon: string | null;
@@ -387,6 +389,7 @@ export function useLibraryCategories(libraryId: string | undefined) {
 // Author data including featured badge
 interface AuthorData {
   display_name: string | null;
+  username?: string | null;
   featured_badge?: {
     name: string;
     icon: string | null;
@@ -404,6 +407,7 @@ async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorD
       `
       user_id,
       display_name,
+      username,
       featured_achievement:achievements(name, icon, tier)
     `
     )
@@ -420,6 +424,7 @@ async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorD
       const badge = p.featured_achievement as { name: string; icon: string | null; tier: number } | null;
       map.set(p.user_id, {
         display_name: p.display_name || "Unknown",
+        username: (p as any).username || null,
         featured_badge: badge,
       });
     }

@@ -18,6 +18,7 @@ import { useClubCategories, useRecentClubThreads, useCategoryThreads, type Forum
 import { InlineForumManagement } from "./InlineForumManagement";
 import { CreateThreadDialog } from "./CreateThreadDialog";
 import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
+import { UserLink } from "@/components/social/UserLink";
 
 const ICON_MAP = FORUM_ICON_MAP;
 const COLOR_MAP: Record<string, string> = FORUM_COLOR_MAP;
@@ -129,7 +130,7 @@ function ThreadRow({ thread }: { thread: ForumThread }) {
           <span className="font-medium truncate">{thread.title}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{thread.author?.display_name || "Unknown"}</span>
+          <UserLink username={thread.author?.username} displayName={thread.author?.display_name} className="text-sm" />
           <FeaturedBadge achievement={thread.author?.featured_badge ?? null} size="xs" />
           <span>•</span>
           <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>

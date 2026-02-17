@@ -65,6 +65,7 @@ const SmartPicker = lazy(() => import("./pages/SmartPicker"));
 const CatalogBrowse = lazy(() => import("./pages/CatalogBrowse"));
 const CatalogGameDetail = lazy(() => import("./pages/CatalogGameDetail"));
 const Install = lazy(() => import("./pages/Install"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
 const DashboardEditor = lazy(() => import("./components/dashboard/editor/DashboardEditorPage"));
 
 const queryClient = new QueryClient({
@@ -208,6 +209,8 @@ function PlatformRoutes() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/cookies" element={<Cookies />} />
+      {/* User profiles */}
+      <Route path="/u/:username" element={<UserProfile />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -2987,6 +2987,27 @@ export type Database = {
           },
         ]
       }
+      user_follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null
@@ -3696,6 +3717,31 @@ export type Database = {
             columns: ["poll_id"]
             isOneToOne: false
             referencedRelation: "game_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_user_profiles: {
+        Row: {
+          achievement_points: number | null
+          achievements_earned: number | null
+          avatar_url: string | null
+          bio: string | null
+          display_name: string | null
+          expansions_owned: number | null
+          featured_achievement_id: string | null
+          games_owned: number | null
+          member_since: string | null
+          sessions_logged: number | null
+          user_id: string | null
+          username: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_featured_achievement_id_fkey"
+            columns: ["featured_achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
             referencedColumns: ["id"]
           },
         ]
