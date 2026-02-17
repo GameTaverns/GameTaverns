@@ -189,8 +189,22 @@ export default async function handler(req: Request): Promise<Response> {
       }
 
       case "list": {
-        // List all users using admin API
-        const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
+        // List ALL users using admin API with pagination (default is 50 per page)
+        let allUsers: any[] = [];
+        let page = 1;
+        const perPage = 1000;
+        let listError: any = null;
+
+        while (true) {
+          const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
+          if (error) {
+            listError = error;
+            break;
+          }
+          allUsers = allUsers.concat(data.users);
+          if (data.users.length < perPage) break;
+          page++;
+        }
 
         if (listError) {
           return new Response(
@@ -198,6 +212,8 @@ export default async function handler(req: Request): Promise<Response> {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+
+        const users = allUsers;
 
         // Get all roles
         const { data: roles } = await adminClient.from("user_roles").select("user_id, role");
