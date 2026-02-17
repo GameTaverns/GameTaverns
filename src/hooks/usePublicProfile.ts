@@ -145,6 +145,23 @@ export function usePublicProfileAchievements(userId: string | undefined) {
   });
 }
 
+export function useFeaturedAchievement(achievementId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["featured-achievement", achievementId],
+    queryFn: async () => {
+      if (!achievementId) return null;
+      const { data, error } = await supabase
+        .from("achievements")
+        .select("name, icon, tier")
+        .eq("id", achievementId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!achievementId,
+  });
+}
+
 export function useFollowCounts(userId: string | undefined) {
   return useQuery({
     queryKey: ["follow-counts", userId],
