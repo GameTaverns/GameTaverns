@@ -31,6 +31,7 @@ import {
   Pause,
   RotateCcw,
   BookOpen,
+  FileText,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -545,6 +546,61 @@ export function SystemHealth() {
     onError: (e: Error) => toast.error(`Run failed: ${e.message}`),
   });
 
+  // Description Formatter
+  interface FormatterStatus {
+    total_with_description: number;
+    formatted: number;
+    unformatted: number;
+    ai_configured: boolean;
+    ai_provider: string | null;
+  }
+
+  const formatterQuery = useQuery<FormatterStatus>({
+    queryKey: ["catalog-formatter-status"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-format-descriptions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "status" }),
+      });
+      if (!r.ok) throw new Error(`Status check failed: ${r.status}`);
+      return r.json();
+    },
+    refetchInterval: autoRefresh ? 30000 : false,
+    retry: 1,
+  });
+
+  const formatterRunMutation = useMutation({
+    mutationFn: async (opts: { batchSize?: number; workers?: number; totalLimit?: number; dryRun?: boolean }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-format-descriptions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(opts),
+      });
+      if (!r.ok) throw new Error(`Format run failed: ${r.status}`);
+      return r.json();
+    },
+    onSuccess: (data) => {
+      toast.success(`Formatter: ${data.updated} updated out of ${data.processed} processed`);
+      queryClient.invalidateQueries({ queryKey: ["catalog-formatter-status"] });
+    },
+    onError: (e: Error) => toast.error(`Format run failed: ${e.message}`),
+  });
+
   const filteredLogs = (logsQuery.data || []).filter((log) => {
     if (!logSearch) return true;
     const search = logSearch.toLowerCase();
@@ -923,6 +979,119 @@ export function SystemHealth() {
 
           {scraperQuery.isLoading && (
             <div className="text-sm text-cream/50 text-center py-4">Loading scraper status...</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Description Formatter */}
+      <Card className="bg-wood-medium/10 border-wood-medium/40">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileText className="h-5 w-5 text-secondary" />
+              <div>
+                <CardTitle className="text-cream text-lg">Description Formatter</CardTitle>
+                <CardDescription className="text-cream/50">
+                  AI-powered batch formatting — 50 items/call, 3 concurrent workers
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => formatterQuery.refetch()}
+              disabled={formatterQuery.isFetching}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${formatterQuery.isFetching ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {formatterQuery.isError && (
+            <div className="text-sm text-red-400 p-3 rounded bg-red-500/10 border border-red-500/30">
+              Failed to load formatter status: {formatterQuery.error?.message}
+            </div>
+          )}
+
+          {formatterQuery.data && (() => {
+            const { formatted, unformatted, total_with_description, ai_provider } = formatterQuery.data;
+            const total = (formatted || 0) + (unformatted || 0);
+            const pct = total > 0 ? Math.round(((formatted || 0) / total) * 100) : 0;
+
+            return (
+              <>
+                {/* Stats grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{(formatted || 0).toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Formatted</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{(unformatted || 0).toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Unformatted</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{(total_with_description || 0).toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">With Description</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{pct}%</div>
+                    <div className="text-xs text-cream/50">Complete</div>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full bg-wood-medium/30 rounded-full h-2.5">
+                  <div
+                    className="bg-secondary h-2.5 rounded-full transition-all duration-500"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+
+                {/* Provider info */}
+                <div className="flex flex-wrap gap-4 text-xs text-cream/50">
+                  {ai_provider && <span>AI Provider: {ai_provider}</span>}
+                  <span>Batch: 50 items/call × 3 workers = 150/min</span>
+                </div>
+
+                {/* Controls */}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => formatterRunMutation.mutate({ batchSize: 50, workers: 3, totalLimit: 150 })}
+                    disabled={formatterRunMutation.isPending}
+                  >
+                    {formatterRunMutation.isPending ? (
+                      <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+                    ) : (
+                      <><Zap className="h-3.5 w-3.5 mr-1" /> Run Once</>
+                    )}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => formatterRunMutation.mutate({ batchSize: 5, workers: 1, totalLimit: 5, dryRun: true })}
+                    disabled={formatterRunMutation.isPending}
+                  >
+                    <FileText className="h-3.5 w-3.5 mr-1" /> Dry Run (5)
+                  </Button>
+                </div>
+
+                <div className="text-xs text-cream/40">
+                  Runs every minute via cron. Each invocation processes 150 games (3 concurrent API calls of 50 games each).
+                  Estimated cost: ~$0.01/invocation. At full speed, formats ~216k games/day.
+                </div>
+              </>
+            );
+          })()}
+
+          {formatterQuery.isLoading && (
+            <div className="text-sm text-cream/50 text-center py-4">Loading formatter status...</div>
           )}
         </CardContent>
       </Card>
