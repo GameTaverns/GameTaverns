@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Trophy, Gamepad2, Dices, BookOpen, Users, Calendar, Star } from "lucide-react";
+import { ArrowLeft, Trophy, Gamepad2, Dices, BookOpen, Users, Calendar, Star, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,8 @@ import {
   useFollowCounts,
   useFeaturedAchievement,
 } from "@/hooks/usePublicProfile";
+import { useUserActivity } from "@/hooks/useActivityFeed";
+import { ActivityFeedItem } from "@/components/social/ActivityFeedItem";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { FollowButton } from "@/components/social/FollowButton";
 import { supabase } from "@/integrations/backend/client";
@@ -42,6 +44,7 @@ export default function UserProfile() {
   const { data: achievements } = usePublicProfileAchievements(profile?.user_id);
   const { data: followCounts } = useFollowCounts(profile?.user_id);
   const { data: featuredAchievement } = useFeaturedAchievement(profile?.featured_achievement_id);
+  const { data: activityEvents } = useUserActivity(profile?.user_id);
 
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   useEffect(() => {
@@ -212,6 +215,27 @@ export default function UserProfile() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Activity Timeline */}
+        <Card className="bg-card/90 backdrop-blur-sm border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-display flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!activityEvents || activityEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No activity yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {activityEvents.map((event) => (
+                  <ActivityFeedItem key={event.id} event={event} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
