@@ -29,6 +29,7 @@ export function usePublicProfile(username: string | undefined) {
     queryFn: async (): Promise<PublicProfile | null> => {
       if (!username) return null;
 
+      // Try exact username match first
       const { data, error } = await (supabase as any)
         .from("public_user_profiles")
         .select("*")
@@ -36,7 +37,17 @@ export function usePublicProfile(username: string | undefined) {
         .maybeSingle();
 
       if (error) throw error;
-      return data as PublicProfile | null;
+      if (data) return data as PublicProfile;
+
+      // Fallback: try matching by display_name (case-insensitive)
+      const { data: fallback, error: fbError } = await (supabase as any)
+        .from("public_user_profiles")
+        .select("*")
+        .ilike("display_name", username)
+        .maybeSingle();
+
+      if (fbError) throw fbError;
+      return fallback as PublicProfile | null;
     },
     enabled: !!username,
   });

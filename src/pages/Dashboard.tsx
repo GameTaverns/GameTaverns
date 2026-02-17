@@ -622,6 +622,27 @@ export default function Dashboard() {
           {/* ==================== PERSONAL TAB ==================== */}
           <TabsContent value="personal">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* My Public Profile */}
+              {profile?.username && (
+                <Card className={cardClass}>
+                  <CardHeader className="px-4 pt-4 pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <User className="h-4 w-4 text-secondary" />
+                      My Profile
+                    </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Your public profile page</CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <Link to={`/u/${profile.username}`}>
+                      <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
+                        <Eye className="h-3.5 w-3.5" /> View Profile
+                        <ArrowRight className="h-3 w-3 ml-auto" />
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Account Settings */}
               <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
                 <CardHeader className="px-4 pt-4 pb-2">
