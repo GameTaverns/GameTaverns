@@ -1,9 +1,10 @@
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpDown, ArrowUp, ArrowDown, X, AlertTriangle, Settings, Plus, Upload, BarChart3 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, X, AlertTriangle, Settings, Plus, Upload, BarChart3, LayoutGrid, List } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
+import { GameList } from "@/components/games/GameList";
 import { FeatureTip } from "@/components/ui/FeatureTip";
 
 import { QuadrantFilterButton } from "@/components/games/QuadrantFilterButton";
@@ -40,7 +41,8 @@ import {
 type SortOption = "title" | "difficulty" | "playtime" | "newest" | "rating";
 type SortDir = "asc" | "desc";
 
-const ITEMS_PER_PAGE = 20;
+const GRID_PAGE_SIZE = 20;
+const LIST_PAGE_SIZE = 50;
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -122,6 +124,8 @@ const Index = () => {
   const sortBy = (searchParams.get("sort") as SortOption) || "title";
   const sortDir = (searchParams.get("dir") as SortDir) || "asc";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const ITEMS_PER_PAGE = viewMode === "list" ? LIST_PAGE_SIZE : GRID_PAGE_SIZE;
   
   // Combine loading states - show skeleton when relevant data is loading
   const isLoading = gamesLoading || 
@@ -469,8 +473,30 @@ const Index = () => {
                   <SelectItem value="newest">Newest First</SelectItem>
                   <SelectItem value="rating">Star Rating</SelectItem>
                 </SelectContent>
-              </Select>
-            </div>
+                </Select>
+
+                {/* View mode toggle */}
+                <div className="flex border border-border rounded-md">
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "ghost"}
+                    size="icon"
+                    className="h-9 w-9 rounded-r-none"
+                    onClick={() => { setViewMode("grid"); const p = new URLSearchParams(searchParams); p.delete("page"); setSearchParams(p); }}
+                    title="Grid view"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "default" : "ghost"}
+                    size="icon"
+                    className="h-9 w-9 rounded-l-none"
+                    onClick={() => { setViewMode("list"); const p = new URLSearchParams(searchParams); p.delete("page"); setSearchParams(p); }}
+                    title="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
           </div>
         </div>
 
@@ -515,7 +541,11 @@ const Index = () => {
             description="The left sidebar has filters for game type, difficulty, player count, mechanics, and more. On mobile, tap the menu icon to open it."
             className="mb-4"
           />
-          <GameGrid games={paginatedGames} hasActiveFilters={hasActiveFilters} />
+          {viewMode === "grid" ? (
+            <GameGrid games={paginatedGames} hasActiveFilters={hasActiveFilters} />
+          ) : (
+            <GameList games={paginatedGames} hasActiveFilters={hasActiveFilters} />
+          )}
         </>
       )}
 
