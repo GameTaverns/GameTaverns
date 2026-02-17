@@ -146,7 +146,7 @@ const handler = async (req: Request): Promise<Response> => {
         .select("id", { count: "exact", head: true })
         .not("bgg_id", "is", null);
 
-      // Entries that have at least one designer AND one artist (fully enriched)
+      // Entries that have at least one designer OR one artist (enriched with metadata)
       // Use a raw approach: count distinct catalog_ids in both junction tables
       const { data: designerCatalogIds } = await admin
         .from("catalog_designers")
@@ -158,11 +158,9 @@ const handler = async (req: Request): Promise<Response> => {
       const designerSet = new Set((designerCatalogIds || []).map(r => r.catalog_id));
       const artistSet = new Set((artistCatalogIds || []).map(r => r.catalog_id));
       
-      // Entries with both designers and artists
-      let enrichedCount = 0;
-      for (const id of designerSet) {
-        if (artistSet.has(id)) enrichedCount++;
-      }
+      // Entries with designers OR artists (union — many BGG games have no artist listed)
+      const enrichedSet = new Set([...designerSet, ...artistSet]);
+      const enrichedCount = enrichedSet.size;
 
       // Entries with rating
       const { count: withRating } = await admin
