@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Trophy, Gamepad2, Dices, BookOpen, Users, Calendar, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,8 @@ import {
   useFeaturedAchievement,
 } from "@/hooks/usePublicProfile";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
+import { FollowButton } from "@/components/social/FollowButton";
+import { supabase } from "@/integrations/backend/client";
 import logoImage from "@/assets/logo.png";
 import { format } from "date-fns";
 
@@ -39,6 +42,11 @@ export default function UserProfile() {
   const { data: achievements } = usePublicProfileAchievements(profile?.user_id);
   const { data: followCounts } = useFollowCounts(profile?.user_id);
   const { data: featuredAchievement } = useFeaturedAchievement(profile?.featured_achievement_id);
+
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id));
+  }, []);
 
   if (isLoading) return <ProfileSkeleton />;
 
@@ -92,6 +100,9 @@ export default function UserProfile() {
                   <FeaturedBadge achievement={featuredAchievement ?? null} size="md" />
                 </h1>
                 <p className="text-muted-foreground text-sm">@{profile.username}</p>
+                {profile.user_id && (
+                  <FollowButton currentUserId={currentUserId} targetUserId={profile.user_id} />
+                )}
               </div>
 
               <div className="flex gap-6 text-center text-sm">
