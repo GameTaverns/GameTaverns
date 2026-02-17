@@ -138,12 +138,38 @@ export default async function handler(req: Request): Promise<Response> {
         // The service role key bypasses RLS, so these should all succeed.
         console.log(`[manage-users] Deleting user ${userId} - starting cleanup...`);
 
+        // Delete all libraries owned by this user (and their child data)
+        const { data: userLibraries } = await adminClient
+          .from("libraries")
+          .select("id")
+          .eq("owner_id", userId);
+
+        if (userLibraries) {
+          for (const lib of userLibraries) {
+            console.log(`[manage-users] Deleting library ${lib.id} owned by user ${userId}`);
+            const libCleanupTables = [
+              "library_settings", "library_suspensions", "library_members",
+              "library_followers", "library_events", "game_polls",
+              "import_jobs", "forum_categories", "games",
+            ];
+            for (const table of libCleanupTables) {
+              const { error } = await adminClient.from(table).delete().eq("library_id", lib.id);
+              if (error) {
+                console.error(`[manage-users] Failed to delete from ${table} for library ${lib.id}:`, error.message);
+              }
+            }
+            await adminClient.from("libraries").delete().eq("id", lib.id);
+          }
+        }
+
         const cleanupTables = [
           { table: "user_roles", column: "user_id" },
           { table: "library_members", column: "user_id" },
           { table: "library_followers", column: "follower_user_id" },
           { table: "notification_preferences", column: "user_id" },
+          { table: "notification_log", column: "user_id" },
           { table: "user_totp_settings", column: "user_id" },
+          { table: "refresh_tokens", column: "user_id" },
           { table: "email_confirmation_tokens", column: "user_id" },
           { table: "password_reset_tokens", column: "user_id" },
         ];
