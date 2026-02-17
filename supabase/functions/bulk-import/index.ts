@@ -1935,6 +1935,76 @@ export default async function handler(req: Request): Promise<Response> {
 
             const hasLowQualityImage = isLowQualityBggImageUrl(gameData.image_url) || isLowQualityBggImageUrl(gameInput.image_url);
 
+            // -----------------------------------------------------------------
+            // CATALOG-FIRST LOOKUP: Check game_catalog before hitting BGG/AI
+            // For CSV: pull photos + description. For BGG collection: pull descriptions.
+            // -----------------------------------------------------------------
+            let catalogHit = false;
+            const lookupBggId = gameData.bgg_id || gameInput.bgg_id;
+            if (lookupBggId) {
+              try {
+                const { data: catalogEntry } = await supabaseAdmin
+                  .from("game_catalog")
+                  .select("id, title, description, image_url, additional_images, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_community_rating")
+                  .eq("bgg_id", lookupBggId)
+                  .maybeSingle();
+
+                if (catalogEntry) {
+                  const hasFormattedDesc = catalogEntry.description?.includes("Quick Gameplay Overview");
+                  console.log(`[BulkImport] Catalog hit for BGG ${lookupBggId}: "${catalogEntry.title}" (formatted=${hasFormattedDesc})`);
+
+                  // Pull description from catalog if it has the formatted version
+                  if (hasFormattedDesc && (!gameData.description || gameData.description.length < 100)) {
+                    gameData.description = catalogEntry.description!;
+                    catalogHit = true;
+                    console.log(`[BulkImport] Using catalog description (${catalogEntry.description!.length} chars)`);
+                  }
+
+                  // Pull image from catalog if we don't have one or it's low quality
+                  if (catalogEntry.image_url && (!gameData.image_url || hasLowQualityImage)) {
+                    gameData.image_url = normalizeImageUrl(catalogEntry.image_url);
+                    console.log(`[BulkImport] Using catalog image`);
+                  }
+
+                  // Pull gallery from catalog if available and we don't have any
+                  if (catalogEntry.additional_images?.length && (!gameData.additional_images || gameData.additional_images.length === 0)) {
+                    gameData.additional_images = catalogEntry.additional_images;
+                    console.log(`[BulkImport] Using catalog gallery (${catalogEntry.additional_images.length} images)`);
+                  }
+
+                  // Backfill metadata from catalog
+                  if (!gameData.min_players && catalogEntry.min_players) gameData.min_players = catalogEntry.min_players;
+                  if (!gameData.max_players && catalogEntry.max_players) gameData.max_players = catalogEntry.max_players;
+                  if (!gameData.suggested_age && catalogEntry.suggested_age) gameData.suggested_age = catalogEntry.suggested_age;
+                  if (catalogEntry.is_expansion && !gameData.is_expansion) gameData.is_expansion = catalogEntry.is_expansion;
+
+                  // Map catalog weight back to difficulty enum
+                  if (!gameData.difficulty && catalogEntry.weight) {
+                    const w = Number(catalogEntry.weight);
+                    if (w <= 1.5) gameData.difficulty = "1 - Light";
+                    else if (w <= 2.25) gameData.difficulty = "2 - Medium Light";
+                    else if (w <= 3.0) gameData.difficulty = "3 - Medium";
+                    else if (w <= 3.75) gameData.difficulty = "4 - Medium Heavy";
+                    else gameData.difficulty = "5 - Heavy";
+                  }
+
+                  // Map play_time_minutes back to play_time enum
+                  if (!gameData.play_time && catalogEntry.play_time_minutes) {
+                    const m = catalogEntry.play_time_minutes;
+                    if (m <= 15) gameData.play_time = "0-15 Minutes";
+                    else if (m <= 30) gameData.play_time = "15-30 Minutes";
+                    else if (m <= 45) gameData.play_time = "30-45 Minutes";
+                    else if (m <= 60) gameData.play_time = "45-60 Minutes";
+                    else if (m <= 120) gameData.play_time = "60+ Minutes";
+                    else if (m <= 180) gameData.play_time = "2+ Hours";
+                    else gameData.play_time = "3+ Hours";
+                  }
+                }
+              } catch (e) {
+                console.warn(`[BulkImport] Catalog lookup failed for BGG ${lookupBggId}:`, e);
+              }
+            }
+
             // BGG enhancement - SKIP if the CSV already had a real description.
             // IMPORTANT: Notes-only rows ("**Notes:** ...") should still be enriched.
             const csvDesc = (gameInput._csv_description || "").trim();
@@ -2060,9 +2130,13 @@ export default async function handler(req: Request): Promise<Response> {
                   return v === "" || v.toLowerCase() === "null";
                 };
 
-                // Format the BGG description with AI if available (Quick Gameplay Overview format)
+                // Skip AI formatting if catalog already provided a formatted description
                 let formattedDescription = bggData.description;
-                if (bggData.description && bggData.description.length > 100 && isAIConfigured()) {
+                const catalogAlreadyFormatted = catalogHit && gameData.description?.includes("Quick Gameplay Overview");
+                if (catalogAlreadyFormatted) {
+                  formattedDescription = gameData.description!;
+                  console.log(`[BulkImport] Skipping AI formatting — catalog description already applied for: ${gameInput.bgg_id}`);
+                } else if (bggData.description && bggData.description.length > 100 && isAIConfigured()) {
                   console.log(`[BulkImport] Formatting description with AI for: ${gameInput.bgg_id}`);
                   try {
                     const aiFormatted = await formatDescriptionWithAI(bggData.description, gameInput.bgg_id);
@@ -2322,9 +2396,24 @@ export default async function handler(req: Request): Promise<Response> {
                         return v === "" || v.toLowerCase() === "null";
                       };
 
-                      // Format the BGG description with AI if available
+                      // Check catalog first for this newly-discovered BGG ID
                       let formattedDescription = bggData.description;
-                      if (bggData.description && bggData.description.length > 100 && isAIConfigured()) {
+                      const { data: catEntry } = await supabaseAdmin
+                        .from("game_catalog")
+                        .select("id, description, image_url, additional_images")
+                        .eq("bgg_id", foundId)
+                        .maybeSingle();
+                      
+                      if (catEntry?.description?.includes("Quick Gameplay Overview")) {
+                        formattedDescription = catEntry.description;
+                        console.log(`[BulkImport] Catalog hit for title-lookup BGG ${foundId}`);
+                        if (catEntry.image_url && (!gameData.image_url || hasLowQualityImage)) {
+                          gameData.image_url = normalizeImageUrl(catEntry.image_url);
+                        }
+                        if (catEntry.additional_images?.length && (!gameData.additional_images || gameData.additional_images.length === 0)) {
+                          gameData.additional_images = catEntry.additional_images;
+                        }
+                      } else if (bggData.description && bggData.description.length > 100 && isAIConfigured()) {
                         try {
                           const aiFormatted = await formatDescriptionWithAI(bggData.description, foundId);
                           if (aiFormatted) {
