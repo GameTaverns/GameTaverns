@@ -390,7 +390,7 @@ export default function CatalogBrowse() {
 
       {/* Main content - offset by sidebar width */}
       <div className="lg:ml-72">
-        <div className="container mx-auto px-4 py-8 max-w-[1600px]">
+        <div className="container mx-auto px-4 py-8 max-w-[2000px]">
           {/* Header */}
           <div className="mb-8">
             <h1 className="font-display text-3xl font-bold">GameTaverns Library</h1>
