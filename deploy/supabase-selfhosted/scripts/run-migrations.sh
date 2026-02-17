@@ -93,10 +93,9 @@ if [ "$CORE_EXISTS" = "1" ]; then
     echo -e "${GREEN}✓ Existing installation detected — only running NEW migrations${NC}"
     echo ""
 
-    # For existing installs, everything through 64 is already applied.
-    # Only add NEW migrations here (65+) as they are created.
+    # For existing installs, everything through 65 is already applied.
+    # Only add NEW migrations here (66+) as they are created.
     MIGRATION_FILES=(
-        "65-social-profiles.sql"
     )
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
