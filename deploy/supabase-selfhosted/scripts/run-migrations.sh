@@ -96,7 +96,7 @@ if [ "$CORE_EXISTS" = "1" ]; then
     # For existing installs, everything through 65 is already applied.
     # Only add NEW migrations here (66+) as they are created.
     MIGRATION_FILES=(
-        "70-ratings-isolation.sql"
+        # All migrations applied manually via CLI; add future migrations here only after testing
     )
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
