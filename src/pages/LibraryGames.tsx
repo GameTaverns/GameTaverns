@@ -199,7 +199,7 @@ export default function LibraryGames() {
 
   if (isLoading || authLoading) {
     return (
-      <Layout>
+      <Layout hideSidebar>
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -213,7 +213,7 @@ export default function LibraryGames() {
   // it redirects to /dashboard (which isn't a tenant route), producing a blank screen.
   if (!isAuthenticated) {
     return (
-      <Layout>
+      <Layout hideSidebar>
         <div className="text-center py-16">
           <h1 className="text-2xl font-display font-bold mb-4">Sign in required</h1>
           <p className="text-muted-foreground mb-6">
@@ -229,7 +229,7 @@ export default function LibraryGames() {
 
   if (!library || !settings) {
     return (
-      <Layout>
+      <Layout hideSidebar>
         <div className="text-center py-16">
           <h1 className="text-2xl font-display font-bold mb-4">Library Not Found</h1>
           <p className="text-muted-foreground mb-6">
@@ -245,7 +245,7 @@ export default function LibraryGames() {
 
   if (!isOwner) {
     return (
-      <Layout>
+      <Layout hideSidebar>
         <div className="text-center py-16">
           <h1 className="text-2xl font-display font-bold mb-4">Access Denied</h1>
           <p className="text-muted-foreground mb-6">
@@ -260,7 +260,7 @@ export default function LibraryGames() {
   }
 
   return (
-    <Layout>
+    <Layout hideSidebar>
       <div className="max-w-5xl mx-auto">
         <a href={getPlatformUrl("/dashboard?tab=library")}>
           <Button
