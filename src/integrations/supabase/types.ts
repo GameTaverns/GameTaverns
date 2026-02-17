@@ -353,6 +353,57 @@ export type Database = {
           },
         ]
       }
+      catalog_ratings: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          device_fingerprint: string | null
+          guest_identifier: string
+          id: string
+          ip_address: string | null
+          rating: number
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          device_fingerprint?: string | null
+          guest_identifier: string
+          id?: string
+          ip_address?: string | null
+          rating: number
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          device_fingerprint?: string | null
+          guest_identifier?: string
+          id?: string
+          ip_address?: string | null
+          rating?: number
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_ratings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_ratings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_scraper_state: {
         Row: {
           created_at: string
@@ -1539,6 +1590,7 @@ export type Database = {
           id: string
           ip_address: string | null
           rating: number
+          source: string
           updated_at: string
         }
         Insert: {
@@ -1549,6 +1601,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           rating: number
+          source?: string
           updated_at?: string
         }
         Update: {
@@ -1559,6 +1612,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           rating?: number
+          source?: string
           updated_at?: string
         }
         Relationships: [
@@ -3169,6 +3223,31 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_ratings_summary: {
+        Row: {
+          average_rating: number | null
+          catalog_id: string | null
+          rating_count: number | null
+          visitor_average: number | null
+          visitor_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_ratings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_ratings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_ratings_library_view: {
         Row: {
           created_at: string | null
@@ -3176,6 +3255,7 @@ export type Database = {
           guest_identifier: string | null
           id: string | null
           rating: number | null
+          source: string | null
           updated_at: string | null
         }
         Insert: {
@@ -3184,6 +3264,7 @@ export type Database = {
           guest_identifier?: string | null
           id?: string | null
           rating?: number | null
+          source?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3192,6 +3273,7 @@ export type Database = {
           guest_identifier?: string | null
           id?: string | null
           rating?: number | null
+          source?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -3214,8 +3296,12 @@ export type Database = {
       game_ratings_summary: {
         Row: {
           average_rating: number | null
+          bgg_average: number | null
+          bgg_count: number | null
           game_id: string | null
           rating_count: number | null
+          visitor_average: number | null
+          visitor_count: number | null
         }
         Relationships: [
           {

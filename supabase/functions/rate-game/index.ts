@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { withLogging } from "../_shared/system-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +11,7 @@ const MAX_RATINGS_PER_WINDOW = 50;
 
 interface RateGameRequest {
   gameId: string;
+  catalogId?: string; // If set, rate a catalog game instead
   rating: number;
   guestIdentifier: string;
   deviceFingerprint?: string;
@@ -19,22 +19,12 @@ interface RateGameRequest {
 
 // Extract client IP from request headers
 function getClientIP(req: Request): string {
-  // Check common proxy headers
   const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
-  }
-  
+  if (forwarded) return forwarded.split(",")[0].trim();
   const realIP = req.headers.get("x-real-ip");
-  if (realIP) {
-    return realIP;
-  }
-  
+  if (realIP) return realIP;
   const cfConnectingIP = req.headers.get("cf-connecting-ip");
-  if (cfConnectingIP) {
-    return cfConnectingIP;
-  }
-  
+  if (cfConnectingIP) return cfConnectingIP;
   return "unknown";
 }
 
@@ -49,7 +39,6 @@ async function hashValue(value: string): Promise<string> {
 
 // Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -57,10 +46,8 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    
-    // Get client IP
+
     const clientIP = getClientIP(req);
     const hashedIP = await hashValue(clientIP);
 
@@ -70,6 +57,7 @@ export default async function handler(req: Request): Promise<Response> {
       const guestIdentifier =
         url.searchParams.get("guestIdentifier") ||
         req.headers.get("x-guest-identifier");
+      const target = url.searchParams.get("target") || "library"; // "library" or "catalog"
 
       if (!guestIdentifier) {
         return new Response(
@@ -77,13 +65,35 @@ export default async function handler(req: Request): Promise<Response> {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      // Only return game_id and rating - never expose IP/fingerprint
+
+      if (target === "catalog") {
+        const { data, error } = await supabase
+          .from("catalog_ratings")
+          .select("catalog_id, rating")
+          .eq("guest_identifier", guestIdentifier)
+          .eq("source", "visitor");
+
+        if (error) {
+          console.error("Error fetching catalog ratings:", error);
+          return new Response(
+            JSON.stringify({ error: "Failed to fetch ratings" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ ratings: data || [] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Library ratings (default)
       const { data, error } = await supabase
         .from("game_ratings")
         .select("game_id, rating")
-        .eq("guest_identifier", guestIdentifier);
-      
+        .eq("guest_identifier", guestIdentifier)
+        .eq("source", "visitor");
+
       if (error) {
         console.error("Error fetching user ratings:", error);
         return new Response(
@@ -91,7 +101,7 @@ export default async function handler(req: Request): Promise<Response> {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       return new Response(
         JSON.stringify({ ratings: data || [] }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -100,15 +110,17 @@ export default async function handler(req: Request): Promise<Response> {
 
     if (req.method === "POST") {
       const body: RateGameRequest = await req.json();
-      const { gameId, rating, guestIdentifier, deviceFingerprint } = body;
-      
-      // Get device fingerprint from header or body
+      const { gameId, catalogId, rating, guestIdentifier, deviceFingerprint } = body;
       const fingerprint = req.headers.get("x-device-fingerprint") || deviceFingerprint || "";
+      const isCatalog = !!catalogId;
+      const targetId = isCatalog ? catalogId : gameId;
+      const idColumn = isCatalog ? "catalog_id" : "game_id";
+      const tableName = isCatalog ? "catalog_ratings" : "game_ratings";
 
       // Validate inputs
-      if (!gameId || typeof gameId !== "string") {
+      if (!targetId || typeof targetId !== "string") {
         return new Response(
-          JSON.stringify({ error: "Invalid game ID" }),
+          JSON.stringify({ error: "Invalid ID" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -127,18 +139,13 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
-      // Rate limiting check - count ratings from this IP in the last hour
+      // Rate limiting - check across both tables
       const rateLimitWindow = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
-      
-      const { count: recentRatingsCount, error: rateLimitError } = await supabase
-        .from("game_ratings")
+      const { count: recentRatingsCount } = await supabase
+        .from(tableName)
         .select("*", { count: "exact", head: true })
         .eq("ip_address", hashedIP)
         .gte("created_at", rateLimitWindow);
-
-      if (rateLimitError) {
-        console.error("Rate limit check error:", rateLimitError);
-      }
 
       if (recentRatingsCount !== null && recentRatingsCount >= MAX_RATINGS_PER_WINDOW) {
         return new Response(
@@ -147,17 +154,16 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
-      // Check if this IP + fingerprint combo already rated this game
+      // Anti-manipulation: check IP + fingerprint
       if (fingerprint) {
         const { data: existingRating } = await supabase
-          .from("game_ratings")
+          .from(tableName)
           .select("id, guest_identifier")
-          .eq("game_id", gameId)
+          .eq(idColumn, targetId)
           .eq("ip_address", hashedIP)
           .eq("device_fingerprint", fingerprint)
           .maybeSingle();
 
-        // If found with different guest_identifier, they're trying to double-vote
         if (existingRating && existingRating.guest_identifier !== guestIdentifier) {
           return new Response(
             JSON.stringify({ error: "You have already rated this game." }),
@@ -166,36 +172,49 @@ export default async function handler(req: Request): Promise<Response> {
         }
       }
 
-      // Verify the game exists
-      const { data: game, error: gameError } = await supabase
-        .from("games_public")
-        .select("id")
-        .eq("id", gameId)
-        .single();
-
-      if (gameError || !game) {
-        return new Response(
-          JSON.stringify({ error: "Game not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      // Verify the target exists
+      if (isCatalog) {
+        const { data: cat, error: catError } = await supabase
+          .from("game_catalog")
+          .select("id")
+          .eq("id", targetId)
+          .single();
+        if (catError || !cat) {
+          return new Response(
+            JSON.stringify({ error: "Catalog game not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } else {
+        const { data: game, error: gameError } = await supabase
+          .from("games_public")
+          .select("id")
+          .eq("id", targetId)
+          .single();
+        if (gameError || !game) {
+          return new Response(
+            JSON.stringify({ error: "Game not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
 
-      // Upsert the rating (update if exists, insert if new)
+      // Upsert the rating
+      const upsertData: Record<string, unknown> = {
+        [idColumn]: targetId,
+        rating: Math.round(rating),
+        guest_identifier: guestIdentifier,
+        source: "visitor",
+        ip_address: hashedIP,
+        device_fingerprint: fingerprint || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const conflictKey = isCatalog ? "catalog_id,guest_identifier" : "game_id,guest_identifier";
+
       const { data, error } = await supabase
-        .from("game_ratings")
-        .upsert(
-          {
-            game_id: gameId,
-            rating: Math.round(rating),
-            guest_identifier: guestIdentifier,
-            ip_address: hashedIP,
-            device_fingerprint: fingerprint || null,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "game_id,guest_identifier",
-          }
-        )
+        .from(tableName)
+        .upsert(upsertData, { onConflict: conflictKey })
         .select()
         .single();
 
@@ -214,9 +233,14 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (req.method === "DELETE") {
-      const { gameId, guestIdentifier }: { gameId: string; guestIdentifier: string } = await req.json();
+      const body = await req.json();
+      const { gameId, catalogId, guestIdentifier } = body;
+      const isCatalog = !!catalogId;
+      const targetId = isCatalog ? catalogId : gameId;
+      const idColumn = isCatalog ? "catalog_id" : "game_id";
+      const tableName = isCatalog ? "catalog_ratings" : "game_ratings";
 
-      if (!gameId || !guestIdentifier) {
+      if (!targetId || !guestIdentifier) {
         return new Response(
           JSON.stringify({ error: "Missing required fields" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -224,9 +248,9 @@ export default async function handler(req: Request): Promise<Response> {
       }
 
       const { error } = await supabase
-        .from("game_ratings")
+        .from(tableName)
         .delete()
-        .eq("game_id", gameId)
+        .eq(idColumn, targetId)
         .eq("guest_identifier", guestIdentifier);
 
       if (error) {
