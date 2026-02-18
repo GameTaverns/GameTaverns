@@ -422,16 +422,17 @@ export function useUpdateUserProfile() {
         return profile;
       }
       
-      // Self-hosted Supabase stack: route through edge function to bypass PostgREST schema cache
+      // Self-hosted Supabase stack: direct PostgREST update (schema cache was fixed via migration 72)
       if (isSelfHostedSupabaseStack()) {
-        console.log("[updateProfile] invoking profile-update edge function");
-        const { data, error } = await supabase.functions.invoke("profile-update", {
-          method: "POST",
-          body: updates,
-        });
-        console.log("[updateProfile] edge function result:", data, error);
+        console.log("[updateProfile] direct PostgREST update for self-hosted stack");
+        const { data, error } = await supabase
+          .from("user_profiles")
+          .update({ ...updates, updated_at: new Date().toISOString() })
+          .eq("user_id", user.id)
+          .select()
+          .single();
+        console.log("[updateProfile] self-hosted direct result:", data, error);
         if (error) throw error;
-        if (data?.error) throw new Error(data.error);
         return data;
       }
       
