@@ -31,6 +31,7 @@ import {
   Plus,
   PenTool,
   Palette,
+  ListOrdered,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
@@ -803,6 +804,20 @@ export function Sidebar({ isOpen }: SidebarProps) {
               >
                 <BarChart3 className="h-5 w-5" />
                 <span>Play Stats</span>
+              </Link>
+            )}
+
+            {/* Curated Lists */}
+            {isTenantMode && (
+              <Link
+                to={buildUrl("/lists")}
+                className={cn(
+                  "sidebar-link",
+                  location.pathname.startsWith("/lists") && "sidebar-link-active"
+                )}
+              >
+                <ListOrdered className="h-5 w-5" />
+                <span>Lists</span>
               </Link>
             )}
             

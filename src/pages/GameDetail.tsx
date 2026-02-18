@@ -26,6 +26,7 @@ import { StarRating } from "@/components/games/StarRating";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
+import { GameDocuments } from "@/components/games/GameDocuments";
 import { useAddTradeListing, useMyTradeListings, useRemoveTradeListing, type SaleCondition } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -502,6 +503,7 @@ const GameDetail = () => {
                 <TabsTrigger value="info">Info</TabsTrigger>
                 <TabsTrigger value="location">Location</TabsTrigger>
                 {playLogs && <TabsTrigger value="plays">Play History</TabsTrigger>}
+                {!isDemoMode && library && <TabsTrigger value="documents">Documents</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="description" className="mt-0">
@@ -778,6 +780,17 @@ const GameDetail = () => {
                   <div className="mt-8 pt-6 border-t">
                     <EloLeaderboard gameId={game.id} gameTitle={game.title} />
                   </div>
+                </TabsContent>
+              )}
+
+              {!isDemoMode && library && (
+                <TabsContent value="documents" className="mt-0">
+                  <GameDocuments
+                    gameId={game.id}
+                    libraryId={library.id}
+                    catalogId={(game as any).catalog_id ?? null}
+                    canManage={!!isLibraryOwner}
+                  />
                 </TabsContent>
               )}
             </Tabs>
