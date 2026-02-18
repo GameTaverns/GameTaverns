@@ -10,10 +10,6 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const ALLOWED_TYPES = new Set(["boardgame", "boardgameexpansion"]);
 const BATCH_SIZE = 20; // BGG multi-ID limit per request
 
-/**
- * Extract the item type from a BGG XML response for a single or multi-item block.
- * Returns a map of bgg_id -> type string.
- */
 function parseTypes(xml: string): Map<string, string> {
   const result = new Map<string, string>();
   const itemRegex = /<item\s+type="([^"]*)"[^>]*id="(\d+)"/g;
@@ -26,11 +22,13 @@ function parseTypes(xml: string): Map<string, string> {
 
 /**
  * Catalog Cleanup — verifies catalog entries against BGG and removes non-boardgame entries.
+ * Uses bgg_verified_type column for persistence: NULL = unchecked, type string = verified.
  *
  * Actions (POST body):
- *   { action: "status" }          — count of candidates + already-cleaned
- *   { action: "run", limit: N }   — process up to N entries (default 200)
+ *   { action: "status" }            — count of candidates + already-cleaned
+ *   { action: "run", limit: N }     — process up to N unchecked entries (default 200)
  *   { action: "dry_run", limit: N } — simulate without deleting
+ *   { action: "reset" }             — clear all bgg_verified_type stamps (re-scan from scratch)
  *
  * Requires admin authorization.
  */
@@ -97,29 +95,46 @@ const handler = async (req: Request): Promise<Response> => {
   // STATUS
   // =========================================================================
   if (action === "status") {
-    // Total entries with a BGG ID
-    const { count: total } = await admin
-      .from("game_catalog")
-      .select("id", { count: "exact", head: true })
-      .not("bgg_id", "is", null);
-
-    // Linked to a user game (safe — never delete these regardless of type)
-    const { count: linked } = await admin
-      .from("games")
-      .select("id", { count: "exact", head: true })
-      .not("catalog_id", "is", null);
-
-    // Sentinel-marked (already identified as non-boardgame by formatter)
-    const { count: sentinel } = await admin
-      .from("game_catalog")
-      .select("id", { count: "exact", head: true })
-      .like("description", "%This entry does not appear to be a board game%");
+    const [
+      { count: total },
+      { count: unchecked },
+      { count: verified },
+      { count: invalid },
+      { count: linked },
+    ] = await Promise.all([
+      admin.from("game_catalog").select("id", { count: "exact", head: true }).not("bgg_id", "is", null),
+      admin.from("game_catalog").select("id", { count: "exact", head: true }).not("bgg_id", "is", null).is("bgg_verified_type", null),
+      admin.from("game_catalog").select("id", { count: "exact", head: true }).in("bgg_verified_type", ["boardgame", "boardgameexpansion"]),
+      admin.from("game_catalog").select("id", { count: "exact", head: true }).eq("bgg_verified_type", "invalid"),
+      admin.from("games").select("id", { count: "exact", head: true }).not("catalog_id", "is", null),
+    ]);
 
     return new Response(JSON.stringify({
       total_with_bgg_id: total || 0,
+      unchecked: unchecked || 0,
+      verified_boardgames: verified || 0,
+      verified_invalid: invalid || 0,
       linked_to_library: linked || 0,
-      sentinel_marked: sentinel || 0,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // =========================================================================
+  // RESET — clear all verification stamps so everything gets re-scanned
+  // =========================================================================
+  if (action === "reset") {
+    const { error: resetErr } = await admin
+      .from("game_catalog")
+      .update({ bgg_verified_type: null })
+      .not("bgg_id", "is", null);
+
+    if (resetErr) {
+      return new Response(JSON.stringify({ error: resetErr.message }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ message: "All verification stamps cleared. Next run will re-scan all entries." }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   // =========================================================================
@@ -131,8 +146,6 @@ const handler = async (req: Request): Promise<Response> => {
     });
   }
 
-  // Fetch candidates: catalog entries with a BGG ID that are NOT linked to any user game
-  // We page through them in chunks of BATCH_SIZE
   let offset = 0;
   let totalChecked = 0;
   let totalDeleted = 0;
@@ -146,12 +159,13 @@ const handler = async (req: Request): Promise<Response> => {
   while (totalChecked < limit) {
     const fetchCount = Math.min(BATCH_SIZE, limit - totalChecked);
 
-    // Get a batch of catalog entries with bgg_id, not linked to any user game
+    // Only fetch UNCHECKED entries (bgg_verified_type IS NULL)
+    // Skip sentinel-marked entries too
     const { data: candidates, error: fetchErr } = await admin
       .from("game_catalog")
       .select("id, bgg_id, title")
       .not("bgg_id", "is", null)
-      // Skip sentinel-marked entries — already handled
+      .is("bgg_verified_type", null)
       .not("description", "like", "%This entry does not appear to be a board game%")
       .limit(fetchCount)
       .range(offset, offset + fetchCount - 1);
@@ -160,9 +174,12 @@ const handler = async (req: Request): Promise<Response> => {
       errorList.push(`Fetch error at offset ${offset}: ${fetchErr.message}`);
       break;
     }
-    if (!candidates || candidates.length === 0) break;
+    if (!candidates || candidates.length === 0) {
+      console.log(`[catalog-cleanup] No more unchecked entries. Done.`);
+      break;
+    }
 
-    // Filter out any that are linked to a user game (safety check in-memory)
+    // Filter out any linked to a user game (safety check in-memory)
     const candidateIds = candidates.map(c => c.id);
     const { data: linkedGames } = await admin
       .from("games")
@@ -171,6 +188,15 @@ const handler = async (req: Request): Promise<Response> => {
     const linkedSet = new Set((linkedGames || []).map(g => g.catalog_id));
 
     const unlinked = candidates.filter(c => !linkedSet.has(c.id));
+
+    // Mark linked entries as verified (they're protected regardless of type)
+    const linkedInBatch = candidates.filter(c => linkedSet.has(c.id));
+    if (!dryRun && linkedInBatch.length > 0) {
+      await admin.from("game_catalog")
+        .update({ bgg_verified_type: "linked" })
+        .in("id", linkedInBatch.map(c => c.id));
+    }
+
     if (unlinked.length === 0) {
       offset += fetchCount;
       totalChecked += candidates.length;
@@ -209,43 +235,63 @@ const handler = async (req: Request): Promise<Response> => {
 
     const typeMap = parseTypes(xml);
 
-    // Build delete list: entries whose BGG type is NOT allowed
     const toDelete: { id: string; bgg_id: string; title: string }[] = [];
+    const toKeep: { id: string; type: string }[] = [];
+
     for (const entry of unlinked) {
       const type = typeMap.get(entry.bgg_id!);
       if (type === undefined) {
-        // BGG returned no record for this ID (deleted/invalid) — also remove
+        // BGG returned no record (deleted/invalid ID) — remove
         toDelete.push(entry as { id: string; bgg_id: string; title: string });
       } else if (!ALLOWED_TYPES.has(type)) {
         toDelete.push(entry as { id: string; bgg_id: string; title: string });
       } else {
+        toKeep.push({ id: entry.id, type });
         totalKept++;
       }
     }
 
-    console.log(`[catalog-cleanup] Batch offset=${offset}: ${unlinked.length} checked, ${toDelete.length} to delete`);
+    console.log(`[catalog-cleanup] Batch offset=${offset}: ${unlinked.length} checked, ${toDelete.length} to delete, ${toKeep.length} to keep`);
 
-    if (!dryRun && toDelete.length > 0) {
-      const { error: delErr } = await admin
-        .from("game_catalog")
-        .delete()
-        .in("id", toDelete.map(d => d.id));
-      if (delErr) {
-        errorList.push(`Delete error: ${delErr.message}`);
-        totalErrors += toDelete.length;
-      } else {
-        totalDeleted += toDelete.length;
-        deletedTitles.push(...toDelete.map(d => `${d.title} (bgg:${d.bgg_id})`));
+    if (!dryRun) {
+      // Stamp verified-good entries
+      if (toKeep.length > 0) {
+        // Stamp each unique type (boardgame / boardgameexpansion)
+        const byType = new Map<string, string[]>();
+        for (const k of toKeep) {
+          if (!byType.has(k.type)) byType.set(k.type, []);
+          byType.get(k.type)!.push(k.id);
+        }
+        for (const [type, ids] of byType) {
+          await admin.from("game_catalog")
+            .update({ bgg_verified_type: type })
+            .in("id", ids);
+        }
       }
-    } else if (dryRun) {
-      totalDeleted += toDelete.length; // count as "would delete"
+
+      // Delete invalid entries
+      if (toDelete.length > 0) {
+        const { error: delErr } = await admin
+          .from("game_catalog")
+          .delete()
+          .in("id", toDelete.map(d => d.id));
+        if (delErr) {
+          errorList.push(`Delete error: ${delErr.message}`);
+          totalErrors += toDelete.length;
+        } else {
+          totalDeleted += toDelete.length;
+          deletedTitles.push(...toDelete.map(d => `${d.title} (bgg:${d.bgg_id})`));
+        }
+      }
+    } else {
+      // Dry run — just count
+      totalDeleted += toDelete.length;
       deletedTitles.push(...toDelete.map(d => `${d.title} (bgg:${d.bgg_id})`));
     }
 
     totalChecked += candidates.length;
     offset += fetchCount;
 
-    // Rate-limit pause
     if (totalChecked < limit) await sleep(1500);
   }
 
