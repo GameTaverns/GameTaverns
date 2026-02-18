@@ -322,7 +322,7 @@ export default function Dashboard() {
                     <CardDescription className="text-cream/60 text-xs">Games generating the most buzz in your library right now</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <HotnessLeaderboard libraryId={library.id} limit={10} />
+                    <HotnessLeaderboard libraryId={library.id} tenantSlug={library.slug} limit={10} />
                   </CardContent>
                 </Card>
 

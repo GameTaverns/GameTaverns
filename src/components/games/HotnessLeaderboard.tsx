@@ -11,6 +11,7 @@ import { GameImage } from "./GameImage";
 
 interface HotnessLeaderboardProps {
   libraryId?: string | null;
+  tenantSlug?: string | null;
   limit?: number;
   compact?: boolean;
 }
@@ -37,8 +38,9 @@ function ScorePill({ icon: Icon, count, label }: { icon: React.ElementType; coun
   );
 }
 
-export function HotnessLeaderboard({ libraryId, limit = 10, compact = false }: HotnessLeaderboardProps) {
-  const { tenantSlug } = useTenant();
+export function HotnessLeaderboard({ libraryId, tenantSlug: tenantSlugProp, limit = 10, compact = false }: HotnessLeaderboardProps) {
+  const { tenantSlug: tenantSlugCtx } = useTenant();
+  const tenantSlug = tenantSlugProp ?? tenantSlugCtx;
   const { data: games = [], isLoading } = useHotness(libraryId, limit);
 
   const gameUrl = (slug: string | null) => {
