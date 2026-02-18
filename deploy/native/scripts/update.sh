@@ -99,18 +99,8 @@ npm ci --silent 2>/dev/null || npm install --silent
 echo -e "${YELLOW}[INFO]${NC} Building backend..."
 npm run build
 
-# Run database migrations (delegate to tracked migration runner)
-echo -e "${YELLOW}[INFO]${NC} Applying database migrations..."
-if [[ -x "${INSTALL_DIR}/deploy/supabase-selfhosted/scripts/run-migrations.sh" ]]; then
-    if "${INSTALL_DIR}/deploy/supabase-selfhosted/scripts/run-migrations.sh"; then
-        echo -e "${GREEN}[OK]${NC} Database migrations completed"
-    else
-        echo -e "${RED}[ERROR]${NC} Database migrations failed"
-        echo "Check migration logs above for details"
-    fi
-else
-    echo -e "${YELLOW}[WARN]${NC} Migration runner not found at deploy/supabase-selfhosted/scripts/run-migrations.sh"
-fi
+# NOTE: Database migrations are applied manually via CLI.
+# See deploy/supabase-selfhosted/migrations/ for migration files.
 
 # Verify critical tables exist
 REQUIRED_TABLES=("users" "libraries" "games" "library_members" "game_loans" "achievements" "user_totp_settings")
