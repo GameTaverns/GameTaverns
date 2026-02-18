@@ -283,7 +283,21 @@ export function TenantThemeApplicator() {
     
     // Apply background image if set
     if (settings.background_image_url) {
-      document.body.style.backgroundImage = `url(${settings.background_image_url})`;
+      // Convert absolute storage URLs to same-origin relative paths.
+      // Stored URLs may point to a different subdomain (e.g. library.gametaverns.com
+      // vs. gametaverns.com). Extracting the /storage/... path makes it work
+      // regardless of which subdomain the browser is on.
+      const rawUrl = settings.background_image_url;
+      let resolvedUrl = rawUrl;
+      try {
+        const u = new URL(rawUrl);
+        const match = u.pathname.match(/(\/storage\/v1\/object\/public\/.+)/);
+        if (match) resolvedUrl = match[1];
+      } catch {
+        // not a valid URL – use as-is
+      }
+
+      document.body.style.backgroundImage = `url(${resolvedUrl})`;
       document.body.style.backgroundSize = 'cover';
       document.body.style.backgroundPosition = 'center';
       document.body.style.backgroundAttachment = 'fixed';
