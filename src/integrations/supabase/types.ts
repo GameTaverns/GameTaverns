@@ -4050,6 +4050,10 @@ export type Database = {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
       }
+      is_library_co_owner: {
+        Args: { _library_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_library_member: {
         Args: { _library_id: string; _user_id: string }
         Returns: boolean
@@ -4088,7 +4092,7 @@ export type Database = {
         | "Miniatures"
         | "RPG"
         | "Other"
-      library_member_role: "member" | "moderator"
+      library_member_role: "member" | "moderator" | "co_owner"
       loan_status:
         | "requested"
         | "approved"
@@ -4265,7 +4269,7 @@ export const Constants = {
         "RPG",
         "Other",
       ],
-      library_member_role: ["member", "moderator"],
+      library_member_role: ["member", "moderator", "co_owner"],
       loan_status: [
         "requested",
         "approved",

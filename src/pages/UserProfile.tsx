@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare } from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import { ArrowLeft, Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import {
@@ -16,12 +17,13 @@ import {
   useFeaturedAchievement,
 } from "@/hooks/usePublicProfile";
 import { useUserActivity } from "@/hooks/useActivityFeed";
+import { useUserFeedback } from "@/hooks/useUserFeedback";
 import { ActivityFeedItem } from "@/components/social/ActivityFeedItem";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { FollowButton } from "@/components/social/FollowButton";
 import { supabase } from "@/integrations/backend/client";
 import logoImage from "@/assets/logo.png";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 
 const TIER_COLORS: Record<number, string> = {
   1: "text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30",
@@ -45,11 +47,37 @@ export default function UserProfile() {
   const { data: followCounts } = useFollowCounts(profile?.user_id);
   const { data: featuredAchievement } = useFeaturedAchievement(profile?.featured_achievement_id);
   const { data: activityEvents } = useUserActivity(profile?.user_id);
+  const { data: feedback } = useUserFeedback(profile?.user_id);
 
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
+  const [isSharedCommunity, setIsSharedCommunity] = useState(false);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id));
   }, []);
+
+  // Check if viewer shares a community with the profile user (for feedback visibility)
+  useEffect(() => {
+    if (!currentUserId || !profile?.user_id) return;
+    if (currentUserId === profile.user_id) { setIsSharedCommunity(true); return; }
+    // Check if they share any library
+    (supabase as any)
+      .from("library_members")
+      .select("library_id")
+      .eq("user_id", currentUserId)
+      .then(({ data: myMemberships }: any) => {
+        if (!myMemberships?.length) return;
+        const myLibIds = myMemberships.map((m: any) => m.library_id);
+        return (supabase as any)
+          .from("library_members")
+          .select("library_id")
+          .eq("user_id", profile.user_id)
+          .in("library_id", myLibIds)
+          .limit(1);
+      })
+      .then((res: any) => {
+        if (res?.data?.length > 0) setIsSharedCommunity(true);
+      });
+  }, [currentUserId, profile?.user_id]);
 
   if (isLoading) return <ProfileSkeleton />;
 
@@ -158,109 +186,215 @@ export default function UserProfile() {
           </CardContent>
         </Card>
 
-        {/* Recent Activity - prominent position */}
-        <Card className="bg-card/90 backdrop-blur-sm border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-display flex items-center gap-2">
-              <Activity className="h-4 w-4 text-primary" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!activityEvents || activityEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No activity yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {activityEvents.map((event) => (
-                  <ActivityFeedItem key={event.id} event={event} />
-                ))}
-              </div>
+        {/* Tabbed content: Activity + Achievements + Communities + Feedback */}
+        <Tabs defaultValue="activity">
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="activity" className="gap-1.5">
+              <Activity className="h-3.5 w-3.5" />Activity
+            </TabsTrigger>
+            <TabsTrigger value="achievements" className="gap-1.5">
+              <Trophy className="h-3.5 w-3.5" />Achievements
+            </TabsTrigger>
+            <TabsTrigger value="communities" className="gap-1.5">
+              <Users className="h-3.5 w-3.5" />Communities
+            </TabsTrigger>
+            {isSharedCommunity && (
+              <TabsTrigger value="feedback" className="gap-1.5">
+                <HandCoins className="h-3.5 w-3.5" />Feedback
+                {feedback && feedback.totalCount > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">{feedback.totalCount}</Badge>
+                )}
+              </TabsTrigger>
             )}
-          </CardContent>
-        </Card>
+          </TabsList>
 
-        {/* Achievements & Communities side by side */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Achievements */}
-          <Card className="bg-card/90 backdrop-blur-sm border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-display flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-primary" />
-                Recent Achievements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!achievements || achievements.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No achievements earned yet.</p>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {achievements.slice(0, 8).map((ua: any) => (
-                    <div
-                      key={ua.id}
-                      className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-sm"
-                    >
-                      <span className="text-lg">{ua.achievement?.icon || "🏆"}</span>
-                      <div className="min-w-0">
-                        <div className="font-medium truncate text-foreground text-xs">
-                          {ua.achievement?.name || "Achievement"}
+          {/* Activity tab */}
+          <TabsContent value="activity">
+            <Card className="bg-card/90 backdrop-blur-sm border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-display flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!activityEvents || activityEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No activity yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {activityEvents.map((event) => (
+                      <ActivityFeedItem key={event.id} event={event} />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Achievements tab */}
+          <TabsContent value="achievements">
+            <Card className="bg-card/90 backdrop-blur-sm border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-display flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-primary" />
+                  Achievements
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!achievements || achievements.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No achievements earned yet.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {achievements.map((ua: any) => (
+                      <div key={ua.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-sm">
+                        <span className="text-lg">{ua.achievement?.icon || "🏆"}</span>
+                        <div className="min-w-0">
+                          <div className="font-medium truncate text-foreground text-xs">{ua.achievement?.name || "Achievement"}</div>
+                          <Badge variant="secondary" className={`text-[10px] px-1 py-0 ${TIER_COLORS[ua.achievement?.tier || 1] || ""}`}>
+                            {TIER_NAMES[ua.achievement?.tier || 1]}
+                          </Badge>
                         </div>
-                        <Badge
-                          variant="secondary"
-                          className={`text-[10px] px-1 py-0 ${TIER_COLORS[ua.achievement?.tier || 1] || ""}`}
-                        >
-                          {TIER_NAMES[ua.achievement?.tier || 1]}
-                        </Badge>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {achievements && achievements.length > 0 && (
-                <div className="mt-3 text-xs text-muted-foreground">
-                  <Star className="h-3 w-3 inline mr-1" />
-                  {profile.achievement_points} total points
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+                {achievements && achievements.length > 0 && (
+                  <div className="mt-3 text-xs text-muted-foreground">
+                    <Star className="h-3 w-3 inline mr-1" />
+                    {profile.achievement_points} total points
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {/* Communities & Clubs */}
-          <Card className="bg-card/90 backdrop-blur-sm border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-display flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" />
-                Communities
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {!communities || communities.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Not a member of any communities or clubs.</p>
-              ) : (
-                <div className="space-y-2">
-                  {communities.map((c) => (
-                    <Link
-                      key={`${c.type}-${c.id}`}
-                      to={c.type === "library" ? `//${c.slug}.${window.location.host}` : `/clubs/${c.slug}`}
-                      className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {c.type === "club" ? (
-                          <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        ) : (
-                          <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        )}
-                        <span className="text-sm font-medium text-foreground truncate">{c.name}</span>
-                      </div>
-                      <Badge variant="outline" className="text-[10px] capitalize shrink-0">
-                        {c.role}
-                      </Badge>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+          {/* Communities tab */}
+          <TabsContent value="communities">
+            <Card className="bg-card/90 backdrop-blur-sm border-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-display flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  Communities
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!communities || communities.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Not a member of any communities or clubs.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {communities.map((c) => (
+                      <Link
+                        key={`${c.type}-${c.id}`}
+                        to={c.type === "library" ? `//${c.slug}.${window.location.host}` : `/clubs/${c.slug}`}
+                        className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {c.type === "club" ? (
+                            <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          ) : (
+                            <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          )}
+                          <span className="text-sm font-medium text-foreground truncate">{c.name}</span>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] capitalize shrink-0">{c.role}</Badge>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Feedback tab — community members only */}
+          {isSharedCommunity && (
+            <TabsContent value="feedback">
+              <div className="space-y-4">
+                {/* Summary stats */}
+                {feedback && feedback.totalCount > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card className="bg-card/90 backdrop-blur-sm border-border">
+                      <CardContent className="p-4 text-center">
+                        <div className="text-2xl font-bold text-primary">
+                          {feedback.avgLender !== null ? `★ ${feedback.avgLender}` : "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">As Lender ({feedback.asLender.length} reviews)</div>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-card/90 backdrop-blur-sm border-border">
+                      <CardContent className="p-4 text-center">
+                        <div className="text-2xl font-bold text-primary">
+                          {feedback.avgBorrower !== null ? `★ ${feedback.avgBorrower}` : "—"}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">As Borrower ({feedback.asBorrower.length} reviews)</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Received as lender */}
+                {feedback && feedback.asLender.length > 0 && (
+                  <Card className="bg-card/90 backdrop-blur-sm border-border">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <HandCoins className="h-4 w-4 text-primary" />
+                        Feedback as Lender
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {feedback.asLender.map((r) => (
+                        <FeedbackCard key={r.id} rating={r} />
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Received as borrower */}
+                {feedback && feedback.asBorrower.length > 0 && (
+                  <Card className="bg-card/90 backdrop-blur-sm border-border">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-primary" />
+                        Feedback as Borrower
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {feedback.asBorrower.map((r) => (
+                        <FeedbackCard key={r.id} rating={r} />
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Ratings they gave */}
+                {feedback && feedback.given.length > 0 && (
+                  <Card className="bg-card/90 backdrop-blur-sm border-border">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <Star className="h-4 w-4 text-primary" />
+                        Reviews They Left
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {feedback.given.map((r) => (
+                        <FeedbackCard key={r.id} rating={r} showRatedUser />
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {feedback && feedback.totalCount === 0 && feedback.given.length === 0 && (
+                  <Card className="bg-card/90 backdrop-blur-sm border-border">
+                    <CardContent className="py-12 text-center">
+                      <HandCoins className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+                      <p className="text-sm text-muted-foreground">No feedback yet.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Feedback is left after completed game loans.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+          )}
+        </Tabs>
 
         {/* Gameplay Stats */}
         <Card className="bg-card/90 backdrop-blur-sm border-border">
@@ -280,6 +414,25 @@ export default function UserProfile() {
           </CardContent>
         </Card>
       </main>
+    </div>
+  );
+}
+
+function FeedbackCard({ rating, showRatedUser }: { rating: any; showRatedUser?: boolean }) {
+  const stars = Array.from({ length: 5 }, (_, i) => i < rating.rating ? "★" : "☆").join("");
+  return (
+    <div className="p-3 rounded-lg bg-muted/40 border border-border/40 space-y-1">
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-medium text-foreground">
+          {showRatedUser ? "—" : (rating.rated_by_display_name || rating.rated_by_username || "Anonymous")}
+          {rating.game_title && <span className="text-muted-foreground font-normal"> · {rating.game_title}</span>}
+        </div>
+        <span className="text-amber-500 text-sm tracking-wider">{stars}</span>
+      </div>
+      {rating.review && <p className="text-xs text-muted-foreground leading-relaxed">{rating.review}</p>}
+      <div className="text-[10px] text-muted-foreground/60">
+        {formatDistanceToNow(new Date(rating.created_at), { addSuffix: true })}
+      </div>
     </div>
   );
 }

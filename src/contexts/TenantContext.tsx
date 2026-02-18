@@ -188,11 +188,24 @@ export function TenantProvider({ children }: TenantProviderProps) {
   const isTenantMode = !!tenantSlug || !!library;
   const isPlatformMode = !isTenantMode;
   
-  // Check if current user is owner
+  // Check if current user is owner OR co_owner
+  // Co-owners have all owner privileges except deleting the library
+  const [isCoOwner, setIsCoOwner] = useState(false);
+  useEffect(() => {
+    if (!library?.id || !user?.id) { setIsCoOwner(false); return; }
+    supabase
+      .from("library_members")
+      .select("role")
+      .eq("library_id", library.id)
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => setIsCoOwner(data?.role === "co_owner"));
+  }, [library?.id, user?.id]);
+
   const isOwner = useMemo(() => {
     if (!library || !user) return false;
-    return library.owner_id === user.id;
-  }, [library, user]);
+    return library.owner_id === user.id || isCoOwner;
+  }, [library, user, isCoOwner]);
   
   // Fetch library data
   const fetchLibrary = async () => {
