@@ -150,7 +150,7 @@ export default function UserProfile() {
       className="min-h-screen dark"
       style={hasTheme && profilePageBg ? { backgroundColor: profilePageBg } : { background: 'linear-gradient(to bottom right, hsl(var(--wood-dark)), hsl(var(--sidebar)), hsl(var(--wood-medium)))' }}
     >
-      <ProfileHeader />
+      <ProfileHeader bgColor={profilePageBg} />
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         {/* Profile Card with Banner */}
@@ -494,9 +494,13 @@ function FeedbackCard({ rating, showRatedUser }: { rating: any; showRatedUser?: 
   );
 }
 
-function ProfileHeader() {
+function ProfileHeader({ bgColor }: { bgColor?: string | null }) {
   return (
-    <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
+    <header
+      className="border-b backdrop-blur-sm"
+      style={bgColor ? { backgroundColor: bgColor, borderColor: `${bgColor}80` } : undefined}
+    >
+      <div className={`${!bgColor ? 'border-b border-wood-medium/50 bg-wood-dark/50' : ''}`} />
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
           <img src={logoImage} alt="GameTaverns" className="h-10 w-auto" />
@@ -515,6 +519,7 @@ function ProfileHeader() {
     </header>
   );
 }
+
 
 function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
   return (
