@@ -174,11 +174,19 @@ export default function UserProfile() {
               </Avatar>
 
               <div className="flex-1 min-w-0 pt-2">
-                <h1 className="font-display text-2xl font-bold text-foreground truncate flex items-center gap-2">
+                <h1
+                  className="font-display text-2xl font-bold truncate flex items-center gap-2"
+                  style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}
+                >
                   {profile.display_name || profile.username}
                   <FeaturedBadge achievement={featuredAchievement ?? null} size="md" />
                 </h1>
-                <p className="text-muted-foreground text-sm">@{profile.username}</p>
+                <p
+                  className="text-sm"
+                  style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}
+                >
+                  @{profile.username}
+                </p>
                 {profile.user_id && (
                   <div className="flex items-center gap-2 mt-1">
                     <FollowButton currentUserId={currentUserId} targetUserId={profile.user_id} />
