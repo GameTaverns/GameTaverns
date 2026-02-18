@@ -6,80 +6,84 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const FORMAT_SYSTEM_PROMPT = `You are a board game description editor. You will receive MULTIPLE game descriptions separated by "---GAME---" markers. For EACH game, rewrite its description into this EXACT format:
+const FORMAT_SYSTEM_PROMPT = `You are a board game description editor. Rewrite game descriptions into this markdown format:
 
-1. Opening paragraph: 2-3 sentences about the game's theme and what makes it special/unique.
-2. "## Quick Gameplay Overview" header
-3. Bullet points with bold labels:
-   - **Goal:** One sentence about how to win
-   - **On Your Turn:** or **Each Round:** 3-5 bullet points describing the main actions (use - for sub-bullets)
-   - **End Game:** One sentence (optional if obvious from Goal)
-   - **Winner:** One sentence about scoring/victory
-4. One optional closing sentence about the edition or components if relevant.
+Opening paragraph: 2-3 sentences about the theme and what makes it unique.
 
-CRITICAL RULES:
-- Total length per game: 150-250 words
-- If the input is just personal notes or too short to describe gameplay, write a NEW description based on the game title
-- Use proper markdown: ## for headers, **bold** for labels, - for bullet points
-- Be factual and informative, not promotional
-- Separate each game's output with "===GAME===" on its own line
-- The FIRST line of each game output MUST be "TITLE: <exact game title>"
-- Do NOT include any markdown code fences or JSON wrapping`;
+## Quick Gameplay Overview
 
-/** Authorize the request — service_role key OR admin JWT */
-async function authorize(req: Request, supabaseUrl: string, serviceKey: string): Promise<boolean> {
-  const authHeader = req.headers.get("Authorization") || "";
-  if (authHeader.includes(serviceKey)) return true;
+- **Goal:** One sentence about how to win
+- **On Your Turn:** (or **Each Round:**)
+  - action 1
+  - action 2
+  - action 3
+- **End Game:** One sentence (optional)
+- **Winner:** One sentence about scoring/victory
 
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  if (!anonKey || !authHeader) return false;
+Optional closing sentence about edition or components.
 
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return false;
+RULES:
+- 150-250 words per game
+- If the input is too short or just notes, write a new description based on the game title
+- Use proper markdown: ## headers, **bold** labels, - bullet points
+- Be factual, not promotional
+- You MUST return a JSON array. No other text, no code fences, no explanation.
 
-  const adminClient = createClient(supabaseUrl, serviceKey);
-  const { data: roleData } = await adminClient
-    .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
-  return !!roleData;
-}
+Return ONLY this JSON structure:
+[
+  { "title": "<exact title as given>", "description": "<formatted markdown description>" },
+  ...one object per game...
+]`;
 
 /** Build the batched prompt for N games */
 function buildBatchPrompt(entries: { title: string; description: string | null }[]): string {
-  return entries.map((e) =>
-    `---GAME---\nTitle: ${e.title}\nDescription:\n${e.description ? e.description.substring(0, 2000) : "(No description available — please research and write one)"}`
-  ).join("\n\n");
+  const games = entries.map((e) => ({
+    title: e.title,
+    description: e.description ? e.description.substring(0, 2000) : null,
+  }));
+  return JSON.stringify(games, null, 2);
 }
 
-/** Parse the AI response back into individual game descriptions */
+/** Parse the AI JSON response back into individual game descriptions */
 function parseBatchResponse(raw: string, entries: { title: string }[]): Map<string, string> {
   const results = new Map<string, string>();
 
   // Strip code fences if present
   let cleaned = raw.trim();
   if (cleaned.startsWith("```")) {
-    cleaned = cleaned.replace(/^```(?:markdown)?\n?/, "").replace(/\n?```$/, "").trim();
+    cleaned = cleaned.replace(/^```(?:json|markdown)?\n?/, "").replace(/\n?```$/, "").trim();
   }
 
-  // Split by the separator
-  const parts = cleaned.split(/===GAME===/);
+  // Find the JSON array (may have preamble text from Perplexity)
+  const arrayStart = cleaned.indexOf("[");
+  const arrayEnd = cleaned.lastIndexOf("]");
+  if (arrayStart === -1 || arrayEnd === -1 || arrayEnd <= arrayStart) {
+    console.error("[catalog-format] No JSON array found in response. Raw snippet:", cleaned.substring(0, 200));
+    return results;
+  }
 
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
+  let parsed: { title: string; description: string }[];
+  try {
+    parsed = JSON.parse(cleaned.substring(arrayStart, arrayEnd + 1));
+  } catch (e) {
+    console.error("[catalog-format] JSON parse error:", e instanceof Error ? e.message : String(e));
+    console.error("[catalog-format] Raw snippet:", cleaned.substring(arrayStart, arrayStart + 300));
+    return results;
+  }
 
-    // Extract title from "TITLE: ..." line
-    const titleMatch = trimmed.match(/^TITLE:\s*(.+)/i);
-    if (!titleMatch) continue;
+  if (!Array.isArray(parsed)) {
+    console.error("[catalog-format] Parsed value is not an array");
+    return results;
+  }
 
-    const aiTitle = titleMatch[1].trim();
-    const description = trimmed.replace(/^TITLE:\s*.+\n?/, "").trim();
+  for (const item of parsed) {
+    if (!item?.title || !item?.description) continue;
 
+    const aiTitle = String(item.title).trim();
+    const description = String(item.description).trim();
     if (!description) continue;
 
-    // Match to our entries (fuzzy — case-insensitive, trim)
+    // Exact match first (case-insensitive)
     const matched = entries.find(e =>
       e.title.toLowerCase().trim() === aiTitle.toLowerCase().trim()
     );
@@ -87,9 +91,10 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
     if (matched) {
       results.set(matched.title, description);
     } else {
-      // Try partial match as fallback
+      // Partial match fallback
       const partial = entries.find(e =>
-        aiTitle.toLowerCase().includes(e.title.toLowerCase().substring(0, 20))
+        aiTitle.toLowerCase().includes(e.title.toLowerCase().substring(0, 20)) ||
+        e.title.toLowerCase().includes(aiTitle.toLowerCase().substring(0, 20))
       );
       if (partial && !results.has(partial.title)) {
         results.set(partial.title, description);
@@ -116,9 +121,9 @@ async function processBatch(
     const aiResult = await aiComplete({
       messages: [
         { role: "system", content: FORMAT_SYSTEM_PROMPT },
-        { role: "user", content: `Rewrite the following ${entries.length} board game descriptions:\n\n${batchPrompt}` },
+        { role: "user", content: `Rewrite the following ${entries.length} board game descriptions and return a JSON array. Each element must have "title" (exact match) and "description" (formatted markdown):\n\n${batchPrompt}` },
       ],
-      max_tokens: entries.length * 400, // ~400 tokens per game
+      max_tokens: entries.length * 500, // ~500 tokens per game for JSON overhead
     });
 
     if (!aiResult.success) {
