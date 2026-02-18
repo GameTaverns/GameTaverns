@@ -248,6 +248,13 @@ async function processBatch(
       if (REFUSAL_PATTERNS.some(p => p.test(newDescription))) {
         console.warn(`[catalog-format] AI refused to rewrite "${entry.title}": ${newDescription.substring(0, 100)}`);
         errors.push(`AI refusal for ${entry.title}`);
+
+        if (!dryRun) {
+          // Write a sentinel so this entry is excluded from future runs (contains format marker)
+          const SENTINEL = `*This entry does not appear to be a board game and was excluded from automatic formatting.*\n\n## Quick Gameplay Overview\n\n- **Note:** Not a board game.`;
+          await admin.from("game_catalog").update({ description: SENTINEL }).eq("id", entry.id);
+        }
+
         results.push({ title: entry.title, status: "ai_refusal" });
         continue;
       }
