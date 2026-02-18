@@ -66,28 +66,33 @@ function sanitizeForJson(text: string): string {
     .trim();
 }
 
+/** Normalize a title for fuzzy comparison */
+function normalizeTitle(t: string): string {
+  return t.toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^\p{L}\p{N} ]/gu, "")
+    .trim();
+}
+
 /** Attempt to extract individual JSON objects from a broken array string */
 function extractObjectsFromBrokenJson(raw: string, entries: { title: string }[]): Map<string, string> {
   const results = new Map<string, string>();
-  // Try to match individual {"title":...,"description":...} objects
   const objectPattern = /\{\s*"title"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"description"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/g;
   let match;
   while ((match = objectPattern.exec(raw)) !== null) {
-    const aiTitle = match[1].trim();
+    const aiNorm = normalizeTitle(match[1]);
     const description = match[2].replace(/\\n/g, "\n").replace(/\\t/g, "\t").trim();
     if (!description) continue;
 
-    const matched = entries.find(e => e.title.toLowerCase().trim() === aiTitle.toLowerCase().trim());
-    if (matched) {
+    let matched = entries.find(e => normalizeTitle(e.title) === aiNorm);
+    if (!matched) {
+      matched = entries.find(e => {
+        const eNorm = normalizeTitle(e.title);
+        return aiNorm.includes(eNorm.substring(0, 30)) || eNorm.includes(aiNorm.substring(0, 30));
+      });
+    }
+    if (matched && !results.has(matched.title)) {
       results.set(matched.title, description);
-    } else {
-      const partial = entries.find(e =>
-        aiTitle.toLowerCase().includes(e.title.toLowerCase().substring(0, 20)) ||
-        e.title.toLowerCase().includes(aiTitle.toLowerCase().substring(0, 20))
-      );
-      if (partial && !results.has(partial.title)) {
-        results.set(partial.title, description);
-      }
     }
   }
   return results;
@@ -131,6 +136,7 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
     return results;
   }
 
+
   for (const item of parsed) {
     if (!item?.title || !item?.description) continue;
 
@@ -138,22 +144,23 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
     const description = String(item.description).trim();
     if (!description) continue;
 
-    // Exact match first (case-insensitive)
-    const matched = entries.find(e =>
-      e.title.toLowerCase().trim() === aiTitle.toLowerCase().trim()
-    );
+    const aiNorm = normalizeTitle(aiTitle);
 
-    if (matched) {
+    // 1. Exact normalized match
+    let matched = entries.find(e => normalizeTitle(e.title) === aiNorm);
+
+    // 2. Partial match: first 30 chars of normalized title
+    if (!matched) {
+      const aiPrefix = aiNorm.substring(0, 30);
+      matched = entries.find(e => {
+        const eNorm = normalizeTitle(e.title);
+        return aiNorm.includes(eNorm.substring(0, 30)) ||
+               eNorm.includes(aiPrefix);
+      });
+    }
+
+    if (matched && !results.has(matched.title)) {
       results.set(matched.title, description);
-    } else {
-      // Partial match fallback
-      const partial = entries.find(e =>
-        aiTitle.toLowerCase().includes(e.title.toLowerCase().substring(0, 20)) ||
-        e.title.toLowerCase().includes(aiTitle.toLowerCase().substring(0, 20))
-      );
-      if (partial && !results.has(partial.title)) {
-        results.set(partial.title, description);
-      }
     }
   }
 
