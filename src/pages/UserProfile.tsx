@@ -115,11 +115,16 @@ export default function UserProfile() {
       : { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
     : {};
 
-  // Profile theme — scoped CSS variables injected onto the profile card only
-  const profileThemeVars: React.CSSProperties = profile.profile_primary_h ? {
-    ["--profile-primary" as any]: `hsl(${profile.profile_primary_h}, ${profile.profile_primary_s || "35%"}, ${profile.profile_primary_l || "30%"})`,
-    ["--profile-accent" as any]: `hsl(${profile.profile_accent_h || profile.profile_primary_h}, ${profile.profile_accent_s || "45%"}, ${profile.profile_accent_l || "42%"})`,
-    ["--profile-bg" as any]: `hsl(${profile.profile_background_h || "30"}, ${profile.profile_background_s || "20%"}, ${profile.profile_background_l || "95%"})`,
+  // Profile theme — scoped CSS variables + direct background applied to the profile card
+  const hasTheme = !!profile.profile_primary_h;
+  const profilePrimary = hasTheme ? `hsl(${profile.profile_primary_h}, ${profile.profile_primary_s || "35%"}, ${profile.profile_primary_l || "30%"})` : null;
+  const profileAccent = hasTheme ? `hsl(${profile.profile_accent_h || profile.profile_primary_h}, ${profile.profile_accent_s || "45%"}, ${profile.profile_accent_l || "42%"})` : null;
+  const profileBgColor = hasTheme ? `hsl(${profile.profile_background_h || "30"}, ${profile.profile_background_s || "20%"}, ${profile.profile_background_l || "95%"})` : null;
+  const profileThemeVars: React.CSSProperties = hasTheme ? {
+    ["--profile-primary" as any]: profilePrimary,
+    ["--profile-accent" as any]: profileAccent,
+    ["--profile-bg" as any]: profileBgColor,
+    backgroundColor: profileBgColor!,
   } : {};
 
   const profileBgImageUrl = profile.profile_bg_image_url || "";
@@ -139,7 +144,7 @@ export default function UserProfile() {
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         {/* Profile Card with Banner */}
-        <Card className="bg-card/90 backdrop-blur-sm border-border" style={profileThemeVars}>
+        <Card className="backdrop-blur-sm border-border" style={{ ...(hasTheme ? {} : { backgroundColor: 'hsl(var(--card) / 0.9)' }), ...profileThemeVars }}>
           {/* Banner area — overflow-hidden only on the banner, not the card */}
           <div className="relative overflow-hidden rounded-t-lg">
             <div
