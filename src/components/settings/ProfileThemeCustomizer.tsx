@@ -143,12 +143,19 @@ export function ProfileThemeCustomizer() {
   };
 
   const handleSave = async () => {
+    console.log("[ProfileTheme] Saving theme settings:", ls);
     try {
-      await updateProfile.mutateAsync(ls);
+      const result = await updateProfile.mutateAsync(ls);
+      console.log("[ProfileTheme] Save result:", result);
       setHasChanges(false);
       toast({ title: "Profile theme saved" });
     } catch (e: any) {
-      toast({ title: "Failed to save", description: e.message, variant: "destructive" });
+      console.error("[ProfileTheme] Save error:", e);
+      toast({
+        title: "Failed to save theme",
+        description: e?.message ?? String(e),
+        variant: "destructive",
+      });
     }
   };
 
