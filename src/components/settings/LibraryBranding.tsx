@@ -1,15 +1,11 @@
 import { useState } from "react";
 import { Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdateLibrarySettings } from "@/hooks/useLibrary";
 import { useTenant } from "@/contexts/TenantContext";
 import { LogoUpload } from "./LogoUpload";
-import { LibraryBackgroundUpload } from "./LibraryBackgroundUpload";
 
 export function LibraryBranding() {
   const { library, settings, refreshLibrary } = useTenant();
@@ -99,42 +95,6 @@ export function LibraryBranding() {
           </CardContent>
         </Card>
 
-        {/* Background Image */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Background Image</CardTitle>
-            <CardDescription>
-              Add a custom background to your library pages
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <LibraryBackgroundUpload
-              libraryId={library.id}
-              currentUrl={ls.background_image_url || null}
-              onUrlChange={(url) => updateLocal('background_image_url', url)}
-            />
-            
-            <div className="space-y-2">
-              <Label>Overlay Opacity</Label>
-              <div className="flex items-center gap-4">
-                <Slider
-                  value={[parseFloat(ls.background_overlay_opacity || '0.85') * 100]}
-                  min={0}
-                  max={100}
-                  step={5}
-                  onValueChange={([v]) => updateLocal('background_overlay_opacity', String(v / 100))}
-                  className="flex-1"
-                />
-                <span className="text-sm w-12 text-right">
-                  {Math.round(parseFloat(ls.background_overlay_opacity || '0.85') * 100)}%
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Controls how much of the background is visible through the content overlay.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
