@@ -819,9 +819,6 @@ export default function Dashboard() {
                     <TabsTrigger value="server" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
                       <Terminal className="h-3 w-3" /> Server
                     </TabsTrigger>
-                    <TabsTrigger value="catalog" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <BookMarked className="h-3 w-3" /> Catalog
-                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="analytics"><PlatformAnalytics /></TabsContent>
@@ -833,16 +830,6 @@ export default function Dashboard() {
                   <TabsContent value="health"><SystemHealth /></TabsContent>
                   <TabsContent value="premium"><PremiumRoadmap /></TabsContent>
                   <TabsContent value="server"><ServerManagement /></TabsContent>
-                  <TabsContent value="catalog">
-                    <div className="flex justify-end mb-4">
-                      <a href="/catalog" target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm" className="gap-1.5">
-                          <ExternalLink className="h-3.5 w-3.5" /> Open Full Catalog
-                        </Button>
-                      </a>
-                    </div>
-                    <CatalogBrowseEmbed />
-                  </TabsContent>
                 </Tabs>
               </div>
             </TabsContent>
