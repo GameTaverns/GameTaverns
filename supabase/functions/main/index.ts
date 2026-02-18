@@ -68,6 +68,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "add-from-catalog":       () => import("./add-from-catalog/index.ts"),
   "server-command":         () => import("./server-command/index.ts"),
   "catalog-format-descriptions": () => import("./catalog-format-descriptions/index.ts"),
+  "catalog-cleanup":            () => import("./catalog-cleanup/index.ts"),
 };
 
 // All handlers are now external imports - no inlined handlers remaining
