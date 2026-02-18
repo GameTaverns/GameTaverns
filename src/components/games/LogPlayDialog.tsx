@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Minus, Trophy, Sparkles, Clock, Calendar, Puzzle } from "lucide-react";
+import { Plus, Minus, Trophy, Sparkles, Clock, Calendar, Puzzle, UserPlus, UserCheck, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,12 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useGameSessions, type CreateSessionInput } from "@/hooks/useGameSessions";
 import { supabase } from "@/integrations/backend/client";
+import { PlayerTagSearch } from "./PlayerTagSearch";
+import type { UserSearchResult } from "@/hooks/usePlayerSearch";
 
 function toDateTimeLocalValue(date: Date): string {
-  // datetime-local expects local time without timezone (YYYY-MM-DDTHH:mm)
-  // Using toISOString() would be UTC and can shift the displayed day/month.
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
 }
@@ -28,6 +29,8 @@ interface PlayerInput {
   score: string;
   isWinner: boolean;
   isFirstPlay: boolean;
+  linkedUser?: UserSearchResult | null;
+  showSearch?: boolean;
 }
 
 interface Expansion {
@@ -46,21 +49,16 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
   const [open, setOpen] = useState(false);
   const { createSession } = useGameSessions(gameId);
 
-  const [playedAt, setPlayedAt] = useState(() => {
-    return toDateTimeLocalValue(new Date());
-  });
+  const [playedAt, setPlayedAt] = useState(() => toDateTimeLocalValue(new Date()));
   const [duration, setDuration] = useState("");
   const [notes, setNotes] = useState("");
   const [players, setPlayers] = useState<PlayerInput[]>([
-    { name: "", score: "", isWinner: false, isFirstPlay: false },
+    { name: "", score: "", isWinner: false, isFirstPlay: false, linkedUser: null, showSearch: false },
   ]);
-  
-  // Expansion state
   const [expansions, setExpansions] = useState<Expansion[]>([]);
   const [selectedExpansions, setSelectedExpansions] = useState<Set<string>>(new Set());
   const [loadingExpansions, setLoadingExpansions] = useState(false);
 
-  // Fetch expansions when dialog opens
   useEffect(() => {
     if (open && gameId) {
       setLoadingExpansions(true);
@@ -71,9 +69,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
         .eq("is_expansion", true)
         .order("title")
         .then(({ data, error }) => {
-          if (!error && data) {
-            setExpansions(data);
-          }
+          if (!error && data) setExpansions(data);
           setLoadingExpansions(false);
         });
     }
@@ -82,34 +78,44 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
   const toggleExpansion = (expansionId: string) => {
     setSelectedExpansions((prev) => {
       const next = new Set(prev);
-      if (next.has(expansionId)) {
-        next.delete(expansionId);
-      } else {
-        next.add(expansionId);
-      }
+      next.has(expansionId) ? next.delete(expansionId) : next.add(expansionId);
       return next;
     });
   };
 
   const addPlayer = () => {
-    setPlayers([...players, { name: "", score: "", isWinner: false, isFirstPlay: false }]);
+    setPlayers([...players, { name: "", score: "", isWinner: false, isFirstPlay: false, linkedUser: null, showSearch: false }]);
   };
 
   const removePlayer = (index: number) => {
-    if (players.length > 1) {
-      setPlayers(players.filter((_, i) => i !== index));
-    }
+    if (players.length > 1) setPlayers(players.filter((_, i) => i !== index));
   };
 
-  const updatePlayer = (index: number, field: keyof PlayerInput, value: string | boolean) => {
+  const updatePlayer = (index: number, field: keyof PlayerInput, value: string | boolean | UserSearchResult | null | undefined) => {
     const updated = [...players];
     updated[index] = { ...updated[index], [field]: value };
     setPlayers(updated);
   };
 
+  const linkUser = (index: number, user: UserSearchResult) => {
+    const updated = [...players];
+    updated[index] = {
+      ...updated[index],
+      linkedUser: user,
+      name: updated[index].name || (user.display_name ?? user.username ?? ""),
+      showSearch: false,
+    };
+    setPlayers(updated);
+  };
+
+  const unlinkUser = (index: number) => {
+    const updated = [...players];
+    updated[index] = { ...updated[index], linkedUser: null, showSearch: false };
+    setPlayers(updated);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const validPlayers = players.filter((p) => p.name.trim());
 
     const input: CreateSessionInput = {
@@ -123,6 +129,8 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
         is_winner: p.isWinner,
         is_first_play: p.isFirstPlay,
         color: null,
+        linked_user_id: p.linkedUser?.user_id ?? null,
+        tag_status: p.linkedUser ? "pending" : "none",
       })),
       expansion_ids: Array.from(selectedExpansions),
     };
@@ -136,7 +144,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
     setPlayedAt(toDateTimeLocalValue(new Date()));
     setDuration("");
     setNotes("");
-    setPlayers([{ name: "", score: "", isWinner: false, isFirstPlay: false }]);
+    setPlayers([{ name: "", score: "", isWinner: false, isFirstPlay: false, linkedUser: null, showSearch: false }]);
     setSelectedExpansions(new Set());
   };
 
@@ -199,11 +207,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
                       onCheckedChange={() => toggleExpansion(expansion.id)}
                     />
                     {expansion.image_url && (
-                      <img
-                        src={expansion.image_url}
-                        alt=""
-                        className="w-8 h-8 rounded object-cover"
-                      />
+                      <img src={expansion.image_url} alt="" className="w-8 h-8 rounded object-cover" />
                     )}
                     <span className="text-sm font-medium truncate">{expansion.title}</span>
                   </label>
@@ -224,63 +228,95 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
 
             <div className="space-y-3">
               {players.map((player, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-2 p-3 rounded-lg border bg-muted/30"
-                >
-                  <div className="flex-1 space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Player name"
-                        value={player.name}
-                        onChange={(e) => updatePlayer(index, "name", e.target.value)}
-                        className="flex-1"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Score"
-                        value={player.score}
-                        onChange={(e) => updatePlayer(index, "score", e.target.value)}
-                        className="w-24"
-                      />
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={player.isWinner}
-                          onCheckedChange={(checked) =>
-                            updatePlayer(index, "isWinner", !!checked)
-                          }
-                        />
-                        <Trophy className="h-3.5 w-3.5 text-yellow-500" />
-                        Winner
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={player.isFirstPlay}
-                          onCheckedChange={(checked) =>
-                            updatePlayer(index, "isFirstPlay", !!checked)
-                          }
-                        />
-                        <Sparkles className="h-3.5 w-3.5 text-blue-500" />
-                        First play
-                      </label>
-                    </div>
+                <div key={index} className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                  {/* Name + Score row */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Player name"
+                      value={player.name}
+                      onChange={(e) => updatePlayer(index, "name", e.target.value)}
+                      className="flex-1"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Score"
+                      value={player.score}
+                      onChange={(e) => updatePlayer(index, "score", e.target.value)}
+                      className="w-24"
+                    />
+                    {players.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removePlayer(index)}
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive flex-shrink-0"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                  {players.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removePlayer(index)}
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                  )}
+
+                  {/* Checkboxes */}
+                  <div className="flex items-center gap-4 text-sm">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={player.isWinner}
+                        onCheckedChange={(checked) => updatePlayer(index, "isWinner", !!checked)}
+                      />
+                      <Trophy className="h-3.5 w-3.5 text-secondary" />
+                      Winner
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={player.isFirstPlay}
+                        onCheckedChange={(checked) => updatePlayer(index, "isFirstPlay", !!checked)}
+                      />
+                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                      First play
+                    </label>
+                  </div>
+
+                  {/* Link user to profile */}
+                  <div className="pt-1">
+                    {player.linkedUser ? (
+                      <PlayerTagSearch
+                        onSelect={(u) => linkUser(index, u)}
+                        selectedUser={player.linkedUser}
+                        onClear={() => unlinkUser(index)}
+                      />
+                    ) : player.showSearch ? (
+                      <div className="space-y-1">
+                        <PlayerTagSearch
+                          onSelect={(u) => linkUser(index, u)}
+                          placeholder="Search by name or @username..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updatePlayer(index, "showSearch", false)}
+                          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                        >
+                          <X className="h-3 w-3" /> Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => updatePlayer(index, "showSearch", true)}
+                        className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Link to site profile
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0">ELO</Badge>
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Linking a player to their profile will send them a tag request. When accepted, the session appears on their profile and updates ELO ratings.
+            </p>
           </div>
 
           {/* Notes */}

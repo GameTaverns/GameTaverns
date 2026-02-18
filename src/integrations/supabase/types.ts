@@ -1739,9 +1739,11 @@ export type Database = {
           id: string
           is_first_play: boolean
           is_winner: boolean
+          linked_user_id: string | null
           player_name: string
           score: number | null
           session_id: string
+          tag_status: string
         }
         Insert: {
           color?: string | null
@@ -1749,9 +1751,11 @@ export type Database = {
           id?: string
           is_first_play?: boolean
           is_winner?: boolean
+          linked_user_id?: string | null
           player_name: string
           score?: number | null
           session_id: string
+          tag_status?: string
         }
         Update: {
           color?: string | null
@@ -1759,9 +1763,11 @@ export type Database = {
           id?: string
           is_first_play?: boolean
           is_winner?: boolean
+          linked_user_id?: string | null
           player_name?: string
           score?: number | null
           session_id?: string
+          tag_status?: string
         }
         Relationships: [
           {
@@ -2862,6 +2868,57 @@ export type Database = {
         }
         Relationships: []
       }
+      player_elo_ratings: {
+        Row: {
+          elo: number
+          game_id: string | null
+          games_played: number
+          id: string
+          losses: number
+          peak_elo: number
+          updated_at: string
+          user_id: string
+          wins: number
+        }
+        Insert: {
+          elo?: number
+          game_id?: string | null
+          games_played?: number
+          id?: string
+          losses?: number
+          peak_elo?: number
+          updated_at?: string
+          user_id: string
+          wins?: number
+        }
+        Update: {
+          elo?: number
+          game_id?: string | null
+          games_played?: number
+          id?: string
+          losses?: number
+          peak_elo?: number
+          updated_at?: string
+          user_id?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_elo_ratings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_elo_ratings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_options: {
         Row: {
           created_at: string
@@ -3007,6 +3064,67 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      session_tag_requests: {
+        Row: {
+          created_at: string
+          game_id: string | null
+          game_title: string | null
+          id: string
+          resolved_at: string | null
+          session_date: string | null
+          session_player_id: string
+          status: string
+          tagged_by_user_id: string
+          tagged_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id?: string | null
+          game_title?: string | null
+          id?: string
+          resolved_at?: string | null
+          session_date?: string | null
+          session_player_id: string
+          status?: string
+          tagged_by_user_id: string
+          tagged_user_id: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string | null
+          game_title?: string | null
+          id?: string
+          resolved_at?: string | null
+          session_date?: string | null
+          session_player_id?: string
+          status?: string
+          tagged_by_user_id?: string
+          tagged_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_tag_requests_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_tag_requests_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_tag_requests_session_player_id_fkey"
+            columns: ["session_player_id"]
+            isOneToOne: false
+            referencedRelation: "game_session_players"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings: {
         Row: {
@@ -4028,6 +4146,10 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_elo_k_factor: {
+        Args: { games_played: number }
+        Returns: number
+      }
       can_access_forum_category: {
         Args: { _category_id: string; _user_id: string }
         Returns: boolean
@@ -4098,6 +4220,15 @@ export type Database = {
       is_slug_available: { Args: { check_slug: string }; Returns: boolean }
       set_timezone: { Args: never; Returns: undefined }
       slugify: { Args: { input: string }; Returns: string }
+      update_player_elo: {
+        Args: {
+          p_game_id: string
+          p_opponent_elo: number
+          p_user_id: string
+          p_won: boolean
+        }
+        Returns: number
+      }
       user_has_totp_enabled: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {

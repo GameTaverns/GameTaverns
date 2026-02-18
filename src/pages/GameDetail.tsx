@@ -19,6 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ContactSellerForm } from "@/components/games/ContactSellerForm";
 import { LogPlayDialog } from "@/components/games/LogPlayDialog";
 import { PlayHistory } from "@/components/games/PlayHistory";
+import { EloLeaderboard } from "@/components/games/EloLeaderboard";
 import { GameImage } from "@/components/games/GameImage";
 import { YouTubeVideoList } from "@/components/games/YouTubeEmbed";
 import { StarRating } from "@/components/games/StarRating";
@@ -756,6 +757,11 @@ const GameDetail = () => {
                     </LogPlayDialog>
                   </div>
                   <PlayHistory gameId={game.id} />
+                  
+                  {/* ELO Leaderboard */}
+                  <div className="mt-8 pt-6 border-t">
+                    <EloLeaderboard gameId={game.id} gameTitle={game.title} />
+                  </div>
                 </TabsContent>
               )}
             </Tabs>
