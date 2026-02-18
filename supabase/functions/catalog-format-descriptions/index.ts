@@ -106,10 +106,9 @@ async function processBatch(
   admin: ReturnType<typeof createClient>,
   dryRun: boolean,
 ): Promise<{ updated: number; errors: string[]; results: { title: string; status: string }[] }> {
-  const updated = 0;
+  let updatedCount = 0;
   const errors: string[] = [];
   const results: { title: string; status: string }[] = [];
-  let successCount = 0;
 
   try {
     const batchPrompt = buildBatchPrompt(entries);
@@ -157,7 +156,7 @@ async function processBatch(
 
       if (dryRun) {
         results.push({ title: entry.title, status: "dry_run" });
-        successCount++;
+        updatedCount++;
         continue;
       }
 
@@ -172,7 +171,7 @@ async function processBatch(
         continue;
       }
 
-      successCount++;
+      updatedCount++;
       results.push({ title: entry.title, status: "updated" });
     }
   } catch (e) {
@@ -185,7 +184,7 @@ async function processBatch(
     });
   }
 
-  return { updated: successCount, errors, results };
+  return { updated: updatedCount, errors, results };
 }
 
 /**
