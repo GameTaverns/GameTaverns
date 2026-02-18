@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUpdateLibrarySettings } from "@/hooks/useLibrary";
 import { useTenant } from "@/contexts/TenantContext";
 import { LogoUpload } from "./LogoUpload";
+import { LibraryBackgroundUpload } from "./LibraryBackgroundUpload";
 
 export function LibraryBranding() {
   const { library, settings, refreshLibrary } = useTenant();
@@ -107,24 +108,11 @@ export function LibraryBranding() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Background Image URL</Label>
-              <Input
-                value={ls.background_image_url || ''}
-                onChange={(e) => updateLocal('background_image_url', e.target.value || null)}
-                placeholder="https://example.com/background.jpg"
-              />
-              <p className="text-sm text-muted-foreground">
-                Enter a URL to an image. For best results, use a high-resolution image.
-              </p>
-            </div>
-            
-            {ls.background_image_url && (
-              <div 
-                className="h-40 rounded-md border bg-cover bg-center"
-                style={{ backgroundImage: `url(${ls.background_image_url})` }}
-              />
-            )}
+            <LibraryBackgroundUpload
+              libraryId={library.id}
+              currentUrl={ls.background_image_url || null}
+              onUrlChange={(url) => updateLocal('background_image_url', url)}
+            />
             
             <div className="space-y-2">
               <Label>Overlay Opacity</Label>
