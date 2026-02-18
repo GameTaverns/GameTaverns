@@ -9,7 +9,7 @@ import {
   Menu,
   X,
   BookOpen,
-  ArrowLeft,
+  
   User,
   MessageSquare,
 } from "lucide-react";
@@ -148,7 +148,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                       href={getPlatformUrl("/dashboard")}
                       className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                     >
-                      <ArrowLeft className="h-3.5 w-3.5" />
                       <span>Dashboard</span>
                     </a>
                   ) : (
@@ -156,7 +155,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                       to="/dashboard"
                       className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                     >
-                      <ArrowLeft className="h-3.5 w-3.5" />
                       <span>Dashboard</span>
                     </Link>
                   )
@@ -334,7 +332,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                       href={getPlatformUrl("/dashboard")}
                       className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                     >
-                      <ArrowLeft className="h-3.5 w-3.5" />
                       <span>Dashboard</span>
                     </a>
                   ) : (
@@ -342,7 +339,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                       to="/dashboard"
                       className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                     >
-                      <ArrowLeft className="h-3.5 w-3.5" />
+                      
                       <span>Dashboard</span>
                     </Link>
                   )
