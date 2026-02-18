@@ -238,24 +238,13 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  // Auth: accept service_role key, anon key (cron invocations), or admin user JWT
-  // Also check apikey header (set by Supabase gateway on internal calls)
+  // Auth: accept service_role key OR admin user JWT
+  // Self-hosted cron sends service_role key via Kong; admin UI sends user JWT
   const authHeader = req.headers.get("Authorization") || "";
-  const apikeyHeader = req.headers.get("apikey") || "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  let isAuthorized = false;
+  let isAuthorized = serviceKey && authHeader.includes(serviceKey);
 
-  // Service role key match (direct or cron with service role)
-  if (serviceKey && (authHeader.includes(serviceKey) || apikeyHeader === serviceKey)) {
-    isAuthorized = true;
-  // Anon key match (cron via Lovable Cloud gateway when service_role_key setting not available)
-  } else if (anonKey && (authHeader.includes(anonKey) || apikeyHeader === anonKey)) {
-    isAuthorized = true;
-  // Internal pg_cron call with no auth headers — treat as authorized (runs in trusted DB context)
-  } else if (!authHeader && !apikeyHeader) {
-    isAuthorized = true;
-  } else if (authHeader.startsWith("Bearer ")) {
-    // Admin user JWT fallback
+  if (!isAuthorized && authHeader.startsWith("Bearer ")) {
     if (anonKey) {
       const adminForAuth = createClient(supabaseUrl, serviceKey, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -335,14 +324,44 @@ export default async function handler(req: Request): Promise<Response> {
   const totalLimit = Math.min(body.totalLimit || batchSize * workers, 500);
   const dryRun = body.dryRun === true;
 
-  // Fetch candidates: games that DON'T already have the correct format
-  // This includes games with no description, empty description, or unformatted description
-  const { data: entries, error: fetchErr } = await admin
-    .from("game_catalog")
-    .select("id, title, description, bgg_id")
-    .or("description.is.null,description.eq.,description.not.like.%Quick Gameplay Overview%")
-    .order("created_at", { ascending: true })
-    .limit(totalLimit);
+  // Fetch candidates: games that DON'T already have the correct format.
+  // NOTE: PostgREST's .or() does not reliably support `not.like` with % wildcards.
+  // Instead: fetch games with a description that does NOT contain the format marker,
+  // using .not("description", "like", "%Quick Gameplay Overview%") chained separately,
+  // then union with null/empty via two queries.
+  const [noDescResult, unformattedResult] = await Promise.all([
+    // Games with NULL or empty description
+    admin
+      .from("game_catalog")
+      .select("id, title, description, bgg_id")
+      .or("description.is.null,description.eq.")
+      .order("created_at", { ascending: true })
+      .limit(totalLimit),
+    // Games with a description but missing the format marker
+    admin
+      .from("game_catalog")
+      .select("id, title, description, bgg_id")
+      .not("description", "is", null)
+      .neq("description", "")
+      .not("description", "like", "%Quick Gameplay Overview%")
+      .order("created_at", { ascending: true })
+      .limit(totalLimit),
+  ]);
+
+  if (noDescResult.error || unformattedResult.error) {
+    return new Response(JSON.stringify({ error: "Failed to fetch entries", details: (noDescResult.error || unformattedResult.error)?.message }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Merge, deduplicate by id, cap at totalLimit
+  const seen = new Set<string>();
+  const allCandidates = [...(noDescResult.data || []), ...(unformattedResult.data || [])].filter(e => {
+    if (seen.has(e.id)) return false;
+    seen.add(e.id);
+    return true;
+  });
+  const { data: entries, error: fetchErr } = { data: allCandidates.slice(0, totalLimit), error: null };
 
   if (fetchErr) {
     return new Response(JSON.stringify({ error: "Failed to fetch entries", details: fetchErr.message }), {
