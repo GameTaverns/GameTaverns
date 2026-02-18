@@ -4079,6 +4079,17 @@ export type Database = {
           featured_achievement_id: string | null
           games_owned: number | null
           member_since: string | null
+          profile_accent_h: string | null
+          profile_accent_l: string | null
+          profile_accent_s: string | null
+          profile_background_h: string | null
+          profile_background_l: string | null
+          profile_background_s: string | null
+          profile_bg_image_url: string | null
+          profile_bg_opacity: string | null
+          profile_primary_h: string | null
+          profile_primary_l: string | null
+          profile_primary_s: string | null
           sessions_logged: number | null
           user_id: string | null
           username: string | null
