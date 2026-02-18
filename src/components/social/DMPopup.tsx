@@ -43,12 +43,12 @@ export function DMPopup({ partner, onClose, isNew = false }: DMPopupProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevMessageCount = useRef(0);
 
-  // Mark as read when opened/expanded
+  // Mark as read when opened/expanded and whenever new messages arrive while open
   useEffect(() => {
     if (!minimized) {
       markRead.mutate(partner.user_id);
     }
-  }, [partner.user_id, minimized]);
+  }, [partner.user_id, minimized, messages.length]);
 
   // Scroll to bottom on new messages
   useEffect(() => {

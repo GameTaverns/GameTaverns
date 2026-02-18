@@ -275,5 +275,6 @@ export function useUnreadDMCount() {
       return count ?? 0;
     },
     enabled: !!user,
+    refetchInterval: 30_000, // self-correct every 30s in case realtime lags
   });
 }
