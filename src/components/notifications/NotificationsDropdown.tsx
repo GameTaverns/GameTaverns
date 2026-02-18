@@ -119,7 +119,10 @@ interface NotificationsDropdownProps {
 
 export function NotificationsDropdown({ variant = "default", unreadMessageCount = 0 }: NotificationsDropdownProps) {
   const navigate = useNavigate();
-  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications: allNotifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+
+  // Direct messages have their own badge on the messenger icon — exclude from this pane
+  const notifications = allNotifications.filter(n => n.notification_type !== "direct_message");
 
   const totalUnread = unreadCount + unreadMessageCount;
 

@@ -80,8 +80,11 @@ export default function UserProfile() {
     .toUpperCase()
     .slice(0, 2);
 
+  const isGradient = profile.banner_url?.startsWith("__gradient__");
   const bannerStyle = profile.banner_url
-    ? { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+    ? isGradient
+      ? { background: profile.banner_url.replace("__gradient__", "") }
+      : { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
     : {};
 
   return (
