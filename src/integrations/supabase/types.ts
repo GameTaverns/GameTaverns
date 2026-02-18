@@ -3175,6 +3175,17 @@ export type Database = {
           display_name: string | null
           featured_achievement_id: string | null
           id: string
+          profile_accent_h: string | null
+          profile_accent_l: string | null
+          profile_accent_s: string | null
+          profile_background_h: string | null
+          profile_background_l: string | null
+          profile_background_s: string | null
+          profile_bg_image_url: string | null
+          profile_bg_opacity: string | null
+          profile_primary_h: string | null
+          profile_primary_l: string | null
+          profile_primary_s: string | null
           updated_at: string
           user_id: string
           username: string | null
@@ -3189,6 +3200,17 @@ export type Database = {
           display_name?: string | null
           featured_achievement_id?: string | null
           id?: string
+          profile_accent_h?: string | null
+          profile_accent_l?: string | null
+          profile_accent_s?: string | null
+          profile_background_h?: string | null
+          profile_background_l?: string | null
+          profile_background_s?: string | null
+          profile_bg_image_url?: string | null
+          profile_bg_opacity?: string | null
+          profile_primary_h?: string | null
+          profile_primary_l?: string | null
+          profile_primary_s?: string | null
           updated_at?: string
           user_id: string
           username?: string | null
@@ -3203,6 +3225,17 @@ export type Database = {
           display_name?: string | null
           featured_achievement_id?: string | null
           id?: string
+          profile_accent_h?: string | null
+          profile_accent_l?: string | null
+          profile_accent_s?: string | null
+          profile_background_h?: string | null
+          profile_background_l?: string | null
+          profile_background_s?: string | null
+          profile_bg_image_url?: string | null
+          profile_bg_opacity?: string | null
+          profile_primary_h?: string | null
+          profile_primary_l?: string | null
+          profile_primary_s?: string | null
           updated_at?: string
           user_id?: string
           username?: string | null

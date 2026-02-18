@@ -61,6 +61,18 @@ export default async function profileUpdateHandler(req: Request): Promise<Respon
       "avatar_url",
       "banner_url",
       "featured_achievement_id",
+      // Profile theme fields
+      "profile_primary_h",
+      "profile_primary_s",
+      "profile_primary_l",
+      "profile_accent_h",
+      "profile_accent_s",
+      "profile_accent_l",
+      "profile_background_h",
+      "profile_background_s",
+      "profile_background_l",
+      "profile_bg_image_url",
+      "profile_bg_opacity",
     ];
     const updates: Record<string, any> = {};
 
