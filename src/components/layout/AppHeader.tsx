@@ -51,6 +51,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   const { toast } = useToast();
   const isCatalogPage = location.pathname.startsWith("/catalog");
   const isProfilePage = location.pathname.startsWith("/u/");
+  const isListsPage = location.pathname.startsWith("/lists");
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -326,7 +327,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
             {/* Sign in / Sign out */}
             {isAuthenticated ? (
               <>
-                {isProfilePage ? (
+                {isProfilePage || isListsPage ? (
                   isSubdomain ? (
                     <a
                       href={getPlatformUrl("/dashboard")}
@@ -339,7 +340,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                       to="/dashboard"
                       className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                     >
-                      
                       <span>Dashboard</span>
                     </Link>
                   )
