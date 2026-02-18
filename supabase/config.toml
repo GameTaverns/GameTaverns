@@ -152,3 +152,6 @@ verify_jwt = false
 
 [functions.server-command]
 verify_jwt = false
+
+[functions.catalog-format-descriptions]
+verify_jwt = false
