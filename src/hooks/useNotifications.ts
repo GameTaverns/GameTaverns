@@ -94,8 +94,8 @@ export function useNotifications() {
     };
   }, [user, queryClient]);
 
-  // Get unread count
-  const unreadCount = notifications.filter((n) => !n.read_at).length;
+  // Get unread count — exclude direct_message type (those have their own badge on the DM icon)
+  const unreadCount = notifications.filter((n) => !n.read_at && n.notification_type !== "direct_message").length;
 
   // Mark a notification as read
   const markAsRead = useMutation({
