@@ -1,9 +1,10 @@
 import { useState, useRef } from "react";
-import { Upload, X, Loader2, ImageIcon, Link } from "lucide-react";
+import { Upload, X, Loader2, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
+import { useUpdateLibrarySettings } from "@/hooks/useLibrary";
 
 interface LibraryBackgroundUploadProps {
   libraryId: string;
@@ -21,6 +22,18 @@ export function LibraryBackgroundUpload({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const updateSettings = useUpdateLibrarySettings();
+
+  const saveToDatabase = async (url: string | null) => {
+    try {
+      await updateSettings.mutateAsync({
+        libraryId,
+        updates: { background_image_url: url ?? "" } as any,
+      });
+    } catch (err: any) {
+      toast({ title: "Failed to save", description: err.message, variant: "destructive" });
+    }
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,8 +108,9 @@ export function LibraryBackgroundUpload({
         throw new Error(errMsg);
       }
 
-      const publicUrl = `${storageUrl}/storage/v1/object/public/library-logos/${filePath}`;
+      const publicUrl = `${storageUrl}/storage/v1/object/public/library-logos/${filePath}?t=${Date.now()}`;
       onUrlChange(publicUrl);
+      await saveToDatabase(publicUrl);
       toast({ title: "Background uploaded", description: "Library background image updated." });
     } catch (error: any) {
       toast({ title: "Upload failed", description: error.message || "Could not upload image", variant: "destructive" });
@@ -112,7 +126,9 @@ export function LibraryBackgroundUpload({
       toast({ title: "Invalid URL", description: "Please enter a valid image URL", variant: "destructive" });
       return;
     }
-    onUrlChange(urlInput.trim());
+    const url = urlInput.trim();
+    onUrlChange(url);
+    saveToDatabase(url);
     setUrlInput("");
     setShowUrlInput(false);
   };
@@ -137,7 +153,7 @@ export function LibraryBackgroundUpload({
             size="sm"
             variant="destructive"
             className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 px-2"
-            onClick={() => onUrlChange(null)}
+            onClick={() => { onUrlChange(null); saveToDatabase(null); }}
           >
             <X className="h-3 w-3 mr-1" /> Remove
           </Button>
