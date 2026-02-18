@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ListOrdered, Heart, Plus, Trash2, ArrowRight, Lock, Globe } from "lucide-react";
+import { ListOrdered, Heart, Plus, Trash2, ArrowRight, Lock, Globe, LayoutDashboard } from "lucide-react";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { format } from "date-fns";
 
@@ -57,6 +57,13 @@ export default function CuratedListsPage() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
+            <Link
+              to={tenantSlug ? getLibraryUrl(tenantSlug, "/") : "/"}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors mb-2"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Dashboard
+            </Link>
             <h1 className="font-display text-3xl font-bold text-foreground flex items-center gap-2">
               <ListOrdered className="h-7 w-7 text-primary" />
               Curated Lists
