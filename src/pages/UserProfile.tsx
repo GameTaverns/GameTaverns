@@ -211,7 +211,9 @@ export default function UserProfile() {
 
             <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
               <Calendar className="h-3 w-3" />
-              Member since {format(new Date(profile.member_since), "MMMM yyyy")}
+              {profile.member_since && !isNaN(new Date(profile.member_since).getTime())
+                ? `Member since ${format(new Date(profile.member_since), "MMMM yyyy")}`
+                : "Member"}
             </div>
           </CardContent>
         </Card>
@@ -461,7 +463,9 @@ function FeedbackCard({ rating, showRatedUser }: { rating: any; showRatedUser?: 
       </div>
       {rating.review && <p className="text-xs text-muted-foreground leading-relaxed">{rating.review}</p>}
       <div className="text-[10px] text-muted-foreground/60">
-        {formatDistanceToNow(new Date(rating.created_at), { addSuffix: true })}
+        {rating.created_at && !isNaN(new Date(rating.created_at).getTime())
+          ? formatDistanceToNow(new Date(rating.created_at), { addSuffix: true })
+          : ""}
       </div>
     </div>
   );
