@@ -117,6 +117,10 @@ export default function UserProfile() {
 
   // Profile theme — scoped CSS variables + direct styles applied to profile elements
   const hasTheme = !!profile.profile_primary_h;
+  // Derive a dark page background from the primary hue (same hue/sat, but very dark)
+  const profilePageBg = hasTheme
+    ? `hsl(${profile.profile_primary_h}, ${profile.profile_primary_s || "35%"}, 12%)`
+    : null;
   const profilePrimary = hasTheme ? `hsl(${profile.profile_primary_h}, ${profile.profile_primary_s || "35%"}, ${profile.profile_primary_l || "30%"})` : null;
   const profileAccent = hasTheme ? `hsl(${profile.profile_accent_h || profile.profile_primary_h}, ${profile.profile_accent_s || "45%"}, ${profile.profile_accent_l || "42%"})` : null;
   // Background Tint = the card body background (below the banner)
@@ -144,7 +148,7 @@ export default function UserProfile() {
   return (
     <div
       className="min-h-screen dark"
-      style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { background: 'linear-gradient(to bottom right, hsl(var(--wood-dark)), hsl(var(--sidebar)), hsl(var(--wood-medium)))' }}
+      style={hasTheme && profilePageBg ? { backgroundColor: profilePageBg } : { background: 'linear-gradient(to bottom right, hsl(var(--wood-dark)), hsl(var(--sidebar)), hsl(var(--wood-medium)))' }}
     >
       <ProfileHeader />
 
