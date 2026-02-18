@@ -15,6 +15,7 @@ import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironment
 import { MobileAppShell } from "@/components/mobile/MobileAppShell";
 import { isProductionDeployment } from "@/config/runtime";
 import { GlobalFeedbackButton } from "@/components/feedback/FeedbackDialog";
+import { PresenceTracker } from "@/components/social/PresenceTracker";
 
 // Lazy load route components to reduce initial bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -67,6 +68,7 @@ const CatalogGameDetail = lazy(() => import("./pages/CatalogGameDetail"));
 const Install = lazy(() => import("./pages/Install"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const DashboardEditor = lazy(() => import("./components/dashboard/editor/DashboardEditorPage"));
+const DirectMessages = lazy(() => import("./pages/DirectMessages"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -211,6 +213,9 @@ function PlatformRoutes() {
       <Route path="/cookies" element={<Cookies />} />
       {/* User profiles */}
       <Route path="/u/:username" element={<UserProfile />} />
+      {/* Direct Messages */}
+      <Route path="/dm" element={<DirectMessages />} />
+      <Route path="/dm/:userId" element={<DirectMessages />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -262,6 +267,7 @@ const App = () => (
             <TourProvider>
               <Toaster />
               <Sonner />
+              <PresenceTracker />
               <AppRoutes />
               <GlobalFeedbackButton />
             </TourProvider>
