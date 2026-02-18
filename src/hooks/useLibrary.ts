@@ -411,25 +411,32 @@ export function useUpdateUserProfile() {
       [key: string]: any;
     }) => {
       if (!user) throw new Error("Must be logged in");
+
+      console.log("[updateProfile] mode check — selfHosted:", isSelfHostedMode(), "selfHostedSupabase:", isSelfHostedSupabaseStack());
+      console.log("[updateProfile] updates:", JSON.stringify(updates));
       
       // Self-hosted Express API: use API endpoint
       if (isSelfHostedMode()) {
         const profile = await apiClient.put<any>("/profiles/me", updates);
+        console.log("[updateProfile] API result:", profile);
         return profile;
       }
       
       // Self-hosted Supabase stack: route through edge function to bypass PostgREST schema cache
       if (isSelfHostedSupabaseStack()) {
+        console.log("[updateProfile] invoking profile-update edge function");
         const { data, error } = await supabase.functions.invoke("profile-update", {
           method: "POST",
           body: updates,
         });
-        
+        console.log("[updateProfile] edge function result:", data, error);
         if (error) throw error;
+        if (data?.error) throw new Error(data.error);
         return data;
       }
       
       // Cloud mode: direct PostgREST update
+      console.log("[updateProfile] cloud direct update for user:", user.id);
       const { data, error } = await supabase
         .from("user_profiles")
         .update(updates)
@@ -437,13 +444,18 @@ export function useUpdateUserProfile() {
         .select()
         .single();
       
+      console.log("[updateProfile] cloud result:", data, error);
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("[updateProfile] onSuccess, invalidating queries. data:", data);
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
       // Also invalidate the public profile cache so changes appear immediately
       queryClient.invalidateQueries({ queryKey: ["public-profile"] });
+    },
+    onError: (error) => {
+      console.error("[updateProfile] mutation error:", error);
     },
   });
 }
