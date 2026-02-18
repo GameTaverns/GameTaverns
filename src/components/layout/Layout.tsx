@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppHeader } from "./AppHeader";
 import { Sidebar } from "./Sidebar";
 import { Footer } from "./Footer";
@@ -15,12 +15,22 @@ interface LayoutProps {
 export function Layout({ children, hideSidebar = false }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isTenantMode } = useTenant();
+  const [hasBodyBg, setHasBodyBg] = useState(false);
 
-  // Only show the filter sidebar on library (tenant) pages
+  // Show sidebar only on library pages
   const showSidebar = isTenantMode && !hideSidebar;
 
+  // Sync with body class set by TenantThemeApplicator
+  useEffect(() => {
+    const check = () => setHasBodyBg(document.body.classList.contains("has-background-image"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className={cn("min-h-screen flex flex-col", hasBodyBg ? "bg-transparent" : "bg-background")}>
       <OwnerAdminBar />
       <AnnouncementBanner />
       <AppHeader onMenuClick={() => setSidebarOpen(!sidebarOpen)} showMenuToggle={showSidebar} />
