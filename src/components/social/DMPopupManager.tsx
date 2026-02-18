@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DMPopup, type DMPopupPartner } from "./DMPopup";
@@ -11,6 +12,7 @@ const MAX_OPEN_POPUPS = 3;
 export function DMPopupManager() {
   const { user } = useAuth();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [popups, setPopups] = useState<DMPopupPartner[]>([]);
   const [newPopupId, setNewPopupId] = useState<string | null>(null);
   const fetchingRef = useRef<Set<string>>(new Set());
@@ -36,6 +38,10 @@ export function DMPopupManager() {
   const handleNewMessage = async (msg: DirectMessage) => {
     if (!user) return;
     if (msg.recipient_id !== user.id) return; // Only react to incoming messages
+
+    // Immediately bump the unread badge count (optimistic) then re-fetch
+    queryClient.invalidateQueries({ queryKey: ["dm-unread-count", user.id] });
+
     if (isDMPage) return;
 
     const senderId = msg.sender_id;
