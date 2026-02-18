@@ -97,9 +97,14 @@ export function ProfileThemeCustomizer() {
   const [localSettings, setLocalSettings] = useState<LocalSettings>(DEFAULTS);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Initialize local state from profile once it loads
+  // Initialize local state from profile once it loads — only on first load (not after saves)
+  const profileUserId = (profile as any)?.user_id ?? (profile as any)?.id;
+  const [initializedFor, setInitializedFor] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || !profileUserId) return;
+    // Only initialize once per user session — don't reset after save invalidation
+    if (initializedFor === profileUserId) return;
     const p = profile as any;
     setLocalSettings({
       profile_primary_h: p.profile_primary_h ?? DEFAULTS.profile_primary_h,
@@ -115,7 +120,8 @@ export function ProfileThemeCustomizer() {
       profile_bg_opacity: p.profile_bg_opacity ?? DEFAULTS.profile_bg_opacity,
     });
     setHasChanges(false);
-  }, [profile?.user_id ?? (profile as any)?.id]);
+    setInitializedFor(profileUserId);
+  }, [profileUserId, initializedFor, profile]);
 
   if (!profile) return null;
 
