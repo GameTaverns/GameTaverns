@@ -1319,6 +1319,7 @@ export type Database = {
           bgg_community_rating: number | null
           bgg_id: string | null
           bgg_url: string | null
+          bgg_verified_type: string | null
           created_at: string
           description: string | null
           id: string
@@ -1340,6 +1341,7 @@ export type Database = {
           bgg_community_rating?: number | null
           bgg_id?: string | null
           bgg_url?: string | null
+          bgg_verified_type?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -1361,6 +1363,7 @@ export type Database = {
           bgg_community_rating?: number | null
           bgg_id?: string | null
           bgg_url?: string | null
+          bgg_verified_type?: string | null
           created_at?: string
           description?: string | null
           id?: string
