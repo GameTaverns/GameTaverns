@@ -60,19 +60,28 @@ export function LibraryBackgroundUpload({
         `${storageUrl}/storage/v1/object/info/library-logos/${filePath}`,
         { headers: { apikey: anonKey, Authorization: `Bearer ${token}` } }
       );
-      const method = checkRes.ok ? "PUT" : "POST";
+      const fileExists = checkRes.ok;
 
       const uploadEndpoint = `${storageUrl}/storage/v1/object/library-logos/${filePath}`;
-      const res = await fetch(uploadEndpoint, {
-        method,
-        headers: {
-          apikey: anonKey,
-          Authorization: `Bearer ${token}`,
-          "Content-Type": file.type,
-          "x-upsert": "true",
-        },
-        body: file,
-      });
+
+      const doUpload = async (method: "POST" | "PUT") =>
+        fetch(uploadEndpoint, {
+          method,
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${token}`,
+            "Content-Type": file.type,
+            "x-upsert": "true",
+          },
+          body: file,
+        });
+
+      let res = await doUpload(fileExists ? "PUT" : "POST");
+
+      // If PUT fails with 400 (object not found), fall back to POST
+      if (!res.ok && res.status === 400 && fileExists) {
+        res = await doUpload("POST");
+      }
 
       if (!res.ok) {
         const errText = await res.text();
