@@ -111,9 +111,17 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
   // Find the JSON array (may have preamble text from Perplexity)
   const arrayStart = cleaned.indexOf("[");
   const arrayEnd = cleaned.lastIndexOf("]");
-  if (arrayStart === -1 || arrayEnd === -1 || arrayEnd <= arrayStart) {
+  if (arrayStart === -1) {
     console.error("[catalog-format] No JSON array found in response. Raw snippet:", cleaned.substring(0, 200));
     return results;
+  }
+
+  // Truncated response: no closing bracket — fall back to object-level regex extraction immediately
+  if (arrayEnd === -1 || arrayEnd <= arrayStart) {
+    console.warn("[catalog-format] Truncated response detected (no closing ']'). Attempting object-level extraction...");
+    const recovered = extractObjectsFromBrokenJson(cleaned.substring(arrayStart), entries);
+    console.log(`[catalog-format] Recovered ${recovered.size} entries from truncated response`);
+    return recovered;
   }
 
   const arrayStr = cleaned.substring(arrayStart, arrayEnd + 1);
