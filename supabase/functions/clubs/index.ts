@@ -91,6 +91,34 @@ export default async function handler(req: Request): Promise<Response> {
             .select();
         }
 
+        // Notify all admins about the new club request
+        const { data: adminRoles } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+
+        if (adminRoles && adminRoles.length > 0) {
+          const requesterProfile = await supabase
+            .from("user_profiles")
+            .select("display_name, username")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          const requesterName =
+            requesterProfile.data?.display_name ||
+            requesterProfile.data?.username ||
+            "Someone";
+
+          for (const admin of adminRoles) {
+            await supabase.rpc("create_notification", {
+              _user_id: admin.user_id,
+              _type: "club_request",
+              _title: `New club request: "${name}"`,
+              _body: `${requesterName} is requesting to create a new club.`,
+              _metadata: { club_id: data.id, club_name: name },
+            });
+          }
+        }
+
         return json(data);
       }
 

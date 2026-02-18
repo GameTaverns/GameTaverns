@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, X, Loader2, Globe, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,12 +6,44 @@ import { Badge } from "@/components/ui/badge";
 import { usePendingClubs, useApproveClub, useRejectClub } from "@/hooks/useClubs";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/backend/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function ClubsManagement() {
+  const queryClient = useQueryClient();
   const { data: pendingClubs = [], isLoading } = usePendingClubs();
   const approveClub = useApproveClub();
   const rejectClub = useRejectClub();
   const { toast } = useToast();
+
+  // Realtime: refresh pending clubs list when new club is inserted or updated
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-clubs-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "clubs" },
+        (payload) => {
+          if ((payload.new as any)?.status === "pending") {
+            queryClient.invalidateQueries({ queryKey: ["pending-clubs"] });
+            toast({
+              title: "New club request",
+              description: `"${(payload.new as any).name}" is awaiting approval.`,
+            });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "clubs" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["pending-clubs"] });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient, toast]);
 
   const handleApprove = async (clubId: string, name: string) => {
     try {
