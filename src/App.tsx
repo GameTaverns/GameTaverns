@@ -16,6 +16,7 @@ import { MobileAppShell } from "@/components/mobile/MobileAppShell";
 import { isProductionDeployment } from "@/config/runtime";
 import { GlobalFeedbackButton } from "@/components/feedback/FeedbackDialog";
 import { PresenceTracker } from "@/components/social/PresenceTracker";
+import { DMPopupManager } from "@/components/social/DMPopupManager";
 
 // Lazy load route components to reduce initial bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -109,6 +110,7 @@ function AppRoutes() {
         {/* Testing environment watermark - hidden in production deployments */}
         {!isProductionDeployment() && <TestingEnvironmentBanner />}
       </MobileAppShell>
+      <DMPopupManager />
     </TenantProvider>
   );
 }
