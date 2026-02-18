@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -111,7 +111,22 @@ export default function UserProfile() {
                 </h1>
                 <p className="text-muted-foreground text-sm">@{profile.username}</p>
                 {profile.user_id && (
-                  <FollowButton currentUserId={currentUserId} targetUserId={profile.user_id} />
+                  <div className="flex items-center gap-2 mt-1">
+                    <FollowButton currentUserId={currentUserId} targetUserId={profile.user_id} />
+                    {currentUserId && currentUserId !== profile.user_id && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() => {
+                          window.location.href = `/dm/${profile.user_id}`;
+                        }}
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        Message
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
 

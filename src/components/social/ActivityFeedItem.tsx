@@ -3,6 +3,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Gamepad2, Trophy, BookOpen, Dices, MessageSquare, Users, Star } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { ActivityEvent } from "@/hooks/useActivityFeed";
+import { ActivityReactionButton } from "@/components/social/ActivityReactionButton";
 
 const EVENT_CONFIG: Record<string, { icon: any; verb: string; color: string }> = {
   game_added: { icon: Gamepad2, verb: "Added a game", color: "text-blue-500" },
@@ -66,9 +67,12 @@ export function ActivityFeedItem({ event, showUser = false }: { event: ActivityE
             </>
           )}
         </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
-        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-xs text-muted-foreground">
+            {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+          </p>
+          <ActivityReactionButton eventId={event.id} />
+        </div>
       </div>
       {showUser && (
         <div className={`shrink-0 mt-1 ${config.color}`}>

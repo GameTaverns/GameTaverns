@@ -11,6 +11,7 @@ import {
   BookOpen,
   ArrowLeft,
   User,
+  MessageSquare,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
@@ -19,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries, useUserProfile } from "@/hooks/useLibrary";
 import { useUnreadMessageCount } from "@/hooks/useMessages";
+import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 import { getLibraryUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
@@ -40,6 +42,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   const { tenantSlug } = useTenant();
   const { data: defaultLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
+  const { data: dmUnreadCount = 0 } = useUnreadDMCount();
   const { data: profile } = useUserProfile();
   const library = defaultLibrary ?? null;
   const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
@@ -223,7 +226,34 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
 
             <ThemeToggle />
 
-            {/* Messages dropdown */}
+            {/* Direct Messages icon */}
+            {isAuthenticated && (
+              isSubdomain ? (
+                <a href={getPlatformUrl("/dm")} className="relative text-cream hover:text-white transition-colors">
+                  <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
+                    <MessageSquare className="h-5 w-5" />
+                    {dmUnreadCount > 0 && (
+                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                        {dmUnreadCount > 9 ? "9+" : dmUnreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </a>
+              ) : (
+                <Link to="/dm" className="relative">
+                  <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
+                    <MessageSquare className="h-5 w-5" />
+                    {dmUnreadCount > 0 && (
+                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                        {dmUnreadCount > 9 ? "9+" : dmUnreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+              )
+            )}
+
+            {/* Library Messages dropdown */}
             {isAuthenticated && library && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

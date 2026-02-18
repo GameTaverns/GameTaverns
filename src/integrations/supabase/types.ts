@@ -83,6 +83,30 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_reactions: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          reaction_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          reaction_type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          reaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       artists: {
         Row: {
           created_at: string | null
@@ -760,6 +784,39 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      direct_messages: {
+        Row: {
+          content: string
+          created_at: string
+          deleted_by_recipient: boolean
+          deleted_by_sender: boolean
+          id: string
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          deleted_by_recipient?: boolean
+          deleted_by_sender?: boolean
+          id?: string
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          deleted_by_recipient?: boolean
+          deleted_by_sender?: boolean
+          id?: string
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
         }
         Relationships: []
       }
@@ -3083,6 +3140,27 @@ export type Database = {
           follower_id?: string
           following_id?: string
           id?: string
+        }
+        Relationships: []
+      }
+      user_presence: {
+        Row: {
+          last_seen: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_seen?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_seen?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

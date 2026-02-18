@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart, Mail } from "lucide-react";
+import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart, Mail, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,9 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   message_received: <Mail className="h-4 w-4 text-indigo-500" />,
   wishlist_alert: <Heart className="h-4 w-4 text-pink-500" />,
   forum_reply: <MessageSquare className="h-4 w-4 text-green-500" />,
+  new_follower: <UserPlus className="h-4 w-4 text-secondary" />,
+  direct_message: <MessageSquare className="h-4 w-4 text-indigo-500" />,
+  activity_reaction: <Heart className="h-4 w-4 text-pink-500" />,
 };
 
 // Get navigation path based on notification type and metadata
@@ -33,9 +36,7 @@ function getNotificationPath(notification: Notification): string | null {
   
   switch (notification.notification_type) {
     case "forum_reply":
-      if (metadata?.thread_id) {
-        return `/community/thread/${metadata.thread_id}`;
-      }
+      if (metadata?.thread_id) return `/community/thread/${metadata.thread_id}`;
       break;
     case "loan_request":
     case "loan_approved":
@@ -48,10 +49,16 @@ function getNotificationPath(notification: Notification): string | null {
       return "/dashboard";
     case "message_received":
       return "/inbox";
+    case "new_follower":
+      if (metadata?.username) return `/u/${metadata.username}`;
+      return "/dashboard";
+    case "direct_message":
+      if (metadata?.sender_id) return `/dm/${metadata.sender_id}`;
+      return "/dm";
+    case "activity_reaction":
+      return "/dashboard";
     case "wishlist_alert":
-      if (metadata?.game_id) {
-        return `/games/${metadata.game_id}`;
-      }
+      if (metadata?.game_id) return `/games/${metadata.game_id}`;
       break;
   }
   return null;
