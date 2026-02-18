@@ -1,7 +1,17 @@
 import { useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
+
+// Get the best available auth token for PostgREST requests (self-hosted Supabase stack)
+async function getAuthToken(): Promise<string> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) return session.access_token;
+  } catch {}
+  // Fallback to localStorage token (Express mode)
+  return localStorage.getItem('auth_token') || '';
+}
 
 export type PresenceStatus = "online" | "idle" | "offline";
 
@@ -27,11 +37,11 @@ async function fetchPresenceRows(filter: { userId?: string; userIds?: string[] }
     endpoint += `&user_id=in.(${filter.userIds.join(',')})`;
   }
 
-  const token = localStorage.getItem('auth_token') || '';
+  const token = await getAuthToken();
   const res = await fetch(endpoint, {
     headers: {
       apikey: anonKey,
-      Authorization: token ? `Bearer ${token}` : `Bearer ${anonKey}`,
+      Authorization: `Bearer ${token || anonKey}`,
       Accept: 'application/json',
     },
   });
@@ -47,12 +57,12 @@ async function upsertPresence(userId: string, status: PresenceStatus) {
   const anonKey = config?.supabaseAnonKey || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
   if (url && anonKey) {
-    const token = localStorage.getItem('auth_token') || '';
+    const token = await getAuthToken();
     await fetch(`${url}/rest/v1/user_presence`, {
       method: 'POST',
       headers: {
         apikey: anonKey,
-        Authorization: token ? `Bearer ${token}` : `Bearer ${anonKey}`,
+        Authorization: `Bearer ${token || anonKey}`,
         'Content-Type': 'application/json',
         Prefer: 'resolution=merge-duplicates',
       },
