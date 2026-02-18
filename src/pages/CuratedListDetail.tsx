@@ -77,7 +77,7 @@ export default function CuratedListDetailPage() {
 
         <div className="space-y-2">
           {(list.items || []).map((item, idx) => (
-            <ListItemRow key={item.id} item={item} rank={idx + 1} isOwner={isOwner} listId={list.id} tenantSlug={tenantSlug} />
+            <ListItemRow key={item.id} item={item} rank={idx + 1} isOwner={isOwner} listId={list.id} listLibrarySlug={list.library?.slug ?? null} />
           ))}
           {(list.items || []).length === 0 && (
             <p className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-xl">No games added yet.</p>
@@ -90,13 +90,13 @@ export default function CuratedListDetailPage() {
   );
 }
 
-function ListItemRow({ item, rank, isOwner, listId, tenantSlug }: {
-  item: CuratedListItem; rank: number; isOwner: boolean; listId: string; tenantSlug?: string | null;
+function ListItemRow({ item, rank, isOwner, listId, listLibrarySlug }: {
+  item: CuratedListItem; rank: number; isOwner: boolean; listId: string; listLibrarySlug?: string | null;
 }) {
   const removeItem = useRemoveListItem();
   const { toast } = useToast();
   const gameUrl = item.game?.slug
-    ? (tenantSlug ? getLibraryUrl(tenantSlug, `/game/${item.game.slug}`) : `/game/${item.game.slug}`)
+    ? (listLibrarySlug ? getLibraryUrl(listLibrarySlug, `/game/${item.game.slug}`) : `/game/${item.game.slug}`)
     : "#";
 
   return (

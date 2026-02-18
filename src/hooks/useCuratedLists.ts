@@ -13,6 +13,7 @@ export interface CuratedList {
   created_at: string;
   updated_at: string;
   author?: { display_name: string | null; username: string | null; avatar_url: string | null };
+  library?: { id: string; slug: string } | null;
   items?: CuratedListItem[];
   user_has_voted?: boolean;
 }
@@ -60,6 +61,7 @@ export function useCuratedList(listId: string | undefined) {
         .select(`
           *,
           author:user_profiles!curated_lists_user_id_fkey(display_name, username, avatar_url),
+          library:libraries!curated_lists_library_id_fkey(id, slug),
           items:curated_list_items(
             id, list_id, game_id, rank, notes,
             game:games(title, image_url, slug)
