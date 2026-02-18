@@ -50,6 +50,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   const location = useLocation();
   const { toast } = useToast();
   const isCatalogPage = location.pathname.startsWith("/catalog");
+  const isProfilePage = location.pathname.startsWith("/u/");
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -327,7 +328,25 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
             {/* Sign in / Sign out */}
             {isAuthenticated ? (
               <>
-                {profile?.username && (
+                {isProfilePage ? (
+                  isSubdomain ? (
+                    <a
+                      href={getPlatformUrl("/dashboard")}
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>Dashboard</span>
+                    </a>
+                  ) : (
+                    <Link
+                      to="/dashboard"
+                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>Dashboard</span>
+                    </Link>
+                  )
+                ) : profile?.username ? (
                   isSubdomain ? (
                     <a
                       href={getPlatformUrl(`/u/${profile.username}`)}
@@ -345,7 +364,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                       <span>{profile.display_name || profile.username}</span>
                     </Link>
                   )
-                )}
+                ) : null}
                 <Button
                   variant="ghost"
                   size="icon"
