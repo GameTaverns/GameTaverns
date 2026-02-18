@@ -29,6 +29,8 @@ import {
   ChevronDown,
   Eye,
   Gamepad2,
+  Flame,
+  ListOrdered,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,8 @@ import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
 import { isSelfHostedSupabaseStack } from "@/config/runtime";
+import { HotnessLeaderboard } from "@/components/games/HotnessLeaderboard";
+
 import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
@@ -305,6 +309,23 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
+              <div className="space-y-4">
+                {/* ── Trending This Month ── full-width prominent section */}
+                <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
+                  <CardHeader className="px-4 pt-4 pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <Flame className="h-4 w-4 text-orange-400" />
+                        Trending This Month
+                      </CardTitle>
+                    </div>
+                    <CardDescription className="text-cream/60 text-xs">Games generating the most buzz in your library right now</CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <HotnessLeaderboard libraryId={library.id} limit={10} />
+                  </CardContent>
+                </Card>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Games Card */}
                 <Card className={cardClass}>
@@ -470,6 +491,32 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Curated Lists Card */}
+                <Card className={cardClass}>
+                  <CardHeader className="pb-2 px-4 pt-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-sm">
+                        <ListOrdered className="h-4 w-4 text-secondary" />
+                        Curated Lists
+                      </CardTitle>
+                      <Link to="/lists">
+                        <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
+                          View All <ArrowRight className="h-3 w-3" />
+                        </Button>
+                      </Link>
+                    </div>
+                    <CardDescription className="text-cream/60 text-xs">Ranked game lists — vote for community favourites</CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <Link to="/lists">
+                      <Button size="sm" className={`w-full ${btnPrimary}`}>
+                        <ListOrdered className="h-3.5 w-3.5" /> Browse &amp; Create Lists
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </div>
               </div>
             )}
           </TabsContent>
