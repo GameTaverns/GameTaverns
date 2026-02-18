@@ -53,6 +53,46 @@ function buildBatchPrompt(entries: { title: string; description: string | null }
   return JSON.stringify(games, null, 2);
 }
 
+/** Sanitize a description string so it can be safely embedded in JSON */
+function sanitizeForJson(text: string): string {
+  return text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+    // Escape unescaped backslashes (must be first)
+    .replace(/\\(?!["\\/bfnrtu])/g, "\\\\")
+    // Replace literal (unescaped) newlines/tabs with their escape sequences
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/\t/g, "\\t")
+    .trim();
+}
+
+/** Attempt to extract individual JSON objects from a broken array string */
+function extractObjectsFromBrokenJson(raw: string, entries: { title: string }[]): Map<string, string> {
+  const results = new Map<string, string>();
+  // Try to match individual {"title":...,"description":...} objects
+  const objectPattern = /\{\s*"title"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"description"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}/g;
+  let match;
+  while ((match = objectPattern.exec(raw)) !== null) {
+    const aiTitle = match[1].trim();
+    const description = match[2].replace(/\\n/g, "\n").replace(/\\t/g, "\t").trim();
+    if (!description) continue;
+
+    const matched = entries.find(e => e.title.toLowerCase().trim() === aiTitle.toLowerCase().trim());
+    if (matched) {
+      results.set(matched.title, description);
+    } else {
+      const partial = entries.find(e =>
+        aiTitle.toLowerCase().includes(e.title.toLowerCase().substring(0, 20)) ||
+        e.title.toLowerCase().includes(aiTitle.toLowerCase().substring(0, 20))
+      );
+      if (partial && !results.has(partial.title)) {
+        results.set(partial.title, description);
+      }
+    }
+  }
+  return results;
+}
+
 /** Parse the AI JSON response back into individual game descriptions */
 function parseBatchResponse(raw: string, entries: { title: string }[]): Map<string, string> {
   const results = new Map<string, string>();
@@ -71,13 +111,19 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
     return results;
   }
 
+  const arrayStr = cleaned.substring(arrayStart, arrayEnd + 1);
+
   let parsed: { title: string; description: string }[];
   try {
-    parsed = JSON.parse(cleaned.substring(arrayStart, arrayEnd + 1));
+    parsed = JSON.parse(arrayStr);
   } catch (e) {
     console.error("[catalog-format] JSON parse error:", e instanceof Error ? e.message : String(e));
-    console.error("[catalog-format] Raw snippet:", cleaned.substring(arrayStart, arrayStart + 300));
-    return results;
+    console.warn("[catalog-format] Attempting object-level extraction from broken JSON...");
+
+    // Fallback: extract individual objects with regex (handles one bad entry breaking the whole batch)
+    const recovered = extractObjectsFromBrokenJson(arrayStr, entries);
+    console.log(`[catalog-format] Recovered ${recovered.size} entries via fallback extraction`);
+    return recovered;
   }
 
   if (!Array.isArray(parsed)) {
