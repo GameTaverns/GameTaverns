@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUpdateLibrarySettings } from "@/hooks/useLibrary";
 import { useTenant } from "@/contexts/TenantContext";
 import { GoogleFontPicker } from "./GoogleFontPicker";
+import { LibraryBackgroundUpload } from "./LibraryBackgroundUpload";
 
 interface ColorPickerProps {
   label: string;
@@ -357,33 +358,20 @@ export function LibraryThemeCustomizer() {
           <Card>
             <CardHeader>
               <CardTitle>Background Image</CardTitle>
-              <CardDescription>Add a custom background to your library</CardDescription>
+              <CardDescription>Add a custom background to your library pages</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>Background Image URL</Label>
-                <Input
-                  value={ls.background_image_url || ''}
-                  onChange={(e) => updateLocal('background_image_url', e.target.value)}
-                  placeholder="https://example.com/background.jpg"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Enter a URL to an image. For best results, use a high-resolution image.
-                </p>
-              </div>
-              
-              {ls.background_image_url && (
-                <div 
-                  className="h-40 rounded-md border bg-cover bg-center"
-                  style={{ backgroundImage: `url(${ls.background_image_url})` }}
-                />
-              )}
-              
+              <LibraryBackgroundUpload
+                libraryId={library.id}
+                currentUrl={ls.background_image_url || null}
+                onUrlChange={(url) => updateLocal('background_image_url', url ?? '')}
+              />
+
               <div className="space-y-2">
                 <Label>Overlay Opacity</Label>
                 <div className="flex items-center gap-4">
                   <Slider
-                    value={[parseFloat(ls.background_overlay_opacity) * 100]}
+                    value={[parseFloat(ls.background_overlay_opacity || '0.85') * 100]}
                     min={0}
                     max={100}
                     step={5}
@@ -391,7 +379,7 @@ export function LibraryThemeCustomizer() {
                     className="flex-1"
                   />
                   <span className="text-sm w-12 text-right">
-                    {Math.round(parseFloat(ls.background_overlay_opacity) * 100)}%
+                    {Math.round(parseFloat(ls.background_overlay_opacity || '0.85') * 100)}%
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
