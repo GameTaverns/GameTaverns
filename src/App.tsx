@@ -70,6 +70,8 @@ const Install = lazy(() => import("./pages/Install"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const DashboardEditor = lazy(() => import("./components/dashboard/editor/DashboardEditorPage"));
 const DirectMessages = lazy(() => import("./pages/DirectMessages"));
+const CuratedLists = lazy(() => import("./pages/CuratedLists"));
+const CuratedListDetail = lazy(() => import("./pages/CuratedListDetail"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -218,6 +220,8 @@ function PlatformRoutes() {
       {/* Direct Messages */}
       <Route path="/dm" element={<DirectMessages />} />
       <Route path="/dm/:userId" element={<DirectMessages />} />
+      <Route path="/lists" element={<CuratedLists />} />
+      <Route path="/lists/:listId" element={<CuratedListDetail />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -247,6 +251,10 @@ function LibraryRoutes() {
       <Route path="/community" element={<Community />} />
       <Route path="/community/:categorySlug" element={<Community />} />
       <Route path="/community/thread/:threadId" element={<ThreadDetail />} />
+
+      {/* Curated Lists */}
+      <Route path="/lists" element={<CuratedLists />} />
+      <Route path="/lists/:listId" element={<CuratedListDetail />} />
       
       {/* Docs & Legal pages accessible from library too */}
       <Route path="/docs" element={<Docs />} />

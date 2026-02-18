@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Heart, ArrowLeft, Trash2, Medal, Crown } from "lucide-react";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { GameImage } from "@/components/games/GameImage";
+import { supabase as sb } from "@/integrations/backend/client";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -130,15 +131,13 @@ function AddGameRow({ listId, nextRank }: { listId: string; nextRank: number }) 
   const { toast } = useToast();
   const { library } = useTenant();
   const [results, setResults] = useState<{ id: string; title: string; image_url: string | null }[]>([]);
-  const { supabase: sb } = { supabase: null as any };
+  
 
   // Simple game search within library
   const search = async (q: string) => {
     setTitle(q);
     if (q.length < 2) { setResults([]); return; }
-    const { createClient } = await import("@supabase/supabase-js");
-    const { supabase } = await import("@/integrations/backend/client");
-    const { data } = await (supabase as any).from("games").select("id,title,image_url")
+    const { data } = await (sb as any).from("games").select("id,title,image_url")
       .ilike("title", `%${q}%`).eq("library_id", library?.id).eq("is_expansion", false).limit(8);
     setResults(data || []);
   };
