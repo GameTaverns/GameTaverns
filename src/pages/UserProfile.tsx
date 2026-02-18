@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins } from "lucide-react";
+import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { getPlatformUrl } from "@/hooks/useTenantUrl";
+import { Header } from "@/components/layout/Header";
 import {
   usePublicProfile,
   usePublicProfileCommunities,
@@ -22,7 +21,7 @@ import { ActivityFeedItem } from "@/components/social/ActivityFeedItem";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { FollowButton } from "@/components/social/FollowButton";
 import { supabase } from "@/integrations/backend/client";
-import logoImage from "@/assets/logo.png";
+
 import { format, formatDistanceToNow } from "date-fns";
 
 const TIER_COLORS: Record<number, string> = {
@@ -84,18 +83,18 @@ export default function UserProfile() {
   if (error || !profile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
-        <ProfileHeader />
+        <Header onMenuClick={() => {}} isSidebarOpen={false} hideSidebarToggle={true} />
         <main className="container mx-auto px-4 py-16 text-center">
           <Dices className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="font-display text-3xl font-bold text-cream mb-2">Adventurer Not Found</h1>
           <p className="text-muted-foreground mb-6">
             No tavern-goer with that name could be found.
           </p>
-          <Link to={getPlatformUrl("/directory")}>
+          <a href="/">
             <Button variant="outline" className="border-wood-medium/50 text-cream hover:bg-wood-medium/30">
               Browse Libraries
             </Button>
-          </Link>
+          </a>
         </main>
       </div>
     );
@@ -150,7 +149,7 @@ export default function UserProfile() {
       className="min-h-screen dark"
       style={hasTheme && profilePageBg ? { backgroundColor: profilePageBg } : { background: 'linear-gradient(to bottom right, hsl(var(--wood-dark)), hsl(var(--sidebar)), hsl(var(--wood-medium)))' }}
     >
-      <ProfileHeader />
+      <Header onMenuClick={() => {}} isSidebarOpen={false} hideSidebarToggle={true} />
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         {/* Profile Card with Banner */}
@@ -494,27 +493,8 @@ function FeedbackCard({ rating, showRatedUser }: { rating: any; showRatedUser?: 
   );
 }
 
-function ProfileHeader() {
-  return (
-    <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm sticky top-0 z-30">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <img src={logoImage} alt="GameTaverns" className="h-7 sm:h-8 w-auto" />
-          <span className="font-display text-base sm:text-lg font-bold text-cream">GameTaverns</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <ThemeToggle />
-          <a href={getPlatformUrl("/dashboard")}>
-            <Button variant="ghost" size="sm" className="gap-2 text-cream hover:text-white hover:bg-wood-medium/50">
-              <ArrowLeft className="h-4 w-4" />
-              Dashboard
-            </Button>
-          </a>
-        </div>
-      </div>
-    </header>
-  );
-}
+
+
 
 
 
@@ -535,7 +515,7 @@ function StatCard({ icon: Icon, label, value }: { icon: any; label: string; valu
 function ProfileSkeleton() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
-      <ProfileHeader />
+      <Header onMenuClick={() => {}} isSidebarOpen={false} hideSidebarToggle={true} />
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         <Card className="bg-card/90 backdrop-blur-sm border-border">
           <div className="h-32 bg-muted" />
