@@ -229,7 +229,27 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  if (!await authorize(req, supabaseUrl, serviceKey)) {
+  // Auth: accept service_role key OR admin user JWT
+  const authHeader = req.headers.get("Authorization") || "";
+  let isAuthorized = serviceKey && authHeader.includes(serviceKey);
+
+  if (!isAuthorized && authHeader.startsWith("Bearer ")) {
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    if (anonKey) {
+      const admin = createClient(supabaseUrl, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const token = authHeader.slice(7);
+      const { data: { user } } = await admin.auth.getUser(token);
+      if (user) {
+        const { data: roleData } = await admin
+          .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+        if (roleData) isAuthorized = true;
+      }
+    }
+  }
+
+  if (!isAuthorized) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
