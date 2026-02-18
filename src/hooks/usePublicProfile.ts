@@ -16,6 +16,18 @@ export interface PublicProfile {
   sessions_logged: number;
   achievements_earned: number;
   achievement_points: number;
+  // Profile theme fields
+  profile_primary_h: string | null;
+  profile_primary_s: string | null;
+  profile_primary_l: string | null;
+  profile_accent_h: string | null;
+  profile_accent_s: string | null;
+  profile_accent_l: string | null;
+  profile_background_h: string | null;
+  profile_background_s: string | null;
+  profile_background_l: string | null;
+  profile_bg_image_url: string | null;
+  profile_bg_opacity: string | null;
 }
 
 export interface PublicProfileCommunity {
