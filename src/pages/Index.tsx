@@ -605,16 +605,8 @@ const Index = () => {
       {/* Quadrant Filter Floating Button (mobile only) */}
       <QuadrantFilterButton onFilterChange={handleQuadrantFilterChange} />
 
-      {/* Hotness Leaderboard - visible when library has games */}
-      {isTenantMode && library && !isDemoMode && (
-        <div className="mt-8 max-w-2xl mx-auto px-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Flame className="h-4 w-4 text-orange-500" />
-            <h2 className="font-semibold text-sm text-foreground">Trending This Month</h2>
-          </div>
-          <HotnessLeaderboard libraryId={library.id} limit={8} compact />
-        </div>
-      )}
+
+
     </Layout>
   );
 };
