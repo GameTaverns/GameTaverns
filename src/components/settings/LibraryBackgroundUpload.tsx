@@ -38,42 +38,50 @@ export function LibraryBackgroundUpload({
 
     setIsUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const filePath = `${libraryId}/background.${ext}`;
 
+      // Get session token for direct fetch (works in both cloud and self-hosted)
       const { data: { session } } = await supabase.auth.getSession();
       const config = (window as any).__RUNTIME_CONFIG__;
       const storageUrl = config?.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || "";
       const anonKey = config?.SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
       const token = session?.access_token || anonKey;
 
-      if (storageUrl && token) {
-        const uploadEndpoint = `${storageUrl}/storage/v1/object/library-logos/${filePath}`;
-        const res = await fetch(uploadEndpoint, {
-          method: "POST",
-          headers: {
-            apikey: anonKey,
-            Authorization: `Bearer ${token}`,
-            "Content-Type": file.type,
-            "x-upsert": "true",
-          },
-          body: file,
-        });
-        if (!res.ok) {
-          const err = await res.text();
-          throw new Error(err || `Upload failed: ${res.status}`);
-        }
-        const publicUrl = `${storageUrl}/storage/v1/object/public/library-logos/${filePath}`;
-        onUrlChange(publicUrl);
-      } else {
-        const { error: uploadError } = await supabase.storage
-          .from("library-logos")
-          .upload(filePath, file, { upsert: true, contentType: file.type });
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from("library-logos").getPublicUrl(filePath);
-        onUrlChange(publicUrl);
+      if (!storageUrl) {
+        throw new Error("Storage URL not configured");
+      }
+      if (!token) {
+        throw new Error("Not authenticated");
       }
 
+      // Use direct fetch with x-upsert to handle both insert and update
+      const uploadEndpoint = `${storageUrl}/storage/v1/object/library-logos/${filePath}`;
+      const res = await fetch(uploadEndpoint, {
+        method: "POST",
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": file.type,
+          "x-upsert": "true",
+        },
+        body: file,
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        let errMsg = `Upload failed (${res.status})`;
+        try {
+          const errJson = JSON.parse(errText);
+          errMsg = errJson.message || errJson.error || errMsg;
+        } catch {
+          if (errText) errMsg = errText;
+        }
+        throw new Error(errMsg);
+      }
+
+      const publicUrl = `${storageUrl}/storage/v1/object/public/library-logos/${filePath}`;
+      onUrlChange(publicUrl);
       toast({ title: "Background uploaded", description: "Library background image updated." });
     } catch (error: any) {
       toast({ title: "Upload failed", description: error.message || "Could not upload image", variant: "destructive" });
