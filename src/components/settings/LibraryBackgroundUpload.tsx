@@ -55,10 +55,16 @@ export function LibraryBackgroundUpload({
         throw new Error("Not authenticated");
       }
 
-      // Use direct fetch with x-upsert to handle both insert and update
+      // Check if file already exists to determine POST vs PUT
+      const checkRes = await fetch(
+        `${storageUrl}/storage/v1/object/info/library-logos/${filePath}`,
+        { headers: { apikey: anonKey, Authorization: `Bearer ${token}` } }
+      );
+      const method = checkRes.ok ? "PUT" : "POST";
+
       const uploadEndpoint = `${storageUrl}/storage/v1/object/library-logos/${filePath}`;
       const res = await fetch(uploadEndpoint, {
-        method: "POST",
+        method,
         headers: {
           apikey: anonKey,
           Authorization: `Bearer ${token}`,
