@@ -209,23 +209,23 @@ export default function UserProfile() {
 
               <div className="flex gap-6 text-center text-sm">
                 <div>
-                  <div className="font-bold text-foreground">{followCounts?.followers ?? 0}</div>
-                  <div className="text-muted-foreground text-xs">Followers</div>
+                  <div className="font-bold" style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}>{followCounts?.followers ?? 0}</div>
+                  <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>Followers</div>
                 </div>
                 <div>
-                  <div className="font-bold text-foreground">{followCounts?.following ?? 0}</div>
-                  <div className="text-muted-foreground text-xs">Following</div>
+                  <div className="font-bold" style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}>{followCounts?.following ?? 0}</div>
+                  <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>Following</div>
                 </div>
               </div>
             </div>
 
             {profile.bio && (
-              <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-2xl">
+              <p className="mt-4 text-sm leading-relaxed max-w-2xl" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>
                 {profile.bio}
               </p>
             )}
 
-            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="mt-3 flex items-center gap-2 text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>
               <Calendar className="h-3 w-3" />
               {profile.member_since && !isNaN(new Date(profile.member_since).getTime())
                 ? `Member since ${format(new Date(profile.member_since), "MMMM yyyy")}`
@@ -236,18 +236,18 @@ export default function UserProfile() {
 
         {/* Tabbed content: Activity + Achievements + Communities + Feedback */}
         <Tabs defaultValue="activity">
-          <TabsList className="w-full justify-start">
-            <TabsTrigger value="activity" className="gap-1.5">
+          <TabsList className="w-full justify-start" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : {}}>
+            <TabsTrigger value="activity" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Activity className="h-3.5 w-3.5" />Activity
             </TabsTrigger>
-            <TabsTrigger value="achievements" className="gap-1.5">
+            <TabsTrigger value="achievements" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Trophy className="h-3.5 w-3.5" />Achievements
             </TabsTrigger>
-            <TabsTrigger value="communities" className="gap-1.5">
+            <TabsTrigger value="communities" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Users className="h-3.5 w-3.5" />Communities
             </TabsTrigger>
             {isSharedCommunity && (
-              <TabsTrigger value="feedback" className="gap-1.5">
+              <TabsTrigger value="feedback" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
                 <HandCoins className="h-3.5 w-3.5" />Feedback
                 {feedback && feedback.totalCount > 0 && (
                   <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">{feedback.totalCount}</Badge>
@@ -258,7 +258,7 @@ export default function UserProfile() {
 
           {/* Activity tab */}
           <TabsContent value="activity">
-            <Card className="bg-card/90 backdrop-blur-sm border-border">
+            <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-display flex items-center gap-2">
                   <Activity className="h-4 w-4 text-primary" />
@@ -281,7 +281,7 @@ export default function UserProfile() {
 
           {/* Achievements tab */}
           <TabsContent value="achievements">
-            <Card className="bg-card/90 backdrop-blur-sm border-border">
+            <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-display flex items-center gap-2">
                   <Trophy className="h-4 w-4 text-primary" />
@@ -318,7 +318,7 @@ export default function UserProfile() {
 
           {/* Communities tab */}
           <TabsContent value="communities">
-            <Card className="bg-card/90 backdrop-blur-sm border-border">
+            <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-display flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
@@ -360,20 +360,20 @@ export default function UserProfile() {
                 {/* Summary stats */}
                 {feedback && feedback.totalCount > 0 && (
                   <div className="grid grid-cols-2 gap-3">
-                    <Card className="bg-card/90 backdrop-blur-sm border-border">
+                    <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
                       <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold text-primary">
+                        <div className="text-2xl font-bold" style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}>
                           {feedback.avgLender !== null ? `★ ${feedback.avgLender}` : "—"}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">As Lender ({feedback.asLender.length} reviews)</div>
+                        <div className="text-xs mt-1" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>As Lender ({feedback.asLender.length} reviews)</div>
                       </CardContent>
                     </Card>
-                    <Card className="bg-card/90 backdrop-blur-sm border-border">
+                    <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
                       <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold text-primary">
+                        <div className="text-2xl font-bold" style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}>
                           {feedback.avgBorrower !== null ? `★ ${feedback.avgBorrower}` : "—"}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">As Borrower ({feedback.asBorrower.length} reviews)</div>
+                        <div className="text-xs mt-1" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>As Borrower ({feedback.asBorrower.length} reviews)</div>
                       </CardContent>
                     </Card>
                   </div>
@@ -381,7 +381,7 @@ export default function UserProfile() {
 
                 {/* Received as lender */}
                 {feedback && feedback.asLender.length > 0 && (
-                  <Card className="bg-card/90 backdrop-blur-sm border-border">
+                  <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <HandCoins className="h-4 w-4 text-primary" />
@@ -398,7 +398,7 @@ export default function UserProfile() {
 
                 {/* Received as borrower */}
                 {feedback && feedback.asBorrower.length > 0 && (
-                  <Card className="bg-card/90 backdrop-blur-sm border-border">
+                  <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <BookOpen className="h-4 w-4 text-primary" />
@@ -415,7 +415,7 @@ export default function UserProfile() {
 
                 {/* Ratings they gave */}
                 {feedback && feedback.given.length > 0 && (
-                  <Card className="bg-card/90 backdrop-blur-sm border-border">
+                  <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <Star className="h-4 w-4 text-primary" />
@@ -431,11 +431,11 @@ export default function UserProfile() {
                 )}
 
                 {feedback && feedback.totalCount === 0 && feedback.given.length === 0 && (
-                  <Card className="bg-card/90 backdrop-blur-sm border-border">
+                  <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
                     <CardContent className="py-12 text-center">
-                      <HandCoins className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-40" />
-                      <p className="text-sm text-muted-foreground">No feedback yet.</p>
-                      <p className="text-xs text-muted-foreground mt-1">Feedback is left after completed game loans.</p>
+                      <HandCoins className="h-10 w-10 mx-auto mb-3 opacity-40" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }} />
+                      <p className="text-sm" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>No feedback yet.</p>
+                      <p className="text-xs mt-1" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>Feedback is left after completed game loans.</p>
                     </CardContent>
                   </Card>
                 )}
@@ -445,7 +445,7 @@ export default function UserProfile() {
         </Tabs>
 
         {/* Gameplay Stats */}
-        <Card className="bg-card/90 backdrop-blur-sm border-border">
+        <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-display flex items-center gap-2">
               <Dices className="h-4 w-4 text-primary" />
