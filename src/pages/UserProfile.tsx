@@ -115,17 +115,47 @@ export default function UserProfile() {
       : { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
     : {};
 
+  // Profile theme — scoped CSS variables injected onto the profile card only
+  const p = profile as any;
+  const profileThemeVars: React.CSSProperties = p.profile_primary_h ? {
+    ["--profile-primary" as any]: `hsl(${p.profile_primary_h}, ${p.profile_primary_s || "35%"}, ${p.profile_primary_l || "30%"})`,
+    ["--profile-accent" as any]: `hsl(${p.profile_accent_h || p.profile_primary_h}, ${p.profile_accent_s || "45%"}, ${p.profile_accent_l || "42%"})`,
+    ["--profile-bg" as any]: `hsl(${p.profile_background_h || "30"}, ${p.profile_background_s || "20%"}, ${p.profile_background_l || "95%"})`,
+  } : {};
+
+  const profileBgImageUrl = p.profile_bg_image_url || "";
+  const profileBgOpacity = parseFloat(p.profile_bg_opacity ?? "0.85");
+  const profileIsGradient = profileBgImageUrl?.startsWith("__gradient__");
+  const profileHeaderStyle: React.CSSProperties = profileBgImageUrl
+    ? profileIsGradient
+      ? { background: profileBgImageUrl.replace("__gradient__", "") }
+      : { backgroundImage: `url(${profileBgImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+    : p.profile_primary_h
+    ? { background: `linear-gradient(135deg, var(--profile-primary), var(--profile-accent))` }
+    : {};
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
       <ProfileHeader />
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         {/* Profile Card with Banner */}
-        <Card className="bg-card/90 backdrop-blur-sm border-border overflow-hidden">
+        <Card className="bg-card/90 backdrop-blur-sm border-border overflow-hidden" style={profileThemeVars}>
+          {/* Profile theme header */}
           <div
-            className={`h-32 ${!profile.banner_url ? 'bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10' : ''}`}
-            style={bannerStyle}
-          />
+            className={`h-32 relative ${!profile.banner_url && !profileBgImageUrl && !p.profile_primary_h ? 'bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10' : ''}`}
+            style={profileHeaderStyle}
+          >
+            {profileBgImageUrl && !profileIsGradient && (
+              <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${1 - profileBgOpacity})` }} />
+            )}
+          </div>
+          {/* Original banner overlay (if set separately) */}
+          {profile.banner_url && (
+            <div className="h-0 relative -mt-32">
+              <div className="h-32" style={bannerStyle} />
+            </div>
+          )}
           <CardContent className="relative pt-0 pb-6 px-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-14">
               <Avatar className="h-28 w-28 border-4 border-card shadow-lg">

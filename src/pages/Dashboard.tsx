@@ -45,6 +45,24 @@ import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 import { PollsManager } from "@/components/polls/PollsManager";
 import { AccountSettings } from "@/components/settings/AccountSettings";
+import { ProfileThemeCustomizer } from "@/components/settings/ProfileThemeCustomizer";
+
+function AccountSettingsTabs() {
+  return (
+    <Tabs defaultValue="profile">
+      <TabsList className="mb-4">
+        <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsTrigger value="appearance">Appearance</TabsTrigger>
+      </TabsList>
+      <TabsContent value="profile">
+        <AccountSettings />
+      </TabsContent>
+      <TabsContent value="appearance">
+        <ProfileThemeCustomizer />
+      </TabsContent>
+    </Tabs>
+  );
+}
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UpcomingEventsWidget } from "@/components/events/UpcomingEventsWidget";
 import { CreateEventDialog } from "@/components/events/CreateEventDialog";
@@ -663,9 +681,11 @@ export default function Dashboard() {
                     <Settings className="h-4 w-4 text-secondary" />
                     Account Settings
                   </CardTitle>
-                  <CardDescription className="text-cream/70 text-xs">Profile &amp; security</CardDescription>
+                  <CardDescription className="text-cream/70 text-xs">Profile, appearance &amp; security</CardDescription>
                 </CardHeader>
-                <CardContent className="px-4 pb-4"><AccountSettings /></CardContent>
+                <CardContent className="px-4 pb-4">
+                  <AccountSettingsTabs />
+                </CardContent>
               </Card>
 
               {/* Achievements */}
