@@ -2,15 +2,38 @@ import { useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
+import { getSupabaseConfig } from "@/config/runtime";
+import { computeAuthStorageKey } from "@/lib/authStorageKey";
 
 // Get the best available auth token for PostgREST requests (self-hosted Supabase stack)
 async function getAuthToken(): Promise<string> {
+  // Try supabase client session first (works on cloud and self-hosted Supabase)
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) return session.access_token;
   } catch {}
-  // Fallback to localStorage token (Express mode)
+  // Fallback: read directly from localStorage using the correct storage key
+  try {
+    const { url } = getSupabaseConfig();
+    if (url) {
+      const storageKey = computeAuthStorageKey(url);
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.access_token) return parsed.access_token;
+      }
+    }
+  } catch {}
   return localStorage.getItem('auth_token') || '';
+}
+
+// Get Supabase URL and anon key, supporting both cloud and self-hosted runtime config
+function getPresenceConfig() {
+  // __RUNTIME_CONFIG__ uses UPPERCASE keys (SUPABASE_URL, SUPABASE_ANON_KEY)
+  const config = (window as any).__RUNTIME_CONFIG__;
+  const url = config?.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || '';
+  const anonKey = config?.SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+  return { url, anonKey };
 }
 
 export type PresenceStatus = "online" | "idle" | "offline";
@@ -24,9 +47,7 @@ let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
 // Fetch presence rows via PostgREST directly (works on both cloud and self-hosted Supabase stack)
 async function fetchPresenceRows(filter: { userId?: string; userIds?: string[] }) {
-  const config = (window as any).__RUNTIME_CONFIG__;
-  const url = config?.supabaseUrl || import.meta.env.VITE_SUPABASE_URL || '';
-  const anonKey = config?.supabaseAnonKey || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+  const { url, anonKey } = getPresenceConfig();
 
   if (!url || !anonKey) return null;
 
@@ -51,10 +72,7 @@ async function fetchPresenceRows(filter: { userId?: string; userIds?: string[] }
 
 // Update presence in DB
 async function upsertPresence(userId: string, status: PresenceStatus) {
-  // Try direct PostgREST first (self-hosted Supabase stack)
-  const config = (window as any).__RUNTIME_CONFIG__;
-  const url = config?.supabaseUrl || import.meta.env.VITE_SUPABASE_URL || '';
-  const anonKey = config?.supabaseAnonKey || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+  const { url, anonKey } = getPresenceConfig();
 
   if (url && anonKey) {
     const token = await getAuthToken();
@@ -107,11 +125,10 @@ export function useOwnPresence() {
 
     // Set offline on unload
     const onUnload = () => {
-      const config = (window as any).__RUNTIME_CONFIG__;
-      const supabaseUrl = config?.supabaseUrl || import.meta.env.VITE_SUPABASE_URL || (supabase as any).supabaseUrl || '';
-      if (supabaseUrl) {
+      const { url } = getPresenceConfig();
+      if (url) {
         navigator.sendBeacon?.(
-          `${supabaseUrl}/rest/v1/user_presence`,
+          `${url}/rest/v1/user_presence`,
           JSON.stringify({ user_id: user.id, status: "offline", last_seen: new Date().toISOString() })
         );
       }

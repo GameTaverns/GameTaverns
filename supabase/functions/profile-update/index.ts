@@ -59,6 +59,7 @@ export default async function profileUpdateHandler(req: Request): Promise<Respon
       "username",
       "bio",
       "avatar_url",
+      "banner_url",
       "featured_achievement_id",
     ];
     const updates: Record<string, any> = {};
