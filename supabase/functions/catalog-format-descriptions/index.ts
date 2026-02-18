@@ -184,6 +184,16 @@ async function processBatch(
     });
   }
 
+  // Log status breakdown for debugging
+  const statusBreakdown = results.reduce((acc, r) => {
+    acc[r.status] = (acc[r.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  console.log(`[catalog-format] Batch result breakdown:`, JSON.stringify(statusBreakdown));
+  if (errors.length > 0) {
+    console.error(`[catalog-format] Batch errors:`, errors.slice(0, 5).join(" | "));
+  }
+
   return { updated: updatedCount, errors, results };
 }
 
@@ -373,10 +383,16 @@ export default async function handler(req: Request): Promise<Response> {
     errors: allErrors.length > 0 ? allErrors : undefined,
   };
 
+  const totalBreakdown = allResults.reduce((acc, r) => {
+    acc[r.status] = (acc[r.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
   console.log(`[catalog-format] Done:`, JSON.stringify({
     updated: totalUpdated,
     processed: candidates.length,
     batches: batches.length,
+    breakdown: totalBreakdown,
+    errors: allErrors.length > 0 ? allErrors.slice(0, 3) : undefined,
   }));
 
   return new Response(JSON.stringify(result), {
