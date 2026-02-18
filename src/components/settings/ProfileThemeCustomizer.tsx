@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Palette, Image, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,22 +26,22 @@ function ColorPicker({ label, hue, saturation, lightness, onChange }: ColorPicke
     <div className="space-y-3">
       <Label className="text-sm font-medium">{label}</Label>
       <div
-        className="w-full h-10 rounded-md border"
+        className="w-full h-12 rounded-md border"
         style={{ backgroundColor: `hsl(${h}, ${s}%, ${l}%)` }}
       />
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs w-6">H</span>
+          <span className="text-xs w-8">H</span>
           <Slider value={[h]} min={0} max={360} step={1} onValueChange={([v]) => onChange(String(v), saturation, lightness)} className="flex-1" />
           <span className="text-xs w-8 text-right">{h}°</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs w-6">S</span>
+          <span className="text-xs w-8">S</span>
           <Slider value={[s]} min={0} max={100} step={1} onValueChange={([v]) => onChange(hue, String(v), lightness)} className="flex-1" />
           <span className="text-xs w-8 text-right">{s}%</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs w-6">L</span>
+          <span className="text-xs w-8">L</span>
           <Slider value={[l]} min={0} max={100} step={1} onValueChange={([v]) => onChange(hue, saturation, String(v))} className="flex-1" />
           <span className="text-xs w-8 text-right">{l}%</span>
         </div>
@@ -61,26 +61,73 @@ const GRADIENT_PRESETS = [
   { label: "Slate", value: "linear-gradient(135deg, #334155, #1e293b)" },
 ];
 
+type LocalSettings = {
+  profile_primary_h: string;
+  profile_primary_s: string;
+  profile_primary_l: string;
+  profile_accent_h: string;
+  profile_accent_s: string;
+  profile_accent_l: string;
+  profile_background_h: string;
+  profile_background_s: string;
+  profile_background_l: string;
+  profile_bg_image_url: string;
+  profile_bg_opacity: string;
+};
+
+const DEFAULTS: LocalSettings = {
+  profile_primary_h: "25",
+  profile_primary_s: "35%",
+  profile_primary_l: "30%",
+  profile_accent_h: "35",
+  profile_accent_s: "45%",
+  profile_accent_l: "42%",
+  profile_background_h: "30",
+  profile_background_s: "20%",
+  profile_background_l: "95%",
+  profile_bg_image_url: "",
+  profile_bg_opacity: "0.85",
+};
+
 export function ProfileThemeCustomizer() {
   const { data: profile } = useUserProfile();
   const updateProfile = useUpdateUserProfile();
   const { toast } = useToast();
 
-  const [local, setLocal] = useState<Record<string, string>>({});
+  const [localSettings, setLocalSettings] = useState<LocalSettings>(DEFAULTS);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Initialize local state from profile once it loads
+  useEffect(() => {
+    if (!profile) return;
+    const p = profile as any;
+    setLocalSettings({
+      profile_primary_h: p.profile_primary_h ?? DEFAULTS.profile_primary_h,
+      profile_primary_s: p.profile_primary_s ?? DEFAULTS.profile_primary_s,
+      profile_primary_l: p.profile_primary_l ?? DEFAULTS.profile_primary_l,
+      profile_accent_h: p.profile_accent_h ?? DEFAULTS.profile_accent_h,
+      profile_accent_s: p.profile_accent_s ?? DEFAULTS.profile_accent_s,
+      profile_accent_l: p.profile_accent_l ?? DEFAULTS.profile_accent_l,
+      profile_background_h: p.profile_background_h ?? DEFAULTS.profile_background_h,
+      profile_background_s: p.profile_background_s ?? DEFAULTS.profile_background_s,
+      profile_background_l: p.profile_background_l ?? DEFAULTS.profile_background_l,
+      profile_bg_image_url: p.profile_bg_image_url ?? DEFAULTS.profile_bg_image_url,
+      profile_bg_opacity: p.profile_bg_opacity ?? DEFAULTS.profile_bg_opacity,
+    });
+    setHasChanges(false);
+  }, [profile?.user_id ?? (profile as any)?.id]);
 
   if (!profile) return null;
 
-  const get = (key: string, fallback: string) =>
-    key in local ? local[key] : ((profile as any)[key] ?? fallback);
+  const ls = localSettings;
 
-  const set = (key: string, value: string) => {
-    setLocal((prev) => ({ ...prev, [key]: value }));
+  const updateLocal = (key: keyof LocalSettings, value: string) => {
+    setLocalSettings(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   };
 
-  const setColor = (prefix: string, h: string, s: string, l: string) => {
-    setLocal((prev) => ({
+  const updateColorLocal = (prefix: string, h: string, s: string, l: string) => {
+    setLocalSettings(prev => ({
       ...prev,
       [`${prefix}_h`]: h,
       [`${prefix}_s`]: `${s}%`,
@@ -91,7 +138,7 @@ export function ProfileThemeCustomizer() {
 
   const handleSave = async () => {
     try {
-      await updateProfile.mutateAsync(local as any);
+      await updateProfile.mutateAsync(ls);
       setHasChanges(false);
       toast({ title: "Profile theme saved" });
     } catch (e: any) {
@@ -99,14 +146,14 @@ export function ProfileThemeCustomizer() {
     }
   };
 
-  const bgImageUrl = get("profile_bg_image_url", "");
-  const bgOpacity = parseFloat(get("profile_bg_opacity", "0.85"));
+  const bgImageUrl = ls.profile_bg_image_url;
+  const bgOpacity = parseFloat(ls.profile_bg_opacity) || 0.85;
   const isGradient = bgImageUrl?.startsWith("__gradient__");
 
-  // Live preview style
-  const previewPrimary = `hsl(${get("profile_primary_h", "25")}, ${get("profile_primary_s", "35%")}, ${get("profile_primary_l", "30%")})`;
-  const previewAccent = `hsl(${get("profile_accent_h", "35")}, ${get("profile_accent_s", "45%")}, ${get("profile_accent_l", "42%")})`;
-  const previewBg = `hsl(${get("profile_background_h", "30")}, ${get("profile_background_s", "20%")}, ${get("profile_background_l", "95%")})`;
+  // Live preview
+  const previewPrimary = `hsl(${ls.profile_primary_h}, ${ls.profile_primary_s}, ${ls.profile_primary_l})`;
+  const previewAccent = `hsl(${ls.profile_accent_h}, ${ls.profile_accent_s}, ${ls.profile_accent_l})`;
+  const previewBg = `hsl(${ls.profile_background_h}, ${ls.profile_background_s}, ${ls.profile_background_l})`;
 
   return (
     <div className="space-y-6">
@@ -139,10 +186,10 @@ export function ProfileThemeCustomizer() {
         <div className="p-4 flex items-center gap-3" style={{ backgroundColor: previewBg }}>
           <div className="w-12 h-12 rounded-full border-4 border-white shadow" style={{ backgroundColor: previewPrimary }} />
           <div>
-            <div className="font-bold text-sm" style={{ color: `hsl(${get("profile_primary_h","25")}, ${get("profile_primary_s","35%")}, 15%)` }}>
-              {profile.display_name || profile.username}
+            <div className="font-bold text-sm" style={{ color: previewPrimary }}>
+              {(profile as any).display_name || (profile as any).username}
             </div>
-            <div className="text-xs" style={{ color: previewAccent }}>@{profile.username}</div>
+            <div className="text-xs" style={{ color: previewAccent }}>@{(profile as any).username}</div>
           </div>
         </div>
       </div>
@@ -166,24 +213,24 @@ export function ProfileThemeCustomizer() {
             <CardContent className="grid md:grid-cols-3 gap-8">
               <ColorPicker
                 label="Primary Color"
-                hue={get("profile_primary_h", "25")}
-                saturation={get("profile_primary_s", "35%").replace("%", "")}
-                lightness={get("profile_primary_l", "30%").replace("%", "")}
-                onChange={(h, s, l) => setColor("profile_primary", h, s, l)}
+                hue={ls.profile_primary_h}
+                saturation={ls.profile_primary_s.replace("%", "")}
+                lightness={ls.profile_primary_l.replace("%", "")}
+                onChange={(h, s, l) => updateColorLocal("profile_primary", h, s, l)}
               />
               <ColorPicker
                 label="Accent Color"
-                hue={get("profile_accent_h", "35")}
-                saturation={get("profile_accent_s", "45%").replace("%", "")}
-                lightness={get("profile_accent_l", "42%").replace("%", "")}
-                onChange={(h, s, l) => setColor("profile_accent", h, s, l)}
+                hue={ls.profile_accent_h}
+                saturation={ls.profile_accent_s.replace("%", "")}
+                lightness={ls.profile_accent_l.replace("%", "")}
+                onChange={(h, s, l) => updateColorLocal("profile_accent", h, s, l)}
               />
               <ColorPicker
                 label="Background Tint"
-                hue={get("profile_background_h", "30")}
-                saturation={get("profile_background_s", "20%").replace("%", "")}
-                lightness={get("profile_background_l", "95%").replace("%", "")}
-                onChange={(h, s, l) => setColor("profile_background", h, s, l)}
+                hue={ls.profile_background_h}
+                saturation={ls.profile_background_s.replace("%", "")}
+                lightness={ls.profile_background_l.replace("%", "")}
+                onChange={(h, s, l) => updateColorLocal("profile_background", h, s, l)}
               />
             </CardContent>
           </Card>
@@ -206,12 +253,12 @@ export function ProfileThemeCustomizer() {
                       borderColor: bgImageUrl === `__gradient__${g.value}` ? "hsl(var(--primary))" : "transparent",
                     }}
                     title={g.label}
-                    onClick={() => set("profile_bg_image_url", `__gradient__${g.value}`)}
+                    onClick={() => updateLocal("profile_bg_image_url", `__gradient__${g.value}`)}
                   />
                 ))}
                 <button
                   className="h-12 rounded-md border-2 border-dashed border-muted-foreground/30 text-xs text-muted-foreground hover:border-muted-foreground transition-colors"
-                  onClick={() => set("profile_bg_image_url", "")}
+                  onClick={() => updateLocal("profile_bg_image_url", "")}
                 >
                   None
                 </button>
@@ -228,7 +275,7 @@ export function ProfileThemeCustomizer() {
               <Input
                 placeholder="https://example.com/image.jpg"
                 value={isGradient ? "" : bgImageUrl}
-                onChange={(e) => set("profile_bg_image_url", e.target.value)}
+                onChange={(e) => updateLocal("profile_bg_image_url", e.target.value)}
               />
               <div className="space-y-2">
                 <Label>Content Overlay Opacity</Label>
@@ -238,7 +285,7 @@ export function ProfileThemeCustomizer() {
                     min={0}
                     max={100}
                     step={5}
-                    onValueChange={([v]) => set("profile_bg_opacity", String(v / 100))}
+                    onValueChange={([v]) => updateLocal("profile_bg_opacity", String(v / 100))}
                     className="flex-1"
                   />
                   <span className="text-sm w-10 text-right">{Math.round(bgOpacity * 100)}%</span>
