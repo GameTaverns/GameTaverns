@@ -380,8 +380,6 @@ export function useUserProfile() {
     enabled: isAuthenticated && !!user,
     // Retry once on error for transient failures
     retry: 1,
-    // Allow stale data for 5 minutes
-    staleTime: 5 * 60 * 1000,
   });
 }
 
