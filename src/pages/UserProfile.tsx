@@ -158,8 +158,8 @@ export default function UserProfile() {
           )}
           <CardContent className="relative pt-0 pb-6 px-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-14">
-              <Avatar className="h-28 w-28 border-4 border-card shadow-lg">
-                <AvatarImage src={profile.avatar_url || undefined} alt={profile.display_name || profile.username} />
+              <Avatar className="h-28 w-28 border-4 border-card shadow-lg flex-shrink-0">
+                <AvatarImage src={profile.avatar_url || undefined} alt={profile.display_name || profile.username} className="object-cover" />
                 <AvatarFallback className="text-2xl font-display bg-primary/20 text-primary">
                   {initials}
                 </AvatarFallback>

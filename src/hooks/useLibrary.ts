@@ -398,6 +398,19 @@ export function useUpdateUserProfile() {
       bio?: string | null;
       username?: string | null;
       featured_achievement_id?: string | null;
+      // Profile theme fields
+      profile_primary_h?: string | null;
+      profile_primary_s?: string | null;
+      profile_primary_l?: string | null;
+      profile_accent_h?: string | null;
+      profile_accent_s?: string | null;
+      profile_accent_l?: string | null;
+      profile_background_h?: string | null;
+      profile_background_s?: string | null;
+      profile_background_l?: string | null;
+      profile_bg_image_url?: string | null;
+      profile_bg_opacity?: string | null;
+      [key: string]: any;
     }) => {
       if (!user) throw new Error("Must be logged in");
       
@@ -431,6 +444,8 @@ export function useUpdateUserProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      // Also invalidate the public profile cache so changes appear immediately
+      queryClient.invalidateQueries({ queryKey: ["public-profile"] });
     },
   });
 }
