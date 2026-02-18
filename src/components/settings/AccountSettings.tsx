@@ -13,6 +13,7 @@ import { DiscordLinkCard } from "./DiscordLinkCard";
 import { TwoFactorSettings } from "./TwoFactorSettings";
 import { FeaturedBadgeSelector } from "./FeaturedBadgeSelector";
 import { AvatarUpload } from "./AvatarUpload";
+import { BannerUpload } from "./BannerUpload";
 
 export function AccountSettings() {
   const { user } = useAuth();
@@ -158,6 +159,11 @@ export function AccountSettings() {
           <AvatarUpload
             currentAvatarUrl={profile?.avatar_url || null}
             displayName={profile?.display_name || null}
+          />
+
+          {/* Banner */}
+          <BannerUpload
+            currentBannerUrl={(profile as any)?.banner_url || null}
           />
 
           {/* Email (read-only) */}

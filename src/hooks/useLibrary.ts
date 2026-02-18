@@ -394,6 +394,7 @@ export function useUpdateUserProfile() {
     mutationFn: async (updates: { 
       display_name?: string | null; 
       avatar_url?: string | null; 
+      banner_url?: string | null;
       bio?: string | null;
       username?: string | null;
       featured_achievement_id?: string | null;

@@ -102,6 +102,7 @@ export function useDMConversations() {
         filter: `recipient_id=eq.${user.id}`,
       }, () => {
         queryClient.invalidateQueries({ queryKey: ["dm-conversations", user.id] });
+        queryClient.invalidateQueries({ queryKey: ["dm-unread-count", user.id] });
       })
       .subscribe();
     return () => (supabase as any).removeChannel(channel);
@@ -140,7 +141,7 @@ export function useDMThread(partnerId: string | null) {
     enabled: !!user && !!partnerId,
   });
 
-  // Realtime subscription for the thread
+  // Realtime subscription — directly update cache for instant delivery
   useEffect(() => {
     if (!user || !partnerId) return;
     const channel = (supabase as any)
@@ -149,9 +150,36 @@ export function useDMThread(partnerId: string | null) {
         event: "INSERT",
         schema: "public",
         table: "direct_messages",
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ["dm-thread", user.id, partnerId] });
+      }, (payload: { new: DirectMessage }) => {
+        const msg = payload.new;
+        // Only append if this message belongs to the current conversation
+        const isRelevant =
+          (msg.sender_id === user.id && msg.recipient_id === partnerId) ||
+          (msg.sender_id === partnerId && msg.recipient_id === user.id);
+        if (!isRelevant) return;
+
+        queryClient.setQueryData(
+          ["dm-thread", user.id, partnerId],
+          (old: DirectMessage[] = []) => {
+            // Avoid duplicates
+            if (old.some((m) => m.id === msg.id)) return old;
+            return [...old, msg];
+          }
+        );
         queryClient.invalidateQueries({ queryKey: ["dm-conversations", user.id] });
+        queryClient.invalidateQueries({ queryKey: ["dm-unread-count", user.id] });
+      })
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "direct_messages",
+      }, (payload: { new: DirectMessage }) => {
+        const msg = payload.new;
+        queryClient.setQueryData(
+          ["dm-thread", user.id, partnerId],
+          (old: DirectMessage[] = []) =>
+            old.map((m) => (m.id === msg.id ? msg : m))
+        );
       })
       .subscribe();
     return () => (supabase as any).removeChannel(channel);
