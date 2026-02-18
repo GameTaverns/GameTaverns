@@ -1043,28 +1043,40 @@ export type Database = {
       }
       game_admin_data: {
         Row: {
+          bgg_market_price: number | null
+          bgg_price_fetched_at: string | null
           created_at: string
+          current_value: number | null
           game_id: string
           id: string
           purchase_date: string | null
           purchase_price: number | null
           updated_at: string
+          value_updated_at: string | null
         }
         Insert: {
+          bgg_market_price?: number | null
+          bgg_price_fetched_at?: string | null
           created_at?: string
+          current_value?: number | null
           game_id: string
           id?: string
           purchase_date?: string | null
           purchase_price?: number | null
           updated_at?: string
+          value_updated_at?: string | null
         }
         Update: {
+          bgg_market_price?: number | null
+          bgg_price_fetched_at?: string | null
           created_at?: string
+          current_value?: number | null
           game_id?: string
           id?: string
           purchase_date?: string | null
           purchase_price?: number | null
           updated_at?: string
+          value_updated_at?: string | null
         }
         Relationships: [
           {

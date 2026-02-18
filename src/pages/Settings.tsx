@@ -940,6 +940,9 @@ const Settings = () => {
       'Crowdfunded',
       'Inserts',
       'In Base Game Box',
+      'Purchase Price',
+      'Purchase Date',
+      'Current Value',
       'Description'
     ];
 
@@ -981,6 +984,9 @@ const Settings = () => {
       escapeCsv(game.crowdfunded),
       escapeCsv(game.inserts),
       escapeCsv(game.in_base_game_box),
+      escapeCsv(game.admin_data?.purchase_price),
+      escapeCsv(game.admin_data?.purchase_date),
+      escapeCsv((game.admin_data as any)?.current_value),
       escapeCsv(game.description)
     ].join(','));
 

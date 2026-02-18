@@ -224,6 +224,10 @@ type AdminDataRow = {
   game_id: string;
   purchase_price: number | null;
   purchase_date: string | null;
+  current_value: number | null;
+  value_updated_at: string | null;
+  bgg_market_price: number | null;
+  bgg_price_fetched_at: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -283,15 +287,16 @@ function groupExpansions(allGames: GameWithRelations[]): GameWithRelations[] {
 }
 
 function splitAdminFields<T extends Record<string, any>>(game: T): {
-  cleanedGame: Omit<T, "purchase_price" | "purchase_date">;
-  admin: { purchase_price: number | null; purchase_date: string | null };
+  cleanedGame: Omit<T, "purchase_price" | "purchase_date" | "current_value">;
+  admin: { purchase_price: number | null; purchase_date: string | null; current_value: number | null };
 } {
-  const { purchase_price = null, purchase_date = null, ...rest } = game as any;
+  const { purchase_price = null, purchase_date = null, current_value = null, ...rest } = game as any;
   return {
     cleanedGame: rest,
     admin: {
       purchase_price: purchase_price ?? null,
       purchase_date: purchase_date ?? null,
+      current_value: current_value ?? null,
     },
   };
 }
@@ -489,7 +494,7 @@ export function useCreateGame() {
       if (gameError) throw gameError;
 
       // Save admin-only fields separately (if provided)
-      if (admin.purchase_price !== null || admin.purchase_date !== null) {
+      if (admin.purchase_price !== null || admin.purchase_date !== null || admin.current_value !== null) {
         const { error: adminError } = await supabase
           .from("game_admin_data")
           .upsert(
@@ -497,6 +502,7 @@ export function useCreateGame() {
               game_id: game.id,
               purchase_price: admin.purchase_price,
               purchase_date: admin.purchase_date,
+              current_value: admin.current_value,
             },
             { onConflict: "game_id" }
           );
@@ -551,7 +557,7 @@ export function useUpdateGame() {
 
       // If both are null => treat as "clear" and delete the admin row.
       // Otherwise upsert the row (including explicit nulls).
-      if (admin.purchase_price === null && admin.purchase_date === null) {
+      if (admin.purchase_price === null && admin.purchase_date === null && admin.current_value === null) {
         await supabase.from("game_admin_data").delete().eq("game_id", gameData.id);
       } else {
         const { error: adminError } = await supabase
@@ -561,6 +567,7 @@ export function useUpdateGame() {
               game_id: gameData.id,
               purchase_price: admin.purchase_price,
               purchase_date: admin.purchase_date,
+              current_value: admin.current_value,
             },
             { onConflict: "game_id" }
           );
