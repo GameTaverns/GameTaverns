@@ -23,6 +23,7 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  ShieldX,
   Upload,
   Palette,
   Wrench,
@@ -531,6 +532,71 @@ export function SystemHealth() {
       queryClient.invalidateQueries({ queryKey: ["catalog-backfill-status"] });
     },
     onError: (e: Error) => toast.error(`Backfill failed: ${e.message}`),
+  });
+
+  // Catalog Cleanup
+  interface CleanupStatus {
+    total_with_bgg_id: number;
+    linked_to_library: number;
+    sentinel_marked: number;
+  }
+  interface CleanupResult {
+    dry_run: boolean;
+    checked: number;
+    deleted: number;
+    kept: number;
+    errors: number;
+    sample_deleted: string[];
+  }
+
+  const cleanupStatusQuery = useQuery<CleanupStatus>({
+    queryKey: ["catalog-cleanup-status"],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-cleanup`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "status" }),
+      });
+      if (!r.ok) throw new Error(`Status failed: ${r.status}`);
+      return r.json();
+    },
+    retry: 1,
+  });
+
+  const cleanupRunMutation = useMutation({
+    mutationFn: async ({ dryRun, limit }: { dryRun: boolean; limit: number }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-cleanup`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: dryRun ? "dry_run" : "run", limit }),
+      });
+      if (!r.ok) throw new Error(`Cleanup failed: ${r.status}`);
+      return r.json() as Promise<CleanupResult>;
+    },
+    onSuccess: (data) => {
+      const prefix = data.dry_run ? "[DRY RUN] " : "";
+      toast.success(`${prefix}Cleanup: ${data.deleted} deleted, ${data.kept} kept out of ${data.checked} checked`);
+      if (data.sample_deleted?.length) {
+        console.log("[catalog-cleanup] Deleted entries:", data.sample_deleted);
+      }
+      queryClient.invalidateQueries({ queryKey: ["catalog-cleanup-status"] });
+      queryClient.invalidateQueries({ queryKey: ["catalog-scraper-status"] });
+    },
+    onError: (e: Error) => toast.error(`Cleanup failed: ${e.message}`),
   });
 
   // Catalog Scraper
@@ -1354,6 +1420,68 @@ export function SystemHealth() {
                 <><Star className="h-3.5 w-3.5 mr-1" /> Refresh Ratings</>
               )}
             </Button>
+          </div>
+
+          {/* Catalog Cleanup */}
+          <div className="flex items-start justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 gap-3">
+            <div className="flex items-start gap-3">
+              <ShieldX className="h-5 w-5 text-secondary mt-0.5 shrink-0" />
+              <div>
+                <div className="text-sm text-cream font-medium">Clean Up Non-Boardgame Entries</div>
+                <div className="text-xs text-cream/50 mb-2">
+                  Verifies catalog entries against BGG and removes video games, RPGs, and other non-boardgame items
+                  that aren't linked to any user library.
+                </div>
+                {cleanupStatusQuery.data && (
+                  <div className="flex flex-wrap gap-3 text-xs text-cream/50">
+                    <span>Total w/ BGG ID: <span className="text-cream font-medium">{cleanupStatusQuery.data.total_with_bgg_id.toLocaleString()}</span></span>
+                    <span>Linked to Library: <span className="text-cream font-medium">{cleanupStatusQuery.data.linked_to_library.toLocaleString()}</span></span>
+                    <span>Sentinel Marked: <span className="text-yellow-400 font-medium">{cleanupStatusQuery.data.sentinel_marked.toLocaleString()}</span></span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => cleanupStatusQuery.refetch()}
+                disabled={cleanupStatusQuery.isFetching}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${cleanupStatusQuery.isFetching ? "animate-spin" : ""}`} />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => cleanupRunMutation.mutate({ dryRun: true, limit: 200 })}
+                disabled={cleanupRunMutation.isPending}
+              >
+                {cleanupRunMutation.isPending ? (
+                  <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+                ) : (
+                  <><ShieldX className="h-3.5 w-3.5 mr-1" /> Dry Run</>
+                )}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="text-xs"
+                onClick={() => {
+                  if (confirm("This will permanently delete non-boardgame catalog entries not linked to any user library. Continue?")) {
+                    cleanupRunMutation.mutate({ dryRun: false, limit: 500 });
+                  }
+                }}
+                disabled={cleanupRunMutation.isPending}
+              >
+                {cleanupRunMutation.isPending ? (
+                  <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Cleaning...</>
+                ) : (
+                  <><Trash2 className="h-3.5 w-3.5 mr-1" /> Run Cleanup</>
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
