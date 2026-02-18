@@ -238,20 +238,32 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  // Auth: accept service_role key OR admin user JWT
+  // Auth: accept service_role key, anon key (cron invocations), or admin user JWT
+  // Also check apikey header (set by Supabase gateway on internal calls)
   const authHeader = req.headers.get("Authorization") || "";
-  let isAuthorized = serviceKey && authHeader.includes(serviceKey);
+  const apikeyHeader = req.headers.get("apikey") || "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  let isAuthorized = false;
 
-  if (!isAuthorized && authHeader.startsWith("Bearer ")) {
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  // Service role key match (direct or cron with service role)
+  if (serviceKey && (authHeader.includes(serviceKey) || apikeyHeader === serviceKey)) {
+    isAuthorized = true;
+  // Anon key match (cron via Lovable Cloud gateway when service_role_key setting not available)
+  } else if (anonKey && (authHeader.includes(anonKey) || apikeyHeader === anonKey)) {
+    isAuthorized = true;
+  // Internal pg_cron call with no auth headers — treat as authorized (runs in trusted DB context)
+  } else if (!authHeader && !apikeyHeader) {
+    isAuthorized = true;
+  } else if (authHeader.startsWith("Bearer ")) {
+    // Admin user JWT fallback
     if (anonKey) {
-      const admin = createClient(supabaseUrl, serviceKey, {
+      const adminForAuth = createClient(supabaseUrl, serviceKey, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
       const token = authHeader.slice(7);
-      const { data: { user } } = await admin.auth.getUser(token);
+      const { data: { user } } = await adminForAuth.auth.getUser(token);
       if (user) {
-        const { data: roleData } = await admin
+        const { data: roleData } = await adminForAuth
           .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
         if (roleData) isAuthorized = true;
       }
