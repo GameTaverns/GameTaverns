@@ -666,7 +666,7 @@ const GameDetail = () => {
                       </TableRow>
                     )}
                     {/* Admin/Owner-only purchase info */}
-                    {canViewAdminData && (game.admin_data?.purchase_price || game.admin_data?.purchase_date) && (
+                    {canViewAdminData && (game.admin_data?.purchase_price || game.admin_data?.purchase_date || (game.admin_data as any)?.current_value) && (
                       <>
                         {game.admin_data?.purchase_price && (
                           <TableRow className="bg-amber-500/5">
@@ -685,6 +685,22 @@ const GameDetail = () => {
                             </TableCell>
                             <TableCell className="text-amber-700 dark:text-amber-400">
                               {new Date(game.admin_data.purchase_date).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {(game.admin_data as any)?.current_value && (
+                          <TableRow className="bg-amber-500/5">
+                            <TableCell className="font-medium text-amber-700 dark:text-amber-400">
+                              Current Value
+                            </TableCell>
+                            <TableCell className="text-amber-700 dark:text-amber-400">
+                              ${(game.admin_data as any).current_value.toFixed(2)}
+                              {game.admin_data?.purchase_price && (
+                                <span className={`ml-2 text-xs font-medium ${(game.admin_data as any).current_value >= game.admin_data.purchase_price ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                  ({(game.admin_data as any).current_value >= game.admin_data.purchase_price ? '+' : ''}
+                                  {(((game.admin_data as any).current_value - game.admin_data.purchase_price) / game.admin_data.purchase_price * 100).toFixed(0)}%)
+                                </span>
+                              )}
                             </TableCell>
                           </TableRow>
                         )}

@@ -84,6 +84,7 @@ const GameForm = () => {
   const [locationMisc, setLocationMisc] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
+  const [currentValue, setCurrentValue] = useState("");
   const [sleeved, setSleeved] = useState(false);
   const [upgradedComponents, setUpgradedComponents] = useState(false);
   const [crowdfunded, setCrowdfunded] = useState(false);
@@ -127,6 +128,7 @@ const GameForm = () => {
       setLocationMisc(existingGame.location_misc || "");
       setPurchasePrice(existingGame.admin_data?.purchase_price?.toString() || "");
       setPurchaseDate(existingGame.admin_data?.purchase_date || "");
+      setCurrentValue((existingGame.admin_data as any)?.current_value?.toString() || "");
       setSleeved(existingGame.sleeved || false);
       setUpgradedComponents(existingGame.upgraded_components || false);
       setCrowdfunded(existingGame.crowdfunded || false);
@@ -210,6 +212,7 @@ const GameForm = () => {
       location_misc: locationMisc.trim() || null,
       purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
       purchase_date: purchaseDate || null,
+      current_value: currentValue ? parseFloat(currentValue) : null,
       sleeved,
       upgraded_components: upgradedComponents,
       crowdfunded,
@@ -704,6 +707,21 @@ const GameForm = () => {
                       value={purchaseDate}
                       onChange={(e) => setPurchaseDate(e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="currentValue">Current Market Value ($)</Label>
+                    <Input
+                      id="currentValue"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={currentValue}
+                      onChange={(e) => setCurrentValue(e.target.value)}
+                      placeholder="0.00"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Your estimated resale value — used for collection value tracking.
+                    </p>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
