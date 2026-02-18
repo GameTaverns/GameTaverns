@@ -57,6 +57,13 @@ function parseBggItems(xml: string) {
     const artistMatches = block.matchAll(/<link[^>]*type="boardgameartist"[^>]*value="([^"]+)"/g);
     const artists = [...artistMatches].map((m) => decodeHtmlEntities(m[1]));
 
+    // Only process actual board games and expansions — skip video games, RPGs, accessories, etc.
+    const ALLOWED_TYPES = ["boardgame", "boardgameexpansion"];
+    if (!ALLOWED_TYPES.includes(itemType)) {
+      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} (type="${itemType}", title="${title}")`);
+      continue;
+    }
+
     // Detect expansion
     const isExpansion = itemType === "boardgameexpansion";
 
