@@ -10,7 +10,7 @@ interface PresenceDotProps {
 const STATUS_COLORS: Record<PresenceStatus, string> = {
   online: "bg-green-500",
   idle: "bg-yellow-400",
-  offline: "bg-muted-foreground/40",
+  offline: "bg-slate-400",
 };
 
 const STATUS_LABELS: Record<PresenceStatus, string> = {
