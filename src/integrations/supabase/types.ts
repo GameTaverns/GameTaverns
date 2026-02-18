@@ -745,6 +745,170 @@ export type Database = {
         }
         Relationships: []
       }
+      curated_list_items: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          list_id: string
+          notes: string | null
+          rank: number
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          list_id: string
+          notes?: string | null
+          rank?: number
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          list_id?: string
+          notes?: string | null
+          rank?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curated_list_items_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "curated_list_items_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_list_items_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "curated_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      curated_list_votes: {
+        Row: {
+          created_at: string
+          id: string
+          list_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          list_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          list_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curated_list_votes_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "curated_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      curated_lists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean
+          library_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          vote_count: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          library_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          vote_count?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          library_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          vote_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curated_lists_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_lists_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_lists_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_user_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "curated_lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "curated_lists_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles_minimal"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       dashboard_layouts: {
         Row: {
           config: Json
@@ -1083,6 +1247,13 @@ export type Database = {
             foreignKeyName: "game_admin_data_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: true
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_admin_data_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: true
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
@@ -1118,6 +1289,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "artists"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_artists_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
           },
           {
             foreignKeyName: "game_artists_game_id_fkey"
@@ -1252,6 +1430,13 @@ export type Database = {
             foreignKeyName: "game_copies_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_copies_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
@@ -1292,11 +1477,102 @@ export type Database = {
             foreignKeyName: "game_designers_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_designers_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "game_designers_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_documents: {
+        Row: {
+          catalog_id: string | null
+          created_at: string
+          document_type: string
+          file_size_bytes: number | null
+          file_url: string
+          game_id: string
+          id: string
+          is_catalog_synced: boolean
+          language: string | null
+          sync_requested_at: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          catalog_id?: string | null
+          created_at?: string
+          document_type?: string
+          file_size_bytes?: number | null
+          file_url: string
+          game_id: string
+          id?: string
+          is_catalog_synced?: boolean
+          language?: string | null
+          sync_requested_at?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          catalog_id?: string | null
+          created_at?: string
+          document_type?: string
+          file_size_bytes?: number | null
+          file_url?: string
+          game_id?: string
+          id?: string
+          is_catalog_synced?: boolean
+          language?: string | null
+          sync_requested_at?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_documents_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "game_documents_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_documents_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_documents_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_documents_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games_public"
@@ -1380,6 +1656,13 @@ export type Database = {
             foreignKeyName: "game_loans_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_loans_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
@@ -1430,6 +1713,13 @@ export type Database = {
           mechanic_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "game_mechanics_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
           {
             foreignKeyName: "game_mechanics_game_id_fkey"
             columns: ["game_id"]
@@ -1520,6 +1810,13 @@ export type Database = {
           sender_user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "game_messages_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
           {
             foreignKeyName: "game_messages_game_id_fkey"
             columns: ["game_id"]
@@ -1689,6 +1986,13 @@ export type Database = {
             foreignKeyName: "game_ratings_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_ratings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
@@ -1721,6 +2025,13 @@ export type Database = {
           session_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "game_session_expansions_expansion_id_fkey"
+            columns: ["expansion_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
           {
             foreignKeyName: "game_session_expansions_expansion_id_fkey"
             columns: ["expansion_id"]
@@ -1824,6 +2135,13 @@ export type Database = {
             foreignKeyName: "game_sessions_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_sessions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
@@ -1859,6 +2177,13 @@ export type Database = {
           id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "game_wishlist_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
           {
             foreignKeyName: "game_wishlist_game_id_fkey"
             columns: ["game_id"]
@@ -2031,6 +2356,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "library_directory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_parent_game_id_fkey"
+            columns: ["parent_game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
           },
           {
             foreignKeyName: "games_parent_game_id_fkey"
@@ -2673,6 +3005,13 @@ export type Database = {
             foreignKeyName: "loan_waitlist_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "loan_waitlist_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
@@ -2919,6 +3258,13 @@ export type Database = {
             foreignKeyName: "player_elo_ratings_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "player_elo_ratings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
@@ -2954,6 +3300,13 @@ export type Database = {
           poll_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "poll_options_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
           {
             foreignKeyName: "poll_options_game_id_fkey"
             columns: ["game_id"]
@@ -3115,6 +3468,13 @@ export type Database = {
           tagged_user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "session_tag_requests_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
           {
             foreignKeyName: "session_tag_requests_game_id_fkey"
             columns: ["game_id"]
@@ -3489,6 +3849,60 @@ export type Database = {
           },
         ]
       }
+      game_hotness: {
+        Row: {
+          catalog_id: string | null
+          game_id: string | null
+          hotness_score: number | null
+          image_url: string | null
+          library_id: string | null
+          max_players: number | null
+          min_players: number | null
+          play_time: Database["public"]["Enums"]["play_time"] | null
+          recent_plays: number | null
+          recent_ratings: number | null
+          recent_wishes: number | null
+          slug: string | null
+          title: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "games_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "games_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_ratings_library_view: {
         Row: {
           created_at: string | null
@@ -3522,6 +3936,13 @@ export type Database = {
             foreignKeyName: "game_ratings_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_ratings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
@@ -3549,6 +3970,13 @@ export type Database = {
             foreignKeyName: "game_ratings_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_ratings_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
@@ -3568,6 +3996,13 @@ export type Database = {
           vote_count: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "game_wishlist_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
           {
             foreignKeyName: "game_wishlist_game_id_fkey"
             columns: ["game_id"]
@@ -3714,6 +4149,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "library_directory"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_parent_game_id_fkey"
+            columns: ["parent_game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
           },
           {
             foreignKeyName: "games_parent_game_id_fkey"
@@ -4055,6 +4497,13 @@ export type Database = {
           vote_count: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "poll_options_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
           {
             foreignKeyName: "poll_options_game_id_fkey"
             columns: ["game_id"]
