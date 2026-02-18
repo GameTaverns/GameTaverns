@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications, type Notification } from "@/hooks/useNotifications";
+import { useUserProfile } from "@/hooks/useLibrary";
 import { cn } from "@/lib/utils";
 
 const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
@@ -31,7 +32,7 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
 };
 
 // Get navigation path based on notification type and metadata
-function getNotificationPath(notification: Notification): string | null {
+function getNotificationPath(notification: Notification, myUsername?: string | null): string | null {
   const metadata = notification.metadata as Record<string, unknown> | null;
   
   switch (notification.notification_type) {
@@ -56,6 +57,8 @@ function getNotificationPath(notification: Notification): string | null {
       if (metadata?.sender_id) return `/dm/${metadata.sender_id}`;
       return "/dm";
     case "activity_reaction":
+      // Go to the current user's own profile where their activity is shown
+      if (myUsername) return `/u/${myUsername}`;
       return "/dashboard";
     case "wishlist_alert":
       if (metadata?.game_id) return `/games/${metadata.game_id}`;
@@ -68,14 +71,16 @@ function NotificationItem({
   notification, 
   onMarkRead,
   onNavigate,
+  myUsername,
 }: { 
   notification: Notification; 
   onMarkRead: () => void;
   onNavigate: (path: string) => void;
+  myUsername?: string | null;
 }) {
   const icon = NOTIFICATION_ICONS[notification.notification_type] || <Bell className="h-4 w-4" />;
   const isUnread = !notification.read_at;
-  const path = getNotificationPath(notification);
+  const path = getNotificationPath(notification, myUsername);
 
   const handleClick = () => {
     onMarkRead();
@@ -120,6 +125,7 @@ interface NotificationsDropdownProps {
 export function NotificationsDropdown({ variant = "default", unreadMessageCount = 0 }: NotificationsDropdownProps) {
   const navigate = useNavigate();
   const { notifications: allNotifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const { data: myProfile } = useUserProfile();
 
   // Direct messages have their own badge on the messenger icon — exclude from this pane
   const notifications = allNotifications.filter(n => n.notification_type !== "direct_message");
@@ -217,6 +223,7 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
                 notification={notification}
                 onMarkRead={() => handleMarkRead(notification.id)}
                 onNavigate={handleNavigate}
+                myUsername={myProfile?.username}
               />
             ))
           )}
