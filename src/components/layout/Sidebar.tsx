@@ -783,8 +783,6 @@ export function Sidebar({ isOpen }: SidebarProps) {
           </Collapsible>
         </ScrollArea>
 
-        {/* Onboarding Progress - show for authenticated owners */}
-        {isAuthenticated && isOwner && <OnboardingSidebarLink />}
 
         {/* User Section - Only show when authenticated */}
         {isAuthenticated && (
