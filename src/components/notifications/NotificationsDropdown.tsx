@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart, Mail, UserPlus } from "lucide-react";
+import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart, Mail, UserPlus, UserCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications, type Notification } from "@/hooks/useNotifications";
 import { useUserProfile } from "@/hooks/useLibrary";
+import { useSessionTagRequests } from "@/hooks/usePlayerElo";
+import { SessionTagNotifications } from "@/components/games/SessionTagNotifications";
 import { cn } from "@/lib/utils";
 
 const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
@@ -21,13 +23,14 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   loan_approved: <Check className="h-4 w-4 text-green-500" />,
   loan_returned: <BookOpen className="h-4 w-4 text-purple-500" />,
   loan_rejected: <BookOpen className="h-4 w-4 text-destructive" />,
-  achievement_earned: <Trophy className="h-4 w-4 text-yellow-500" />,
-  event_reminder: <Calendar className="h-4 w-4 text-orange-500" />,
+  achievement_earned: <Trophy className="h-4 w-4 text-secondary" />,
+  event_reminder: <Calendar className="h-4 w-4 text-primary" />,
   message_received: <Mail className="h-4 w-4 text-indigo-500" />,
-  wishlist_alert: <Heart className="h-4 w-4 text-pink-500" />,
+  wishlist_alert: <Heart className="h-4 w-4 text-primary" />,
   forum_reply: <MessageSquare className="h-4 w-4 text-green-500" />,
   new_follower: <UserPlus className="h-4 w-4 text-secondary" />,
   direct_message: <MessageSquare className="h-4 w-4 text-indigo-500" />,
+  session_tag: <UserCheck className="h-4 w-4 text-primary" />,
   activity_reaction: <Heart className="h-4 w-4 text-pink-500" />,
 };
 
@@ -126,11 +129,12 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
   const navigate = useNavigate();
   const { notifications: allNotifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
   const { data: myProfile } = useUserProfile();
+  const { data: tagRequests = [] } = useSessionTagRequests();
 
   // Direct messages have their own badge on the messenger icon — exclude from this pane
   const notifications = allNotifications.filter(n => n.notification_type !== "direct_message");
 
-  const totalUnread = unreadCount + unreadMessageCount;
+  const totalUnread = unreadCount + unreadMessageCount + tagRequests.length;
 
   const handleMarkRead = (notificationId: string) => {
     markAsRead.mutate(notificationId);
@@ -185,6 +189,16 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+
+        {/* Session tag requests */}
+        {tagRequests.length > 0 && (
+          <>
+            <div className="px-3 py-2">
+              <SessionTagNotifications />
+            </div>
+            {(unreadMessageCount > 0 || notifications.length > 0) && <DropdownMenuSeparator />}
+          </>
+        )}
 
         {/* Messages section if there are unread messages */}
         {unreadMessageCount > 0 && (

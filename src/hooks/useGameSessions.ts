@@ -9,6 +9,12 @@ export interface SessionPlayer {
   is_winner: boolean;
   is_first_play: boolean;
   color: string | null;
+  linked_user_id?: string | null;
+  tag_status?: string | null;
+  // Joined from user_profiles when linked
+  linked_display_name?: string | null;
+  linked_username?: string | null;
+  linked_avatar_url?: string | null;
 }
 
 export interface SessionExpansion {
@@ -34,7 +40,10 @@ export interface CreateSessionInput {
   played_at: string;
   duration_minutes?: number | null;
   notes?: string | null;
-  players: Omit<SessionPlayer, "id">[];
+  players: (Omit<SessionPlayer, "id" | "linked_display_name" | "linked_username" | "linked_avatar_url"> & {
+    linked_user_id?: string | null;
+    tag_status?: string;
+  })[];
   expansion_ids?: string[];
 }
 
@@ -92,18 +101,41 @@ export function useGameSessions(gameId: string) {
         }, {} as Record<string, { title: string; image_url: string | null }>);
       }
 
+      // Fetch linked user profiles for tagged players
+      const linkedUserIds = [...new Set(
+        (playersResult.data || [])
+          .map((p: any) => p.linked_user_id)
+          .filter(Boolean)
+      )];
+      let linkedProfiles: Record<string, { display_name: string | null; username: string | null; avatar_url: string | null }> = {};
+      if (linkedUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("user_profiles")
+          .select("user_id, display_name, username, avatar_url")
+          .in("user_id", linkedUserIds as string[]);
+        linkedProfiles = (profiles || []).reduce((acc, p) => {
+          acc[p.user_id] = { display_name: p.display_name, username: p.username, avatar_url: p.avatar_url };
+          return acc;
+        }, {} as typeof linkedProfiles);
+      }
+
       // Combine sessions with their players and expansions
       return sessionsData.map((session) => ({
         ...session,
         players: (playersResult.data || [])
-          .filter((p) => p.session_id === session.id)
-          .map((p) => ({
+          .filter((p: any) => p.session_id === session.id)
+          .map((p: any) => ({
             id: p.id,
             player_name: p.player_name,
             score: p.score,
             is_winner: p.is_winner,
             is_first_play: p.is_first_play,
-            color: (p as any).color ?? null,
+            color: p.color ?? null,
+            linked_user_id: p.linked_user_id ?? null,
+            tag_status: p.tag_status ?? "none",
+            linked_display_name: p.linked_user_id ? (linkedProfiles[p.linked_user_id]?.display_name ?? null) : null,
+            linked_username: p.linked_user_id ? (linkedProfiles[p.linked_user_id]?.username ?? null) : null,
+            linked_avatar_url: p.linked_user_id ? (linkedProfiles[p.linked_user_id]?.avatar_url ?? null) : null,
           })),
         expansions: (expansionsResult.data || [])
           .filter((e) => e.session_id === session.id)
@@ -134,9 +166,14 @@ export function useGameSessions(gameId: string) {
 
       if (sessionError) throw sessionError;
 
+      // Get current user for tagging
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const currentUserId = authSession?.user?.id;
+
       // Create players if any
+      let createdPlayers: any[] = [];
       if (input.players.length > 0) {
-        const { error: playersError } = await supabase
+        const { data: insertedPlayers, error: playersError } = await supabase
           .from("game_session_players")
           .insert(
             input.players.map((p) => ({
@@ -145,10 +182,45 @@ export function useGameSessions(gameId: string) {
               score: p.score,
               is_winner: p.is_winner,
               is_first_play: p.is_first_play,
+              linked_user_id: (p as any).linked_user_id ?? null,
+              tag_status: (p as any).tag_status ?? "none",
             }))
-          );
+          )
+          .select();
 
         if (playersError) throw playersError;
+        createdPlayers = insertedPlayers || [];
+      }
+
+      // Create tag requests for linked players
+      if (currentUserId) {
+        const taggedPlayers = input.players
+          .map((p, i) => ({ p, playerRow: createdPlayers[i] }))
+          .filter(({ p }) => (p as any).linked_user_id && (p as any).tag_status === "pending");
+
+        // Fetch game title for the notification
+        const { data: gameData } = await supabase
+          .from("games")
+          .select("title")
+          .eq("id", input.game_id)
+          .maybeSingle();
+
+        if (taggedPlayers.length > 0) {
+          await (supabase as any)
+            .from("session_tag_requests")
+            .insert(
+              taggedPlayers
+                .filter(({ playerRow }) => playerRow?.id)
+                .map(({ p, playerRow }) => ({
+                  session_player_id: playerRow.id,
+                  tagged_user_id: (p as any).linked_user_id,
+                  tagged_by_user_id: currentUserId,
+                  game_id: input.game_id,
+                  game_title: gameData?.title ?? null,
+                  session_date: input.played_at,
+                }))
+            );
+        }
       }
 
       // Create expansion records if any
@@ -168,11 +240,11 @@ export function useGameSessions(gameId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["game-sessions", gameId] });
-      // Also invalidate play stats and analytics caches
       queryClient.invalidateQueries({ queryKey: ["play-stats"] });
       queryClient.invalidateQueries({ queryKey: ["library-analytics-summary"] });
       queryClient.invalidateQueries({ queryKey: ["library-analytics-trends"] });
       queryClient.invalidateQueries({ queryKey: ["library-analytics-top-games"] });
+      queryClient.invalidateQueries({ queryKey: ["session-tag-requests"] });
       toast({
         title: "Play session logged!",
         description: "The game session has been recorded.",
