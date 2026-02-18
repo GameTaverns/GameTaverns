@@ -142,7 +142,10 @@ export default function UserProfile() {
     : {};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
+    <div
+      className="min-h-screen dark"
+      style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { background: 'linear-gradient(to bottom right, hsl(var(--wood-dark)), hsl(var(--sidebar)), hsl(var(--wood-medium)))' }}
+    >
       <ProfileHeader />
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
