@@ -184,6 +184,7 @@ export function ProfileThemeCustomizer() {
       {/* Live Preview */}
       <div className="rounded-lg overflow-hidden border">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 bg-muted/30 border-b">Live Preview</div>
+        {/* Banner: Primary→Accent gradient (overridden by background tab selection) */}
         <div
           className="h-20 relative"
           style={
@@ -191,11 +192,14 @@ export function ProfileThemeCustomizer() {
               ? { background: bgImageUrl.replace("__gradient__", "") }
               : bgImageUrl
               ? { backgroundImage: `url(${bgImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-              : { background: `linear-gradient(135deg, ${previewPrimary}44, ${previewAccent}33)` }
+              : { background: `linear-gradient(135deg, ${previewPrimary}, ${previewAccent})` }
           }
         >
-          <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${1 - bgOpacity})` }} />
+          {bgImageUrl && !isGradient && (
+            <div className="absolute inset-0" style={{ backgroundColor: `rgba(0,0,0,${1 - bgOpacity})` }} />
+          )}
         </div>
+        {/* Card body: Background Tint color */}
         <div className="p-4 flex items-center gap-3" style={{ backgroundColor: previewBg }}>
           <div className="w-12 h-12 rounded-full border-4 border-white shadow" style={{ backgroundColor: previewPrimary }} />
           <div>
@@ -221,25 +225,25 @@ export function ProfileThemeCustomizer() {
           <Card>
             <CardHeader>
               <CardTitle>Profile Colors</CardTitle>
-              <CardDescription>Choose your profile's primary and accent colors</CardDescription>
+              <CardDescription>Primary &amp; Accent control the banner gradient. Background Tint sets the card body color.</CardDescription>
             </CardHeader>
             <CardContent className="grid md:grid-cols-3 gap-8">
               <ColorPicker
-                label="Primary Color"
+                label="Primary (Banner Start)"
                 hue={ls.profile_primary_h}
                 saturation={ls.profile_primary_s.replace("%", "")}
                 lightness={ls.profile_primary_l.replace("%", "")}
                 onChange={(h, s, l) => updateColorLocal("profile_primary", h, s, l)}
               />
               <ColorPicker
-                label="Accent Color"
+                label="Accent (Banner End)"
                 hue={ls.profile_accent_h}
                 saturation={ls.profile_accent_s.replace("%", "")}
                 lightness={ls.profile_accent_l.replace("%", "")}
                 onChange={(h, s, l) => updateColorLocal("profile_accent", h, s, l)}
               />
               <ColorPicker
-                label="Background Tint"
+                label="Card Background"
                 hue={ls.profile_background_h}
                 saturation={ls.profile_background_s.replace("%", "")}
                 lightness={ls.profile_background_l.replace("%", "")}

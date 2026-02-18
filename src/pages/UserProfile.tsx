@@ -115,27 +115,30 @@ export default function UserProfile() {
       : { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
     : {};
 
-  // Profile theme — scoped CSS variables + direct background applied to the profile card
+  // Profile theme — scoped CSS variables + direct styles applied to profile elements
   const hasTheme = !!profile.profile_primary_h;
   const profilePrimary = hasTheme ? `hsl(${profile.profile_primary_h}, ${profile.profile_primary_s || "35%"}, ${profile.profile_primary_l || "30%"})` : null;
   const profileAccent = hasTheme ? `hsl(${profile.profile_accent_h || profile.profile_primary_h}, ${profile.profile_accent_s || "45%"}, ${profile.profile_accent_l || "42%"})` : null;
+  // Background Tint = the card body background (below the banner)
   const profileBgColor = hasTheme ? `hsl(${profile.profile_background_h || "30"}, ${profile.profile_background_s || "20%"}, ${profile.profile_background_l || "95%"})` : null;
   const profileThemeVars: React.CSSProperties = hasTheme ? {
     ["--profile-primary" as any]: profilePrimary,
     ["--profile-accent" as any]: profileAccent,
     ["--profile-bg" as any]: profileBgColor,
-    backgroundColor: profileBgColor!,
   } : {};
 
   const profileBgImageUrl = profile.profile_bg_image_url || "";
   const profileBgOpacity = parseFloat(profile.profile_bg_opacity ?? "0.85");
   const profileIsGradient = profileBgImageUrl?.startsWith("__gradient__");
+
+  // Banner header: custom image/gradient from Background tab takes priority,
+  // then fall back to Primary→Accent gradient from Colors tab
   const profileHeaderStyle: React.CSSProperties = profileBgImageUrl
     ? profileIsGradient
       ? { background: profileBgImageUrl.replace("__gradient__", "") }
       : { backgroundImage: `url(${profileBgImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-    : profile.profile_primary_h
-    ? { background: `linear-gradient(135deg, var(--profile-primary), var(--profile-accent))` }
+    : hasTheme
+    ? { background: `linear-gradient(135deg, ${profilePrimary}, ${profileAccent})` }
     : {};
 
   return (
@@ -144,7 +147,7 @@ export default function UserProfile() {
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         {/* Profile Card with Banner */}
-        <Card className="backdrop-blur-sm border-border" style={{ ...(hasTheme ? {} : { backgroundColor: 'hsl(var(--card) / 0.9)' }), ...profileThemeVars }}>
+        <Card className="backdrop-blur-sm border-border" style={{ ...(hasTheme ? { backgroundColor: profileBgColor! } : { backgroundColor: 'hsl(var(--card) / 0.9)' }), ...profileThemeVars }}>
           {/* Banner area — overflow-hidden only on the banner, not the card */}
           <div className="relative overflow-hidden rounded-t-lg">
             <div
