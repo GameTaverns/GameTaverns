@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { DMInbox } from "@/components/social/DMInbox";
 import { DMThread } from "@/components/social/DMThread";
 import { SocialDiscovery } from "@/components/social/SocialDiscovery";
 import { Card } from "@/components/ui/card";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, LayoutDashboard } from "lucide-react";
 import type { DMConversation } from "@/hooks/useDirectMessages";
 import { supabase } from "@/integrations/backend/client";
 
@@ -51,10 +51,19 @@ export default function DirectMessages() {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-6 max-w-5xl">
-        <h1 className="text-2xl font-display font-bold text-cream mb-6 flex items-center gap-2">
-          <MessageSquare className="h-6 w-6 text-secondary" />
-          Direct Messages
-        </h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-display font-bold text-cream flex items-center gap-2">
+            <MessageSquare className="h-6 w-6 text-secondary" />
+            Direct Messages
+          </h1>
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-1.5 text-sm text-cream/60 hover:text-cream transition-colors"
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Back to Dashboard
+          </Link>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 h-[calc(100vh-200px)] min-h-[500px]">
           {/* Sidebar */}

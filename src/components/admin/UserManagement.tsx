@@ -13,6 +13,8 @@ import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTrian
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import { PresenceDot } from "@/components/social/PresenceDot";
+import { useMultiPresence } from "@/hooks/usePresence";
 
 // 5-Tier Role Hierarchy
 type AppRole = "admin" | "staff" | "owner" | "moderator" | null;
@@ -119,6 +121,10 @@ export function UserManagement() {
       return data.users as UserWithDetails[];
     },
   });
+
+  // Presence for all visible users
+  const userIds = (users || []).map(u => u.id);
+  const { data: presenceMap } = useMultiPresence(userIds);
 
   // Update user role mutation
   const updateRoleMutation = useMutation({
@@ -490,33 +496,36 @@ export function UserManagement() {
                     const canModify = availableRoles.length > 0;
                     
                     return (
-                      <TableRow key={user.id} className="border-wood-medium/30 hover:bg-wood-medium/20">
-                        <TableCell className="text-cream">
+                       <TableRow key={user.id} className="border-wood-medium/30 hover:bg-wood-medium/20">
+                        <TableCell className="text-cream py-2">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-wood-medium flex items-center justify-center">
-                              <User className="w-4 h-4 text-cream/70" />
+                            <div className="relative w-7 h-7 rounded-full bg-wood-medium flex items-center justify-center flex-shrink-0">
+                              <User className="w-3.5 h-3.5 text-cream/70" />
+                              <span className="absolute -bottom-0.5 -right-0.5">
+                                <PresenceDot status={presenceMap?.get(user.id) ?? "offline"} size="sm" />
+                              </span>
                             </div>
                             <div>
-                              <div className="font-medium">{user.display_name || "Unknown"}</div>
+                              <div className="text-xs font-medium">{user.display_name || "Unknown"}</div>
                               {user.username && (
                                 <div className="text-xs text-cream/50">@{user.username}</div>
                               )}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5 text-cream/80">
-                            <Mail className="w-3.5 h-3.5 text-cream/50" />
-                            <span className="text-sm">{user.email}</span>
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-1 text-cream/80">
+                            <Mail className="w-3 h-3 text-cream/50 flex-shrink-0" />
+                            <span className="text-xs">{user.email}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-cream/70 text-sm">
-                          {format(new Date(user.created_at), "MMM d, yyyy")}
+                        <TableCell className="text-cream/70 text-xs py-2">
+                          {format(new Date(user.created_at), "MMM d, yy")}
                         </TableCell>
-                        <TableCell className="text-cream/70 text-sm">
+                        <TableCell className="text-cream/70 text-xs py-2">
                           {user.last_sign_in_at ? (
                             <div className="flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-cream/50" />
+                              <Clock className="w-3 h-3 text-cream/50" />
                               {formatDistanceToNow(new Date(user.last_sign_in_at), { addSuffix: true })}
                             </div>
                           ) : (
