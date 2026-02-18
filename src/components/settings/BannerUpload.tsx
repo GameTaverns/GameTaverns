@@ -11,7 +11,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateUserProfile } from "@/hooks/useLibrary";
-import { supabase } from "@/integrations/backend/client";
+import { supabase, isSelfHostedMode, isSelfHostedSupabaseStack, apiClient } from "@/integrations/backend/client";
 
 const GRADIENT_PRESETS = [
   "linear-gradient(135deg, hsl(var(--primary)/0.5), hsl(var(--accent)/0.3))",
@@ -39,9 +39,13 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   const saveBannerUrl = async (url: string | null) => {
-    await updateProfile.mutateAsync({ banner_url: url } as any);
-    setPopoverOpen(false);
-    toast({ title: "Banner updated", description: url ? "Your profile banner has been saved." : "Banner removed." });
+    try {
+      await updateProfile.mutateAsync({ banner_url: url } as any);
+      setPopoverOpen(false);
+      toast({ title: "Banner updated", description: url ? "Your profile banner has been saved." : "Banner removed." });
+    } catch (error: any) {
+      toast({ title: "Save failed", description: error.message || "Could not save banner", variant: "destructive" });
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,15 +69,41 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
       const ext = file.name.split('.').pop() || 'jpg';
       const filePath = `${userId}/banner.${ext}`;
 
-      await supabase.storage.from('avatars').remove([filePath]);
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true, contentType: file.type });
+      // Get session token for self-hosted storage auth
+      const { data: { session } } = await supabase.auth.getSession();
+      const config = (window as any).__RUNTIME_CONFIG__;
+      const storageUrl = config?.supabaseUrl || import.meta.env.VITE_SUPABASE_URL || '';
+      const anonKey = config?.supabaseAnonKey || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+      const token = session?.access_token || anonKey;
 
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      await saveBannerUrl(publicUrl);
+      if (storageUrl && token) {
+        // Self-hosted: use direct fetch with proper auth
+        const uploadEndpoint = `${storageUrl}/storage/v1/object/avatars/${filePath}`;
+        const res = await fetch(uploadEndpoint, {
+          method: 'POST',
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${token}`,
+            'Content-Type': file.type,
+            'x-upsert': 'true',
+          },
+          body: file,
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(err || `Upload failed: ${res.status}`);
+        }
+        const publicUrl = `${storageUrl}/storage/v1/object/public/avatars/${filePath}`;
+        await saveBannerUrl(publicUrl);
+      } else {
+        // Cloud fallback
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, file, { upsert: true, contentType: file.type });
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        await saveBannerUrl(publicUrl);
+      }
     } catch (error: any) {
       toast({ title: "Upload failed", description: error.message || "Could not upload banner", variant: "destructive" });
     } finally {
