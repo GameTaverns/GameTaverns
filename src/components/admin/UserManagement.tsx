@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2, MailCheck, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
@@ -26,14 +27,15 @@ interface UserWithDetails {
   email: string;
   display_name: string | null;
   username: string | null;
+  avatar_url: string | null;
   created_at: string;
   last_sign_in_at: string | null;
   email_confirmed_at: string | null;
   role: AppRole;
   is_banned: boolean;
   banned_until: string | null;
-  is_library_owner?: boolean; // Flag to indicate user owns at least one library
-  is_library_moderator?: boolean; // Flag to indicate user is a moderator in at least one library
+  is_library_owner?: boolean;
+  is_library_moderator?: boolean;
 }
 
 // Get tier number for role comparison (lower = more privileged)
@@ -125,6 +127,24 @@ export function UserManagement() {
   // Presence for all visible users
   const userIds = (users || []).map(u => u.id);
   const { data: presenceMap } = useMultiPresence(userIds);
+
+  // Fetch avatar URLs from user_profiles
+  const { data: profileAvatars } = useQuery({
+    queryKey: ["admin-user-avatars", userIds.join(",")],
+    queryFn: async () => {
+      if (userIds.length === 0) return new Map<string, string | null>();
+      const { data } = await supabase
+        .from("user_profiles")
+        .select("user_id, avatar_url")
+        .in("user_id", userIds);
+      const map = new Map<string, string | null>();
+      for (const row of data || []) {
+        map.set(row.user_id, row.avatar_url ?? null);
+      }
+      return map;
+    },
+    enabled: userIds.length > 0,
+  });
 
   // Update user role mutation
   const updateRoleMutation = useMutation({
@@ -499,8 +519,13 @@ export function UserManagement() {
                        <TableRow key={user.id} className="border-wood-medium/30 hover:bg-wood-medium/20">
                         <TableCell className="text-cream py-2">
                           <div className="flex items-center gap-2">
-                            <div className="relative w-7 h-7 rounded-full bg-wood-medium flex items-center justify-center flex-shrink-0">
-                              <User className="w-3.5 h-3.5 text-cream/70" />
+                            <div className="relative flex-shrink-0">
+                              <Avatar className="w-7 h-7">
+                                <AvatarImage src={profileAvatars?.get(user.id) ?? undefined} />
+                                <AvatarFallback className="bg-wood-medium text-cream/70 text-xs">
+                                  {(user.display_name || user.email || "?")[0].toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
                               <span className="absolute -bottom-0.5 -right-0.5">
                                 <PresenceDot status={presenceMap?.get(user.id) ?? "offline"} size="sm" />
                               </span>
