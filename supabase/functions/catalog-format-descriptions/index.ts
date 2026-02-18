@@ -175,7 +175,32 @@ function parseBatchResponse(raw: string, entries: { title: string }[]): Map<stri
   return results;
 }
 
-/** Process a single batch of games through AI */
+/** Max items per single AI call — keeps response within Perplexity sonar token limits */
+const AI_CALL_CHUNK_SIZE = 20;
+
+/** Process a single chunk of games through AI (max AI_CALL_CHUNK_SIZE items) */
+async function processAiChunk(
+  chunk: { id: string; title: string; description: string | null }[],
+): Promise<Map<string, string>> {
+  const batchPrompt = buildBatchPrompt(chunk);
+
+  const aiResult = await aiComplete({
+    messages: [
+      { role: "system", content: FORMAT_SYSTEM_PROMPT },
+      { role: "user", content: `Rewrite the following ${chunk.length} board game descriptions and return a JSON array. Each element must have "title" (exact match) and "description" (formatted markdown):\n\n${batchPrompt}` },
+    ],
+    max_tokens: chunk.length * 600, // ~600 tokens per game (description + JSON overhead)
+  });
+
+  if (!aiResult.success || !aiResult.content) {
+    console.error(`[catalog-format] AI chunk error:`, aiResult.error || "empty response");
+    return new Map();
+  }
+
+  return parseBatchResponse(aiResult.content, chunk);
+}
+
+/** Process a single batch of games through AI (splits into sub-chunks to avoid token limits) */
 async function processBatch(
   entries: { id: string; title: string; description: string | null }[],
   admin: ReturnType<typeof createClient>,
@@ -186,35 +211,20 @@ async function processBatch(
   const results: { title: string; status: string }[] = [];
 
   try {
-    const batchPrompt = buildBatchPrompt(entries);
+    // Split batch into sub-chunks to keep AI response within token limits
+    const chunks: typeof entries[] = [];
+    for (let i = 0; i < entries.length; i += AI_CALL_CHUNK_SIZE) {
+      chunks.push(entries.slice(i, i + AI_CALL_CHUNK_SIZE));
+    }
 
-    const aiResult = await aiComplete({
-      messages: [
-        { role: "system", content: FORMAT_SYSTEM_PROMPT },
-        { role: "user", content: `Rewrite the following ${entries.length} board game descriptions and return a JSON array. Each element must have "title" (exact match) and "description" (formatted markdown):\n\n${batchPrompt}` },
-      ],
-      max_tokens: entries.length * 500, // ~500 tokens per game for JSON overhead
-    });
-
-    if (!aiResult.success) {
-      console.error(`[catalog-format] AI batch error:`, aiResult.error);
-      if (aiResult.rateLimited) {
-        errors.push("Rate limited");
-        entries.forEach(e => results.push({ title: e.title, status: "rate_limited" }));
-        return { updated: 0, errors, results };
+    // Process sub-chunks sequentially within a batch to avoid rate limits
+    const parsed = new Map<string, string>();
+    for (const chunk of chunks) {
+      const chunkResult = await processAiChunk(chunk);
+      for (const [title, desc] of chunkResult) {
+        parsed.set(title, desc);
       }
-      errors.push(`AI batch failed: ${aiResult.error}`);
-      entries.forEach(e => results.push({ title: e.title, status: "ai_error" }));
-      return { updated: 0, errors, results };
     }
-
-    if (!aiResult.content) {
-      errors.push("Empty AI batch response");
-      entries.forEach(e => results.push({ title: e.title, status: "empty_response" }));
-      return { updated: 0, errors, results };
-    }
-
-    const parsed = parseBatchResponse(aiResult.content, entries);
 
     for (const entry of entries) {
       const newDescription = parsed.get(entry.title);
