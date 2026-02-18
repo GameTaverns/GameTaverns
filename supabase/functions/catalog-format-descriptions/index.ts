@@ -235,6 +235,23 @@ async function processBatch(
         continue;
       }
 
+      // Detect AI refusal messages (e.g. "Cannot rewrite: This is a video game")
+      const REFUSAL_PATTERNS = [
+        /cannot rewrite/i,
+        /not a board game/i,
+        /this is a video game/i,
+        /unable to rewrite/i,
+        /not applicable/i,
+        /i cannot write/i,
+        /i can't write/i,
+      ];
+      if (REFUSAL_PATTERNS.some(p => p.test(newDescription))) {
+        console.warn(`[catalog-format] AI refused to rewrite "${entry.title}": ${newDescription.substring(0, 100)}`);
+        errors.push(`AI refusal for ${entry.title}`);
+        results.push({ title: entry.title, status: "ai_refusal" });
+        continue;
+      }
+
       if (!newDescription.includes("Quick Gameplay Overview")) {
         console.warn(`[catalog-format] Output missing format header for ${entry.title}, using anyway`);
       }
