@@ -150,7 +150,7 @@ export default function UserProfile() {
       className="min-h-screen dark"
       style={hasTheme && profilePageBg ? { backgroundColor: profilePageBg } : { background: 'linear-gradient(to bottom right, hsl(var(--wood-dark)), hsl(var(--sidebar)), hsl(var(--wood-medium)))' }}
     >
-      <ProfileHeader bgColor={profilePageBg} />
+      <ProfileHeader />
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         {/* Profile Card with Banner */}
@@ -494,22 +494,18 @@ function FeedbackCard({ rating, showRatedUser }: { rating: any; showRatedUser?: 
   );
 }
 
-function ProfileHeader({ bgColor }: { bgColor?: string | null }) {
+function ProfileHeader() {
   return (
-    <header
-      className="border-b backdrop-blur-sm"
-      style={bgColor ? { backgroundColor: bgColor, borderColor: `${bgColor}80` } : undefined}
-    >
-      <div className={`${!bgColor ? 'border-b border-wood-medium/50 bg-wood-dark/50' : ''}`} />
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3">
-          <img src={logoImage} alt="GameTaverns" className="h-10 w-auto" />
-          <span className="font-display text-2xl font-bold text-cream">GameTaverns</span>
+    <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm sticky top-0 z-30">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2">
+          <img src={logoImage} alt="GameTaverns" className="h-7 sm:h-8 w-auto" />
+          <span className="font-display text-base sm:text-lg font-bold text-cream">GameTaverns</span>
         </Link>
         <div className="flex items-center gap-4">
           <ThemeToggle />
           <a href={getPlatformUrl("/dashboard")}>
-            <Button variant="outline" className="gap-2 border-wood-medium/50 text-cream hover:bg-wood-medium/30">
+            <Button variant="ghost" size="sm" className="gap-2 text-cream hover:text-white hover:bg-wood-medium/50">
               <ArrowLeft className="h-4 w-4" />
               Dashboard
             </Button>
@@ -519,6 +515,7 @@ function ProfileHeader({ bgColor }: { bgColor?: string | null }) {
     </header>
   );
 }
+
 
 
 function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
