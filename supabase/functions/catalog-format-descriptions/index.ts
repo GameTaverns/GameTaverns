@@ -35,11 +35,20 @@ Return ONLY this JSON structure:
   ...one object per game...
 ]`;
 
+/** Strip control characters that break JSON serialization */
+function sanitizeText(text: string): string {
+  // Remove ASCII control characters (0x00–0x1F) except tab/newline/CR, then collapse excess whitespace
+  return text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+    .replace(/\s{3,}/g, "  ")
+    .trim();
+}
+
 /** Build the batched prompt for N games */
 function buildBatchPrompt(entries: { title: string; description: string | null }[]): string {
   const games = entries.map((e) => ({
-    title: e.title,
-    description: e.description ? e.description.substring(0, 2000) : null,
+    title: sanitizeText(e.title),
+    description: e.description ? sanitizeText(e.description.substring(0, 2000)) : null,
   }));
   return JSON.stringify(games, null, 2);
 }
@@ -48,8 +57,8 @@ function buildBatchPrompt(entries: { title: string; description: string | null }
 function parseBatchResponse(raw: string, entries: { title: string }[]): Map<string, string> {
   const results = new Map<string, string>();
 
-  // Strip code fences if present
-  let cleaned = raw.trim();
+  // Strip control characters from raw AI output before parsing
+  let cleaned = raw.trim().replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ");
   if (cleaned.startsWith("```")) {
     cleaned = cleaned.replace(/^```(?:json|markdown)?\n?/, "").replace(/\n?```$/, "").trim();
   }
