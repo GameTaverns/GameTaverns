@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { ArrowRight, Loader2, LogIn, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/backend/client";
 import { toast } from "sonner";
-import { useMobileLibrary } from "@/hooks/useCapacitor";
 import logoImage from "@/assets/logo.png";
 
 interface MobileLibrarySelectorProps {
@@ -17,7 +16,6 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
   const [librarySlug, setLibrarySlug] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showLibrarySearch, setShowLibrarySearch] = useState(false);
-  const { selectLibrary } = useMobileLibrary();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +49,6 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
         return;
       }
 
-      await selectLibrary(slug);
       toast.success(`Connected to ${data.name}`);
 
       if (onLibrarySelected) {
