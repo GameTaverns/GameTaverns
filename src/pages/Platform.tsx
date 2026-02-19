@@ -23,7 +23,14 @@ export default function Platform() {
   const handleGetStarted = () => {
     if (isAuthenticated) {
       if (myLibrary) {
-        window.location.href = getLibraryUrl(myLibrary.slug, "/");
+        // Use navigate() so HashRouter (native Capacitor) handles this correctly.
+        // getLibraryUrl() returns "/?tenant=slug" on non-production — navigate() makes that work in-app.
+        const url = getLibraryUrl(myLibrary.slug, "/");
+        if (url.startsWith("/") || url.startsWith("?")) {
+          navigate(url, { replace: true });
+        } else {
+          window.location.href = url;
+        }
       } else {
         navigate("/create-library");
       }

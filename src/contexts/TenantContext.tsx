@@ -118,13 +118,20 @@ interface TenantProviderProps {
 
 /**
  * Resolves tenant from:
- * 1. ?tenant=slug query param (for Lovable preview testing)
+ * 1. ?tenant=slug query param — from React Router location.search (works on
+ *    both BrowserRouter AND HashRouter, where window.location.search is empty)
  * 2. Subdomain: library.gametaverns.com → 'library'
  * 3. Custom domain (future)
+ * 
+ * IMPORTANT: Always pass `location.search` from React Router's useLocation()
+ * rather than using window.location.search directly. On native Capacitor with
+ * HashRouter, the query string lives in the hash (e.g. /#/?tenant=foo) and
+ * window.location.search is always empty, but React Router correctly exposes
+ * it via location.search.
  */
-function resolveTenantSlug(): string | null {
-  // Check query param first (for testing in Lovable preview)
-  const params = new URLSearchParams(window.location.search);
+function resolveTenantSlug(locationSearch: string): string | null {
+  // Check query param from React Router (works on both BrowserRouter & HashRouter)
+  const params = new URLSearchParams(locationSearch);
   const tenantParam = params.get("tenant");
   if (tenantParam) {
     return tenantParam.toLowerCase();
@@ -164,8 +171,9 @@ export function TenantProvider({ children }: TenantProviderProps) {
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
   
-  // Resolve tenant slug early to determine if we need to load
-  const tenantSlugEarly = useMemo(() => resolveTenantSlug(), [location.search]);
+  // Resolve tenant slug — pass location.search from React Router so it works
+  // correctly with HashRouter on native Capacitor (window.location.search is empty there)
+  const tenantSlugEarly = useMemo(() => resolveTenantSlug(location.search), [location.search]);
   
   const [library, setLibrary] = useState<Library | null>(null);
   const [settings, setSettings] = useState<LibrarySettings | null>(null);
