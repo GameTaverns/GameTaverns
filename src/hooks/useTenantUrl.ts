@@ -43,10 +43,27 @@ function getBaseDomain(): string | null {
 }
 
 /**
+ * Detect if the current environment is a native Capacitor app.
+ * Must NOT use Capacitor.isNativePlatform() alone — it may not be ready at module load.
+ */
+function isNativeApp(): boolean {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname.toLowerCase();
+  const p = window.location.protocol;
+  return h === "localhost" || h === "127.0.0.1" || p === "capacitor:";
+}
+
+/**
  * Get the main platform URL (apex domain, not subdomain)
  * Used for platform-level routes like /dashboard, /login, /settings
  */
 export function getPlatformUrl(path: string = "/"): string {
+  // On native, ALWAYS return relative paths so HashRouter handles navigation.
+  // Absolute URLs would break the WebView's HashRouter context.
+  if (isNativeApp()) {
+    return path.startsWith("/") ? path : `/${path}`;
+  }
+
   const baseDomain = getBaseDomain();
   const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
   
@@ -57,7 +74,7 @@ export function getPlatformUrl(path: string = "/"): string {
   }
   
   // For Lovable preview / localhost, just use relative path (no subdomain issues)
-  return path;
+  return path.startsWith("/") ? path : `/${path}`;
 }
 
 /**
@@ -79,8 +96,8 @@ export function useTenantUrl() {
     const baseDomain = getBaseDomain();
     const protocol = window.location.protocol;
     
-    // Use subdomain URL for production deployments
-    if (baseDomain && isProductionDeployment()) {
+    // Use subdomain URL for production deployments (but NOT on native)
+    if (!isNativeApp() && baseDomain && isProductionDeployment()) {
       const normalizedPath = path.startsWith("/") ? path : `/${path}`;
       return `${protocol}//${slug}.${baseDomain}${normalizedPath}`;
     }
@@ -108,8 +125,8 @@ export function useTenantUrl() {
       const baseDomain = getBaseDomain();
       const protocol = window.location.protocol;
       
-      // Use subdomain for production
-      if (baseDomain && isProductionDeployment()) {
+      // Use subdomain for production (but NOT on native — HashRouter can't handle absolute URLs)
+      if (!isNativeApp() && baseDomain && isProductionDeployment()) {
         const normalizedPath = path.startsWith("/") ? path : `/${path}`;
         let url = `${protocol}//${tenantSlug}.${baseDomain}${normalizedPath}`;
         
@@ -157,7 +174,7 @@ export function useTenantUrl() {
    * Check if we should use subdomain URLs (production) or query params (preview)
    */
   const useSubdomainUrls = (): boolean => {
-    return getBaseDomain() !== null && isProductionDeployment();
+    return !isNativeApp() && getBaseDomain() !== null && isProductionDeployment();
   };
   
   return {
