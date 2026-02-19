@@ -73,6 +73,11 @@ const DirectMessages = lazy(() => import("./pages/DirectMessages"));
 const CuratedLists = lazy(() => import("./pages/CuratedLists"));
 const CuratedListDetail = lazy(() => import("./pages/CuratedListDetail"));
 
+// SEO landing pages
+const GamesForNPlayers = lazy(() => import("./pages/seo/GamesForNPlayers"));
+const MechanicPage = lazy(() => import("./pages/seo/MechanicPage"));
+const MechanicsIndex = lazy(() => import("./pages/seo/MechanicsIndex"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -222,6 +227,11 @@ function PlatformRoutes() {
       <Route path="/dm/:userId" element={<DirectMessages />} />
       <Route path="/lists" element={<CuratedLists />} />
       <Route path="/lists/:listId" element={<CuratedListDetail />} />
+
+      {/* SEO landing pages */}
+      <Route path="/games-for-:count-players" element={<GamesForNPlayers />} />
+      <Route path="/catalog/mechanics" element={<MechanicsIndex />} />
+      <Route path="/catalog/mechanic/:slug" element={<MechanicPage />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>

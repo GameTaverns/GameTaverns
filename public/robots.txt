@@ -5,6 +5,9 @@ Allow: /
 Allow: /features
 Allow: /directory
 Allow: /catalog
+Allow: /catalog/mechanics
+Allow: /catalog/mechanic/
+Allow: /games-for-
 Allow: /u/
 Allow: /game/
 
@@ -22,4 +25,4 @@ Disallow: /verify-email
 Disallow: /setup-2fa
 Disallow: /install
 
-Sitemap: https://hobby-shelf-spark.lovable.app/sitemap.xml
+Sitemap: https://ddfslywzgddlpmkhohfu.supabase.co/functions/v1/sitemap

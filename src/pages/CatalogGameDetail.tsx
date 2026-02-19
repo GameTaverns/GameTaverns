@@ -179,7 +179,27 @@ export default function CatalogGameDetail() {
   return (
     <Layout>
       <div className="max-w-6xl mx-auto">
-        <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate(-1)}>
+        {/* Breadcrumb nav */}
+        <nav className="flex items-center gap-1 text-sm text-muted-foreground mb-4 flex-wrap">
+          <Link to="/" className="hover:text-foreground">Home</Link>
+          <ArrowLeft className="h-3 w-3 rotate-180" />
+          <Link to="/catalog" className="hover:text-foreground">Catalog</Link>
+          {game.mechanics.length > 0 && (
+            <>
+              <ArrowLeft className="h-3 w-3 rotate-180" />
+              <Link
+                to={`/catalog/mechanic/${game.mechanics[0].toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                className="hover:text-foreground"
+              >
+                {game.mechanics[0]}
+              </Link>
+            </>
+          )}
+          <ArrowLeft className="h-3 w-3 rotate-180" />
+          <span className="text-foreground line-clamp-1 max-w-[200px]">{game.title}</span>
+        </nav>
+
+        <Button variant="ghost" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
 

@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.catalog-cleanup]
 verify_jwt = false
+
+[functions.sitemap]
+verify_jwt = false
