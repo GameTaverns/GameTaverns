@@ -13,6 +13,7 @@ import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
 import { PremiumRoadmap } from "@/components/admin/PremiumRoadmap";
 import { SpecialBadgesManagement } from "@/components/admin/SpecialBadgesManagement";
+import { ServerManagement } from "@/components/admin/ServerManagement";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { Badge } from "@/components/ui/badge";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
@@ -193,7 +194,13 @@ export default function PlatformAdmin() {
               <BadgeCheck className="h-4 w-4 mr-1 sm:mr-2" />
               Badges
             </TabsTrigger>
-
+            <TabsTrigger 
+              value="server"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+            >
+              <Shield className="h-4 w-4 mr-1 sm:mr-2" />
+              Server
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="analytics" className="mt-6">
@@ -230,6 +237,10 @@ export default function PlatformAdmin() {
 
           <TabsContent value="badges" className="mt-6">
             <SpecialBadgesManagement />
+          </TabsContent>
+
+          <TabsContent value="server" className="mt-6">
+            <ServerManagement />
           </TabsContent>
         </Tabs>
       </main>
