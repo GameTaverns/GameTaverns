@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { TenantLink } from "@/components/TenantLink";
 import { 
   MessageSquare, 
   Library as LibraryIcon,
@@ -44,7 +45,7 @@ function SubcategoryRow({ category, librarySlug }: { category: ForumCategory; li
   const colorClass = COLOR_MAP[category.color] || "text-blue-500";
 
   return (
-    <a
+    <TenantLink
       href={getLibraryUrl(librarySlug, `/community/${category.slug}`)}
       className="flex items-center gap-4 px-4 py-3 hover:bg-wood-medium/30 transition-colors border-b border-wood-medium/30 last:border-b-0 group"
     >
@@ -61,7 +62,7 @@ function SubcategoryRow({ category, librarySlug }: { category: ForumCategory; li
           </p>
         )}
       </div>
-    </a>
+    </TenantLink>
   );
 }
 
@@ -93,12 +94,12 @@ function CategorySection({ category, librarySlug }: { category: ForumCategory; l
           ))}
         </div>
       ) : (
-        <a
+        <TenantLink
           href={getLibraryUrl(librarySlug, `/community/${category.slug}`)}
           className="block px-4 py-3 bg-wood-dark/20 hover:bg-wood-medium/30 transition-colors text-sm text-cream/60"
         >
           Browse threads →
-        </a>
+        </TenantLink>
       )}
     </div>
   );

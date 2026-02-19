@@ -13,6 +13,7 @@ import { BulkImportDialog } from "@/components/games/BulkImportDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 
 type ImportMode = "csv" | "bgg_collection" | "bgg_links";
 
@@ -251,9 +252,9 @@ export default function LibraryGames() {
           <p className="text-muted-foreground mb-6">
             You don't have permission to manage this library's games.
           </p>
-          <a href={buildUrl("/")}>
+          <TenantLink href={buildUrl("/")}>
             <Button>Back to Library</Button>
-          </a>
+          </TenantLink>
         </div>
       </Layout>
     );
@@ -262,7 +263,7 @@ export default function LibraryGames() {
   return (
     <Layout hideSidebar>
       <div className="max-w-5xl mx-auto">
-        <a href={getPlatformUrl("/dashboard?tab=library")}>
+        <TenantLink href={getPlatformUrl("/dashboard?tab=library")}>
           <Button
             variant="ghost"
             className="mb-6 -ml-2"
@@ -270,7 +271,7 @@ export default function LibraryGames() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-        </a>
+        </TenantLink>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>

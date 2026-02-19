@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Heart, ArrowLeft, Trash2, Medal, Crown } from "lucide-react";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { GameImage } from "@/components/games/GameImage";
 import { supabase as sb } from "@/integrations/backend/client";
 import { cn } from "@/lib/utils";

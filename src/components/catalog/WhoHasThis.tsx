@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/backend/client";
 import { Badge } from "@/components/ui/badge";
 import { Library } from "lucide-react";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 
 interface WhoHasThisProps {
   catalogId: string;
@@ -70,7 +71,7 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
       </p>
       <div className="flex flex-wrap gap-1">
         {owners.slice(0, 5).map((owner) => (
-          <a
+          <TenantLink
             key={owner.library_id}
             href={getLibraryUrl(owner.library_slug, "/")}
             onClick={(e) => e.stopPropagation()}
@@ -79,7 +80,7 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
             <Badge variant="outline" className="text-[10px] hover:bg-secondary/20 cursor-pointer">
               {owner.library_name}
             </Badge>
-          </a>
+          </TenantLink>
         ))}
         {owners.length > 5 && (
           <Badge variant="outline" className="text-[10px]">

@@ -39,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ListOrdered, Heart, Plus, Trash2, ArrowRight, Lock, Globe } from "lucide-react";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { format } from "date-fns";
 
 export default function CuratedListsPage() {

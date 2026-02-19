@@ -24,6 +24,7 @@ import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 import { getLibraryUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { useTenant } from "@/contexts/TenantContext";
 import {
   DropdownMenu,
@@ -202,22 +203,22 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     <DropdownMenuContent align="end" className="w-48">
                       {myLibraries.map((lib) => (
                         <DropdownMenuItem key={lib.id} asChild>
-                          <a href={getLibraryUrl(lib.slug, "/")} className="cursor-pointer">
+                          <TenantLink href={getLibraryUrl(lib.slug, "/")} className="cursor-pointer">
                             <Library className="h-3.5 w-3.5 mr-2" />
                             {lib.name}
-                          </a>
+                          </TenantLink>
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 ) : library ? (
-                  <a
+                  <TenantLink
                     href={libraryUrl!}
                     className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
                     <Library className="h-3.5 w-3.5" />
                     <span>My Library</span>
-                  </a>
+                  </TenantLink>
                 ) : null}
 
                 <div className="h-4 w-px bg-wood-medium/40 hidden sm:block" />
@@ -229,7 +230,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
             {/* Direct Messages icon */}
             {isAuthenticated && (
               isSubdomain ? (
-                <a href={getPlatformUrl("/dm")} className="relative text-cream hover:text-white transition-colors">
+                <TenantLink href={getPlatformUrl("/dm")} className="relative text-cream hover:text-white transition-colors">
                   <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
                     <MessageSquare className="h-5 w-5" />
                     {dmUnreadCount > 0 && (
@@ -238,7 +239,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                       </Badge>
                     )}
                   </Button>
-                </a>
+                </TenantLink>
               ) : (
                 <Link to="/dm" className="relative">
                   <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
@@ -306,13 +307,13 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
             {/* Catalog link for non-authenticated users */}
             {!isAuthenticated && (
               isSubdomain ? (
-                <a
+                <TenantLink
                   href={getPlatformUrl("/catalog")}
                   className="flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                 >
                   <BookOpen className="h-3.5 w-3.5" />
                   <span>Catalog</span>
-                </a>
+                </TenantLink>
               ) : (
                 <Link
                   to="/catalog"
@@ -329,12 +330,12 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
               <>
                 {isProfilePage || isListsPage ? (
                   isSubdomain ? (
-                    <a
+                    <TenantLink
                       href={getPlatformUrl("/dashboard")}
                       className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                     >
                       <span>Dashboard</span>
-                    </a>
+                    </TenantLink>
                   ) : (
                     <Link
                       to="/dashboard"
@@ -345,13 +346,13 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   )
                 ) : profile?.username ? (
                   isSubdomain ? (
-                    <a
+                    <TenantLink
                       href={getPlatformUrl(`/u/${profile.username}`)}
                       className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                     >
                       <User className="h-3.5 w-3.5" />
                       <span>{profile.display_name || profile.username}</span>
-                    </a>
+                    </TenantLink>
                   ) : (
                     <Link
                       to={`/u/${profile.username}`}
@@ -373,12 +374,12 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
               </>
             ) : (
               isSubdomain ? (
-                <a
+                <TenantLink
                   href={getPlatformUrl("/login")}
                   className="text-sm font-medium text-cream/70 hover:text-cream transition-colors px-2"
                 >
                   Sign In
-                </a>
+                </TenantLink>
               ) : (
                 <Link
                   to="/login"

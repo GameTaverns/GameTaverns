@@ -9,6 +9,7 @@ import { Layout } from "@/components/layout/Layout";
 import { CategoryManager } from "@/components/games/CategoryManager";
 import { GameCollectionTable } from "@/components/games/GameCollectionTable";
 import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 
 export default function ManageGames() {
   const { library, settings, isLoading, isOwner } = useTenant();
@@ -41,7 +42,7 @@ export default function ManageGames() {
         <div className="text-center py-16">
           <h1 className="text-2xl font-display font-bold mb-4">Sign in required</h1>
           <p className="text-muted-foreground mb-6">Please sign in on the main site to manage this library.</p>
-          <a href={getMainPlatformUrl("/login")}><Button>Sign In</Button></a>
+          <TenantLink href={getMainPlatformUrl("/login")}><Button>Sign In</Button></TenantLink>
         </div>
       </Layout>
     );
@@ -53,7 +54,7 @@ export default function ManageGames() {
         <div className="text-center py-16">
           <h1 className="text-2xl font-display font-bold mb-4">Library Not Found</h1>
           <p className="text-muted-foreground mb-6">The library you're looking for doesn't exist or is not active.</p>
-          <a href={getMainPlatformUrl("/dashboard")}><Button>Go to Dashboard</Button></a>
+          <TenantLink href={getMainPlatformUrl("/dashboard")}><Button>Go to Dashboard</Button></TenantLink>
         </div>
       </Layout>
     );
@@ -65,7 +66,7 @@ export default function ManageGames() {
         <div className="text-center py-16">
           <h1 className="text-2xl font-display font-bold mb-4">Access Denied</h1>
           <p className="text-muted-foreground mb-6">You don't have permission to manage this library's games.</p>
-          <a href={buildUrl("/")}><Button>Back to Library</Button></a>
+          <TenantLink href={buildUrl("/")}><Button>Back to Library</Button></TenantLink>
         </div>
       </Layout>
     );
@@ -74,24 +75,24 @@ export default function ManageGames() {
   return (
     <Layout hideSidebar>
       <div className="max-w-5xl mx-auto">
-        <a href={getMainPlatformUrl("/dashboard?tab=library")}>
+        <TenantLink href={getMainPlatformUrl("/dashboard?tab=library")}>
           <Button variant="ghost" className="mb-6 -ml-2">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-        </a>
+        </TenantLink>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-display font-bold">Manage Collection</h1>
             <p className="text-muted-foreground text-sm">Edit, organize, and manage your existing games</p>
           </div>
-          <a href={buildUrl("/add")}>
+          <TenantLink href={buildUrl("/add")}>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               Add Game Manually
             </Button>
-          </a>
+          </TenantLink>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
