@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/hooks/useAuth";
 import { getLibraryUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { Layout } from "@/components/layout/Layout";
 import { LibrarySettingsGeneral } from "@/components/settings/LibrarySettingsGeneral";
 import { LibraryThemeCustomizer } from "@/components/settings/LibraryThemeCustomizer";
@@ -91,9 +92,9 @@ export default function LibrarySettings() {
           <p className="text-muted-foreground mb-6">
             The library you're looking for doesn't exist or is not active.
           </p>
-          <a href={getPlatformUrl("/dashboard")}>
+          <TenantLink href={getPlatformUrl("/dashboard")}>
             <Button>Go to Dashboard</Button>
-          </a>
+          </TenantLink>
         </div>
       </Layout>
     );
@@ -118,12 +119,12 @@ export default function LibrarySettings() {
   return (
     <Layout>
       <div className="max-w-5xl mx-auto">
-        <a href={getPlatformUrl("/dashboard?tab=library")}>
+        <TenantLink href={getPlatformUrl("/dashboard?tab=library")}>
           <Button variant="ghost" className="mb-6 -ml-2">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
-        </a>
+        </TenantLink>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <div className="space-y-2">

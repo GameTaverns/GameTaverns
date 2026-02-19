@@ -11,6 +11,7 @@ import { useUserProfile } from "@/hooks/useLibrary";
 import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
 import { isProductionDeployment } from "@/config/runtime";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
@@ -232,22 +233,22 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           
           {/* Tenant subdomain: Dashboard link for authenticated users */}
           {tenantSlug && !isDemoMode && isAuthenticated && (
-            <a
+            <TenantLink
               href={getPlatformUrl("/dashboard")}
               className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
               Dashboard
-            </a>
+            </TenantLink>
           )}
           
           {/* Tenant subdomain: Sign In link for anonymous users */}
           {tenantSlug && !isDemoMode && !isAuthenticated && (
-            <a
+            <TenantLink
               href={getPlatformUrl("/login")}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
               Sign In
-            </a>
+            </TenantLink>
           )}
           
           {/* User display name with featured badge when viewing libraries */}
