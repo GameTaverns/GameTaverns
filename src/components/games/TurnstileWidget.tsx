@@ -30,13 +30,17 @@ declare global {
 }
 
 /**
- * Detect if we're running in a Lovable preview environment.
+ * Detect if we're running in a Lovable preview environment OR native Capacitor.
  * These environments should always bypass Turnstile.
  */
 function isLovablePreview(): boolean {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
-  return host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app");
+  // Lovable preview domains
+  if (host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app")) return true;
+  // Native Capacitor runs on capacitor://localhost or just localhost
+  if (host === "localhost" || host === "127.0.0.1") return true;
+  return false;
 }
 
 /**

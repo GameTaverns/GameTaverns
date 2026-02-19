@@ -6,7 +6,7 @@ import { MobileLibrarySelector } from "./MobileLibrarySelector";
 import { WifiOff, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // Error boundary to catch any crash inside the shell
 class MobileErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
@@ -43,6 +43,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   const { isSupported: pushSupported, isRegistered, requestPermission } = usePushNotifications();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showOfflineNotice, setShowOfflineNotice] = useState(false);
   const [promptedForPush, setPromptedForPush] = useState(false);
 
@@ -91,15 +92,16 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
     return () => clearTimeout(timer);
   }, [isNative, promptedForPush, pushSupported, isRegistered, requestPermission]);
 
-  // Handle deep link tenant param
+  // Handle deep link tenant param — use React Router location.search (works with HashRouter)
+  // On native/HashRouter, window.location.search is always empty; location.search is correct.
   useEffect(() => {
     if (!isNative) return;
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const tenantFromUrl = params.get('tenant');
     if (tenantFromUrl && tenantFromUrl !== activeLibrary) {
       selectLibrary(tenantFromUrl);
     }
-  }, [isNative, activeLibrary, selectLibrary]);
+  }, [isNative, location.search, activeLibrary, selectLibrary]);
 
   // Redirect authenticated users to dashboard if no library selected
   useEffect(() => {
@@ -132,8 +134,9 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   }
 
   // Not authenticated and no library — show selector with sign in option
+  // Use React Router location.search (not window.location.search) for HashRouter compat
   if (isNative && !activeLibrary) {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const tenantFromUrl = params.get('tenant');
     if (!tenantFromUrl) {
       return <MobileLibrarySelector onLibrarySelected={selectLibrary} />;

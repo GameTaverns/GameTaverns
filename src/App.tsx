@@ -18,6 +18,7 @@ import { isProductionDeployment } from "@/config/runtime";
 import { GlobalFeedbackButton } from "@/components/feedback/FeedbackDialog";
 import { PresenceTracker } from "@/components/social/PresenceTracker";
 import { DMPopupManager } from "@/components/social/DMPopupManager";
+import { useMobileLibrary } from "@/hooks/useCapacitor";
 
 // Lazy load route components to reduce initial bundle size
 const Index = lazy(() => import("./pages/Index"));
@@ -101,7 +102,25 @@ const PageLoader = () => (
 // Wrapper component to check for tenant mode
 function AppRoutes() {
   const [searchParams] = useSearchParams();
-  const tenantSlug = searchParams.get("tenant");
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Always call the hook (rules of hooks) — on web it's a no-op (returns null)
+  const { activeLibrary } = useMobileLibrary();
+
+  const tenantSlug = searchParams.get("tenant") || (Capacitor.isNativePlatform() ? activeLibrary : null);
+
+
+  // If on native and we have an activeLibrary but no ?tenant= in the URL, inject it
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || !activeLibrary) return;
+    const currentTenant = new URLSearchParams(location.search).get("tenant");
+    if (!currentTenant || currentTenant !== activeLibrary) {
+      const newParams = new URLSearchParams(location.search);
+      newParams.set("tenant", activeLibrary);
+      navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
+    }
+  }, [activeLibrary, location.search, location.pathname, navigate]);
 
   return (
     <TenantProvider>
@@ -123,6 +142,7 @@ function AppRoutes() {
     </TenantProvider>
   );
 }
+
 
 // Handle routing based on tenant state
 function TenantRouteHandler({ tenantSlugFromParam }: { tenantSlugFromParam: string | null }) {
