@@ -108,12 +108,12 @@ function AppRoutes() {
   // Always call the hook (rules of hooks) — on web it's a no-op (returns null)
   const { activeLibrary } = useMobileLibrary();
 
-  const tenantSlug = searchParams.get("tenant") || (Capacitor.isNativePlatform() ? activeLibrary : null);
+  const tenantSlug = searchParams.get("tenant") || (isRunningNative() ? activeLibrary : null);
 
 
   // If on native and we have an activeLibrary but no ?tenant= in the URL, inject it
   useEffect(() => {
-    if (!Capacitor.isNativePlatform() || !activeLibrary) return;
+    if (!isRunningNative() || !activeLibrary) return;
     const currentTenant = new URLSearchParams(location.search).get("tenant");
     if (!currentTenant || currentTenant !== activeLibrary) {
       const newParams = new URLSearchParams(location.search);
@@ -303,7 +303,22 @@ function LibraryRoutes() {
 
 // Use HashRouter on native Capacitor (capacitor://localhost doesn't support History API)
 // Use BrowserRouter on web (supports clean URLs)
-const RouterComponent = Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
+//
+// IMPORTANT: We cannot use Capacitor.isNativePlatform() here because it is evaluated
+// at module-load time, before the Capacitor bridge fires its ready event on the device.
+// Instead we use hostname detection which is reliable from frame 0:
+//   - Android bundled APK → hostname is "localhost"
+//   - iOS bundled IPA     → hostname is "localhost" (scheme: capacitor://)
+//   - Any web/Lovable URL → hostname is never "localhost"
+function isRunningNative(): boolean {
+  if (Capacitor.isNativePlatform()) return true;
+  if (typeof window !== 'undefined') {
+    const h = window.location.hostname.toLowerCase();
+    if (h === 'localhost' || h === '127.0.0.1') return true;
+  }
+  return false;
+}
+const RouterComponent = isRunningNative() ? HashRouter : BrowserRouter;
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
