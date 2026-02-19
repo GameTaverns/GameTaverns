@@ -1,6 +1,6 @@
 /**
  * Runtime Configuration Helper
- * Version: 2.7.1 - Connection Fix Edition
+ * Version: 2.8.0 - Native Platform Enforcement
  * 
  * Supports THREE deployment modes:
  * 
@@ -19,8 +19,21 @@
  *    - No Supabase URL available
  *    - This mode is DEPRECATED and not supported in deploy/supabase-selfhosted
  * 
- * Priority: Runtime Config → Vite Env → Defaults
+ * 4. Native Mobile (Capacitor): ALWAYS uses gametaverns.com — never Lovable Cloud.
+ *    - Hard-coded override takes priority over ALL other config sources.
+ *    - Built with: npm run build -- --mode android (uses .env.android)
+ *    - This ensures the APK/IPA never accidentally touches Lovable infrastructure.
+ * 
+ * Priority: Native Override → Runtime Config → Vite Env → Defaults
  */
+
+import { Capacitor } from '@capacitor/core';
+
+// NATIVE MOBILE CONSTANTS — these are the ONLY values used on Android/iOS
+// If you change the gametaverns.com domain, update these too.
+const NATIVE_SUPABASE_URL = 'https://gametaverns.com';
+const NATIVE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzcwMTUyMzgzLCJleHAiOjE5Mjc4MzIzODN9.E7T1ALMlys41_lxn_iafKJy7QvaSK3x-DmSowaONJP0';
+
 
 // Type for runtime config injected by inject-config.sh or self-hosted
 interface RuntimeConfig {
@@ -194,8 +207,19 @@ export function getConfig<T>(
 /**
  * Get Supabase configuration
  * Returns empty strings if in self-hosted mode (client will use stub)
+ * 
+ * CRITICAL: On native Capacitor platforms (Android/iOS), ALWAYS returns
+ * gametaverns.com credentials — never Lovable Cloud — regardless of build env.
  */
 export function getSupabaseConfig() {
+  // ===================================================================
+  // NATIVE PLATFORM OVERRIDE — highest priority, cannot be overridden.
+  // Android/iOS must NEVER touch Lovable Cloud infrastructure.
+  // ===================================================================
+  if (Capacitor.isNativePlatform()) {
+    return { url: NATIVE_SUPABASE_URL, anonKey: NATIVE_SUPABASE_ANON_KEY };
+  }
+
   const runtime = getRuntimeConfig();
 
   // In legacy Express API mode we *must* ignore any baked-in Vite env values,
