@@ -242,21 +242,18 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("[catalog-backfill] BGG auth - hasToken:", !!bggApiToken, "hasCookie:", !!bggCookie);
 
     if (mode === "enrich") {
+      // Use efficient DB function that LEFT JOINs to find entries missing designers
       const { data: catalogEntries, error: catErr } = await admin
-        .from("game_catalog")
-        .select("id, bgg_id, title")
-        .not("bgg_id", "is", null)
-        .order("title")
-        .range(offset, offset + batchSize - 1);
+        .rpc("get_unenriched_catalog_entries", { p_limit: batchSize });
 
       if (catErr) {
-        console.error("[catalog-backfill] Catalog query error:", catErr.message);
+        console.error("[catalog-backfill] RPC error:", catErr.message);
         return new Response(JSON.stringify({ error: catErr.message }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      console.log("[catalog-backfill] Found", catalogEntries?.length || 0, "catalog entries at offset", offset);
+      console.log("[catalog-backfill] Found", catalogEntries?.length || 0, "unenriched catalog entries");
 
       if (!catalogEntries || catalogEntries.length === 0) {
         return new Response(JSON.stringify({
@@ -274,22 +271,6 @@ const handler = async (req: Request): Promise<Response> => {
       for (const entry of catalogEntries) {
         try {
           console.log("[catalog-backfill] Processing:", entry.title, "bgg_id:", entry.bgg_id);
-          // Check if already has both designers and artists
-          const { count: dCount } = await admin
-            .from("catalog_designers").select("id", { count: "exact", head: true }).eq("catalog_id", entry.id);
-          const { count: aCount } = await admin
-            .from("catalog_artists").select("id", { count: "exact", head: true }).eq("catalog_id", entry.id);
-
-          console.log("[catalog-backfill]", entry.title, "existing designers:", dCount, "artists:", aCount);
-
-          if ((dCount || 0) > 0 && (aCount || 0) > 0) {
-            // Check if also has rating — if so, fully enriched
-            const hasCatalogRating = await admin.from("game_catalog").select("bgg_community_rating").eq("id", entry.id).single();
-            if (hasCatalogRating.data?.bgg_community_rating && hasCatalogRating.data.bgg_community_rating > 0) {
-              skipped++;
-              continue;
-            }
-          }
 
           // Fetch BGG XML with retry
           const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${entry.bgg_id}&stats=1`;
