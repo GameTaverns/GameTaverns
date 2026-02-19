@@ -136,12 +136,12 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   }
 
   // Not authenticated and no library — show selector, unless the user is
-  // navigating to an auth route (login, signup, forgot-password, reset-password).
-  // Auth routes must always be accessible so the Sign In button works.
+  // navigating to an auth route (login, signup, forgot-password, reset-password),
+  // OR is already authenticated (they'll be redirected to dashboard by the effect above).
   const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password'];
   const isAuthPath = AUTH_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p));
 
-  if (isNative && !activeLibrary && !isAuthPath) {
+  if (isNative && !isAuthenticated && !activeLibrary && !isAuthPath) {
     const params = new URLSearchParams(location.search);
     const tenantFromUrl = params.get('tenant');
     if (!tenantFromUrl) {
