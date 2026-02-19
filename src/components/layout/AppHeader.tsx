@@ -1,4 +1,4 @@
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   LogOut,
   Library,
@@ -7,9 +7,7 @@ import {
   ChevronDown,
   Mail,
   Menu,
-  X,
   BookOpen,
-  
   User,
   MessageSquare,
 } from "lucide-react";
@@ -39,7 +37,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProps) {
-  const { user, signOut, isAuthenticated } = useAuth();
+  const { signOut, isAuthenticated } = useAuth();
   const { tenantSlug } = useTenant();
   const { data: defaultLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
@@ -64,25 +62,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   };
 
   const libraryUrl = library ? getLibraryUrl(library.slug, "/") : null;
-
-  // For subdomain pages, use <a> tags with getPlatformUrl; for platform pages, use <Link>
   const isSubdomain = !!tenantSlug;
-
-  const LogoLink = isSubdomain ? (
-    <a href={getPlatformUrl("/dashboard")} className="flex items-center gap-2">
-      <img src={logoImage} alt="GameTaverns" className="h-7 sm:h-8 w-auto" />
-      <span className="font-display text-base sm:text-lg font-bold text-cream">
-        GameTaverns
-      </span>
-    </a>
-  ) : (
-    <Link to="/dashboard" className="flex items-center gap-2">
-      <img src={logoImage} alt="GameTaverns" className="h-7 sm:h-8 w-auto" />
-      <span className="font-display text-base sm:text-lg font-bold text-cream">
-        GameTaverns
-      </span>
-    </Link>
-  );
 
   return (
     <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm sticky top-0 z-30">
@@ -99,95 +79,63 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                 <Menu className="h-5 w-5" />
               </Button>
             )}
-            {LogoLink}
+            {/* Logo always uses TenantLink to stay within native router */}
+            <TenantLink href={getPlatformUrl("/dashboard")} className="flex items-center gap-2">
+              <img src={logoImage} alt="GameTaverns" className="h-7 sm:h-8 w-auto" />
+              <span className="font-display text-base sm:text-lg font-bold text-cream">
+                GameTaverns
+              </span>
+            </TenantLink>
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
             {isAuthenticated && (
               <>
                 {/* Help */}
-                {isSubdomain ? (
-                  <a
-                    href={getPlatformUrl("/docs")}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <HelpCircle className="h-3.5 w-3.5" />
-                    <span>Help</span>
-                  </a>
-                ) : (
-                  <Link
-                    to="/docs"
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <HelpCircle className="h-3.5 w-3.5" />
-                    <span>Help</span>
-                  </Link>
-                )}
+                <TenantLink
+                  href={getPlatformUrl("/docs")}
+                  className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                  <span>Help</span>
+                </TenantLink>
 
                 {/* Directory */}
-                {isSubdomain ? (
-                  <a
-                    href={getPlatformUrl("/directory")}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <Globe className="h-3.5 w-3.5" />
-                    <span>Directory</span>
-                  </a>
-                ) : (
-                  <Link
-                    to="/directory"
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <Globe className="h-3.5 w-3.5" />
-                    <span>Directory</span>
-                  </Link>
-                )}
+                <TenantLink
+                  href={getPlatformUrl("/directory")}
+                  className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  <span>Directory</span>
+                </TenantLink>
 
                 {/* Catalog / Dashboard toggle */}
                 {isCatalogPage ? (
-                  isSubdomain ? (
-                    <a
-                      href={getPlatformUrl("/dashboard")}
-                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                    >
-                      <span>Dashboard</span>
-                    </a>
-                  ) : (
-                    <Link
-                      to="/dashboard"
-                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                    >
-                      <span>Dashboard</span>
-                    </Link>
-                  )
+                  <TenantLink
+                    href={getPlatformUrl("/dashboard")}
+                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <span>Dashboard</span>
+                  </TenantLink>
                 ) : (
-                  isSubdomain ? (
-                    <a
-                      href={getPlatformUrl("/catalog")}
-                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                    >
-                      <BookOpen className="h-3.5 w-3.5" />
-                      <span>Catalog</span>
-                    </a>
-                  ) : (
-                    <Link
-                      to="/catalog"
-                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                    >
-                      <BookOpen className="h-3.5 w-3.5" />
-                      <span>Catalog</span>
-                    </Link>
-                  )
+                  <TenantLink
+                    href={getPlatformUrl("/catalog")}
+                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    <span>Catalog</span>
+                  </TenantLink>
                 )}
 
+                {/* My Library / Dashboard on subdomain */}
                 {isSubdomain ? (
-                  <a
+                  <TenantLink
                     href={getPlatformUrl("/dashboard")}
                     className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
                     <Library className="h-3.5 w-3.5" />
                     <span>Dashboard</span>
-                  </a>
+                  </TenantLink>
                 ) : myLibraries.length > 1 ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -229,29 +177,16 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
 
             {/* Direct Messages icon */}
             {isAuthenticated && (
-              isSubdomain ? (
-                <TenantLink href={getPlatformUrl("/dm")} className="relative text-cream hover:text-white transition-colors">
-                  <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
-                    <MessageSquare className="h-5 w-5" />
-                    {dmUnreadCount > 0 && (
-                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                        {dmUnreadCount > 9 ? "9+" : dmUnreadCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </TenantLink>
-              ) : (
-                <Link to="/dm" className="relative">
-                  <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
-                    <MessageSquare className="h-5 w-5" />
-                    {dmUnreadCount > 0 && (
-                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                        {dmUnreadCount > 9 ? "9+" : dmUnreadCount}
-                      </Badge>
-                    )}
-                  </Button>
-                </Link>
-              )
+              <TenantLink href={getPlatformUrl("/dm")} className="relative text-cream hover:text-white transition-colors">
+                <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
+                  <MessageSquare className="h-5 w-5" />
+                  {dmUnreadCount > 0 && (
+                    <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                      {dmUnreadCount > 9 ? "9+" : dmUnreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </TenantLink>
             )}
 
             {/* Library Messages dropdown */}
@@ -278,13 +213,13 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   <div className="px-3 py-2 text-sm font-medium">Messages</div>
                   {unreadCount > 0 ? (
                     <DropdownMenuItem asChild>
-                      <Link to="/inbox" className="cursor-pointer gap-2">
-                        <Mail className="h-4 w-4 text-indigo-500" />
+                      <TenantLink href="/inbox" className="cursor-pointer gap-2">
+                        <Mail className="h-4 w-4 text-primary" />
                         <div>
                           <p className="text-sm font-medium">{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</p>
                           <p className="text-xs text-muted-foreground">View in {library.name}</p>
                         </div>
-                      </Link>
+                      </TenantLink>
                     </DropdownMenuItem>
                   ) : (
                     <div className="px-3 py-4 text-center text-xs text-muted-foreground">
@@ -292,9 +227,9 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     </div>
                   )}
                   <DropdownMenuItem asChild>
-                    <Link to="/inbox" className="cursor-pointer text-xs justify-center text-muted-foreground">
+                    <TenantLink href="/inbox" className="cursor-pointer text-xs justify-center text-muted-foreground">
                       View all messages
-                    </Link>
+                    </TenantLink>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -306,62 +241,33 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
 
             {/* Catalog link for non-authenticated users */}
             {!isAuthenticated && (
-              isSubdomain ? (
-                <TenantLink
-                  href={getPlatformUrl("/catalog")}
-                  className="flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                >
-                  <BookOpen className="h-3.5 w-3.5" />
-                  <span>Catalog</span>
-                </TenantLink>
-              ) : (
-                <Link
-                  to="/catalog"
-                  className="flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                >
-                  <BookOpen className="h-3.5 w-3.5" />
-                  <span>Catalog</span>
-                </Link>
-              )
+              <TenantLink
+                href={getPlatformUrl("/catalog")}
+                className="flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                <span>Catalog</span>
+              </TenantLink>
             )}
 
             {/* Sign in / Sign out */}
             {isAuthenticated ? (
               <>
                 {isProfilePage || isListsPage ? (
-                  isSubdomain ? (
-                    <TenantLink
-                      href={getPlatformUrl("/dashboard")}
-                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                    >
-                      <span>Dashboard</span>
-                    </TenantLink>
-                  ) : (
-                    <Link
-                      to="/dashboard"
-                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                    >
-                      <span>Dashboard</span>
-                    </Link>
-                  )
+                  <TenantLink
+                    href={getPlatformUrl("/dashboard")}
+                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <span>Dashboard</span>
+                  </TenantLink>
                 ) : profile?.username ? (
-                  isSubdomain ? (
-                    <TenantLink
-                      href={getPlatformUrl(`/u/${profile.username}`)}
-                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                    >
-                      <User className="h-3.5 w-3.5" />
-                      <span>{profile.display_name || profile.username}</span>
-                    </TenantLink>
-                  ) : (
-                    <Link
-                      to={`/u/${profile.username}`}
-                      className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                    >
-                      <User className="h-3.5 w-3.5" />
-                      <span>{profile.display_name || profile.username}</span>
-                    </Link>
-                  )
+                  <TenantLink
+                    href={getPlatformUrl(`/u/${profile.username}`)}
+                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <User className="h-3.5 w-3.5" />
+                    <span>{profile.display_name || profile.username}</span>
+                  </TenantLink>
                 ) : null}
                 <Button
                   variant="ghost"
@@ -373,21 +279,12 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                 </Button>
               </>
             ) : (
-              isSubdomain ? (
-                <TenantLink
-                  href={getPlatformUrl("/login")}
-                  className="text-sm font-medium text-cream/70 hover:text-cream transition-colors px-2"
-                >
-                  Sign In
-                </TenantLink>
-              ) : (
-                <Link
-                  to="/login"
-                  className="text-sm font-medium text-cream/70 hover:text-cream transition-colors px-2"
-                >
-                  Sign In
-                </Link>
-              )
+              <TenantLink
+                href={getPlatformUrl("/login")}
+                className="text-sm font-medium text-cream/70 hover:text-cream transition-colors px-2"
+              >
+                Sign In
+              </TenantLink>
             )}
           </div>
         </div>
