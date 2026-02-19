@@ -58,10 +58,13 @@ function isSelfHostedSupabaseStack(): boolean {
     | { SUPABASE_URL?: string; SUPABASE_ANON_KEY?: string; SELF_HOSTED?: boolean }
     | undefined;
 
-  // The self-hosted Supabase stack explicitly sets SELF_HOSTED: false.
+  // The self-hosted stack injects __RUNTIME_CONFIG__ with its own SUPABASE_URL/KEY.
+  // SELF_HOSTED may be true, false, or undefined depending on version — check the URL instead.
   if (!runtime) return false;
-  if (runtime.SELF_HOSTED !== false) return false;
-  return Boolean(runtime.SUPABASE_URL && runtime.SUPABASE_ANON_KEY);
+  if (!runtime.SUPABASE_URL || !runtime.SUPABASE_ANON_KEY) return false;
+  // If the runtime config points to a non-supabase.co URL, it's self-hosted
+  const url = runtime.SUPABASE_URL;
+  return !url.includes(".supabase.co");
 }
 
 let turnstileLoadPromise: Promise<void> | null = null;
@@ -179,7 +182,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
 
           const timer = setTimeout(() => {
             onVerify("TURNSTILE_BYPASS_TOKEN");
-          }, 5000);
+          }, 1000);
 
           return () => clearTimeout(timer);
         }
