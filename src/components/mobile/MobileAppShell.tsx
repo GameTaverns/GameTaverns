@@ -12,7 +12,7 @@ interface MobileAppShellProps {
 
 export function MobileAppShell({ children }: MobileAppShellProps) {
   const { isNative, platform, isOnline } = useCapacitor();
-  const { activeLibrary, selectLibrary, clearLibrary } = useMobileLibrary();
+  const { activeLibrary, isLoadingLibrary, selectLibrary, clearLibrary } = useMobileLibrary();
   const { isSupported: pushSupported, isRegistered, requestPermission } = usePushNotifications();
   const [showOfflineNotice, setShowOfflineNotice] = useState(false);
   const [promptedForPush, setPromptedForPush] = useState(false);
@@ -51,8 +51,7 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
     return () => clearTimeout(timer);
   }, [isNative, promptedForPush, pushSupported, isRegistered, requestPermission]);
 
-  // On native platforms, show library selector if no library is active
-  // Check URL params first (for deep links)
+  // On native platforms, check URL params first (for deep links)
   useEffect(() => {
     if (!isNative) return;
     
@@ -63,6 +62,15 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
       selectLibrary(tenantFromUrl);
     }
   }, [isNative, activeLibrary, selectLibrary]);
+
+  // Wait for storage to load before deciding what to show on native
+  if (isNative && isLoadingLibrary) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   // If native and no library selected, show selector
   if (isNative && !activeLibrary) {

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Library, ArrowRight, Loader2 } from "lucide-react";
+import { Library, ArrowRight, Loader2, LogIn } from "lucide-react";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { toast } from "sonner";
 import { useMobileLibrary } from "@/hooks/useCapacitor";
@@ -123,6 +123,16 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
               )}
             </Button>
           </form>
+
+          <div className="mt-4 pt-4 border-t border-border text-center">
+            <p className="text-sm text-muted-foreground mb-2">Already have an account?</p>
+            <Link to="/login">
+              <Button variant="outline" className="w-full">
+                <LogIn className="mr-2 h-4 w-4" />
+                Sign In
+              </Button>
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

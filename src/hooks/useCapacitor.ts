@@ -95,14 +95,21 @@ export const MobileStorage = {
 // Hook for managing the active library in mobile context
 export function useMobileLibrary() {
   const [activeLibrary, setActiveLibrary] = useState<string | null>(null);
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const { isNative } = useCapacitor();
 
   useEffect(() => {
-    if (!isNative) return;
+    if (!isNative) {
+      setIsLoadingLibrary(false);
+      return;
+    }
 
     // Load saved library on mount
     MobileStorage.get<string>('activeLibrary').then(slug => {
       if (slug) setActiveLibrary(slug);
+      setIsLoadingLibrary(false);
+    }).catch(() => {
+      setIsLoadingLibrary(false);
     });
   }, [isNative]);
 
@@ -116,5 +123,5 @@ export function useMobileLibrary() {
     await MobileStorage.remove('activeLibrary');
   }, []);
 
-  return { activeLibrary, selectLibrary, clearLibrary };
+  return { activeLibrary, isLoadingLibrary, selectLibrary, clearLibrary };
 }
