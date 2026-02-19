@@ -127,7 +127,8 @@ export function useMobileLibrary() {
     }).catch(() => {
       setIsLoadingLibrary(false);
     });
-  }, [isNative]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount — detectIsNative() is stable (hostname never changes)
 
   const selectLibrary = useCallback(async (slug: string) => {
     setActiveLibrary(slug);
