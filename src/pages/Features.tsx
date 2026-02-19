@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { 
-  Library, 
-  Users, 
-  Palette, 
-  Shield, 
-  Dice6, 
-  BarChart3, 
-  Calendar, 
+import {
+  Library,
+  Users,
+  Palette,
+  Shield,
+  Dice6,
+  BarChart3,
+  Calendar,
   MessageSquare,
   Star,
   Heart,
@@ -31,6 +31,13 @@ import {
   Store,
   Building2,
   Layers,
+  UserCircle,
+  List,
+  Mail,
+  UserPlus,
+  Server,
+  Globe,
+  Gamepad2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,11 +51,17 @@ interface FeatureDetailProps {
   title: string;
   description: string;
   highlights?: string[];
+  badge?: string;
 }
 
-function FeatureDetail({ icon, title, description, highlights }: FeatureDetailProps) {
+function FeatureDetail({ icon, title, description, highlights, badge }: FeatureDetailProps) {
   return (
-    <div className="bg-muted/50 dark:bg-wood-medium/20 rounded-xl p-6 border border-border/20 hover:border-secondary/40 transition-colors">
+    <div className="bg-muted/50 dark:bg-wood-medium/20 rounded-xl p-6 border border-border/20 hover:border-secondary/40 transition-colors relative">
+      {badge && (
+        <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wider bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">
+          {badge}
+        </span>
+      )}
       <div className="flex items-start gap-4">
         <div className="text-secondary shrink-0 mt-1">{icon}</div>
         <div>
@@ -58,7 +71,7 @@ function FeatureDetail({ icon, title, description, highlights }: FeatureDetailPr
             <ul className="space-y-1">
               {highlights.map((highlight, i) => (
                 <li key={i} className="text-muted-foreground/70 text-sm flex items-center gap-2">
-                  <span className="w-1 h-1 rounded-full bg-secondary"></span>
+                  <span className="w-1 h-1 rounded-full bg-secondary flex-shrink-0" />
                   {highlight}
                 </li>
               ))}
@@ -70,6 +83,15 @@ function FeatureDetail({ icon, title, description, highlights }: FeatureDetailPr
   );
 }
 
+function SectionHeading({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return (
+    <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
+      <span className="text-secondary">{icon}</span>
+      {title}
+    </h2>
+  );
+}
+
 export default function Features() {
   const { isAuthenticated } = useAuth();
   const { data: myLibrary } = useMyLibrary();
@@ -77,15 +99,12 @@ export default function Features() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium">
       {/* Header */}
-      <header className="border-b border-border/30 bg-muted/50 dark:bg-wood-dark/50 backdrop-blur-sm">
+      <header className="border-b border-border/30 bg-muted/50 dark:bg-wood-dark/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
             <img src={logoImage} alt="GameTaverns" className="h-10 w-auto" />
-            <span className="font-display text-2xl font-bold text-foreground">
-              GameTaverns
-            </span>
+            <span className="font-display text-2xl font-bold text-foreground">GameTaverns</span>
           </Link>
-          
           <nav className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
             <FeedbackDialog />
@@ -121,326 +140,372 @@ export default function Features() {
           <ArrowLeft className="h-4 w-4" />
           Back to Home
         </Link>
-        
         <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
           Everything Your Library Needs
         </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mb-12">
-          GameTaverns is packed with features designed by board gamers, for board gamers. 
-          Discover what makes our platform the best way to manage your collection.
+        <p className="text-xl text-muted-foreground max-w-2xl mb-4">
+          GameTaverns is built by board gamers, for board gamers. A complete platform for managing
+          collections, tracking plays, building community, and connecting with others who love the hobby.
         </p>
+        <div className="flex flex-wrap gap-3 mb-12">
+          {[
+            "Collection Management", "Play Tracking", "Lending Library", "Social Profiles",
+            "Events & Polls", "Community Forums", "Trade Matching", "BGG Sync",
+            "Achievements", "AI Recommendations", "Self-Hostable"
+          ].map((tag) => (
+            <span key={tag} className="text-xs font-medium px-3 py-1 rounded-full bg-secondary/10 text-secondary border border-secondary/20">
+              {tag}
+            </span>
+          ))}
+        </div>
       </section>
 
-      {/* Core Features */}
+      {/* Core Library */}
       <section className="container mx-auto px-4 py-8">
-        <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
-          <Library className="h-6 w-6 text-secondary" />
-          Core Library Features
-        </h2>
-        
+        <SectionHeading icon={<Library className="h-6 w-6" />} title="Core Library Features" />
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <FeatureDetail
             icon={<Upload className="h-6 w-6" />}
             title="Easy Game Import"
-            description="Add games to your library in seconds with automatic data from BoardGameGeek."
+            description="Add games in seconds with automatic data from BoardGameGeek — no manual entry required."
             highlights={[
-              "Search by name or BGG URL",
+              "Search by name or paste a BGG URL",
               "Bulk CSV import for large collections",
-              "Automatic box art, player counts, and descriptions",
+              "Box art, player counts, descriptions auto-filled",
               "Edit any field after import"
             ]}
           />
-          
           <FeatureDetail
             icon={<BookOpen className="h-6 w-6" />}
             title="Rich Game Details"
-            description="Every game in your library includes comprehensive information."
+            description="Every game includes a full detail page with everything you need at a glance."
             highlights={[
-              "Player count and play time",
-              "Complexity ratings",
-              "Your personal notes and condition",
-              "Storage location tracking"
+              "Player count, play time, complexity",
+              "Your personal notes and condition grade",
+              "Storage location tracking",
+              "Linked expansions and parent games"
             ]}
           />
-          
           <FeatureDetail
             icon={<Star className="h-6 w-6" />}
-            title="Favorites & Ratings"
-            description="Let visitors rate games and mark your favorites to highlight top picks."
+            title="Ratings & Favorites"
+            description="Let visitors rate games and mark your favorites to highlight the best in your collection."
             highlights={[
-              "5-star guest rating system",
-              "Favorite games highlighted in collection",
-              "Average ratings displayed on cards"
+              "5-star guest rating system (no account needed)",
+              "Favorite games displayed prominently",
+              "Average ratings on every game card",
+              "BGG community rating comparison"
             ]}
           />
-          
           <FeatureDetail
             icon={<Heart className="h-6 w-6" />}
             title="Guest Wishlist"
-            description="Visitors can wishlist games they'd like to play at your next game night."
+            description="Visitors can wishlist games they'd love to see added — great for planning purchases."
             highlights={[
               "No account required for guests",
-              "See what games are most requested",
-              "Perfect for planning game nights"
+              "See which games get the most requests",
+              "Sort your collection by wishlist demand",
+              "Perfect for game night planning"
             ]}
           />
           <FeatureDetail
             icon={<DollarSign className="h-6 w-6" />}
             title="Collection Value Tracking"
-            description="Track the financial value of your collection over time."
+            description="Understand the financial picture of your collection with purchase prices and current values."
             highlights={[
-              "Record purchase prices and dates",
-              "Set current estimated values",
+              "Record purchase price and date per game",
+              "Set estimated current market values",
               "BGG marketplace price integration",
-              "Total collection value dashboard"
+              "Total invested vs. current value dashboard"
             ]}
           />
-
           <FeatureDetail
             icon={<Copy className="h-6 w-6" />}
             title="Multi-Copy Inventory"
-            description="Track multiple copies of the same game with unit-level detail."
+            description="Own multiple copies of a game? Track each one individually with per-unit detail."
             highlights={[
               "Label and number each copy",
-              "Track condition per copy",
+              "Condition tracking per unit",
               "Assign specific copies to loans",
-              "Notes field for each unit"
+              "Notes field per copy"
             ]}
           />
-
           <FeatureDetail
             icon={<RefreshCw className="h-6 w-6" />}
             title="BGG Auto-Sync"
-            description="Keep your library in sync with BoardGameGeek automatically."
+            description="Keep your GameTaverns library in perfect sync with your BoardGameGeek collection — automatically."
             highlights={[
               "Daily or weekly sync schedules",
               "Sync collection, plays, and wishlist",
               "Configurable removal behavior",
-              "Automatic box art and metadata updates"
+              "Sync status and last-run time visible in settings"
             ]}
           />
-
           <FeatureDetail
             icon={<Store className="h-6 w-6" />}
             title="For Sale Marketplace"
-            description="List games for sale directly from your library."
+            description="List games you're selling directly from your library. Buyers contact you through the integrated messaging system."
             highlights={[
               "Set prices and condition grades",
               "Visible to all library visitors",
-              "Integrated with game messaging",
+              "Integrated with secure messaging",
               "Toggle on/off per game"
             ]}
           />
-
           <FeatureDetail
             icon={<Layers className="h-6 w-6" />}
             title="Multiple Libraries"
-            description="Own and manage more than one library from a single account."
+            description="Manage more than one library from a single account — for clubs, schools, or multiple game groups."
             highlights={[
               "Switch between libraries on the dashboard",
-              "Separate collections, members, and settings",
-              "Configurable per-platform limits",
-              "Unified personal profile across libraries"
+              "Separate collections, members, and settings per library",
+              "Unified personal profile across all libraries",
+              "Configurable per-platform limits"
             ]}
+          />
+          <FeatureDetail
+            icon={<List className="h-6 w-6" />}
+            title="Curated Lists"
+            description="Create and share hand-picked game lists — best games for families, party picks, gateway games, and more."
+            highlights={[
+              "Build public or private lists",
+              "Share lists across the community",
+              "Community voting on public lists",
+              "Link lists to your library"
+            ]}
+            badge="New"
           />
         </div>
       </section>
 
       {/* Play Tracking */}
       <section className="container mx-auto px-4 py-8">
-        <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
-          <Dice6 className="h-6 w-6 text-secondary" />
-          Play Tracking & Statistics
-        </h2>
-        
+        <SectionHeading icon={<Dice6 className="h-6 w-6" />} title="Play Tracking & Statistics" />
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <FeatureDetail
             icon={<Clock className="h-6 w-6" />}
             title="Play Session Logging"
-            description="Record every game session with detailed information."
+            description="Record every game session with detailed information — who played, who won, and how long it took."
             highlights={[
               "Date, duration, and player count",
-              "Track winners and scores",
-              "Add session notes and photos",
+              "Track winners, scores, and player colors",
+              "Add session notes",
               "Log expansions used"
             ]}
           />
-          
           <FeatureDetail
             icon={<BarChart3 className="h-6 w-6" />}
             title="BG Stats-Style Analytics"
-            description="Beautiful statistics inspired by the popular BG Stats app."
+            description="Deep play statistics with beautiful charts — inspired by the best in the hobby."
             highlights={[
-              "H-index calculation",
+              "H-index calculation for breadth",
               "Monthly and yearly play summaries",
-              "Most played games leaderboard",
-              "Player win rates and statistics"
+              "Most-played games leaderboard",
+              "Player win rates and head-to-head stats"
             ]}
           />
-          
           <FeatureDetail
             icon={<Trophy className="h-6 w-6" />}
             title="Achievements System"
-            description="Earn badges and track milestones as you play more games."
+            description="Automatically earn badges as you hit milestones — motivation to keep playing."
             highlights={[
-              "Play count achievements",
-              "Variety and streak badges",
+              "Play count, variety, and streak achievements",
               "Secret achievements to discover",
-              "Showcase your gaming journey"
+              "Feature a badge on your public profile",
+              "Tier-based progression (bronze → platinum)"
             ]}
           />
-          
+          <FeatureDetail
+            icon={<Gamepad2 className="h-6 w-6" />}
+            title="Group Challenges"
+            description="Set play goals and compete with your library community over a defined period."
+            highlights={[
+              "Play count or unique games goals",
+              "Competitive leaderboards",
+              "Real-time progress tracking",
+              "Start/end date configuration"
+            ]}
+          />
           <FeatureDetail
             icon={<Shuffle className="h-6 w-6" />}
             title="Random Game Picker"
-            description="Can't decide what to play? Let us choose for you!"
+            description="Can't decide what to play? Let the picker choose for you with smart filters."
             highlights={[
-              "Filter by player count",
-              "Filter by play time",
-              "Exclude recently played",
-              "Spin the wheel for game night"
+              "Filter by player count and play time",
+              "Exclude recently played games",
+              "Spin the wheel for game night drama",
+              "Works on mobile"
             ]}
           />
-          
           <FeatureDetail
             icon={<Download className="h-6 w-6" />}
             title="BGG Play History Import"
-            description="Bring your existing play data from BoardGameGeek."
+            description="Bring all your existing play data from BoardGameGeek in one go."
             highlights={[
               "Import by BGG username",
-              "Smart deduplication avoids double-counting",
+              "Smart deduplication — no double counting",
               "Player names, scores, and colors imported",
               "Update existing plays with fresh data"
             ]}
           />
-          
           <FeatureDetail
             icon={<Sparkles className="h-6 w-6" />}
             title="AI Game Recommendations"
-            description="Discover what to play next with intelligent suggestions."
+            description="Discover what to play next with intelligent suggestions based on what's in your library."
             highlights={[
-              "\"Games like this\" on every detail page",
+              "\"Games like this\" on every game detail page",
               "Based on mechanics, theme, and complexity",
-              "Only recommends games in your library",
+              "Only recommends games actually in your library",
               "Powered by AI analysis"
             ]}
           />
         </div>
       </section>
 
-      {/* Lending & Community */}
+      {/* Social */}
       <section className="container mx-auto px-4 py-8">
-        <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
-          <Users className="h-6 w-6 text-secondary" />
-          Lending Library & Community
-        </h2>
-        
+        <SectionHeading icon={<UserCircle className="h-6 w-6" />} title="Social & Profiles" />
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          <FeatureDetail
+            icon={<UserCircle className="h-6 w-6" />}
+            title="Public User Profiles"
+            description="Every user gets a rich public profile page showcasing their gaming life."
+            highlights={[
+              "Display name, avatar, and bio",
+              "Featured achievement badge",
+              "Play history stats at a glance",
+              "Listed libraries and collections"
+            ]}
+            badge="New"
+          />
+          <FeatureDetail
+            icon={<UserPlus className="h-6 w-6" />}
+            title="Follow System"
+            description="Follow other players to see their activity and build your gaming network."
+            highlights={[
+              "Follow/unfollow any user",
+              "See followers and following counts",
+              "Discover users through suggestions",
+              "Search by username or display name"
+            ]}
+            badge="New"
+          />
+          <FeatureDetail
+            icon={<Mail className="h-6 w-6" />}
+            title="Direct Messages"
+            description="Private messaging between users — coordinate trades, loans, or game nights."
+            highlights={[
+              "Real-time message delivery",
+              "Conversation threads per user pair",
+              "Unread count in the header",
+              "Delete messages on either side"
+            ]}
+            badge="New"
+          />
+          <FeatureDetail
+            icon={<Bell className="h-6 w-6" />}
+            title="Activity Feed & Notifications"
+            description="Stay informed about what's happening across your libraries and network."
+            highlights={[
+              "Real-time notifications in the header",
+              "Loan request and approval alerts",
+              "Forum reply notifications",
+              "Achievement unlock announcements"
+            ]}
+          />
+        </div>
+      </section>
+
+      {/* Community */}
+      <section className="container mx-auto px-4 py-8">
+        <SectionHeading icon={<Users className="h-6 w-6" />} title="Lending Library & Community" />
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <FeatureDetail
             icon={<Users className="h-6 w-6" />}
             title="Lending Library"
-            description="Run a community lending library with request management."
+            description="Run a community lending program with request management, tracking, and borrower accountability."
             highlights={[
-              "Members can request to borrow games",
+              "Members request to borrow games",
               "Track who has what and when it's due",
-              "Borrower ratings and reviews",
-              "Customizable lending terms"
+              "Borrower ratings and reviews after return",
+              "Multi-copy assignment for duplicate games"
             ]}
           />
-          
           <FeatureDetail
             icon={<Calendar className="h-6 w-6" />}
             title="Events & Game Nights"
-            description="Plan and promote your game nights directly from your library."
+            description="Plan, promote, and manage game nights with full Discord integration."
             highlights={[
-              "Create upcoming events",
-              "RSVP tracking",
-              "Discord integration for notifications",
-              "Event descriptions and locations"
+              "Create events with dates and locations",
+              "RSVP tracking for attendees",
+              "Auto-create Discord Scheduled Events",
+              "Discord forum thread per event"
             ]}
           />
-          
-          <FeatureDetail
-            icon={<MessageSquare className="h-6 w-6" />}
-            title="Secure Messaging"
-            description="Visitors can contact you about games without exposing your email."
-            highlights={[
-              "Encrypted message storage",
-              "Reply directly from dashboard",
-              "Spam protection with Turnstile",
-              "No account required to send"
-            ]}
-          />
-          
-          <FeatureDetail
-            icon={<Bell className="h-6 w-6" />}
-            title="Notifications"
-            description="Stay informed about activity in your library."
-            highlights={[
-              "Email notifications",
-              "Discord webhook integration",
-              "Loan request alerts",
-              "Event reminders"
-            ]}
-          />
-          
-          <FeatureDetail
-            icon={<MessageCircle className="h-6 w-6" />}
-            title="Community Forums"
-            description="Built-in discussion boards for your gaming community."
-            highlights={[
-              "Site-wide and library-level forums",
-              "Threaded conversations with replies",
-              "Category management and moderation",
-              "Real-time updates via live sync"
-            ]}
-          />
-          
           <FeatureDetail
             icon={<Vote className="h-6 w-6" />}
             title="Polls & Game Night Voting"
-            description="Let your community vote on what to play next."
+            description="Let your group vote on what to play — shareable links work for anyone, no account needed."
             highlights={[
-              "Create shareable polls",
-              "RSVP tracking for events",
-              "Configurable voting limits",
-              "Results display options"
+              "Pick games from your library as options",
+              "Configurable max votes per person",
+              "Share via link to your Discord or group chat",
+              "Live results as votes come in"
             ]}
           />
-          
+          <FeatureDetail
+            icon={<MessageCircle className="h-6 w-6" />}
+            title="Community Forums"
+            description="Built-in discussion boards for your library and cross-library clubs."
+            highlights={[
+              "Library-scoped and club-scoped categories",
+              "Threaded replies on every post",
+              "Moderator tools for library owners",
+              "Real-time updates via live sync"
+            ]}
+          />
           <FeatureDetail
             icon={<ArrowLeftRight className="h-6 w-6" />}
             title="Trade Matching"
-            description="Find trade opportunities across libraries automatically."
+            description="Automatically find trade opportunities with other discoverable libraries — no marketplace needed."
             highlights={[
-              "Cross-library want/have matching",
-              "Browse available trades",
-              "Contact traders directly",
-              "Community-driven exchange"
+              "List games you'd trade and games you want",
+              "Automatic cross-library matching by BGG ID",
+              "Contact traders directly via messaging",
+              "Only shows games from libraries you can discover"
             ]}
           />
-          
           <FeatureDetail
-            icon={<Target className="h-6 w-6" />}
-            title="Group Challenges"
-            description="Set play goals and compete with your community."
+            icon={<MessageSquare className="h-6 w-6" />}
+            title="Secure Game Inquiries"
+            description="Visitors can ask about specific games without exposing your email address."
             highlights={[
-              "Play count challenge goals",
-              "Competitive leaderboards",
-              "Track progress in real-time",
-              "Motivate more game nights"
+              "Encrypted message storage",
+              "Reply directly from the dashboard",
+              "Cloudflare Turnstile spam protection",
+              "No account required to send"
             ]}
           />
-
           <FeatureDetail
             icon={<Building2 className="h-6 w-6" />}
             title="Clubs"
-            description="Connect multiple libraries into a shared club ecosystem."
+            description="Connect multiple libraries under a shared club for cross-library discovery and events."
             highlights={[
-              "Combined catalog across member libraries",
-              "Shared event calendars",
+              "Combined catalog with ownership attribution",
+              "Shared event calendar across member libraries",
               "Club-scoped forum categories",
               "Invite-code access for privacy"
+            ]}
+          />
+          <FeatureDetail
+            icon={<Target className="h-6 w-6" />}
+            title="Catalog Browser"
+            description="Browse the global GameTaverns catalog of thousands of board games, even without a library."
+            highlights={[
+              "Search and filter 50,000+ games",
+              "Community ratings and review data",
+              "Video guides linked per game",
+              "Add directly to your library from results"
             ]}
           />
         </div>
@@ -448,46 +513,82 @@ export default function Features() {
 
       {/* Customization */}
       <section className="container mx-auto px-4 py-8">
-        <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
-          <Palette className="h-6 w-6 text-secondary" />
-          Customization & Privacy
-        </h2>
-        
+        <SectionHeading icon={<Palette className="h-6 w-6" />} title="Customization & Privacy" />
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           <FeatureDetail
             icon={<Palette className="h-6 w-6" />}
             title="Full Theme Customization"
-            description="Make your library uniquely yours with complete visual control."
+            description="Make your library look uniquely yours with complete visual control over every element."
             highlights={[
-              "Custom colors for light and dark mode",
-              "Upload your own logo",
-              "Custom background images",
-              "Font customization"
+              "Custom colors for light and dark mode independently",
+              "Upload your own logo and background image",
+              "Choose display and body fonts",
+              "Live preview as you edit"
             ]}
           />
-          
           <FeatureDetail
             icon={<Shield className="h-6 w-6" />}
             title="Privacy Controls"
-            description="You control what visitors can see and do."
+            description="You decide what visitors can see — every feature can be toggled on or off independently."
             highlights={[
-              "Toggle feature visibility",
-              "Hide admin-only data (purchase prices)",
+              "Per-feature visibility toggles",
+              "Hide purchase prices from public view",
               "Public or private library mode",
               "Directory listing opt-in"
             ]}
           />
-          
           <FeatureDetail
             icon={<ShieldCheck className="h-6 w-6" />}
             title="Two-Factor Authentication"
-            description="Secure your account with TOTP-based two-factor authentication."
+            description="Protect your account with TOTP-based 2FA from any standard authenticator app."
             highlights={[
-              "Time-based one-time passwords",
-              "Works with any authenticator app",
-              "Backup codes for recovery",
-              "Configurable grace periods"
+              "Works with Google Authenticator, Authy, 1Password, etc.",
+              "Backup codes for account recovery",
+              "Configurable grace periods",
+              "QR code setup flow"
             ]}
+          />
+          <FeatureDetail
+            icon={<Globe className="h-6 w-6" />}
+            title="Custom Domain Support"
+            description="Host your library on your own domain for a fully branded experience."
+            highlights={[
+              "Point any domain or subdomain to your library",
+              "Automatic SSL / HTTPS",
+              "Tenant-aware routing",
+              "Works alongside the default .gametaverns.app subdomain"
+            ]}
+          />
+        </div>
+      </section>
+
+      {/* Self-Hosting */}
+      <section className="container mx-auto px-4 py-8">
+        <SectionHeading icon={<Server className="h-6 w-6" />} title="Self-Hosting" />
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          <FeatureDetail
+            icon={<Server className="h-6 w-6" />}
+            title="Fully Self-Hostable"
+            description="Run GameTaverns on your own infrastructure — full feature parity with the cloud version."
+            highlights={[
+              "Docker Compose deployment on any VPS",
+              "Bundled with self-hosted Supabase (PostgreSQL + auth + storage)",
+              "Nginx reverse-proxy configuration included",
+              "All edge functions included and self-contained"
+            ]}
+            badge="Open Source"
+          />
+          <FeatureDetail
+            icon={<Shield className="h-6 w-6" />}
+            title="Data Sovereignty"
+            description="Your data stays on your server. No third-party cloud storage, no data sharing."
+            highlights={[
+              "All data in your own PostgreSQL database",
+              "File storage on your own filesystem",
+              "No telemetry or analytics sent externally",
+              "Full database export at any time"
+            ]}
+            badge="Open Source"
           />
         </div>
       </section>
@@ -499,7 +600,7 @@ export default function Features() {
             Ready to Get Started?
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Create your free library today and start organizing your board game collection.
+            Create your free library today and discover why GameTaverns is the most complete board game library platform available.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isAuthenticated ? (
@@ -519,7 +620,7 @@ export default function Features() {
             ) : (
               <Link to="/signup">
                 <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-8">
-                  Start Now
+                  Start Now — It's Free
                 </Button>
               </Link>
             )}
@@ -540,18 +641,10 @@ export default function Features() {
               &copy; {new Date().getFullYear()} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
             </p>
             <nav className="flex gap-6 text-sm">
-              <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
-                Privacy
-              </Link>
-              <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
-                Terms
-              </Link>
-              <Link to="/cookies" className="text-muted-foreground hover:text-foreground transition-colors">
-                Cookies
-              </Link>
-              <Link to="/legal" className="text-muted-foreground hover:text-foreground transition-colors">
-                Legal
-              </Link>
+              <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link>
+              <Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link>
+              <Link to="/cookies" className="text-muted-foreground hover:text-foreground transition-colors">Cookies</Link>
+              <Link to="/legal" className="text-muted-foreground hover:text-foreground transition-colors">Legal</Link>
             </nav>
           </div>
         </div>
