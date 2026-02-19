@@ -241,11 +241,8 @@ export interface ForumThread {
   author?: {
     display_name: string | null;
     username?: string | null;
-    featured_badge?: {
-      name: string;
-      icon: string | null;
-      tier: number;
-    } | null;
+    featured_badge?: { name: string; icon: string | null; tier: number } | null;
+    special_badges?: { id: string; badge_label: string; badge_color: string; badge_icon: string | null }[];
   };
   category?: ForumCategory;
 }
@@ -261,11 +258,8 @@ export interface ForumReply {
   author?: {
     display_name: string | null;
     username?: string | null;
-    featured_badge?: {
-      name: string;
-      icon: string | null;
-      tier: number;
-    } | null;
+    featured_badge?: { name: string; icon: string | null; tier: number } | null;
+    special_badges?: { id: string; badge_label: string; badge_color: string; badge_icon: string | null }[];
   };
 }
 
@@ -395,37 +389,42 @@ interface AuthorData {
     icon: string | null;
     tier: number;
   } | null;
+  special_badges?: { id: string; badge_label: string; badge_color: string; badge_icon: string | null }[];
 }
 
 // Helper to fetch author display names and badges
 async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorData>> {
   if (authorIds.length === 0) return new Map();
 
-  const { data, error } = await supabase
-    .from("user_profiles")
-    .select(
-      `
-      user_id,
-      display_name,
-      username,
-      featured_achievement:achievements(name, icon, tier)
-    `
-    )
-    .in("user_id", authorIds);
+  const [profilesRes, specialBadgesRes] = await Promise.all([
+    supabase
+      .from("user_profiles")
+      .select(`user_id, display_name, username, featured_achievement:achievements(name, icon, tier)`)
+      .in("user_id", authorIds),
+    (supabase as any)
+      .from("user_special_badges")
+      .select("user_id, id, badge_label, badge_color, badge_icon")
+      .in("user_id", authorIds),
+  ]);
 
-  if (error) {
-    console.warn("Failed to fetch author data:", error);
+  if (profilesRes.error) console.warn("Failed to fetch author data:", profilesRes.error);
+
+  // Build special badges map
+  const specialBadgesMap = new Map<string, { id: string; badge_label: string; badge_color: string; badge_icon: string | null }[]>();
+  for (const sb of specialBadgesRes.data ?? []) {
+    if (!specialBadgesMap.has(sb.user_id)) specialBadgesMap.set(sb.user_id, []);
+    specialBadgesMap.get(sb.user_id)!.push(sb);
   }
 
   const map = new Map<string, AuthorData>();
-  if (data) {
-    for (const p of data) {
-      // PostgREST returns the join as an object or null
+  if (profilesRes.data) {
+    for (const p of profilesRes.data) {
       const badge = p.featured_achievement as { name: string; icon: string | null; tier: number } | null;
       map.set(p.user_id, {
         display_name: p.display_name || "Unknown",
         username: (p as any).username || null,
         featured_badge: badge,
+        special_badges: specialBadgesMap.get(p.user_id) ?? [],
       });
     }
   }

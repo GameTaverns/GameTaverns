@@ -113,6 +113,21 @@ function isPlatformPath(pathname: string): boolean {
   return PLATFORM_PATHS.some(p => pathname === p || pathname.startsWith(p));
 }
 
+
+/**
+ * Get the real active path for platform detection on native.
+ * window.location.hash looks like '#/dashboard' or '#/dashboard?tenant=x'
+ * Strip the leading '#' and any query string to get the pathname.
+ */
+function getNativeEffectivePath(): string {
+  if (typeof window === 'undefined') return '/';
+  const hash = window.location.hash; // e.g. '#/dashboard?tenant=x'
+  if (!hash || !hash.startsWith('#')) return '/';
+  const withoutHash = hash.slice(1); // '/dashboard?tenant=x'
+  const qIndex = withoutHash.indexOf('?');
+  return qIndex >= 0 ? withoutHash.slice(0, qIndex) : withoutHash;
+}
+
 // Wrapper component to check for tenant mode
 function AppRoutes() {
   const [searchParams] = useSearchParams();
@@ -122,17 +137,20 @@ function AppRoutes() {
   // Always call the hook (rules of hooks) — on web it's a no-op (returns null)
   const { activeLibrary } = useMobileLibrary();
 
-  // On native: only treat the active library as the tenant when we're NOT on a platform route.
-  // Platform routes (/dashboard, /catalog, /dm, etc.) must render PlatformRoutes regardless
-  // of whether a library is active — they don't belong to any single library.
-  const isOnPlatformPath = isPlatformPath(location.pathname);
+  // On native (HashRouter), location.pathname correctly reflects the hash-based route
+  // (e.g. '/dashboard', '/catalog') because useLocation() inside HashRouter extracts it.
+  // However window.location.hash is the fallback for edge cases during initial render.
+  const effectivePath = isRunningNative()
+    ? (location.pathname !== '/' ? location.pathname : getNativeEffectivePath())
+    : location.pathname;
+
+  const isOnPlatformPath = isPlatformPath(effectivePath);
   const tenantSlug = searchParams.get("tenant") || (isRunningNative() && !isOnPlatformPath ? activeLibrary : null);
 
-  // If on native and we have an activeLibrary, inject ?tenant= ONLY for library routes.
-  // Never inject it for platform routes — doing so would force them into LibraryRoutes.
+  // Inject ?tenant= ONLY for library routes on native, never for platform routes.
   useEffect(() => {
     if (!isRunningNative() || !activeLibrary) return;
-    if (isOnPlatformPath) return; // Platform routes must NOT have tenant param injected
+    if (isOnPlatformPath) return;
     const currentTenant = new URLSearchParams(location.search).get("tenant");
     if (!currentTenant || currentTenant !== activeLibrary) {
       const newParams = new URLSearchParams(location.search);

@@ -3833,6 +3833,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_special_badges: {
+        Row: {
+          badge_color: string
+          badge_icon: string | null
+          badge_label: string
+          badge_type: string
+          granted_at: string
+          granted_by: string
+          id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          badge_color?: string
+          badge_icon?: string | null
+          badge_label: string
+          badge_type: string
+          granted_at?: string
+          granted_by: string
+          id?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          badge_color?: string
+          badge_icon?: string | null
+          badge_label?: string
+          badge_type?: string
+          granted_at?: string
+          granted_by?: string
+          id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_totp_settings: {
         Row: {
           backup_codes_encrypted: string | null
