@@ -63,8 +63,8 @@ Write-Host "      OK - cap sync complete."
 # ── Step 6: Run the post-sync patcher ────────────────────────────────────────
 Write-Host ""
 Write-Host "[6/8] Running post-sync patcher..."
-node scripts/fix-proguard.js
-if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: fix-proguard.js failed."; exit 1 }
+node scripts/fix-proguard.cjs
+if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: fix-proguard.cjs failed."; exit 1 }
 
 # ── Step 7: Lock Gradle JDK in gradle.properties ─────────────────────────────
 Write-Host ""
