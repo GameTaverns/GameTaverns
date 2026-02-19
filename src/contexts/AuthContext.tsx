@@ -357,6 +357,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const verifyUserExists = async (storedSession: Session | null) => {
+      // On native, skip this verification entirely — the network fetch is unreliable
+      // during the app cold-start window and can cause false sign-outs.
+      // onAuthStateChange already validates the session via the Supabase SDK.
+      if (Capacitor.isNativePlatform()) return;
+
       if (!storedSession?.access_token || !storedSession?.user?.id) return;
 
       try {
