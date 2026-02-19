@@ -31,13 +31,14 @@ declare global {
 }
 
 /**
- * Detect if we're running in a Lovable preview environment.
- * Native Capacitor apps are NOT considered preview — they go through real Turnstile.
+ * Detect if we're running in a Lovable preview environment OR native Capacitor app.
+ * Turnstile cannot run inside a native WebView (capacitor:// scheme blocks Cloudflare JS).
+ * The backend validates the secret key on all requests regardless.
  */
 function isLovablePreview(): boolean {
   if (typeof window === "undefined") return false;
-  // Native apps are never preview, even though they run on localhost
-  if (Capacitor.isNativePlatform()) return false;
+  // Native apps: Turnstile widget cannot load inside Capacitor WebView
+  if (Capacitor.isNativePlatform()) return true;
   const host = window.location.hostname;
   // Lovable preview domains
   if (host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app")) return true;
@@ -117,19 +118,20 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
     const [hasError, setHasError] = useState(false);
     const [bypassReason, setBypassReason] = useState<string | null>(null);
     
-    // Check for Lovable preview FIRST, before any other logic
+    // Check for Lovable preview / native FIRST, before any other logic
     const isPreviewMode = isLovablePreview();
+    const isNative = Capacitor.isNativePlatform();
     
     // Only use site settings if NOT in preview mode
     const siteKey = useTurnstileSiteKey();
     const settingsLoaded = useSiteSettingsLoaded();
 
-    // Lovable preview bypass - runs once on mount, takes priority over everything
+    // Preview/native bypass - runs once on mount, takes priority over everything
     useEffect(() => {
       if (!isPreviewMode) return;
       
       // Immediately set bypass state
-      setBypassReason("preview mode");
+      setBypassReason(isNative ? "native app" : "preview mode");
       setIsLoading(false);
       setHasError(false);
       
@@ -139,7 +141,7 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       }, 300);
       
       return () => clearTimeout(timer);
-    }, [isPreviewMode, onVerify]);
+    }, [isPreviewMode, isNative, onVerify]);
 
     // Safety timeout: if settings haven't loaded after 8s and NOT in preview, show error
     useEffect(() => {
@@ -265,13 +267,13 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       };
     }, [renderWidget, settingsLoaded, siteKey, isPreviewMode]);
 
-    // Preview bypass: show a simple indicator (check FIRST, before settings loading)
-    if (isPreviewMode || bypassReason === "preview mode") {
+    // Preview/native bypass: show a simple indicator (check FIRST, before settings loading)
+    if (isPreviewMode) {
       return (
         <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
           <CheckCircle2 className="h-4 w-4 text-primary" />
           <span className="text-sm text-muted-foreground">
-            Verification bypassed (preview mode)
+            Verification bypassed ({isNative ? "native app" : "preview mode"})
           </span>
         </div>
       );
