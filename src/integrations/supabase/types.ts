@@ -4767,6 +4767,14 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: number
       }
+      get_unenriched_catalog_entries: {
+        Args: { p_limit?: number }
+        Returns: {
+          bgg_id: string
+          id: string
+          title: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
