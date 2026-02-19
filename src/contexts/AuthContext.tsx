@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useMemo, useCallback, type ReactNode } from "react";
+import { Capacitor } from "@capacitor/core";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 import { computeAuthStorageKey } from "@/lib/authStorageKey";
@@ -601,7 +602,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password,
           username,
           displayName,
-          redirectUrl: window.location.origin,
+          // On native Capacitor, window.location.origin is "capacitor://localhost"
+          // which is useless for email confirmation links. Always use gametaverns.com.
+          redirectUrl: Capacitor.isNativePlatform()
+            ? 'https://gametaverns.com'
+            : window.location.origin,
           referralCode,
         }),
       });
