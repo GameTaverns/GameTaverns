@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 import { TotpVerify } from "@/components/auth/TotpVerify";
 import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
+import { TurnstileWidget } from "@/components/games/TurnstileWidget";
+import { Capacitor } from "@capacitor/core";
+
+const isNative = Capacitor.isNativePlatform();
 
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -26,6 +30,11 @@ const Login = () => {
   const [requires2FA, setRequires2FA] = useState(false);
   const [pendingAccessToken, setPendingAccessToken] = useState<string | null>(null);
   const [authGate, setAuthGate] = useState<"idle" | "checking_2fa" | "needs_2fa">("idle");
+  // On native, pre-fill with a bypass token so forms are always submittable
+  const [signinTurnstileToken, setSigninTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
+  const [signupTurnstileToken, setSignupTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
+  const [signinTurnstileKey, setSigninTurnstileKey] = useState(0);
+  const [signupTurnstileKey, setSignupTurnstileKey] = useState(0);
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -36,10 +45,6 @@ const Login = () => {
   const { url: apiUrl, anonKey } = getSupabaseConfig();
 
   useEffect(() => {
-    // Only redirect once auth loading is complete and user is authenticated
-    // IMPORTANT: During an active sign-in attempt we intentionally suppress
-    // this auto-redirect so we can run the mandatory 2FA status check first.
-    // Also skip if 2FA verification is pending.
     if (!loading && isAuthenticated && !hasCheckedAuth && !isLoading && !requires2FA && authGate === "idle") {
       setHasCheckedAuth(true);
       navigate("/dashboard", { replace: true });
@@ -48,6 +53,10 @@ const Login = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isNative && !signinTurnstileToken) {
+      toast({ title: "Please complete verification", variant: "destructive" });
+      return;
+    }
     setIsLoading(true);
     setAuthGate("checking_2fa");
     setHasCheckedAuth(true);
@@ -62,18 +71,21 @@ const Login = () => {
           variant: "destructive",
         });
         setHasCheckedAuth(false);
+        // Reset turnstile on error
+        if (!isNative) {
+          setSigninTurnstileToken(null);
+          setSigninTurnstileKey(k => k + 1);
+        }
         return;
       }
 
       // Check if user has 2FA enabled
-      // Wait a moment for session to be fully established
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.access_token) {
         try {
-          // Use a short timeout for 2FA check — on native WebView this can hang
           const controller = new AbortController();
           const totpTimeout = setTimeout(() => controller.abort(), 4000);
           
@@ -93,7 +105,6 @@ const Login = () => {
             const data = await response.json().catch(() => ({}));
             
             if (data.isEnabled && data.requiresVerification !== false) {
-              // User has 2FA enabled and needs to verify
               setPendingAccessToken(session.access_token);
               setRequires2FA(true);
               setAuthGate("needs_2fa");
@@ -101,7 +112,6 @@ const Login = () => {
               return;
             }
           }
-          // If totp-status fails/times out/not enabled → proceed to dashboard
         } catch (e) {
           // Timed out or failed — proceed to dashboard
         }
@@ -136,7 +146,10 @@ const Login = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
-
+    if (!isNative && !signupTurnstileToken) {
+      toast({ title: "Please complete verification", variant: "destructive" });
+      return;
+    }
 
     if (password !== signupConfirmPassword) {
       toast({
@@ -156,7 +169,6 @@ const Login = () => {
       return;
     }
 
-    // Validate username if provided
     if (signupUsername && (signupUsername.length < 3 || signupUsername.length > 30)) {
       toast({
         title: "Invalid username",
@@ -190,6 +202,10 @@ const Login = () => {
           description: error.message,
           variant: "destructive",
         });
+        if (!isNative) {
+          setSignupTurnstileToken(null);
+          setSignupTurnstileKey(k => k + 1);
+        }
         return;
       }
 
@@ -202,7 +218,6 @@ const Login = () => {
     }
   };
 
-  // Show nothing while checking auth to prevent flash
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center">
@@ -211,13 +226,10 @@ const Login = () => {
     );
   }
 
-  // Already authenticated, will redirect
-  // If we are authenticated but still checking/awaiting 2FA, don't blank the screen.
   if (isAuthenticated && !requires2FA && authGate === "idle") {
     return null;
   }
 
-  // Show 2FA verification screen
   if (requires2FA && pendingAccessToken) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center p-4">
@@ -287,10 +299,17 @@ const Login = () => {
                     required
                   />
                 </div>
+                {!isNative && (
+                  <TurnstileWidget
+                    key={signinTurnstileKey}
+                    onVerify={setSigninTurnstileToken}
+                    onExpire={() => setSigninTurnstileToken(null)}
+                  />
+                )}
                 <Button 
                   type="submit" 
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
-                  disabled={isLoading}
+                  disabled={isLoading || (!isNative && !signinTurnstileToken)}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -368,10 +387,17 @@ const Login = () => {
                     required
                   />
                 </div>
+                {!isNative && (
+                  <TurnstileWidget
+                    key={signupTurnstileKey}
+                    onVerify={setSignupTurnstileToken}
+                    onExpire={() => setSignupTurnstileToken(null)}
+                  />
+                )}
                 <Button 
                   type="submit" 
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
-                  disabled={isLoading}
+                  disabled={isLoading || (!isNative && !signupTurnstileToken)}
                 >
                   {isLoading ? "Creating account..." : "Create Account"}
                 </Button>

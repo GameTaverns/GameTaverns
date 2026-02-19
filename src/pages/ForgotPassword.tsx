@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { TurnstileWidget } from "@/components/games/TurnstileWidget";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail } from "lucide-react";
@@ -11,13 +13,20 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 
 export default function ForgotPassword() {
+  const isNative = Capacitor.isNativePlatform();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isNative && !turnstileToken) {
+      toast({ title: "Please complete verification", variant: "destructive" });
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -102,10 +111,17 @@ export default function ForgotPassword() {
                   required
                 />
               </div>
+              {!isNative && (
+                <TurnstileWidget
+                  key={turnstileKey}
+                  onVerify={setTurnstileToken}
+                  onExpire={() => setTurnstileToken(null)}
+                />
+              )}
               <Button
                 type="submit"
                 className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
-                disabled={isLoading}
+                disabled={isLoading || (!isNative && !turnstileToken)}
               >
                 {isLoading ? "Sending..." : "Send Reset Link"}
               </Button>
