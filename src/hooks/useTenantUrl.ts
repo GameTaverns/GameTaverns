@@ -177,13 +177,21 @@ export function useTenantUrl() {
 export function getLibraryUrl(slug: string, path: string = "/"): string {
   const baseDomain = getBaseDomain();
   const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
-  
-  if (baseDomain && isProductionDeployment()) {
+
+  // On native Capacitor, we use HashRouter so subdomain URLs won't work.
+  // Instead, encode as query params so react-router can handle them client-side.
+  const isNative =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.protocol === "capacitor:");
+
+  if (!isNative && baseDomain && isProductionDeployment()) {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
     return `${protocol}//${slug}.${baseDomain}${normalizedPath}`;
   }
   
-  // Fallback for preview
+  // Fallback for preview and native
   const params = new URLSearchParams();
   params.set("tenant", slug);
   if (path && path !== "/") {
