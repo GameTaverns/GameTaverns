@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,6 @@ import { ArrowRight, Loader2, LogIn, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/backend/client";
 import { toast } from "sonner";
 import { useMobileLibrary } from "@/hooks/useCapacitor";
-import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import logoImage from "@/assets/logo.png";
 
 interface MobileLibrarySelectorProps {
@@ -19,6 +18,7 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
   const [isLoading, setIsLoading] = useState(false);
   const [showLibrarySearch, setShowLibrarySearch] = useState(false);
   const { selectLibrary } = useMobileLibrary();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +57,8 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
       if (onLibrarySelected) {
         onLibrarySelected(slug);
       } else {
-        window.location.href = getLibraryUrl(slug, "/");
+        // Navigate in-app using query param routing (works on native Capacitor)
+        navigate(`/?tenant=${slug}`, { replace: true });
       }
     } catch (err) {
       console.error("Error checking library:", err);
@@ -82,15 +83,14 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
 
       {/* Primary action: Sign In */}
       <div className="w-full max-w-sm space-y-3">
-        <Link to="/login" className="block">
-          <Button
-            className="w-full font-display text-base bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md"
-            size="lg"
-          >
-            <LogIn className="mr-2 h-5 w-5" />
-            Sign In
-          </Button>
-        </Link>
+        <Button
+          className="w-full font-display text-base bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md"
+          size="lg"
+          onClick={() => navigate("/login")}
+        >
+          <LogIn className="mr-2 h-5 w-5" />
+          Sign In
+        </Button>
 
         {/* Divider */}
         <div className="relative flex items-center gap-3 py-2">
