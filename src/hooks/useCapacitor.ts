@@ -106,38 +106,28 @@ export const MobileStorage = {
   },
 };
 
-// Hook for managing the active library in mobile context
+// Hook for managing the active library in mobile context.
+// IMPORTANT: We do NOT persist the activeLibrary across cold starts.
+// Every fresh app launch shows the MobileLibrarySelector. The slug is only
+// kept in React state for the current session (not saved to Preferences).
+// This prevents the app from silently opening a stale tenant on launch.
 export function useMobileLibrary() {
   const [activeLibrary, setActiveLibrary] = useState<string | null>(null);
-  const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
-  const { isNative } = useCapacitor();
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false); // no async load needed
 
   useEffect(() => {
-    // Use detectIsNative() directly (not the hook state) to avoid the race
-    // where isNative might still be false on the first render cycle.
-    if (!detectIsNative()) {
-      setIsLoadingLibrary(false);
-      return;
-    }
-
-    // Load saved library on mount
-    MobileStorage.get<string>('activeLibrary').then(slug => {
-      if (slug) setActiveLibrary(slug);
-      setIsLoadingLibrary(false);
-    }).catch(() => {
-      setIsLoadingLibrary(false);
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount — detectIsNative() is stable (hostname never changes)
+    if (!detectIsNative()) return;
+    // Clear any previously persisted library so fresh launches always start clean
+    MobileStorage.remove('activeLibrary').catch(() => {});
+  }, []); // Run once on mount
 
   const selectLibrary = useCallback(async (slug: string) => {
     setActiveLibrary(slug);
-    await MobileStorage.set('activeLibrary', slug);
+    // Do NOT persist to storage — intentionally session-only
   }, []);
 
   const clearLibrary = useCallback(async () => {
     setActiveLibrary(null);
-    await MobileStorage.remove('activeLibrary');
   }, []);
 
   return { activeLibrary, isLoadingLibrary, selectLibrary, clearLibrary };
