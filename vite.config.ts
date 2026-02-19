@@ -75,8 +75,16 @@ export default defineConfig(({ mode }) => {
     },
   },
   define: {
-    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(env.VITE_SUPABASE_URL || ""),
-    "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(env.VITE_SUPABASE_PUBLISHABLE_KEY || ""),
+    // For native (android/ios) builds: force Lovable Cloud credentials to empty strings.
+    // The runtime override in getSupabaseConfig() (Capacitor.isNativePlatform()) will
+    // use the hardcoded gametaverns.com values instead. This prevents any accidental
+    // Lovable Cloud URL from being baked into the APK/IPA bundle.
+    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
+      (mode === "android" || mode === "ios") ? "" : (env.VITE_SUPABASE_URL || "")
+    ),
+    "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
+      (mode === "android" || mode === "ios") ? "" : (env.VITE_SUPABASE_PUBLISHABLE_KEY || "")
+    ),
   },
   build: {
     rollupOptions: {
