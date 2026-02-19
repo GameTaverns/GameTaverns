@@ -302,9 +302,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, 0);
     };
 
+    // Track whether onAuthStateChange has fired at least once with a real event.
+    // If it has, bootstrap should NOT overwrite the state (avoids race condition
+    // where bootstrap's applySession(storedSession) fires after login sets a fresh session).
+    let authStateResolved = false;
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      authStateResolved = true;
+
       if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !nextSession)) {
         clearAuthStorage();
         adminRoleCache.clear();
@@ -402,7 +409,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        applySession(storedSession);
+        // Only apply stored session if onAuthStateChange hasn't already resolved auth.
+        // This prevents bootstrap from clobbering a fresh session set during login.
+        if (!authStateResolved) {
+          applySession(storedSession);
+        }
         verifyUserExists(storedSession);
       };
 
