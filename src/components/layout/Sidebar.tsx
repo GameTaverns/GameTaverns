@@ -32,6 +32,7 @@ import {
   PenTool,
   Palette,
   ListOrdered,
+  QrCode,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
@@ -804,6 +805,20 @@ export function Sidebar({ isOpen }: SidebarProps) {
               >
                 <BarChart3 className="h-5 w-5" />
                 <span>Play Stats</span>
+              </Link>
+            )}
+
+            {/* QR Catalog Print - owner only */}
+            {isTenantMode && isOwner && (
+              <Link
+                to={buildUrl("/catalog-print")}
+                className={cn(
+                  "sidebar-link",
+                  location.pathname === "/catalog-print" && "sidebar-link-active"
+                )}
+              >
+                <QrCode className="h-5 w-5" />
+                <span>QR Catalog Print</span>
               </Link>
             )}
 
