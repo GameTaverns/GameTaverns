@@ -88,6 +88,9 @@ import { ChallengesManager } from "@/components/challenges/ChallengesManager";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { useQuery } from "@tanstack/react-query";
+import { supabase as _supabase } from "@/integrations/backend/client";
 import { InfoPopover } from "@/components/ui/InfoPopover";
 import {
   DropdownMenu,
@@ -137,6 +140,51 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editEvent, setEditEvent] = useState<import("@/hooks/useLibraryEvents").CalendarEvent | null>(null);
+
+  // Onboarding checklist data
+  const { data: gameCountData } = useQuery({
+    queryKey: ["onboarding-game-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return { count: 0 };
+      const { count } = await _supabase.from("games").select("id", { count: "exact", head: true }).eq("library_id", library.id);
+      return { count: count ?? 0 };
+    },
+    enabled: !!library?.id,
+    staleTime: 60000,
+  });
+  const { data: playCountData } = useQuery({
+    queryKey: ["onboarding-play-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return { count: 0 };
+      const { data: gameIds } = await _supabase.from("games").select("id").eq("library_id", library.id);
+      if (!gameIds?.length) return { count: 0 };
+      const ids = gameIds.map((g: any) => g.id);
+      const { count } = await _supabase.from("game_sessions").select("id", { count: "exact", head: true }).in("game_id", ids);
+      return { count: count ?? 0 };
+    },
+    enabled: !!library?.id,
+    staleTime: 60000,
+  });
+  const { data: memberCountData } = useQuery({
+    queryKey: ["onboarding-member-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return { count: 0 };
+      const { count } = await _supabase.from("library_members").select("id", { count: "exact", head: true }).eq("library_id", library.id);
+      return { count: count ?? 0 };
+    },
+    enabled: !!library?.id,
+    staleTime: 60000,
+  });
+  const { data: eventCountData } = useQuery({
+    queryKey: ["onboarding-event-count", library?.id],
+    queryFn: async () => {
+      if (!library?.id) return { count: 0 };
+      const { count } = await _supabase.from("library_events").select("id", { count: "exact", head: true }).eq("library_id", library.id);
+      return { count: count ?? 0 };
+    },
+    enabled: !!library?.id,
+    staleTime: 60000,
+  });
 
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
@@ -318,6 +366,16 @@ export default function Dashboard() {
               </Card>
             ) : (
               <div className="space-y-4">
+                {/* ── Onboarding Checklist ── shown until dismissed */}
+                <OnboardingChecklist
+                  librarySlug={library.slug}
+                  gameCount={gameCountData?.count ?? 0}
+                  playCount={playCountData?.count ?? 0}
+                  memberCount={memberCountData?.count ?? 0}
+                  hasCustomTheme={false}
+                  hasEvents={(eventCountData?.count ?? 0) > 0}
+                />
+
                 {/* ── Trending This Month ── full-width prominent section */}
                 <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
                   <CardHeader className="px-4 pt-4 pb-2">
