@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Component, type ReactNode } from "react";
 import { useCapacitor, useMobileLibrary } from "@/hooks/useCapacitor";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,15 +6,40 @@ import { MobileLibrarySelector } from "./MobileLibrarySelector";
 import { WifiOff, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-interface MobileAppShellProps {
-  children: React.ReactNode;
+// Error boundary to catch any crash inside the shell
+class MobileErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: "" };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 gap-4">
+          <p className="text-destructive text-sm font-medium">Something went wrong</p>
+          <p className="text-muted-foreground text-xs text-center">{this.state.error}</p>
+          <Button variant="outline" onClick={() => this.setState({ hasError: false, error: "" })}>
+            Try Again
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
-export function MobileAppShell({ children }: MobileAppShellProps) {
+interface MobileAppShellProps {
+  children: ReactNode;
+}
+
+function MobileAppShellInner({ children }: MobileAppShellProps) {
   const { isNative, platform, isOnline } = useCapacitor();
-  const { activeLibrary, isLoadingLibrary, selectLibrary, clearLibrary } = useMobileLibrary();
+  const { activeLibrary, isLoadingLibrary, selectLibrary } = useMobileLibrary();
   const { isSupported: pushSupported, isRegistered, requestPermission } = usePushNotifications();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -38,45 +63,43 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
   // Prompt for push notifications on first launch
   useEffect(() => {
     if (!isNative || promptedForPush || !pushSupported) return;
-    
-    // Wait a bit before prompting
     const timer = setTimeout(async () => {
       if (!isRegistered) {
-        const granted = await requestPermission();
-        if (granted) {
-          toast.success("Notifications enabled", {
-            description: "You'll receive updates about game nights and new additions.",
-          });
+        try {
+          const granted = await requestPermission();
+          if (granted) {
+            toast.success("Notifications enabled", {
+              description: "You'll receive updates about game nights and new additions.",
+            });
+          }
+        } catch (e) {
+          console.warn("Push notification request failed:", e);
         }
       }
       setPromptedForPush(true);
     }, 3000);
-
     return () => clearTimeout(timer);
   }, [isNative, promptedForPush, pushSupported, isRegistered, requestPermission]);
 
-  // On native platforms, check URL params first (for deep links)
+  // Handle deep link tenant param
   useEffect(() => {
     if (!isNative) return;
-    
     const params = new URLSearchParams(window.location.search);
     const tenantFromUrl = params.get('tenant');
-    
     if (tenantFromUrl && tenantFromUrl !== activeLibrary) {
       selectLibrary(tenantFromUrl);
     }
   }, [isNative, activeLibrary, selectLibrary]);
 
-  // Redirect authenticated users to dashboard on native launch
+  // Redirect authenticated users to dashboard if no library selected
   useEffect(() => {
-    if (!isNative || authLoading) return;
-    if (isAuthenticated && !activeLibrary && !isLoadingLibrary) {
-      // Authenticated users without a library selected go to their dashboard
+    if (!isNative || authLoading || isLoadingLibrary) return;
+    if (isAuthenticated && !activeLibrary) {
       navigate("/dashboard", { replace: true });
     }
   }, [isNative, isAuthenticated, authLoading, activeLibrary, isLoadingLibrary, navigate]);
 
-  // Wait for both auth and storage to load on native before deciding what to show
+  // Wait for auth + storage on native
   if (isNative && (authLoading || isLoadingLibrary)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -85,8 +108,7 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
     );
   }
 
-  // If native, authenticated, and no library selected — redirect handled by useEffect above
-  // Show nothing while redirect is in progress
+  // Authenticated but no library — waiting for redirect
   if (isNative && isAuthenticated && !activeLibrary) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -95,11 +117,10 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
     );
   }
 
-  // If native and no library selected and not authenticated, show selector with sign-in option
+  // Not authenticated and no library — show selector with sign in option
   if (isNative && !activeLibrary) {
     const params = new URLSearchParams(window.location.search);
     const tenantFromUrl = params.get('tenant');
-    
     if (!tenantFromUrl) {
       return <MobileLibrarySelector onLibrarySelected={selectLibrary} />;
     }
@@ -107,7 +128,6 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
 
   return (
     <div className={`mobile-app-shell ${platform}`}>
-      {/* Offline indicator */}
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-destructive text-destructive-foreground py-2 px-4 flex items-center justify-center gap-2 text-sm">
           <WifiOff className="h-4 w-4" />
@@ -115,7 +135,6 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
         </div>
       )}
 
-      {/* Native notification permission banner */}
       {isNative && pushSupported && !isRegistered && !promptedForPush && (
         <div className="fixed bottom-20 left-4 right-4 z-40 bg-card border rounded-lg p-4 shadow-lg">
           <div className="flex items-start gap-3">
@@ -128,14 +147,8 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
                 Get notified about game nights, new games, and more.
               </p>
               <div className="flex gap-2 mt-3">
-                <Button size="sm" onClick={requestPermission}>
-                  Enable
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  onClick={() => setPromptedForPush(true)}
-                >
+                <Button size="sm" onClick={requestPermission}>Enable</Button>
+                <Button size="sm" variant="ghost" onClick={() => setPromptedForPush(true)}>
                   <BellOff className="h-4 w-4 mr-1" />
                   Not now
                 </Button>
@@ -147,5 +160,13 @@ export function MobileAppShell({ children }: MobileAppShellProps) {
 
       {children}
     </div>
+  );
+}
+
+export function MobileAppShell({ children }: MobileAppShellProps) {
+  return (
+    <MobileErrorBoundary>
+      <MobileAppShellInner>{children}</MobileAppShellInner>
+    </MobileErrorBoundary>
   );
 }
