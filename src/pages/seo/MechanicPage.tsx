@@ -70,7 +70,7 @@ export default function MechanicPage() {
   const mechanicName = mechanic?.name || (slug ? slug.replace(/-/g, " ") : "");
   const title = `Best ${mechanicName} Board Games`;
   const description = `Explore the top board games featuring the ${mechanicName} mechanic. Find your next favorite strategy, cooperative, or party game with ${mechanicName} gameplay.`;
-  const canonicalUrl = `https://hobby-shelf-spark.lovable.app/catalog/mechanic/${slug}`;
+  const canonicalUrl = `https://gametaverns.com/catalog/mechanic/${slug}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -81,9 +81,9 @@ export default function MechanicPage() {
     breadcrumb: {
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: "https://hobby-shelf-spark.lovable.app" },
-        { "@type": "ListItem", position: 2, name: "Catalog", item: "https://hobby-shelf-spark.lovable.app/catalog" },
-        { "@type": "ListItem", position: 3, name: "Mechanics", item: "https://hobby-shelf-spark.lovable.app/catalog/mechanics" },
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://gametaverns.com" },
+        { "@type": "ListItem", position: 2, name: "Catalog", item: "https://gametaverns.com/catalog" },
+        { "@type": "ListItem", position: 3, name: "Mechanics", item: "https://gametaverns.com/catalog/mechanics" },
         { "@type": "ListItem", position: 4, name: mechanicName, item: canonicalUrl },
       ],
     },
