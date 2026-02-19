@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { TurnstileWidget } from "@/components/games/TurnstileWidget";
 import { TotpVerify } from "@/components/auth/TotpVerify";
 import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
@@ -24,33 +23,17 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileKey, setTurnstileKey] = useState(0);
   const [requires2FA, setRequires2FA] = useState(false);
   const [pendingAccessToken, setPendingAccessToken] = useState<string | null>(null);
   const [authGate, setAuthGate] = useState<"idle" | "checking_2fa" | "needs_2fa">("idle");
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  // Capture referral code from URL on mount
   const [referralCode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("ref") || undefined;
   });
   const { url: apiUrl, anonKey } = getSupabaseConfig();
-
-  const handleTurnstileVerify = useCallback((token: string) => {
-    setTurnstileToken(token);
-  }, []);
-
-  const handleTurnstileExpire = useCallback(() => {
-    setTurnstileToken(null);
-  }, []);
-
-  const resetTurnstile = useCallback(() => {
-    setTurnstileToken(null);
-    setTurnstileKey(prev => prev + 1);
-  }, []);
 
   useEffect(() => {
     // Only redirect once auth loading is complete and user is authenticated
@@ -65,20 +48,8 @@ const Login = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!turnstileToken) {
-      toast({
-        title: "Verification required",
-        description: "Please complete the verification challenge",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     setIsLoading(true);
     setAuthGate("checking_2fa");
-    // Prevent the auth-change useEffect above from redirecting to /dashboard
-    // before we can run the 2FA gate checks.
     setHasCheckedAuth(true);
 
     try {
@@ -91,7 +62,6 @@ const Login = () => {
           variant: "destructive",
         });
         setHasCheckedAuth(false);
-        resetTurnstile();
         return;
       }
 
@@ -157,25 +127,16 @@ const Login = () => {
   };
 
   const handle2FACancel = async () => {
-    // Sign out and reset state
     await supabase.auth.signOut();
     setRequires2FA(false);
     setPendingAccessToken(null);
     setAuthGate("idle");
-    resetTurnstile();
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!turnstileToken) {
-      toast({
-        title: "Verification required",
-        description: "Please complete the verification challenge",
-        variant: "destructive",
-      });
-      return;
-    }
+
+
 
     if (password !== signupConfirmPassword) {
       toast({
@@ -229,7 +190,6 @@ const Login = () => {
           description: error.message,
           variant: "destructive",
         });
-        resetTurnstile();
         return;
       }
 
@@ -287,7 +247,7 @@ const Login = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full" onValueChange={resetTurnstile}>
+          <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-muted dark:bg-wood-medium/50">
               <TabsTrigger 
                 value="signin" 
@@ -327,18 +287,10 @@ const Login = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-foreground/80">Verification</Label>
-                  <TurnstileWidget
-                    key={`signin-${turnstileKey}`}
-                    onVerify={handleTurnstileVerify}
-                    onExpire={handleTurnstileExpire}
-                  />
-                </div>
                 <Button 
                   type="submit" 
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
-                  disabled={isLoading || !turnstileToken}
+                  disabled={isLoading}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -416,18 +368,10 @@ const Login = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-foreground/80">Verification</Label>
-                  <TurnstileWidget
-                    key={`signup-${turnstileKey}`}
-                    onVerify={handleTurnstileVerify}
-                    onExpire={handleTurnstileExpire}
-                  />
-                </div>
                 <Button 
                   type="submit" 
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
-                  disabled={isLoading || !turnstileToken}
+                  disabled={isLoading}
                 >
                   {isLoading ? "Creating account..." : "Create Account"}
                 </Button>
