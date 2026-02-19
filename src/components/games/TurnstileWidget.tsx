@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, forwardRef, useState } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTurnstileSiteKey, useSiteSettingsLoaded } from "@/hooks/useSiteSettings";
+import { Capacitor } from "@capacitor/core";
 
 interface TurnstileWidgetProps {
   onVerify: (token: string) => void;
@@ -30,15 +31,17 @@ declare global {
 }
 
 /**
- * Detect if we're running in a Lovable preview environment OR native Capacitor.
- * These environments should always bypass Turnstile.
+ * Detect if we're running in a Lovable preview environment.
+ * Native Capacitor apps are NOT considered preview — they go through real Turnstile.
  */
 function isLovablePreview(): boolean {
   if (typeof window === "undefined") return false;
+  // Native apps are never preview, even though they run on localhost
+  if (Capacitor.isNativePlatform()) return false;
   const host = window.location.hostname;
   // Lovable preview domains
   if (host.endsWith(".lovableproject.com") || host.endsWith(".lovable.app")) return true;
-  // Native Capacitor runs on capacitor://localhost or just localhost
+  // Dev server on localhost (but NOT native)
   if (host === "localhost" || host === "127.0.0.1") return true;
   return false;
 }
