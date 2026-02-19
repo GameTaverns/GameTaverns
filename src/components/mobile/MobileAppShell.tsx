@@ -46,6 +46,16 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   const [showOfflineNotice, setShowOfflineNotice] = useState(false);
   const [promptedForPush, setPromptedForPush] = useState(false);
 
+  // Global safety net: prevent unhandled promise rejections from crashing the app
+  useEffect(() => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.warn('Unhandled promise rejection caught by MobileAppShell:', event.reason);
+      event.preventDefault();
+    };
+    window.addEventListener('unhandledrejection', handleRejection);
+    return () => window.removeEventListener('unhandledrejection', handleRejection);
+  }, []);
+
   // Handle offline state
   useEffect(() => {
     if (!isOnline) {
