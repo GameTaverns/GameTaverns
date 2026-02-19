@@ -188,13 +188,6 @@ export default function PlatformAdmin() {
               Premium
             </TabsTrigger>
             <TabsTrigger 
-              value="badges"
-              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
-            >
-              <BadgeCheck className="h-4 w-4 mr-1 sm:mr-2" />
-              Badges
-            </TabsTrigger>
-            <TabsTrigger 
               value="server"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
@@ -208,7 +201,24 @@ export default function PlatformAdmin() {
           </TabsContent>
           
           <TabsContent value="users" className="mt-6">
-            <UserManagement />
+            <Tabs defaultValue="list" className="space-y-4">
+              <TabsList className="bg-wood-medium/20 border border-wood-medium/30 h-auto">
+                <TabsTrigger value="list" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm">
+                  <Users className="h-3.5 w-3.5 mr-1.5" />
+                  Users
+                </TabsTrigger>
+                <TabsTrigger value="badges" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm">
+                  <BadgeCheck className="h-3.5 w-3.5 mr-1.5" />
+                  Special Badges
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="list">
+                <UserManagement />
+              </TabsContent>
+              <TabsContent value="badges">
+                <SpecialBadgesManagement />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
           
           <TabsContent value="libraries" className="mt-6">
@@ -233,10 +243,6 @@ export default function PlatformAdmin() {
           
           <TabsContent value="premium" className="mt-6">
             <PremiumRoadmap />
-          </TabsContent>
-
-          <TabsContent value="badges" className="mt-6">
-            <SpecialBadgesManagement />
           </TabsContent>
 
           <TabsContent value="server" className="mt-6">
