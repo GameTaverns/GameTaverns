@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { getLibraryUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ChecklistItem {
@@ -55,7 +55,7 @@ export function OnboardingChecklist({
   };
 
   const gamesUrl = getLibraryUrl(librarySlug, "/games");
-  const settingsUrl = getLibraryUrl(librarySlug, "/settings");
+  const settingsUrl = getPlatformUrl("/dashboard");
   const libraryUrl = getLibraryUrl(librarySlug, "/");
 
   const items: ChecklistItem[] = [
@@ -65,7 +65,7 @@ export function OnboardingChecklist({
       description: "Protect your account with an authenticator app for an extra layer of security.",
       icon: <Shield className="h-4 w-4" />,
       completed: has2FA,
-      href: "/setup-2fa",
+      href: getPlatformUrl("/setup-2fa"),
       action: "Set Up 2FA",
     },
     {
