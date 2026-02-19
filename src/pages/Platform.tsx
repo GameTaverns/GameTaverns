@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
 import { usePlatformStats, formatStatNumber } from "@/hooks/usePlatformStats";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { Footer } from "@/components/layout/Footer";
 import logoImage from "@/assets/logo.png";
 
@@ -75,9 +76,9 @@ export default function Platform() {
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Dashboard</Button>
                 </Link>
                 {myLibrary && (
-                  <a href={getLibraryUrl(myLibrary.slug, "/")}>
+                  <TenantLink href={getLibraryUrl(myLibrary.slug, "/")}>
                     <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">My Library</Button>
-                  </a>
+                  </TenantLink>
                 )}
               </>
             ) : (

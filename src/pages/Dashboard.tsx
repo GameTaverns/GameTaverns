@@ -77,6 +77,7 @@ import { useLending } from "@/hooks/useLending";
 import { useMyMemberships } from "@/hooks/useLibraryMembership";
 import { RandomGamePicker } from "@/components/games/RandomGamePicker";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { Footer } from "@/components/layout/Footer";
 
 import { CommunityTab } from "@/components/community/CommunityTab";
@@ -408,21 +409,21 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
                     <div className="flex flex-col gap-1.5">
-                      <a href={getLibraryUrl(library.slug, "/games")}>
+                      <TenantLink href={getLibraryUrl(library.slug, "/games")}>
                         <Button size="sm" className={`w-full ${btnPrimary}`}>
                           <Plus className="h-3 w-3" /> Add Games
                         </Button>
-                      </a>
-                      <a href={getLibraryUrl(library.slug, "/manage")}>
+                      </TenantLink>
+                      <TenantLink href={getLibraryUrl(library.slug, "/manage")}>
                         <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
                           <Settings className="h-3 w-3" /> Manage Collection
                         </Button>
-                      </a>
-                      <a href={libraryUrl!}>
+                      </TenantLink>
+                      <TenantLink href={libraryUrl!}>
                         <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
                           <Eye className="h-3 w-3" /> View Public Page
                         </Button>
-                      </a>
+                      </TenantLink>
                     </div>
                   </CardContent>
                 </Card>
@@ -496,16 +497,16 @@ export default function Dashboard() {
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
                     <div className="flex flex-col gap-1.5">
-                      <a href={getLibraryUrl(library.slug, "/settings?tab=ratings")}>
+                      <TenantLink href={getLibraryUrl(library.slug, "/settings?tab=ratings")}>
                         <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
                           <Star className="h-3.5 w-3.5" /> View Ratings
                         </Button>
-                      </a>
-                      <a href={getLibraryUrl(library.slug, "/settings?tab=wishlist")}>
+                      </TenantLink>
+                      <TenantLink href={getLibraryUrl(library.slug, "/settings?tab=wishlist")}>
                         <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
                           <Heart className="h-3.5 w-3.5" /> View Wishlist
                         </Button>
-                      </a>
+                      </TenantLink>
                     </div>
                   </CardContent>
                 </Card>

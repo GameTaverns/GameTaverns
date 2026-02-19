@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useClub, useClubLibraries, useClubGameSearch, useClubEvents } from "@/hooks/useClubs";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { useAuth } from "@/hooks/useAuth";
 import { ClubForumCard } from "@/components/community/ClubForumCard";
 
@@ -202,7 +203,7 @@ export default function ClubPage() {
                         )}
                         <div className="mt-2 space-y-1">
                           {copies.map((copy) => (
-                            <a
+                            <TenantLink
                               key={copy.id}
                               href={getLibraryUrl(copy.library_slug, "/")}
                               className="flex items-center justify-between text-xs p-1.5 rounded bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors"
@@ -213,7 +214,7 @@ export default function ClubPage() {
                               <span className="text-cream/50 flex-shrink-0 ml-2">
                                 {copy.library_name}
                               </span>
-                            </a>
+                            </TenantLink>
                           ))}
                         </div>
                       </CardContent>
@@ -242,7 +243,7 @@ export default function ClubPage() {
                   </CardHeader>
                   <CardContent>
                     {cl.library?.slug && (
-                      <a href={getLibraryUrl(cl.library.slug, "/")}>
+                      <TenantLink href={getLibraryUrl(cl.library.slug, "/")}>
                         <Button
                           variant="secondary"
                           size="sm"
@@ -251,7 +252,7 @@ export default function ClubPage() {
                           <ExternalLink className="h-4 w-4" />
                           Visit Library
                         </Button>
-                      </a>
+                      </TenantLink>
                     )}
                   </CardContent>
                 </Card>

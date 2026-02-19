@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout/Layout";
 import { useLibraryDirectory } from "@/hooks/useLibraryDirectory";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenantUrl, getLibraryUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,13 +115,13 @@ export default function Directory() {
             )}
           </div>
           
-          <a 
+          <TenantLink
             href={getLibraryUrl(library.slug, "/")}
             className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
           >
             Visit Library
             <ExternalLink className="h-3 w-3" />
-          </a>
+          </TenantLink>
         </CardContent>
       </Card>
     );

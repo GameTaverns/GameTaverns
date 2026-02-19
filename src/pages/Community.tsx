@@ -34,6 +34,7 @@ import { useMyClubs } from "@/hooks/useClubs";
 import { useClubCategories, useLibrariesForumEnabled, type ForumCategory as ClubForumCategory } from "@/hooks/useForum";
 import { useMyMemberships } from "@/hooks/useLibraryMembership";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 import { Library as LibraryIcon } from "lucide-react";
 
 const ICON_MAP = FORUM_ICON_MAP;
@@ -413,9 +414,9 @@ function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryI
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <LibraryIcon className="h-4 w-4 text-muted-foreground" />
-        <a href={getLibraryUrl(librarySlug, "/community")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+        <TenantLink href={getLibraryUrl(librarySlug, "/community")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
           {libraryName}
-        </a>
+        </TenantLink>
       </div>
       {categories.map((category) => {
         const Icon = ICON_MAP[category.icon] || MessageSquare;
@@ -444,7 +445,7 @@ function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryI
                   const SubIcon = ICON_MAP[sub.icon] || MessageSquare;
                   const subColor = COLOR_MAP[sub.color] || "text-blue-500";
                   return (
-                    <a
+                    <TenantLink
                       key={sub.id}
                       href={getLibraryUrl(librarySlug, `/community/${sub.slug}`)}
                       className="flex items-center gap-4 px-4 py-3 hover:bg-accent/40 transition-colors border-b border-border/50 last:border-b-0 group"
@@ -462,17 +463,17 @@ function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryI
                           </p>
                         )}
                       </div>
-                    </a>
+                    </TenantLink>
                   );
                 })}
               </div>
             ) : (
-              <a
+              <TenantLink
                 href={getLibraryUrl(librarySlug, `/community/${category.slug}`)}
                 className="block px-4 py-3 bg-card hover:bg-accent/40 transition-colors text-sm text-muted-foreground"
               >
                 Browse threads →
-              </a>
+              </TenantLink>
             )}
           </div>
         );
