@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const BASE_URL = "https://hobby-shelf-spark.lovable.app";
+const BASE_URL = "https://gametaverns.com";
 
 function url(loc: string, priority: string, changefreq: string, lastmod?: string): string {
   return `  <url>
