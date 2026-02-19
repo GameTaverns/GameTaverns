@@ -101,10 +101,9 @@ echo "Rebuilding frontend..."
 dcp build --no-cache app
 
 echo ""
-echo "Applying database migrations..."
-if [ -f "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/run-migrations.sh" ]; then
-    bash "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/run-migrations.sh" || echo -e "${YELLOW}Migration warnings (often OK)${NC}"
-fi
+echo -e "${YELLOW}Note: Database migrations are applied manually via CLI.${NC}"
+echo "  To apply a new migration:"
+echo "  cat migration.sql | gt_compose exec -T db psql -U postgres -d postgres"
 
 
 echo ""

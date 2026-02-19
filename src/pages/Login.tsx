@@ -32,6 +32,11 @@ const Login = () => {
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  // Capture referral code from URL on mount
+  const [referralCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("ref") || undefined;
+  });
   const { url: apiUrl, anonKey } = getSupabaseConfig();
 
   const handleTurnstileVerify = useCallback((token: string) => {
@@ -230,6 +235,7 @@ const Login = () => {
       const { error } = await signUp(signupEmail, password, {
         username: signupUsername.toLowerCase() || undefined,
         displayName: signupDisplayName || signupEmail.split("@")[0],
+        referralCode,
       });
 
       if (error) {
