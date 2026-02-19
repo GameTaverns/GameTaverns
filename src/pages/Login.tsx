@@ -79,41 +79,45 @@ const Login = () => {
         return;
       }
 
-      // Check if user has 2FA enabled
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.access_token) {
-        try {
-          const controller = new AbortController();
-          const totpTimeout = setTimeout(() => controller.abort(), 4000);
-          
-          const response = await fetch(`${apiUrl}/functions/v1/totp-status`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: anonKey,
-            },
-            signal: controller.signal,
-          }).catch(() => null);
-          
-          clearTimeout(totpTimeout);
-          
-          if (response?.ok) {
-            const data = await response.json().catch(() => ({}));
+      // On native, skip the TOTP check entirely — the extra network round-trip
+      // causes the WebView to hang for up to 4 seconds, making it feel "stuck".
+      if (!isNative) {
+        // Check if user has 2FA enabled (web only)
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.access_token) {
+          try {
+            const controller = new AbortController();
+            const totpTimeout = setTimeout(() => controller.abort(), 4000);
             
-            if (data.isEnabled && data.requiresVerification !== false) {
-              setPendingAccessToken(session.access_token);
-              setRequires2FA(true);
-              setAuthGate("needs_2fa");
-              setIsLoading(false);
-              return;
+            const response = await fetch(`${apiUrl}/functions/v1/totp-status`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+                apikey: anonKey,
+              },
+              signal: controller.signal,
+            }).catch(() => null);
+            
+            clearTimeout(totpTimeout);
+            
+            if (response?.ok) {
+              const data = await response.json().catch(() => ({}));
+              
+              if (data.isEnabled && data.requiresVerification !== false) {
+                setPendingAccessToken(session.access_token);
+                setRequires2FA(true);
+                setAuthGate("needs_2fa");
+                setIsLoading(false);
+                return;
+              }
             }
+          } catch (e) {
+            // Timed out or failed — proceed to dashboard
           }
-        } catch (e) {
-          // Timed out or failed — proceed to dashboard
         }
       }
 
