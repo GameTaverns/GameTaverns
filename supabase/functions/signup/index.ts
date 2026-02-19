@@ -6,8 +6,13 @@ import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version, x-native-app-token",
 };
+
+// Secret token baked into the Android APK — allows native apps to bypass Turnstile.
+// Must match VITE_NATIVE_APP_SECRET in .env.android. Not stored in cloud secrets
+// because it's embedded in the APK binary anyway (same security model as the anon key).
+const NATIVE_APP_SECRET = "gt-android-2026-a7f3k9m2p4x8q1n5";
 
 interface SignupRequest {
   email: string;
@@ -16,6 +21,7 @@ interface SignupRequest {
   displayName?: string;
   redirectUrl?: string;
   referralCode?: string;
+  turnstile_token?: string;
 }
 
 const SMTP_SEND_TIMEOUT_MS = 8000;
@@ -196,7 +202,52 @@ async function handler(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { email, password, username, displayName, redirectUrl, referralCode }: SignupRequest = await req.json();
+    const { email, password, username, displayName, redirectUrl, referralCode, turnstile_token }: SignupRequest = await req.json();
+
+    // Validate Turnstile / native app token
+    if (turnstile_token === "TURNSTILE_BYPASS_TOKEN") {
+      // Native app bypass — must present matching secret header
+      const appSecret = req.headers.get("x-native-app-token");
+      if (appSecret !== NATIVE_APP_SECRET) {
+        console.warn("[Signup] TURNSTILE_BYPASS_TOKEN without valid x-native-app-token — rejected");
+        return new Response(JSON.stringify({ error: "Verification failed" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      console.log("[Signup] Native app secret validated");
+    } else if (!turnstile_token) {
+      // No token provided at all — only enforce if Turnstile secret is configured
+      const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY");
+      if (turnstileSecret) {
+        return new Response(JSON.stringify({ error: "Verification required" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      // Real Turnstile token — verify with Cloudflare if key is available
+      const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY");
+      if (turnstileSecret) {
+        try {
+          const tfRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ secret: turnstileSecret, response: turnstile_token, remoteip: clientIp }),
+          });
+          const tfData = await tfRes.json();
+          if (!tfData.success) {
+            return new Response(JSON.stringify({ error: "CAPTCHA verification failed. Please try again." }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        } catch (e) {
+          console.error("[Signup] Turnstile verification error:", e);
+        }
+      }
+    }
+
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,

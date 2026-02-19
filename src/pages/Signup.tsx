@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Capacitor } from "@capacitor/core";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -127,13 +128,17 @@ export default function Signup() {
       }
 
       // Cloud mode: call Supabase Edge Function
+      const isNative = Capacitor.isNativePlatform();
+      const nativeHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (isNative) {
+        nativeHeaders["x-native-app-token"] = import.meta.env.VITE_NATIVE_APP_SECRET || "";
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/signup`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: nativeHeaders,
           body: JSON.stringify({
             email,
             password,
