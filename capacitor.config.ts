@@ -4,10 +4,9 @@ const config: CapacitorConfig = {
   appId: 'app.lovable.e6868cccab20485baaa3d3345575c037',
   appName: 'GameTaverns',
   webDir: 'dist',
-  server: {
-    url: 'https://gametaverns.com',
-    cleartext: true
-  },
+  // Bundled mode: UI assets are packaged inside the APK.
+  // The app calls https://gametaverns.com for all data/auth via VITE env vars.
+  // Do NOT add server.url here — that switches to WebView mode (just a browser).
   // iOS-specific configuration
   ios: {
     contentInset: 'automatic',
