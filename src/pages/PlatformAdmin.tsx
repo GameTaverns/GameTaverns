@@ -27,6 +27,7 @@ export default function PlatformAdmin() {
   // Get initial tab from URL param
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "analytics");
+  const [usersSubTab, setUsersSubTab] = useState<"list" | "badges">("list");
   const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
   const { data: pendingClubs } = usePendingClubs();
   
@@ -201,24 +202,25 @@ export default function PlatformAdmin() {
           </TabsContent>
           
           <TabsContent value="users" className="mt-6">
-            <Tabs defaultValue="list" className="space-y-4">
-              <TabsList className="bg-wood-medium/20 border border-wood-medium/30 h-auto">
-                <TabsTrigger value="list" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm">
-                  <Users className="h-3.5 w-3.5 mr-1.5" />
+            <div className="space-y-4">
+              <div className="flex gap-2 border-b border-wood-medium/30 pb-3">
+                <button
+                  onClick={() => setUsersSubTab("list")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${usersSubTab === "list" ? "bg-secondary text-secondary-foreground" : "text-cream/70 hover:text-cream hover:bg-wood-medium/30"}`}
+                >
+                  <Users className="h-3.5 w-3.5" />
                   Users
-                </TabsTrigger>
-                <TabsTrigger value="badges" className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm">
-                  <BadgeCheck className="h-3.5 w-3.5 mr-1.5" />
+                </button>
+                <button
+                  onClick={() => setUsersSubTab("badges")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${usersSubTab === "badges" ? "bg-secondary text-secondary-foreground" : "text-cream/70 hover:text-cream hover:bg-wood-medium/30"}`}
+                >
+                  <BadgeCheck className="h-3.5 w-3.5" />
                   Special Badges
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="list">
-                <UserManagement />
-              </TabsContent>
-              <TabsContent value="badges">
-                <SpecialBadgesManagement />
-              </TabsContent>
-            </Tabs>
+                </button>
+              </div>
+              {usersSubTab === "list" ? <UserManagement /> : <SpecialBadgesManagement />}
+            </div>
           </TabsContent>
           
           <TabsContent value="libraries" className="mt-6">
