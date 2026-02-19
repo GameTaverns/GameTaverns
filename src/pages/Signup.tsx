@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
+import { TurnstileWidget } from "@/components/games/TurnstileWidget";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -18,15 +19,23 @@ export default function Signup() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  const isNative = Capacitor.isNativePlatform();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isNative && !turnstileToken) {
+      toast({ title: "Please complete verification", variant: "destructive" });
+      return;
+    }
     
     if (password !== confirmPassword) {
       toast({
@@ -236,10 +245,18 @@ export default function Signup() {
               />
             </div>
 
+            {!isNative && (
+              <TurnstileWidget
+                key={turnstileKey}
+                onVerify={setTurnstileToken}
+                onExpire={() => setTurnstileToken(null)}
+              />
+            )}
+
             <Button
               type="submit"
               className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
-              disabled={isLoading}
+              disabled={isLoading || (!isNative && !turnstileToken)}
             >
               {isLoading ? (
                 <>
