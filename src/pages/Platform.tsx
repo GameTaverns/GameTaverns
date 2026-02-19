@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Library, Users, Palette, Shield, Zap, Upload } from "lucide-react";
+import { SEO, websiteJsonLd } from "@/components/seo/SEO";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +31,12 @@ export default function Platform() {
   
   return (
     <div className="min-h-screen overflow-x-hidden bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium">
+      <SEO
+        title="GameTaverns — Board Game Library Management"
+        description="Create your free board game library. Track collections, log plays, manage lending, run game night polls, and build your gaming community."
+        noSuffix
+        jsonLd={websiteJsonLd()}
+      />
       {/* Header */}
       <header className="border-b border-border/30 bg-muted/50 dark:bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">

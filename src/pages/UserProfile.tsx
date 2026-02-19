@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins } from "lucide-react";
+import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -144,11 +145,22 @@ export default function UserProfile() {
     ? { background: `linear-gradient(135deg, ${profilePrimary}, ${profileAccent})` }
     : {};
 
+  const seoDescription = profile.bio
+    ? `${profile.bio.slice(0, 120)}…`
+    : `${profile.display_name || profile.username} has logged ${profile.sessions_logged ?? 0} plays across ${profile.games_owned ?? 0} games on GameTaverns.`;
+
   return (
     <div
       className="min-h-screen dark"
       style={hasTheme && profilePageBg ? { backgroundColor: profilePageBg } : { background: 'linear-gradient(to bottom right, hsl(var(--wood-dark)), hsl(var(--sidebar)), hsl(var(--wood-medium)))' }}
     >
+      <SEO
+        title={`${profile.display_name || profile.username}`}
+        description={seoDescription}
+        ogType="profile"
+        ogImage={profile.avatar_url ?? undefined}
+        canonical={`https://hobby-shelf-spark.lovable.app/u/${profile.username}`}
+      />
       <AppHeader />
 
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">

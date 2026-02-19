@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
+import { SEO, gameJsonLd } from "@/components/seo/SEO";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Layout } from "@/components/layout/Layout";
@@ -285,8 +286,29 @@ const GameDetail = () => {
     );
   };
 
+  const gamePageUrl = `${window.location.origin}${window.location.pathname}`;
+  const gameDesc = game.description
+    ? game.description.replace(/(<([^>]+)>)/gi, "").slice(0, 155)
+    : `${game.title} — ${playerRange} players${game.play_time ? `, ${game.play_time}` : ""}. Part of the ${library?.name ?? "GameTaverns"} board game library.`;
+
   return (
     <Layout>
+      <SEO
+        title={`${game.title}${library ? ` — ${library.name}` : ""}`}
+        description={gameDesc}
+        ogImage={game.image_url ?? undefined}
+        ogType="article"
+        canonical={gamePageUrl}
+        jsonLd={gameJsonLd({
+          name: game.title,
+          description: game.description,
+          imageUrl: game.image_url,
+          url: gamePageUrl,
+          minPlayers: game.min_players,
+          maxPlayers: game.max_players,
+          playTime: game.play_time,
+        })}
+      />
       <div className="max-w-6xl mx-auto">
         {/* Back Button */}
         <Button
