@@ -115,8 +115,9 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
     }
   }, [isNative, isAuthenticated, authLoading, activeLibrary, isLoadingLibrary, navigate]);
 
-  // Wait for auth + storage on native
-  if (isNative && (authLoading || isLoadingLibrary)) {
+  // Only show the initial loading splash while auth is still bootstrapping
+  // (authLoading=true on first mount). Never block rendering after login completes.
+  if (isNative && authLoading && !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -124,8 +125,9 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
     );
   }
 
-  // Authenticated but no library — waiting for redirect
-  if (isNative && isAuthenticated && !activeLibrary) {
+  // Authenticated but no library yet — show brief loading while redirect fires.
+  // Cap this at a short window: if navigate() fails, fall through to children.
+  if (isNative && isAuthenticated && !activeLibrary && location.pathname !== "/dashboard") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
