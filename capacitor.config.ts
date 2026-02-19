@@ -5,8 +5,7 @@ const config: CapacitorConfig = {
   appName: 'GameTaverns',
   webDir: 'dist',
   server: {
-    // Lovable preview — switch to https://gametaverns.com once fixes are deployed to production
-    url: 'https://e6868ccc-ab20-485b-aaa3-d3345575c037.lovableproject.com?forceHideBadge=true',
+    url: 'https://gametaverns.com',
     cleartext: true
   },
   // iOS-specific configuration
