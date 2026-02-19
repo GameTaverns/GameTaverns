@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Crown } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Crown, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
 import { PremiumRoadmap } from "@/components/admin/PremiumRoadmap";
+import { SpecialBadgesManagement } from "@/components/admin/SpecialBadgesManagement";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { Badge } from "@/components/ui/badge";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
@@ -185,6 +186,13 @@ export default function PlatformAdmin() {
               <Crown className="h-4 w-4 mr-1 sm:mr-2" />
               Premium
             </TabsTrigger>
+            <TabsTrigger 
+              value="badges"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+            >
+              <BadgeCheck className="h-4 w-4 mr-1 sm:mr-2" />
+              Badges
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="analytics" className="mt-6">
@@ -217,6 +225,10 @@ export default function PlatformAdmin() {
           
           <TabsContent value="premium" className="mt-6">
             <PremiumRoadmap />
+          </TabsContent>
+
+          <TabsContent value="badges" className="mt-6">
+            <SpecialBadgesManagement />
           </TabsContent>
         </Tabs>
       </main>

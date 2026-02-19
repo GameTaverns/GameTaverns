@@ -70,6 +70,7 @@ import { useThreadRepliesRealtime } from "@/hooks/useForumRealtime";
 import { useAuth } from "@/hooks/useAuth";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { UserLink } from "@/components/social/UserLink";
+import { UserSpecialBadges } from "@/components/social/SpecialBadge";
 
 function ReplyCard({ reply }: { reply: ForumReply }) {
   const initials = reply.author?.display_name
@@ -82,9 +83,10 @@ function ReplyCard({ reply }: { reply: ForumReply }) {
         <AvatarFallback>{initials}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <UserLink username={reply.author?.username} displayName={reply.author?.display_name} className="font-medium" />
           <FeaturedBadge achievement={reply.author?.featured_badge ?? null} size="xs" />
+          <UserSpecialBadges badges={reply.author?.special_badges ?? []} size="xs" />
           <span className="text-sm text-muted-foreground">
             {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
           </span>

@@ -21,6 +21,8 @@ import { useUserFeedback } from "@/hooks/useUserFeedback";
 import { ActivityFeedItem } from "@/components/social/ActivityFeedItem";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { FollowButton } from "@/components/social/FollowButton";
+import { UserSpecialBadges } from "@/components/social/SpecialBadge";
+import { useUserSpecialBadges } from "@/hooks/useSpecialBadges";
 import { supabase } from "@/integrations/backend/client";
 
 import { format, formatDistanceToNow } from "date-fns";
@@ -48,6 +50,7 @@ export default function UserProfile() {
   const { data: featuredAchievement } = useFeaturedAchievement(profile?.featured_achievement_id);
   const { data: activityEvents } = useUserActivity(profile?.user_id);
   const { data: feedback } = useUserFeedback(profile?.user_id);
+  const { data: specialBadges = [] } = useUserSpecialBadges(profile?.user_id);
 
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [isSharedCommunity, setIsSharedCommunity] = useState(false);
@@ -199,6 +202,11 @@ export default function UserProfile() {
                   {profile.display_name || profile.username}
                   <FeaturedBadge achievement={featuredAchievement ?? null} size="md" />
                 </h1>
+                {specialBadges.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1 mb-1">
+                    <UserSpecialBadges badges={specialBadges} size="sm" />
+                  </div>
+                )}
                 <p
                   className="text-sm"
                   style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}
