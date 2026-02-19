@@ -3,7 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useSearchParams, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, useSearchParams, useLocation, useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
 import { TenantThemeApplicator } from "@/components/TenantThemeApplicator";
@@ -280,11 +281,15 @@ function LibraryRoutes() {
   );
 }
 
+// Use HashRouter on native Capacitor (capacitor://localhost doesn't support History API)
+// Use BrowserRouter on web (supports clean URLs)
+const RouterComponent = Capacitor.isNativePlatform() ? HashRouter : BrowserRouter;
+
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <BrowserRouter>
+        <RouterComponent>
           <AuthProvider>
             <TourProvider>
               <Toaster />
@@ -294,7 +299,7 @@ const App = () => (
               <GlobalFeedbackButton />
             </TourProvider>
           </AuthProvider>
-        </BrowserRouter>
+        </RouterComponent>
       </TooltipProvider>
     </QueryClientProvider>
   </ThemeProvider>
