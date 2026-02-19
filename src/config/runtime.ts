@@ -341,6 +341,11 @@ export function getRuntimeFeatureFlag(feature: keyof NonNullable<RuntimeConfig['
  */
 export function isProductionDeployment(): boolean {
   const runtime = getRuntimeConfig();
+
+  // Native Capacitor apps always target production (gametaverns.com)
+  if (Capacitor.isNativePlatform()) {
+    return true;
+  }
   
   // Explicit runtime flag takes priority
   if (runtime.IS_PRODUCTION === true) {
