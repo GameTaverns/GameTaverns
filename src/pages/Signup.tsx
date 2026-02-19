@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Link, useNavigate } from "react-router-dom";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { TurnstileWidget } from "@/components/games/TurnstileWidget";
 import { apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 // IMPORTANT: we do NOT call supabase.auth.signUp() here because it triggers the default
 // provider confirmation email. We use a backend function that creates the user and
@@ -25,28 +24,9 @@ export default function Signup() {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileKey, setTurnstileKey] = useState(0);
 
-  const handleTurnstileVerify = useCallback((token: string) => {
-    setTurnstileToken(token);
-  }, []);
-
-  const handleTurnstileExpire = useCallback(() => {
-    setTurnstileToken(null);
-  }, []);
-  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!turnstileToken) {
-      toast({
-        title: "Verification required",
-        description: "Please complete the verification challenge",
-        variant: "destructive",
-      });
-      return;
-    }
     
     if (password !== confirmPassword) {
       toast({
@@ -145,7 +125,6 @@ export default function Signup() {
             username: username.toLowerCase() || undefined,
             displayName: displayName || email.split("@")[0],
             redirectUrl: window.location.origin,
-            turnstile_token: turnstileToken,
           }),
         },
       );
@@ -167,9 +146,6 @@ export default function Signup() {
         description: error.message,
         variant: "destructive",
       });
-      // Reset turnstile on failure
-      setTurnstileToken(null);
-      setTurnstileKey(prev => prev + 1);
     } finally {
       setIsLoading(false);
     }
@@ -260,19 +236,10 @@ export default function Signup() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-foreground/80">Verification</Label>
-              <TurnstileWidget
-                key={turnstileKey}
-                onVerify={handleTurnstileVerify}
-                onExpire={handleTurnstileExpire}
-              />
-            </div>
-            
             <Button
               type="submit"
               className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
-              disabled={isLoading || !turnstileToken}
+              disabled={isLoading}
             >
               {isLoading ? (
                 <>

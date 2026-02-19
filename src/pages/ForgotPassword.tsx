@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail } from "lucide-react";
@@ -9,23 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
-import { TurnstileWidget } from "@/components/games/TurnstileWidget";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileKey, setTurnstileKey] = useState(0);
   const { toast } = useToast();
-
-  const handleTurnstileVerify = useCallback((token: string) => {
-    setTurnstileToken(token);
-  }, []);
-
-  const handleTurnstileExpire = useCallback(() => {
-    setTurnstileToken(null);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,18 +102,10 @@ export default function ForgotPassword() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-foreground/80">Verification</Label>
-                <TurnstileWidget
-                  key={turnstileKey}
-                  onVerify={handleTurnstileVerify}
-                  onExpire={handleTurnstileExpire}
-                />
-              </div>
               <Button
                 type="submit"
                 className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
-                disabled={isLoading || !turnstileToken}
+                disabled={isLoading}
               >
                 {isLoading ? "Sending..." : "Send Reset Link"}
               </Button>

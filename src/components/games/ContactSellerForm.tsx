@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { Capacitor } from "@capacitor/core";
+import { useState, useEffect } from "react";
+
 import { Send, Loader2, LogIn } from "lucide-react";
 import { z } from "zod";
 import { Link } from "react-router-dom";
@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
-import { TurnstileWidget } from "./TurnstileWidget";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useUserProfile } from "@/hooks/useLibrary";
@@ -36,8 +35,6 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; message?: string }>({});
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileKey, setTurnstileKey] = useState(0);
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
   const { buildUrl } = useTenantUrl();
@@ -49,14 +46,6 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
       setName(userProfile.display_name);
     }
   }, [userProfile?.display_name]);
-
-  const handleTurnstileVerify = useCallback((token: string) => {
-    setTurnstileToken(token);
-  }, []);
-
-  const handleTurnstileExpire = useCallback(() => {
-    setTurnstileToken(null);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,31 +64,16 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
       return;
     }
 
-    // Check CAPTCHA
-    if (!turnstileToken) {
-      toast({
-        title: "Please complete the CAPTCHA",
-        description: "Verify you're human before sending.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
       // Use edge function for rate-limited, validated message sending
-      const isNative = Capacitor.isNativePlatform();
       const { data, error } = await supabase.functions.invoke("send-message", {
         body: {
           game_id: gameId,
           sender_name: result.data.name,
           message: result.data.message,
-          turnstile_token: turnstileToken,
         },
-        headers: isNative
-          ? { "x-native-app-token": import.meta.env.VITE_NATIVE_APP_SECRET || "" }
-          : undefined,
       });
 
       if (error) throw error;
@@ -113,11 +87,9 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
         description: "Your inquiry has been sent. Check your dashboard for replies.",
       });
 
-      // Reset form and CAPTCHA
+      // Reset form
       setName("");
       setMessage("");
-      setTurnstileToken(null);
-      setTurnstileKey(prev => prev + 1);
     } catch (error: any) {
       toast({
         title: "Error sending message",
@@ -188,16 +160,7 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
             {errors.message && <p className="text-sm text-destructive">{errors.message}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label>Verification *</Label>
-            <TurnstileWidget
-              key={turnstileKey}
-              onVerify={handleTurnstileVerify}
-              onExpire={handleTurnstileExpire}
-            />
-          </div>
-
-          <Button type="submit" className="w-full" disabled={isSubmitting || !turnstileToken}>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
