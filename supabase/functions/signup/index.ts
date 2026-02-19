@@ -15,6 +15,7 @@ interface SignupRequest {
   username?: string;
   displayName?: string;
   redirectUrl?: string;
+  referralCode?: string;
 }
 
 const SMTP_SEND_TIMEOUT_MS = 8000;
@@ -195,7 +196,7 @@ async function handler(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { email, password, username, displayName, redirectUrl }: SignupRequest = await req.json();
+    const { email, password, username, displayName, redirectUrl, referralCode }: SignupRequest = await req.json();
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
@@ -299,6 +300,35 @@ async function handler(req: Request): Promise<Response> {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // Confirm referral if a code was provided
+      if (referralCode) {
+        const { data: referral, error: refLookupErr } = await supabase
+          .from("referrals")
+          .select("id, referrer_user_id, referred_user_id")
+          .eq("referral_code", referralCode.toLowerCase())
+          .is("referred_user_id", null)
+          .maybeSingle();
+
+        if (!refLookupErr && referral && referral.referrer_user_id !== userId) {
+          // Mark this referral as confirmed
+          const { error: refUpdateErr } = await supabase
+            .from("referrals")
+            .update({ referred_user_id: userId, signed_up_at: new Date().toISOString() })
+            .eq("id", referral.id);
+
+          if (refUpdateErr) {
+            // Non-fatal — log it but don't fail signup
+            console.error("[Signup] Failed to confirm referral:", refUpdateErr.message);
+          } else {
+            // Trigger badge update via DB function
+            await supabase.rpc("update_referral_badges", { _referrer_id: referral.referrer_user_id });
+            console.log(`[Signup] Referral confirmed: ${referralCode} → referrer ${referral.referrer_user_id}`);
+          }
+        } else if (refLookupErr) {
+          console.warn("[Signup] Referral lookup error (non-fatal):", refLookupErr.message);
+        }
       }
 
       return new Response(

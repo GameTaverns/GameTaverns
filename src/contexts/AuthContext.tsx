@@ -44,7 +44,7 @@ interface AuthContextType {
   isAdmin: boolean;
   roleLoading: boolean;
   signIn: (emailOrUsername: string, password: string) => Promise<{ error: { message: string } | null }>;
-  signUp: (email: string, password: string, options?: { username?: string; displayName?: string }) => Promise<{ error: { message: string } | null }>;
+  signUp: (email: string, password: string, options?: { username?: string; displayName?: string; referralCode?: string }) => Promise<{ error: { message: string } | null }>;
   signOut: () => Promise<{ error: any }>;
 }
 
@@ -569,9 +569,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [apiUrl, anonKey, authStorageKey]);
 
-  const signUp = useCallback(async (email: string, password: string, options?: { username?: string; displayName?: string }) => {
+  const signUp = useCallback(async (email: string, password: string, options?: { username?: string; displayName?: string; referralCode?: string }) => {
     const displayName = options?.displayName || email.split("@")[0];
     const username = options?.username;
+    const referralCode = options?.referralCode;
 
     if (isSelfHostedMode()) {
       try {
@@ -580,6 +581,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password,
           displayName,
           username,
+          referralCode,
         });
         return { error: null };
       } catch (e: any) {
@@ -600,6 +602,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username,
           displayName,
           redirectUrl: window.location.origin,
+          referralCode,
         }),
       });
 
