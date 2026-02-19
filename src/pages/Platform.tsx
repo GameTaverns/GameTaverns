@@ -87,7 +87,7 @@ export default function Platform() {
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Sign In</Button>
                 </Link>
                 <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90" onClick={handleGetStarted}>
-                  Get Started Free
+                  Get Started
                 </Button>
               </>
             )}
