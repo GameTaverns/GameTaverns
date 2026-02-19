@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/backend/client";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
 export interface GameValueData {
@@ -117,10 +117,16 @@ export function useUpdateGameValue() {
     }) => {
       if (!user) throw new Error("Must be logged in");
 
-      // Build update object
-      const updateData: Record<string, unknown> = {
-        game_id: gameId,
+      // Build update object with proper typing
+      type AdminDataInsert = {
+        game_id: string;
+        current_value?: number | null;
+        value_updated_at?: string | null;
+        purchase_price?: number | null;
+        purchase_date?: string | null;
       };
+
+      const updateData: AdminDataInsert = { game_id: gameId };
 
       if (currentValue !== undefined) {
         updateData.current_value = currentValue;
@@ -133,10 +139,9 @@ export function useUpdateGameValue() {
         updateData.purchase_date = purchaseDate;
       }
 
-      // Use type casting for self-hosted columns
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("game_admin_data")
-        .upsert(updateData, { onConflict: "game_id" })
+        .upsert(updateData as any, { onConflict: "game_id" })
         .select()
         .single();
 
