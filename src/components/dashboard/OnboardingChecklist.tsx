@@ -55,8 +55,9 @@ export function OnboardingChecklist({
   };
 
   const gamesUrl = getLibraryUrl(librarySlug, "/games");
-  const settingsUrl = getPlatformUrl("/dashboard");
   const libraryUrl = getLibraryUrl(librarySlug, "/");
+  const dashboardLibraryUrl = getPlatformUrl("/dashboard?tab=library");
+  const dashboardCommunityUrl = getPlatformUrl("/dashboard?tab=community");
 
   const items: ChecklistItem[] = [
     {
@@ -83,7 +84,7 @@ export function OnboardingChecklist({
       description: "Set your logo, colors, and branding to make your library uniquely yours.",
       icon: <Palette className="h-4 w-4" />,
       completed: hasCustomTheme,
-      href: settingsUrl!,
+      href: dashboardLibraryUrl,
       action: "Open Settings",
     },
     {
@@ -110,8 +111,8 @@ export function OnboardingChecklist({
       description: "Set up events, enable lending, create polls, and engage your community.",
       icon: <Star className="h-4 w-4" />,
       completed: hasEvents,
-      href: settingsUrl!,
-      action: "Explore Settings",
+      href: dashboardCommunityUrl,
+      action: "Explore Community",
     },
   ];
 
