@@ -179,12 +179,14 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
           return () => clearTimeout(timer);
         }
 
-        console.warn('[TurnstileWidget] No Turnstile site key configured in database');
+        console.warn('[TurnstileWidget] No Turnstile site key configured — bypassing verification');
         setBypassReason("no site key configured");
-        setHasError(true);
+        setHasError(false);
         setIsLoading(false);
-        onError?.();
-        return;
+        const timer = setTimeout(() => {
+          onVerify("TURNSTILE_BYPASS_TOKEN");
+        }, 300);
+        return () => clearTimeout(timer);
       }
       
       // Site key exists - proceed with real Turnstile
