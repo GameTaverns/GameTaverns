@@ -220,9 +220,9 @@ export default function LibraryGames() {
           <p className="text-muted-foreground mb-6">
             Please sign in on the main site to manage this library.
           </p>
-          <a href={getPlatformUrl("/login")}>
+          <TenantLink href={getPlatformUrl("/login")}>
             <Button>Sign In</Button>
-          </a>
+          </TenantLink>
         </div>
       </Layout>
     );
@@ -236,9 +236,9 @@ export default function LibraryGames() {
           <p className="text-muted-foreground mb-6">
             The library you're looking for doesn't exist or is not active.
           </p>
-          <a href={getPlatformUrl("/dashboard")}>
+          <TenantLink href={getPlatformUrl("/dashboard")}>
             <Button>Go to Dashboard</Button>
-          </a>
+          </TenantLink>
         </div>
       </Layout>
     );

@@ -519,12 +519,12 @@ function ForumHome() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <a href={getPlatformUrl("/dashboard?tab=community")}>
+          <TenantLink href={getPlatformUrl("/dashboard?tab=community")}>
             <Button variant="ghost" className="-ml-2">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
-          </a>
+          </TenantLink>
           <div>
             <h1 className="text-3xl font-bold">{forumTitle}</h1>
             <p className="text-muted-foreground mt-1">{forumDescription}</p>

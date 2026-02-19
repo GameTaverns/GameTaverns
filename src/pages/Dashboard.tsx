@@ -538,11 +538,11 @@ export default function Dashboard() {
                     <CardDescription className="text-cream/60 text-xs">Customize your library configuration</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <a href={settingsUrl!}>
+                    <TenantLink href={settingsUrl!}>
                       <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
                         <Settings className="h-3.5 w-3.5" /> Manage Settings
                       </Button>
-                    </a>
+                    </TenantLink>
                   </CardContent>
                 </Card>
 

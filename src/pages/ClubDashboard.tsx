@@ -4,6 +4,7 @@ import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
   Calendar, Loader2, ExternalLink, AlertTriangle
 } from "lucide-react";
+import { TenantLink } from "@/components/TenantLink";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -192,11 +193,11 @@ export default function ClubDashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                       {cl.library?.slug && (
-                        <a href={getLibraryUrl(cl.library.slug, "/")}>
+                        <TenantLink href={getLibraryUrl(cl.library.slug, "/")}>
                           <Button variant="ghost" size="sm" className="text-cream/70">
                             <ExternalLink className="h-4 w-4" />
                           </Button>
-                        </a>
+                        </TenantLink>
                       )}
                       <Button
                         variant="ghost"
