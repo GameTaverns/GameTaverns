@@ -260,7 +260,13 @@ async function processBatch(
       }
 
       if (!newDescription.includes("Quick Gameplay Overview")) {
-        console.warn(`[catalog-format] Output missing format header for ${entry.title}, using anyway`);
+        console.warn(`[catalog-format] Output missing format header for "${entry.title}" — likely not a board game, writing sentinel.`);
+        if (!dryRun) {
+          const SENTINEL = `*This entry does not appear to be a board game and was excluded from automatic formatting.*\n\n## Quick Gameplay Overview\n\n- **Note:** Not a board game.`;
+          await admin.from("game_catalog").update({ description: SENTINEL }).eq("id", entry.id);
+        }
+        results.push({ title: entry.title, status: "not_boardgame" });
+        continue;
       }
 
       if (dryRun) {
