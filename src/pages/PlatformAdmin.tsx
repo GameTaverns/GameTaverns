@@ -193,6 +193,7 @@ export default function PlatformAdmin() {
               <BadgeCheck className="h-4 w-4 mr-1 sm:mr-2" />
               Badges
             </TabsTrigger>
+
           </TabsList>
           
           <TabsContent value="analytics" className="mt-6">
