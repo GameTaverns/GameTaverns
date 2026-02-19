@@ -65,63 +65,45 @@ if (fs.existsSync(settingsGradlePath)) {
 
 // ─── Fix 4: Hardcode gt-logo.png as the Android launcher icon ────────────────
 // Copies public/gt-logo.png over every mipmap-*/ic_launcher*.png so the icon
-// survives every `npx cap sync` without manual intervention in Android Studio.
-const sharp = (() => { try { return require('sharp'); } catch { return null; } })();
+// survives every `npx cap sync`. Always overwrites — no existence check needed.
 const sourceIcon = path.join(__dirname, '..', 'public', 'gt-logo.png');
 
-const mipmapSizes = {
-  'mipmap-mdpi':    48,
-  'mipmap-hdpi':    72,
-  'mipmap-xhdpi':   96,
-  'mipmap-xxhdpi': 144,
-  'mipmap-xxxhdpi':192,
-};
+const mipmapFolders = [
+  'mipmap-mdpi',
+  'mipmap-hdpi',
+  'mipmap-xhdpi',
+  'mipmap-xxhdpi',
+  'mipmap-xxxhdpi',
+];
 
 const iconTargets = ['ic_launcher.png', 'ic_launcher_round.png', 'ic_launcher_foreground.png'];
 
 if (!fs.existsSync(sourceIcon)) {
   console.log('⚠️  public/gt-logo.png not found — skipping icon copy.');
-} else if (!sharp) {
-  // Fallback: raw copy without resizing (icon will be wrong size but present)
-  let copied = 0;
-  for (const [folder] of Object.entries(mipmapSizes)) {
-    const dir = path.join(androidDir, 'app', 'src', 'main', 'res', folder);
-    if (!fs.existsSync(dir)) continue;
-    for (const target of iconTargets) {
-      const dest = path.join(dir, target);
-      if (fs.existsSync(dest)) {
-        fs.copyFileSync(sourceIcon, dest);
-        copied++;
-      }
-    }
-  }
-  console.log(copied > 0
-    ? `✅ Icon copied to ${copied} targets (no resizing — install sharp for proper sizes).`
-    : 'ℹ️  No mipmap icon files found yet — run npx cap add android first.');
 } else {
-  // Resize + copy with sharp
-  const promises = [];
-  for (const [folder, size] of Object.entries(mipmapSizes)) {
+  let copied = 0;
+  let skippedDirs = 0;
+
+  for (const folder of mipmapFolders) {
     const dir = path.join(androidDir, 'app', 'src', 'main', 'res', folder);
-    if (!fs.existsSync(dir)) continue;
+    if (!fs.existsSync(dir)) { skippedDirs++; continue; }
     for (const target of iconTargets) {
       const dest = path.join(dir, target);
-      if (fs.existsSync(dest)) {
-        promises.push(
-          sharp(sourceIcon).resize(size, size).toFile(dest)
-        );
+      try {
+        fs.copyFileSync(sourceIcon, dest); // Always overwrite
+        copied++;
+      } catch (err) {
+        console.warn(`  ⚠️  Could not copy to ${dest}: ${err.message}`);
       }
     }
   }
-  if (promises.length > 0) {
-    Promise.all(promises).then(() => {
-      console.log(`✅ Icon resized and copied to ${promises.length} mipmap targets.`);
-    }).catch(err => {
-      console.warn('⚠️  Icon resize failed:', err.message);
-    });
+
+  if (skippedDirs === mipmapFolders.length) {
+    console.log('ℹ️  No mipmap folders found — run `npx cap add android` first, then re-run this script.');
   } else {
-    console.log('ℹ️  No mipmap icon files found yet — run npx cap add android first.');
+    console.log(`✅ gt-logo.png copied to ${copied} mipmap icon slots.`);
   }
 }
 
 console.log('\n✅ All patches applied. Safe to open in Android Studio.');
+

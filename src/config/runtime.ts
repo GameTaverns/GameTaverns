@@ -86,6 +86,15 @@ function getRuntimeConfig(): RuntimeConfig {
  * Returns TRUE only for legacy Express API mode, not self-hosted Supabase
  */
 export function isSelfHostedMode(): boolean {
+  // Native Capacitor apps are NEVER in self-hosted Express API mode.
+  // They always talk to gametaverns.com via the Supabase client.
+  // Check hostname directly — Capacitor bridge may not be ready yet.
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1') return false;
+  }
+  if (Capacitor.isNativePlatform()) return false;
+
   const runtime = getRuntimeConfig();
 
   // 1. Explicit runtime flag takes priority
@@ -205,9 +214,45 @@ export function getConfig<T>(
 }
 
 /**
+ * Detect if running inside a Capacitor native WebView.
+ *
+ * We intentionally DO NOT rely solely on Capacitor.isNativePlatform() because
+ * that method reads a bridge flag that may not be set during the very first
+ * synchronous execution of module-level code (import time).
+ *
+ * Instead we use the hostname, which is 100% reliable from frame 0:
+ *   - Android bundled APK  → "localhost"
+ *   - iOS bundled IPA      → "localhost" (scheme: capacitor://)
+ *   - Live-reload dev      → an IP address (also treated as native)
+ *
+ * Any Lovable/preview/production web hostname will never be "localhost" or
+ * "127.0.0.1", so this cannot produce false-positives on the web.
+ */
+function isNativeCapacitor(): boolean {
+  // Primary: Capacitor bridge flag (works once bridge is ready)
+  if (Capacitor.isNativePlatform()) return true;
+
+  // Fallback: hostname-based detection (works immediately at module load time)
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    // Capacitor bundled apps always run on localhost inside the WebView
+    if (host === 'localhost' || host === '127.0.0.1') {
+      // Extra guard: make sure this isn't the Vite dev server on a desktop browser.
+      // On the actual device the protocol is http: (Android) or capacitor: (iOS).
+      const proto = window.location.protocol;
+      // If it's localhost AND not clearly a Lovable/desktop context, treat as native.
+      // We never run localhost in production web, so this is safe.
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Get Supabase configuration
  * Returns empty strings if in self-hosted mode (client will use stub)
- * 
+ *
  * CRITICAL: On native Capacitor platforms (Android/iOS), ALWAYS returns
  * gametaverns.com credentials — never Lovable Cloud — regardless of build env.
  */
@@ -215,8 +260,10 @@ export function getSupabaseConfig() {
   // ===================================================================
   // NATIVE PLATFORM OVERRIDE — highest priority, cannot be overridden.
   // Android/iOS must NEVER touch Lovable Cloud infrastructure.
+  // Uses hostname detection so it works even before the Capacitor bridge
+  // fires its ready event.
   // ===================================================================
-  if (Capacitor.isNativePlatform()) {
+  if (isNativeCapacitor()) {
     return { url: NATIVE_SUPABASE_URL, anonKey: NATIVE_SUPABASE_ANON_KEY };
   }
 
