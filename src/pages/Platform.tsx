@@ -91,7 +91,7 @@ export default function Platform() {
       <section className="relative container mx-auto px-4 pt-24 pb-20 text-center">
         <div className="inline-flex items-center gap-2 bg-secondary/10 text-secondary border border-secondary/20 rounded-full px-4 py-1.5 text-sm font-medium mb-8">
           <Flame className="h-3.5 w-3.5" />
-          Free to start — no credit card required
+          Import from BGG in seconds
         </div>
         <h1 className="font-display text-4xl sm:text-6xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
           Your Board Game Collection<br />
@@ -110,7 +110,7 @@ export default function Platform() {
             className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-10 py-6"
             onClick={handleGetStarted}
           >
-            {authLoading ? "Loading..." : isAuthenticated ? (myLibrary ? "Go to My Library" : "Create Your Library") : "Create Your Free Library"}
+            {authLoading ? "Loading..." : isAuthenticated ? (myLibrary ? "Go to My Library" : "Create Your Library") : "Create Your Library"}
           </Button>
           <Link to="/features">
             <Button size="lg" variant="outline" className="text-lg px-8 py-6">
@@ -276,7 +276,7 @@ export default function Platform() {
             Ready to Build Your Library?
           </h2>
           <p className="text-muted-foreground mb-10 max-w-lg mx-auto text-lg">
-            Free to start. No credit card. Import from BGG in under 2 minutes.
+            Import from BGG in under 2 minutes. Your library, your rules.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
@@ -284,7 +284,7 @@ export default function Platform() {
               className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-10 py-6"
               onClick={handleGetStarted}
             >
-              {isAuthenticated ? "Go to My Library" : "Create Your Free Library"}
+              {isAuthenticated ? "Go to My Library" : "Create Your Library"}
             </Button>
             <Link to="/features">
               <Button size="lg" variant="outline" className="text-lg px-8 py-6">

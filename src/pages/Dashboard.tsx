@@ -89,6 +89,7 @@ import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { useTotpStatus } from "@/hooks/useTotpStatus";
 import { useQuery } from "@tanstack/react-query";
 import { supabase as _supabase } from "@/integrations/backend/client";
 import { InfoPopover } from "@/components/ui/InfoPopover";
@@ -132,6 +133,7 @@ export default function Dashboard() {
   }, [defaultLibrary, activeLibraryId]);
 
   const _ = useUnreadMessageCount(library?.id); // kept for cache warming
+  const { status: totpStatus } = useTotpStatus();
   const { myLentLoans, myBorrowedLoans } = useLending();
   const { data: myMemberships = [] } = useMyMemberships();
   const { data: myClubs = [] } = useMyClubs();
@@ -374,6 +376,7 @@ export default function Dashboard() {
                   memberCount={memberCountData?.count ?? 0}
                   hasCustomTheme={false}
                   hasEvents={(eventCountData?.count ?? 0) > 0}
+                  has2FA={totpStatus?.isEnabled ?? false}
                 />
 
                 {/* ── Trending This Month ── full-width prominent section */}
