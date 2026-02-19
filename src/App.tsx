@@ -99,6 +99,20 @@ const PageLoader = () => (
   </div>
 );
 
+// Platform-level routes that should NEVER be treated as tenant/library routes,
+// even when a library is active on native.
+const PLATFORM_PATHS = [
+  '/dashboard', '/catalog', '/dm', '/docs', '/directory', '/achievements',
+  '/community', '/club', '/u/', '/lists', '/inbox', '/create-library',
+  '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email',
+  '/admin', '/setup-2fa', '/install', '/features', '/picker', '/request-club',
+  '/join-club', '/legal', '/privacy', '/terms', '/cookies', '/games-for-',
+];
+
+function isPlatformPath(pathname: string): boolean {
+  return PLATFORM_PATHS.some(p => pathname === p || pathname.startsWith(p));
+}
+
 // Wrapper component to check for tenant mode
 function AppRoutes() {
   const [searchParams] = useSearchParams();
@@ -108,19 +122,24 @@ function AppRoutes() {
   // Always call the hook (rules of hooks) — on web it's a no-op (returns null)
   const { activeLibrary } = useMobileLibrary();
 
-  const tenantSlug = searchParams.get("tenant") || (isRunningNative() ? activeLibrary : null);
+  // On native: only treat the active library as the tenant when we're NOT on a platform route.
+  // Platform routes (/dashboard, /catalog, /dm, etc.) must render PlatformRoutes regardless
+  // of whether a library is active — they don't belong to any single library.
+  const isOnPlatformPath = isPlatformPath(location.pathname);
+  const tenantSlug = searchParams.get("tenant") || (isRunningNative() && !isOnPlatformPath ? activeLibrary : null);
 
-
-  // If on native and we have an activeLibrary but no ?tenant= in the URL, inject it
+  // If on native and we have an activeLibrary, inject ?tenant= ONLY for library routes.
+  // Never inject it for platform routes — doing so would force them into LibraryRoutes.
   useEffect(() => {
     if (!isRunningNative() || !activeLibrary) return;
+    if (isOnPlatformPath) return; // Platform routes must NOT have tenant param injected
     const currentTenant = new URLSearchParams(location.search).get("tenant");
     if (!currentTenant || currentTenant !== activeLibrary) {
       const newParams = new URLSearchParams(location.search);
       newParams.set("tenant", activeLibrary);
       navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
     }
-  }, [activeLibrary, location.search, location.pathname, navigate]);
+  }, [activeLibrary, location.search, location.pathname, navigate, isOnPlatformPath]);
 
   return (
     <TenantProvider>

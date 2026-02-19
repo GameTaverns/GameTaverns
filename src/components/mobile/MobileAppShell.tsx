@@ -127,7 +127,16 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
 
   // Authenticated but no library yet — show brief loading while redirect fires.
   // Cap this at a short window: if navigate() fails, fall through to children.
-  if (isNative && isAuthenticated && !activeLibrary && location.pathname !== "/dashboard") {
+  // IMPORTANT: Do NOT block platform paths (/dashboard, /catalog, /dm, etc.)
+  const SHELL_PLATFORM_PATHS = [
+    '/dashboard', '/catalog', '/dm', '/docs', '/directory', '/achievements',
+    '/community', '/club', '/u/', '/lists', '/inbox', '/create-library',
+    '/login', '/signup',
+  ];
+  const isOnPlatformPath = SHELL_PLATFORM_PATHS.some(
+    p => location.pathname === p || location.pathname.startsWith(p)
+  );
+  if (isNative && isAuthenticated && !activeLibrary && !isOnPlatformPath) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
