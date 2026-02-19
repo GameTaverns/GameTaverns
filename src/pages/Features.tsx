@@ -553,17 +553,6 @@ export default function Features() {
               "QR code setup flow"
             ]}
           />
-          <FeatureDetail
-            icon={<Globe className="h-6 w-6" />}
-            title="Custom Domain Support"
-            description="Host your library on your own domain for a fully branded experience."
-            highlights={[
-              "Point any domain or subdomain to your library",
-              "Automatic SSL / HTTPS",
-              "Tenant-aware routing",
-              "Works alongside the default .gametaverns.app subdomain"
-            ]}
-          />
         </div>
       </section>
 

@@ -21,12 +21,15 @@ import {
   Lock,
   Star,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  Medal
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useMyReferral, REFERRAL_TIERS, FOUNDING_MEMBER_BADGE } from "@/hooks/useReferral";
+import { ReferralBadges } from "@/components/referral/ReferralBadges";
 
 const CATEGORY_CONFIG: Record<AchievementCategory, { label: string; icon: React.ReactNode; color: string }> = {
   collector: { label: "Collector", icon: <Gamepad2 className="h-5 w-5" />, color: "text-blue-500" },
@@ -139,6 +142,8 @@ export function AchievementsDisplay({ compact = false }: AchievementsDisplayProp
     TIER_NAMES,
     TIER_COLORS,
   } = useAchievements();
+
+  const { badges: referralBadges } = useMyReferral();
 
   const handleSyncAchievements = async () => {
     setIsSyncing(true);
@@ -299,8 +304,60 @@ export function AchievementsDisplay({ compact = false }: AchievementsDisplayProp
         </div>
       )}
 
+      {/* Community Badges (Referral) */}
+      {referralBadges && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 border-b border-border pb-2">
+            <Medal className="h-5 w-5 text-emerald-500" />
+            <h3 className="font-display font-semibold text-lg">Community Badges</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Founding Member */}
+            <Card className={`transition-all ${referralBadges.is_founding_member ? "border-emerald-400/40 bg-card" : "opacity-50 bg-muted/30"}`}>
+              <CardContent className="py-3 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">{FOUNDING_MEMBER_BADGE.emoji}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">{FOUNDING_MEMBER_BADGE.label}</p>
+                      <Badge variant="outline" className="text-[10px] border-emerald-400 text-emerald-600 dark:text-emerald-400">Time-locked</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{FOUNDING_MEMBER_BADGE.description}</p>
+                  </div>
+                  {referralBadges.is_founding_member && <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Referral tiers */}
+            {REFERRAL_TIERS.map((tier) => {
+              const earned = referralBadges[tier.key];
+              return (
+                <Card key={tier.key} className={`transition-all ${earned ? "border-primary/30 bg-card" : "opacity-50 bg-muted/30"}`}>
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`text-2xl ${earned ? "" : "grayscale"}`}>{tier.emoji}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{tier.label}</p>
+                        <p className="text-xs text-muted-foreground">{tier.description}</p>
+                      </div>
+                      {earned ? (
+                        <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
+                      ) : (
+                        <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* All Achievements by Category */}
       <div className="space-y-8">
+
         {categoryOrder.map((category) => {
           const achievements = achievementsByCategory[category];
           if (!achievements || achievements.length === 0) return null;
