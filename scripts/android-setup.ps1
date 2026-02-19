@@ -87,15 +87,13 @@ if (Test-Path $gradleProps) {
         $javaHome = [System.Environment]::GetEnvironmentVariable("JAVA_HOME", "User")
     }
     if (-not $javaHome) {
-        # Try to find java automatically
-        $javaExe = (Get-Command java -ErrorAction SilentlyContinue)?.Source
-        if ($javaExe) {
-            $javaHome = (Split-Path (Split-Path $javaExe))
+        $javaCmd = Get-Command java -ErrorAction SilentlyContinue
+        if ($javaCmd) {
+            $javaHome = Split-Path (Split-Path $javaCmd.Source)
         }
     }
 
     if ($javaHome) {
-        # Gradle needs forward slashes
         $javaHomeForGradle = $javaHome.Replace("\", "/")
         $content = $content.TrimEnd() + "`norg.gradle.java.home=$javaHomeForGradle`n"
         Set-Content $gradleProps $content -NoNewline
@@ -104,6 +102,7 @@ if (Test-Path $gradleProps) {
         Write-Host "      ⚠️  JAVA_HOME not found — set it manually in Android Studio." -ForegroundColor Yellow
         Write-Host "         File > Project Structure > SDK Location > Gradle JDK" -ForegroundColor Gray
     }
+
 } else {
     Write-Host "      ⚠️  gradle.properties not found — skipping JDK lock." -ForegroundColor Yellow
 }
