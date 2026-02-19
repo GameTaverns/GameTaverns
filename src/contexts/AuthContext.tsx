@@ -279,6 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
+      // Always unblock loading immediately — never keep the user stuck
       setLoading(false);
 
       if (!nextSession?.user) {
@@ -287,12 +288,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Fire-and-forget: don't block rendering on role fetch
       setRoleLoading(true);
-      fetchIsAdmin(nextSession.user.id, (nextSession as any)?.access_token).then((nextIsAdmin) => {
-        if (!mounted) return;
-        setIsAdmin(nextIsAdmin);
-        setRoleLoading(false);
-      });
+      const uid = nextSession.user.id;
+      const tok = (nextSession as any)?.access_token;
+      // Use setTimeout(0) to avoid deadlock inside onAuthStateChange callback
+      setTimeout(() => {
+        fetchIsAdmin(uid, tok).then((nextIsAdmin) => {
+          if (!mounted) return;
+          setIsAdmin(nextIsAdmin);
+          setRoleLoading(false);
+        });
+      }, 0);
     };
 
     const {
@@ -404,11 +411,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
 
+    // Native WebViews can deadlock waiting for localStorage/session — use a shorter fuse
+    const watchdogMs = Capacitor.isNativePlatform() ? 800 : 2000;
     const watchdog = setTimeout(() => {
       if (!mounted) return;
       setLoading(false);
       setRoleLoading(false);
-    }, 2000);
+    }, watchdogMs);
 
     return () => {
       mounted = false;
