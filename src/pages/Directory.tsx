@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { SEO } from "@/components/seo/SEO";
 import { Layout } from "@/components/layout/Layout";
 import { useLibraryDirectory } from "@/hooks/useLibraryDirectory";
 import { useAuth } from "@/hooks/useAuth";
@@ -153,8 +154,12 @@ export default function Directory() {
 
   return (
     <Layout hideSidebar>
+      <SEO
+        title="Library Directory"
+        description="Discover board game libraries near you. Browse collections, follow your favorite libraries, and find games to borrow from the GameTaverns community."
+        canonical="https://hobby-shelf-spark.lovable.app/directory"
+      />
       <div className="max-w-6xl mx-auto px-4 py-8">
-        
         {/* Header */}
         <div className="mb-8">
           {user && (

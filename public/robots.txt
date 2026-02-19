@@ -1,14 +1,25 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+
+# Public pages — high value for indexing
+Allow: /features
+Allow: /directory
+Allow: /catalog
+Allow: /u/
+Allow: /game/
+
+# App-shell pages — no SEO value
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /admin
+Disallow: /manage
+Disallow: /create-library
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /setup-2fa
+Disallow: /install
+
+Sitemap: https://hobby-shelf-spark.lovable.app/sitemap.xml
