@@ -83,6 +83,7 @@ import { CommunityTab } from "@/components/community/CommunityTab";
 import { SocialTab } from "@/components/social/SocialTab";
 import { AnalyticsTab } from "@/components/analytics/AnalyticsTab";
 import { CommunityMembersCard } from "@/components/community/CommunityMembersCard";
+import { ReferralPanel } from "@/components/referral/ReferralPanel";
 import { ChallengesManager } from "@/components/challenges/ChallengesManager";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
@@ -246,6 +247,13 @@ export default function Dashboard() {
             >
               <User className="h-3.5 w-3.5" />
               Personal
+            </TabsTrigger>
+            <TabsTrigger
+              value="referrals"
+              className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
+            >
+              <Users className="h-3.5 w-3.5" />
+              Referrals
             </TabsTrigger>
             <TabsTrigger
               value="analytics"
@@ -809,7 +817,17 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          {/* ==================== ANALYTICS TAB ==================== */}
+          {/* ==================== REFERRALS TAB ==================== */}
+          <TabsContent value="referrals">
+            <div className="max-w-2xl">
+              <div className="mb-6">
+                <h2 className="font-display text-xl font-bold mb-1">Invite & Earn Badges</h2>
+                <p className="text-muted-foreground text-sm">Share GameTaverns with friends and earn exclusive badges as they join.</p>
+              </div>
+              <ReferralPanel />
+            </div>
+          </TabsContent>
+
           <TabsContent value="analytics">
             {library ? (
               <AnalyticsTab isAdmin={isAdmin} libraryId={library.id} libraryName={library.name} />

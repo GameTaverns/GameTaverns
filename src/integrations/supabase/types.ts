@@ -3400,6 +3400,75 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_badges: {
+        Row: {
+          created_at: string
+          founding_member_granted_at: string | null
+          has_guild_founder: boolean
+          has_legend: boolean
+          has_tavern_regular: boolean
+          has_town_crier: boolean
+          id: string
+          is_founding_member: boolean
+          referral_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          founding_member_granted_at?: string | null
+          has_guild_founder?: boolean
+          has_legend?: boolean
+          has_tavern_regular?: boolean
+          has_town_crier?: boolean
+          id?: string
+          is_founding_member?: boolean
+          referral_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          founding_member_granted_at?: string | null
+          has_guild_founder?: boolean
+          has_legend?: boolean
+          has_tavern_regular?: boolean
+          has_town_crier?: boolean
+          id?: string
+          is_founding_member?: boolean
+          referral_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referral_code: string
+          referred_user_id: string | null
+          referrer_user_id: string
+          signed_up_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referral_code: string
+          referred_user_id?: string | null
+          referrer_user_id: string
+          signed_up_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referral_code?: string
+          referred_user_id?: string | null
+          referrer_user_id?: string
+          signed_up_at?: string | null
+        }
+        Relationships: []
+      }
       server_commands: {
         Row: {
           completed_at: string | null
@@ -4654,6 +4723,10 @@ export type Database = {
         Returns: string
       }
       generate_slug: { Args: { title: string }; Returns: string }
+      get_or_create_referral_code: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       get_role_tier: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: number
@@ -4703,6 +4776,10 @@ export type Database = {
           p_won: boolean
         }
         Returns: number
+      }
+      update_referral_badges: {
+        Args: { _referrer_id: string }
+        Returns: undefined
       }
       user_has_totp_enabled: { Args: { _user_id: string }; Returns: boolean }
     }
