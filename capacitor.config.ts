@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.e6868cccab20485baaa3d3345575c037',
+  appId: 'com.gametaverns.app',
   appName: 'GameTaverns',
   webDir: 'dist',
   // Bundled mode: UI assets are packaged inside the APK.
