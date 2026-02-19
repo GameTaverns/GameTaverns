@@ -21,10 +21,14 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    // Check if push notifications are supported
+    // Push notifications require Firebase (google-services.json) to be configured.
+    // Until a Firebase project is set up, keep isSupported=false to prevent a
+    // fatal native crash when PushNotificationsPlugin.register() calls
+    // FirebaseApp.getInstance() on an uninitialized Firebase app.
+    // To enable: add google-services.json to android/app/ and set isSupported below.
     setState(prev => ({
       ...prev,
-      isSupported: Capacitor.isPluginAvailable('PushNotifications'),
+      isSupported: false, // disabled until Firebase is configured
     }));
   }, []);
 
