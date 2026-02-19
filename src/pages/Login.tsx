@@ -100,11 +100,13 @@ const Login = () => {
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const { data: { session } } = await supabase.auth.getSession();
-      console.log("[Login] Checking 2FA status, session exists:", !!session, "has access_token:", !!session?.access_token);
       
       if (session?.access_token) {
         try {
-          console.log("[Login] Calling totp-status at:", `${apiUrl}/functions/v1/totp-status`);
+          // Use a short timeout for 2FA check — on native WebView this can hang
+          const controller = new AbortController();
+          const totpTimeout = setTimeout(() => controller.abort(), 4000);
+          
           const response = await fetch(`${apiUrl}/functions/v1/totp-status`, {
             method: "POST",
             headers: {
@@ -112,44 +114,27 @@ const Login = () => {
               Authorization: `Bearer ${session.access_token}`,
               apikey: anonKey,
             },
-          });
-
-          console.log("[Login] totp-status response status:", response.status);
+            signal: controller.signal,
+          }).catch(() => null);
           
-          if (response.ok) {
-            const data = await response.json();
-            console.log("[Login] totp-status data:", JSON.stringify(data));
+          clearTimeout(totpTimeout);
+          
+          if (response?.ok) {
+            const data = await response.json().catch(() => ({}));
             
-            if (data.isEnabled) {
-              // Check if within grace period - skip 2FA if recently verified
-              if (data.requiresVerification === false) {
-                console.log("[Login] 2FA enabled but within grace period, skipping verification");
-                // Continue to dashboard without 2FA prompt
-              } else {
-                // User has 2FA enabled and needs to verify
-                console.log("[Login] 2FA is enabled, showing verification screen");
-                setPendingAccessToken(session.access_token);
-                setRequires2FA(true);
-                setAuthGate("needs_2fa");
-                setIsLoading(false);
-                return;
-              }
-            } else if (data.requiresSetup) {
-              // 2FA not yet set up — no longer mandatory, proceed to dashboard
-              console.log("[Login] 2FA not set up, proceeding to dashboard (optional)");
-            } else {
-              console.log("[Login] 2FA not enabled and not required, proceeding to dashboard");
+            if (data.isEnabled && data.requiresVerification !== false) {
+              // User has 2FA enabled and needs to verify
+              setPendingAccessToken(session.access_token);
+              setRequires2FA(true);
+              setAuthGate("needs_2fa");
+              setIsLoading(false);
+              return;
             }
-          } else {
-            const errorText = await response.text();
-            console.error("[Login] totp-status failed:", response.status, errorText);
           }
+          // If totp-status fails/times out/not enabled → proceed to dashboard
         } catch (e) {
-          console.error("[Login] Failed to check 2FA status:", e);
-          // Continue to dashboard if 2FA check fails
+          // Timed out or failed — proceed to dashboard
         }
-      } else {
-        console.warn("[Login] No session access_token available after sign in - this may indicate a session issue");
       }
 
       toast({ title: "Welcome back!" });
