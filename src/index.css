@@ -23,15 +23,15 @@
 
     /* Main background - warm parchment cream */
     --background: 39 45% 94%;
-    --foreground: 25 30% 15%;
+    --foreground: 20 35% 8%;
 
     /* Cards - slightly lighter parchment */
     --card: 40 50% 96%;
-    --card-foreground: 25 30% 15%;
+    --card-foreground: 20 35% 8%;
 
     /* Popover - clean cream */
     --popover: 40 45% 97%;
-    --popover-foreground: 25 30% 15%;
+    --popover-foreground: 20 35% 8%;
 
     /* Primary - deep forest green */
     --primary: 142 35% 30%;
@@ -43,7 +43,7 @@
 
     /* Muted - dusty parchment */
     --muted: 30 20% 88%;
-    --muted-foreground: 25 15% 45%;
+    --muted-foreground: 20 25% 28%;
 
     /* Accent - warm brown */
     --accent: 25 45% 42%;
@@ -62,7 +62,7 @@
 
     /* Sidebar - darker wood tones */
     --sidebar-background: 25 30% 18%;
-    --sidebar-foreground: 40 40% 90%;
+    --sidebar-foreground: 40 50% 92%;
     --sidebar-primary: 28 50% 48%;
     --sidebar-primary-foreground: 25 30% 15%;
     --sidebar-accent: 25 25% 25%;
