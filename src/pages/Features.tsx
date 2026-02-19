@@ -36,7 +36,6 @@ import {
   List,
   Mail,
   UserPlus,
-  Server,
   Globe,
   Gamepad2,
 } from "lucide-react";
@@ -101,7 +100,7 @@ export default function Features() {
     <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium">
       <SEO
         title="Features"
-        description="Everything GameTaverns offers: collection management, play tracking, lending library, community forums, polls, trade matching, achievements, AI recommendations, and self-hosting."
+        description="Everything GameTaverns offers: collection management, play tracking, lending library, community forums, polls, trade matching, achievements, and AI recommendations."
         canonical="https://hobby-shelf-spark.lovable.app/features"
       />
       {/* Header */}
@@ -157,7 +156,7 @@ export default function Features() {
           {[
             "Collection Management", "Play Tracking", "Lending Library", "Social Profiles",
             "Events & Polls", "Community Forums", "Trade Matching", "BGG Sync",
-            "Achievements", "AI Recommendations", "Self-Hostable"
+            "Achievements", "AI Recommendations"
           ].map((tag) => (
             <span key={tag} className="text-xs font-medium px-3 py-1 rounded-full bg-secondary/10 text-secondary border border-secondary/20">
               {tag}
@@ -564,37 +563,6 @@ export default function Features() {
               "Tenant-aware routing",
               "Works alongside the default .gametaverns.app subdomain"
             ]}
-          />
-        </div>
-      </section>
-
-      {/* Self-Hosting */}
-      <section className="container mx-auto px-4 py-8">
-        <SectionHeading icon={<Server className="h-6 w-6" />} title="Self-Hosting" />
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-          <FeatureDetail
-            icon={<Server className="h-6 w-6" />}
-            title="Fully Self-Hostable"
-            description="Run GameTaverns on your own infrastructure — full feature parity with the cloud version."
-            highlights={[
-              "Docker Compose deployment on any VPS",
-              "Bundled with self-hosted Supabase (PostgreSQL + auth + storage)",
-              "Nginx reverse-proxy configuration included",
-              "All edge functions included and self-contained"
-            ]}
-            badge="Open Source"
-          />
-          <FeatureDetail
-            icon={<Shield className="h-6 w-6" />}
-            title="Data Sovereignty"
-            description="Your data stays on your server. No third-party cloud storage, no data sharing."
-            highlights={[
-              "All data in your own PostgreSQL database",
-              "File storage on your own filesystem",
-              "No telemetry or analytics sent externally",
-              "Full database export at any time"
-            ]}
-            badge="Open Source"
           />
         </div>
       </section>
