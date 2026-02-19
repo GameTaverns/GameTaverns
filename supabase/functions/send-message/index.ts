@@ -4,7 +4,7 @@ import { withLogging } from "../_shared/system-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-native-app-token",
 };
 
 // Rate limit: max 5 messages per IP per hour
@@ -62,9 +62,25 @@ async function hashIP(ip: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Secret token baked into the Android APK — allows native apps to bypass Turnstile.
+// Must match VITE_NATIVE_APP_SECRET in .env.android. Not stored in cloud secrets
+// because it's embedded in the APK binary anyway (same security model as the anon key).
+const NATIVE_APP_SECRET = "gt-android-2026-a7f3k9m2p4x8q1n5";
+
 // Verify Turnstile token with Cloudflare
-async function verifyTurnstileToken(token: string, ip: string): Promise<boolean> {
-  // Allow bypass token for preview/development environments
+async function verifyTurnstileToken(token: string, ip: string, req?: Request): Promise<boolean> {
+  // Allow bypass token for native Android app — must present matching secret header
+  if (token === "TURNSTILE_BYPASS_TOKEN") {
+    const appSecret = req?.headers.get("x-native-app-token");
+    if (appSecret === NATIVE_APP_SECRET) {
+      console.log("Native app secret validated — Turnstile bypass accepted");
+      return true;
+    }
+    console.warn("TURNSTILE_BYPASS_TOKEN used without valid x-native-app-token header — rejected");
+    return false;
+  }
+
+  // Legacy preview bypass (kept for Lovable preview environments)
   if (token === "PREVIEW_BYPASS_TOKEN") {
     console.log("Preview bypass token accepted");
     return true;
@@ -134,7 +150,7 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const isTurnstileValid = await verifyTurnstileToken(turnstile_token, clientIp);
+    const isTurnstileValid = await verifyTurnstileToken(turnstile_token, clientIp, req);
     if (!isTurnstileValid) {
       return new Response(
         JSON.stringify({ success: false, error: "CAPTCHA verification failed. Please try again." }),

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
 import { Send, Loader2, LogIn } from "lucide-react";
 import { z } from "zod";
 import { Link } from "react-router-dom";
@@ -88,6 +89,7 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
 
     try {
       // Use edge function for rate-limited, validated message sending
+      const isNative = Capacitor.isNativePlatform();
       const { data, error } = await supabase.functions.invoke("send-message", {
         body: {
           game_id: gameId,
@@ -95,6 +97,9 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
           message: result.data.message,
           turnstile_token: turnstileToken,
         },
+        headers: isNative
+          ? { "x-native-app-token": import.meta.env.VITE_NATIVE_APP_SECRET || "" }
+          : undefined,
       });
 
       if (error) throw error;
