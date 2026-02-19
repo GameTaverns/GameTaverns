@@ -17,32 +17,43 @@ const plugins = [
   '@capacitor/status-bar',
 ];
 
-let patched = 0;
-let skipped = 0;
+try {
+  let patched = 0;
+  let skipped = 0;
 
-for (const plugin of plugins) {
-  const filePath = path.join(__dirname, '..', 'node_modules', plugin, 'android', 'build.gradle');
+  for (const plugin of plugins) {
+    try {
+      const filePath = path.join(__dirname, '..', 'node_modules', plugin, 'android', 'build.gradle');
 
-  if (!fs.existsSync(filePath)) {
-    console.log(`⚠️  Skipping ${plugin} — file not found`);
-    skipped++;
-    continue;
+      if (!fs.existsSync(filePath)) {
+        console.log('Skipping ' + plugin + ' - file not found');
+        skipped++;
+        continue;
+      }
+
+      const original = fs.readFileSync(filePath, 'utf8');
+      const updated = original.replace(
+        /getDefaultProguardFile\('proguard-android\.txt'\)/g,
+        "getDefaultProguardFile('proguard-android-optimize.txt')"
+      );
+
+      if (original === updated) {
+        console.log(plugin + ' - already patched');
+        skipped++;
+      } else {
+        fs.writeFileSync(filePath, updated, 'utf8');
+        console.log(plugin + ' - patched successfully');
+        patched++;
+      }
+    } catch (e) {
+      console.log('Could not patch ' + plugin + ': ' + e.message);
+    }
   }
 
-  const original = fs.readFileSync(filePath, 'utf8');
-  const updated = original.replace(
-    /getDefaultProguardFile\('proguard-android\.txt'\)/g,
-    "getDefaultProguardFile('proguard-android-optimize.txt')"
-  );
-
-  if (original === updated) {
-    console.log(`✅ ${plugin} — already patched`);
-    skipped++;
-  } else {
-    fs.writeFileSync(filePath, updated, 'utf8');
-    console.log(`🔧 ${plugin} — patched`);
-    patched++;
-  }
+  console.log('Done. Patched: ' + patched + ', Skipped: ' + skipped);
+} catch (e) {
+  console.log('Patch script warning: ' + e.message);
 }
 
-console.log(`\nDone. Patched: ${patched}, Skipped/already done: ${skipped}`);
+// Always exit cleanly so npm install is never blocked
+process.exit(0);
