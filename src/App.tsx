@@ -63,6 +63,7 @@ const LibraryGames = lazy(() => import("./pages/LibraryGames"));
 const ManageGames = lazy(() => import("./pages/ManageGames"));
 const PlayStatsPage = lazy(() => import("./pages/PlayStatsPage"));
 const PollPage = lazy(() => import("./pages/PollPage"));
+const CatalogPrint = lazy(() => import("./pages/CatalogPrint"));
 const SmartPicker = lazy(() => import("./pages/SmartPicker"));
 const CatalogBrowse = lazy(() => import("./pages/CatalogBrowse"));
 const CatalogGameDetail = lazy(() => import("./pages/CatalogGameDetail"));
@@ -256,6 +257,7 @@ function LibraryRoutes() {
       <Route path="/messages" element={<Messages />} />
       <Route path="/stats" element={<PlayStatsPage />} />
       <Route path="/poll/:token" element={<PollPage />} />
+      <Route path="/catalog-print" element={<CatalogPrint />} />
       
       {/* Community/Forum routes for library */}
       <Route path="/community" element={<Community />} />
