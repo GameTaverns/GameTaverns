@@ -558,22 +558,30 @@ export function UserManagement() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {user.is_banned ? (
-                            <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-                              <Ban className="w-3 h-3 mr-1" />
-                              Suspended
-                            </Badge>
-                          ) : !user.email_confirmed_at ? (
-                            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
-                              <Mail className="w-3 h-3 mr-1" />
-                              Unconfirmed
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                              <UserCheck className="w-3 h-3 mr-1" />
-                              Active
-                            </Badge>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {user.is_banned ? (
+                              <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                                <Ban className="w-3 h-3 mr-1" />
+                                Suspended
+                              </Badge>
+                            ) : !user.email_confirmed_at ? (
+                              <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                                <Mail className="w-3 h-3 mr-1" />
+                                Unconfirmed
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                                <UserCheck className="w-3 h-3 mr-1" />
+                                Active
+                              </Badge>
+                            )}
+                            <div className="flex items-center gap-1.5 pl-0.5">
+                              <PresenceDot status={presenceMap?.get(user.id) ?? "offline"} size="sm" />
+                              <span className="text-[10px] text-cream/50 capitalize">
+                                {presenceMap?.get(user.id) ?? "offline"}
+                              </span>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>{getRoleBadge(user.role, user.is_library_owner)}</TableCell>
                         <TableCell>
