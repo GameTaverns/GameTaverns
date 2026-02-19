@@ -42,7 +42,7 @@ export function CollectionValueDashboard({ libraryId }: CollectionValueDashboard
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          Unable to load collection value data. This feature requires self-hosted deployment.
+          Unable to load collection value data. Make sure you have games in your library.
         </CardContent>
       </Card>
     );
