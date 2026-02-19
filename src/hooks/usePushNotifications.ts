@@ -21,7 +21,6 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-
     // Check if push notifications are supported
     setState(prev => ({
       ...prev,
@@ -31,6 +30,7 @@ export function usePushNotifications() {
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!Capacitor.isNativePlatform()) return false;
+    if (!Capacitor.isPluginAvailable('PushNotifications')) return false;
 
     try {
       const permission = await PushNotifications.requestPermissions();
@@ -47,75 +47,90 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
+    // Guard: only proceed if the plugin is actually available
+    if (!Capacitor.isPluginAvailable('PushNotifications')) return;
 
-    // Registration success
-    const registrationListener = PushNotifications.addListener('registration', async (token: Token) => {
-      console.log('Push registration success, token:', token.value);
-      setState(prev => ({
-        ...prev,
-        isRegistered: true,
-        token: token.value,
-      }));
+    let registrationListener: Promise<any> | null = null;
+    let registrationErrorListener: Promise<any> | null = null;
+    let notificationListener: Promise<any> | null = null;
+    let actionListener: Promise<any> | null = null;
 
-      // Store token for later use (e.g., sending to backend)
-      await MobileStorage.set('pushToken', token.value);
-    });
-
-    // Registration error
-    const registrationErrorListener = PushNotifications.addListener('registrationError', (error) => {
-      console.error('Push registration error:', error);
-      setState(prev => ({
-        ...prev,
-        isRegistered: false,
-        token: null,
-      }));
-    });
-
-    // Notification received while app is in foreground
-    const notificationListener = PushNotifications.addListener(
-      'pushNotificationReceived',
-      (notification: PushNotificationSchema) => {
-        console.log('Push notification received:', notification);
-        setState(prev => ({
-          ...prev,
-          notifications: [...prev.notifications, notification],
-        }));
-      }
-    );
-
-    // Notification action performed (user tapped notification)
-    const actionListener = PushNotifications.addListener(
-      'pushNotificationActionPerformed',
-      (action: ActionPerformed) => {
-        console.log('Push notification action performed:', action);
-        // Handle deep linking based on notification data
-        const data = action.notification.data;
-        if (data?.gameSlug && data?.librarySlug) {
-          // Navigate to specific game
-          window.location.href = getLibraryUrl(data.librarySlug, `/games/${data.gameSlug}`);
-        } else if (data?.librarySlug) {
-          // Navigate to specific library
-          window.location.href = getLibraryUrl(data.librarySlug, "/");
-        }
-      }
-    );
-
-    // Check if already registered
-    MobileStorage.get<string>('pushToken').then(token => {
-      if (token) {
+    try {
+      // Registration success
+      registrationListener = PushNotifications.addListener('registration', async (token: Token) => {
+        console.log('Push registration success, token:', token.value);
         setState(prev => ({
           ...prev,
           isRegistered: true,
-          token,
+          token: token.value,
         }));
-      }
-    });
+        try {
+          await MobileStorage.set('pushToken', token.value);
+        } catch (e) {
+          console.warn('Failed to store push token:', e);
+        }
+      });
+
+      // Registration error
+      registrationErrorListener = PushNotifications.addListener('registrationError', (error) => {
+        console.error('Push registration error:', error);
+        setState(prev => ({
+          ...prev,
+          isRegistered: false,
+          token: null,
+        }));
+      });
+
+      // Notification received while app is in foreground
+      notificationListener = PushNotifications.addListener(
+        'pushNotificationReceived',
+        (notification: PushNotificationSchema) => {
+          console.log('Push notification received:', notification);
+          setState(prev => ({
+            ...prev,
+            notifications: [...prev.notifications, notification],
+          }));
+        }
+      );
+
+      // Notification action performed (user tapped notification)
+      actionListener = PushNotifications.addListener(
+        'pushNotificationActionPerformed',
+        (action: ActionPerformed) => {
+          console.log('Push notification action performed:', action);
+          const data = action.notification.data;
+          if (data?.gameSlug && data?.librarySlug) {
+            window.location.href = getLibraryUrl(data.librarySlug, `/games/${data.gameSlug}`);
+          } else if (data?.librarySlug) {
+            window.location.href = getLibraryUrl(data.librarySlug, "/");
+          }
+        }
+      );
+
+      // Check if already registered
+      MobileStorage.get<string>('pushToken').then(token => {
+        if (token) {
+          setState(prev => ({
+            ...prev,
+            isRegistered: true,
+            token,
+          }));
+        }
+      }).catch(e => console.warn('Failed to read push token:', e));
+
+    } catch (e) {
+      console.warn('PushNotifications setup failed:', e);
+    }
 
     return () => {
-      registrationListener.then(h => h.remove());
-      registrationErrorListener.then(h => h.remove());
-      notificationListener.then(h => h.remove());
-      actionListener.then(h => h.remove());
+      try {
+        registrationListener?.then(h => h?.remove()).catch(() => {});
+        registrationErrorListener?.then(h => h?.remove()).catch(() => {});
+        notificationListener?.then(h => h?.remove()).catch(() => {});
+        actionListener?.then(h => h?.remove()).catch(() => {});
+      } catch (e) {
+        console.warn('PushNotifications cleanup failed:', e);
+      }
     };
   }, []);
 
