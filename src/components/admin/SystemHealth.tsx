@@ -537,8 +537,10 @@ export function SystemHealth() {
   // Catalog Cleanup
   interface CleanupStatus {
     total_with_bgg_id: number;
+    unchecked: number;
+    verified_boardgames: number;
+    not_boardgame: number;
     linked_to_library: number;
-    sentinel_marked: number;
   }
   interface CleanupResult {
     dry_run: boolean;
@@ -1435,8 +1437,10 @@ export function SystemHealth() {
                 {cleanupStatusQuery.data && (
                   <div className="flex flex-wrap gap-3 text-xs text-cream/50">
                     <span>Total w/ BGG ID: <span className="text-cream font-medium">{cleanupStatusQuery.data.total_with_bgg_id.toLocaleString()}</span></span>
+                    <span>Unchecked: <span className="text-amber-400 font-medium">{cleanupStatusQuery.data.unchecked.toLocaleString()}</span></span>
+                    <span>Verified: <span className="text-green-400 font-medium">{cleanupStatusQuery.data.verified_boardgames.toLocaleString()}</span></span>
+                    <span>Non-Boardgame: <span className="text-red-400 font-medium">{cleanupStatusQuery.data.not_boardgame.toLocaleString()}</span></span>
                     <span>Linked to Library: <span className="text-cream font-medium">{cleanupStatusQuery.data.linked_to_library.toLocaleString()}</span></span>
-                    <span>Sentinel Marked: <span className="text-yellow-400 font-medium">{cleanupStatusQuery.data.sentinel_marked.toLocaleString()}</span></span>
                   </div>
                 )}
               </div>

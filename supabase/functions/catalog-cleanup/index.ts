@@ -100,12 +100,14 @@ const handler = async (req: Request): Promise<Response> => {
       { count: unchecked },
       { count: verified },
       { count: invalid },
+      { count: notBoardgame },
       { count: linked },
     ] = await Promise.all([
       admin.from("game_catalog").select("id", { count: "exact", head: true }).not("bgg_id", "is", null),
       admin.from("game_catalog").select("id", { count: "exact", head: true }).not("bgg_id", "is", null).is("bgg_verified_type", null),
       admin.from("game_catalog").select("id", { count: "exact", head: true }).in("bgg_verified_type", ["boardgame", "boardgameexpansion"]),
       admin.from("game_catalog").select("id", { count: "exact", head: true }).eq("bgg_verified_type", "invalid"),
+      admin.from("game_catalog").select("id", { count: "exact", head: true }).eq("bgg_verified_type", "not_boardgame"),
       admin.from("games").select("id", { count: "exact", head: true }).not("catalog_id", "is", null),
     ]);
 
@@ -114,6 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
       unchecked: unchecked || 0,
       verified_boardgames: verified || 0,
       verified_invalid: invalid || 0,
+      not_boardgame: notBoardgame || 0,
       linked_to_library: linked || 0,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
@@ -160,13 +163,12 @@ const handler = async (req: Request): Promise<Response> => {
     const fetchCount = Math.min(BATCH_SIZE, limit - totalChecked);
 
     // Only fetch UNCHECKED entries (bgg_verified_type IS NULL)
-    // Skip sentinel-marked entries too
+    // PostgREST doesn't support negated LIKE, so we filter sentinel entries after fetch
     const { data: candidates, error: fetchErr } = await admin
       .from("game_catalog")
-      .select("id, bgg_id, title")
+      .select("id, bgg_id, title, description")
       .not("bgg_id", "is", null)
       .is("bgg_verified_type", null)
-      .not("description", "like", "%This entry does not appear to be a board game%")
       .limit(fetchCount)
       .range(offset, offset + fetchCount - 1);
 
@@ -179,18 +181,40 @@ const handler = async (req: Request): Promise<Response> => {
       break;
     }
 
+    // In-memory: skip sentinel-marked entries (format function wrote these) and stamp them
+    const sentinelEntries = candidates.filter(c =>
+      c.description?.includes("This entry does not appear to be a board game")
+    );
+    const nonSentinel = candidates.filter(c =>
+      !c.description?.includes("This entry does not appear to be a board game")
+    );
+
+    // Stamp sentinels so they won't be fetched again
+    if (!dryRun && sentinelEntries.length > 0) {
+      await admin.from("game_catalog")
+        .update({ bgg_verified_type: "not_boardgame" })
+        .in("id", sentinelEntries.map(s => s.id));
+      console.log(`[catalog-cleanup] Stamped ${sentinelEntries.length} sentinel entries as not_boardgame`);
+    }
+
+    if (nonSentinel.length === 0) {
+      offset += fetchCount;
+      totalChecked += candidates.length;
+      continue;
+    }
+
     // Filter out any linked to a user game (safety check in-memory)
-    const candidateIds = candidates.map(c => c.id);
+    const candidateIds = nonSentinel.map(c => c.id);
     const { data: linkedGames } = await admin
       .from("games")
       .select("catalog_id")
       .in("catalog_id", candidateIds);
     const linkedSet = new Set((linkedGames || []).map(g => g.catalog_id));
 
-    const unlinked = candidates.filter(c => !linkedSet.has(c.id));
+    const unlinked = nonSentinel.filter(c => !linkedSet.has(c.id));
 
     // Mark linked entries as verified (they're protected regardless of type)
-    const linkedInBatch = candidates.filter(c => linkedSet.has(c.id));
+    const linkedInBatch = nonSentinel.filter(c => linkedSet.has(c.id));
     if (!dryRun && linkedInBatch.length > 0) {
       await admin.from("game_catalog")
         .update({ bgg_verified_type: "linked" })
