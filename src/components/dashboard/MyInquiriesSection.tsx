@@ -48,10 +48,9 @@ export function MyInquiriesSection() {
     // Build absolute URL to the library subdomain
     const host = window.location.host;
     const isLocalhost = host.includes("localhost");
-    const isLovablePreview = host.includes("lovable.app");
     
-    if (isLocalhost || isLovablePreview) {
-      // Use query param for local/preview
+    if (isLocalhost) {
+      // Use query param for local dev
       return `${window.location.origin}/game/${inquiry.game.slug}?tenant=${librarySlug}`;
     }
     

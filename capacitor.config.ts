@@ -5,9 +5,9 @@ const config: CapacitorConfig = {
   appName: 'GameTaverns',
   webDir: 'dist',
   // Bundled mode: UI assets are packaged inside the APK.
-  // The app calls https://gametaverns.com for all data/auth via VITE env vars.
-  // Do NOT add server.url here — that switches to WebView mode (just a browser).
-  // iOS-specific configuration
+  // The runtime override in src/config/runtime.ts forces all API calls to
+  // https://gametaverns.com when Capacitor.isNativePlatform() is true.
+  // No server.url here — that would switch to live-reload WebView mode.
   ios: {
     contentInset: 'automatic',
     preferredContentMode: 'mobile',

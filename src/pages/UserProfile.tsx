@@ -159,7 +159,7 @@ export default function UserProfile() {
         description={seoDescription}
         ogType="profile"
         ogImage={profile.avatar_url ?? undefined}
-        canonical={`https://hobby-shelf-spark.lovable.app/u/${profile.username}`}
+        canonical={`https://gametaverns.com/u/${profile.username}`}
       />
       <AppHeader />
 

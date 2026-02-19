@@ -53,13 +53,13 @@ export default function GamesForNPlayers() {
     "@type": "CollectionPage",
     name: title,
     description,
-    url: `https://hobby-shelf-spark.lovable.app/games-for-${n}-players`,
+    url: `https://gametaverns.com/games-for-${n}-players`,
     breadcrumb: {
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: "https://hobby-shelf-spark.lovable.app" },
-        { "@type": "ListItem", position: 2, name: "Catalog", item: "https://hobby-shelf-spark.lovable.app/catalog" },
-        { "@type": "ListItem", position: 3, name: title, item: `https://hobby-shelf-spark.lovable.app/games-for-${n}-players` },
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://gametaverns.com" },
+        { "@type": "ListItem", position: 2, name: "Catalog", item: "https://gametaverns.com/catalog" },
+        { "@type": "ListItem", position: 3, name: title, item: `https://gametaverns.com/games-for-${n}-players` },
       ],
     },
   };

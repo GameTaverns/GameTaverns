@@ -27,13 +27,13 @@ export default function MechanicsIndex() {
     "@type": "CollectionPage",
     name: "Board Game Mechanics — GameTaverns",
     description: "Browse board games by mechanic. Find worker placement, deck building, cooperative, and more.",
-    url: "https://hobby-shelf-spark.lovable.app/catalog/mechanics",
+    url: "https://gametaverns.com/catalog/mechanics",
     breadcrumb: {
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: "https://hobby-shelf-spark.lovable.app" },
-        { "@type": "ListItem", position: 2, name: "Catalog", item: "https://hobby-shelf-spark.lovable.app/catalog" },
-        { "@type": "ListItem", position: 3, name: "Mechanics", item: "https://hobby-shelf-spark.lovable.app/catalog/mechanics" },
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://gametaverns.com" },
+        { "@type": "ListItem", position: 2, name: "Catalog", item: "https://gametaverns.com/catalog" },
+        { "@type": "ListItem", position: 3, name: "Mechanics", item: "https://gametaverns.com/catalog/mechanics" },
       ],
     },
   };
@@ -43,7 +43,7 @@ export default function MechanicsIndex() {
       <SEO
         title="Board Game Mechanics"
         description="Browse board games by mechanic — worker placement, deck building, cooperative games, and more. Find your perfect game style on GameTaverns."
-        canonical="https://hobby-shelf-spark.lovable.app/catalog/mechanics"
+        canonical="https://gametaverns.com/catalog/mechanics"
         jsonLd={jsonLd}
       />
 
