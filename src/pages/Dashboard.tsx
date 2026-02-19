@@ -231,7 +231,8 @@ export default function Dashboard() {
     handleTabChange(legacyTabMap[tabFromUrl]);
   }
 
-  if (loading) {
+  // Don't block on loading if we already know the user is authenticated
+  if (loading && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-cream">Loading...</div>
