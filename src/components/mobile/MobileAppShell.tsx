@@ -95,7 +95,11 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   useEffect(() => {
     if (!isNative || authLoading || isLoadingLibrary) return;
     if (isAuthenticated && !activeLibrary) {
-      navigate("/dashboard", { replace: true });
+      try {
+        navigate("/dashboard", { replace: true });
+      } catch (e) {
+        console.warn("Navigation failed:", e);
+      }
     }
   }, [isNative, isAuthenticated, authLoading, activeLibrary, isLoadingLibrary, navigate]);
 
