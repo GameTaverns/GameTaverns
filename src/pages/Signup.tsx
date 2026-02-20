@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { TurnstileWidget } from "@/components/games/TurnstileWidget";
+import { RecaptchaWidget } from "@/components/games/RecaptchaWidget";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -27,7 +27,6 @@ export default function Signup() {
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
-  const [turnstileKey, setTurnstileKey] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +133,7 @@ export default function Signup() {
             username: username.toLowerCase() || undefined,
             displayName: displayName || email.split("@")[0],
             redirectUrl: window.location.origin,
+            recaptcha_token: turnstileToken,
           }),
         },
       );
@@ -246,10 +246,9 @@ export default function Signup() {
             </div>
 
             {!isNative && (
-              <TurnstileWidget
-                key={turnstileKey}
+              <RecaptchaWidget
+                action="signup"
                 onVerify={setTurnstileToken}
-                onExpire={() => setTurnstileToken(null)}
               />
             )}
 

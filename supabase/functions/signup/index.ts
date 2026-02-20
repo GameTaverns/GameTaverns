@@ -21,7 +21,7 @@ interface SignupRequest {
   displayName?: string;
   redirectUrl?: string;
   referralCode?: string;
-  turnstile_token?: string;
+  recaptcha_token?: string;
 }
 
 const SMTP_SEND_TIMEOUT_MS = 8000;
@@ -202,48 +202,61 @@ async function handler(req: Request): Promise<Response> {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { email, password, username, displayName, redirectUrl, referralCode, turnstile_token }: SignupRequest = await req.json();
+    const { email, password, username, displayName, redirectUrl, referralCode, recaptcha_token }: SignupRequest = await req.json();
 
-    // Validate Turnstile / native app token
-    if (turnstile_token === "TURNSTILE_BYPASS_TOKEN") {
+    // Validate reCAPTCHA / native app token
+    if (recaptcha_token === "RECAPTCHA_BYPASS_TOKEN") {
       // Native app bypass — must present matching secret header
       const appSecret = req.headers.get("x-native-app-token");
       if (appSecret !== NATIVE_APP_SECRET) {
-        console.warn("[Signup] TURNSTILE_BYPASS_TOKEN without valid x-native-app-token — rejected");
+        console.warn("[Signup] RECAPTCHA_BYPASS_TOKEN without valid x-native-app-token — rejected");
         return new Response(JSON.stringify({ error: "Verification failed" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       console.log("[Signup] Native app secret validated");
-    } else if (!turnstile_token) {
-      // No token provided at all — only enforce if Turnstile secret is configured
-      const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY");
-      if (turnstileSecret) {
+    } else if (!recaptcha_token || recaptcha_token.startsWith("RECAPTCHA_")) {
+      // No token or a client-side failure token — only enforce if secret is configured
+      const recaptchaSecret = Deno.env.get("RECAPTCHA_SECRET_KEY");
+      if (recaptchaSecret && recaptcha_token && !recaptcha_token.startsWith("RECAPTCHA_BYPASS")) {
+        // Load/execute failures pass through (fail open) — just log
+        console.warn("[Signup] reCAPTCHA client error token:", recaptcha_token, "— failing open");
+      } else if (recaptchaSecret && !recaptcha_token) {
         return new Response(JSON.stringify({ error: "Verification required" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     } else {
-      // Real Turnstile token — verify with Cloudflare if key is available
-      const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY");
-      if (turnstileSecret) {
+      // Real reCAPTCHA token — verify with Google if secret is configured
+      const recaptchaSecret = Deno.env.get("RECAPTCHA_SECRET_KEY");
+      if (recaptchaSecret) {
         try {
-          const tfRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+          const rcRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({ secret: turnstileSecret, response: turnstile_token, remoteip: clientIp }),
+            body: new URLSearchParams({ secret: recaptchaSecret, response: recaptcha_token, remoteip: clientIp }),
           });
-          const tfData = await tfRes.json();
-          if (!tfData.success) {
+          const rcData = await rcRes.json();
+          if (!rcData.success) {
+            console.warn("[Signup] reCAPTCHA failed:", rcData["error-codes"]);
             return new Response(JSON.stringify({ error: "CAPTCHA verification failed. Please try again." }), {
               status: 400,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
+          // Optional: reject very low scores (bots score near 0, humans near 1)
+          if (rcData.score !== undefined && rcData.score < 0.3) {
+            console.warn("[Signup] reCAPTCHA score too low:", rcData.score);
+            return new Response(JSON.stringify({ error: "Suspicious activity detected. Please try again." }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
         } catch (e) {
-          console.error("[Signup] Turnstile verification error:", e);
+          console.error("[Signup] reCAPTCHA verification error:", e);
+          // Fail open on network errors
         }
       }
     }
