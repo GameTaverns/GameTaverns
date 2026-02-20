@@ -103,6 +103,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Admin panel imports
+import { lazy, Suspense } from "react";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { LibraryManagement } from "@/components/admin/LibraryManagement";
 import { PlatformSettings } from "@/components/admin/PlatformSettings";
@@ -111,11 +112,18 @@ import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
 import { PremiumRoadmap } from "@/components/admin/PremiumRoadmap";
-import { ServerManagement } from "@/components/admin/ServerManagement";
 import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 import { usePendingClubs } from "@/hooks/useClubs";
-import { Activity, Database, MessageCircle, HeartPulse, Crown, Terminal, BookMarked } from "lucide-react";
+import { Activity, Database, MessageCircle, HeartPulse, Crown, Terminal, BookMarked, BadgeCheck } from "lucide-react";
+
+// Lazy-load tabs that may fail on self-hosted deployments (missing DB tables, etc.)
+const SpecialBadgesManagement = lazy(() =>
+  import("@/components/admin/SpecialBadgesManagement").then(m => ({ default: m.SpecialBadgesManagement }))
+);
+const ServerManagement = lazy(() =>
+  import("@/components/admin/ServerManagement").then(m => ({ default: m.ServerManagement }))
+);
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -964,6 +972,9 @@ export default function Dashboard() {
                     <TabsTrigger value="premium" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
                       <Crown className="h-3 w-3" /> Premium
                     </TabsTrigger>
+                    <TabsTrigger value="badges" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <BadgeCheck className="h-3 w-3" /> Badges
+                    </TabsTrigger>
                     <TabsTrigger value="server" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
                       <Terminal className="h-3 w-3" /> Server
                     </TabsTrigger>
@@ -977,7 +988,16 @@ export default function Dashboard() {
                   <TabsContent value="clubs"><ClubsManagement /></TabsContent>
                   <TabsContent value="health"><SystemHealth /></TabsContent>
                   <TabsContent value="premium"><PremiumRoadmap /></TabsContent>
-                  <TabsContent value="server"><ServerManagement /></TabsContent>
+                  <TabsContent value="badges">
+                    <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading badges…</div>}>
+                      <SpecialBadgesManagement />
+                    </Suspense>
+                  </TabsContent>
+                  <TabsContent value="server">
+                    <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading server tools…</div>}>
+                      <ServerManagement />
+                    </Suspense>
+                  </TabsContent>
                 </Tabs>
               </div>
             </TabsContent>
