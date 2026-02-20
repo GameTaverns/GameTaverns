@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Gamepad2, Check, X, Loader2 } from "lucide-react";
+import { Gamepad2, Check, X, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { useSlugAvailability, useCreateLibrary, useMyLibraries, useMaxLibrariesPerUser } from "@/hooks/useLibrary";
+import { useSlugAvailability, useCreateLibrary, useUpdateLibrarySettings, useMyLibraries, useMaxLibrariesPerUser } from "@/hooks/useLibrary";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 
@@ -18,11 +19,13 @@ export default function CreateLibrary() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const createLibrary = useCreateLibrary();
+  const updateSettings = useUpdateLibrarySettings();
   
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [manualSlug, setManualSlug] = useState(false);
+  const [isDiscoverable, setIsDiscoverable] = useState(true);
   
   const debouncedSlug = useDebounce(slug, 300);
   const { data: slugCheck, isLoading: checkingSlug } = useSlugAvailability(debouncedSlug);
@@ -68,12 +71,18 @@ export default function CreateLibrary() {
     }
     
     try {
-      await createLibrary.mutateAsync({ slug, name, description });
+      const library = await createLibrary.mutateAsync({ slug, name, description });
+      // Update discoverability if set to private
+      if (!isDiscoverable) {
+        await updateSettings.mutateAsync({
+          libraryId: library.id,
+          updates: { is_discoverable: false },
+        });
+      }
       toast({
         title: "Library created!",
         description: `Your library is now live at ${slug}.gametaverns.com`,
       });
-      // Redirect to dashboard where they can access their library
       navigate("/dashboard");
     } catch (error: any) {
       toast({
@@ -167,6 +176,32 @@ export default function CreateLibrary() {
                 placeholder="A collection of my favorite board games..."
                 className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground resize-none"
                 rows={3}
+              />
+            </div>
+
+            {/* Privacy Toggle */}
+            <div className="flex items-center justify-between p-3 bg-wood-medium/30 rounded-lg border border-border/30">
+              <div className="flex items-center gap-2">
+                {isDiscoverable ? (
+                  <Eye className="h-4 w-4 text-secondary" />
+                ) : (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                )}
+                <div>
+                  <Label htmlFor="discoverable" className="text-cream/80 text-sm font-medium cursor-pointer">
+                    {isDiscoverable ? "Public Library" : "Private Library"}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {isDiscoverable
+                      ? "Visible in the library directory"
+                      : "Hidden from the library directory"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="discoverable"
+                checked={isDiscoverable}
+                onCheckedChange={setIsDiscoverable}
               />
             </div>
             
