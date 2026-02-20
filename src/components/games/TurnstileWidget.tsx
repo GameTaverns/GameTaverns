@@ -146,21 +146,23 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       return () => clearTimeout(timer);
     }, [isPreviewMode, isNative, onVerify]);
 
-    // Safety timeout: if settings haven't loaded after 8s and NOT in preview, show error
+    // Safety timeout: if settings haven't loaded after 8s and NOT in preview, bypass gracefully.
+    // On self-hosted or any environment where settings can't load, we should fail open.
     useEffect(() => {
       if (isPreviewMode || settingsLoaded || bypassReason) return;
       
       const timeout = setTimeout(() => {
         if (!settingsLoaded && !bypassReason && !isPreviewMode) {
-          console.warn('[TurnstileWidget] Settings timeout - cannot load verification config');
-          setHasError(true);
+          console.warn('[TurnstileWidget] Settings timeout — bypassing verification (fail open)');
+          setBypassReason("settings timeout fallback");
+          setHasError(false);
           setIsLoading(false);
-          onError?.();
+          onVerify("TURNSTILE_BYPASS_TOKEN");
         }
       }, 8000);
       
       return () => clearTimeout(timeout);
-    }, [settingsLoaded, bypassReason, isPreviewMode, onError]);
+    }, [settingsLoaded, bypassReason, isPreviewMode, onError, onVerify]);
 
     // Handle site key availability (only for non-preview environments)
     useEffect(() => {
@@ -170,30 +172,21 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       // Don't make decisions until settings are loaded
       if (!settingsLoaded) return;
       
-      // If no site key is configured after settings loaded, show error
+      // If no site key is configured after settings loaded, always bypass gracefully.
+      // This covers self-hosted deployments where Turnstile is not set up,
+      // as well as any environment where the key simply isn't configured.
       if (!siteKey) {
-        // Self-hosted safety fallback: allow login/signup to work even if
-        // the settings table/view is missing or the API is temporarily down.
-        if (isSelfHostedSupabaseStack()) {
-          console.warn('[TurnstileWidget] Self-hosted fallback: missing Turnstile site key, bypassing after safety delay');
-          setBypassReason("self-hosted safety fallback");
-          setHasError(false);
-          setIsLoading(false);
-
-          const timer = setTimeout(() => {
-            onVerify("TURNSTILE_BYPASS_TOKEN");
-          }, 1000);
-
-          return () => clearTimeout(timer);
-        }
-
-        console.warn('[TurnstileWidget] No Turnstile site key configured — bypassing verification');
-        setBypassReason("no site key configured");
+        const selfHosted = isSelfHostedSupabaseStack();
+        const delay = selfHosted ? 1000 : 300;
+        console.warn(`[TurnstileWidget] No Turnstile site key configured — bypassing verification${selfHosted ? ' (self-hosted)' : ''}`);
+        setBypassReason(selfHosted ? "self-hosted safety fallback" : "no site key configured");
         setHasError(false);
         setIsLoading(false);
+
         const timer = setTimeout(() => {
           onVerify("TURNSTILE_BYPASS_TOKEN");
-        }, 300);
+        }, delay);
+
         return () => clearTimeout(timer);
       }
       
@@ -282,13 +275,13 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
       );
     }
 
-    // Self-hosted safety fallback: show indicator while we bypass.
-    if (bypassReason === "self-hosted safety fallback") {
+    // Any bypass reason (no site key, self-hosted fallback, settings timeout): show indicator.
+    if (bypassReason) {
       return (
         <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-muted/50 border border-border/50">
           <CheckCircle2 className="h-4 w-4 text-primary" />
           <span className="text-sm text-muted-foreground">
-            Verification bypassed (self-hosted safety fallback)
+            Verification bypassed
           </span>
         </div>
       );
