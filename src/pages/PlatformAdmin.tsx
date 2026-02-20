@@ -1,3 +1,4 @@
+// v2 - badges tab fix 2026-02-20
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Crown, BadgeCheck } from "lucide-react";
