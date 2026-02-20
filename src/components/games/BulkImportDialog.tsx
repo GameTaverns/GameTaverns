@@ -262,6 +262,7 @@ export function BulkImportDialog({
   // and will complete server-side regardless of client connection.
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -1038,7 +1039,11 @@ export function BulkImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent 
+        className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-hidden flex flex-col"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Bulk Import Games</DialogTitle>
           <DialogDescription>
