@@ -1,5 +1,5 @@
-// v2 - badges tab fix 2026-02-20
-import { useEffect, useState } from "react";
+// v3 - error boundary for badges tab 2026-02-20
+import { useEffect, useState, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Crown, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,35 @@ import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { Badge } from "@/components/ui/badge";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 import { usePendingClubs } from "@/hooks/useClubs";
+
+class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: "" };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[TabErrorBoundary]", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          <strong>Something went wrong loading this tab:</strong> {this.state.error}
+          <button
+            className="ml-3 underline"
+            onClick={() => this.setState({ hasError: false, error: "" })}
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function PlatformAdmin() {
   const navigate = useNavigate();
@@ -238,11 +267,15 @@ export default function PlatformAdmin() {
           </TabsContent>
 
           <TabsContent value="badges" className="mt-6">
-            <SpecialBadgesManagement />
+            <TabErrorBoundary>
+              <SpecialBadgesManagement />
+            </TabErrorBoundary>
           </TabsContent>
 
           <TabsContent value="server" className="mt-6">
-            <ServerManagement />
+            <TabErrorBoundary>
+              <ServerManagement />
+            </TabErrorBoundary>
           </TabsContent>
         </Tabs>
       </main>
