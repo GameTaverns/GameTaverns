@@ -212,6 +212,158 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   // =========================================================================
+  // FETCH_IDS — Scrape specific BGG IDs (for backfilling missed games)
+  // =========================================================================
+  if (action === "fetch_ids") {
+    const specificIds: number[] = (body.bgg_ids || []).map(Number).filter((n: number) => n > 0);
+    if (specificIds.length === 0) {
+      return new Response(JSON.stringify({ error: "No valid bgg_ids provided" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (specificIds.length > 100) {
+      return new Response(JSON.stringify({ error: "Max 100 IDs per request" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
+    const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+    const bggHeaders: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      Accept: "application/xml",
+      Referer: "https://boardgamegeek.com/",
+      Origin: "https://boardgamegeek.com",
+    };
+    if (bggApiToken) bggHeaders["Authorization"] = `Bearer ${bggApiToken}`;
+    if (bggCookie) bggHeaders["Cookie"] = bggCookie;
+
+    let totalAdded = 0;
+    let totalSkipped = 0;
+    let totalErrors = 0;
+    const results: { bgg_id: number; title?: string; status: string; error?: string }[] = [];
+
+    // Process in chunks of 20 (BGG API limit)
+    const CHUNK = 20;
+    for (let i = 0; i < specificIds.length; i += CHUNK) {
+      const chunk = specificIds.slice(i, i + CHUNK);
+      const idStr = chunk.join(",");
+      const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&stats=1`;
+
+      let xml: string | null = null;
+      let attempts = 0;
+      while (attempts < 3 && !xml) {
+        attempts++;
+        try {
+          const res = await fetch(url, { headers: bggHeaders });
+          if (res.status === 202) { await sleep(5000); continue; }
+          if (res.status === 429) { await sleep(attempts * 3000); continue; }
+          if (res.ok) xml = await res.text();
+          else break;
+        } catch { if (attempts < 3) await sleep(2000); }
+      }
+
+      if (!xml) {
+        for (const id of chunk) results.push({ bgg_id: id, status: "error", error: "BGG fetch failed" });
+        totalErrors += chunk.length;
+        continue;
+      }
+
+      const games = parseBggItems(xml);
+
+      for (const game of games) {
+        try {
+          // Check if already exists by bgg_id
+          const { data: existing } = await admin
+            .from("game_catalog").select("id").eq("bgg_id", game.bggId).maybeSingle();
+
+          if (existing) {
+            // Update it with fresh BGG data (force refresh)
+            await admin.from("game_catalog").update({
+              description: game.description,
+              image_url: game.imageUrl,
+              min_players: game.minPlayers,
+              max_players: game.maxPlayers,
+              play_time_minutes: game.playTimeMinutes,
+              suggested_age: game.suggestedAge,
+              year_published: game.yearPublished,
+              bgg_community_rating: game.bggCommunityRating,
+              weight: game.weight,
+              is_expansion: game.isExpansion,
+              bgg_url: game.bggUrl,
+            }).eq("id", existing.id);
+            results.push({ bgg_id: Number(game.bggId), title: game.title, status: "updated" });
+            totalSkipped++;
+            continue;
+          }
+
+          // Check for NULL-bgg_id title match
+          const { data: titleMatch } = await admin
+            .from("game_catalog").select("id").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
+
+          let entryId: string | null = null;
+          if (titleMatch) {
+            const { data } = await admin.from("game_catalog").update({
+              bgg_id: game.bggId, description: game.description, image_url: game.imageUrl,
+              min_players: game.minPlayers, max_players: game.maxPlayers, play_time_minutes: game.playTimeMinutes,
+              suggested_age: game.suggestedAge, year_published: game.yearPublished,
+              bgg_community_rating: game.bggCommunityRating, weight: game.weight,
+              is_expansion: game.isExpansion, bgg_url: game.bggUrl,
+            }).eq("id", titleMatch.id).select("id").single();
+            entryId = data?.id || null;
+          } else {
+            const { data } = await admin.from("game_catalog").upsert({
+              bgg_id: game.bggId, title: game.title, description: game.description, image_url: game.imageUrl,
+              min_players: game.minPlayers, max_players: game.maxPlayers, play_time_minutes: game.playTimeMinutes,
+              suggested_age: game.suggestedAge, year_published: game.yearPublished,
+              bgg_community_rating: game.bggCommunityRating, weight: game.weight,
+              is_expansion: game.isExpansion, bgg_url: game.bggUrl,
+            }, { onConflict: "bgg_id" }).select("id").single();
+            entryId = data?.id || null;
+          }
+
+          if (entryId) {
+            // Upsert mechanics, publishers, designers, artists
+            for (const mechName of game.mechanics) {
+              const { data: mech } = await admin.from("mechanics").upsert({ name: mechName }, { onConflict: "name" }).select("id").single();
+              if (mech?.id) await admin.from("catalog_mechanics").upsert({ catalog_id: entryId, mechanic_id: mech.id }, { onConflict: "catalog_id,mechanic_id" });
+            }
+            if (game.publisher) {
+              const { data: pub } = await admin.from("publishers").upsert({ name: game.publisher }, { onConflict: "name" }).select("id").single();
+              if (pub?.id) await admin.from("catalog_publishers").upsert({ catalog_id: entryId, publisher_id: pub.id }, { onConflict: "catalog_id,publisher_id" });
+            }
+            for (const name of game.designers) {
+              const { data: d } = await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single();
+              if (d?.id) await admin.from("catalog_designers").upsert({ catalog_id: entryId, designer_id: d.id }, { onConflict: "catalog_id,designer_id" });
+            }
+            for (const name of game.artists) {
+              const { data: a } = await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
+              if (a?.id) await admin.from("catalog_artists").upsert({ catalog_id: entryId, artist_id: a.id }, { onConflict: "catalog_id,artist_id" });
+            }
+            results.push({ bgg_id: Number(game.bggId), title: game.title, status: "added" });
+            totalAdded++;
+          }
+        } catch (e) {
+          results.push({ bgg_id: Number(game.bggId), status: "error", error: e instanceof Error ? e.message : String(e) });
+          totalErrors++;
+        }
+      }
+
+      // IDs not found in BGG response
+      const foundIds = new Set(games.map(g => Number(g.bggId)));
+      for (const id of chunk) {
+        if (!foundIds.has(id)) results.push({ bgg_id: id, status: "not_found" });
+      }
+
+      if (i + CHUNK < specificIds.length) await sleep(1500);
+    }
+
+    return new Response(JSON.stringify({ success: true, added: totalAdded, updated: totalSkipped, errors: totalErrors, results }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // =========================================================================
   // SCRAPE — Main batch processing
   // =========================================================================
   const { data: state, error: stateErr } = await admin
