@@ -66,32 +66,44 @@ async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    // Auth check
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    // Auth check — accept service_role key (for pg_cron) OR admin user JWT
+    const authHeader = req.headers.get("Authorization") || "";
+    if (!authHeader.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({ success: false, error: "Authentication required" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
 
-    // Validate user is admin
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: { user } } = await supabaseAuth.auth.getUser();
-    if (!user) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid authentication" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    // Allow direct service-role calls (from pg_cron / internal cron jobs)
+    const token = authHeader.replace("Bearer ", "");
+    const isServiceRole = token === serviceKey;
+
+    if (!isServiceRole) {
+      // Validate user is admin via JWT
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
       );
+      const { data: { user } } = await supabaseAuth.auth.getUser();
+      if (!user) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid authentication" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { data: roleData } = await supabaseAdmin
+        .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+      if (!roleData) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Admin access required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const body = await req.json().catch(() => ({}));
