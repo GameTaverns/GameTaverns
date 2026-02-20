@@ -332,6 +332,22 @@ function LibraryRoutes() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/cookies" element={<Cookies />} />
+
+      {/* Platform routes accessible from library context (native: always in tenant mode) */}
+      <Route path="/directory" element={<Directory />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/catalog" element={<CatalogBrowse />} />
+      <Route path="/catalog/:slug" element={<CatalogGameDetail />} />
+      <Route path="/dm" element={<DirectMessages />} />
+      <Route path="/dm/:userId" element={<DirectMessages />} />
+      <Route path="/achievements" element={<Achievements />} />
+      <Route path="/u/:username" element={<UserProfile />} />
+      <Route path="/lists" element={<CuratedLists />} />
+      <Route path="/lists/:listId" element={<CuratedListDetail />} />
+      <Route path="/club/:slug" element={<ClubPage />} />
+      <Route path="/club/:slug/manage" element={<ClubDashboard />} />
+      <Route path="/inbox" element={<Inbox />} />
+      <Route path="/picker" element={<SmartPicker />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
