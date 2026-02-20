@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { SEO } from "@/components/seo/SEO";
 import { Layout } from "@/components/layout/Layout";
@@ -14,6 +14,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Users,
   Gamepad2,
@@ -24,12 +31,17 @@ import {
   BookOpen,
   ExternalLink,
   ArrowLeft,
+  MapPin,
 } from "lucide-react";
+import type { LibraryDirectoryEntry } from "@/hooks/useLibraryDirectory";
 
 export default function Directory() {
   const { user } = useAuth();
   const { buildUrl } = useTenantUrl();
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterRegion, setFilterRegion] = useState<string>("all");
+  const [filterCountry, setFilterCountry] = useState<string>("all");
+
   const {
     libraries,
     isLoading,
@@ -41,11 +53,34 @@ export default function Directory() {
     lendingLibraries,
   } = useLibraryDirectory();
 
-  const filteredLibraries = searchQuery ? searchLibraries(searchQuery) : libraries;
+  // Derive unique regions/countries from loaded libraries
+  const regions = useMemo(() => {
+    const set = new Set<string>();
+    libraries.forEach((l) => { if (l.location_region) set.add(l.location_region); });
+    return Array.from(set).sort();
+  }, [libraries]);
 
-  const LibraryCard = ({ library }: { library: typeof libraries[0] }) => {
+  const countries = useMemo(() => {
+    const set = new Set<string>();
+    libraries.forEach((l) => { if (l.location_country) set.add(l.location_country); });
+    return Array.from(set).sort();
+  }, [libraries]);
+
+  const applyLocationFilter = (list: LibraryDirectoryEntry[]) =>
+    list.filter((l) => {
+      if (filterRegion !== "all" && l.location_region !== filterRegion) return false;
+      if (filterCountry !== "all" && l.location_country !== filterCountry) return false;
+      return true;
+    });
+
+  const baseFiltered = searchQuery ? searchLibraries(searchQuery) : libraries;
+  const filteredLibraries = applyLocationFilter(baseFiltered);
+
+  const LibraryCard = ({ library }: { library: LibraryDirectoryEntry }) => {
     const following = isFollowing(library.id);
-    
+    const locationParts = [library.location_city, library.location_region, library.location_country].filter(Boolean);
+    const locationStr = locationParts.join(", ");
+
     return (
       <Card className="group hover:shadow-lg transition-shadow">
         <CardHeader className="pb-3">
@@ -64,6 +99,12 @@ export default function Directory() {
                 <CardDescription className="text-sm">
                   @{library.slug}
                 </CardDescription>
+                {locationStr && (
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    {locationStr}
+                  </p>
+                )}
               </div>
             </div>
             {user && (
@@ -153,6 +194,8 @@ export default function Directory() {
     </div>
   );
 
+  const hasLocationFilters = filterRegion !== "all" || filterCountry !== "all";
+
   return (
     <Layout hideSidebar>
       <SEO
@@ -180,15 +223,57 @@ export default function Directory() {
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search libraries..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search + Location filters */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search libraries..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {countries.length > 0 && (
+            <Select value={filterCountry} onValueChange={setFilterCountry}>
+              <SelectTrigger className="w-full sm:w-44">
+                <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
+                <SelectValue placeholder="Country" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Countries</SelectItem>
+                {countries.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {regions.length > 0 && (
+            <Select value={filterRegion} onValueChange={setFilterRegion}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="State / Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Regions</SelectItem>
+                {regions.map((r) => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {hasLocationFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setFilterRegion("all"); setFilterCountry("all"); }}
+              className="text-muted-foreground"
+            >
+              Clear
+            </Button>
+          )}
         </div>
 
         {/* Tabs */}
@@ -219,7 +304,7 @@ export default function Directory() {
                 <Gamepad2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No libraries found</h3>
                 <p className="text-muted-foreground">
-                  {searchQuery ? "Try a different search term" : "No public libraries available yet"}
+                  {searchQuery || hasLocationFilters ? "Try adjusting your search or filters" : "No public libraries available yet"}
                 </p>
               </div>
             ) : (
@@ -236,7 +321,7 @@ export default function Directory() {
               <LoadingSkeleton />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {popularLibraries.map((library) => (
+                {applyLocationFilter(popularLibraries).map((library) => (
                   <LibraryCard key={library.id} library={library} />
                 ))}
               </div>
@@ -248,7 +333,7 @@ export default function Directory() {
               <LoadingSkeleton />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {newestLibraries.map((library) => (
+                {applyLocationFilter(newestLibraries).map((library) => (
                   <LibraryCard key={library.id} library={library} />
                 ))}
               </div>
@@ -258,7 +343,7 @@ export default function Directory() {
           <TabsContent value="lending">
             {isLoading ? (
               <LoadingSkeleton />
-            ) : lendingLibraries.length === 0 ? (
+            ) : applyLocationFilter(lendingLibraries).length === 0 ? (
               <div className="text-center py-12">
                 <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No lending libraries</h3>
@@ -268,7 +353,7 @@ export default function Directory() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {lendingLibraries.map((library) => (
+                {applyLocationFilter(lendingLibraries).map((library) => (
                   <LibraryCard key={library.id} library={library} />
                 ))}
               </div>
