@@ -81,6 +81,10 @@ export interface LibrarySettings {
   facebook_url: string | null;
   discord_url: string | null;
   contact_email: string | null;
+  // Location
+  location_city?: string | null;
+  location_region?: string | null;
+  location_country?: string | null;
 }
 
 interface TenantContextType {
