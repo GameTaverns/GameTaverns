@@ -2,6 +2,7 @@ import { useEffect, useState, Component, type ReactNode } from "react";
 import { useCapacitor, useMobileLibrary } from "@/hooks/useCapacitor";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyLibrary } from "@/hooks/useLibrary";
 import { MobileLibrarySelector } from "./MobileLibrarySelector";
 import { WifiOff, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   const { activeLibrary, isLoadingLibrary, selectLibrary } = useMobileLibrary();
   const { isSupported: pushSupported, isRegistered, requestPermission } = usePushNotifications();
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: myLibrary } = useMyLibrary();
   const navigate = useNavigate();
   const location = useLocation();
   const [showOfflineNotice, setShowOfflineNotice] = useState(false);
@@ -102,6 +104,13 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
       selectLibrary(tenantFromUrl);
     }
   }, [isNative, location.search, activeLibrary, selectLibrary]);
+
+  // After login on native, auto-select the user's primary library so that
+  // tenant context is set without requiring the library selector.
+  useEffect(() => {
+    if (!isNative || !isAuthenticated || activeLibrary || !myLibrary?.slug) return;
+    selectLibrary(myLibrary.slug);
+  }, [isNative, isAuthenticated, activeLibrary, myLibrary?.slug, selectLibrary]);
 
   // Redirect authenticated users to dashboard if no library selected
   useEffect(() => {
