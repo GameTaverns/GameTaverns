@@ -129,6 +129,10 @@ router.put('/:libraryId', async (req: Request, res: Response) => {
       // Theme fonts
       'theme_font_display',
       'theme_font_body',
+      // Location
+      'location_city',
+      'location_region',
+      'location_country',
     ];
     
     const updates: string[] = [];
