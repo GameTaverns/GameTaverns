@@ -66,7 +66,6 @@ async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    // Auth check — accept service_role key (for pg_cron) OR admin user JWT
     const authHeader = req.headers.get("Authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
       return new Response(
@@ -76,17 +75,50 @@ async function handler(req: Request): Promise<Response> {
     }
 
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
     const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
 
-    // Allow direct service-role calls (from pg_cron / internal cron jobs)
-    const token = authHeader.replace("Bearer ", "");
-    const isServiceRole = token === serviceKey;
+    const token = authHeader.replace("Bearer ", "").trim();
 
-    if (!isServiceRole) {
+    // Check if token is service role or anon key (internal/cron calls)
+    // Also check JWT role claim — anon key JWTs have role: "anon"
+    let isInternalCall = token === serviceKey || token === anonKey;
+    if (!isInternalCall) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        isInternalCall = payload.role === "anon" || payload.role === "service_role";
+      } catch { /* not a JWT, fall through */ }
+    }
+
+    if (!isInternalCall) {
       // Validate user is admin via JWT
       const supabaseAuth = createClient(
         Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY")!,
+        anonKey,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: { user } } = await supabaseAuth.auth.getUser();
+      if (!user) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid authentication" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { data: roleData } = await supabaseAdmin
+        .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+      if (!roleData) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Admin access required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    if (!isInternalCall) {
+      // Validate user is admin via JWT
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        anonKey,
         { global: { headers: { Authorization: authHeader } } }
       );
       const { data: { user } } = await supabaseAuth.auth.getUser();
