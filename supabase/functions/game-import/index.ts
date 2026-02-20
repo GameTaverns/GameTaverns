@@ -166,6 +166,36 @@ function parseBggXml(xml: string, bggId: string): {
   };
 }
 
+/**
+ * Fetch additional gallery images from BGG's internal JSON API.
+ * Returns up to 5 sanitized high-quality image URLs.
+ * Filter out tiny thumbnails and known low-quality BGG variants.
+ */
+async function fetchBggGalleryImages(bggId: string, mainImageUrl?: string | null): Promise<string[]> {
+  const LOW_QUALITY = /__(geeklistimagebar|geeklistimage|square|mt)|__square@2x/i;
+  try {
+    const url = `https://api.geekdo.com/api/images?ajax=1&objectid=${bggId}&objecttype=thing&showcount=10&size=thumb&languageid=2184`;
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "application/json",
+        "Referer": "https://boardgamegeek.com/",
+      },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const images: string[] = (data.images || [])
+      .map((img: any) => img.imageurl_lg || img.imageurl || "")
+      .filter((u: string) => u && u.startsWith("https://cf.geekdo-images.com"))
+      .filter((u: string) => !LOW_QUALITY.test(u))
+      .filter((u: string) => u !== mainImageUrl)
+      .slice(0, 5);
+    return images;
+  } catch {
+    return [];
+  }
+}
+
 async function fetchBGGDataFromXML(
   bggId: string
 ): Promise<{
@@ -398,6 +428,7 @@ async function upsertCatalogEntry(
   bggData: {
     title?: string;
     image_url?: string;
+    additional_images?: string[];
     description?: string;
     min_players?: number;
     max_players?: number;
@@ -444,7 +475,7 @@ async function upsertCatalogEntry(
       playTimeMinutes = timeMap[bggData.play_time] || null;
     }
 
-    const catalogData = {
+    const catalogData: Record<string, unknown> = {
       bgg_id: bggId,
       title: bggData.title,
       image_url: bggData.image_url || null,
@@ -458,6 +489,11 @@ async function upsertCatalogEntry(
       bgg_url: `https://boardgamegeek.com/boardgame/${bggId}`,
       bgg_community_rating: bggData.bgg_average_rating || null,
     };
+
+    // Only include additional_images if provided and non-empty (avoid overwriting with empty array)
+    if (bggData.additional_images && bggData.additional_images.length > 0) {
+      catalogData.additional_images = bggData.additional_images;
+    }
 
     const { data: catalogEntry, error: catalogError } = await supabaseAdmin
       .from("game_catalog")
@@ -1023,13 +1059,16 @@ export default async function handler(req: Request): Promise<Response> {
         }
       }
 
+      // Fetch gallery images from BGG JSON API (non-blocking, best-effort)
+      const galleryImages = bggId ? await fetchBggGalleryImages(bggId, bggData.image_url) : [];
+
       // Build game data
       const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
       const gameData = {
         title: bggData.title!.slice(0, 500),
         description: bggData.description!.slice(0, 10000),
         image_url: bggData.image_url,
-        additional_images: [],
+        additional_images: galleryImages,
         difficulty: bggData.difficulty || "3 - Medium",
         game_type: "Board Game",
         play_time: bggData.play_time || "45-60 Minutes",
@@ -2064,7 +2103,32 @@ ${markdown.slice(0, 18000)}`,
       console.log(`[GameImport] Saved BGG rating ${bggData.bgg_average_rating}/10 → ${mapped5Star}/5 for "${game.title}"`);
     }
 
+    // Step 7b: Sync additional_images + image_url to game_catalog if BGG-linked
+    if (bggId && (validMainImage || validGameplayImages.length > 0)) {
+      try {
+        const { data: existingCat } = await supabaseAdmin
+          .from("game_catalog")
+          .select("id, image_url, additional_images")
+          .eq("bgg_id", bggId)
+          .maybeSingle();
+
+        if (existingCat) {
+          const catUpdate: Record<string, unknown> = {};
+          if (!existingCat.image_url && validMainImage) catUpdate.image_url = validMainImage;
+          if (validGameplayImages.length > 0 && (!existingCat.additional_images || existingCat.additional_images.length === 0)) {
+            catUpdate.additional_images = validGameplayImages;
+          }
+          if (Object.keys(catUpdate).length > 0) {
+            await supabaseAdmin.from("game_catalog").update(catUpdate).eq("id", existingCat.id);
+          }
+        }
+      } catch (e) {
+        console.warn("[GameImport] catalog additional_images sync failed:", e);
+      }
+    }
+
     console.log("Game imported successfully:", game.title);
+
 
     // Step 8: Send Discord notification for NEW games only (not updates)
     // Skip HTTP-based notification in self-hosted mode to prevent single-threaded deadlock
