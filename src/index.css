@@ -1,3 +1,7 @@
+/* Self-hosted fonts (works offline/self-hosted — no Google Fonts dependency) */
+@import url('/fonts/fonts.css');
+
+/* Google Fonts fallback (only loads if online — provides additional weights/subsets) */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=IM+Fell+English:ital@0;1&family=MedievalSharp&display=swap');
 
 @tailwind base;
