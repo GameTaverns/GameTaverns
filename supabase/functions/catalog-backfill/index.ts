@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
+    const authHeader = req.headers.get("Authorization") || "";
     if (!authHeader) {
       console.log("[catalog-backfill] No auth header");
       return new Response(JSON.stringify({ error: "Auth required" }), {
@@ -106,28 +106,34 @@ const handler = async (req: Request): Promise<Response> => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     console.log("[catalog-backfill] Env loaded, URL:", supabaseUrl ? "set" : "MISSING", "serviceKey:", serviceKey ? "set" : "MISSING");
 
-    const supabaseUser = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: userErr } = await supabaseUser.auth.getUser();
-    if (userErr || !user) {
-      console.log("[catalog-backfill] Auth failed:", userErr?.message);
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    console.log("[catalog-backfill] User authenticated:", user.id);
-
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const { data: roleData } = await admin
-      .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
-    if (!roleData) {
-      console.log("[catalog-backfill] Not admin");
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Allow service-role calls (from pg_cron) to bypass user JWT check
+    const token = authHeader.replace("Bearer ", "");
+    const isServiceRole = token === serviceKey;
+
+    if (!isServiceRole) {
+      const supabaseUser = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
       });
+      const { data: { user }, error: userErr } = await supabaseUser.auth.getUser();
+      if (userErr || !user) {
+        console.log("[catalog-backfill] Auth failed:", userErr?.message);
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      console.log("[catalog-backfill] User authenticated:", user.id);
+      const { data: roleData } = await admin
+        .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
+      if (!roleData) {
+        console.log("[catalog-backfill] Not admin");
+        return new Response(JSON.stringify({ error: "Admin access required" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      console.log("[catalog-backfill] Service-role auth accepted (cron)");
     }
 
     const body = await req.json().catch(() => ({}));
