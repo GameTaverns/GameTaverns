@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, ArrowLeft } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -24,6 +24,7 @@ import { FollowButton } from "@/components/social/FollowButton";
 import { UserSpecialBadges } from "@/components/social/SpecialBadge";
 import { useUserSpecialBadges } from "@/hooks/useSpecialBadges";
 import { supabase } from "@/integrations/backend/client";
+import { useAuth } from "@/hooks/useAuth";
 
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -52,6 +53,8 @@ export default function UserProfile() {
   const { data: feedback } = useUserFeedback(profile?.user_id);
   const { data: specialBadges = [] } = useUserSpecialBadges(profile?.user_id);
 
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [isSharedCommunity, setIsSharedCommunity] = useState(false);
   useEffect(() => {
@@ -166,6 +169,19 @@ export default function UserProfile() {
       />
       <AppHeader />
 
+      {isAuthenticated && (
+        <div className="container mx-auto px-4 pt-4 max-w-4xl">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/dashboard")}
+            className="gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
+        </div>
+      )}
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         {/* Profile Card with Banner */}
         <Card className="backdrop-blur-sm border-border" style={{ ...(hasTheme ? { backgroundColor: profileBgColor! } : { backgroundColor: 'hsl(var(--card) / 0.9)' }), ...profileThemeVars }}>
