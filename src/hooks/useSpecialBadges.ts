@@ -43,16 +43,32 @@ export function useAllSpecialBadges() {
   return useQuery({
     queryKey: ["special-badges-all"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      // Fetch badges without embedded join (no FK relationship on self-hosted)
+      const { data: badges, error } = await (supabase as any)
         .from("user_special_badges")
-        .select("*, user_profiles(display_name, username, avatar_url)")
+        .select("*")
         .order("granted_at", { ascending: false });
-      // Gracefully handle missing table on self-hosted deployments
       if (error) {
         console.warn("[useAllSpecialBadges] query error (table may not exist):", error.message);
         return [];
       }
-      return (data ?? []) as (SpecialBadge & { user_profiles: { display_name: string | null; username: string | null; avatar_url: string | null } | null })[];
+      if (!badges || badges.length === 0) return [];
+
+      // Fetch profiles for the unique user_ids found
+      const userIds = [...new Set((badges as SpecialBadge[]).map(b => b.user_id))];
+      const { data: profiles } = await (supabase as any)
+        .from("user_profiles")
+        .select("user_id, display_name, username, avatar_url")
+        .in("user_id", userIds);
+
+      const profileMap = Object.fromEntries(
+        (profiles ?? []).map((p: any) => [p.user_id, p])
+      );
+
+      return (badges as SpecialBadge[]).map(b => ({
+        ...b,
+        user_profiles: profileMap[b.user_id] ?? null,
+      })) as (SpecialBadge & { user_profiles: { display_name: string | null; username: string | null; avatar_url: string | null } | null })[];
     },
     staleTime: 60 * 1000,
     retry: false,
