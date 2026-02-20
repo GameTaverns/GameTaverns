@@ -11,6 +11,7 @@ import {
   User,
   MessageSquare,
 } from "lucide-react";
+import { MobileNavDrawer } from "@/components/mobile/MobileNavDrawer";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -88,13 +89,14 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
             </TenantLink>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Desktop nav links — hidden on small screens */}
             {isAuthenticated && (
               <>
                 {/* Help */}
                 <TenantLink
                   href={getPlatformUrl("/docs")}
-                  className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                 >
                   <HelpCircle className="h-3.5 w-3.5" />
                   <span>Help</span>
@@ -103,7 +105,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                 {/* Directory */}
                 <TenantLink
                   href={getPlatformUrl("/directory")}
-                  className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                 >
                   <Globe className="h-3.5 w-3.5" />
                   <span>Directory</span>
@@ -113,14 +115,14 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                 {isCatalogPage ? (
                   <TenantLink
                     href={getPlatformUrl("/dashboard")}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
                     <span>Dashboard</span>
                   </TenantLink>
                 ) : (
                   <TenantLink
                     href={getPlatformUrl("/catalog")}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
                     <BookOpen className="h-3.5 w-3.5" />
                     <span>Catalog</span>
@@ -131,7 +133,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                 {isSubdomain ? (
                   <TenantLink
                     href={getPlatformUrl("/dashboard")}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
                     <Library className="h-3.5 w-3.5" />
                     <span>Dashboard</span>
@@ -141,7 +143,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream hover:bg-transparent h-auto text-xs"
+                        className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream hover:bg-transparent h-auto text-xs"
                       >
                         <Library className="h-3.5 w-3.5" />
                         <span>My Library</span>
@@ -162,130 +164,131 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                 ) : library ? (
                   <TenantLink
                     href={libraryUrl!}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
                     <Library className="h-3.5 w-3.5" />
                     <span>My Library</span>
                   </TenantLink>
                 ) : null}
 
-                <div className="h-4 w-px bg-wood-medium/40 hidden sm:block" />
+                {/* Profile link */}
+                {!isProfilePage && !isListsPage && profile?.username && (
+                  <TenantLink
+                    href={getPlatformUrl(`/u/${profile.username}`)}
+                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <User className="h-3.5 w-3.5" />
+                    <span>{profile.display_name || profile.username}</span>
+                  </TenantLink>
+                )}
+
+                <div className="h-4 w-px bg-wood-medium/40 hidden md:block" />
               </>
             )}
 
             <ThemeToggle />
 
-            {/* Direct Messages icon */}
+            {/* Icons visible on all sizes on desktop; hidden on mobile (handled by drawer) */}
             {isAuthenticated && (
-              <TenantLink href={getPlatformUrl("/dm")} className="relative text-cream hover:text-white transition-colors">
-                <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
-                  <MessageSquare className="h-5 w-5" />
-                  {dmUnreadCount > 0 && (
-                    <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                      {dmUnreadCount > 9 ? "9+" : dmUnreadCount}
-                    </Badge>
-                  )}
-                </Button>
-              </TenantLink>
-            )}
-
-            {/* Library Messages dropdown */}
-            {isAuthenticated && library && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
-                  >
-                    <Mail className="h-5 w-5" />
-                    {unreadCount > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
-                      >
-                        {unreadCount > 9 ? "9+" : unreadCount}
+              <>
+                {/* Direct Messages icon — desktop only; drawer handles mobile */}
+                <TenantLink
+                  href={getPlatformUrl("/dm")}
+                  className="hidden md:inline-flex relative text-cream hover:text-white transition-colors"
+                >
+                  <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
+                    <MessageSquare className="h-5 w-5" />
+                    {dmUnreadCount > 0 && (
+                      <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                        {dmUnreadCount > 9 ? "9+" : dmUnreadCount}
                       </Badge>
                     )}
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <div className="px-3 py-2 text-sm font-medium">Messages</div>
-                  {unreadCount > 0 ? (
-                    <DropdownMenuItem asChild>
-                      <TenantLink href="/inbox" className="cursor-pointer gap-2">
-                        <Mail className="h-4 w-4 text-primary" />
-                        <div>
-                          <p className="text-sm font-medium">{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</p>
-                          <p className="text-xs text-muted-foreground">View in {library.name}</p>
+                </TenantLink>
+
+                {/* Library Messages — desktop only */}
+                {library && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="hidden md:inline-flex relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
+                      >
+                        <Mail className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                          >
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </Badge>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <div className="px-3 py-2 text-sm font-medium">Messages</div>
+                      {unreadCount > 0 ? (
+                        <DropdownMenuItem asChild>
+                          <TenantLink href="/inbox" className="cursor-pointer gap-2">
+                            <Mail className="h-4 w-4 text-primary" />
+                            <div>
+                              <p className="text-sm font-medium">{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</p>
+                              <p className="text-xs text-muted-foreground">View in {library.name}</p>
+                            </div>
+                          </TenantLink>
+                        </DropdownMenuItem>
+                      ) : (
+                        <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                          No unread messages
                         </div>
-                      </TenantLink>
-                    </DropdownMenuItem>
-                  ) : (
-                    <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                      No unread messages
-                    </div>
-                  )}
-                  <DropdownMenuItem asChild>
-                    <TenantLink href="/inbox" className="cursor-pointer text-xs justify-center text-muted-foreground">
-                      View all messages
-                    </TenantLink>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                      )}
+                      <DropdownMenuItem asChild>
+                        <TenantLink href="/inbox" className="cursor-pointer text-xs justify-center text-muted-foreground">
+                          View all messages
+                        </TenantLink>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
 
-            {isAuthenticated && (
-              <NotificationsDropdown variant="dashboard" />
-            )}
+                <NotificationsDropdown variant="dashboard" />
 
-            {/* Catalog link for non-authenticated users */}
-            {!isAuthenticated && (
-              <TenantLink
-                href={getPlatformUrl("/catalog")}
-                className="flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-              >
-                <BookOpen className="h-3.5 w-3.5" />
-                <span>Catalog</span>
-              </TenantLink>
-            )}
-
-            {/* Sign in / Sign out */}
-            {isAuthenticated ? (
-              <>
-                {isProfilePage || isListsPage ? (
-                  <TenantLink
-                    href={getPlatformUrl("/dashboard")}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <span>Dashboard</span>
-                  </TenantLink>
-                ) : profile?.username ? (
-                  <TenantLink
-                    href={getPlatformUrl(`/u/${profile.username}`)}
-                    className="hidden sm:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <User className="h-3.5 w-3.5" />
-                    <span>{profile.display_name || profile.username}</span>
-                  </TenantLink>
-                ) : null}
+                {/* Sign out — desktop only */}
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleSignOut}
-                  className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
+                  className="hidden md:inline-flex text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
               </>
-            ) : (
-              <TenantLink
-                href={getPlatformUrl("/login")}
-                className="text-sm font-medium text-cream/70 hover:text-cream transition-colors px-2"
-              >
-                Sign In
-              </TenantLink>
             )}
+
+            {/* Catalog link for non-authenticated users */}
+            {!isAuthenticated && (
+              <>
+                <TenantLink
+                  href={getPlatformUrl("/catalog")}
+                  className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  <span>Catalog</span>
+                </TenantLink>
+                <TenantLink
+                  href={getPlatformUrl("/login")}
+                  className="text-sm font-medium text-cream/70 hover:text-cream transition-colors px-2"
+                >
+                  Sign In
+                </TenantLink>
+              </>
+            )}
+
+            {/* Mobile hamburger menu — hidden on desktop */}
+            <div className="md:hidden">
+              <MobileNavDrawer />
+            </div>
           </div>
         </div>
       </div>
