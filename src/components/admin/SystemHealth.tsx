@@ -616,6 +616,41 @@ export function SystemHealth() {
     onError: (e: Error) => toast.error(`Backfill failed: ${e.message}`),
   });
 
+  // Gallery Backfill Status
+  interface GalleryBackfillStatus {
+    total_with_bgg: number;
+    has_gallery: number;
+    missing_gallery: number;
+    percent: number;
+  }
+
+  const galleryStatusQuery = useQuery<GalleryBackfillStatus>({
+    queryKey: ["catalog-gallery-status"],
+    queryFn: async () => {
+      const { count: totalCount } = await supabase
+        .from("game_catalog")
+        .select("id", { count: "exact", head: true })
+        .not("bgg_id", "is", null);
+      const { count: hasGallery } = await supabase
+        .from("game_catalog")
+        .select("id", { count: "exact", head: true })
+        .not("bgg_id", "is", null)
+        .not("additional_images", "is", null)
+        .filter("additional_images", "neq", "{}");
+      const total = totalCount || 0;
+      const has = hasGallery || 0;
+      const missing = total - has;
+      return {
+        total_with_bgg: total,
+        has_gallery: has,
+        missing_gallery: missing,
+        percent: total > 0 ? Math.round((has / total) * 100) : 0,
+      };
+    },
+    refetchInterval: autoRefresh ? 30000 : false,
+    retry: 1,
+  });
+
   // Gallery Backfill
   const galleryBackfillMutation = useMutation({
     mutationFn: async () => {
@@ -1370,6 +1405,96 @@ export function SystemHealth() {
         </CardContent>
       </Card>
 
+      {/* Gallery Backfill */}
+      <Card className="bg-wood-medium/10 border-wood-medium/40">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Image className="h-5 w-5 text-secondary" />
+              <div>
+                <CardTitle className="text-cream text-lg">Gallery Image Backfill</CardTitle>
+                <CardDescription className="text-cream/50">
+                  Fetches up to 5 BGG gallery images per game for catalog entries missing additional_images
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => galleryStatusQuery.refetch()}
+              disabled={galleryStatusQuery.isFetching}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${galleryStatusQuery.isFetching ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {galleryStatusQuery.isError && (
+            <div className="text-sm text-red-400 p-3 rounded bg-red-500/10 border border-red-500/30">
+              Failed to load gallery status: {galleryStatusQuery.error?.message}
+            </div>
+          )}
+
+          {galleryStatusQuery.data && (() => {
+            const { total_with_bgg, has_gallery, missing_gallery, percent } = galleryStatusQuery.data;
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{total_with_bgg.toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Total (w/ BGG ID)</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-green-400">{has_gallery.toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Has Gallery</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-yellow-400">{missing_gallery.toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Missing Gallery</div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{percent}%</div>
+                    <div className="text-xs text-cream/50">Complete</div>
+                  </div>
+                </div>
+
+                <div className="w-full bg-wood-medium/30 rounded-full h-2.5">
+                  <div
+                    className="bg-secondary h-2.5 rounded-full transition-all duration-500"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => galleryBackfillMutation.mutate()}
+                    disabled={galleryBackfillMutation.isPending}
+                  >
+                    {galleryBackfillMutation.isPending ? (
+                      <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+                    ) : (
+                      <><Zap className="h-3.5 w-3.5 mr-1" /> Run Once (50)</>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="text-xs text-cream/40">
+                  Runs every minute via cron (50 games/batch, ~300ms delay each). Fetches up to 5 images per game, prioritising gameplay &gt; components &gt; box art.
+                </div>
+              </>
+            );
+          })()}
+
+          {galleryStatusQuery.isLoading && (
+            <div className="text-sm text-cream/50 text-center py-4">Loading gallery status...</div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Maintenance Actions */}
       <Card className="bg-wood-medium/10 border-wood-medium/40">
         <CardHeader className="pb-3">
@@ -1536,32 +1661,6 @@ export function SystemHealth() {
             </Button>
           </div>
 
-          {/* Gallery Backfill */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
-            <div className="flex items-center gap-3">
-              <Image className="h-5 w-5 text-secondary" />
-              <div>
-                <div className="text-sm text-cream font-medium">Backfill Catalog Gallery Images</div>
-                <div className="text-xs text-cream/50">
-                  Fetches up to 5 gallery images per game from BGG for catalog entries missing <code className="bg-wood-medium/30 px-1 rounded">additional_images</code>.
-                  Processes 50 at a time (~300ms delay per game). Run multiple times until 0 remaining.
-                </div>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs shrink-0"
-              onClick={() => galleryBackfillMutation.mutate()}
-              disabled={galleryBackfillMutation.isPending}
-            >
-              {galleryBackfillMutation.isPending ? (
-                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
-              ) : (
-                <><Image className="h-3.5 w-3.5 mr-1" /> Backfill Galleries</>
-              )}
-            </Button>
-          </div>
 
           {/* Catalog Cleanup */}
           <div className="flex items-start justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 gap-3">
