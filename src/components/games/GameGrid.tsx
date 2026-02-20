@@ -31,12 +31,14 @@ export function GameGrid({ games, hasActiveFilters }: GameGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4" style={{ gridAutoRows: '1fr' }}>
-      {games.map((game, index) => (
-        <div key={game.id} className="h-full">
-          <GameCard game={game} priority={index < 5} />
-        </div>
-      ))}
+    <div className="pb-6 sm:pb-8">
+      <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4" style={{ gridAutoRows: '1fr' }}>
+        {games.map((game, index) => (
+          <div key={game.id} className="h-full">
+            <GameCard game={game} priority={index < 5} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -40,7 +40,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
     <div className="flex flex-col h-full">
       <div className="relative flex-1 flex flex-col">
         <Link to={gameUrl} className="flex-1 flex flex-col">
-          <Card className="group overflow-hidden card-elevated card-hover bg-card border-border flex-1 flex flex-col">
+          <Card className="group overflow-hidden card-elevated card-hover bg-card border-border h-full flex flex-col">
             {/* Image - 3:4 on mobile for compact cards, square on larger screens */}
             <div className="relative aspect-[3/4] sm:aspect-square overflow-hidden bg-gradient-to-b from-muted/50 to-muted flex items-center justify-center">
               {game.image_url ? (
@@ -122,6 +122,13 @@ export function GameCard({ game, priority = false }: GameCardProps) {
                   {game.game_type}
                 </Badge>
               </div>
+
+              {/* Expansions nested inside card */}
+              {hasExpansions && (
+                <div className="pt-1 sm:pt-2">
+                  <ExpansionList expansions={game.expansions!} parentTitle={game.title} />
+                </div>
+              )}
             </CardContent>
           </Card>
         </Link>
@@ -156,11 +163,6 @@ export function GameCard({ game, priority = false }: GameCardProps) {
           )}
         </div>
       </div>
-
-      {/* Expansions nested under the card */}
-      {hasExpansions && (
-        <ExpansionList expansions={game.expansions!} parentTitle={game.title} />
-      )}
     </div>
   );
 }
