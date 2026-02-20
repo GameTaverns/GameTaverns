@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, HashRouter, Routes, Route, useSearchParams, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, Navigate, useSearchParams, useLocation, useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
@@ -48,7 +48,7 @@ const Signup = lazy(() => import("./pages/Signup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
-const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
+
 const Setup2FA = lazy(() => import("./pages/Setup2FA"));
 const Directory = lazy(() => import("./pages/Directory"));
 const Achievements = lazy(() => import("./pages/Achievements"));
@@ -258,7 +258,7 @@ function PlatformRoutes() {
       <Route path="/dashboard/editor" element={<DashboardEditor />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />
-      <Route path="/admin" element={<PlatformAdmin />} />
+      <Route path="/admin" element={<Navigate to="/dashboard?tab=admin" replace />} />
       <Route path="/directory" element={<Directory />} />
       <Route path="/achievements" element={<Achievements />} />
       <Route path="/community" element={<Community />} />
