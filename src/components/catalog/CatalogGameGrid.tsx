@@ -31,9 +31,9 @@ interface CatalogGameGridProps {
 
 export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, onAdd }: CatalogGameGridProps) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
+    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 sm:gap-3 md:gap-4 items-stretch">
       {games.map((game) => (
-        <div key={game.id} className="relative group flex flex-col">
+        <div key={game.id} className="relative group flex flex-col h-full">
           <Link to={`/catalog/${game.slug || game.id}`} className="flex-1 flex flex-col">
             <Card className="group overflow-hidden card-elevated card-hover bg-card border-border flex-1 flex flex-col">
               {/* Image - match library GameCard aspect ratios */}

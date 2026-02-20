@@ -37,7 +37,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
   const gameUrl = buildUrl(`${basePath}/${game.slug || game.id}`);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full">
       <div className="relative flex-1 flex flex-col">
         <Link to={gameUrl} className="flex-1 flex flex-col">
           <Card className="group overflow-hidden card-elevated card-hover bg-card border-border flex-1 flex flex-col">
