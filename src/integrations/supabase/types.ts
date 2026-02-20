@@ -2688,6 +2688,9 @@ export type Database = {
           is_discoverable: boolean
           lending_terms: string | null
           library_id: string
+          location_city: string | null
+          location_country: string | null
+          location_region: string | null
           logo_url: string | null
           max_loans_per_borrower: number | null
           min_borrower_rating: number | null
@@ -2772,6 +2775,9 @@ export type Database = {
           is_discoverable?: boolean
           lending_terms?: string | null
           library_id: string
+          location_city?: string | null
+          location_country?: string | null
+          location_region?: string | null
           logo_url?: string | null
           max_loans_per_borrower?: number | null
           min_borrower_rating?: number | null
@@ -2856,6 +2862,9 @@ export type Database = {
           is_discoverable?: boolean
           lending_terms?: string | null
           library_id?: string
+          location_city?: string | null
+          location_country?: string | null
+          location_region?: string | null
           logo_url?: string | null
           max_loans_per_borrower?: number | null
           min_borrower_rating?: number | null

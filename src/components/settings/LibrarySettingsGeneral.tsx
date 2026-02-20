@@ -25,7 +25,9 @@ export function LibrarySettingsGeneral() {
   const [facebookUrl, setFacebookUrl] = useState(settings?.facebook_url || '');
   const [discordUrl, setDiscordUrl] = useState(settings?.discord_url || '');
   const [isDiscoverable, setIsDiscoverable] = useState(settings?.is_discoverable ?? true);
-  
+  const [locationCity, setLocationCity] = useState(settings?.location_city || '');
+  const [locationRegion, setLocationRegion] = useState(settings?.location_region || '');
+  const [locationCountry, setLocationCountry] = useState(settings?.location_country || '');
   
   const [isSaving, setIsSaving] = useState(false);
   
@@ -60,6 +62,9 @@ export function LibrarySettingsGeneral() {
           facebook_url: facebookUrl,
           discord_url: discordUrl,
           is_discoverable: isDiscoverable,
+          location_city: locationCity || null,
+          location_region: locationRegion || null,
+          location_country: locationCountry || null,
         },
       });
       
@@ -136,6 +141,42 @@ export function LibrarySettingsGeneral() {
           </CardContent>
         </Card>
         
+        {/* Location */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Location</CardTitle>
+            <CardDescription>Help players find your library by location — used for directory filtering and discovery</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input
+                  value={locationCity}
+                  onChange={(e) => setLocationCity(e.target.value)}
+                  placeholder="Portland"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Region / State / Province</Label>
+                <Input
+                  value={locationRegion}
+                  onChange={(e) => setLocationRegion(e.target.value)}
+                  placeholder="Oregon"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Country</Label>
+                <Input
+                  value={locationCountry}
+                  onChange={(e) => setLocationCountry(e.target.value)}
+                  placeholder="United States"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Privacy & Visibility */}
         <Card>
           <CardHeader>
