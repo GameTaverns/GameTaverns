@@ -202,9 +202,18 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
 
     const handleError = useCallback(() => {
       setIsLoading(false);
+      // On self-hosted, if the Turnstile widget errors (e.g. domain not whitelisted,
+      // or Cloudflare JS can't load), fail open instead of blocking the user.
+      if (isSelfHostedSupabaseStack()) {
+        console.warn('[TurnstileWidget] Cloudflare widget error on self-hosted — bypassing verification');
+        setBypassReason("self-hosted widget error fallback");
+        setHasError(false);
+        onVerify("TURNSTILE_BYPASS_TOKEN");
+        return;
+      }
       setHasError(true);
       onError?.();
-    }, [onError]);
+    }, [onError, onVerify]);
 
     const renderWidget = useCallback(() => {
       if (!containerRef.current || !window.turnstile || !siteKey) return;
@@ -247,8 +256,17 @@ export const TurnstileWidget = forwardRef<HTMLDivElement, TurnstileWidgetProps>(
         } catch (e) {
           if (cancelled) return;
           console.error("Turnstile load error:", e);
-          setHasError(true);
-          setIsLoading(false);
+          // On self-hosted, fail open if Cloudflare JS can't load
+          if (isSelfHostedSupabaseStack()) {
+            console.warn('[TurnstileWidget] Turnstile script failed to load on self-hosted — bypassing');
+            setBypassReason("self-hosted script load fallback");
+            setHasError(false);
+            setIsLoading(false);
+            onVerify("TURNSTILE_BYPASS_TOKEN");
+          } else {
+            setHasError(true);
+            setIsLoading(false);
+          }
         }
       })();
 
