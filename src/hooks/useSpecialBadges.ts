@@ -25,11 +25,16 @@ export function useUserSpecialBadges(userId?: string | null) {
         .select("*")
         .eq("user_id", userId)
         .order("granted_at", { ascending: true });
-      if (error) throw error;
+      // Gracefully handle missing table on self-hosted deployments
+      if (error) {
+        console.warn("[useUserSpecialBadges] query error (table may not exist):", error.message);
+        return [];
+      }
       return (data ?? []) as SpecialBadge[];
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 }
 
@@ -42,10 +47,15 @@ export function useAllSpecialBadges() {
         .from("user_special_badges")
         .select("*, user_profiles(display_name, username, avatar_url)")
         .order("granted_at", { ascending: false });
-      if (error) throw error;
+      // Gracefully handle missing table on self-hosted deployments
+      if (error) {
+        console.warn("[useAllSpecialBadges] query error (table may not exist):", error.message);
+        return [];
+      }
       return (data ?? []) as (SpecialBadge & { user_profiles: { display_name: string | null; username: string | null; avatar_url: string | null } | null })[];
     },
     staleTime: 60 * 1000,
+    retry: false,
   });
 }
 
