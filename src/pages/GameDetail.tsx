@@ -198,7 +198,11 @@ const GameDetail = () => {
   };
 
   // Images: show multiple images.
-  // IMPORTANT: do not over-filter here; proxy/hotlink handling happens at render time.
+  // Filter out low-quality/broken BGG image variant types that reliably fail through the proxy.
+  // The __itemheader, __opengraph, __geeklistimagebar, __square variants are crops/resizes
+  // that often return 404 from BGG's CDN when accessed via our proxy. Only keep full-res variants.
+  const LOW_QUALITY_BGG_VARIANTS = /__(itemheader|opengraph|geeklistimagebar|geeklistimage|square|mt|_t\b)/i;
+
   const allImages = Array.from(
     new Set(
       [game.image_url, ...(game.additional_images || [])]
@@ -207,6 +211,8 @@ const GameDetail = () => {
           // reuse the shared URL cleaning logic (handles &quot; junk, trailing punctuation, etc.)
           directImageUrl(u) ?? u
         )
+        // Filter out known low-quality BGG variant types that tend to fail via proxy
+        .filter((u) => !LOW_QUALITY_BGG_VARIANTS.test(u))
         .filter((u) => !brokenImageUrls.includes(u))
     )
   ).slice(0, 10);
