@@ -616,6 +616,33 @@ export function SystemHealth() {
     onError: (e: Error) => toast.error(`Backfill failed: ${e.message}`),
   });
 
+  // Gallery Backfill
+  const galleryBackfillMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-gallery-backfill`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ limit: 50 }),
+      });
+      if (!r.ok) throw new Error(`Gallery backfill failed: ${r.status}`);
+      return r.json();
+    },
+    onSuccess: (data) => {
+      toast.success(`Gallery backfill: ${data.updated} updated, ${data.skipped} skipped, ${data.remaining || 0} remaining`);
+      if (data.remaining > 0) {
+        toast.info(`${data.remaining} catalog entries still need gallery images. Run again to continue.`);
+      }
+    },
+    onError: (e: Error) => toast.error(`Gallery backfill failed: ${e.message}`),
+  });
+
   // Catalog Cleanup
   interface CleanupStatus {
     total_with_bgg_id: number;
@@ -1505,6 +1532,33 @@ export function SystemHealth() {
                 <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
               ) : (
                 <><Star className="h-3.5 w-3.5 mr-1" /> Refresh Ratings</>
+              )}
+            </Button>
+          </div>
+
+          {/* Gallery Backfill */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
+            <div className="flex items-center gap-3">
+              <Image className="h-5 w-5 text-secondary" />
+              <div>
+                <div className="text-sm text-cream font-medium">Backfill Catalog Gallery Images</div>
+                <div className="text-xs text-cream/50">
+                  Fetches up to 5 gallery images per game from BGG for catalog entries missing <code className="bg-wood-medium/30 px-1 rounded">additional_images</code>.
+                  Processes 50 at a time (~300ms delay per game). Run multiple times until 0 remaining.
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs shrink-0"
+              onClick={() => galleryBackfillMutation.mutate()}
+              disabled={galleryBackfillMutation.isPending}
+            >
+              {galleryBackfillMutation.isPending ? (
+                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+              ) : (
+                <><Image className="h-3.5 w-3.5 mr-1" /> Backfill Galleries</>
               )}
             </Button>
           </div>
