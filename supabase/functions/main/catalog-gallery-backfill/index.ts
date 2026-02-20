@@ -208,7 +208,7 @@ async function handler(req: Request): Promise<Response> {
       }
 
       // Small delay to be polite to BGG API
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 100));
     }
 
     // Count remaining entries without gallery images
