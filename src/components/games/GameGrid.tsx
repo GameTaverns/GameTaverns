@@ -31,7 +31,7 @@ export function GameGrid({ games, hasActiveFilters }: GameGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2 sm:gap-3 md:gap-4 items-stretch">
+    <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 items-stretch">
       {games.map((game, index) => (
         <div key={game.id} className="h-full">
           <GameCard game={game} priority={index < 5} />
