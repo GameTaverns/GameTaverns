@@ -1038,12 +1038,13 @@ export function BulkImportDialog({
   const progressPercent = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v && isImporting) return; onOpenChange(v); }}>
       <DialogContent 
         className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-hidden flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
         onFocusOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>Bulk Import Games</DialogTitle>
@@ -1114,13 +1115,16 @@ export function BulkImportDialog({
               <TabsContent value="csv" className="mt-0 space-y-4">
                 <div className="space-y-2">
                   <Label>Upload CSV/Excel File</Label>
-                  <input
-                    type="file"
-                    accept=".csv,.xlsx,.xls"
-                    onChange={handleFileUpload}
-                    disabled={isImporting}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
+                  {/* Wrapped in div to prevent focus/click events from bubbling to dialog on mobile file picker */}
+                  <div onFocus={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={(e) => { e.stopPropagation(); handleFileUpload(e); }}
+                      disabled={isImporting}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    />
+                  </div>
                    <p className="text-xs text-muted-foreground">
                     Supports CSV and Excel (.xlsx) files including BGG collection exports and BG Stats app exports (with play history). File should have columns: title/name/objectname, optionally bgg_id/objectid/bggId
                   </p>
