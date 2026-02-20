@@ -893,7 +893,8 @@ async function fetchBGGGalleryImages(
         if (seen.has(imageId)) continue;
         seen.add(imageId);
         
-        if (/micro|thumb|avatar|_mt|_t$/i.test(cleanUrl)) continue;
+        // Skip low-quality/crop variants that are unreliable via proxy
+        if (/micro|thumb|avatar|_mt|_t$|__itemheader|__opengraph|__geeklistimagebar|__geeklistimage|__square/i.test(cleanUrl)) continue;
         
         const href = (img.imagepagehref || "").toLowerCase();
         const caption = (img.caption || "").toLowerCase();
