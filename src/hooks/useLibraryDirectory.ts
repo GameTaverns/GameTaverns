@@ -14,6 +14,9 @@ export interface LibraryDirectoryEntry {
   allow_lending: boolean;
   game_count: number;
   follower_count: number;
+  location_city: string | null;
+  location_region: string | null;
+  location_country: string | null;
 }
 
 export interface LibraryFollower {
@@ -37,7 +40,7 @@ export function useLibraryDirectory() {
         .order("follower_count", { ascending: false });
 
       if (error) throw error;
-      return data as LibraryDirectoryEntry[];
+      return data as unknown as LibraryDirectoryEntry[];
     },
   });
 
