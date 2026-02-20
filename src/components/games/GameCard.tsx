@@ -65,7 +65,7 @@ export function GameCard({ game, priority = false }: GameCardProps) {
 
             <CardContent className="p-1.5 sm:p-4 flex-1 flex flex-col">
               {/* Title - fixed height for uniform cards */}
-              <h3 className="font-display text-xs sm:text-lg font-semibold text-foreground line-clamp-2 min-h-[2rem] sm:min-h-[3.5rem] mb-1 sm:mb-3 group-hover:text-primary transition-colors">
+              <h3 className="font-display text-xs sm:text-lg font-semibold text-foreground line-clamp-2 h-[2rem] sm:h-[3.5rem] mb-1 sm:mb-3 group-hover:text-primary transition-colors overflow-hidden">
                 {game.title}
               </h3>
 
