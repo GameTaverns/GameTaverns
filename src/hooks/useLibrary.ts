@@ -245,6 +245,7 @@ export function useUpdateLibrarySettings() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["library-settings", variables.libraryId] });
+      queryClient.invalidateQueries({ queryKey: ["library-directory"] });
     },
   });
 }

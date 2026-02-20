@@ -211,128 +211,54 @@ export default function Directory() {
   );
 
   const FilterSidebar = () => (
-    <aside className="w-64 shrink-0 space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display font-semibold text-foreground flex items-center gap-2">
-          <Filter className="h-4 w-4" />
-          Filters
-          {activeFilterCount > 0 && (
-            <Badge variant="default" className="text-xs h-5 px-1.5">
-              {activeFilterCount}
-            </Badge>
+    <aside className="w-56 shrink-0 hidden lg:block">
+      <div className="sticky top-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <Filter className="h-3.5 w-3.5" />
+            Filters
+            {activeFilterCount > 0 && (
+              <Badge variant="default" className="text-xs h-5 px-1.5">
+                {activeFilterCount}
+              </Badge>
+            )}
+          </h2>
+          {hasLocationFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground">
+              <X className="h-3 w-3" />
+              Clear
+            </Button>
           )}
-        </h2>
-        {hasLocationFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground">
-            <X className="h-3 w-3" />
-            Clear
-          </Button>
-        )}
-      </div>
-
-      <Separator />
-
-      {/* Country filter */}
-      {countries.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-            <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-            Country
-          </h3>
-          <div className="space-y-1">
-            <button
-              onClick={() => { setFilterCountry("all"); setFilterCity("all"); }}
-              className={`w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors ${
-                filterCountry === "all"
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              }`}
-            >
-              All Countries
-            </button>
-            {countries.map((c) => (
-              <button
-                key={c}
-                onClick={() => { setFilterCountry(c); setFilterCity("all"); }}
-                className={`w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors ${
-                  filterCountry === c
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
         </div>
-      )}
 
-      {/* State / Region filter */}
-      {regions.length > 0 && (
-        <>
-          {countries.length > 0 && <Separator />}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-              <Map className="h-3.5 w-3.5 text-muted-foreground" />
-              State / Region
+        <Separator />
+
+        {/* Country filter */}
+        {countries.length > 0 && (
+          <div className="space-y-1.5">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <Globe className="h-3 w-3" />
+              Country
             </h3>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <button
-                onClick={() => { setFilterRegion("all"); setFilterCity("all"); }}
-                className={`w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors ${
-                  filterRegion === "all"
+                onClick={() => { setFilterCountry("all"); setFilterCity("all"); }}
+                className={`w-full text-left text-sm px-2 py-1.5 rounded transition-colors ${
+                  filterCountry === "all"
                     ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
-                All Regions
+                All Countries
               </button>
-              {regions.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => { setFilterRegion(r); setFilterCity("all"); }}
-                  className={`w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors ${
-                    filterRegion === r
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* City filter */}
-      {cities.length > 0 && (
-        <>
-          <Separator />
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-              City
-            </h3>
-            <div className="space-y-1">
-              <button
-                onClick={() => setFilterCity("all")}
-                className={`w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors ${
-                  filterCity === "all"
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                }`}
-              >
-                All Cities
-              </button>
-              {cities.map((c) => (
+              {countries.map((c) => (
                 <button
                   key={c}
-                  onClick={() => setFilterCity(c)}
-                  className={`w-full text-left text-sm px-2 py-1.5 rounded-md transition-colors ${
-                    filterCity === c
+                  onClick={() => { setFilterCountry(c); setFilterCity("all"); }}
+                  className={`w-full text-left text-sm px-2 py-1.5 rounded transition-colors ${
+                    filterCountry === c
                       ? "bg-primary/10 text-primary font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
                   {c}
@@ -340,14 +266,90 @@ export default function Directory() {
               ))}
             </div>
           </div>
-        </>
-      )}
+        )}
 
-      {countries.length === 0 && regions.length === 0 && !isLoading && (
-        <p className="text-sm text-muted-foreground italic">
-          No location data available yet.
-        </p>
-      )}
+        {/* State / Region filter */}
+        {regions.length > 0 && (
+          <>
+            {countries.length > 0 && <Separator />}
+            <div className="space-y-1.5">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <Map className="h-3 w-3" />
+                State / Region
+              </h3>
+              <div className="space-y-0.5">
+                <button
+                  onClick={() => { setFilterRegion("all"); setFilterCity("all"); }}
+                  className={`w-full text-left text-sm px-2 py-1.5 rounded transition-colors ${
+                    filterRegion === "all"
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  All Regions
+                </button>
+                {regions.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => { setFilterRegion(r); setFilterCity("all"); }}
+                    className={`w-full text-left text-sm px-2 py-1.5 rounded transition-colors ${
+                      filterRegion === r
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* City filter */}
+        {cities.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-1.5">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <Building2 className="h-3 w-3" />
+                City
+              </h3>
+              <div className="space-y-0.5">
+                <button
+                  onClick={() => setFilterCity("all")}
+                  className={`w-full text-left text-sm px-2 py-1.5 rounded transition-colors ${
+                    filterCity === "all"
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  All Cities
+                </button>
+                {cities.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setFilterCity(c)}
+                    className={`w-full text-left text-sm px-2 py-1.5 rounded transition-colors ${
+                      filterCity === c
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {countries.length === 0 && regions.length === 0 && !isLoading && (
+          <p className="text-sm text-muted-foreground italic">
+            No location data available yet.
+          </p>
+        )}
+      </div>
     </aside>
   );
 
