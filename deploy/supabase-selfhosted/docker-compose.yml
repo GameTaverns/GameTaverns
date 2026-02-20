@@ -136,9 +136,9 @@ services:
       GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
       GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
-      # Rate limiting
+      # Rate limiting — 10 emails/hour per IP prevents abuse while allowing legit users
       GOTRUE_RATE_LIMIT_HEADER: X-Forwarded-For
-      GOTRUE_RATE_LIMIT_EMAIL_SENT: "100"
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: "${GOTRUE_RATE_LIMIT_EMAIL_SENT:-10}"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9999/health || curl -sf http://localhost:9999/health || exit 1"]
       interval: 10s
@@ -199,7 +199,10 @@ services:
       #   ERROR 3F000 (invalid_schema_name) no schema has been selected to create in
       # Keep public first so schema_migrations can be created.
       DB_AFTER_CONNECT_QUERY: 'SET search_path TO public, extensions'
-      DB_ENC_KEY: supabaserealtime
+      # SECURITY: Use a unique secret from .env, not the default 'supabaserealtime'
+      # Generate with: openssl rand -hex 32
+      # Add REALTIME_ENC_KEY to /opt/gametaverns/.env
+      DB_ENC_KEY: ${REALTIME_ENC_KEY:-supabaserealtime}
       API_JWT_SECRET: ${JWT_SECRET}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
       ERL_AFLAGS: -proto_dist inet_tcp

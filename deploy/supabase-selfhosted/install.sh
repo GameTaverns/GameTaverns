@@ -319,6 +319,8 @@ POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-"$(gen_secret 32 32)"}
 JWT_SECRET=${JWT_SECRET:-"$(gen_secret 64 64)"}
 SECRET_KEY_BASE=${SECRET_KEY_BASE:-"$(gen_secret 64 64)"}
 PII_ENCRYPTION_KEY=${PII_ENCRYPTION_KEY:-"$(gen_secret 32 32)"}
+# Generate unique Realtime encryption key if not already set
+REALTIME_ENC_KEY=${REALTIME_ENC_KEY:-"$(openssl rand -hex 32)"}
 
 # Generate Supabase JWT tokens
 # CRITICAL: Use 'openssl base64 -A' for single-line output to prevent .env corruption
@@ -441,6 +443,10 @@ ANON_KEY="$ANON_KEY"
 SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
 SECRET_KEY_BASE="$SECRET_KEY_BASE"
 PII_ENCRYPTION_KEY="$PII_ENCRYPTION_KEY"
+# Realtime channel encryption key (unique per install, keep secret)
+REALTIME_ENC_KEY="$REALTIME_ENC_KEY"
+# Email rate limit per IP per hour (default 10 — raise only if users report issues)
+GOTRUE_RATE_LIMIT_EMAIL_SENT=10
 
 # Site Branding
 # IMPORTANT: Quote any values that may contain spaces to keep .env sourceable
@@ -1768,6 +1774,19 @@ else
 fi
 
 # ===========================================
+# Setup Automated Daily Backup Cron Job
+# ===========================================
+BACKUP_SCRIPT="$INSTALL_DIR/deploy/supabase-selfhosted/scripts/backup.sh"
+CRON_JOB="0 3 * * * /bin/bash $BACKUP_SCRIPT >> /var/log/gametaverns-backup.log 2>&1"
+
+if crontab -l 2>/dev/null | grep -qF "$BACKUP_SCRIPT"; then
+    info "Backup cron job already installed — skipping"
+else
+    ( crontab -l 2>/dev/null; echo "$CRON_JOB" ) | crontab -
+    success "Daily backup cron scheduled at 03:00 (30-day retention)"
+fi
+
+# ===========================================
 # Installation Complete!
 # ===========================================
 echo ""
@@ -1809,6 +1828,10 @@ echo "  • Admin roles are stored in user_roles table (NOT user_profiles)"
 echo "  • Authenticated users cannot self-assign admin roles (INSERT revoked)"
 echo "  • Use service_role or ./scripts/create-admin.sh to add admins"
 echo "  • Turnstile site key is stored in database for frontend access"
+echo "  • Credentials file: $CREDS_FILE (chmod 600 — delete once keys are noted)"
+echo "  • REALTIME_ENC_KEY generated uniquely — never share or reuse across installs"
+echo "  • Daily backups scheduled at 03:00 with 30-day retention"
+echo "  • Email rate limit set to 10/hr per IP — adjust GOTRUE_RATE_LIMIT_EMAIL_SENT if needed"
 echo ""
 echo -e "${GREEN}Happy gaming! 🎲${NC}"
 echo ""

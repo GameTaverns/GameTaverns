@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
 # Backup Script for GameTaverns Self-Hosted
-# Version: 2.7.4 - Single .env Edition
-# Audited: 2026-02-03
+# Version: 2.8.0 - Hardened: 30-day retention, strict permissions
+# Audited: 2026-02-20
 # =============================================================================
 
 set -e
@@ -21,7 +21,7 @@ COMPOSE_FILE="$INSTALL_DIR/deploy/supabase-selfhosted/docker-compose.yml"
 ENV_FILE="$INSTALL_DIR/.env"
 BACKUP_DIR="$INSTALL_DIR/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
-RETENTION_DAYS=${1:-7}  # Allow override via argument
+RETENTION_DAYS=${1:-30}  # Allow override via argument; default 30 days
 
 # Helper function: Run docker compose with explicit paths
 dcp() {
