@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Layout } from "@/components/layout/Layout";
@@ -47,6 +47,28 @@ interface CatalogGameFull {
   community_rating_count: number;
 }
 
+// URL sanitizer: strip corrupted BGG artifact junk from scraped URLs
+function sanitizeBggImageUrl(url: string): string | null {
+  if (!url) return null;
+  let clean = url
+    .replace(/&quot;.*$/i, "")
+    .replace(/["');}\s]+$/g, "")
+    .trim();
+  if (!clean) return null;
+  try {
+    const p = new URL(clean);
+    if (p.protocol !== "https:" && p.protocol !== "http:") return null;
+    const path = p.pathname.toLowerCase();
+    if (!/\.(jpg|jpeg|png|webp|gif)$/i.test(path) && !path.includes("/pic")) return null;
+    return p.toString();
+  } catch {
+    return null;
+  }
+}
+
+// Filter out known low-quality tiny BGG image variants
+const LOW_QUALITY_BGG_VARIANTS = /__(geeklistimagebar|geeklistimage|square|mt|geeklistimagebar@2x|geeklistimage@2x)|__square@2x/i;
+
 export default function CatalogGameDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -55,6 +77,8 @@ export default function CatalogGameDetail() {
   const { data: myLibraries = [] } = useMyLibraries();
   const addFromCatalog = useAddFromCatalog();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
 
   const { data: game, isLoading } = useQuery({
     queryKey: ["catalog-game", slug],
@@ -213,29 +237,96 @@ export default function CatalogGameDetail() {
         )}
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Image */}
-          <div className="space-y-4">
-            <div className="aspect-[3/2] max-h-[40vh] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated w-full max-w-md mx-auto lg:max-w-none">
-              {game.image_url ? (
-                <GameImage
-                  imageUrl={game.image_url}
-                  alt={game.title}
-                  loading="eager"
-                  priority={true}
-                  className="h-full w-full object-cover"
-                  fallback={
+          {/* Image Gallery */}
+          {(() => {
+            // Build gallery: primary image + additional, sanitized and deduplicated
+            const allImages = Array.from(new Set(
+              [game.image_url, ...(game.additional_images || [])]
+                .map(u => u ? sanitizeBggImageUrl(u) : null)
+                .filter((u): u is string => !!u)
+                .filter(u => !LOW_QUALITY_BGG_VARIANTS.test(u))
+                .filter(u => !brokenImageUrls.includes(u))
+            )).slice(0, 10);
+
+            const safeIndex = Math.min(selectedImageIndex, Math.max(0, allImages.length - 1));
+
+            return (
+              <div className="space-y-3">
+                {/* Main image */}
+                <div className="aspect-[3/2] max-h-[40vh] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated w-full max-w-md mx-auto lg:max-w-none relative group">
+                  {allImages.length > 0 ? (
+                    <>
+                      <GameImage
+                        imageUrl={allImages[safeIndex]}
+                        alt={game.title}
+                        loading="eager"
+                        priority={true}
+                        className="h-full w-full object-cover"
+                        fallback={
+                          <div className="flex h-full items-center justify-center bg-muted">
+                            <span className="text-8xl text-muted-foreground/50">🎲</span>
+                          </div>
+                        }
+                      />
+                      {allImages.length > 1 && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setSelectedImageIndex(p => p === 0 ? allImages.length - 1 : p - 1)}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setSelectedImageIndex(p => p === allImages.length - 1 ? 0 : p + 1)}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  ) : (
                     <div className="flex h-full items-center justify-center bg-muted">
                       <span className="text-8xl text-muted-foreground/50">🎲</span>
                     </div>
-                  }
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center bg-muted">
-                  <span className="text-8xl text-muted-foreground/50">🎲</span>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+
+                {/* Thumbnail strip */}
+                {allImages.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {allImages.map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedImageIndex(idx)}
+                        className={`flex-shrink-0 w-20 h-20 overflow-hidden rounded-lg border-2 transition-all ${
+                          safeIndex === idx
+                            ? "border-primary ring-2 ring-primary/20"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <GameImage
+                          imageUrl={img}
+                          alt={`${game.title} - Image ${idx + 1}`}
+                          loading="lazy"
+                          className="h-full w-full object-cover bg-muted"
+                          fallback={
+                            <div className="flex h-full items-center justify-center bg-muted">
+                              <span className="text-2xl text-muted-foreground/50">🎲</span>
+                            </div>
+                          }
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Details */}
           <div>
