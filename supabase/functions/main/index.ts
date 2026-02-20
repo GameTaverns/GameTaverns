@@ -69,6 +69,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "server-command":         () => import("./server-command/index.ts"),
   "catalog-format-descriptions": () => import("./catalog-format-descriptions/index.ts"),
   "catalog-cleanup":            () => import("./catalog-cleanup/index.ts"),
+  "catalog-gallery-backfill":   () => import("./catalog-gallery-backfill/index.ts"),
   "sitemap":                    () => import("./sitemap/index.ts"),
 };
 
