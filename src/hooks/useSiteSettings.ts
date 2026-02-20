@@ -110,6 +110,40 @@ export function useSiteSettings() {
         }
       }
 
+      // Self-hosted Supabase stack (not legacy Express mode): fetch settings via PostgREST
+      // using the runtime config URL so we hit Kong on the same origin, not Lovable Cloud.
+      // This also ensures site_settings_public (which filters sensitive keys server-side)
+      // is hit correctly with the right anon key — critical for turnstile_site_key resolution.
+      {
+        const { isSelfHostedSupabaseStack } = await import("@/config/runtime");
+        if (isSelfHostedSupabaseStack()) {
+          const { getSupabaseConfig } = await import("@/config/runtime");
+          const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+          if (supabaseUrl && anonKey) {
+            try {
+              const response = await fetch(`${supabaseUrl}/rest/v1/site_settings_public?select=key,value`, {
+                headers: {
+                  'apikey': anonKey,
+                  'Authorization': `Bearer ${anonKey}`,
+                  'Accept': 'application/json',
+                },
+              });
+              if (response.ok) {
+                const data = await response.json();
+                const settings: SiteSettings = {};
+                data?.forEach((setting: { key: string; value: string | null }) => {
+                  settings[setting.key as keyof SiteSettings] = setting.value || undefined;
+                });
+                return settings;
+              }
+              console.warn('[Self-Hosted Supabase] site_settings_public fetch failed:', response.status);
+            } catch (err) {
+              console.warn('[Self-Hosted Supabase] Failed to fetch site settings:', err);
+            }
+          }
+        }
+      }
+
       // Cloud mode: fetch from Supabase
       let data, error;
       
