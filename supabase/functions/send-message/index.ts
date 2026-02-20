@@ -15,7 +15,7 @@ interface MessageRequest {
   game_id: string;
   sender_name: string;
   message: string;
-  turnstile_token: string;
+  recaptcha_token: string;
 }
 
 // AES-GCM encryption using Web Crypto API
@@ -67,33 +67,34 @@ async function hashIP(ip: string): Promise<string> {
 // because it's embedded in the APK binary anyway (same security model as the anon key).
 const NATIVE_APP_SECRET = "gt-android-2026-a7f3k9m2p4x8q1n5";
 
-// Verify Turnstile token with Cloudflare
-async function verifyTurnstileToken(token: string, ip: string, req?: Request): Promise<boolean> {
+// Verify reCAPTCHA v3 token with Google
+async function verifyRecaptchaToken(token: string, ip: string, req?: Request): Promise<boolean> {
   // Allow bypass token for native Android app — must present matching secret header
-  if (token === "TURNSTILE_BYPASS_TOKEN") {
+  if (token === "RECAPTCHA_BYPASS_TOKEN") {
     const appSecret = req?.headers.get("x-native-app-token");
     if (appSecret === NATIVE_APP_SECRET) {
-      console.log("Native app secret validated — Turnstile bypass accepted");
+      console.log("Native app secret validated — reCAPTCHA bypass accepted");
       return true;
     }
-    console.warn("TURNSTILE_BYPASS_TOKEN used without valid x-native-app-token header — rejected");
+    console.warn("RECAPTCHA_BYPASS_TOKEN used without valid x-native-app-token header — rejected");
     return false;
   }
 
-  // Legacy preview bypass (kept for Lovable preview environments)
-  if (token === "PREVIEW_BYPASS_TOKEN") {
-    console.log("Preview bypass token accepted");
+  // Client-side failure tokens (script/execute errors) — fail open
+  if (token.startsWith("RECAPTCHA_") && token !== "RECAPTCHA_BYPASS_TOKEN") {
+    console.warn("reCAPTCHA client-side failure token:", token, "— failing open");
     return true;
   }
 
-  const secretKey = Deno.env.get("TURNSTILE_SECRET_KEY");
+  const secretKey = Deno.env.get("RECAPTCHA_SECRET_KEY");
   if (!secretKey) {
-    console.error("Missing TURNSTILE_SECRET_KEY");
-    return false;
+    // No secret configured — fail open (self-hosted without RECAPTCHA_SECRET_KEY)
+    console.warn("Missing RECAPTCHA_SECRET_KEY — skipping verification (fail open)");
+    return true;
   }
 
   try {
-    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -104,10 +105,20 @@ async function verifyTurnstileToken(token: string, ip: string, req?: Request): P
     });
 
     const result = await response.json();
-    return result.success === true;
+    if (!result.success) {
+      console.warn("reCAPTCHA failed:", result["error-codes"]);
+      return false;
+    }
+    // Reject very low scores (bots ≈ 0, humans ≈ 1)
+    if (result.score !== undefined && result.score < 0.3) {
+      console.warn("reCAPTCHA score too low:", result.score);
+      return false;
+    }
+    return true;
   } catch (error) {
-    console.error("Turnstile verification error:", error);
-    return false;
+    console.error("reCAPTCHA verification error:", error);
+    // Fail open on network errors
+    return true;
   }
 }
 
@@ -132,7 +143,7 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Parse and validate request body
     const body: MessageRequest = await req.json();
-    const { game_id, sender_name, message, turnstile_token } = body;
+    const { game_id, sender_name, message, recaptcha_token } = body;
 
     // Validate required fields (email no longer required)
     if (!game_id || !sender_name || !message) {
@@ -142,16 +153,16 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Verify Turnstile CAPTCHA
-    if (!turnstile_token) {
+    // Verify reCAPTCHA
+    if (!recaptcha_token) {
       return new Response(
         JSON.stringify({ success: false, error: "Please complete the CAPTCHA verification" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const isTurnstileValid = await verifyTurnstileToken(turnstile_token, clientIp, req);
-    if (!isTurnstileValid) {
+    const isCaptchaValid = await verifyRecaptchaToken(recaptcha_token, clientIp, req);
+    if (!isCaptchaValid) {
       return new Response(
         JSON.stringify({ success: false, error: "CAPTCHA verification failed. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

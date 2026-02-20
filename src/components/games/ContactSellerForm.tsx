@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { Send, Loader2, LogIn } from "lucide-react";
 import { z } from "zod";
@@ -13,6 +13,41 @@ import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useUserProfile } from "@/hooks/useLibrary";
+
+const RECAPTCHA_SITE_KEY = "6LdkyXEsAAAAAK1Z9CISXvqloXriS6kGA1L4BqrY";
+
+async function getRecaptchaToken(action: string): Promise<string> {
+  try {
+    if (!window.grecaptcha) {
+      // Load script if not present
+      await new Promise<void>((resolve, reject) => {
+        const existing = document.querySelector(`script[src*="recaptcha/api.js"]`);
+        if (existing) { resolve(); return; }
+        const s = document.createElement("script");
+        s.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("reCAPTCHA load failed"));
+        document.head.appendChild(s);
+      });
+      await new Promise<void>((resolve) => {
+        const iv = setInterval(() => { if (window.grecaptcha) { clearInterval(iv); resolve(); } }, 100);
+      });
+    }
+    return await new Promise<string>((resolve) => {
+      window.grecaptcha!.ready(async () => {
+        try {
+          const token = await window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action });
+          resolve(token);
+        } catch {
+          resolve("RECAPTCHA_EXECUTE_FAILED");
+        }
+      });
+    });
+  } catch {
+    return "RECAPTCHA_LOAD_FAILED";
+  }
+}
 
 // URL/link detection regex
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s]*)?/gi;
@@ -67,12 +102,16 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
     setIsSubmitting(true);
 
     try {
+      // Get reCAPTCHA token invisibly
+      const recaptcha_token = await getRecaptchaToken("send_message");
+
       // Use edge function for rate-limited, validated message sending
       const { data, error } = await supabase.functions.invoke("send-message", {
         body: {
           game_id: gameId,
           sender_name: result.data.name,
           message: result.data.message,
+          recaptcha_token,
         },
       });
 

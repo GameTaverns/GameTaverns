@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TotpVerify } from "@/components/auth/TotpVerify";
 import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
-import { TurnstileWidget } from "@/components/games/TurnstileWidget";
+import { RecaptchaWidget } from "@/components/games/RecaptchaWidget";
 import { Capacitor } from "@capacitor/core";
 
 const isNative = Capacitor.isNativePlatform();
@@ -30,11 +30,9 @@ const Login = () => {
   const [requires2FA, setRequires2FA] = useState(false);
   const [pendingAccessToken, setPendingAccessToken] = useState<string | null>(null);
   const [authGate, setAuthGate] = useState<"idle" | "checking_2fa" | "needs_2fa">("idle");
-  // On native, pre-fill with a bypass token so forms are always submittable
+  // reCAPTCHA v3 tokens — auto-populated invisibly on mount; native gets bypass token
   const [signinTurnstileToken, setSigninTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
   const [signupTurnstileToken, setSignupTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
-  const [signinTurnstileKey, setSigninTurnstileKey] = useState(0);
-  const [signupTurnstileKey, setSignupTurnstileKey] = useState(0);
   const { signIn, signUp, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -71,10 +69,8 @@ const Login = () => {
           variant: "destructive",
         });
         setHasCheckedAuth(false);
-        // Reset turnstile on error
         if (!isNative) {
           setSigninTurnstileToken(null);
-          setSigninTurnstileKey(k => k + 1);
         }
         return;
       }
@@ -208,7 +204,6 @@ const Login = () => {
         });
         if (!isNative) {
           setSignupTurnstileToken(null);
-          setSignupTurnstileKey(k => k + 1);
         }
         return;
       }
@@ -304,10 +299,9 @@ const Login = () => {
                   />
                 </div>
                 {!isNative && (
-                  <TurnstileWidget
-                    key={signinTurnstileKey}
+                  <RecaptchaWidget
+                    action="signin"
                     onVerify={setSigninTurnstileToken}
-                    onExpire={() => setSigninTurnstileToken(null)}
                   />
                 )}
                 <Button 
@@ -392,10 +386,9 @@ const Login = () => {
                   />
                 </div>
                 {!isNative && (
-                  <TurnstileWidget
-                    key={signupTurnstileKey}
+                  <RecaptchaWidget
+                    action="signup"
                     onVerify={setSignupTurnstileToken}
-                    onExpire={() => setSignupTurnstileToken(null)}
                   />
                 )}
                 <Button 
