@@ -291,6 +291,88 @@ function LogEntry({ log }: { log: SystemLog }) {
   );
 }
 
+// ─── Fetch Specific BGG IDs Component ──────────────────────────────────────
+function FetchSpecificBggIds() {
+  const [inputValue, setInputValue] = useState("");
+  const [results, setResults] = useState<{ bgg_id: number; title?: string; status: string; error?: string }[] | null>(null);
+
+  const fetchMutation = useMutation({
+    mutationFn: async (bggIds: number[]) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
+      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-scraper`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: anonKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "fetch_ids", bgg_ids: bggIds }),
+      });
+      if (!r.ok) throw new Error(`Failed: ${r.status}`);
+      return r.json();
+    },
+    onSuccess: (data) => {
+      setResults(data.results || []);
+      toast.success(`Done: ${data.added} added, ${data.updated} updated, ${data.errors} errors`);
+    },
+    onError: (e: Error) => toast.error(`Fetch failed: ${e.message}`),
+  });
+
+  const handleFetch = () => {
+    const ids = inputValue
+      .split(/[\s,]+/)
+      .map(s => parseInt(s.trim()))
+      .filter(n => !isNaN(n) && n > 0);
+    if (ids.length === 0) { toast.error("Enter at least one valid BGG ID"); return; }
+    if (ids.length > 100) { toast.error("Max 100 IDs at once"); return; }
+    setResults(null);
+    fetchMutation.mutate(ids);
+  };
+
+  return (
+    <div className="border border-wood-medium/30 rounded-lg p-3 space-y-2">
+      <div className="text-xs font-medium text-cream/70">Fetch Specific BGG IDs</div>
+      <div className="text-xs text-cream/40">
+        Backfill games the scraper has already passed. Enter BGG IDs separated by commas or spaces.{" "}
+        <span className="text-cream/50">e.g. <code className="bg-wood-medium/30 px-1 rounded">230802, 167355</code> for Azul &amp; Azul Mini</span>
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && handleFetch()}
+          placeholder="230802, 167355, 266192..."
+          className="flex-1 h-8 px-3 text-xs bg-wood-medium/20 border border-wood-medium/40 rounded text-cream placeholder:text-cream/30 focus:outline-none focus:border-secondary"
+        />
+        <Button
+          size="sm"
+          className="text-xs h-8 px-3"
+          onClick={handleFetch}
+          disabled={fetchMutation.isPending || !inputValue.trim()}
+        >
+          {fetchMutation.isPending ? <><RefreshCw className="h-3 w-3 mr-1 animate-spin" />Fetching…</> : "Fetch"}
+        </Button>
+      </div>
+      {results && results.length > 0 && (
+        <div className="space-y-1 max-h-40 overflow-y-auto">
+          {results.map(r => (
+            <div key={r.bgg_id} className="flex items-center gap-2 text-xs">
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.status === "added" ? "bg-green-500" : r.status === "updated" ? "bg-blue-400" : r.status === "not_found" ? "bg-yellow-500" : "bg-red-500"}`} />
+              <span className="text-cream/60 font-mono w-16 flex-shrink-0">{r.bgg_id}</span>
+              <span className="text-cream/80 truncate">{r.title || "—"}</span>
+              <span className={`flex-shrink-0 ${r.status === "added" ? "text-green-400" : r.status === "updated" ? "text-blue-300" : r.status === "not_found" ? "text-yellow-400" : "text-red-400"}`}>{r.status}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export function SystemHealth() {
   const [logSource, setLogSource] = useState<string>("all");
   const [logLevel, setLogLevel] = useState<string>("all");
@@ -1127,6 +1209,9 @@ export function SystemHealth() {
                   <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset Position
                 </Button>
               </div>
+
+              {/* Fetch specific BGG IDs */}
+              <FetchSpecificBggIds />
 
               <div className="text-xs text-cream/40">
                 Runs every 2 minutes via cron. Each run fetches 10 batches of 20 BGG IDs (10 API calls with ~1.5s delays between).
