@@ -1043,6 +1043,7 @@ export function BulkImportDialog({
         className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-hidden flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>Bulk Import Games</DialogTitle>
