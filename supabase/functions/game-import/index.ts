@@ -170,28 +170,55 @@ function parseBggXml(xml: string, bggId: string): {
  * Fetch additional gallery images from BGG's internal JSON API.
  * Returns up to 5 sanitized high-quality image URLs.
  * Filter out tiny thumbnails and known low-quality BGG variants.
+ * Uses BGG's internal gallery JSON API (same as bulk-import for consistency).
  */
 async function fetchBggGalleryImages(bggId: string, mainImageUrl?: string | null): Promise<string[]> {
-  const LOW_QUALITY = /__(geeklistimagebar|geeklistimage|square|mt)|__square@2x/i;
+  // Known low-quality/corrupt BGG image variants to skip
+  const LOW_QUALITY = /__(geeklistimagebar|geeklistimage|square|mt|_t\b)|__square@2x/i;
   try {
-    const url = `https://api.geekdo.com/api/images?ajax=1&objectid=${bggId}&objecttype=thing&showcount=10&size=thumb&languageid=2184`;
+    // Use the gallery=all endpoint with hot sort - returns high-quality imageurl_lg variants
+    const url = `https://api.geekdo.com/api/images?ajax=1&gallery=all&nosession=1&objectid=${bggId}&objecttype=thing&pageid=1&showcount=50&sort=hot`;
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "Accept": "application/json",
         "Referer": "https://boardgamegeek.com/",
       },
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.warn(`[GameImport] BGG gallery API returned ${res.status} for ${bggId}`);
+      return [];
+    }
     const data = await res.json();
-    const images: string[] = (data.images || [])
-      .map((img: any) => img.imageurl_lg || img.imageurl || "")
-      .filter((u: string) => u && u.startsWith("https://cf.geekdo-images.com"))
-      .filter((u: string) => !LOW_QUALITY.test(u))
-      .filter((u: string) => u !== mainImageUrl)
-      .slice(0, 5);
-    return images;
-  } catch {
+    const seen = new Set<string>();
+
+    // Categorize images by type (gameplay preferred over box art)
+    const categorized: { url: string; priority: number }[] = [];
+    for (const img of (data.images || [])) {
+      const url = img.imageurl_lg || img.imageurl || "";
+      if (!url || !url.startsWith("https://cf.geekdo-images.com")) continue;
+      const cleanUrl = url.replace(/\\\//g, "/");
+      if (seen.has(cleanUrl)) continue;
+      seen.add(cleanUrl);
+      if (LOW_QUALITY.test(cleanUrl)) continue;
+      if (cleanUrl === mainImageUrl) continue;
+
+      const href = (img.imagepagehref || "").toLowerCase();
+      const caption = (img.caption || "").toLowerCase();
+      let priority = 5;
+      if (href.includes("/play") || caption.includes("play") || caption.includes("gameplay")) priority = 1;
+      else if (href.includes("/component") || caption.includes("component") || caption.includes("setup")) priority = 2;
+      else if (href.includes("/custom") || caption.includes("custom") || caption.includes("painted")) priority = 3;
+      else if (href.includes("/miscellaneous")) priority = 4;
+      else if (href.includes("/boxfront") || href.includes("/box") || caption.includes("box")) priority = 6;
+
+      categorized.push({ url: cleanUrl, priority });
+    }
+
+    categorized.sort((a, b) => a.priority - b.priority);
+    return categorized.slice(0, 5).map(c => c.url);
+  } catch (e) {
+    console.error(`[GameImport] BGG gallery API error for ${bggId}:`, e);
     return [];
   }
 }
