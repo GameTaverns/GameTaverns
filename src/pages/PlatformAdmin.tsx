@@ -1,5 +1,5 @@
-// v3 - error boundary for badges tab 2026-02-20
-import { useEffect, useState, Component, type ReactNode, type ErrorInfo } from "react";
+// v4 - lazy imports for badges + server tabs 2026-02-20
+import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Crown, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,18 @@ import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
 import { PremiumRoadmap } from "@/components/admin/PremiumRoadmap";
-import { SpecialBadgesManagement } from "@/components/admin/SpecialBadgesManagement";
-import { ServerManagement } from "@/components/admin/ServerManagement";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { Badge } from "@/components/ui/badge";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 import { usePendingClubs } from "@/hooks/useClubs";
+
+// Lazy-load tabs that may fail on self-hosted deployments (missing DB tables, etc.)
+const SpecialBadgesManagement = lazy(() =>
+  import("@/components/admin/SpecialBadgesManagement").then(m => ({ default: m.SpecialBadgesManagement }))
+);
+const ServerManagement = lazy(() =>
+  import("@/components/admin/ServerManagement").then(m => ({ default: m.ServerManagement }))
+);
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: ReactNode }) {
@@ -268,13 +274,17 @@ export default function PlatformAdmin() {
 
           <TabsContent value="badges" className="mt-6">
             <TabErrorBoundary>
-              <SpecialBadgesManagement />
+              <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading badges…</div>}>
+                <SpecialBadgesManagement />
+              </Suspense>
             </TabErrorBoundary>
           </TabsContent>
 
           <TabsContent value="server" className="mt-6">
             <TabErrorBoundary>
-              <ServerManagement />
+              <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading server tools…</div>}>
+                <ServerManagement />
+              </Suspense>
             </TabErrorBoundary>
           </TabsContent>
         </Tabs>
