@@ -29,7 +29,14 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-3">Platform</h3>
             <ul className="space-y-2 text-sm">
-              {/* Press Kit link hidden until finalized */}
+              <li>
+                <a
+                  href="/press"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Press Kit
+                </a>
+              </li>
               <li>
                 <a
                   href="mailto:admin@gametaverns.com"

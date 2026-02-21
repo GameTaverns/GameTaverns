@@ -42,7 +42,7 @@ const Cookies = lazy(() => import("./pages/Cookies"));
 // Platform pages (multi-tenant)
 const Platform = lazy(() => import("./pages/Platform"));
 const Features = lazy(() => import("./pages/Features"));
-// const Press = lazy(() => import("./pages/Press")); // Hidden until finalized
+const Press = lazy(() => import("./pages/Press"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const CreateLibrary = lazy(() => import("./pages/CreateLibrary"));
 const Signup = lazy(() => import("./pages/Signup"));
@@ -249,7 +249,7 @@ function PlatformRoutes() {
     <Routes>
       <Route path="/" element={<Platform />} />
       <Route path="/features" element={<Features />} />
-      {/* <Route path="/press" element={<Press />} /> Hidden until finalized */}
+      <Route path="/press" element={<Press />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
