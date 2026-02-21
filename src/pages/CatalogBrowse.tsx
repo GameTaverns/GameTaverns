@@ -137,6 +137,58 @@ export default function CatalogBrowse() {
         if (range) query = query.gte("weight", range[0]).lte("weight", range[1]);
       }
 
+      if (sidebarFilter === "designer" && sidebarValue) {
+        const { data: designerIds } = await (supabase as any)
+          .from("catalog_designers")
+          .select("catalog_id, designer:designers!inner(name)")
+          .eq("designer.name", sidebarValue);
+        const matchIds = (designerIds || []).map((d: any) => d.catalog_id);
+        if (matchIds.length > 0) {
+          query = query.in("id", matchIds);
+        } else {
+          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+        }
+      }
+
+      if (sidebarFilter === "artist" && sidebarValue) {
+        const { data: artistIds } = await (supabase as any)
+          .from("catalog_artists")
+          .select("catalog_id, artist:artists!inner(name)")
+          .eq("artist.name", sidebarValue);
+        const matchIds = (artistIds || []).map((d: any) => d.catalog_id);
+        if (matchIds.length > 0) {
+          query = query.in("id", matchIds);
+        } else {
+          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+        }
+      }
+
+      if (sidebarFilter === "publisher" && sidebarValue) {
+        const { data: pubIds } = await (supabase as any)
+          .from("catalog_publishers")
+          .select("catalog_id, publisher:publishers!inner(name)")
+          .eq("publisher.name", sidebarValue);
+        const matchIds = (pubIds || []).map((d: any) => d.catalog_id);
+        if (matchIds.length > 0) {
+          query = query.in("id", matchIds);
+        } else {
+          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+        }
+      }
+
+      if (sidebarFilter === "mechanic" && sidebarValue) {
+        const { data: mechIds } = await (supabase as any)
+          .from("catalog_mechanics")
+          .select("catalog_id, mechanic:mechanics!inner(name)")
+          .eq("mechanic.name", sidebarValue);
+        const matchIds = (mechIds || []).map((d: any) => d.catalog_id);
+        if (matchIds.length > 0) {
+          query = query.in("id", matchIds);
+        } else {
+          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+        }
+      }
+
       if (showFilters) {
         const count = playerCount[0];
         query = query.lte("min_players", count).gte("max_players", count);
