@@ -196,8 +196,7 @@ const handler = async (req: Request): Promise<Response> => {
     // =====================================================================
     if (mode === "enrich") {
       const BGG_BATCH_SIZE = 20; // BGG API supports up to 20 IDs per request
-      const batchSize = Math.min(body.batch_size || 60, 200); // Total entries to process per invocation
-      const batchCount = Math.ceil(batchSize / BGG_BATCH_SIZE);
+      const batchSize = Math.min(body.batch_size || 20, 100); // Default reduced to 20 to avoid timeout
 
       // Get unenriched entries
       const { data: catalogEntries, error: catErr } = await admin
@@ -215,7 +214,7 @@ const handler = async (req: Request): Promise<Response> => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      console.log(`[catalog-backfill] Enriching ${catalogEntries.length} entries in ${batchCount} BGG batches`);
+      console.log(`[catalog-backfill] Enriching ${catalogEntries.length} entries`);
 
       let processed = 0;
       let designersAdded = 0;
@@ -227,6 +226,10 @@ const handler = async (req: Request): Promise<Response> => {
       for (const entry of catalogEntries) {
         entryMap.set(entry.bgg_id, entry);
       }
+
+      // Pre-cache all designer/artist names we'll need to avoid repeated lookups
+      const designerCache = new Map<string, string>(); // name -> id
+      const artistCache = new Map<string, string>(); // name -> id
 
       // Process in chunks of 20 (one BGG API call per chunk)
       const allBggIds = catalogEntries.map((e: any) => e.bgg_id);
@@ -281,41 +284,53 @@ const handler = async (req: Request): Promise<Response> => {
             if (item.description) catalogUpdate.description = item.description;
             await admin.from("game_catalog").update(catalogUpdate).eq("id", entry.id);
 
-            // Batch upsert designers
+            // Bulk upsert designers — collect IDs first
+            const designerRows: { catalog_id: string; designer_id: string }[] = [];
             for (const name of item.designers) {
-              const { data: d } = await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single();
-              if (d?.id) {
-                await admin.from("catalog_designers").upsert(
-                  { catalog_id: entry.id, designer_id: d.id },
-                  { onConflict: "catalog_id,designer_id" }
-                );
-                designersAdded++;
+              let dId = designerCache.get(name);
+              if (!dId) {
+                const { data: d } = await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single();
+                if (d?.id) { dId = d.id; designerCache.set(name, dId); }
               }
+              if (dId) designerRows.push({ catalog_id: entry.id, designer_id: dId });
+            }
+            if (designerRows.length > 0) {
+              const { error: dErr } = await admin.from("catalog_designers").upsert(designerRows, { onConflict: "catalog_id,designer_id" });
+              if (!dErr) designersAdded += designerRows.length;
+              else errors.push(`designers for ${entry.title}: ${dErr.message}`);
             }
 
-            // Batch upsert artists
+            // Bulk upsert artists — collect IDs first
+            const artistRows: { catalog_id: string; artist_id: string }[] = [];
             for (const name of item.artists) {
-              const { data: a } = await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
-              if (a?.id) {
-                await admin.from("catalog_artists").upsert(
-                  { catalog_id: entry.id, artist_id: a.id },
-                  { onConflict: "catalog_id,artist_id" }
-                );
-                artistsAdded++;
+              let aId = artistCache.get(name);
+              if (!aId) {
+                const { data: a } = await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
+                if (a?.id) { aId = a.id; artistCache.set(name, aId); }
               }
+              if (aId) artistRows.push({ catalog_id: entry.id, artist_id: aId });
+            }
+            if (artistRows.length > 0) {
+              const { error: aErr } = await admin.from("catalog_artists").upsert(artistRows, { onConflict: "catalog_id,artist_id" });
+              if (!aErr) artistsAdded += artistRows.length;
+              else errors.push(`artists for ${entry.title}: ${aErr.message}`);
             }
 
-            // Backfill linked games too
+            // Backfill linked games too (bulk)
             const { data: linkedGames } = await admin.from("games").select("id").eq("catalog_id", entry.id);
-            if (linkedGames) {
+            if (linkedGames && linkedGames.length > 0) {
               for (const game of linkedGames) {
-                for (const name of item.designers) {
-                  const { data: d } = await admin.from("designers").select("id").eq("name", name).maybeSingle();
-                  if (d?.id) await admin.from("game_designers").upsert({ game_id: game.id, designer_id: d.id }, { onConflict: "game_id,designer_id" });
+                if (designerRows.length > 0) {
+                  await admin.from("game_designers").upsert(
+                    designerRows.map(d => ({ game_id: game.id, designer_id: d.designer_id })),
+                    { onConflict: "game_id,designer_id" }
+                  );
                 }
-                for (const name of item.artists) {
-                  const { data: a } = await admin.from("artists").select("id").eq("name", name).maybeSingle();
-                  if (a?.id) await admin.from("game_artists").upsert({ game_id: game.id, artist_id: a.id }, { onConflict: "game_id,artist_id" });
+                if (artistRows.length > 0) {
+                  await admin.from("game_artists").upsert(
+                    artistRows.map(a => ({ game_id: game.id, artist_id: a.artist_id })),
+                    { onConflict: "game_id,artist_id" }
+                  );
                 }
               }
             }
