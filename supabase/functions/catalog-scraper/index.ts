@@ -68,14 +68,30 @@ function parseBggItems(xml: string) {
       continue;
     }
 
-    // Secondary filter: skip entries with video-game-only categories
-    const EXCLUDED_CATEGORIES = ["Electronic", "Video Game"];
+    // Secondary filter: skip entries with non-board-game categories
+    const EXCLUDED_CATEGORIES = [
+      "Electronic", "Video Game",
+      "Book",  // RPG sourcebooks, supplements
+    ];
     const hasExcludedCategory = categories.some(c => EXCLUDED_CATEGORIES.includes(c));
-    // Only skip if the item has an excluded category AND lacks typical board game indicators
-    const BOARD_GAME_INDICATORS = ["Card Game", "Dice", "Board Game", "Miniatures", "Party Game", "Wargame"];
+    
+    // Also check for RPG-only items: type "boardgame" on BGG but actually RPG supplements
+    const RPG_ONLY_CATEGORIES = ["Role Playing"];
+    const isRpgOnly = categories.length > 0 && 
+      categories.every(c => RPG_ONLY_CATEGORIES.includes(c) || c === "Expansion for Base-game");
+
+    // Board game indicators that override exclusion
+    const BOARD_GAME_INDICATORS = [
+      "Card Game", "Dice", "Board Game", "Miniatures", "Party Game", 
+      "Wargame", "Abstract Strategy", "Collectible Components", "Trivia",
+      "Children's Game", "Puzzle", "Deduction", "Word Game",
+    ];
     const hasBoardGameIndicator = categories.some(c => BOARD_GAME_INDICATORS.includes(c));
-    if (hasExcludedCategory && !hasBoardGameIndicator && mechanics.length === 0) {
-      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — video game / electronic: "${title}" (categories: ${categories.join(", ")})`);
+    
+    // Skip if: has excluded category without board game indicators, OR is RPG-only with no mechanics
+    if ((hasExcludedCategory && !hasBoardGameIndicator && mechanics.length === 0) ||
+        (isRpgOnly && !hasBoardGameIndicator && mechanics.length === 0 && designers.length === 0)) {
+      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — non-board-game: "${title}" (categories: ${categories.join(", ")})`);
       continue;
     }
 
