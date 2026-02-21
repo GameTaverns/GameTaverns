@@ -27,9 +27,15 @@ export default function Signup() {
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
+  const [honeypot, setHoneypot] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (honeypot) {
+      toast({ title: "Verification failed", variant: "destructive" });
+      return;
+    }
     
     if (!isNative && !turnstileToken) {
       toast({ title: "Please complete verification", variant: "destructive" });
@@ -242,6 +248,17 @@ export default function Signup() {
                 placeholder="••••••••"
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
+              />
+            </div>
+            {/* Honeypot — invisible to humans, bots auto-fill it */}
+            <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
+              <input
+                type="text"
+                name="company_name"
+                tabIndex={-1}
+                autoComplete="off"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
               />
             </div>
 
