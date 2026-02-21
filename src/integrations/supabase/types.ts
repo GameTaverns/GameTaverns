@@ -377,6 +377,63 @@ export type Database = {
           },
         ]
       }
+      catalog_purchase_links: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          id: string
+          is_affiliate: boolean
+          retailer_logo_url: string | null
+          retailer_name: string
+          source: string
+          status: string
+          submitted_by: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          id?: string
+          is_affiliate?: boolean
+          retailer_logo_url?: string | null
+          retailer_name: string
+          source?: string
+          status?: string
+          submitted_by?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          id?: string
+          is_affiliate?: boolean
+          retailer_logo_url?: string | null
+          retailer_name?: string
+          source?: string
+          status?: string
+          submitted_by?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_purchase_links_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_purchase_links_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_ratings: {
         Row: {
           catalog_id: string
