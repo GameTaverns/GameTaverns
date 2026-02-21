@@ -512,8 +512,23 @@ function OffersTab() {
   const [tradeMessageOpen, setTradeMessageOpen] = useState(false);
   const [tradeMessageRecipient, setTradeMessageRecipient] = useState<{ userId: string; name: string; gameTitle: string } | null>(null);
   const [tradeMessageText, setTradeMessageText] = useState("");
+  const [tradeMessageMode, setTradeMessageMode] = useState<"accept" | "decline">("accept");
+  const [pendingDecline, setPendingDecline] = useState<{ offerId: string; offer: any } | null>(null);
 
   const handleRespond = async (offerId: string, status: "accepted" | "declined", offer?: any) => {
+    if (status === "declined" && offer) {
+      // Open decline reason dialog first — don't decline yet
+      const otherUserId = offer.offering_user_id;
+      const otherName = offer.offering_user_profile?.display_name || "the other trader";
+      const gameTitle = offer.offering_listing?.game?.title || "the game";
+      setPendingDecline({ offerId, offer });
+      setTradeMessageRecipient({ userId: otherUserId, name: otherName, gameTitle });
+      setTradeMessageText("");
+      setTradeMessageMode("decline");
+      setTradeMessageOpen(true);
+      return;
+    }
+
     try {
       await respondToOffer.mutateAsync({ offerId, status });
       
@@ -530,6 +545,7 @@ function OffersTab() {
         const gameTitle = offer.offering_listing?.game?.title || "the game";
         setTradeMessageRecipient({ userId: otherUserId, name: otherName, gameTitle });
         setTradeMessageText(`Hi! I accepted your trade offer for "${gameTitle}". Let's work out the details — `);
+        setTradeMessageMode("accept");
         setTradeMessageOpen(true);
       }
       
@@ -540,16 +556,53 @@ function OffersTab() {
   };
 
   const handleSendTradeMessage = async () => {
-    if (!tradeMessageRecipient || !tradeMessageText.trim()) return;
-    try {
-      await sendDM.mutateAsync({ recipientId: tradeMessageRecipient.userId, content: tradeMessageText.trim() });
-      toast({ title: "Message sent to " + tradeMessageRecipient.name });
-      setTradeMessageOpen(false);
-      setTradeMessageText("");
-      setTradeMessageRecipient(null);
-    } catch (error: any) {
-      toast({ title: "Error sending message", description: error.message, variant: "destructive" });
+    if (!tradeMessageRecipient) return;
+
+    // For decline flow, perform the actual decline first
+    if (tradeMessageMode === "decline" && pendingDecline) {
+      try {
+        await respondToOffer.mutateAsync({ offerId: pendingDecline.offerId, status: "declined" });
+        toast({ title: "Offer declined" });
+      } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
     }
+
+    // Send the message if there's text
+    const text = tradeMessageText.trim();
+    if (text) {
+      try {
+        const prefix = tradeMessageMode === "decline"
+          ? `Regarding your trade offer for "${tradeMessageRecipient.gameTitle}" — I've declined, but wanted to let you know: `
+          : "";
+        await sendDM.mutateAsync({ recipientId: tradeMessageRecipient.userId, content: prefix + text });
+        toast({ title: "Message sent to " + tradeMessageRecipient.name });
+      } catch (error: any) {
+        toast({ title: "Error sending message", description: error.message, variant: "destructive" });
+      }
+    }
+
+    setTradeMessageOpen(false);
+    setTradeMessageText("");
+    setTradeMessageRecipient(null);
+    setPendingDecline(null);
+  };
+
+  const handleSkipMessage = async () => {
+    // For decline, still perform the decline even if skipping the message
+    if (tradeMessageMode === "decline" && pendingDecline) {
+      try {
+        await respondToOffer.mutateAsync({ offerId: pendingDecline.offerId, status: "declined" });
+        toast({ title: "Offer declined" });
+      } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
+    }
+    setTradeMessageOpen(false);
+    setTradeMessageText("");
+    setTradeMessageRecipient(null);
+    setPendingDecline(null);
   };
 
   if (isLoading) {
@@ -605,7 +658,7 @@ function OffersTab() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleRespond(offer.id, "declined")}
+                    onClick={() => handleRespond(offer.id, "declined", offer)}
                     className="h-7 px-2"
                   >
                     <X className="h-3.5 w-3.5 mr-1" />
@@ -705,40 +758,42 @@ function OffersTab() {
         </CardContent>
       </Card>
 
-      {/* Trade Details Message Dialog */}
+      {/* Trade Message Dialog (accept details / decline reason) */}
       <Dialog open={tradeMessageOpen} onOpenChange={(open) => {
-        if (!open) {
-          setTradeMessageOpen(false);
-          setTradeMessageText("");
-          setTradeMessageRecipient(null);
-        }
+        if (!open) handleSkipMessage();
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Send Trade Details</DialogTitle>
+            <DialogTitle>
+              {tradeMessageMode === "accept" ? "Send Trade Details" : "Decline Offer"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Send a message to <span className="font-medium text-foreground">{tradeMessageRecipient?.name}</span> to arrange the trade for <span className="font-medium text-foreground">{tradeMessageRecipient?.gameTitle}</span>.
+              {tradeMessageMode === "accept" ? (
+                <>Send a message to <span className="font-medium text-foreground">{tradeMessageRecipient?.name}</span> to arrange the trade for <span className="font-medium text-foreground">{tradeMessageRecipient?.gameTitle}</span>.</>
+              ) : (
+                <>Let <span className="font-medium text-foreground">{tradeMessageRecipient?.name}</span> know why you're declining their offer for <span className="font-medium text-foreground">{tradeMessageRecipient?.gameTitle}</span>.</>
+              )}
             </p>
             <Textarea
               value={tradeMessageText}
               onChange={(e) => setTradeMessageText(e.target.value)}
-              placeholder="Share your shipping address, meeting location, or other trade details..."
-              rows={4}
+              placeholder={tradeMessageMode === "accept"
+                ? "Share your shipping address, meeting location, or other trade details..."
+                : "e.g., Already traded this game, not the right condition, etc."
+              }
+              rows={3}
+              maxLength={500}
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => {
-              setTradeMessageOpen(false);
-              setTradeMessageText("");
-              setTradeMessageRecipient(null);
-            }}>
-              Skip
+            <Button variant="outline" onClick={handleSkipMessage}>
+              {tradeMessageMode === "accept" ? "Skip" : "Decline without message"}
             </Button>
             <Button onClick={handleSendTradeMessage} disabled={!tradeMessageText.trim() || sendDM.isPending}>
               <Send className="h-4 w-4 mr-1" />
-              Send Message
+              {tradeMessageMode === "accept" ? "Send Message" : "Decline & Send"}
             </Button>
           </div>
         </DialogContent>
