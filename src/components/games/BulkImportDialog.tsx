@@ -242,6 +242,7 @@ export function BulkImportDialog({
   // CSV mode
   const [csvData, setCsvData] = useState("");
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const filePickerActiveRef = useRef(false);
 
   // BGG Collection mode
   const [bggUsername, setBggUsername] = useState("");
@@ -1038,7 +1039,7 @@ export function BulkImportDialog({
   const progressPercent = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && isImporting) return; onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v && (isImporting || filePickerActiveRef.current)) return; onOpenChange(v); }}>
       <DialogContent 
         className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-hidden flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
@@ -1120,7 +1121,9 @@ export function BulkImportDialog({
                     <input
                       type="file"
                       accept=".csv,.xlsx,.xls"
-                      onChange={(e) => { e.stopPropagation(); handleFileUpload(e); }}
+                      onClick={() => { filePickerActiveRef.current = true; }}
+                      onBlur={() => { setTimeout(() => { filePickerActiveRef.current = false; }, 2000); }}
+                      onChange={(e) => { filePickerActiveRef.current = false; e.stopPropagation(); handleFileUpload(e); }}
                       disabled={isImporting}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     />
