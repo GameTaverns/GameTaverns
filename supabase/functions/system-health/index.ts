@@ -223,10 +223,6 @@ export default async function handler(req: Request): Promise<Response> {
 
       // Edge Functions - Social & Communication
       pingFunction(supabaseUrl, "Send Message", "social", "send-message"),
-      pingFunction(supabaseUrl, "Decrypt Messages", "social", "decrypt-messages"),
-      pingFunction(supabaseUrl, "My Inquiries", "social", "my-inquiries"),
-      pingFunction(supabaseUrl, "Reply Inquiry", "social", "reply-to-inquiry"),
-      pingFunction(supabaseUrl, "Send Inq Reply", "social", "send-inquiry-reply"),
       pingFunction(supabaseUrl, "Notify Feedback", "social", "notify-feedback"),
 
       // Edge Functions - Discord
