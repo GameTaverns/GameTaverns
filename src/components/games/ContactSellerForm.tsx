@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
-
+import { useState, useEffect } from "react";
 import { Send, Loader2, LogIn } from "lucide-react";
 import { z } from "zod";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,41 +12,6 @@ import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useUserProfile } from "@/hooks/useLibrary";
-
-const RECAPTCHA_SITE_KEY = "6LdkyXEsAAAAAK1Z9CISXvqloXriS6kGA1L4BqrY";
-
-async function getRecaptchaToken(action: string): Promise<string> {
-  try {
-    if (!window.grecaptcha) {
-      // Load script if not present
-      await new Promise<void>((resolve, reject) => {
-        const existing = document.querySelector(`script[src*="recaptcha/api.js"]`);
-        if (existing) { resolve(); return; }
-        const s = document.createElement("script");
-        s.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
-        s.async = true;
-        s.onload = () => resolve();
-        s.onerror = () => reject(new Error("reCAPTCHA load failed"));
-        document.head.appendChild(s);
-      });
-      await new Promise<void>((resolve) => {
-        const iv = setInterval(() => { if (window.grecaptcha) { clearInterval(iv); resolve(); } }, 100);
-      });
-    }
-    return await new Promise<string>((resolve) => {
-      window.grecaptcha!.ready(async () => {
-        try {
-          const token = await window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action });
-          resolve(token);
-        } catch {
-          resolve("RECAPTCHA_EXECUTE_FAILED");
-        }
-      });
-    });
-  } catch {
-    return "RECAPTCHA_LOAD_FAILED";
-  }
-}
 
 // URL/link detection regex
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s]*)?/gi;
@@ -71,11 +35,12 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; message?: string }>({});
   const { toast } = useToast();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { buildUrl } = useTenantUrl();
   const { data: userProfile } = useUserProfile();
+  const navigate = useNavigate();
 
-  // Auto-populate name and message from user profile
+  // Auto-populate name from user profile
   useEffect(() => {
     if (userProfile?.display_name && !name) {
       setName(userProfile.display_name);
@@ -93,7 +58,6 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
     e.preventDefault();
     setErrors({});
 
-    // Validate input
     const result = contactSchema.safeParse({ name, message });
     if (!result.success) {
       const fieldErrors: { name?: string; message?: string } = {};
@@ -109,31 +73,27 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
     setIsSubmitting(true);
 
     try {
-      // Get reCAPTCHA token invisibly
-      const recaptcha_token = await getRecaptchaToken("send_message");
-
-      // Use edge function for rate-limited, validated message sending
       const { data, error } = await supabase.functions.invoke("send-message", {
         body: {
           game_id: gameId,
           sender_name: result.data.name,
           message: result.data.message,
-          recaptcha_token,
         },
       });
 
       if (error) throw error;
-      
-      if (!data?.success) {
-        throw new Error(data?.error || "Failed to send message");
-      }
+      if (!data?.success) throw new Error(data?.error || "Failed to send message");
 
       toast({
         title: "Message sent!",
-        description: "Your inquiry has been sent as a direct message. Check your DMs for replies.",
+        description: "Opening your conversation...",
       });
 
-      // Reset form
+      // Navigate directly to the DM thread with the owner
+      if (data.recipient_id) {
+        navigate(buildUrl(`/dm/${data.recipient_id}`));
+      }
+
       setName("");
       setMessage("");
     } catch (error: any) {
@@ -147,7 +107,6 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
     }
   };
 
-  // Require login to send messages
   if (!isAuthenticated) {
     return (
       <Card className="card-elevated">

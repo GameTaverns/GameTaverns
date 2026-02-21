@@ -173,7 +173,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: "Message sent successfully" }),
+      JSON.stringify({ success: true, message: "Message sent successfully", recipient_id: libraryOwnerId }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
