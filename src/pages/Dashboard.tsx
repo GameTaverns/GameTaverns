@@ -463,7 +463,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Polls Card - links to community */}
+                {/* Polls Card - links to tenant community */}
                 <Card className={`${cardClass} overflow-hidden`}>
                   <CardHeader className="px-4 pt-4 pb-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
@@ -473,12 +473,31 @@ export default function Dashboard() {
                     <CardDescription className="text-cream/60 text-xs">Create and manage game night polls</CardDescription>
                   </CardHeader>
                   <CardContent className="px-4 pb-4">
-                    <Link to="/community?tab=polls">
-                      <Button variant="outline" size="sm" className="w-full text-xs">
+                    <TenantLink href={getLibraryUrl(library.slug, "/community?tab=polls")}>
+                      <Button variant="outline" size="sm" className={`w-full text-xs ${btnOutline}`}>
                         <Vote className="h-3 w-3 mr-1.5" />
                         View &amp; Manage Polls
                       </Button>
-                    </Link>
+                    </TenantLink>
+                  </CardContent>
+                </Card>
+
+                {/* Community Card - quick link to tenant community */}
+                <Card className={`${cardClass} overflow-hidden`}>
+                  <CardHeader className="px-4 pt-4 pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <MessageSquare className="h-4 w-4 text-secondary" />
+                      Community
+                    </CardTitle>
+                    <CardDescription className="text-cream/60 text-xs">Forums, polls &amp; discussions</CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <TenantLink href={getLibraryUrl(library.slug, "/community")}>
+                      <Button variant="outline" size="sm" className={`w-full text-xs ${btnOutline}`}>
+                        <MessageSquare className="h-3 w-3 mr-1.5" />
+                        Go to Community Page
+                      </Button>
+                    </TenantLink>
                   </CardContent>
                 </Card>
 
