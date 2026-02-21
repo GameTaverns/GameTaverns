@@ -57,10 +57,25 @@ function parseBggItems(xml: string) {
     const artistMatches = block.matchAll(/<link[^>]*type="boardgameartist"[^>]*value="([^"]+)"/g);
     const artists = [...artistMatches].map((m) => decodeHtmlEntities(m[1]));
 
+    // Extract BGG categories for secondary filtering
+    const categoryMatches = block.matchAll(/<link[^>]*type="boardgamecategory"[^>]*value="([^"]+)"/g);
+    const categories = [...categoryMatches].map((m) => decodeHtmlEntities(m[1]));
+
     // Only process actual board games and expansions — skip video games, RPGs, accessories, etc.
     const ALLOWED_TYPES = ["boardgame", "boardgameexpansion"];
     if (!ALLOWED_TYPES.includes(itemType)) {
       console.log(`[catalog-scraper] Skipping BGG ID ${bggId} (type="${itemType}", title="${title}")`);
+      continue;
+    }
+
+    // Secondary filter: skip entries with video-game-only categories
+    const EXCLUDED_CATEGORIES = ["Electronic", "Video Game"];
+    const hasExcludedCategory = categories.some(c => EXCLUDED_CATEGORIES.includes(c));
+    // Only skip if the item has an excluded category AND lacks typical board game indicators
+    const BOARD_GAME_INDICATORS = ["Card Game", "Dice", "Board Game", "Miniatures", "Party Game", "Wargame"];
+    const hasBoardGameIndicator = categories.some(c => BOARD_GAME_INDICATORS.includes(c));
+    if (hasExcludedCategory && !hasBoardGameIndicator && mechanics.length === 0) {
+      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — video game / electronic: "${title}" (categories: ${categories.join(", ")})`);
       continue;
     }
 
@@ -82,6 +97,7 @@ function parseBggItems(xml: string) {
       weight: weight && !isNaN(weight) && weight > 0
         ? Math.round(weight * 100) / 100 : null,
       isExpansion,
+      bggVerifiedType: itemType,
       bggUrl: `https://boardgamegeek.com/boardgame/${bggId}`,
       mechanics,
       publisher: publisherMatch?.[1] ? decodeHtmlEntities(publisherMatch[1]) : null,
@@ -101,6 +117,7 @@ interface ParsedGame {
   maxPlayers: number | null;
   playTimeMinutes: number | null;
   suggestedAge: string | null;
+  bggVerifiedType: string;
   yearPublished: number | null;
   bggCommunityRating: number | null;
   weight: number | null;
@@ -248,7 +265,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (let i = 0; i < specificIds.length; i += CHUNK) {
       const chunk = specificIds.slice(i, i + CHUNK);
       const idStr = chunk.join(",");
-      const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&stats=1`;
+      const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&type=boardgame,boardgameexpansion&stats=1`;
 
       let xml: string | null = null;
       let attempts = 0;
@@ -423,8 +440,8 @@ const handler = async (req: Request): Promise<Response> => {
       continue;
     }
 
-    // Fetch from BGG (use all IDs including existing for efficiency — we'll just skip existing in processing)
-    const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&stats=1`;
+    // Fetch from BGG — request only boardgame types to reduce noise
+    const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&type=boardgame,boardgameexpansion&stats=1`;
 
     let xml: string | null = null;
     let fetchAttempts = 0;
@@ -502,6 +519,7 @@ const handler = async (req: Request): Promise<Response> => {
             .from("game_catalog")
             .update({
               bgg_id: game.bggId,
+              bgg_verified_type: game.bggVerifiedType,
               description: game.description,
               image_url: game.imageUrl,
               min_players: game.minPlayers,
@@ -525,6 +543,7 @@ const handler = async (req: Request): Promise<Response> => {
             .from("game_catalog")
             .upsert({
               bgg_id: game.bggId,
+              bgg_verified_type: game.bggVerifiedType,
               title: game.title,
               description: game.description,
               image_url: game.imageUrl,
