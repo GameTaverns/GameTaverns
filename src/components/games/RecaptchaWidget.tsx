@@ -21,7 +21,7 @@ let scriptLoaded = false;
 let scriptFailed = false;
 let scriptLoadPromise: Promise<void> | null = null;
 
-const LOAD_TIMEOUT_MS = 5000;
+const LOAD_TIMEOUT_MS = 1500;
 
 function loadRecaptchaScript(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
