@@ -136,6 +136,10 @@ EXTERNAL_HANDLERS=(
   resume-imports
   server-command
   catalog-format-descriptions
+  catalog-cleanup
+  catalog-gallery-backfill
+  sitemap
+  cron-status
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   if [ -d "$FUNCTIONS_DIR/$handler" ]; then
