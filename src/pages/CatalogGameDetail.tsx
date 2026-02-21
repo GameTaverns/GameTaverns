@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
+import { ManagePurchaseLinks } from "@/components/catalog/ManagePurchaseLinks";
 import { GameImage } from "@/components/games/GameImage";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
@@ -75,7 +76,7 @@ const LOW_QUALITY_BGG_VARIANTS = /__(geeklistimagebar|geeklistimage|square|mt|ge
 export default function CatalogGameDetail() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
   const { data: myLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
   const addFromCatalog = useAddFromCatalog();
@@ -582,6 +583,13 @@ export default function CatalogGameDetail() {
             <div className="mt-8">
               <WhoHasThis catalogId={game.id} gameTitle={game.title} />
             </div>
+
+            {/* Admin: Manage Purchase Links */}
+            {isAdmin && (
+              <div className="mt-6">
+                <ManagePurchaseLinks catalogId={game.id} gameTitle={game.title} />
+              </div>
+            )}
           </div>
         </div>
       </div>
