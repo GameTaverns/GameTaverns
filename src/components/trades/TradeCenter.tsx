@@ -50,6 +50,7 @@ import {
   Sparkles,
   Check,
   X,
+  History,
 } from "lucide-react";
 
 export function TradeCenter() {
@@ -503,6 +504,7 @@ function OffersTab() {
   const { data: offers, isLoading } = useTradeOffers();
   const respondToOffer = useRespondToTradeOffer();
   const { toast } = useToast();
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const handleRespond = async (offerId: string, status: "accepted" | "declined") => {
     try {
@@ -519,6 +521,11 @@ function OffersTab() {
 
   const received = offers?.received || [];
   const sent = offers?.sent || [];
+  
+  const activeReceived = received.filter((o: any) => o.status === "pending");
+  const completedReceived = received.filter((o: any) => o.status !== "pending");
+  const activeSent = sent.filter((o: any) => o.status === "pending");
+  const completedSent = sent.filter((o: any) => o.status !== "pending");
 
   const formatDate = (dateStr: string) => {
     try {
@@ -598,19 +605,33 @@ function OffersTab() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             Received Offers
-            {received.filter(o => o.status === "pending").length > 0 && (
-              <Badge variant="default" className="text-xs">{received.filter(o => o.status === "pending").length} pending</Badge>
+            {activeReceived.length > 0 && (
+              <Badge variant="default" className="text-xs">{activeReceived.length} pending</Badge>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {received.length === 0 ? (
+          {activeReceived.length === 0 && completedReceived.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">No offers received</p>
           ) : (
             <div className="space-y-3">
-              {received.map((offer) => (
+              {activeReceived.map((offer) => (
                 <OfferCard key={offer.id} offer={offer} type="received" />
               ))}
+              {completedReceived.length > 0 && (
+                <div className="space-y-3">
+                  <button
+                    className="flex items-center gap-2 font-semibold text-sm text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+                    onClick={() => setShowCompleted(!showCompleted)}
+                  >
+                    <History className="h-4 w-4" />
+                    History ({completedReceived.length})
+                  </button>
+                  {showCompleted && completedReceived.map((offer) => (
+                    <OfferCard key={offer.id} offer={offer} type="received" />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -621,13 +642,27 @@ function OffersTab() {
           <CardTitle className="text-lg">Sent Offers</CardTitle>
         </CardHeader>
         <CardContent>
-          {sent.length === 0 ? (
+          {activeSent.length === 0 && completedSent.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">No offers sent</p>
           ) : (
             <div className="space-y-3">
-              {sent.map((offer) => (
+              {activeSent.map((offer) => (
                 <OfferCard key={offer.id} offer={offer} type="sent" />
               ))}
+              {completedSent.length > 0 && (
+                <div className="space-y-3">
+                  <button
+                    className="flex items-center gap-2 font-semibold text-sm text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+                    onClick={() => setShowCompleted(!showCompleted)}
+                  >
+                    <History className="h-4 w-4" />
+                    History ({completedSent.length})
+                  </button>
+                  {showCompleted && completedSent.map((offer) => (
+                    <OfferCard key={offer.id} offer={offer} type="sent" />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
