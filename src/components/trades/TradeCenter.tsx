@@ -16,12 +16,14 @@ import {
   type SaleCondition,
 } from "@/hooks/useTrades";
 import { useAuth } from "@/hooks/useAuth";
+import { useSendDM } from "@/hooks/useDirectMessages";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -503,15 +505,50 @@ function BggThumbnail({ bggId, alt }: { bggId: string; alt: string }) {
 function OffersTab() {
   const { data: offers, isLoading } = useTradeOffers();
   const respondToOffer = useRespondToTradeOffer();
+  const removeListing = useRemoveTradeListing();
+  const sendDM = useSendDM();
   const { toast } = useToast();
   const [showCompleted, setShowCompleted] = useState(false);
+  const [tradeMessageOpen, setTradeMessageOpen] = useState(false);
+  const [tradeMessageRecipient, setTradeMessageRecipient] = useState<{ userId: string; name: string; gameTitle: string } | null>(null);
+  const [tradeMessageText, setTradeMessageText] = useState("");
 
-  const handleRespond = async (offerId: string, status: "accepted" | "declined") => {
+  const handleRespond = async (offerId: string, status: "accepted" | "declined", offer?: any) => {
     try {
       await respondToOffer.mutateAsync({ offerId, status });
+      
+      if (status === "accepted" && offer) {
+        // Remove both users' listings
+        const listingId = offer.offering_listing_id;
+        if (listingId) {
+          try { await removeListing.mutateAsync(listingId); } catch { /* may not be ours */ }
+        }
+        
+        // Open message dialog to send trade details
+        const otherUserId = offer.offering_user_id;
+        const otherName = offer.offering_user_profile?.display_name || "the other trader";
+        const gameTitle = offer.offering_listing?.game?.title || "the game";
+        setTradeMessageRecipient({ userId: otherUserId, name: otherName, gameTitle });
+        setTradeMessageText(`Hi! I accepted your trade offer for "${gameTitle}". Let's work out the details — `);
+        setTradeMessageOpen(true);
+      }
+      
       toast({ title: status === "accepted" ? "Offer accepted!" : "Offer declined" });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleSendTradeMessage = async () => {
+    if (!tradeMessageRecipient || !tradeMessageText.trim()) return;
+    try {
+      await sendDM.mutateAsync({ recipientId: tradeMessageRecipient.userId, content: tradeMessageText.trim() });
+      toast({ title: "Message sent to " + tradeMessageRecipient.name });
+      setTradeMessageOpen(false);
+      setTradeMessageText("");
+      setTradeMessageRecipient(null);
+    } catch (error: any) {
+      toast({ title: "Error sending message", description: error.message, variant: "destructive" });
     }
   };
 
@@ -563,7 +600,7 @@ function OffersTab() {
               )}
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              {offer.status === "pending" && type === "received" ? (
+            {offer.status === "pending" && type === "received" ? (
                 <div className="flex gap-1">
                   <Button
                     size="sm"
@@ -574,7 +611,7 @@ function OffersTab() {
                     <X className="h-3.5 w-3.5 mr-1" />
                     Decline
                   </Button>
-                  <Button size="sm" onClick={() => handleRespond(offer.id, "accepted")} className="h-7 px-2">
+                  <Button size="sm" onClick={() => handleRespond(offer.id, "accepted", offer)} className="h-7 px-2">
                     <Check className="h-3.5 w-3.5 mr-1" />
                     Accept
                   </Button>
@@ -667,6 +704,45 @@ function OffersTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Trade Details Message Dialog */}
+      <Dialog open={tradeMessageOpen} onOpenChange={(open) => {
+        if (!open) {
+          setTradeMessageOpen(false);
+          setTradeMessageText("");
+          setTradeMessageRecipient(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Trade Details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Send a message to <span className="font-medium text-foreground">{tradeMessageRecipient?.name}</span> to arrange the trade for <span className="font-medium text-foreground">{tradeMessageRecipient?.gameTitle}</span>.
+            </p>
+            <Textarea
+              value={tradeMessageText}
+              onChange={(e) => setTradeMessageText(e.target.value)}
+              placeholder="Share your shipping address, meeting location, or other trade details..."
+              rows={4}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => {
+              setTradeMessageOpen(false);
+              setTradeMessageText("");
+              setTradeMessageRecipient(null);
+            }}>
+              Skip
+            </Button>
+            <Button onClick={handleSendTradeMessage} disabled={!tradeMessageText.trim() || sendDM.isPending}>
+              <Send className="h-4 w-4 mr-1" />
+              Send Message
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart, Mail, UserPlus, UserCheck } from "lucide-react";
+import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart, Mail, UserPlus, UserCheck, ArrowLeftRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,10 @@ const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   direct_message: <MessageSquare className="h-4 w-4 text-indigo-500" />,
   session_tag: <UserCheck className="h-4 w-4 text-primary" />,
   activity_reaction: <Heart className="h-4 w-4 text-pink-500" />,
+  trade_offer_received: <ArrowLeftRight className="h-4 w-4 text-secondary" />,
+  trade_offer_accepted: <Check className="h-4 w-4 text-green-500" />,
+  trade_offer_declined: <ArrowLeftRight className="h-4 w-4 text-destructive" />,
+  trade_match_found: <ArrowLeftRight className="h-4 w-4 text-primary" />,
 };
 
 // Get navigation path based on notification type and metadata
@@ -66,6 +70,11 @@ function getNotificationPath(notification: Notification, myUsername?: string | n
     case "wishlist_alert":
       if (metadata?.game_id) return `/games/${metadata.game_id}`;
       break;
+    case "trade_offer_received":
+    case "trade_offer_accepted":
+    case "trade_offer_declined":
+    case "trade_match_found":
+      return "/dashboard?tab=community";
   }
   return null;
 }
