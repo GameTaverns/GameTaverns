@@ -558,25 +558,29 @@ function OffersTab() {
   const handleSendTradeMessage = async () => {
     if (!tradeMessageRecipient) return;
 
-    // For decline flow, perform the actual decline first
+    const text = tradeMessageText.trim();
+
+    // For decline flow, store the reason on the offer and let the DB trigger create the notification
     if (tradeMessageMode === "decline" && pendingDecline) {
       try {
-        await respondToOffer.mutateAsync({ offerId: pendingDecline.offerId, status: "declined" });
+        // Update the offer with decline_reason so the trigger includes it in the notification
+        if (text) {
+          await (supabase as any)
+            .from("trade_offers")
+            .update({ status: "declined", decline_reason: text })
+            .eq("id", pendingDecline.offerId);
+        } else {
+          await respondToOffer.mutateAsync({ offerId: pendingDecline.offerId, status: "declined" });
+        }
         toast({ title: "Offer declined" });
       } catch (error: any) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
         return;
       }
-    }
-
-    // Send the message if there's text
-    const text = tradeMessageText.trim();
-    if (text) {
+    } else if (tradeMessageMode === "accept" && text) {
+      // For accept flow, send trade details as a DM
       try {
-        const prefix = tradeMessageMode === "decline"
-          ? `Regarding your trade offer for "${tradeMessageRecipient.gameTitle}" — I've declined, but wanted to let you know: `
-          : "";
-        await sendDM.mutateAsync({ recipientId: tradeMessageRecipient.userId, content: prefix + text });
+        await sendDM.mutateAsync({ recipientId: tradeMessageRecipient.userId, content: text });
         toast({ title: "Message sent to " + tradeMessageRecipient.name });
       } catch (error: any) {
         toast({ title: "Error sending message", description: error.message, variant: "destructive" });
@@ -590,7 +594,7 @@ function OffersTab() {
   };
 
   const handleSkipMessage = async () => {
-    // For decline, still perform the decline even if skipping the message
+    // For decline, perform the decline without a reason
     if (tradeMessageMode === "decline" && pendingDecline) {
       try {
         await respondToOffer.mutateAsync({ offerId: pendingDecline.offerId, status: "declined" });
