@@ -118,19 +118,22 @@ export function CronJobsMonitor() {
   const [runningJobs, setRunningJobs] = useState<Set<number>>(new Set());
 
   const handleRunNow = async (job: CronJob) => {
-    const info = extractFunctionInfo(job.command);
-    if (!info) {
-      toast.error("Cannot parse function from this cron command");
-      return;
-    }
     setRunningJobs((prev) => new Set(prev).add(job.jobid));
     try {
-      const { error } = await supabase.functions.invoke(info.functionName, {
-        ...(info.body ? { body: info.body } : {}),
-      });
-      if (error) throw error;
-      toast.success(`Triggered ${info.functionName}`);
-      // Refresh after a short delay to show new run
+      const info = extractFunctionInfo(job.command);
+      if (info) {
+        // Edge function job — invoke directly
+        const { error } = await supabase.functions.invoke(info.functionName, {
+          ...(info.body ? { body: info.body } : {}),
+        });
+        if (error) throw error;
+        toast.success(`Triggered ${info.functionName}`);
+      } else {
+        // SQL-based job — execute via RPC
+        const { error } = await supabase.rpc("run_cron_job_now" as any, { p_jobid: job.jobid });
+        if (error) throw error;
+        toast.success(`Executed ${job.jobname}`);
+      }
       setTimeout(() => refetch(), 3000);
     } catch (err: any) {
       toast.error(`Failed: ${err?.message || "Unknown error"}`);
@@ -324,7 +327,7 @@ export function CronJobsMonitor() {
                 {isExpanded && (
                   <CardContent className="px-3 pb-3 pt-0 space-y-3">
                     {/* Run Now button for infrequent jobs */}
-                    {isInfrequentSchedule(job.schedule) && extractFunctionInfo(job.command) && (
+                    {isInfrequentSchedule(job.schedule) && (
                       <Button
                         variant="outline"
                         size="sm"
