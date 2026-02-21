@@ -121,31 +121,58 @@ async function scanGameAcrossPublishers(
 ): Promise<number> {
   let totalAdded = 0;
   const titleSlug = slugifyTitle(game.title);
+  console.log(`[purchase-link-scanner] Scanning "${game.title}" (slug: ${titleSlug}) across ${Object.keys(KNOWN_PUBLISHERS).length} publishers`);
 
-  for (const [, pub] of Object.entries(KNOWN_PUBLISHERS)) {
-    // Try common URL patterns
+  for (const [key, pub] of Object.entries(KNOWN_PUBLISHERS)) {
     const candidateUrl = `https://${pub.domain}${pub.searchPath}${titleSlug}`;
 
     try {
-      const res = await fetch(candidateUrl, { method: "HEAD", redirect: "follow" });
-      if (res.ok) {
+      // Use GET instead of HEAD — many sites block HEAD or return misleading status codes
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(candidateUrl, {
+        method: "GET",
+        redirect: "follow",
+        signal: controller.signal,
+        headers: { "User-Agent": "GameTaverns/1.0 LinkScanner" },
+      });
+      clearTimeout(timeout);
+
+      const finalUrl = res.url; // After redirects
+      const status = res.status;
+      // Consume body to prevent resource leak
+      const body = await res.text();
+
+      // Check for soft 404s: page exists (200) but contains "not found" / "page not found" signals
+      const isSoft404 = body.length < 1000 ||
+        /page\s*not\s*found|404|no\s*results|doesn.t\s*exist/i.test(body.substring(0, 2000));
+
+      console.log(`[purchase-link-scanner] ${key}: ${candidateUrl} → ${status} (body: ${body.length} chars, soft404: ${isSoft404}, final: ${finalUrl})`);
+
+      if (res.ok && !isSoft404) {
         const { error } = await sb.from("catalog_purchase_links").upsert(
           {
             catalog_id: game.id,
             retailer_name: pub.name,
-            url: candidateUrl,
+            url: finalUrl || candidateUrl,
             source: "auto_scan",
             status: "approved",
           },
           { onConflict: "catalog_id,url" }
         );
-        if (!error) totalAdded++;
+        if (!error) {
+          totalAdded++;
+          console.log(`[purchase-link-scanner] ✅ Added ${pub.name} link for "${game.title}"`);
+        } else {
+          console.log(`[purchase-link-scanner] DB error for ${pub.name}:`, error.message);
+        }
       }
     } catch (_e) {
-      // URL doesn't exist, skip
+      console.log(`[purchase-link-scanner] ${key}: ${candidateUrl} → failed (${(_e as Error).message})`);
     }
   }
 
+  console.log(`[purchase-link-scanner] Scan complete for "${game.title}": ${totalAdded} links found`);
   return totalAdded;
 }
 
