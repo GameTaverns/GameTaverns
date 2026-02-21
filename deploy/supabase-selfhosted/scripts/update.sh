@@ -140,6 +140,8 @@ EXTERNAL_HANDLERS=(
   catalog-gallery-backfill
   sitemap
   cron-status
+  purchase-link-scanner
+  check-login
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   if [ -d "$FUNCTIONS_DIR/$handler" ]; then
