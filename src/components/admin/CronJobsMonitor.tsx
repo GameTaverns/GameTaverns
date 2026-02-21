@@ -13,8 +13,10 @@ import {
   Timer,
   ChevronDown,
   ChevronUp,
+  Play,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { toast } from "sonner";
 
 interface CronJob {
   jobid: number;
@@ -54,6 +56,35 @@ function describeSchedule(cron: string): string {
   return cron;
 }
 
+// Check if schedule runs less frequently than every 10 minutes
+function isInfrequentSchedule(cron: string): boolean {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) return false;
+  const [min, hour] = parts;
+  if (min === "*" && hour === "*") return false;
+  if (min.startsWith("*/")) {
+    const interval = parseInt(min.slice(2), 10);
+    if (!isNaN(interval) && interval < 10) return false;
+  }
+  return true;
+}
+
+// Extract edge function name and body from cron command
+function extractFunctionInfo(command: string): { functionName: string; body: Record<string, unknown> | null } | null {
+  const urlMatch = command.match(/functions\/v1\/([a-z0-9-]+)/i);
+  if (!urlMatch) return null;
+  const functionName = urlMatch[1];
+  const bodyMatch = command.match(/body:='(\{[^']*\})'::jsonb/);
+  let body: Record<string, unknown> | null = null;
+  if (bodyMatch) {
+    try {
+      body = JSON.parse(bodyMatch[1]);
+    } catch { /* ignore */ }
+  }
+  return { functionName, body };
+}
+
+
 function StatusBadge({ status }: { status: string }) {
   if (status === "succeeded")
     return (
@@ -82,6 +113,33 @@ function StatusBadge({ status }: { status: string }) {
 
 export function CronJobsMonitor() {
   const [expandedJob, setExpandedJob] = useState<number | null>(null);
+  const [runningJobs, setRunningJobs] = useState<Set<number>>(new Set());
+
+  const handleRunNow = async (job: CronJob) => {
+    const info = extractFunctionInfo(job.command);
+    if (!info) {
+      toast.error("Cannot parse function from this cron command");
+      return;
+    }
+    setRunningJobs((prev) => new Set(prev).add(job.jobid));
+    try {
+      const { error } = await supabase.functions.invoke(info.functionName, {
+        ...(info.body ? { body: info.body } : {}),
+      });
+      if (error) throw error;
+      toast.success(`Triggered ${info.functionName}`);
+      // Refresh after a short delay to show new run
+      setTimeout(() => refetch(), 3000);
+    } catch (err: any) {
+      toast.error(`Failed: ${err?.message || "Unknown error"}`);
+    } finally {
+      setRunningJobs((prev) => {
+        const next = new Set(prev);
+        next.delete(job.jobid);
+        return next;
+      });
+    }
+  };
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["admin-cron-status"],
@@ -263,6 +321,23 @@ export function CronJobsMonitor() {
 
                 {isExpanded && (
                   <CardContent className="px-3 pb-3 pt-0 space-y-3">
+                    {/* Run Now button for infrequent jobs */}
+                    {isInfrequentSchedule(job.schedule) && extractFunctionInfo(job.command) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2 text-xs"
+                        disabled={runningJobs.has(job.jobid)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRunNow(job);
+                        }}
+                      >
+                        <Play className={`h-3 w-3 ${runningJobs.has(job.jobid) ? "animate-spin" : ""}`} />
+                        {runningJobs.has(job.jobid) ? "Running…" : "Run Now"}
+                      </Button>
+                    )}
+
                     {/* Command preview */}
                     <div className="bg-background/40 rounded p-2 border border-border/20">
                       <p className="text-[10px] text-cream/40 mb-1">Command</p>
