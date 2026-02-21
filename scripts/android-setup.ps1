@@ -46,6 +46,18 @@ npx cap add android
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: cap add android failed."; exit 1 }
 Write-Host "      OK - Android platform added."
 
+# ── Step 3b: Copy google-services.json if present ────────────────────────────
+$gsJson = "google-services.json"
+$gsDest = "android\app\google-services.json"
+if (Test-Path $gsJson) {
+    Copy-Item $gsJson $gsDest -Force
+    Write-Host "      OK - google-services.json copied to android/app/."
+} else {
+    Write-Host "      WARN - google-services.json not found in project root."
+    Write-Host "             Push notifications will not work without it."
+    Write-Host "             Place it at: $((Get-Location).Path)\$gsJson"
+}
+
 # ── Step 4: Build React app in android mode ───────────────────────────────────
 Write-Host ""
 Write-Host "[4/8] Building React app (--mode android, no Lovable URLs)..."
