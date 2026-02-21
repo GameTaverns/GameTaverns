@@ -114,6 +114,66 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
+// Try direct fetch first; if it fails/times out, use Firecrawl as fallback
+async function checkUrl(candidateUrl: string, firecrawlKey: string | undefined): Promise<{ ok: boolean; finalUrl: string; status: number; bodyLen: number; method: string }> {
+  // Attempt 1: direct GET
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(candidateUrl, {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; GameTaverns/1.0 LinkScanner)" },
+    });
+    clearTimeout(timeout);
+
+    const finalUrl = res.url;
+    const status = res.status;
+    const body = await res.text();
+
+    const bodySnippet = body.substring(0, 5000).toLowerCase();
+    const hasErrorKeywords = /page\s*not\s*found|<title>404|not\s*found<\/|no\s*results?\s*found|doesn.t\s*exist|this\s*page\s*isn/i.test(bodySnippet);
+    const isSoft404 = (body.length < 500 && hasErrorKeywords) ||
+      (status === 200 && bodySnippet.includes("<title>404"));
+
+    if (res.ok && !isSoft404) {
+      return { ok: true, finalUrl: finalUrl || candidateUrl, status, bodyLen: body.length, method: "direct" };
+    }
+    return { ok: false, finalUrl: finalUrl || candidateUrl, status, bodyLen: body.length, method: "direct" };
+  } catch (_e) {
+    console.log(`[purchase-link-scanner] Direct fetch failed for ${candidateUrl}: ${(_e as Error).message}`);
+  }
+
+  // Attempt 2: Firecrawl fallback
+  if (firecrawlKey) {
+    try {
+      const fcRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${firecrawlKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: candidateUrl, formats: ["html"], waitFor: 5000 }),
+      });
+      const fcData = await fcRes.json();
+      if (fcData.success && fcData.data?.html) {
+        const html = fcData.data.html.toLowerCase();
+        const hasError = /page\s*not\s*found|<title>404|no\s*results?\s*found/i.test(html.substring(0, 5000));
+        if (!hasError && fcData.data.html.length > 500) {
+          const finalUrl = fcData.data?.metadata?.sourceURL || candidateUrl;
+          return { ok: true, finalUrl, status: 200, bodyLen: fcData.data.html.length, method: "firecrawl" };
+        }
+      }
+      return { ok: false, finalUrl: candidateUrl, status: 0, bodyLen: 0, method: "firecrawl" };
+    } catch (_e) {
+      console.log(`[purchase-link-scanner] Firecrawl fallback failed for ${candidateUrl}: ${(_e as Error).message}`);
+    }
+  }
+
+  return { ok: false, finalUrl: candidateUrl, status: 0, bodyLen: 0, method: "none" };
+}
+
 async function scanGameAcrossPublishers(
   sb: any,
   game: { id: string; title: string; bgg_id: string | null },
@@ -127,38 +187,15 @@ async function scanGameAcrossPublishers(
     const candidateUrl = `https://${pub.domain}${pub.searchPath}${titleSlug}`;
 
     try {
-      // Use GET instead of HEAD — many sites block HEAD or return misleading status codes
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(candidateUrl, {
-        method: "GET",
-        redirect: "follow",
-        signal: controller.signal,
-        headers: { "User-Agent": "GameTaverns/1.0 LinkScanner" },
-      });
-      clearTimeout(timeout);
+      const result = await checkUrl(candidateUrl, firecrawlKey);
+      console.log(`[purchase-link-scanner] ${key}: ${candidateUrl} → ${result.status} (body: ${result.bodyLen} chars, ok: ${result.ok}, method: ${result.method}, final: ${result.finalUrl})`);
 
-      const finalUrl = res.url; // After redirects
-      const status = res.status;
-      // Consume body to prevent resource leak
-      const body = await res.text();
-
-      // Check for soft 404s: page exists (200) but is actually an error page
-      // Only flag as soft-404 if very small AND contains error keywords
-      // Many SPAs return small HTML shells that are valid pages
-      const bodySnippet = body.substring(0, 5000).toLowerCase();
-      const hasErrorKeywords = /page\s*not\s*found|<title>404|not\s*found<\/|no\s*results?\s*found|doesn.t\s*exist|this\s*page\s*isn/i.test(bodySnippet);
-      const isSoft404 = (body.length < 500 && hasErrorKeywords) ||
-        (status === 200 && bodySnippet.includes("<title>404"));
-
-      console.log(`[purchase-link-scanner] ${key}: ${candidateUrl} → ${status} (body: ${body.length} chars, soft404: ${isSoft404}, final: ${finalUrl})`);
-
-      if (res.ok && !isSoft404) {
+      if (result.ok) {
         const { error } = await sb.from("catalog_purchase_links").upsert(
           {
             catalog_id: game.id,
             retailer_name: pub.name,
-            url: finalUrl || candidateUrl,
+            url: result.finalUrl,
             source: "auto_scan",
             status: "approved",
           },
