@@ -86,7 +86,7 @@ export default function Press() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
             <FactCard label="Launch" value="2025" />
             <FactCard label="Price" value="Free" />
-            <FactCard label="Import" value="BGG Sync" />
+            <FactCard label="Import" value="BGG / CSV / Catalog" />
             <FactCard label="Platform" value="Web + Mobile" />
           </div>
         </div>
@@ -119,28 +119,28 @@ export default function Press() {
               <ScreenshotCard
                 src={`${PK}/gamecard-2.jpg`}
                 title="Game Detail Card"
-                description="Rich game pages with box art, AI-generated descriptions, mechanics, designer credits, play history, and documents."
+                description="Rich game pages with box art, descriptions, mechanics, designer credits, play history, and documents."
               />
               <ScreenshotCard
                 src={`${PK}/addgames.jpg`}
-                title="Bulk Import"
-                description="Import games from CSV, BGG collection sync, or paste BGG links. Refresh images and ratings in bulk."
+                title="Multiple Import Options"
+                description="Import games via CSV upload, BGG collection sync, or search the built-in catalog. Refresh images and ratings in bulk."
               />
             </div>
           </ScreenshotGroup>
 
           {/* Profiles */}
-          <ScreenshotGroup label="Profiles & Activity">
+          <ScreenshotGroup label="Profiles & Customization">
             <div className="grid md:grid-cols-2 gap-8">
               <ScreenshotCard
                 src={`${PK}/badges2-2.jpg`}
-                title="User Profile & Badges"
-                description="Customizable profiles with role badges, follower counts, cover images, and community reputation."
+                title="Profile — Dark Theme"
+                description="Fully customizable profiles with role badges, follower counts, cover images, and community reputation. Each user can personalize their colors and layout."
               />
               <ScreenshotCard
                 src={`${PK}/userprofile.jpg`}
-                title="Profile Activity Feed"
-                description="Recent activity timeline with achievements earned, games added, and community interactions."
+                title="Profile — Custom Theme"
+                description="Unique colors, fonts, and backgrounds make every profile stand out. Activity feeds show achievements earned, games added, and community interactions."
               />
             </div>
           </ScreenshotGroup>
@@ -152,6 +152,7 @@ export default function Press() {
                 src={`${PK}/playstats.jpg`}
                 title="Play Stats & Analytics"
                 description="Monthly and annual play tracking with H-index, top mechanics, most played games, and session history."
+                uniformHeight
               />
             </div>
           </ScreenshotGroup>
@@ -163,11 +164,13 @@ export default function Press() {
                 src={`${PK}/poll.jpg`}
                 title="Game Night Polls"
                 description="Shareable voting polls for game nights — no account required. Live results and RSVP tracking."
+                uniformHeight
               />
               <ScreenshotCard
                 src={`${PK}/pollresults.jpg`}
                 title="Poll Results"
                 description="Live ranked results with vote counts, percentages, and trophy indicators for top picks."
+                uniformHeight
               />
             </div>
             <div className="grid md:grid-cols-2 gap-8 mt-8">
@@ -175,11 +178,13 @@ export default function Press() {
                 src={`${PK}/picker_setup.jpg`}
                 title="Random Game Picker"
                 description="Filter by type, genre, play time, and player count — then spin to let fate choose your next game."
+                uniformHeight
               />
               <ScreenshotCard
                 src={`${PK}/picker_result.jpg`}
                 title="Picker Result"
-                description="Tonight's pick displayed with box art, game type, play time, and player count. Share or pick again."
+                description="Tonight's pick displayed with box art, game type, and player count. Share or pick again."
+                uniformHeight
               />
             </div>
           </ScreenshotGroup>
@@ -191,16 +196,19 @@ export default function Press() {
                 src={`${PK}/borrow1.jpg`}
                 title="Lending Management"
                 description="Full lending dashboard with inventory overview, pending requests, and loan history tracking."
+                uniformHeight
               />
               <ScreenshotCard
                 src={`${PK}/borrow2.jpg`}
                 title="Loan Approval"
                 description="Approve borrow requests with condition notes, due dates, and optional pickup instructions."
+                uniformHeight
               />
               <ScreenshotCard
                 src={`${PK}/borrow_returned.jpg`}
                 title="Returned & Rated"
                 description="Track return condition and rate borrowers to build community trust and lending reputation."
+                uniformHeight
               />
             </div>
           </ScreenshotGroup>
@@ -219,8 +227,8 @@ export default function Press() {
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             <DiffCard
               icon={<Upload className="h-6 w-6" />}
-              title="One-Click BGG Import"
-              description="Import your entire BoardGameGeek collection with box art, descriptions, player counts, and ratings in seconds. Set up automatic daily or weekly sync to keep everything current."
+              title="Flexible Import Options"
+              description="Import your collection via BGG sync, CSV upload, or search the built-in catalog. Set up automatic daily or weekly BGG sync to keep everything current."
             />
             <DiffCard
               icon={<Library className="h-6 w-6" />}
@@ -259,7 +267,7 @@ export default function Press() {
             />
             <DiffCard
               icon={<Zap className="h-6 w-6" />}
-              title="AI-Powered Recommendations"
+              title="Smart Recommendations"
               description="Get personalized game suggestions based on your play history and preferences — only recommending games that actually exist in your library or local community."
             />
             <DiffCard
@@ -425,7 +433,7 @@ function FactCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ScreenshotCard({ src, title, description, placeholder = false }: { src: string; title: string; description: string; placeholder?: boolean }) {
+function ScreenshotCard({ src, title, description, placeholder = false, uniformHeight = false }: { src: string; title: string; description: string; placeholder?: boolean; uniformHeight?: boolean }) {
   return (
     <div className="group">
       <a href={src} target="_blank" rel="noopener noreferrer" className="block">
@@ -439,7 +447,7 @@ function ScreenshotCard({ src, title, description, placeholder = false }: { src:
             <img
               src={src}
               alt={title}
-              className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
+              className={`w-full object-cover object-top transition-transform duration-300 group-hover:scale-105 ${uniformHeight ? "aspect-video" : "h-auto"}`}
               loading="lazy"
             />
           )}
