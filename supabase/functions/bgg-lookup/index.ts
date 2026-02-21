@@ -216,29 +216,95 @@ export default async function handler(req: Request): Promise<Response> {
 
     const pageUrl = `https://boardgamegeek.com/boardgame/${encodeURIComponent(bggId)}`;
 
-    // STEP 1: Try BGG XML API first for canonical box art image
+    // STEP 1: Try BGG XML API first for canonical box art image AND title
     // The <image> tag in the thing XML is the authoritative, high-quality box art
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
+    const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+    const bggHeaders: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Accept": "application/xml",
+    };
+    if (bggApiToken) bggHeaders["Authorization"] = `Bearer ${bggApiToken}`;
+    if (bggCookie) bggHeaders["Cookie"] = bggCookie;
+
     let xmlImageUrl: string | null = null;
+    let xmlTitle: string | null = null;
     try {
       const xmlUrl = `https://boardgamegeek.com/xmlapi2/thing?id=${bggId}`;
-      const xmlRes = await fetch(xmlUrl, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Accept": "application/xml",
-        },
-      });
+      let xmlRes = await fetch(xmlUrl, { headers: bggHeaders });
+
+      // BGG sometimes returns 202 (queued) — retry once after a short wait
+      if (xmlRes.status === 202) {
+        console.log(`BGG XML returned 202 for ${bggId}, retrying...`);
+        await new Promise(r => setTimeout(r, 2000));
+        xmlRes = await fetch(xmlUrl, { headers: bggHeaders });
+      }
+
       if (xmlRes.ok) {
         const xml = await xmlRes.text();
         if (xml.includes("<item")) {
+          xmlTitle = extractPrimaryName(xml);
           const imgMatch = xml.match(/<image>([^<]+)<\/image>/);
           if (imgMatch?.[1] && !/(__opengraph|fit-in\/1200x630|__small|__thumb|__micro)/i.test(imgMatch[1])) {
             xmlImageUrl = imgMatch[1];
             console.log(`BGG XML provided box art image for ${bggId}`);
           }
         }
+      } else {
+        console.warn(`BGG XML returned ${xmlRes.status} for ${bggId}`);
       }
     } catch (e) {
-      console.warn(`BGG XML image fetch failed for ${bggId}:`, e);
+      console.warn(`BGG XML fetch failed for ${bggId}:`, e);
+    }
+
+    // Fast path: if AI is disabled, return data without Firecrawl
+    if (!useAI || !isAIConfigured()) {
+      // If XML failed (e.g. 401), try a lightweight HTML fetch for title + image
+      if (!xmlTitle) {
+        try {
+          console.log(`XML failed, trying HTML page fetch for ${bggId}`);
+          const htmlRes = await fetch(pageUrl, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html",
+            },
+            redirect: "follow",
+          });
+          if (htmlRes.ok) {
+            const html = await htmlRes.text();
+            xmlTitle = extractMetaContent(html, "og:title")?.replace(/ \| Board Game.*$/i, "")?.trim() || null;
+            if (!xmlImageUrl) {
+              xmlImageUrl = pickBestGeekdoImage(html) || extractMetaContent(html, "og:image") || null;
+            }
+            console.log(`HTML fallback got title="${xmlTitle}" for ${bggId}`);
+          }
+        } catch (e) {
+          console.warn(`HTML fallback failed for ${bggId}:`, e);
+        }
+      }
+
+      console.log(`Returning lightweight data for ${bggId} (AI disabled)`);
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          bgg_id: bggId,
+          title: xmlTitle,
+          description: null,
+          image_url: xmlImageUrl,
+          min_players: null,
+          max_players: null,
+          suggested_age: null,
+          playing_time_minutes: null,
+          difficulty: null,
+          play_time: null,
+          game_type: null,
+          mechanics: [],
+          publisher: null,
+        },
+      } satisfies BggLookupResponse), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // STEP 2: Use Firecrawl for AI-based metadata extraction
@@ -319,31 +385,7 @@ export default async function handler(req: Request): Promise<Response> {
       extractMetaContent(rawHtml, "og:image") ||
       extractMetaContent(rawHtml, "twitter:image");
 
-    // If AI is disabled or not available, return basic data
-    if (!useAI || !isAIConfigured()) {
-      console.log("Returning basic data (AI disabled or unavailable)");
-      return new Response(JSON.stringify({
-        success: true,
-        data: {
-          bgg_id: bggId,
-          title,
-          description: null,
-          image_url: imageUrl,
-          min_players: null,
-          max_players: null,
-          suggested_age: null,
-          playing_time_minutes: null,
-          difficulty: "3 - Medium",
-          play_time: "45-60 Minutes",
-          game_type: "Board Game",
-          mechanics: [],
-          publisher: null,
-        },
-      } satisfies BggLookupResponse), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // AI extraction continues below (we already returned early if AI was disabled)
 
     // Use AI to extract structured game data
     console.log(`Extracting game data with AI (${getAIProviderName()})...`);
