@@ -2,7 +2,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/backend/client";
 import { SEO, gameJsonLd } from "@/components/seo/SEO";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";

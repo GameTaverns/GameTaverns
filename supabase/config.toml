@@ -161,3 +161,12 @@ verify_jwt = false
 
 [functions.sitemap]
 verify_jwt = false
+
+[functions.purchase-link-scanner]
+verify_jwt = false
+
+[functions.catalog-gallery-backfill]
+verify_jwt = false
+
+[functions.cron-status]
+verify_jwt = false
