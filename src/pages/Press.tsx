@@ -164,13 +164,11 @@ export default function Press() {
                 src={`${PK}/poll.jpg`}
                 title="Game Night Polls"
                 description="Shareable voting polls for game nights — no account required. Live results and RSVP tracking."
-                uniformHeight
               />
               <ScreenshotCard
                 src={`${PK}/pollresults.jpg`}
                 title="Poll Results"
                 description="Live ranked results with vote counts, percentages, and trophy indicators for top picks."
-                uniformHeight
               />
             </div>
             <div className="grid md:grid-cols-2 gap-8 mt-8">
@@ -178,13 +176,11 @@ export default function Press() {
                 src={`${PK}/picker_setup.jpg`}
                 title="Random Game Picker"
                 description="Filter by type, genre, play time, and player count — then spin to let fate choose your next game."
-                uniformHeight
               />
               <ScreenshotCard
                 src={`${PK}/picker_result.jpg`}
                 title="Picker Result"
                 description="Tonight's pick displayed with box art, game type, and player count. Share or pick again."
-                uniformHeight
               />
             </div>
           </ScreenshotGroup>
