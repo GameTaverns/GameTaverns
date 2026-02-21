@@ -1,53 +1,10 @@
 // Sends a game sale inquiry as a DM to the library owner
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { withLogging } from "../_shared/system-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-native-app-token",
 };
-
-// Secret token baked into the Android APK — allows native apps to bypass Turnstile.
-const NATIVE_APP_SECRET = "gt-android-2026-a7f3k9m2p4x8q1n5";
-
-// Verify reCAPTCHA v3 token with Google
-async function verifyRecaptchaToken(token: string, ip: string, req?: Request): Promise<boolean> {
-  if (token === "RECAPTCHA_BYPASS_TOKEN") {
-    const appSecret = req?.headers.get("x-native-app-token");
-    if (appSecret === NATIVE_APP_SECRET) {
-      console.log("Native app secret validated — reCAPTCHA bypass accepted");
-      return true;
-    }
-    console.warn("RECAPTCHA_BYPASS_TOKEN used without valid x-native-app-token header — rejected");
-    return false;
-  }
-
-  if (token.startsWith("RECAPTCHA_") && token !== "RECAPTCHA_BYPASS_TOKEN") {
-    console.warn("reCAPTCHA client-side failure token:", token, "— failing open");
-    return true;
-  }
-
-  const secretKey = Deno.env.get("RECAPTCHA_SECRET_KEY");
-  if (!secretKey) {
-    console.warn("Missing RECAPTCHA_SECRET_KEY — skipping verification (fail open)");
-    return true;
-  }
-
-  try {
-    const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ secret: secretKey, response: token, remoteip: ip }),
-    });
-    const result = await response.json();
-    if (!result.success) { console.warn("reCAPTCHA failed:", result["error-codes"]); return false; }
-    if (result.score !== undefined && result.score < 0.3) { console.warn("reCAPTCHA score too low:", result.score); return false; }
-    return true;
-  } catch (error) {
-    console.error("reCAPTCHA verification error:", error);
-    return true;
-  }
-}
 
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s]*)?/gi;
 
@@ -59,31 +16,12 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-      || req.headers.get("cf-connecting-ip")
-      || "unknown";
-
     const body = await req.json();
-    const { game_id, sender_name, message, recaptcha_token } = body;
+    const { game_id, sender_name, message } = body;
 
     if (!game_id || !sender_name || !message) {
       return new Response(
         JSON.stringify({ success: false, error: "All fields are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!recaptcha_token) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Please complete the CAPTCHA verification" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const isCaptchaValid = await verifyRecaptchaToken(recaptcha_token, clientIp, req);
-    if (!isCaptchaValid) {
-      return new Response(
-        JSON.stringify({ success: false, error: "CAPTCHA verification failed. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
