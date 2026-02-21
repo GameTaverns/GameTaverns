@@ -401,8 +401,11 @@ export function useRespondToTradeOffer() {
       if (error) throw error;
       return data as TradeOffer;
     },
-    onSuccess: () => {
+    onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ["trade-offers"] });
+      if (status === "accepted") {
+        queryClient.invalidateQueries({ queryKey: ["my-trade-listings"] });
+      }
     },
   });
 }
