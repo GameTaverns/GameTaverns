@@ -56,7 +56,7 @@ function getNotificationPath(notification: Notification, myUsername?: string | n
     case "event_reminder":
       return "/dashboard";
     case "message_received":
-      return "/inbox";
+      return "/dm";
     case "new_follower":
       if (metadata?.username) return `/u/${metadata.username}`;
       return "/dashboard";

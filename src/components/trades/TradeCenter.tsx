@@ -560,25 +560,26 @@ function OffersTab() {
 
     const text = tradeMessageText.trim();
 
-    // For decline flow, store the reason on the offer and let the DB trigger create the notification
+    // For decline flow, decline the offer then send reason as DM
     if (tradeMessageMode === "decline" && pendingDecline) {
       try {
-        // Update the offer with decline_reason so the trigger includes it in the notification
-        if (text) {
-          await (supabase as any)
-            .from("trade_offers")
-            .update({ status: "declined", decline_reason: text })
-            .eq("id", pendingDecline.offerId);
-        } else {
-          await respondToOffer.mutateAsync({ offerId: pendingDecline.offerId, status: "declined" });
-        }
+        await respondToOffer.mutateAsync({ offerId: pendingDecline.offerId, status: "declined" });
         toast({ title: "Offer declined" });
       } catch (error: any) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
         return;
       }
+      // Send decline reason as a DM
+      if (text) {
+        try {
+          const prefix = `Re: Trade offer for "${tradeMessageRecipient.gameTitle}" — I've declined, but wanted to let you know: `;
+          await sendDM.mutateAsync({ recipientId: tradeMessageRecipient.userId, content: prefix + text });
+          toast({ title: "Message sent to " + tradeMessageRecipient.name });
+        } catch (error: any) {
+          toast({ title: "Error sending message", description: error.message, variant: "destructive" });
+        }
+      }
     } else if (tradeMessageMode === "accept" && text) {
-      // For accept flow, send trade details as a DM
       try {
         await sendDM.mutateAsync({ recipientId: tradeMessageRecipient.userId, content: text });
         toast({ title: "Message sent to " + tradeMessageRecipient.name });

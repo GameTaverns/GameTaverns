@@ -1,4 +1,4 @@
-// Note: We keep serve import for compatibility but export handler for self-hosted router
+// Sends a game sale inquiry as a DM to the library owner
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { withLogging } from "../_shared/system-logger.ts";
 
@@ -7,69 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-native-app-token",
 };
 
-// Rate limit: max 5 messages per IP per hour
-const RATE_LIMIT_MAX = 5;
-const RATE_LIMIT_WINDOW_HOURS = 1;
-
-interface MessageRequest {
-  game_id: string;
-  sender_name: string;
-  message: string;
-  recaptcha_token: string;
-}
-
-// AES-GCM encryption using Web Crypto API
-async function encryptData(plaintext: string, keyHex: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(plaintext);
-  
-  // Convert hex key to bytes
-  const keyBytes = new Uint8Array(keyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-  
-  // Import the key
-  const key = await crypto.subtle.importKey(
-    "raw",
-    keyBytes,
-    { name: "AES-GCM" },
-    false,
-    ["encrypt"]
-  );
-  
-  // Generate random IV
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  
-  // Encrypt
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    key,
-    data
-  );
-  
-  // Combine IV + ciphertext and encode as base64
-  const combined = new Uint8Array(iv.length + encrypted.byteLength);
-  combined.set(iv);
-  combined.set(new Uint8Array(encrypted), iv.length);
-  
-  return btoa(String.fromCharCode(...combined));
-}
-
-// Hash IP for rate limiting (we can't decrypt hashed IPs, but can compare)
-async function hashIP(ip: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(ip);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
 // Secret token baked into the Android APK — allows native apps to bypass Turnstile.
-// Must match VITE_NATIVE_APP_SECRET in .env.android. Not stored in cloud secrets
-// because it's embedded in the APK binary anyway (same security model as the anon key).
 const NATIVE_APP_SECRET = "gt-android-2026-a7f3k9m2p4x8q1n5";
 
 // Verify reCAPTCHA v3 token with Google
 async function verifyRecaptchaToken(token: string, ip: string, req?: Request): Promise<boolean> {
-  // Allow bypass token for native Android app — must present matching secret header
   if (token === "RECAPTCHA_BYPASS_TOKEN") {
     const appSecret = req?.headers.get("x-native-app-token");
     if (appSecret === NATIVE_APP_SECRET) {
@@ -80,7 +22,6 @@ async function verifyRecaptchaToken(token: string, ip: string, req?: Request): P
     return false;
   }
 
-  // Client-side failure tokens (script/execute errors) — fail open
   if (token.startsWith("RECAPTCHA_") && token !== "RECAPTCHA_BYPASS_TOKEN") {
     console.warn("reCAPTCHA client-side failure token:", token, "— failing open");
     return true;
@@ -88,7 +29,6 @@ async function verifyRecaptchaToken(token: string, ip: string, req?: Request): P
 
   const secretKey = Deno.env.get("RECAPTCHA_SECRET_KEY");
   if (!secretKey) {
-    // No secret configured — fail open (self-hosted without RECAPTCHA_SECRET_KEY)
     console.warn("Missing RECAPTCHA_SECRET_KEY — skipping verification (fail open)");
     return true;
   }
@@ -97,55 +37,35 @@ async function verifyRecaptchaToken(token: string, ip: string, req?: Request): P
     const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        secret: secretKey,
-        response: token,
-        remoteip: ip,
-      }),
+      body: new URLSearchParams({ secret: secretKey, response: token, remoteip: ip }),
     });
-
     const result = await response.json();
-    if (!result.success) {
-      console.warn("reCAPTCHA failed:", result["error-codes"]);
-      return false;
-    }
-    // Reject very low scores (bots ≈ 0, humans ≈ 1)
-    if (result.score !== undefined && result.score < 0.3) {
-      console.warn("reCAPTCHA score too low:", result.score);
-      return false;
-    }
+    if (!result.success) { console.warn("reCAPTCHA failed:", result["error-codes"]); return false; }
+    if (result.score !== undefined && result.score < 0.3) { console.warn("reCAPTCHA score too low:", result.score); return false; }
     return true;
   } catch (error) {
     console.error("reCAPTCHA verification error:", error);
-    // Fail open on network errors
     return true;
   }
 }
 
-// URL/link detection regex  
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s]+|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(?:\/[^\s]*)?/gi;
 
-// Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
-  // Debug version marker - 2026-02-08-v2
-  console.log("[send-message] Handler invoked, version: 2026-02-08-v2");
-  
-  // Handle CORS preflight
+  console.log("[send-message] Handler invoked, version: 2026-02-21-dm");
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get client IP for rate limiting
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() 
-      || req.headers.get("cf-connecting-ip") 
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || req.headers.get("cf-connecting-ip")
       || "unknown";
 
-    // Parse and validate request body
-    const body: MessageRequest = await req.json();
+    const body = await req.json();
     const { game_id, sender_name, message, recaptcha_token } = body;
 
-    // Validate required fields (email no longer required)
     if (!game_id || !sender_name || !message) {
       return new Response(
         JSON.stringify({ success: false, error: "All fields are required" }),
@@ -153,7 +73,6 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Verify reCAPTCHA
     if (!recaptcha_token) {
       return new Response(
         JSON.stringify({ success: false, error: "Please complete the CAPTCHA verification" }),
@@ -169,7 +88,6 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Validate lengths
     if (sender_name.trim().length === 0 || sender_name.length > 100) {
       return new Response(
         JSON.stringify({ success: false, error: "Name must be between 1 and 100 characters" }),
@@ -184,7 +102,6 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Block links in messages
     if (URL_REGEX.test(message)) {
       return new Response(
         JSON.stringify({ success: false, error: "Links are not allowed in messages" }),
@@ -192,7 +109,6 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Validate UUID format for game_id
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(game_id)) {
       return new Response(
@@ -201,10 +117,8 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Create Supabase admin client
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const encryptionKey = Deno.env.get("PII_ENCRYPTION_KEY");
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("Missing Supabase environment variables");
@@ -214,17 +128,9 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    if (!encryptionKey || encryptionKey.length !== 64) {
-      console.error("Missing or invalid PII_ENCRYPTION_KEY (must be 64 hex chars for AES-256)");
-      return new Response(
-        JSON.stringify({ success: false, error: "Server configuration error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the sender's user ID from the auth token if present
+    // Get the sender's user ID from auth token
     let senderUserId: string | null = null;
     const authHeader = req.headers.get("authorization");
     if (authHeader?.startsWith("Bearer ")) {
@@ -233,7 +139,6 @@ export default async function handler(req: Request): Promise<Response> {
       senderUserId = user?.id || null;
     }
 
-    // Require authentication
     if (!senderUserId) {
       return new Response(
         JSON.stringify({ success: false, error: "Authentication required to send messages" }),
@@ -241,10 +146,10 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Verify the game exists and is for sale
+    // Verify the game exists and is for sale, and get the library owner
     const { data: game, error: gameError } = await supabaseAdmin
       .from("games")
-      .select("id, is_for_sale, title")
+      .select("id, is_for_sale, title, library_id, libraries!inner(owner_id)")
       .eq("id", game_id)
       .single();
 
@@ -262,50 +167,33 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // Hash IP for rate limiting (allows comparison without storing plaintext)
-    const hashedIp = await hashIP(clientIp);
-
-    // Rate limiting check - count messages from this hashed IP in the last hour
-    const windowStart = new Date();
-    windowStart.setHours(windowStart.getHours() - RATE_LIMIT_WINDOW_HOURS);
-
-    const { count, error: countError } = await supabaseAdmin
-      .from("game_messages")
-      .select("*", { count: "exact", head: true })
-      .eq("sender_ip_encrypted", hashedIp)
-      .gte("created_at", windowStart.toISOString());
-
-    if (countError) {
-      console.error("Rate limit check error:", countError);
-    }
-
-    if (count !== null && count >= RATE_LIMIT_MAX) {
+    const libraryOwnerId = (game.libraries as any)?.owner_id;
+    if (!libraryOwnerId) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Too many messages sent. Please try again later." 
-        }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "Could not determine game owner" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Encrypt PII fields and message content (no email now)
-    const encryptedName = await encryptData(sender_name.trim(), encryptionKey);
-    const encryptedIp = await encryptData(clientIp, encryptionKey);
-    const encryptedMessage = await encryptData(message.trim(), encryptionKey);
+    // Don't allow messaging yourself
+    if (senderUserId === libraryOwnerId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "You cannot send an inquiry for your own game" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Insert the message with encrypted data and sender user ID
-    const { data: insertedMessage, error: insertError } = await supabaseAdmin
-      .from("game_messages")
+    // Prefix the message with game context
+    const prefixedContent = `Re: ${game.title} — ${message.trim()}`;
+
+    // Insert as a direct message to the library owner
+    const { error: insertError } = await supabaseAdmin
+      .from("direct_messages")
       .insert({
-        game_id,
-        sender_name_encrypted: encryptedName,
-        sender_ip_encrypted: encryptedIp,
-        message_encrypted: encryptedMessage,
-        sender_user_id: senderUserId,
-      })
-      .select()
-      .single();
+        sender_id: senderUserId,
+        recipient_id: libraryOwnerId,
+        content: prefixedContent,
+      });
 
     if (insertError) {
       console.error("Insert error:", insertError);
@@ -315,21 +203,11 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    console.log(`Message sent for game "${game.title}" by user ${senderUserId}`);
+    console.log(`Game inquiry DM sent for "${game.title}" by user ${senderUserId} to owner ${libraryOwnerId}`);
 
     // Send Discord notifications (fire-and-forget)
     try {
-      // Get the library owner to send DM
-      const { data: gameWithLibrary } = await supabaseAdmin
-        .from("games")
-        .select("library_id, libraries!inner(owner_id)")
-        .eq("id", game_id)
-        .single();
-
-      if (gameWithLibrary?.library_id) {
-        const libraryOwnerId = (gameWithLibrary.libraries as any)?.owner_id;
-        
-        // 1. Send webhook notification to library's Discord channel
+      if (game.library_id) {
         fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
           method: "POST",
           headers: {
@@ -337,43 +215,36 @@ export default async function handler(req: Request): Promise<Response> {
             "Authorization": `Bearer ${supabaseServiceKey}`,
           },
           body: JSON.stringify({
-            library_id: gameWithLibrary.library_id,
+            library_id: game.library_id,
             event_type: "message_received",
-            data: {
-              game_title: game.title,
-              sender_name: sender_name.trim(),
-            },
+            data: { game_title: game.title, sender_name: sender_name.trim() },
           }),
         }).catch(err => console.error("Discord webhook notify failed:", err));
 
-        // 2. Send DM to library owner (if they have Discord linked)
-        if (libraryOwnerId) {
-          fetch(`${supabaseUrl}/functions/v1/discord-send-dm`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${supabaseServiceKey}`,
+        fetch(`${supabaseUrl}/functions/v1/discord-send-dm`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            user_id: libraryOwnerId,
+            embed: {
+              title: "📬 New Game Inquiry",
+              description: `Someone is interested in **${game.title}**!`,
+              color: 0x22c55e,
+              fields: [
+                { name: "From", value: sender_name.trim(), inline: true },
+                { name: "Game", value: game.title, inline: true },
+              ],
+              footer: { text: "Check your Direct Messages to view and reply" },
+              timestamp: new Date().toISOString(),
             },
-            body: JSON.stringify({
-              user_id: libraryOwnerId,
-              embed: {
-                title: "📬 New Game Inquiry",
-                description: `Someone is interested in **${game.title}**!`,
-                color: 0x22c55e, // Green
-                fields: [
-                  { name: "From", value: sender_name.trim(), inline: true },
-                  { name: "Game", value: game.title, inline: true },
-                ],
-                footer: { text: "Check your Messages inbox to view and reply" },
-                timestamp: new Date().toISOString(),
-              },
-            }),
-          }).catch(err => console.error("Discord DM notify failed:", err));
-        }
+          }),
+        }).catch(err => console.error("Discord DM notify failed:", err));
       }
     } catch (notifyError) {
       console.error("Discord notification error:", notifyError);
-      // Don't fail the request if notification fails
     }
 
     return new Response(

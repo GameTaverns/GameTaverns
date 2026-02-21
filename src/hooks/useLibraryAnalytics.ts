@@ -101,12 +101,7 @@ export function useLibraryAnalytics(libraryId: string | null) {
 
       const wishlistVotes = wishlistSummary?.reduce((sum, w) => sum + (Number(w.vote_count) || 0), 0) || 0;
 
-      // Get unread messages using join filtering
-      const { count: unreadMessages } = await supabase
-        .from("game_messages")
-        .select("*, games!inner(library_id)", { count: "exact", head: true })
-        .eq("games.library_id", libraryId)
-        .eq("is_read", false);
+      const unreadMessages = 0; // Legacy inbox removed — DMs handle all messaging now
 
       return {
         totalGames: totalGames || 0,

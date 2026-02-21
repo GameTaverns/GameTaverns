@@ -38,7 +38,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries, useMaxLibrariesPerUser, useUserProfile } from "@/hooks/useLibrary";
-import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/backend/client";
 import { isSelfHostedSupabaseStack } from "@/config/runtime";
@@ -142,7 +141,6 @@ export default function Dashboard() {
     }
   }, [defaultLibrary, activeLibraryId]);
 
-  const _ = useUnreadMessageCount(library?.id); // kept for cache warming
   const { status: totpStatus } = useTotpStatus();
   const { myLentLoans, myBorrowedLoans } = useLending();
   const { data: myMemberships = [] } = useMyMemberships();
@@ -875,26 +873,6 @@ export default function Dashboard() {
                   </div>
                 </CardHeader>
                 <CardContent className="px-4 pb-4"><AchievementsDisplay compact /></CardContent>
-              </Card>
-
-              {/* Inbox Link */}
-              <Card className={cardClass}>
-                <CardHeader className="px-4 pt-4 pb-2">
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-secondary" />
-                    Messages
-                  </CardTitle>
-                  <CardDescription className="text-cream/60 text-xs">View your inbox</CardDescription>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <Link to="/inbox">
-                    <Button variant="outline" size="sm" className="w-full border-secondary/50 text-cream gap-2">
-                      <Mail className="h-3.5 w-3.5" />
-                      Open Inbox
-                      <ArrowRight className="h-3 w-3 ml-auto" />
-                    </Button>
-                  </Link>
-                </CardContent>
               </Card>
 
               {/* Borrowed Games */}

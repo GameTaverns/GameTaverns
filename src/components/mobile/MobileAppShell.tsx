@@ -139,7 +139,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   // IMPORTANT: Do NOT block platform paths (/dashboard, /catalog, /dm, etc.)
   const SHELL_PLATFORM_PATHS = [
     '/dashboard', '/catalog', '/dm', '/docs', '/directory', '/achievements',
-    '/community', '/club', '/u/', '/lists', '/inbox', '/create-library',
+    '/community', '/club', '/u/', '/lists', '/create-library',
     '/login', '/signup',
   ];
   const isOnPlatformPath = SHELL_PLATFORM_PATHS.some(

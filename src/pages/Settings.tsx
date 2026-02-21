@@ -31,7 +31,6 @@ import {
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useGames, useDeleteGame, useMechanics, usePublishers, useCreateMechanic, useCreatePublisher } from "@/hooks/useGames";
-import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useGameRatingsSummary } from "@/hooks/useGameRatings";
 import { Button } from "@/components/ui/button";
@@ -338,7 +337,7 @@ const Settings = () => {
   const { data: publishers = [], isLoading: publishersLoading, refetch: refetchPublishers } = usePublishers();
   const createMechanic = useCreateMechanic();
   const createPublisher = useCreatePublisher();
-  const { data: unreadCount = 0 } = useUnreadMessageCount();
+  // Legacy inbox removed — messaging unified under DMs
 
   // Game collection filter/pagination states
   const [gameFilterLetter, setGameFilterLetter] = useState<string | null>(null);
@@ -1026,22 +1025,6 @@ const Settings = () => {
             <SettingsIcon className="h-8 w-8 text-primary" />
             <h1 className="font-display text-3xl font-bold">Settings</h1>
           </div>
-          {isAdmin && (
-            <Button asChild variant="outline" className="flex items-center gap-2 relative">
-              <Link to="/admin/messages">
-                <Mail className="h-4 w-4" />
-                Messages
-                {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </Badge>
-                )}
-              </Link>
-            </Button>
-          )}
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">

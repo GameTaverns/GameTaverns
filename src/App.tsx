@@ -26,8 +26,6 @@ const GameDetail = lazy(() => import("./pages/GameDetail"));
 const Login = lazy(() => import("./pages/Login"));
 const Settings = lazy(() => import("./pages/Settings"));
 const GameForm = lazy(() => import("./pages/GameForm"));
-const Messages = lazy(() => import("./pages/Messages"));
-const Inbox = lazy(() => import("./pages/Inbox"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Docs = lazy(() => import("./pages/Docs"));
 const LibrarySuspended = lazy(() => import("./pages/LibrarySuspended"));
@@ -104,7 +102,7 @@ const PageLoader = () => (
 // even when a library is active on native.
 const PLATFORM_PATHS = [
   '/dashboard', '/catalog', '/dm', '/docs', '/directory', '/achievements',
-  '/community', '/club', '/u/', '/lists', '/inbox', '/create-library',
+  '/community', '/club', '/u/', '/lists', '/create-library',
   '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email',
   '/admin', '/setup-2fa', '/install', '/features', '/picker', '/request-club',
   '/join-club', '/legal', '/privacy', '/terms', '/cookies', '/games-for-',
@@ -256,7 +254,7 @@ function PlatformRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/inbox" element={<Inbox />} />
+      <Route path="/dashboard/editor" element={<DashboardEditor />} />
       <Route path="/dashboard/editor" element={<DashboardEditor />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />
@@ -314,7 +312,6 @@ function LibraryRoutes() {
       <Route path="/manage" element={<ManageGames />} />
       <Route path="/add" element={<GameForm />} />
       <Route path="/edit/:id" element={<GameForm />} />
-      <Route path="/messages" element={<Messages />} />
       <Route path="/stats" element={<PlayStatsPage />} />
       <Route path="/poll/:token" element={<PollPage />} />
       <Route path="/catalog-print" element={<CatalogPrint />} />
@@ -348,7 +345,7 @@ function LibraryRoutes() {
       <Route path="/lists/:listId" element={<CuratedListDetail />} />
       <Route path="/club/:slug" element={<ClubPage />} />
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
-      <Route path="/inbox" element={<Inbox />} />
+      <Route path="/picker" element={<SmartPicker />} />
       <Route path="/picker" element={<SmartPicker />} />
       
       <Route path="*" element={<NotFound />} />
