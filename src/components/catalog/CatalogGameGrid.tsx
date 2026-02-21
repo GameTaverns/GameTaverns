@@ -2,13 +2,14 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Clock, Weight, BookOpen, PenTool, Plus, Loader2 } from "lucide-react";
+import { Users, Clock, Weight, BookOpen, PenTool, Plus, Loader2, Heart } from "lucide-react";
 import { decodeHtmlEntities } from "@/lib/utils";
 
 export interface CatalogGameItem {
   id: string;
   title: string;
   slug: string | null;
+  bgg_id: string | null;
   image_url: string | null;
   min_players: number | null;
   max_players: number | null;
@@ -27,9 +28,12 @@ interface CatalogGameGridProps {
   addingId?: string;
   isPending: boolean;
   onAdd?: (gameId: string) => void;
+  onWant?: (game: CatalogGameItem) => void;
+  wantingId?: string;
+  isWanting?: boolean;
 }
 
-export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, onAdd }: CatalogGameGridProps) {
+export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, onAdd, onWant, wantingId, isWanting }: CatalogGameGridProps) {
   return (
     <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 items-stretch">
       {games.map((game) => (
@@ -97,19 +101,33 @@ export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, o
             </Card>
           </Link>
 
-          {/* Add button - outside Link to prevent click conflicts */}
-          {isAuthenticated && onAdd && (
-            <div className="absolute top-2 right-2 z-10">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-8 w-8"
-                title="Add to my library"
-                disabled={isPending && addingId === game.id}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(game.id); }}
-              >
-                {isPending && addingId === game.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-              </Button>
+          {/* Action buttons - outside Link to prevent click conflicts */}
+          {isAuthenticated && (
+            <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+              {onAdd && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-8 w-8"
+                  title="Add to my library"
+                  disabled={isPending && addingId === game.id}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(game.id); }}
+                >
+                  {isPending && addingId === game.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                </Button>
+              )}
+              {onWant && game.bgg_id && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="bg-background/80 backdrop-blur-sm hover:bg-primary/20 shadow-sm h-8 w-8 text-pink-500 hover:text-pink-600"
+                  title="Add to trade want list"
+                  disabled={isWanting && wantingId === game.id}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onWant(game); }}
+                >
+                  {isWanting && wantingId === game.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Heart className="h-3.5 w-3.5" />}
+                </Button>
+              )}
             </div>
           )}
         </div>
