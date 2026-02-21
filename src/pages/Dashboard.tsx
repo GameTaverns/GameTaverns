@@ -47,7 +47,7 @@ import { HotnessLeaderboard } from "@/components/games/HotnessLeaderboard";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
-import { PollsManager } from "@/components/polls/PollsManager";
+
 import { AccountSettings } from "@/components/settings/AccountSettings";
 import { ProfileThemeCustomizer } from "@/components/settings/ProfileThemeCustomizer";
 
@@ -463,7 +463,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Polls Card */}
+                {/* Polls Card - links to community */}
                 <Card className={`${cardClass} overflow-hidden`}>
                   <CardHeader className="px-4 pt-4 pb-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
@@ -472,8 +472,13 @@ export default function Dashboard() {
                     </CardTitle>
                     <CardDescription className="text-cream/60 text-xs">Create and manage game night polls</CardDescription>
                   </CardHeader>
-                  <CardContent className="px-4 pb-4 overflow-x-auto">
-                    <PollsManager libraryId={library.id} />
+                  <CardContent className="px-4 pb-4">
+                    <Link to="/community?tab=polls">
+                      <Button variant="outline" size="sm" className="w-full text-xs">
+                        <Vote className="h-3 w-3 mr-1.5" />
+                        View &amp; Manage Polls
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
 
