@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Vote, PartyPopper, Plus } from "lucide-react";
+import { Vote, PartyPopper, Plus, ExternalLink } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,7 @@ import { CreatePollDialog } from "./CreatePollDialog";
 import { Button } from "@/components/ui/button";
 import { useMyMemberships } from "@/hooks/useLibraryMembership";
 import { useTenant } from "@/contexts/TenantContext";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 
 /**
  * Shows polls across all of a user's libraries (platform mode)
@@ -33,13 +34,6 @@ export function CommunityPollsList() {
   }
 
   // Platform mode: show polls grouped by library
-  const ownerLibraries = memberships.filter(
-    (m) => m.role === "owner" && m.library
-  );
-  const memberLibraries = memberships.filter(
-    (m) => m.role !== "owner" && m.library
-  );
-
   if (memberships.length === 0) {
     return (
       <div className="text-center py-12 border border-dashed rounded-lg">
@@ -52,24 +46,16 @@ export function CommunityPollsList() {
     );
   }
 
+  // Show ALL libraries (owned + member) with polls
   return (
     <div className="space-y-8">
-      {ownerLibraries.map((m) => (
+      {memberships.map((m) => (
         <SingleLibraryPolls
           key={m.library!.id}
           libraryId={m.library!.id}
           libraryName={m.library!.name}
-          canManage
-          selectedPollId={selectedPollId}
-          onSelectPoll={setSelectedPollId}
-        />
-      ))}
-      {memberLibraries.map((m) => (
-        <SingleLibraryPolls
-          key={m.library!.id}
-          libraryId={m.library!.id}
-          libraryName={m.library!.name}
-          canManage={false}
+          librarySlug={m.library!.slug}
+          canManage={m.role === "owner"}
           selectedPollId={selectedPollId}
           onSelectPoll={setSelectedPollId}
         />
@@ -81,12 +67,14 @@ export function CommunityPollsList() {
 function SingleLibraryPolls({
   libraryId,
   libraryName,
+  librarySlug,
   canManage,
   selectedPollId,
   onSelectPoll,
 }: {
   libraryId: string;
   libraryName: string;
+  librarySlug?: string;
   canManage: boolean;
   selectedPollId: string | null;
   onSelectPoll: (id: string | null) => void;
@@ -108,8 +96,19 @@ function SingleLibraryPolls({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold font-display">{libraryName}</h2>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-bold font-display">{libraryName}</h2>
+          {librarySlug && (
+            <a
+              href={getLibraryUrl(librarySlug, "/community?tab=polls")}
+              className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Visit
+            </a>
+          )}
+        </div>
         {canManage && (
           <CreatePollDialog
             libraryId={libraryId}
@@ -149,16 +148,16 @@ function SingleLibraryPolls({
           </TabsList>
 
           <TabsContent value="all" className="mt-4">
-            <PollGrid polls={polls} libraryId={libraryId} onViewResults={onSelectPoll} />
+            <PollGrid polls={polls} libraryId={libraryId} canManage={canManage} onViewResults={onSelectPoll} />
           </TabsContent>
           <TabsContent value="open" className="mt-4">
-            <PollGrid polls={openPolls} libraryId={libraryId} onViewResults={onSelectPoll} emptyMessage="No open polls" />
+            <PollGrid polls={openPolls} libraryId={libraryId} canManage={canManage} onViewResults={onSelectPoll} emptyMessage="No open polls" />
           </TabsContent>
           <TabsContent value="quick" className="mt-4">
-            <PollGrid polls={quickPolls} libraryId={libraryId} onViewResults={onSelectPoll} emptyMessage="No quick votes" emptyIcon={Vote} />
+            <PollGrid polls={quickPolls} libraryId={libraryId} canManage={canManage} onViewResults={onSelectPoll} emptyMessage="No quick votes" emptyIcon={Vote} />
           </TabsContent>
           <TabsContent value="game_night" className="mt-4">
-            <PollGrid polls={gameNights} libraryId={libraryId} onViewResults={onSelectPoll} emptyMessage="No game nights" emptyIcon={PartyPopper} />
+            <PollGrid polls={gameNights} libraryId={libraryId} canManage={canManage} onViewResults={onSelectPoll} emptyMessage="No game nights" emptyIcon={PartyPopper} />
           </TabsContent>
         </Tabs>
       )}
@@ -175,12 +174,14 @@ function SingleLibraryPolls({
 function PollGrid({
   polls,
   libraryId,
+  canManage,
   onViewResults,
   emptyMessage = "No polls",
   emptyIcon: EmptyIcon = Vote,
 }: {
   polls: Poll[];
   libraryId: string;
+  canManage: boolean;
   onViewResults: (pollId: string) => void;
   emptyMessage?: string;
   emptyIcon?: React.ElementType;
@@ -203,6 +204,7 @@ function PollGrid({
           key={poll.id}
           poll={poll}
           libraryId={libraryId}
+          canManage={canManage}
           onViewResults={onViewResults}
         />
       ))}

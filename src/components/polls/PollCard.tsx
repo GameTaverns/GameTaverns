@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Vote, PartyPopper, Clock, Users, Share2, Trash2, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
+import { Vote, PartyPopper, Clock, Users, Share2, Trash2, BarChart3, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,32 +15,63 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { type Poll, useClosePoll, useDeletePoll, usePoll, usePollResults } from "@/hooks/usePolls";
+import { type Poll, useClosePoll, useDeletePoll, usePoll, usePollResults, useVote, useRemoveVote } from "@/hooks/usePolls";
 import { toast } from "sonner";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { GameImage } from "@/components/games/GameImage";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+
+function getVoterIdentifier(userId?: string): string {
+  if (userId) return userId;
+  let id = localStorage.getItem("voter_identifier");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("voter_identifier", id);
+  }
+  return id;
+}
 
 interface PollCardProps {
   poll: Poll;
   libraryId: string;
   onViewResults?: (pollId: string) => void;
+  canManage?: boolean;
 }
 
-export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
+export function PollCard({ poll, libraryId, onViewResults, canManage = true }: PollCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [votedOptionIds, setVotedOptionIds] = useState<string[]>([]);
   const closePoll = useClosePoll();
   const deletePoll = useDeletePoll();
+  const voteMutation = useVote();
+  const removeVoteMutation = useRemoveVote();
   const { data: results } = usePollResults(poll.id);
   const { data: fullPoll, isLoading: optionsLoading } = usePoll(expanded ? poll.id : null);
   const { buildUrl } = useTenantUrl();
+  const { user } = useAuth();
 
+  const voterIdentifier = getVoterIdentifier(user?.id);
   const totalVotes = results?.reduce((sum, r) => sum + r.vote_count, 0) || 0;
+
+  const isOpen = poll.status === "open" && (!poll.voting_ends_at || new Date(poll.voting_ends_at) > new Date());
+  const showResults = poll.show_results_before_close || poll.status === "closed";
 
   const handleCopyLink = () => {
     const url = buildUrl(`/poll/${poll.share_token}`);
     navigator.clipboard.writeText(window.location.origin + url);
     toast.success("Poll link copied to clipboard!");
+  };
+
+  const handleVote = async (optionId: string) => {
+    if (votedOptionIds.includes(optionId)) {
+      await removeVoteMutation.mutateAsync({ pollId: poll.id, optionId, voterIdentifier });
+      setVotedOptionIds(prev => prev.filter(id => id !== optionId));
+    } else if (isOpen && votedOptionIds.length < poll.max_votes_per_user) {
+      const voterName = user ? undefined : localStorage.getItem("voter_name") || undefined;
+      await voteMutation.mutateAsync({ pollId: poll.id, optionId, voterIdentifier, voterName });
+      setVotedOptionIds(prev => [...prev, optionId]);
+    }
   };
 
   const statusColors: Record<string, string> = {
@@ -50,6 +81,7 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
   };
 
   const options = fullPoll?.options || [];
+  const canVoteMore = isOpen && votedOptionIds.length < poll.max_votes_per_user;
 
   return (
     <Card className="bg-card/50 hover:bg-card/80 transition-colors overflow-hidden">
@@ -110,7 +142,7 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
             </Button>
           )}
 
-          {poll.status === "open" && (
+          {canManage && poll.status === "open" && (
             <Button
               variant="outline"
               size="sm"
@@ -122,44 +154,53 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
             </Button>
           )}
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive">
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Poll</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete this poll and all its votes. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deletePoll.mutate({ pollId: poll.id, libraryId })}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {canManage && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive">
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Poll</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete this poll and all its votes. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deletePoll.mutate({ pollId: poll.id, libraryId })}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 
-      {/* Expanded options list */}
+      {/* Expanded options list with voting */}
       {expanded && (
         <div className="border-t border-border/50 px-4 py-3 space-y-2">
           {poll.description && (
             <p className="text-sm text-muted-foreground mb-3">{poll.description}</p>
           )}
 
+          {isOpen && (
+            <p className="text-xs text-muted-foreground mb-2">
+              Click an option to vote · {poll.max_votes_per_user > 1 ? `Up to ${poll.max_votes_per_user} votes` : "1 vote"} allowed
+              {votedOptionIds.length > 0 && ` · ${votedOptionIds.length} used`}
+            </p>
+          )}
+
           {optionsLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
+                <Skeleton key={i} className="h-14 w-full" />
               ))}
             </div>
           ) : options.length === 0 ? (
@@ -170,14 +211,24 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
                 const result = results?.find((r) => r.option_id === option.id);
                 const voteCount = result?.vote_count || 0;
                 const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
+                const isVoted = votedOptionIds.includes(option.id);
+                const isVoting = voteMutation.isPending || removeVoteMutation.isPending;
 
                 return (
-                  <div
+                  <button
                     key={option.id}
-                    className="flex items-center gap-3 p-2.5 rounded-lg border border-border/50 bg-background/50 relative overflow-hidden"
+                    onClick={(e) => { e.stopPropagation(); handleVote(option.id); }}
+                    disabled={!isOpen || isVoting || (!canVoteMore && !isVoted)}
+                    className={`w-full text-left flex items-center gap-3 p-3 rounded-lg border transition-all relative overflow-hidden ${
+                      isVoted
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                        : isOpen && canVoteMore
+                        ? "border-border/50 bg-background/50 hover:border-primary/50 cursor-pointer"
+                        : "border-border/50 bg-background/50 opacity-75"
+                    }`}
                   >
                     {/* Vote percentage background bar */}
-                    {totalVotes > 0 && (
+                    {showResults && totalVotes > 0 && (
                       <div
                         className="absolute inset-y-0 left-0 bg-primary/10 transition-all"
                         style={{ width: `${percentage}%` }}
@@ -189,7 +240,7 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
                     </span>
 
                     {option.game?.image_url && (
-                      <div className="w-8 h-8 rounded overflow-hidden shrink-0 relative z-10">
+                      <div className="w-10 h-10 rounded overflow-hidden shrink-0 relative z-10">
                         <GameImage
                           imageUrl={option.game.image_url}
                           alt={option.game?.title || "Game"}
@@ -202,7 +253,11 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
                       {option.game?.title || "Unknown game"}
                     </span>
 
-                    {(poll.show_results_before_close || poll.status === "closed") && (
+                    {isVoted && (
+                      <Check className="h-4 w-4 text-primary shrink-0 relative z-10" />
+                    )}
+
+                    {showResults && (
                       <div className="flex items-center gap-2 shrink-0 relative z-10">
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           {voteCount} vote{voteCount !== 1 ? "s" : ""}
@@ -214,7 +269,7 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
                         )}
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -223,7 +278,7 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
       )}
 
       {/* Top results preview - only when collapsed */}
-      {!expanded && results && results.length > 0 && (poll.show_results_before_close || poll.status === "closed") && (
+      {!expanded && results && results.length > 0 && showResults && (
         <div className="border-t border-border/50 px-4 py-2.5 flex flex-wrap items-center gap-3">
           <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Top Results</span>
           {results.slice(0, 3).map((result, index) => (
