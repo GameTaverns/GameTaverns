@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { withLogging } from "../_shared/system-logger.ts";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
+import { logAudit, getClientIp } from "../_shared/audit-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -394,6 +395,14 @@ async function handler(req: Request): Promise<Response> {
           console.warn("[Signup] Referral lookup error (non-fatal):", refLookupErr.message);
         }
       }
+
+      // Log signup audit event
+      await logAudit({
+        userId,
+        action: "signup",
+        details: { email: email.toLowerCase(), username: username?.toLowerCase() },
+        ipAddress: clientIp,
+      });
 
       return new Response(
         JSON.stringify({ success: true, message: "Account created! You can now sign in." }),

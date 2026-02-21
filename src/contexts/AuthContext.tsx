@@ -522,6 +522,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Check account lockout before attempting login
+      try {
+        const lockoutRes = await fetch(`${apiUrl}/functions/v1/check-login`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            apikey: anonKey,
+          },
+          body: JSON.stringify({ email, action: "pre_check" }),
+        });
+        if (lockoutRes.status === 429) {
+          const lockoutData = await lockoutRes.json().catch(() => ({}));
+          return { error: { message: lockoutData.message || "Account temporarily locked. Please try again later." } };
+        }
+      } catch {
+        // Fail open — don't block login if lockout check fails
+      }
+
       const url = `${apiUrl}/auth/v1/token?grant_type=password`;
       const res = await fetch(url, {
         method: "POST",
@@ -536,6 +554,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        // Record failed login attempt (fire-and-forget)
+        fetch(`${apiUrl}/functions/v1/check-login`, {
+          method: "POST",
+          headers: { "content-type": "application/json", apikey: anonKey },
+          body: JSON.stringify({ email, action: "record_failure" }),
+        }).catch(() => {});
         const msg = (json as any)?.error_description || (json as any)?.error || "Invalid login credentials";
         return { error: { message: msg } };
       }
@@ -546,6 +570,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!access_token || !refresh_token) {
         return { error: { message: "Sign in succeeded but session tokens were missing." } };
       }
+
+      // Record successful login (fire-and-forget)
+      const userId = (json as any)?.user?.id;
+      fetch(`${apiUrl}/functions/v1/check-login`, {
+        method: "POST",
+        headers: { "content-type": "application/json", apikey: anonKey },
+        body: JSON.stringify({ email, action: "record_success", userId }),
+      }).catch(() => {});
 
       if (typeof window !== "undefined" && window.localStorage) {
         const lockPrefix = `lock:${authStorageKey}`;

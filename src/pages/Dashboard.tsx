@@ -127,6 +127,9 @@ const ServerManagement = lazy(() =>
 const CronJobsMonitor = lazy(() =>
   import("@/components/admin/CronJobsMonitor").then(m => ({ default: m.CronJobsMonitor }))
 );
+const AuditLogViewer = lazy(() =>
+  import("@/components/admin/AuditLogViewer").then(m => ({ default: m.AuditLogViewer }))
+);
 
 export default function Dashboard() {
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -1007,6 +1010,9 @@ export default function Dashboard() {
                     <TabsTrigger value="server" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
                       <Terminal className="h-3 w-3" /> Server
                     </TabsTrigger>
+                    <TabsTrigger value="security" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <Shield className="h-3 w-3" /> Security
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="analytics"><PlatformAnalytics /></TabsContent>
@@ -1030,6 +1036,11 @@ export default function Dashboard() {
                   <TabsContent value="server">
                     <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading server tools…</div>}>
                       <ServerManagement />
+                    </Suspense>
+                  </TabsContent>
+                  <TabsContent value="security">
+                    <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading security logs…</div>}>
+                      <AuditLogViewer />
                     </Suspense>
                   </TabsContent>
                 </Tabs>

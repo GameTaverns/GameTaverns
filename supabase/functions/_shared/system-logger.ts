@@ -87,6 +87,7 @@ function getSourceCategory(functionName: string): string {
     "profile-update": "settings",
     "sync-achievements": "achievements",
     "clubs": "clubs",
+    "check-login": "auth",
     "system-health": "system",
   };
   
