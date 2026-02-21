@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Send, Loader2, LogIn } from "lucide-react";
 import { z } from "zod";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,7 +38,6 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
   const { isAuthenticated } = useAuth();
   const { buildUrl } = useTenantUrl();
   const { data: userProfile } = useUserProfile();
-  const navigate = useNavigate();
 
   // Auto-populate name from user profile
   useEffect(() => {
@@ -86,13 +85,8 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
 
       toast({
         title: "Message sent!",
-        description: "Opening your conversation...",
+        description: "Your inquiry has been sent as a direct message. Check your DMs for replies.",
       });
-
-      // Navigate directly to the DM thread with the owner
-      if (data.recipient_id) {
-        navigate(buildUrl(`/dm/${data.recipient_id}`));
-      }
 
       setName("");
       setMessage("");
