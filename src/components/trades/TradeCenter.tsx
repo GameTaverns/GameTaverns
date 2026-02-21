@@ -88,7 +88,7 @@ export function TradeCenter() {
           </TabsTrigger>
           <TabsTrigger value="wants">
             <Heart className="h-4 w-4 mr-1" />
-            Want List
+            Wishlist
           </TabsTrigger>
           <TabsTrigger value="offers">
             <Send className="h-4 w-4 mr-1" />
@@ -155,7 +155,7 @@ function MatchesTab() {
           <Sparkles className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
           <p className="font-medium">No matches yet</p>
           <p className="text-sm text-muted-foreground">
-            Add games to your want list and we'll find traders
+            Add games to your Wishlist and we'll find traders
           </p>
         </CardContent>
       </Card>
@@ -319,7 +319,7 @@ function WantListTab() {
     if (!id || !gameTitle) return;
     try {
       await addWant.mutateAsync({ bgg_id: id, game_title: gameTitle });
-      toast({ title: "Added to want list" });
+      toast({ title: "Added to Wishlist" });
       setAddOpen(false);
       setBggInput("");
       setGameTitle("");
@@ -332,7 +332,7 @@ function WantListTab() {
   const handleRemove = async (id: string) => {
     try {
       await removeWant.mutateAsync(id);
-      toast({ title: "Removed from want list" });
+      toast({ title: "Removed from Wishlist" });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -349,12 +349,12 @@ function WantListTab() {
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="h-4 w-4 mr-1" />
-              Add Want
+              Add to Wishlist
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add to Want List</DialogTitle>
+              <DialogTitle>Add to Wishlist</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -409,14 +409,14 @@ function WantListTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Games You Want</CardTitle>
+          <CardTitle className="text-lg">Your Wishlist</CardTitle>
           <CardDescription>
             We'll match you with traders who have these games
           </CardDescription>
         </CardHeader>
         <CardContent>
           {!wants?.length ? (
-            <p className="text-center text-muted-foreground py-4">Your want list is empty</p>
+            <p className="text-center text-muted-foreground py-4">Your Wishlist is empty</p>
           ) : (
             <div className="space-y-2">
               {wants.map((want) => (

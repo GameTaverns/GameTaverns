@@ -294,14 +294,14 @@ export default function CatalogBrowse() {
       { bgg_id: game.bgg_id, game_title: game.title },
       {
         onSuccess: () => {
-          toast({ title: "Added to want list", description: `"${game.title}" added to your trade want list.` });
+          toast({ title: "Added to Wishlist", description: `"${game.title}" added to your Wishlist.` });
           setWantingGameId(null);
         },
         onError: (err: any) => {
           const isDuplicate = err?.code === "23505" || err?.message?.includes("duplicate");
           toast({
-            title: isDuplicate ? "Already on want list" : "Error",
-            description: isDuplicate ? `"${game.title}" is already on your want list.` : "Failed to add to want list.",
+            title: isDuplicate ? "Already on Wishlist" : "Error",
+            description: isDuplicate ? `"${game.title}" is already on your Wishlist.` : "Failed to add to Wishlist.",
             variant: isDuplicate ? "default" : "destructive",
           });
           setWantingGameId(null);
