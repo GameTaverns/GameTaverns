@@ -30,7 +30,6 @@ function loadRecaptchaScript(): Promise<void> {
   if (scriptLoadPromise) return scriptLoadPromise;
 
   scriptLoadPromise = new Promise<void>((resolve, reject) => {
-    // Timeout to prevent infinite waits (e.g. Brave blocks the script)
     const timeout = setTimeout(() => {
       scriptFailed = true;
       reject(new Error("reCAPTCHA load timed out"));
@@ -81,7 +80,10 @@ function loadRecaptchaScript(): Promise<void> {
 /**
  * Invisible reCAPTCHA v3 — executes silently and calls onVerify with a token.
  * Native apps bypass entirely (token = "RECAPTCHA_BYPASS_TOKEN").
- * Self-hosted without RECAPTCHA_SECRET_KEY configured will skip server validation.
+ * 
+ * When reCAPTCHA is blocked (e.g. Brave browser), the token will be set to
+ * "HONEYPOT_ONLY" — meaning the honeypot field is the sole bot check.
+ * The server should accept this token when the honeypot passes.
  */
 export function RecaptchaWidget({ action = "submit", onVerify }: RecaptchaWidgetProps) {
   const isNative = Capacitor.isNativePlatform();
@@ -106,16 +108,16 @@ export function RecaptchaWidget({ action = "submit", onVerify }: RecaptchaWidget
           onVerify(token);
         } catch (err) {
           console.error("[RecaptchaWidget] execute error:", err);
-          // Fail open — let form proceed; server will decide based on secret key presence
+          // reCAPTCHA failed to execute — fall back to honeypot-only mode
           hasVerified.current = true;
-          onVerify("RECAPTCHA_EXECUTE_FAILED");
+          onVerify("HONEYPOT_ONLY");
         }
       });
     } catch (err) {
       console.error("[RecaptchaWidget] load error:", err);
-      // Fail open
+      // reCAPTCHA blocked (e.g. Brave) — fall back to honeypot-only mode
       hasVerified.current = true;
-      onVerify("RECAPTCHA_LOAD_FAILED");
+      onVerify("HONEYPOT_ONLY");
     }
   }, [action, isNative, onVerify]);
 
