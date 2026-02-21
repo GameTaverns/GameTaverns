@@ -143,9 +143,13 @@ async function scanGameAcrossPublishers(
       // Consume body to prevent resource leak
       const body = await res.text();
 
-      // Check for soft 404s: page exists (200) but contains "not found" / "page not found" signals
-      const isSoft404 = body.length < 1000 ||
-        /page\s*not\s*found|404|no\s*results|doesn.t\s*exist/i.test(body.substring(0, 2000));
+      // Check for soft 404s: page exists (200) but is actually an error page
+      // Only flag as soft-404 if very small AND contains error keywords
+      // Many SPAs return small HTML shells that are valid pages
+      const bodySnippet = body.substring(0, 5000).toLowerCase();
+      const hasErrorKeywords = /page\s*not\s*found|<title>404|not\s*found<\/|no\s*results?\s*found|doesn.t\s*exist|this\s*page\s*isn/i.test(bodySnippet);
+      const isSoft404 = (body.length < 500 && hasErrorKeywords) ||
+        (status === 200 && bodySnippet.includes("<title>404"));
 
       console.log(`[purchase-link-scanner] ${key}: ${candidateUrl} → ${status} (body: ${body.length} chars, soft404: ${isSoft404}, final: ${finalUrl})`);
 
