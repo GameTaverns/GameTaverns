@@ -66,6 +66,20 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // Cleanup: unregister any lingering PWA service workers from previous builds
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          registrations.forEach(function(reg) { reg.unregister(); });
+        });
+        // Also clear PWA caches
+        if (window.caches) {
+          caches.keys().then(function(names) {
+            names.forEach(function(name) { caches.delete(name); });
+          });
+        }
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
