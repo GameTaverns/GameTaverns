@@ -181,23 +181,33 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
     setIsSpinning(true);
     setPickedGame(null);
     
-    // Simulate spinning through games
-    let iterations = 0;
-    const maxIterations = 20;
-    const interval = setInterval(() => {
-      const randomIndex = Math.floor(Math.random() * eligibleGames.length);
-      setPickedGame(eligibleGames[randomIndex]);
-      iterations++;
+    // Pre-select all random games and preload their images
+    const totalIterations = 20;
+    const picks: Game[] = [];
+    for (let i = 0; i <= totalIterations; i++) {
+      picks.push(eligibleGames[Math.floor(Math.random() * eligibleGames.length)]);
+    }
+    picks.forEach(g => {
+      if (g.image_url) { const img = new Image(); img.src = g.image_url; }
+    });
+    
+    let iteration = 0;
+    const rollNext = () => {
+      setPickedGame(picks[iteration]);
+      iteration++;
       
-      if (iterations >= maxIterations) {
-        clearInterval(interval);
-        // Final pick
-        const finalIndex = Math.floor(Math.random() * eligibleGames.length);
-        setPickedGame(eligibleGames[finalIndex]);
+      if (iteration < totalIterations) {
+        // Start fast (50ms), decelerate toward end
+        const delay = 50 + Math.pow(iteration, 1.8);
+        setTimeout(rollNext, delay);
+      } else {
+        setPickedGame(picks[totalIterations]);
         setIsSpinning(false);
         setShowResult(true);
       }
-    }, 100);
+    };
+    
+    rollNext();
   }, [eligibleGames]);
   
   // Instant pick (no animation)
