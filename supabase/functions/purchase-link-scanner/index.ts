@@ -141,7 +141,7 @@ async function scanGameAcrossPublishers(
         );
         if (!error) totalAdded++;
       }
-    } catch {
+    } catch (_e) {
       // URL doesn't exist, skip
     }
   }
