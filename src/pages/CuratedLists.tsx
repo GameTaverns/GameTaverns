@@ -208,7 +208,7 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
 
 function WishlistVirtualCard({ itemCount }: { itemCount: number }) {
   const { tenantSlug } = useTenant();
-  const href = tenantSlug ? getLibraryUrl(tenantSlug, "/trades") : "/trades";
+  const href = tenantSlug ? getLibraryUrl(tenantSlug, "/dashboard?tab=trades") : "/dashboard?tab=trades";
 
   return (
     <Link
