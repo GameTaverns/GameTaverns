@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Layout } from "@/components/layout/Layout";
@@ -18,6 +18,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
 import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
+import { useAddWant } from "@/hooks/useTrades";
+import { useToast } from "@/hooks/use-toast";
 
 
 interface CatalogGameFull {
@@ -76,6 +78,8 @@ export default function CatalogGameDetail() {
   const { data: myLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
   const addFromCatalog = useAddFromCatalog();
+  const addWant = useAddWant();
+  const { toast } = useToast();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
@@ -392,7 +396,34 @@ export default function CatalogGameDetail() {
                 </Button>
               )}
 
-              {/* BGG Link */}
+              {/* Add to Want List */}
+              {isAuthenticated && game.bgg_id && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    addWant.mutate(
+                      { bgg_id: game.bgg_id!, game_title: game.title },
+                      {
+                        onSuccess: () => toast({ title: "Added to want list", description: `"${game.title}" added to your trade want list.` }),
+                        onError: (err: any) => {
+                          const isDuplicate = err?.code === "23505" || err?.message?.includes("duplicate");
+                          toast({
+                            title: isDuplicate ? "Already on want list" : "Error",
+                            description: isDuplicate ? `"${game.title}" is already on your want list.` : "Failed to add to want list.",
+                            variant: isDuplicate ? "default" : "destructive",
+                          });
+                        },
+                      }
+                    );
+                  }}
+                  disabled={addWant.isPending}
+                  className="gap-2"
+                >
+                  {addWant.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className="h-4 w-4" />}
+                  Add to Want List
+                </Button>
+              )}
+
               {game.bgg_url && (
                 <a href={game.bgg_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">
                   <ExternalLink className="h-4 w-4" /> View on BoardGameGeek

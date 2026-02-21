@@ -14,10 +14,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
 import { CatalogSidebar } from "@/components/catalog/CatalogSidebar";
-import { CatalogGameGrid } from "@/components/catalog/CatalogGameGrid";
+import { CatalogGameGrid, type CatalogGameItem } from "@/components/catalog/CatalogGameGrid";
 import { CatalogGameList } from "@/components/catalog/CatalogGameList";
 import { CatalogPagination } from "@/components/catalog/CatalogPagination";
 import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
+import { useAddWant } from "@/hooks/useTrades";
+import { useToast } from "@/hooks/use-toast";
 
 interface CatalogGame {
   id: string;
@@ -48,8 +50,11 @@ export default function CatalogBrowse() {
   const { data: myLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
   const addFromCatalog = useAddFromCatalog();
+  const addWant = useAddWant();
+  const { toast } = useToast();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pendingCatalogId, setPendingCatalogId] = useState<string | null>(null);
+  const [wantingGameId, setWantingGameId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -282,6 +287,29 @@ export default function CatalogBrowse() {
     }
   };
 
+  const handleWantGame = (game: CatalogGameItem) => {
+    if (!game.bgg_id) return;
+    setWantingGameId(game.id);
+    addWant.mutate(
+      { bgg_id: game.bgg_id, game_title: game.title },
+      {
+        onSuccess: () => {
+          toast({ title: "Added to want list", description: `"${game.title}" added to your trade want list.` });
+          setWantingGameId(null);
+        },
+        onError: (err: any) => {
+          const isDuplicate = err?.code === "23505" || err?.message?.includes("duplicate");
+          toast({
+            title: isDuplicate ? "Already on want list" : "Error",
+            description: isDuplicate ? `"${game.title}" is already on your want list.` : "Failed to add to want list.",
+            variant: isDuplicate ? "default" : "destructive",
+          });
+          setWantingGameId(null);
+        },
+      }
+    );
+  };
+
   const handlePickerSelect = (libraryId: string) => {
     if (pendingCatalogId) {
       addFromCatalog.mutate({ catalogId: pendingCatalogId, libraryId }, {
@@ -434,6 +462,9 @@ export default function CatalogBrowse() {
               addingId={addFromCatalog.variables?.catalogId}
               isPending={addFromCatalog.isPending}
               onAdd={handleAddGame}
+              onWant={handleWantGame}
+              wantingId={wantingGameId ?? undefined}
+              isWanting={addWant.isPending}
             />
           ) : (
             <CatalogGameList
