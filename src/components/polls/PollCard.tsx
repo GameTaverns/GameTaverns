@@ -45,57 +45,57 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
   };
 
   return (
-    <Card className="bg-card/50 hover:bg-card/80 transition-colors">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-2">
+    <Card className="bg-card/50 hover:bg-card/80 transition-colors overflow-hidden">
+      <CardHeader className="p-3 pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
             {poll.poll_type === "game_night" ? (
-              <PartyPopper className="h-5 w-5 text-primary" />
+              <PartyPopper className="h-4 w-4 shrink-0 text-primary" />
             ) : (
-              <Vote className="h-5 w-5 text-primary" />
+              <Vote className="h-4 w-4 shrink-0 text-primary" />
             )}
-            <CardTitle className="text-lg">{poll.title}</CardTitle>
+            <CardTitle className="text-sm font-semibold truncate">{poll.title}</CardTitle>
           </div>
-          <Badge className={statusColors[poll.status]}>
+          <Badge className={`${statusColors[poll.status]} text-[10px] px-1.5 py-0 shrink-0`}>
             {poll.status}
           </Badge>
         </div>
         {poll.description && (
-          <p className="text-sm text-muted-foreground mt-2">{poll.description}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{poll.description}</p>
         )}
       </CardHeader>
 
-      <CardContent className="pb-3">
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+      <CardContent className="p-3 pt-0 pb-2">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {poll.poll_type === "game_night" && poll.event_date && (
-            <div className="flex items-center gap-1.5">
-              <Clock className="h-4 w-4" />
-              {format(new Date(poll.event_date), "PPp")}
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {format(new Date(poll.event_date), "PP")}
             </div>
           )}
           {poll.voting_ends_at && (
-            <div className="flex items-center gap-1.5">
-              <Clock className="h-4 w-4" />
-              Voting ends {format(new Date(poll.voting_ends_at), "PPp")}
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Ends {format(new Date(poll.voting_ends_at), "PP")}
             </div>
           )}
-          <div className="flex items-center gap-1.5">
-            <Users className="h-4 w-4" />
+          <div className="flex items-center gap-1">
+            <Users className="h-3 w-3" />
             {totalVotes} vote{totalVotes !== 1 ? "s" : ""}
           </div>
         </div>
 
         {/* Top results preview */}
         {results && results.length > 0 && (poll.show_results_before_close || poll.status === "closed") && (
-          <div className="mt-4 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="mt-2 space-y-1">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
               Top Results
             </p>
             {results.slice(0, 3).map((result, index) => (
-              <div key={result.option_id} className="flex items-center gap-2">
-                <span className="text-sm font-medium w-5">{index + 1}.</span>
-                <span className="text-sm truncate flex-1">{result.game_title}</span>
-                <Badge variant="outline" className="text-xs">
+              <div key={result.option_id} className="flex items-center gap-1.5">
+                <span className="text-xs font-medium w-4">{index + 1}.</span>
+                <span className="text-xs truncate flex-1">{result.game_title}</span>
+                <Badge variant="outline" className="text-[10px] px-1 py-0">
                   {result.vote_count}
                 </Badge>
               </div>
@@ -104,15 +104,15 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
         )}
       </CardContent>
 
-      <CardFooter className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={handleCopyLink}>
-          <Share2 className="h-4 w-4 mr-1.5" />
+      <CardFooter className="flex flex-wrap gap-1.5 p-3 pt-0">
+        <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={handleCopyLink}>
+          <Share2 className="h-3 w-3 mr-1" />
           Share
         </Button>
 
         {onViewResults && (
-          <Button variant="outline" size="sm" onClick={() => onViewResults(poll.id)}>
-            <BarChart3 className="h-4 w-4 mr-1.5" />
+          <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => onViewResults(poll.id)}>
+            <BarChart3 className="h-3 w-3 mr-1" />
             Results
           </Button>
         )}
@@ -121,36 +121,21 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
           <Button
             variant="outline"
             size="sm"
+            className="h-7 text-xs px-2"
             onClick={() => closePoll.mutate(poll.id)}
             disabled={closePoll.isPending}
           >
-            Close Poll
+            Close
           </Button>
         )}
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-              <Trash2 className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive">
+              <Trash2 className="h-3 w-3" />
             </Button>
           </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete this poll?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete the poll and all votes. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => deletePoll.mutate({ pollId: poll.id, libraryId })}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
+...
         </AlertDialog>
       </CardFooter>
     </Card>
