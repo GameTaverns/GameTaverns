@@ -125,6 +125,33 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       borrower_ratings: {
         Row: {
           created_at: string
@@ -3114,6 +3141,30 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          ip_address: string | null
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+        }
+        Relationships: []
+      }
       mechanics: {
         Row: {
           created_at: string | null
@@ -4806,6 +4857,11 @@ export type Database = {
       }
       cleanup_expired_email_tokens: { Args: never; Returns: undefined }
       cleanup_expired_tokens: { Args: never; Returns: undefined }
+      cleanup_old_audit_logs: {
+        Args: { retention_days?: number }
+        Returns: number
+      }
+      cleanup_old_login_attempts: { Args: never; Returns: number }
       cleanup_old_messages: {
         Args: { retention_days?: number }
         Returns: number
@@ -4882,6 +4938,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_account_locked: { Args: { _email: string }; Returns: boolean }
       is_club_member: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
