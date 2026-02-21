@@ -100,77 +100,110 @@ export default function Press() {
         <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
           High-resolution screenshots showcasing the GameTaverns experience. Click to view full size.
         </p>
-        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-          <ScreenshotCard
-            src={`${PK}/library1-2.jpg`}
-            title="Library Collection — Dark Theme"
-            description="Beautiful grid layout with filters, search, and detailed game cards. Supports multiple views and custom sorting."
-          />
-          <ScreenshotCard
-            src={`${PK}/library2-2.jpg`}
-            title="Library Collection — Teal Theme"
-            description="Every library is fully customizable with unique colors, fonts, and backgrounds to match each owner's style."
-          />
-          <ScreenshotCard
-            src={`${PK}/gamecard-2.jpg`}
-            title="Game Detail Card"
-            description="Rich game pages with box art, AI-generated descriptions, mechanics, designer credits, play history, and documents."
-          />
-          <ScreenshotCard
-            src={`${PK}/badges2-2.jpg`}
-            title="User Profile & Badges"
-            description="Customizable profiles with role badges, follower counts, cover images, and community reputation."
-          />
-          <ScreenshotCard
-            src={`${PK}/userprofile.jpg`}
-            title="Profile Activity Feed"
-            description="Recent activity timeline with achievements earned, games added, and community interactions."
-          />
-          <ScreenshotCard
-            src={`${PK}/playstats.jpg`}
-            title="Play Stats & Analytics"
-            description="Monthly and annual play tracking with H-index, top mechanics, most played games, and session history."
-          />
-          <ScreenshotCard
-            src={`${PK}/poll.jpg`}
-            title="Game Night Polls"
-            description="Shareable voting polls for game nights — no account required. Live results and RSVP tracking."
-          />
-          <ScreenshotCard
-            src={`${PK}/pollresults.jpg`}
-            title="Poll Results"
-            description="Live ranked results with vote counts, percentages, and trophy indicators for top picks."
-          />
-          <ScreenshotCard
-            src={`${PK}/picker_setup.jpg`}
-            title="Random Game Picker"
-            description="Filter by type, genre, play time, and player count — then spin to let fate choose your next game."
-          />
-          <ScreenshotCard
-            src={`${PK}/picker_result.jpg`}
-            title="Picker Result"
-            description="Tonight's pick displayed with box art, game type, play time, and player count. Share or pick again."
-          />
-          <ScreenshotCard
-            src={`${PK}/borrow1.jpg`}
-            title="Lending Management"
-            description="Full lending dashboard with inventory overview, pending requests, and loan history tracking."
-          />
-          <ScreenshotCard
-            src={`${PK}/borrow2.jpg`}
-            title="Loan Approval"
-            description="Approve borrow requests with condition notes, due dates, and optional pickup instructions."
-          />
-          <ScreenshotCard
-            src={`${PK}/borrow_returned.jpg`}
-            title="Returned & Rated"
-            description="Track return condition and rate borrowers to build community trust and lending reputation."
-          />
-          <ScreenshotCard
-            src={`${PK}/addgames.jpg`}
-            title="Bulk Import"
-            description="Import games from CSV, BGG collection sync, or paste BGG links. Refresh images and ratings in bulk."
-          />
+        <div className="max-w-6xl mx-auto space-y-12">
+          {/* Library Views — wide format */}
+          <ScreenshotGroup label="Library & Collection">
+            <div className="grid md:grid-cols-2 gap-8">
+              <ScreenshotCard
+                src={`${PK}/library1-2.jpg`}
+                title="Library Collection — Dark Theme"
+                description="Beautiful grid layout with filters, search, and detailed game cards. Supports multiple views and custom sorting."
+              />
+              <ScreenshotCard
+                src={`${PK}/library2-2.jpg`}
+                title="Library Collection — Teal Theme"
+                description="Every library is fully customizable with unique colors, fonts, and backgrounds to match each owner's style."
+              />
+            </div>
+            <div className="grid md:grid-cols-2 gap-8 mt-8">
+              <ScreenshotCard
+                src={`${PK}/gamecard-2.jpg`}
+                title="Game Detail Card"
+                description="Rich game pages with box art, AI-generated descriptions, mechanics, designer credits, play history, and documents."
+              />
+              <ScreenshotCard
+                src={`${PK}/addgames.jpg`}
+                title="Bulk Import"
+                description="Import games from CSV, BGG collection sync, or paste BGG links. Refresh images and ratings in bulk."
+              />
+            </div>
+          </ScreenshotGroup>
+
+          {/* Profiles */}
+          <ScreenshotGroup label="Profiles & Activity">
+            <div className="grid md:grid-cols-2 gap-8">
+              <ScreenshotCard
+                src={`${PK}/badges2-2.jpg`}
+                title="User Profile & Badges"
+                description="Customizable profiles with role badges, follower counts, cover images, and community reputation."
+              />
+              <ScreenshotCard
+                src={`${PK}/userprofile.jpg`}
+                title="Profile Activity Feed"
+                description="Recent activity timeline with achievements earned, games added, and community interactions."
+              />
+            </div>
+          </ScreenshotGroup>
+
+          {/* Play Stats */}
+          <ScreenshotGroup label="Play Tracking & Stats">
+            <div className="max-w-3xl mx-auto">
+              <ScreenshotCard
+                src={`${PK}/playstats.jpg`}
+                title="Play Stats & Analytics"
+                description="Monthly and annual play tracking with H-index, top mechanics, most played games, and session history."
+              />
+            </div>
+          </ScreenshotGroup>
+
+          {/* Game Night */}
+          <ScreenshotGroup label="Game Night">
+            <div className="grid md:grid-cols-2 gap-8">
+              <ScreenshotCard
+                src={`${PK}/poll.jpg`}
+                title="Game Night Polls"
+                description="Shareable voting polls for game nights — no account required. Live results and RSVP tracking."
+              />
+              <ScreenshotCard
+                src={`${PK}/pollresults.jpg`}
+                title="Poll Results"
+                description="Live ranked results with vote counts, percentages, and trophy indicators for top picks."
+              />
+            </div>
+            <div className="grid md:grid-cols-2 gap-8 mt-8">
+              <ScreenshotCard
+                src={`${PK}/picker_setup.jpg`}
+                title="Random Game Picker"
+                description="Filter by type, genre, play time, and player count — then spin to let fate choose your next game."
+              />
+              <ScreenshotCard
+                src={`${PK}/picker_result.jpg`}
+                title="Picker Result"
+                description="Tonight's pick displayed with box art, game type, play time, and player count. Share or pick again."
+              />
+            </div>
+          </ScreenshotGroup>
+
+          {/* Lending */}
+          <ScreenshotGroup label="Lending & Borrowing">
+            <div className="grid md:grid-cols-3 gap-8">
+              <ScreenshotCard
+                src={`${PK}/borrow1.jpg`}
+                title="Lending Management"
+                description="Full lending dashboard with inventory overview, pending requests, and loan history tracking."
+              />
+              <ScreenshotCard
+                src={`${PK}/borrow2.jpg`}
+                title="Loan Approval"
+                description="Approve borrow requests with condition notes, due dates, and optional pickup instructions."
+              />
+              <ScreenshotCard
+                src={`${PK}/borrow_returned.jpg`}
+                title="Returned & Rated"
+                description="Track return condition and rate borrowers to build community trust and lending reputation."
+              />
+            </div>
+          </ScreenshotGroup>
         </div>
       </section>
 
@@ -414,6 +447,15 @@ function ScreenshotCard({ src, title, description, placeholder = false }: { src:
       </a>
       <h3 className="font-display font-bold text-foreground text-lg mb-1">{title}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function ScreenshotGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="font-display text-xl font-bold text-secondary mb-6">{label}</h3>
+      {children}
     </div>
   );
 }
