@@ -4768,6 +4768,7 @@ export type Database = {
         Returns: string
       }
       generate_slug: { Args: { title: string }; Returns: string }
+      get_catalog_enrichment_status: { Args: never; Returns: Json }
       get_or_create_referral_code: {
         Args: { _user_id: string }
         Returns: string
