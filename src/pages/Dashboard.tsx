@@ -81,6 +81,7 @@ import { TenantLink } from "@/components/TenantLink";
 import { Footer } from "@/components/layout/Footer";
 
 import { CommunityTab } from "@/components/community/CommunityTab";
+import { CommunityPollsList } from "@/components/polls/CommunityPollsList";
 import { SocialTab } from "@/components/social/SocialTab";
 import { AnalyticsTab } from "@/components/analytics/AnalyticsTab";
 import { CommunityMembersCard } from "@/components/community/CommunityMembersCard";
@@ -646,6 +647,26 @@ export default function Dashboard() {
                   </div>
                 </CardHeader>
                 <CardContent className="px-4 pb-4"><CommunityTab /></CardContent>
+              </Card>
+
+              {/* Polls */}
+              <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
+                <CardHeader className="px-4 pt-4 pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <Vote className="h-4 w-4 text-secondary" />
+                      Polls
+                    </CardTitle>
+                    <Link to="/community?tab=polls">
+                      <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
+                        View All <ArrowRight className="h-3 w-3" />
+                      </Button>
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <CommunityPollsList />
+                </CardContent>
               </Card>
 
               {/* Clubs */}
