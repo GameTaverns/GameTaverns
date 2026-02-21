@@ -149,8 +149,8 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
         if (selectedTypes.length > 0 && game.game_type && !selectedTypes.includes(game.game_type)) {
           return false;
         }
-        // Genre filter
-        if (selectedGenres.length > 0 && (!game.genre || !selectedGenres.includes(game.genre))) {
+        // Genre filter (skip games with a genre not in selection; allow null genre through)
+        if (selectedGenres.length > 0 && game.genre && !selectedGenres.includes(game.genre)) {
           return false;
         }
         // Play time filter
