@@ -17,6 +17,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { ContactSellerForm } from "@/components/games/ContactSellerForm";
 import { LogPlayDialog } from "@/components/games/LogPlayDialog";
 import { PlayHistory } from "@/components/games/PlayHistory";
@@ -902,39 +905,95 @@ function MarkForTradeButton({ gameId, gameTitle, libraryId }: { gameId: string; 
   const addListing = useAddTradeListing();
   const removeListing = useRemoveTradeListing();
   const { toast } = useToast();
-  const [condition, setCondition] = useState<SaleCondition>("Very Good");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [condition, setCondition] = useState<SaleCondition>("Like New");
+  const [localOnly, setLocalOnly] = useState(false);
+  const [willingToShip, setWillingToShip] = useState(false);
 
   const existingListing = listings?.find((l) => l.game_id === gameId);
   const isListed = !!existingListing;
 
-  const handleToggle = async () => {
+  const handleRemove = async () => {
+    if (!existingListing) return;
     try {
-      if (isListed) {
-        await removeListing.mutateAsync(existingListing.id);
-        toast({ title: "Removed from trade list" });
-      } else {
-        await addListing.mutateAsync({
-          game_id: gameId,
-          library_id: libraryId,
-          condition,
-        });
-        toast({ title: `${gameTitle} marked for trade` });
-      }
+      await removeListing.mutateAsync(existingListing.id);
+      toast({ title: "Removed from trade list" });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 
+  const handleAdd = async () => {
+    try {
+      await addListing.mutateAsync({
+        game_id: gameId,
+        library_id: libraryId,
+        condition,
+        willing_to_ship: willingToShip,
+        local_only: localOnly,
+      });
+      toast({ title: `${gameTitle} marked for trade` });
+      setDialogOpen(false);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  if (isListed) {
+    return (
+      <Button
+        variant="default"
+        size="sm"
+        onClick={handleRemove}
+        disabled={removeListing.isPending}
+        title="Remove from trade list"
+      >
+        <ArrowLeftRight className="h-4 w-4 mr-2" />
+        Listed for Trade
+      </Button>
+    );
+  }
+
   return (
-    <Button
-      variant={isListed ? "default" : "outline"}
-      size="sm"
-      onClick={handleToggle}
-      disabled={addListing.isPending || removeListing.isPending}
-      title={isListed ? "Remove from trade list" : "Mark for trade"}
-    >
-      <ArrowLeftRight className="h-4 w-4 mr-2" />
-      {isListed ? "Listed for Trade" : "Mark for Trade"}
-    </Button>
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" title="Mark for trade">
+          <ArrowLeftRight className="h-4 w-4 mr-2" />
+          Mark for Trade
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>List "{gameTitle}" for Trade</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>Condition</Label>
+            <Select value={condition} onValueChange={(v) => setCondition(v as SaleCondition)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="New">New</SelectItem>
+                <SelectItem value="Like New">Like New</SelectItem>
+                <SelectItem value="Very Good">Very Good</SelectItem>
+                <SelectItem value="Good">Good</SelectItem>
+                <SelectItem value="Acceptable">Acceptable</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-3">
+            <input type="checkbox" id="willingToShip" checked={willingToShip} onChange={(e) => setWillingToShip(e.target.checked)} className="rounded" />
+            <Label htmlFor="willingToShip">Willing to ship</Label>
+          </div>
+          <div className="flex items-center gap-3">
+            <input type="checkbox" id="localOnly" checked={localOnly} onChange={(e) => setLocalOnly(e.target.checked)} className="rounded" />
+            <Label htmlFor="localOnly">Local pickup only</Label>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleAdd} disabled={addListing.isPending}>List for Trade</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
