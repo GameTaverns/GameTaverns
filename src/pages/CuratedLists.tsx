@@ -8,6 +8,7 @@ import {
   useDeleteList,
   type CuratedList,
 } from "@/hooks/useCuratedLists";
+import { useMyWantList, type TradeWant } from "@/hooks/useTrades";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ListOrdered, Heart, Plus, Trash2, ArrowRight, Lock, Globe } from "lucide-react";
+import { ListOrdered, Heart, Plus, Trash2, ArrowRight, Lock, Globe, Gift } from "lucide-react";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { format } from "date-fns";
@@ -47,6 +48,7 @@ export default function CuratedListsPage() {
   const { isAuthenticated } = useAuth();
   const { data: publicLists = [], isLoading } = useCuratedLists(library?.id);
   const { data: myLists = [] } = useMyLists();
+  const { data: wishlistItems = [] } = useMyWantList();
 
   const listUrl = (id: string) => {
     const path = `/lists/${id}`;
@@ -92,7 +94,11 @@ export default function CuratedListsPage() {
 
           {isAuthenticated && (
             <TabsContent value="mine" className="mt-4 space-y-3">
-              {myLists.length === 0
+              {/* Virtual Wishlist from trade_wants */}
+              {wishlistItems.length > 0 && (
+                <WishlistVirtualCard itemCount={wishlistItems.length} />
+              )}
+              {myLists.length === 0 && wishlistItems.length === 0
                 ? (
                   <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
                     <p>You haven't created any lists yet.</p>
@@ -197,6 +203,34 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function WishlistVirtualCard({ itemCount }: { itemCount: number }) {
+  const { tenantSlug } = useTenant();
+  const href = tenantSlug ? getLibraryUrl(tenantSlug, "/trades") : "/trades";
+
+  return (
+    <Link
+      to={href}
+      className="flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-muted/40 transition-colors group border-pink-500/20"
+    >
+      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
+        <Heart className="h-5 w-5 text-pink-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm group-hover:text-primary transition-colors truncate">
+          My Wishlist
+        </div>
+        <div className="text-xs text-muted-foreground mt-0.5">
+          {itemCount} game{itemCount !== 1 ? "s" : ""} · Auto-generated from your wishlist
+        </div>
+      </div>
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <Badge variant="outline" className="text-xs text-pink-500 border-pink-500/30">Wishlist</Badge>
+        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+      </div>
+    </Link>
   );
 }
 
