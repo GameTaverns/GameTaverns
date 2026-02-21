@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { format } from "date-fns";
-import { Vote, PartyPopper, Clock, Users, Share2, Trash2, BarChart3 } from "lucide-react";
+import { Vote, PartyPopper, Clock, Users, Share2, Trash2, BarChart3, ChevronDown, ChevronUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { type Poll, useClosePoll, useDeletePoll, usePollResults } from "@/hooks/usePolls";
+import { type Poll, useClosePoll, useDeletePoll, usePoll, usePollResults } from "@/hooks/usePolls";
 import { toast } from "sonner";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
+import { GameImage } from "@/components/games/GameImage";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PollCardProps {
   poll: Poll;
@@ -25,9 +28,11 @@ interface PollCardProps {
 }
 
 export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
+  const [expanded, setExpanded] = useState(false);
   const closePoll = useClosePoll();
   const deletePoll = useDeletePoll();
   const { data: results } = usePollResults(poll.id);
+  const { data: fullPoll, isLoading: optionsLoading } = usePoll(expanded ? poll.id : null);
   const { buildUrl } = useTenantUrl();
 
   const totalVotes = results?.reduce((sum, r) => sum + r.vote_count, 0) || 0;
@@ -44,9 +49,15 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
     closed: "bg-red-500/20 text-red-700 dark:text-red-400",
   };
 
+  const options = fullPoll?.options || [];
+
   return (
     <Card className="bg-card/50 hover:bg-card/80 transition-colors overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
+      {/* Header row - clickable to expand */}
+      <div
+        className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
         {/* Icon + Title + Status */}
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {poll.poll_type === "game_night" ? (
@@ -58,6 +69,11 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
           <Badge className={`${statusColors[poll.status]} text-[10px] px-1.5 py-0 shrink-0`}>
             {poll.status}
           </Badge>
+          {expanded ? (
+            <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
         </div>
 
         {/* Meta */}
@@ -80,8 +96,8 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
           </span>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+        {/* Actions - stop propagation so clicks don't toggle expand */}
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
           <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={handleCopyLink}>
             <Share2 className="h-3 w-3 mr-1" />
             Share
@@ -112,13 +128,102 @@ export function PollCard({ poll, libraryId, onViewResults }: PollCardProps) {
                 <Trash2 className="h-3 w-3" />
               </Button>
             </AlertDialogTrigger>
-...
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Poll</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this poll and all its votes. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deletePoll.mutate({ pollId: poll.id, libraryId })}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
           </AlertDialog>
         </div>
       </div>
 
-      {/* Top results preview */}
-      {results && results.length > 0 && (poll.show_results_before_close || poll.status === "closed") && (
+      {/* Expanded options list */}
+      {expanded && (
+        <div className="border-t border-border/50 px-4 py-3 space-y-2">
+          {poll.description && (
+            <p className="text-sm text-muted-foreground mb-3">{poll.description}</p>
+          )}
+
+          {optionsLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : options.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2">No options added yet.</p>
+          ) : (
+            <div className="grid gap-2">
+              {options.map((option, index) => {
+                const result = results?.find((r) => r.option_id === option.id);
+                const voteCount = result?.vote_count || 0;
+                const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
+
+                return (
+                  <div
+                    key={option.id}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border border-border/50 bg-background/50 relative overflow-hidden"
+                  >
+                    {/* Vote percentage background bar */}
+                    {totalVotes > 0 && (
+                      <div
+                        className="absolute inset-y-0 left-0 bg-primary/10 transition-all"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    )}
+
+                    <span className="text-xs font-bold text-muted-foreground w-5 text-center relative z-10">
+                      {index + 1}
+                    </span>
+
+                    {option.game?.image_url && (
+                      <div className="w-8 h-8 rounded overflow-hidden shrink-0 relative z-10">
+                        <GameImage
+                          imageUrl={option.game.image_url}
+                          alt={option.game?.title || "Game"}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    <span className="text-sm font-medium flex-1 min-w-0 truncate relative z-10">
+                      {option.game?.title || "Unknown game"}
+                    </span>
+
+                    {(poll.show_results_before_close || poll.status === "closed") && (
+                      <div className="flex items-center gap-2 shrink-0 relative z-10">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {voteCount} vote{voteCount !== 1 ? "s" : ""}
+                        </Badge>
+                        {totalVotes > 0 && (
+                          <span className="text-[10px] text-muted-foreground w-10 text-right">
+                            {percentage.toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Top results preview - only when collapsed */}
+      {!expanded && results && results.length > 0 && (poll.show_results_before_close || poll.status === "closed") && (
         <div className="border-t border-border/50 px-4 py-2.5 flex flex-wrap items-center gap-3">
           <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Top Results</span>
           {results.slice(0, 3).map((result, index) => (
