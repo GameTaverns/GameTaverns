@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import { DMPopup, type DMPopupPartner } from "./DMPopup";
 import type { DirectMessage } from "@/hooks/useDirectMessages";
 
 const MAX_OPEN_POPUPS = 3;
+const POLL_INTERVAL_MS = 5000; // 5-second polling fallback
 
 export function DMPopupManager() {
   const { user } = useAuth();
@@ -16,13 +17,13 @@ export function DMPopupManager() {
   const [popups, setPopups] = useState<DMPopupPartner[]>([]);
   const [newPopupId, setNewPopupId] = useState<string | null>(null);
   const fetchingRef = useRef<Set<string>>(new Set());
+  const lastCheckedRef = useRef<string>(new Date().toISOString());
+  const seenIdsRef = useRef<Set<string>>(new Set());
 
-  // Don't show popups on the DM page itself
   const isDMPage = location.pathname.startsWith("/dm");
 
   const openPopup = (partner: DMPopupPartner, isNew = false) => {
     setPopups((prev) => {
-      // Already open — bring to front
       if (prev.some((p) => p.user_id === partner.user_id)) return prev;
       const next = [partner, ...prev].slice(0, MAX_OPEN_POPUPS);
       return next;
@@ -34,12 +35,18 @@ export function DMPopupManager() {
     setPopups((prev) => prev.filter((p) => p.user_id !== userId));
   };
 
-  // Fetch sender profile and open popup
-  const handleNewMessage = async (msg: DirectMessage) => {
+  const handleNewMessage = useCallback(async (msg: DirectMessage) => {
     if (!user) return;
-    if (msg.recipient_id !== user.id) return; // Only react to incoming messages
+    if (msg.recipient_id !== user.id) return;
+    if (seenIdsRef.current.has(msg.id)) return;
+    seenIdsRef.current.add(msg.id);
 
-    // Immediately bump the unread badge count (optimistic) then re-fetch
+    // Cap seen IDs to prevent memory leak
+    if (seenIdsRef.current.size > 200) {
+      const arr = Array.from(seenIdsRef.current);
+      seenIdsRef.current = new Set(arr.slice(-100));
+    }
+
     queryClient.invalidateQueries({ queryKey: ["dm-unread-count", user.id] });
 
     if (isDMPage) return;
@@ -69,8 +76,9 @@ export function DMPopupManager() {
     } finally {
       fetchingRef.current.delete(senderId);
     }
-  };
+  }, [user, isDMPage, queryClient]);
 
+  // Primary: Realtime subscription
   useEffect(() => {
     if (!user) return;
 
@@ -91,7 +99,35 @@ export function DMPopupManager() {
       .subscribe();
 
     return () => (supabase as any).removeChannel(channel);
-  }, [user, isDMPage]);
+  }, [user, handleNewMessage]);
+
+  // Fallback: Polling for when Realtime/WebSocket is down
+  useEffect(() => {
+    if (!user) return;
+
+    const poll = async () => {
+      try {
+        const { data } = await (supabase as any)
+          .from("direct_messages")
+          .select("id, sender_id, recipient_id, content, created_at, read_at")
+          .eq("recipient_id", user.id)
+          .gt("created_at", lastCheckedRef.current)
+          .order("created_at", { ascending: true });
+
+        if (data && data.length > 0) {
+          lastCheckedRef.current = data[data.length - 1].created_at;
+          for (const msg of data) {
+            handleNewMessage(msg as DirectMessage);
+          }
+        }
+      } catch (err) {
+        // Silent fail — poll will retry
+      }
+    };
+
+    const interval = setInterval(poll, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [user, handleNewMessage]);
 
   if (isDMPage || popups.length === 0) return null;
 
