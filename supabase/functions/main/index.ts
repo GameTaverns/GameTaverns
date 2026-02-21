@@ -67,6 +67,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "catalog-cleanup":            () => import("./catalog-cleanup/index.ts"),
   "catalog-gallery-backfill":   () => import("./catalog-gallery-backfill/index.ts"),
   "sitemap":                    () => import("./sitemap/index.ts"),
+  "cron-status":                () => import("./cron-status/index.ts"),
 };
 
 // All handlers are now external imports - no inlined handlers remaining

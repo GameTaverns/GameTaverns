@@ -6,13 +6,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
+async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -25,7 +24,6 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Verify user is admin
     const token = authHeader.replace("Bearer ", "");
     const {
       data: { user },
@@ -52,14 +50,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Query pg_cron jobs
     const { data: jobs, error: jobsErr } = await supabase.rpc("get_cron_jobs");
     if (jobsErr) throw jobsErr;
 
-    // Query recent run details (last 100)
-    const { data: runs, error: runsErr } = await supabase.rpc(
-      "get_cron_job_runs"
-    );
+    const { data: runs, error: runsErr } = await supabase.rpc("get_cron_job_runs");
     if (runsErr) throw runsErr;
 
     return new Response(JSON.stringify({ jobs, runs }), {
@@ -75,4 +69,10 @@ Deno.serve(async (req) => {
       }
     );
   }
-});
+}
+
+export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
