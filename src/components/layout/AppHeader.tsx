@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries, useUserProfile } from "@/hooks/useLibrary";
-import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
@@ -45,7 +44,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   const { data: dmUnreadCount = 0 } = useUnreadDMCount();
   const { data: profile } = useUserProfile();
   const library = defaultLibrary ?? null;
-  const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -206,51 +204,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   </Button>
                 </TenantLink>
 
-                {/* Library Messages — desktop only */}
-                {library && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="hidden md:inline-flex relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
-                      >
-                        <Mail className="h-5 w-5" />
-                        {unreadCount > 0 && (
-                          <Badge
-                            variant="destructive"
-                            className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
-                          >
-                            {unreadCount > 9 ? "9+" : unreadCount}
-                          </Badge>
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64">
-                      <div className="px-3 py-2 text-sm font-medium">Messages</div>
-                      {unreadCount > 0 ? (
-                        <DropdownMenuItem asChild>
-                          <TenantLink href="/inbox" className="cursor-pointer gap-2">
-                            <Mail className="h-4 w-4 text-primary" />
-                            <div>
-                              <p className="text-sm font-medium">{unreadCount} unread message{unreadCount > 1 ? 's' : ''}</p>
-                              <p className="text-xs text-muted-foreground">View in {library.name}</p>
-                            </div>
-                          </TenantLink>
-                        </DropdownMenuItem>
-                      ) : (
-                        <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                          No unread messages
-                        </div>
-                      )}
-                      <DropdownMenuItem asChild>
-                        <TenantLink href="/inbox" className="cursor-pointer text-xs justify-center text-muted-foreground">
-                          View all messages
-                        </TenantLink>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
 
                 <NotificationsDropdown variant="dashboard" />
 

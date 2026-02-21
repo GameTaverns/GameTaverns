@@ -123,7 +123,7 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
 
       toast({
         title: "Message sent!",
-        description: "Your inquiry has been sent. Check your dashboard for replies.",
+        description: "Your inquiry has been sent as a direct message. Check your DMs for replies.",
       });
 
       // Reset form

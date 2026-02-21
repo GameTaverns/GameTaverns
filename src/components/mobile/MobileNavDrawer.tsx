@@ -11,7 +11,6 @@ import { TenantLink } from "@/components/TenantLink";
 import { getPlatformUrl, getLibraryUrl } from "@/hooks/useTenantUrl";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries, useUserProfile } from "@/hooks/useLibrary";
-import { useUnreadMessageCount } from "@/hooks/useMessages";
 import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -23,7 +22,6 @@ export function MobileNavDrawer() {
   const { data: myLibraries = [] } = useMyLibraries();
   const { data: profile } = useUserProfile();
   const { data: dmUnreadCount = 0 } = useUnreadDMCount();
-  const { data: unreadCount = 0 } = useUnreadMessageCount(library?.id);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -142,12 +140,6 @@ export function MobileNavDrawer() {
                 icon={MessageSquare}
                 label="Direct Messages"
                 badge={dmUnreadCount}
-              />
-              <NavItem
-                href="/inbox"
-                icon={Mail}
-                label="Library Inbox"
-                badge={unreadCount}
               />
 
               <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
