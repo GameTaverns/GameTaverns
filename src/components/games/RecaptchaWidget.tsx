@@ -18,22 +18,32 @@ declare global {
 }
 
 let scriptLoaded = false;
+let scriptFailed = false;
 let scriptLoadPromise: Promise<void> | null = null;
+
+const LOAD_TIMEOUT_MS = 5000;
 
 function loadRecaptchaScript(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (scriptLoaded && window.grecaptcha) return Promise.resolve();
+  if (scriptFailed) return Promise.reject(new Error("reCAPTCHA previously failed"));
   if (scriptLoadPromise) return scriptLoadPromise;
 
   scriptLoadPromise = new Promise<void>((resolve, reject) => {
+    // Timeout to prevent infinite waits (e.g. Brave blocks the script)
+    const timeout = setTimeout(() => {
+      scriptFailed = true;
+      reject(new Error("reCAPTCHA load timed out"));
+    }, LOAD_TIMEOUT_MS);
+
     const existing = document.querySelector<HTMLScriptElement>(
       `script[src*="recaptcha/api.js"]`
     );
     if (existing) {
-      // Script tag already in DOM — wait for grecaptcha global
       const wait = setInterval(() => {
         if (window.grecaptcha) {
           clearInterval(wait);
+          clearTimeout(timeout);
           scriptLoaded = true;
           resolve();
         }
@@ -49,12 +59,17 @@ function loadRecaptchaScript(): Promise<void> {
       const wait = setInterval(() => {
         if (window.grecaptcha) {
           clearInterval(wait);
+          clearTimeout(timeout);
           scriptLoaded = true;
           resolve();
         }
       }, 100);
     };
-    script.onerror = () => reject(new Error("Failed to load reCAPTCHA script"));
+    script.onerror = () => {
+      clearTimeout(timeout);
+      scriptFailed = true;
+      reject(new Error("Failed to load reCAPTCHA script"));
+    };
     document.head.appendChild(script);
   }).finally(() => {
     if (!window.grecaptcha) scriptLoadPromise = null;
