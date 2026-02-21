@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Shield, ShieldCheck, UserMinus, Crown } from "lucide-react";
+import { Users, Shield, ShieldCheck, UserMinus, Crown, KeyRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function CommunityMembersCard() {
   const { user } = useAuth();
@@ -32,7 +39,7 @@ export function CommunityMembersCard() {
 
   const isOwner = library?.owner_id === user?.id;
 
-  const handleSetRole = async (memberId: string, userId: string, newRole: "member" | "moderator") => {
+  const handleSetRole = async (memberId: string, userId: string, newRole: "member" | "moderator" | "co_owner") => {
     if (!library?.id) return;
     setActing(memberId);
     try {
@@ -42,7 +49,12 @@ export function CommunityMembersCard() {
         .eq("id", memberId)
         .eq("library_id", library.id);
       if (error) throw error;
-      toast.success(`Role updated to ${newRole}`);
+      const labels: Record<string, string> = {
+        co_owner: "Co-owner assigned — full library access granted.",
+        moderator: "Promoted to moderator.",
+        member: "Role set to member.",
+      };
+      toast.success(labels[newRole] || `Role updated to ${newRole}`);
       queryClient.invalidateQueries({ queryKey: ["library-members", library.id] });
     } catch (e: any) {
       toast.error(e.message || "Failed to update role");
@@ -73,6 +85,7 @@ export function CommunityMembersCard() {
 
   const roleIcon = (role: string) => {
     if (role === "owner") return <Crown className="h-3.5 w-3.5 text-secondary" />;
+    if (role === "co_owner") return <KeyRound className="h-3.5 w-3.5 text-amber-500" />;
     if (role === "moderator") return <ShieldCheck className="h-3.5 w-3.5 text-secondary" />;
     return null;
   };
@@ -114,29 +127,46 @@ export function CommunityMembersCard() {
 
                     {isOwner && !isOwnerRow && !isSelf && (
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        {member.role === "member" ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-cream/70 hover:text-cream"
-                            disabled={acting === member.id}
-                            onClick={() => handleSetRole(member.id, member.user_id, "moderator")}
-                            title="Promote to Moderator"
-                          >
-                            <Shield className="h-3.5 w-3.5" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-cream/70 hover:text-cream"
-                            disabled={acting === member.id}
-                            onClick={() => handleSetRole(member.id, member.user_id, "member")}
-                            title="Demote to Member"
-                          >
-                            <Shield className="h-3.5 w-3.5 opacity-50" />
-                          </Button>
-                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-cream/70 hover:text-cream"
+                              disabled={acting === member.id}
+                              title="Change role"
+                            >
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleSetRole(member.id, member.user_id, "co_owner")}
+                              disabled={member.role === "co_owner"}
+                              className="gap-2"
+                            >
+                              <KeyRound className="h-3.5 w-3.5 text-amber-500" />
+                              Make Co-owner
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleSetRole(member.id, member.user_id, "moderator")}
+                              disabled={member.role === "moderator"}
+                              className="gap-2"
+                            >
+                              <Shield className="h-3.5 w-3.5 text-secondary" />
+                              Make Moderator
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleSetRole(member.id, member.user_id, "member")}
+                              disabled={member.role === "member"}
+                              className="gap-2"
+                            >
+                              <Users className="h-3.5 w-3.5" />
+                              Set as Member
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
 
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
