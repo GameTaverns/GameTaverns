@@ -1,6 +1,8 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { SEO, gameJsonLd } from "@/components/seo/SEO";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -130,6 +132,22 @@ const GameDetail = () => {
   const basePath = isDemoMode ? "/demo/game" : "/game";
   const editPath = isDemoMode ? `/demo/edit/${game?.id}` : `/admin/edit/${game?.id}`;
 
+  // Fetch catalog additional_images when library game has none but has a catalog_id
+  const catalogId = (game as any)?.catalog_id as string | undefined;
+  const gameHasImages = (game?.additional_images?.length ?? 0) > 0;
+  const { data: catalogImages } = useQuery({
+    queryKey: ["catalog-images", catalogId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("game_catalog")
+        .select("additional_images")
+        .eq("id", catalogId!)
+        .single();
+      return data?.additional_images ?? [];
+    },
+    enabled: !!catalogId && !gameHasImages && !isDemoMode,
+  });
+
 
   if (isLoading) {
     return (
@@ -207,9 +225,14 @@ const GameDetail = () => {
   // __square, __geeklistimagebar, __geeklistimage, __mt are small thumbnails/crops — skip.
   const LOW_QUALITY_BGG_VARIANTS = /__(geeklistimagebar|geeklistimage|square|mt|geeklistimagebar@2x|geeklistimage@2x)|__square@2x/i;
 
+  // Merge library images with catalog fallback images
+  const mergedAdditionalImages = (game.additional_images?.length ?? 0) > 0
+    ? game.additional_images!
+    : (catalogImages ?? []);
+
   const allImages = Array.from(
     new Set(
-      [game.image_url, ...(game.additional_images || [])]
+      [game.image_url, ...mergedAdditionalImages]
         .filter((u): u is string => typeof u === "string" && !!u)
         .map((u) =>
           // reuse the shared URL cleaning logic (handles &quot; junk, trailing punctuation, etc.)
