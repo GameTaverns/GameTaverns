@@ -520,11 +520,88 @@ function OffersTab() {
   const received = offers?.received || [];
   const sent = offers?.sent || [];
 
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    } catch { return dateStr; }
+  };
+
+  const OfferCard = ({ offer, type }: { offer: any; type: "received" | "sent" }) => {
+    const gameTitle = offer.offering_listing?.game?.title || "Unknown game";
+    const gameImage = offer.offering_listing?.game?.image_url;
+    const condition = offer.offering_listing?.condition;
+    const otherUser = type === "received" 
+      ? offer.offering_user_profile 
+      : offer.receiving_user_profile;
+    const otherName = otherUser?.display_name || "Unknown user";
+
+    return (
+      <div className="flex gap-3 p-3 rounded-lg bg-muted/50 border border-border/50">
+        {gameImage && (
+          <div className="flex-shrink-0 w-14 h-14 rounded overflow-hidden">
+            <GameImage imageUrl={gameImage} alt={gameTitle} className="w-full h-full object-cover" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="font-medium text-sm truncate">{gameTitle}</div>
+              <div className="text-xs text-muted-foreground">
+                {type === "received" ? "From" : "To"}: <span className="font-medium">{otherName}</span>
+              </div>
+              {condition && (
+                <div className="text-xs text-muted-foreground">
+                  Condition: <span className="font-medium">{condition}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              {offer.status === "pending" && type === "received" ? (
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleRespond(offer.id, "declined")}
+                    className="h-7 px-2"
+                  >
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    Decline
+                  </Button>
+                  <Button size="sm" onClick={() => handleRespond(offer.id, "accepted")} className="h-7 px-2">
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                    Accept
+                  </Button>
+                </div>
+              ) : (
+                <Badge variant={
+                  offer.status === "accepted" ? "default" 
+                  : offer.status === "declined" ? "destructive" 
+                  : "secondary"
+                }>
+                  {offer.status}
+                </Badge>
+              )}
+              <span className="text-[10px] text-muted-foreground">{formatDate(offer.created_at)}</span>
+            </div>
+          </div>
+          {offer.message && (
+            <p className="text-xs text-muted-foreground mt-1 italic">"{offer.message}"</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Received Offers</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            Received Offers
+            {received.filter(o => o.status === "pending").length > 0 && (
+              <Badge variant="default" className="text-xs">{received.filter(o => o.status === "pending").length} pending</Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {received.length === 0 ? (
@@ -532,33 +609,7 @@ function OffersTab() {
           ) : (
             <div className="space-y-3">
               {received.map((offer) => (
-                <div key={offer.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div>
-                    <div className="font-medium text-sm">
-                      {offer.offering_listing?.game?.title || "Unknown game"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{offer.message}</div>
-                  </div>
-                  {offer.status === "pending" && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRespond(offer.id, "declined")}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" onClick={() => handleRespond(offer.id, "accepted")}>
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                  {offer.status !== "pending" && (
-                    <Badge variant={offer.status === "accepted" ? "default" : "secondary"}>
-                      {offer.status}
-                    </Badge>
-                  )}
-                </div>
+                <OfferCard key={offer.id} offer={offer} type="received" />
               ))}
             </div>
           )}
@@ -575,25 +626,7 @@ function OffersTab() {
           ) : (
             <div className="space-y-3">
               {sent.map((offer) => (
-                <div key={offer.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div>
-                    <div className="font-medium text-sm">
-                      {offer.offering_listing?.game?.title || "Unknown game"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{offer.message}</div>
-                  </div>
-                  <Badge
-                    variant={
-                      offer.status === "accepted"
-                        ? "default"
-                        : offer.status === "declined"
-                        ? "destructive"
-                        : "secondary"
-                    }
-                  >
-                    {offer.status}
-                  </Badge>
-                </div>
+                <OfferCard key={offer.id} offer={offer} type="sent" />
               ))}
             </div>
           )}

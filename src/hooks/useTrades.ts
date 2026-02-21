@@ -60,6 +60,8 @@ export interface TradeOffer {
   created_at: string;
   offering_listing?: TradeListing;
   receiving_listing?: TradeListing;
+  offering_user_profile?: { display_name: string | null; avatar_url: string | null };
+  receiving_user_profile?: { display_name: string | null; avatar_url: string | null };
 }
 
 // Note: These tables only exist in self-hosted deployments
@@ -170,40 +172,53 @@ export function useTradeOffers() {
 
       const allOffers = [...(received || []), ...(sent || [])];
 
-      // Collect unique listing IDs to fetch separately
+      // Collect unique listing IDs and user IDs to fetch separately
       const listingIds = [...new Set(
         allOffers
           .flatMap(o => [o.offering_listing_id, o.receiving_listing_id])
           .filter(Boolean)
       )];
 
+      const userIds = [...new Set(
+        allOffers
+          .flatMap(o => [o.offering_user_id, o.receiving_user_id])
+          .filter(Boolean)
+      )];
+
       let listingsMap: Record<string, any> = {};
       let gamesMap: Record<string, any> = {};
+      let profilesMap: Record<string, any> = {};
 
-      if (listingIds.length > 0) {
-        const { data: listings } = await (supabase as any)
-          .from("trade_listings")
-          .select("*")
-          .in("id", listingIds);
+      // Fetch listings, games, and profiles in parallel
+      const [listingsResult, profilesResult] = await Promise.all([
+        listingIds.length > 0
+          ? (supabase as any).from("trade_listings").select("*").in("id", listingIds)
+          : { data: [] },
+        userIds.length > 0
+          ? (supabase as any).from("user_profiles").select("user_id, display_name, avatar_url").in("user_id", userIds)
+          : { data: [] },
+      ]);
 
-        if (listings) {
-          for (const l of listings) listingsMap[l.id] = l;
+      if (listingsResult.data) {
+        for (const l of listingsResult.data) listingsMap[l.id] = l;
 
-          const gameIds = [...new Set(listings.map((l: any) => l.game_id).filter(Boolean))];
-          if (gameIds.length > 0) {
-            const { data: games } = await (supabase as any)
-              .from("games")
-              .select("id, title, image_url")
-              .in("id", gameIds);
-
-            if (games) {
-              for (const g of games) gamesMap[g.id] = g;
-            }
+        const gameIds = [...new Set(listingsResult.data.map((l: any) => l.game_id).filter(Boolean))];
+        if (gameIds.length > 0) {
+          const { data: games } = await (supabase as any)
+            .from("games")
+            .select("id, title, image_url")
+            .in("id", gameIds);
+          if (games) {
+            for (const g of games) gamesMap[g.id] = g;
           }
         }
       }
 
-      // Enrich offers with listing + game data
+      if (profilesResult.data) {
+        for (const p of profilesResult.data) profilesMap[p.user_id] = p;
+      }
+
+      // Enrich offers with listing + game + user data
       const enrich = (offer: any) => {
         const listing = listingsMap[offer.offering_listing_id];
         return {
@@ -212,6 +227,8 @@ export function useTradeOffers() {
             ...listing,
             game: gamesMap[listing.game_id] || null,
           } : null,
+          offering_user_profile: profilesMap[offer.offering_user_id] || null,
+          receiving_user_profile: profilesMap[offer.receiving_user_id] || null,
         };
       };
 
