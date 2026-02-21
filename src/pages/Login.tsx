@@ -31,8 +31,9 @@ const Login = () => {
   const [pendingAccessToken, setPendingAccessToken] = useState<string | null>(null);
   const [authGate, setAuthGate] = useState<"idle" | "checking_2fa" | "needs_2fa">("idle");
   // reCAPTCHA v3 tokens — auto-populated invisibly on mount; native gets bypass token
-  const [signinTurnstileToken, setSigninTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
-  const [signupTurnstileToken, setSignupTurnstileToken] = useState<string | null>(isNative ? "bypass" : null);
+  // Tokens default to "pending" on web so the button is never disabled waiting for reCAPTCHA
+  const [signinTurnstileToken, setSigninTurnstileToken] = useState<string | null>(isNative ? "bypass" : "pending");
+  const [signupTurnstileToken, setSignupTurnstileToken] = useState<string | null>(isNative ? "bypass" : "pending");
   // Honeypot fields — bots fill these, humans never see them
   const [signinHoneypot, setSigninHoneypot] = useState("");
   const [signupHoneypot, setSignupHoneypot] = useState("");
@@ -59,10 +60,8 @@ const Login = () => {
       toast({ title: "Verification failed", variant: "destructive" });
       return;
     }
-    if (!isNative && !signinTurnstileToken) {
-      toast({ title: "Please complete verification", variant: "destructive" });
-      return;
-    }
+    // If reCAPTCHA hasn't resolved yet (blocked by browser), treat as honeypot-only
+    const effectiveSigninToken = (!signinTurnstileToken || signinTurnstileToken === "pending") ? "HONEYPOT_ONLY" : signinTurnstileToken;
     setIsLoading(true);
     setAuthGate("checking_2fa");
     setHasCheckedAuth(true);
@@ -78,7 +77,7 @@ const Login = () => {
         });
         setHasCheckedAuth(false);
         if (!isNative) {
-          setSigninTurnstileToken(null);
+          setSigninTurnstileToken("pending");
         }
         return;
       }
@@ -158,10 +157,8 @@ const Login = () => {
       toast({ title: "Verification failed", variant: "destructive" });
       return;
     }
-    if (!isNative && !signupTurnstileToken) {
-      toast({ title: "Please complete verification", variant: "destructive" });
-      return;
-    }
+    // If reCAPTCHA hasn't resolved yet (blocked by browser), treat as honeypot-only
+    const effectiveSignupToken = (!signupTurnstileToken || signupTurnstileToken === "pending") ? "HONEYPOT_ONLY" : signupTurnstileToken;
 
     if (password !== signupConfirmPassword) {
       toast({
@@ -215,7 +212,7 @@ const Login = () => {
           variant: "destructive",
         });
         if (!isNative) {
-          setSignupTurnstileToken(null);
+          setSignupTurnstileToken("pending");
         }
         return;
       }
@@ -330,7 +327,7 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
-                  disabled={isLoading || (!isNative && !signinTurnstileToken)}
+                  disabled={isLoading}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -428,7 +425,7 @@ const Login = () => {
                 <Button 
                   type="submit" 
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
-                  disabled={isLoading || (!isNative && !signupTurnstileToken)}
+                  disabled={isLoading}
                 >
                   {isLoading ? "Creating account..." : "Create Account"}
                 </Button>
