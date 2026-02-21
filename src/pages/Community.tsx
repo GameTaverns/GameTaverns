@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { 
   MessageSquare, 
@@ -9,7 +9,8 @@ import {
   MessageCircle,
   Plus,
   Eye,
-  Shield
+  Shield,
+  Vote
 } from "lucide-react";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { Layout } from "@/components/layout/Layout";
@@ -36,6 +37,7 @@ import { useMyMemberships } from "@/hooks/useLibraryMembership";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { Library as LibraryIcon } from "lucide-react";
+import { CommunityPollsList } from "@/components/polls/CommunityPollsList";
 
 const ICON_MAP = FORUM_ICON_MAP;
 const COLOR_MAP: Record<string, string> = FORUM_COLOR_MAP;
@@ -597,15 +599,50 @@ function ForumHome() {
 
 export default function Community() {
   const { categorySlug } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "forums";
+
+  // If viewing a specific category, skip tabs
+  if (categorySlug) {
+    return (
+      <Layout hideSidebar>
+        <div className="max-w-4xl mx-auto">
+          <CategoryView categorySlug={categorySlug} />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout hideSidebar>
-      <div className="max-w-4xl mx-auto">
-        {categorySlug ? (
-          <CategoryView categorySlug={categorySlug} />
-        ) : (
-          <ForumHome />
-        )}
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Top-level tab switcher */}
+        <div className="flex gap-1 border-b border-border">
+          <button
+            onClick={() => setSearchParams({})}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "forums"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <MessageSquare className="h-4 w-4" />
+            Forums
+          </button>
+          <button
+            onClick={() => setSearchParams({ tab: "polls" })}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "polls"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Vote className="h-4 w-4" />
+            Polls
+          </button>
+        </div>
+
+        {activeTab === "polls" ? <CommunityPollsList /> : <ForumHome />}
       </div>
     </Layout>
   );

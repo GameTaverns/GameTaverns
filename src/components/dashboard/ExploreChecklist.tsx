@@ -87,7 +87,7 @@ export function ExploreChecklist({
       description: "Let your group vote on what to play next — great for planning game nights.",
       icon: <Vote className="h-4 w-4" />,
       completed: hasPolls,
-      href: getPlatformUrl("/dashboard?tab=polls"),
+      href: getPlatformUrl("/community?tab=polls"),
       action: "Create Poll",
     },
     {
