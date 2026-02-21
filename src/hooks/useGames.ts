@@ -474,6 +474,8 @@ export function useCreateGame() {
     mutationFn: async (gameData: {
       game: Omit<Game, "id" | "created_at" | "updated_at">;
       mechanicIds: string[];
+      designerIds?: string[];
+      artistIds?: string[];
     }) => {
       if (!library?.id) throw new Error("No library context");
 
@@ -516,8 +518,29 @@ export function useCreateGame() {
             mechanic_id: mechanicId,
           }))
         );
-
         if (mechanicsError) throw mechanicsError;
+      }
+
+      // Save designer links
+      if (gameData.designerIds && gameData.designerIds.length > 0) {
+        const { error: designersError } = await supabase.from("game_designers").insert(
+          gameData.designerIds.map((designerId) => ({
+            game_id: game.id,
+            designer_id: designerId,
+          }))
+        );
+        if (designersError) throw designersError;
+      }
+
+      // Save artist links
+      if (gameData.artistIds && gameData.artistIds.length > 0) {
+        const { error: artistsError } = await supabase.from("game_artists").insert(
+          gameData.artistIds.map((artistId) => ({
+            game_id: game.id,
+            artist_id: artistId,
+          }))
+        );
+        if (artistsError) throw artistsError;
       }
 
       return game;
@@ -549,6 +572,8 @@ export function useUpdateGame() {
       id: string;
       game: Partial<Omit<Game, "id" | "created_at" | "updated_at">>;
       mechanicIds?: string[];
+      designerIds?: string[];
+      artistIds?: string[];
     }) => {
       const { cleanedGame, admin } = splitAdminFields(gameData.game as any);
 
@@ -575,10 +600,7 @@ export function useUpdateGame() {
       }
 
       if (gameData.mechanicIds !== undefined) {
-        // Delete existing mechanics
         await supabase.from("game_mechanics").delete().eq("game_id", gameData.id);
-
-        // Insert new mechanics
         if (gameData.mechanicIds.length > 0) {
           const { error: mechanicsError } = await supabase.from("game_mechanics").insert(
             gameData.mechanicIds.map((mechanicId) => ({
@@ -586,8 +608,33 @@ export function useUpdateGame() {
               mechanic_id: mechanicId,
             }))
           );
-
           if (mechanicsError) throw mechanicsError;
+        }
+      }
+
+      if (gameData.designerIds !== undefined) {
+        await supabase.from("game_designers").delete().eq("game_id", gameData.id);
+        if (gameData.designerIds.length > 0) {
+          const { error: designersError } = await supabase.from("game_designers").insert(
+            gameData.designerIds.map((designerId) => ({
+              game_id: gameData.id,
+              designer_id: designerId,
+            }))
+          );
+          if (designersError) throw designersError;
+        }
+      }
+
+      if (gameData.artistIds !== undefined) {
+        await supabase.from("game_artists").delete().eq("game_id", gameData.id);
+        if (gameData.artistIds.length > 0) {
+          const { error: artistsError } = await supabase.from("game_artists").insert(
+            gameData.artistIds.map((artistId) => ({
+              game_id: gameData.id,
+              artist_id: artistId,
+            }))
+          );
+          if (artistsError) throw artistsError;
         }
       }
     },
@@ -647,6 +694,44 @@ export function useCreatePublisher() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["publishers"] });
+    },
+  });
+}
+
+export function useCreateDesigner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase
+        .from("designers")
+        .insert({ name })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["designers"] });
+    },
+  });
+}
+
+export function useCreateArtist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error } = await supabase
+        .from("artists")
+        .insert({ name })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["artists"] });
     },
   });
 }

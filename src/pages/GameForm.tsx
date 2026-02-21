@@ -9,10 +9,14 @@ import {
   useAllGamesFlat,
   useMechanics, 
   usePublishers, 
+  useDesigners,
+  useArtists,
   useCreateGame, 
   useUpdateGame,
   useCreateMechanic,
-  useCreatePublisher
+  useCreatePublisher,
+  useCreateDesigner,
+  useCreateArtist
 } from "@/hooks/useGames";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,11 +52,15 @@ const GameForm = () => {
   const { data: existingGame, isLoading: gameLoading } = useGame(id);
   const { data: mechanics = [] } = useMechanics();
   const { data: publishers = [] } = usePublishers();
+  const { data: designers = [] } = useDesigners();
+  const { data: artists = [] } = useArtists();
   const { data: baseGames = [] } = useAllGamesFlat();
   const createGame = useCreateGame();
   const updateGame = useUpdateGame();
   const createMechanic = useCreateMechanic();
   const createPublisher = useCreatePublisher();
+  const createDesigner = useCreateDesigner();
+  const createArtist = useCreateArtist();
   const { toast } = useToast();
 
   const isEditing = !!id;
@@ -92,6 +100,12 @@ const GameForm = () => {
   const [isUnplayed, setIsUnplayed] = useState(false);
   const [newMechanic, setNewMechanic] = useState("");
   const [newPublisher, setNewPublisher] = useState("");
+  const [newDesigner, setNewDesigner] = useState("");
+  const [newArtist, setNewArtist] = useState("");
+  const [selectedDesigners, setSelectedDesigners] = useState<string[]>([]);
+  const [originalDesigners, setOriginalDesigners] = useState<string[]>([]);
+  const [selectedArtists, setSelectedArtists] = useState<string[]>([]);
+  const [originalArtists, setOriginalArtists] = useState<string[]>([]);
   const [youtubeVideos, setYoutubeVideos] = useState<string[]>([]);
   const [copiesOwned, setCopiesOwned] = useState(1);
 
@@ -115,6 +129,12 @@ const GameForm = () => {
       const mechanicIds = existingGame.mechanics.map((m) => m.id);
       setSelectedMechanics(mechanicIds);
       setOriginalMechanics(mechanicIds);
+      const designerIds = (existingGame.designers || []).map((d: any) => d.id);
+      setSelectedDesigners(designerIds);
+      setOriginalDesigners(designerIds);
+      const artistIds = (existingGame.artists || []).map((a: any) => a.id);
+      setSelectedArtists(artistIds);
+      setOriginalArtists(artistIds);
       setBggUrl(existingGame.bgg_url || "");
       setIsComingSoon(existingGame.is_coming_soon);
       setIsForSale(existingGame.is_for_sale);
@@ -177,6 +197,46 @@ const GameForm = () => {
     }
   };
 
+  const handleDesignerToggle = (designerId: string) => {
+    setSelectedDesigners((prev) =>
+      prev.includes(designerId)
+        ? prev.filter((id) => id !== designerId)
+        : [...prev, designerId]
+    );
+  };
+
+  const handleAddDesigner = async () => {
+    if (!newDesigner.trim()) return;
+    try {
+      const d = await createDesigner.mutateAsync(newDesigner.trim());
+      setSelectedDesigners((prev) => [...prev, d.id]);
+      setNewDesigner("");
+      toast({ title: "Designer added" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleArtistToggle = (artistId: string) => {
+    setSelectedArtists((prev) =>
+      prev.includes(artistId)
+        ? prev.filter((id) => id !== artistId)
+        : [...prev, artistId]
+    );
+  };
+
+  const handleAddArtist = async () => {
+    if (!newArtist.trim()) return;
+    try {
+      const a = await createArtist.mutateAsync(newArtist.trim());
+      setSelectedArtists((prev) => [...prev, a.id]);
+      setNewArtist("");
+      toast({ title: "Artist added" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -229,17 +289,29 @@ const GameForm = () => {
           selectedMechanics.length !== originalMechanics.length ||
           selectedMechanics.some(id => !originalMechanics.includes(id)) ||
           originalMechanics.some(id => !selectedMechanics.includes(id));
+        const designersChanged = 
+          selectedDesigners.length !== originalDesigners.length ||
+          selectedDesigners.some(id => !originalDesigners.includes(id)) ||
+          originalDesigners.some(id => !selectedDesigners.includes(id));
+        const artistsChanged = 
+          selectedArtists.length !== originalArtists.length ||
+          selectedArtists.some(id => !originalArtists.includes(id)) ||
+          originalArtists.some(id => !selectedArtists.includes(id));
         
         await updateGame.mutateAsync({
           id: existingGame.id,
           game: gameData,
           mechanicIds: mechanicsChanged ? selectedMechanics : undefined,
+          designerIds: designersChanged ? selectedDesigners : undefined,
+          artistIds: artistsChanged ? selectedArtists : undefined,
         });
         toast({ title: "Game updated!" });
       } else {
         await createGame.mutateAsync({
           game: gameData,
           mechanicIds: selectedMechanics,
+          designerIds: selectedDesigners,
+          artistIds: selectedArtists,
         });
         toast({ title: "Game created!" });
       }
@@ -781,6 +853,66 @@ const GameForm = () => {
                     className="flex-1"
                   />
                   <Button type="button" variant="outline" onClick={handleAddPublisher}>
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              {/* Designers */}
+              <div className="space-y-3">
+                <Label>Designers</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                  {designers.map((d) => (
+                    <div key={d.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`designer-${d.id}`}
+                        checked={selectedDesigners.includes(d.id)}
+                        onCheckedChange={() => handleDesignerToggle(d.id)}
+                      />
+                      <label htmlFor={`designer-${d.id}`} className="text-sm cursor-pointer">
+                        {d.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newDesigner}
+                    onChange={(e) => setNewDesigner(e.target.value)}
+                    placeholder="Add new designer"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" onClick={handleAddDesigner}>
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              {/* Artists */}
+              <div className="space-y-3">
+                <Label>Artists</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                  {artists.map((a) => (
+                    <div key={a.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`artist-${a.id}`}
+                        checked={selectedArtists.includes(a.id)}
+                        onCheckedChange={() => handleArtistToggle(a.id)}
+                      />
+                      <label htmlFor={`artist-${a.id}`} className="text-sm cursor-pointer">
+                        {a.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newArtist}
+                    onChange={(e) => setNewArtist(e.target.value)}
+                    placeholder="Add new artist"
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" onClick={handleAddArtist}>
                     Add
                   </Button>
                 </div>
