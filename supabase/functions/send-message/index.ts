@@ -130,14 +130,21 @@ export default async function handler(req: Request): Promise<Response> {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the sender's user ID from auth token
-    let senderUserId: string | null = null;
+    // Parallelize auth check and game lookup for speed
     const authHeader = req.headers.get("authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.substring(7);
-      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-      senderUserId = user?.id || null;
-    }
+    const authPromise = (async () => {
+      if (!authHeader?.startsWith("Bearer ")) return null;
+      const { data: { user } } = await supabaseAdmin.auth.getUser(authHeader.substring(7));
+      return user?.id || null;
+    })();
+
+    const gamePromise = supabaseAdmin
+      .from("games")
+      .select("id, is_for_sale, title, library_id, libraries!inner(owner_id)")
+      .eq("id", game_id)
+      .single();
+
+    const [senderUserId, { data: game, error: gameError }] = await Promise.all([authPromise, gamePromise]);
 
     if (!senderUserId) {
       return new Response(
@@ -145,13 +152,6 @@ export default async function handler(req: Request): Promise<Response> {
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Verify the game exists and is for sale, and get the library owner
-    const { data: game, error: gameError } = await supabaseAdmin
-      .from("games")
-      .select("id, is_for_sale, title, library_id, libraries!inner(owner_id)")
-      .eq("id", game_id)
-      .single();
 
     if (gameError || !game) {
       return new Response(
@@ -205,22 +205,9 @@ export default async function handler(req: Request): Promise<Response> {
 
     console.log(`Game inquiry DM sent for "${game.title}" by user ${senderUserId} to owner ${libraryOwnerId}`);
 
-    // Send Discord notifications (fire-and-forget)
+    // Send Discord DM notification only (fire-and-forget)
     try {
       if (game.library_id) {
-        fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${supabaseServiceKey}`,
-          },
-          body: JSON.stringify({
-            library_id: game.library_id,
-            event_type: "message_received",
-            data: { game_title: game.title, sender_name: sender_name.trim() },
-          }),
-        }).catch(err => console.error("Discord webhook notify failed:", err));
-
         fetch(`${supabaseUrl}/functions/v1/discord-send-dm`, {
           method: "POST",
           headers: {
