@@ -95,6 +95,24 @@ function parseBggItems(xml: string) {
       continue;
     }
 
+    // Quality gate: skip ghost entries with no image, no description, and no ratings
+    const usersRatedMatch = block.match(/<usersrated\s+value="([^"]+)"/);
+    const usersRated = usersRatedMatch ? parseInt(usersRatedMatch[1]) || 0 : 0;
+    const hasImage = !!imageMatch;
+    const hasDescription = !!descMatch && descMatch[1].trim().length > 20;
+
+    // Skip entries that are essentially empty placeholders on BGG
+    if (!hasImage && !hasDescription && usersRated === 0) {
+      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — ghost entry: "${title}" (no image, no desc, 0 ratings)`);
+      continue;
+    }
+
+    // Skip obscure fan-made items with <3 ratings and no mechanics (likely spam/placeholders)
+    if (usersRated < 3 && mechanics.length === 0 && !hasDescription) {
+      console.log(`[catalog-scraper] Skipping BGG ID ${bggId} — low-quality: "${title}" (${usersRated} ratings, no mechanics)`);
+      continue;
+    }
+
     // Detect expansion
     const isExpansion = itemType === "boardgameexpansion";
 

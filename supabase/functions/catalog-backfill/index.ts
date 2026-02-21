@@ -443,6 +443,154 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // =====================================================================
+    // MODE: re-enrich — Monthly refresh of BGG ratings/weight for existing entries
+    // Processes entries that haven't been updated in 30+ days
+    // =====================================================================
+    if (mode === "re-enrich") {
+      const BGG_BATCH_SIZE = 20;
+      const batchSize = Math.min(body.batch_size || 60, 200);
+
+      // Get entries updated more than 30 days ago (stale data)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: staleEntries, error: staleErr } = await admin
+        .from("game_catalog")
+        .select("id, bgg_id")
+        .not("bgg_id", "is", null)
+        .eq("bgg_verified_type", "boardgame")
+        .lt("updated_at", thirtyDaysAgo)
+        .order("updated_at", { ascending: true })
+        .limit(batchSize);
+
+      if (staleErr) {
+        return new Response(JSON.stringify({ error: staleErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!staleEntries || staleEntries.length === 0) {
+        return new Response(JSON.stringify({
+          success: true, mode: "re-enrich", refreshed: 0, message: "No stale entries", hasMore: false,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      console.log(`[catalog-backfill] Re-enriching ${staleEntries.length} stale entries`);
+
+      let refreshed = 0;
+      const errors: string[] = [];
+      const entryMap = new Map<string, string>();
+      for (const e of staleEntries) entryMap.set(e.bgg_id, e.id);
+
+      const allBggIds = staleEntries.map((e: any) => e.bgg_id);
+      for (let i = 0; i < allBggIds.length; i += BGG_BATCH_SIZE) {
+        const chunk = allBggIds.slice(i, i + BGG_BATCH_SIZE);
+        const url = `https://boardgamegeek.com/xmlapi2/thing?id=${chunk.join(",")}&stats=1`;
+
+        let xml: string | null = null;
+        let fetchAttempts = 0;
+        while (fetchAttempts < 3 && !xml) {
+          fetchAttempts++;
+          try {
+            const res = await fetch(url, { headers: bggHeaders });
+            if (res.status === 429) { await sleep(fetchAttempts * 3000); continue; }
+            if (res.status === 202) { await sleep(3000); continue; }
+            if (res.ok) xml = await res.text();
+            else break;
+          } catch { if (fetchAttempts < 3) await sleep(2000); }
+        }
+
+        if (!xml) { errors.push(`Failed chunk starting at ${chunk[0]}`); continue; }
+
+        const parsed = parseBggXmlBatch(xml);
+        for (const item of parsed) {
+          const catalogId = entryMap.get(item.bggId);
+          if (!catalogId) continue;
+          try {
+            const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+            if (item.bggCommunityRating !== null) updates.bgg_community_rating = item.bggCommunityRating;
+            if (item.weight !== null) updates.weight = item.weight;
+            await admin.from("game_catalog").update(updates).eq("id", catalogId);
+            refreshed++;
+          } catch (e) {
+            errors.push(`${item.bggId}: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+
+        if (i + BGG_BATCH_SIZE < allBggIds.length) await sleep(1000);
+      }
+
+      const hasMore = staleEntries.length === batchSize;
+      return new Response(JSON.stringify({
+        success: true, mode: "re-enrich", refreshed, total: staleEntries.length, hasMore, errors: errors.slice(0, 10),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
+    // MODE: dedup — Merge duplicate catalog entries with same BGG ID or title
+    // =====================================================================
+    if (mode === "dedup") {
+      // Find duplicate BGG IDs (keep the oldest entry, merge others)
+      const { data: dupes, error: dupeErr } = await admin.rpc("find_catalog_duplicates");
+      
+      if (dupeErr) {
+        // If RPC doesn't exist yet, do inline query
+        const { data: rawDupes } = await admin
+          .from("game_catalog")
+          .select("bgg_id")
+          .not("bgg_id", "is", null)
+          .order("bgg_id");
+
+        // Count dupes in JS
+        const bggIdCounts = new Map<string, number>();
+        for (const d of rawDupes || []) {
+          bggIdCounts.set(d.bgg_id, (bggIdCounts.get(d.bgg_id) || 0) + 1);
+        }
+
+        let merged = 0;
+        const errors: string[] = [];
+        for (const [bggId, count] of bggIdCounts) {
+          if (count <= 1) continue;
+          // Get all entries for this bgg_id, keep oldest
+          const { data: entries } = await admin
+            .from("game_catalog")
+            .select("id, created_at")
+            .eq("bgg_id", bggId)
+            .order("created_at", { ascending: true });
+
+          if (!entries || entries.length <= 1) continue;
+          const keepId = entries[0].id;
+          const removeIds = entries.slice(1).map(e => e.id);
+
+          try {
+            // Reassign all foreign keys to the kept entry
+            for (const removeId of removeIds) {
+              await admin.from("games").update({ catalog_id: keepId }).eq("catalog_id", removeId);
+              await admin.from("catalog_mechanics").update({ catalog_id: keepId }).eq("catalog_id", removeId);
+              await admin.from("catalog_publishers").update({ catalog_id: keepId }).eq("catalog_id", removeId);
+              await admin.from("catalog_designers").update({ catalog_id: keepId }).eq("catalog_id", removeId);
+              await admin.from("catalog_artists").update({ catalog_id: keepId }).eq("catalog_id", removeId);
+              await admin.from("catalog_videos").update({ catalog_id: keepId }).eq("catalog_id", removeId);
+              await admin.from("catalog_ratings").update({ catalog_id: keepId }).eq("catalog_id", removeId);
+              await admin.from("catalog_corrections").update({ catalog_id: keepId }).eq("catalog_id", removeId);
+              // Delete the duplicate
+              await admin.from("game_catalog").delete().eq("id", removeId);
+              merged++;
+            }
+          } catch (e) {
+            errors.push(`${bggId}: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+
+        return new Response(JSON.stringify({
+          success: true, mode: "dedup", merged, errors: errors.slice(0, 20),
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ success: true, mode: "dedup", message: "Used RPC" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // =====================================================================
     // MODE: sync-ratings
     // =====================================================================
     if (mode === "sync-ratings") {
