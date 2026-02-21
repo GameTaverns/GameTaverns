@@ -31,6 +31,7 @@ import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
 import { GameDocuments } from "@/components/games/GameDocuments";
+import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { useAddTradeListing, useMyTradeListings, useRemoveTradeListing, type SaleCondition } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -514,18 +515,23 @@ const GameDetail = () => {
               })}
             </div>
 
-            {/* BGG Link */}
-            {game.bgg_url && (
-              <a
-                href={game.bgg_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 mb-6 text-sm text-primary hover:underline font-medium"
-              >
-                <ExternalLink className="h-4 w-4" />
-                View on BoardGameGeek
-              </a>
-            )}
+            {/* BGG Link + Purchase Links */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-6">
+              {game.bgg_url && (
+                <a
+                  href={game.bgg_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View on BoardGameGeek
+                </a>
+              )}
+              {(game as any).catalog_id && (
+                <PurchaseLinks catalogId={(game as any).catalog_id} />
+              )}
+            </div>
 
             {/* Tabs for Description and Additional Info */}
             <Tabs defaultValue="description" className="w-full">

@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
+import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { GameImage } from "@/components/games/GameImage";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
@@ -429,6 +430,9 @@ export default function CatalogGameDetail() {
                   <ExternalLink className="h-4 w-4" /> View on BoardGameGeek
                 </a>
               )}
+
+              {/* Purchase Links */}
+              <PurchaseLinks catalogId={game.id} />
             </div>
 
             {/* Tabs */}
