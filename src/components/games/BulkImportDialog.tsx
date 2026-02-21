@@ -1116,13 +1116,19 @@ export function BulkImportDialog({
               <TabsContent value="csv" className="mt-0 space-y-4">
                 <div className="space-y-2">
                   <Label>Upload CSV/Excel File</Label>
-                  {/* Wrapped in div to prevent focus/click events from bubbling to dialog on mobile file picker */}
+                  {/* Wrapped in div to prevent focus/click events from bubbling to dialog on mobile file picker.
+                      On Android/Capacitor the native file picker can take 10+ seconds — never auto-clear the guard on blur.
+                      Only clear it when onChange fires (file selected) or when the user cancels (detected via focus return + no file). */}
                   <div onFocus={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                     <input
                       type="file"
                       accept=".csv,.xlsx,.xls"
                       onClick={() => { filePickerActiveRef.current = true; }}
-                      onBlur={() => { setTimeout(() => { filePickerActiveRef.current = false; }, 2000); }}
+                      onBlur={() => {
+                        // On mobile, the picker can stay open for a very long time.
+                        // Use a generous 30-second safety net instead of 2s.
+                        setTimeout(() => { filePickerActiveRef.current = false; }, 30000);
+                      }}
                       onChange={(e) => { filePickerActiveRef.current = false; e.stopPropagation(); handleFileUpload(e); }}
                       disabled={isImporting}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
