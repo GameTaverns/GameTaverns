@@ -75,12 +75,19 @@ export function ContactSellerForm({ gameId, gameTitle }: ContactSellerFormProps)
   const { buildUrl } = useTenantUrl();
   const { data: userProfile } = useUserProfile();
 
-  // Auto-populate name from user profile
+  // Auto-populate name and message from user profile
   useEffect(() => {
     if (userProfile?.display_name && !name) {
       setName(userProfile.display_name);
     }
   }, [userProfile?.display_name]);
+
+  // Pre-fill with game interest message
+  useEffect(() => {
+    if (!message && gameTitle) {
+      setMessage(`Hi! I'm interested in "${gameTitle}". Is it still available? I'd love to discuss details.`);
+    }
+  }, [gameTitle]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

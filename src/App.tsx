@@ -17,6 +17,7 @@ import { MobileAppShell } from "@/components/mobile/MobileAppShell";
 import { isProductionDeployment } from "@/config/runtime";
 import { GlobalFeedbackButton } from "@/components/feedback/FeedbackDialog";
 import { PresenceTracker } from "@/components/social/PresenceTracker";
+import { GlobalDMListener } from "@/components/social/GlobalDMListener";
 import { DMPopupManager } from "@/components/social/DMPopupManager";
 import { useMobileLibrary } from "@/hooks/useCapacitor";
 
@@ -382,6 +383,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <PresenceTracker />
+              <GlobalDMListener />
               <AppRoutes />
               <GlobalFeedbackButton />
             </TourProvider>
