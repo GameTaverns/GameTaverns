@@ -4769,6 +4769,32 @@ export type Database = {
       }
       generate_slug: { Args: { title: string }; Returns: string }
       get_catalog_enrichment_status: { Args: never; Returns: Json }
+      get_cron_job_runs: {
+        Args: never
+        Returns: {
+          command: string
+          database: string
+          end_time: string
+          job_pid: number
+          jobid: number
+          jobname: string
+          return_message: string
+          runid: number
+          start_time: string
+          status: string
+          username: string
+        }[]
+      }
+      get_cron_jobs: {
+        Args: never
+        Returns: {
+          active: boolean
+          command: string
+          jobid: number
+          jobname: string
+          schedule: string
+        }[]
+      }
       get_or_create_referral_code: {
         Args: { _user_id: string }
         Returns: string
