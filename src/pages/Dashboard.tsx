@@ -115,7 +115,7 @@ import { PremiumRoadmap } from "@/components/admin/PremiumRoadmap";
 import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 import { usePendingClubs } from "@/hooks/useClubs";
-import { Activity, Database, MessageCircle, HeartPulse, Crown, Terminal, BookMarked, BadgeCheck } from "lucide-react";
+import { Activity, Database, MessageCircle, HeartPulse, Crown, Terminal, BookMarked, BadgeCheck, Clock } from "lucide-react";
 
 // Lazy-load tabs that may fail on self-hosted deployments (missing DB tables, etc.)
 const SpecialBadgesManagement = lazy(() =>
@@ -123,6 +123,9 @@ const SpecialBadgesManagement = lazy(() =>
 );
 const ServerManagement = lazy(() =>
   import("@/components/admin/ServerManagement").then(m => ({ default: m.ServerManagement }))
+);
+const CronJobsMonitor = lazy(() =>
+  import("@/components/admin/CronJobsMonitor").then(m => ({ default: m.CronJobsMonitor }))
 );
 
 export default function Dashboard() {
@@ -998,6 +1001,9 @@ export default function Dashboard() {
                     <TabsTrigger value="badges" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
                       <BadgeCheck className="h-3 w-3" /> Badges
                     </TabsTrigger>
+                    <TabsTrigger value="crons" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                      <Clock className="h-3 w-3" /> Crons
+                    </TabsTrigger>
                     <TabsTrigger value="server" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
                       <Terminal className="h-3 w-3" /> Server
                     </TabsTrigger>
@@ -1014,6 +1020,11 @@ export default function Dashboard() {
                   <TabsContent value="badges">
                     <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading badges…</div>}>
                       <SpecialBadgesManagement />
+                    </Suspense>
+                  </TabsContent>
+                  <TabsContent value="crons">
+                    <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading cron monitor…</div>}>
+                      <CronJobsMonitor />
                     </Suspense>
                   </TabsContent>
                   <TabsContent value="server">
