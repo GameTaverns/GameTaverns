@@ -3,12 +3,16 @@ import {
   Library, Users, Dice6, ArrowLeftRight, Calendar, MessageSquare,
   Trophy, Star, Upload, Zap, Shield, BarChart3, Building2,
   ChevronRight, Download, Mail, ExternalLink, Vote, Shuffle, BookOpen, RefreshCw,
+  Palette, Swords,
 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/layout/Footer";
 import logoImage from "@/assets/logo.png";
+
+// Screenshot placeholders — replace these imports with real screenshots when available
+// To replace: drop your screenshots in src/assets/press/ and update these imports
 import libraryViewImg from "@/assets/press/library-view.jpg";
 import profileViewImg from "@/assets/press/profile-view.jpg";
 import gamenightPollImg from "@/assets/press/gamenight-poll.jpg";
@@ -155,6 +159,16 @@ export default function Press() {
               description="Milestone badges for play counts, game variety, lending streaks, and community contributions. Track your H-index, win rates, and personal records."
             />
             <DiffCard
+              icon={<Swords className="h-6 w-6" />}
+              title="ELO Competitive Rankings"
+              description="Tag other players in play sessions and track competitive ELO ratings per game and globally. Rankings from Beginner to Elite update automatically when tagged players accept."
+            />
+            <DiffCard
+              icon={<Palette className="h-6 w-6" />}
+              title="Fully Customizable Theming"
+              description="Every library and profile is unique. Choose your own colors, display fonts, background images, and layout. HSL-based palette system ensures everything looks cohesive."
+            />
+            <DiffCard
               icon={<Building2 className="h-6 w-6" />}
               title="Clubs: Multi-Library Networks"
               description="Connect multiple libraries into a shared Club with combined catalogs, cross-library forums, shared events, and unified member management."
@@ -162,7 +176,7 @@ export default function Press() {
             <DiffCard
               icon={<ArrowLeftRight className="h-6 w-6" />}
               title="Automated Trade Matching"
-              description="List games you'd trade and GameTaverns automatically finds matches from other libraries in your area. Built-in messaging for negotiation."
+              description="List games you'd trade and GameTaverns automatically finds matches from other libraries. Built-in messaging for negotiation."
             />
             <DiffCard
               icon={<Zap className="h-6 w-6" />}
@@ -281,11 +295,11 @@ export default function Press() {
           />
           <CopyBlock
             label="Short Description (50 words)"
-            text="GameTaverns is a free platform that turns your board game collection into a shareable library. Import from BoardGameGeek in seconds, log plays, lend games with tracking, run game night polls, earn achievements, and connect with other enthusiasts. Built for collectors, game groups, and community lending libraries alike."
+            text="GameTaverns is a free platform that turns your board game collection into a shareable, fully customizable library. Import from BoardGameGeek in seconds, log plays with ELO rankings, lend games with tracking, run game night polls, earn achievements, and connect with other enthusiasts. Built for collectors, game groups, and community lending libraries."
           />
           <CopyBlock
             label="Long Description (100 words)"
-            text="GameTaverns is the all-in-one board game library management platform designed for collectors, game groups, and community lending libraries. Import your entire BoardGameGeek collection with one click, then track every game's condition, location, and value. Log play sessions with scores and winners, earning achievement badges along the way. The built-in lending system handles borrow requests, due dates, and borrower reputation. Game night polls let anyone vote on what to play — no account needed. Libraries can form Clubs to create multi-library networks with shared catalogs and events. Trade matching automatically connects you with nearby libraries for game swaps. Free to use, privacy-first, and open to all."
+            text="GameTaverns is the all-in-one board game library management platform designed for collectors, game groups, and community lending libraries. Import your entire BoardGameGeek collection with one click, then track every game's condition, location, and value. Log play sessions with scores, tag other players, and track competitive ELO rankings from Beginner to Elite. Every library and profile is fully customizable with unique themes, colors, fonts, and backgrounds. The built-in lending system handles borrow requests, due dates, and borrower reputation. Game night polls let anyone vote — no account needed. Libraries can form Clubs to create multi-library networks. Trade matching connects you with nearby collections. Free, privacy-first, and open to all."
           />
         </div>
       </section>
@@ -332,17 +346,24 @@ function FactCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ScreenshotCard({ src, title, description }: { src: string; title: string; description: string }) {
+function ScreenshotCard({ src, title, description, placeholder = false }: { src: string; title: string; description: string; placeholder?: boolean }) {
   return (
     <div className="group">
       <a href={src} target="_blank" rel="noopener noreferrer" className="block">
-        <div className="overflow-hidden rounded-xl border border-border/30 mb-4 bg-muted/30">
-          <img
-            src={src}
-            alt={title}
-            className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-          />
+        <div className={`overflow-hidden rounded-xl border mb-4 ${placeholder ? "border-dashed border-secondary/40 bg-secondary/5" : "border-border/30 bg-muted/30"}`}>
+          {placeholder ? (
+            <div className="w-full aspect-video flex flex-col items-center justify-center gap-3 p-8">
+              <Upload className="h-10 w-10 text-secondary/40" />
+              <span className="text-sm text-muted-foreground text-center">Replace with your own screenshot</span>
+            </div>
+          ) : (
+            <img
+              src={src}
+              alt={title}
+              className="w-full h-auto object-cover transition-transform duration-300 group-hover:scale-105"
+              loading="lazy"
+            />
+          )}
         </div>
       </a>
       <h3 className="font-display font-bold text-foreground text-lg mb-1">{title}</h3>
