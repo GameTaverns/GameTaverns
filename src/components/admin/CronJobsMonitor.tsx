@@ -56,15 +56,16 @@ function describeSchedule(cron: string): string {
   return cron;
 }
 
-// Check if schedule runs less frequently than every 10 minutes
+// Check if schedule runs less frequently than every 5 minutes
 function isInfrequentSchedule(cron: string): boolean {
   const parts = cron.trim().split(/\s+/);
   if (parts.length !== 5) return false;
   const [min, hour] = parts;
+  // Runs every minute or every few minutes
   if (min === "*" && hour === "*") return false;
   if (min.startsWith("*/")) {
     const interval = parseInt(min.slice(2), 10);
-    if (!isNaN(interval) && interval < 10) return false;
+    if (!isNaN(interval) && interval <= 5) return false;
   }
   return true;
 }
@@ -74,7 +75,8 @@ function extractFunctionInfo(command: string): { functionName: string; body: Rec
   const urlMatch = command.match(/functions\/v1\/([a-z0-9-]+)/i);
   if (!urlMatch) return null;
   const functionName = urlMatch[1];
-  const bodyMatch = command.match(/body:='(\{[^']*\})'::jsonb/);
+  // Handle both `body:='...'` and `body := '...'` (with optional spaces around :=)
+  const bodyMatch = command.match(/body\s*:=\s*'(\{[^']*\})'\s*::jsonb/);
   let body: Record<string, unknown> | null = null;
   if (bodyMatch) {
     try {
