@@ -1,8 +1,9 @@
--- Catalog backfill cron jobs
--- 1) Type-check: tags unenriched entries with bgg_verified_type every minute (batch of 200)
--- 2) Enrichment: backfills designers/mechanics/weight every 2 minutes (batch of 20)
+-- Catalog backfill cron jobs (comprehensive)
+-- Manages the full lifecycle: type-check → enrichment → re-enrichment → dedup → cleanup
 
--- Type-check cron (fast, lightweight — just fetches item type from BGG)
+-- ─────────────────────────────────────────────────────────────────────
+-- 1) Type-check: tags new entries with bgg_verified_type (every minute)
+-- ─────────────────────────────────────────────────────────────────────
 SELECT cron.unschedule('catalog-type-check-cron')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-type-check-cron');
 
@@ -21,7 +22,9 @@ SELECT cron.schedule(
   $$
 );
 
--- Enrichment cron (heavier — fetches full metadata from BGG)
+-- ─────────────────────────────────────────────────────────────────────
+-- 2) Enrichment: backfill designers/mechanics/weight (every 2 min)
+-- ─────────────────────────────────────────────────────────────────────
 SELECT cron.unschedule('catalog-enrichment-cron')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-enrichment-cron');
 
@@ -35,12 +38,57 @@ SELECT cron.schedule(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
     ),
-    body := '{"batch_size": 20}'::jsonb
+    body := '{"mode": "enrich", "batch_size": 20}'::jsonb
   ) AS request_id;
   $$
 );
 
--- Auto-cleanup cron: delete non-boardgame entries daily at 3:30 AM
+-- ─────────────────────────────────────────────────────────────────────
+-- 3) Re-enrichment: refresh stale BGG ratings/weight monthly
+--    Runs every 10 minutes — only touches entries >30 days old
+-- ─────────────────────────────────────────────────────────────────────
+SELECT cron.unschedule('catalog-re-enrich-cron')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-re-enrich-cron');
+
+SELECT cron.schedule(
+  'catalog-re-enrich-cron',
+  '*/10 * * * *',
+  $$
+  SELECT net.http_post(
+    url := 'http://kong:8000/functions/v1/catalog-backfill',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
+    ),
+    body := '{"mode": "re-enrich", "batch_size": 40}'::jsonb
+  ) AS request_id;
+  $$
+);
+
+-- ─────────────────────────────────────────────────────────────────────
+-- 4) Dedup: merge duplicate catalog entries weekly (Sundays 2 AM)
+-- ─────────────────────────────────────────────────────────────────────
+SELECT cron.unschedule('catalog-dedup-cron')
+WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-dedup-cron');
+
+SELECT cron.schedule(
+  'catalog-dedup-cron',
+  '0 2 * * 0',
+  $$
+  SELECT net.http_post(
+    url := 'http://kong:8000/functions/v1/catalog-backfill',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
+    ),
+    body := '{"mode": "dedup"}'::jsonb
+  ) AS request_id;
+  $$
+);
+
+-- ─────────────────────────────────────────────────────────────────────
+-- 5) Cleanup: delete non-boardgame entries daily at 3:30 AM
+-- ─────────────────────────────────────────────────────────────────────
 SELECT cron.unschedule('catalog-cleanup-non-boardgames')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-cleanup-non-boardgames');
 
