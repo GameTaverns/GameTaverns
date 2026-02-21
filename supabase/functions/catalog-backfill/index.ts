@@ -146,43 +146,27 @@ const handler = async (req: Request): Promise<Response> => {
     // MODE: status — Return enrichment progress counts
     // =====================================================================
     if (mode === "status") {
-      // Total catalog entries with bgg_id (enrichable)
-      const { count: totalWithBgg } = await admin
-        .from("game_catalog")
-        .select("id", { count: "exact", head: true })
-        .not("bgg_id", "is", null);
+      // Use DB function for accurate counts (avoids PostgREST 1000-row limit)
+      const { data: stats, error: statsErr } = await admin.rpc("get_catalog_enrichment_status");
 
-      // Entries that have at least one designer OR one artist (enriched with metadata)
-      // Use a raw approach: count distinct catalog_ids in both junction tables
-      const { data: designerCatalogIds } = await admin
-        .from("catalog_designers")
-        .select("catalog_id");
-      const { data: artistCatalogIds } = await admin
-        .from("catalog_artists")
-        .select("catalog_id");
+      if (statsErr) {
+        console.error("[catalog-backfill] Status RPC error:", statsErr.message);
+        return new Response(JSON.stringify({ error: statsErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
-      const designerSet = new Set((designerCatalogIds || []).map(r => r.catalog_id));
-      const artistSet = new Set((artistCatalogIds || []).map(r => r.catalog_id));
-      
-      // Entries with designers OR artists (union — many BGG games have no artist listed)
-      const enrichedSet = new Set([...designerSet, ...artistSet]);
-      const enrichedCount = enrichedSet.size;
-
-      // Entries with rating
-      const { count: withRating } = await admin
-        .from("game_catalog")
-        .select("id", { count: "exact", head: true })
-        .not("bgg_id", "is", null)
-        .not("bgg_community_rating", "is", null)
-        .gt("bgg_community_rating", 0);
+      const totalWithBgg = stats?.total_with_bgg || 0;
+      const remaining = stats?.remaining || 0;
+      const enrichedCount = totalWithBgg - remaining;
 
       return new Response(JSON.stringify({
-        total_with_bgg: totalWithBgg || 0,
+        total_with_bgg: totalWithBgg,
         enriched: enrichedCount,
-        has_designers: designerSet.size,
-        has_artists: artistSet.size,
-        has_rating: withRating || 0,
-        remaining: (totalWithBgg || 0) - enrichedCount,
+        has_designers: stats?.has_designers || 0,
+        has_artists: stats?.has_artists || 0,
+        has_rating: stats?.has_rating || 0,
+        remaining,
         percent: totalWithBgg ? Math.round((enrichedCount / totalWithBgg) * 100) : 0,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
