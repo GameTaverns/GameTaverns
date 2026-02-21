@@ -11,12 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/layout/Footer";
 import logoImage from "@/assets/logo.png";
 
-// Screenshot placeholders — replace these imports with real screenshots when available
-// To replace: drop your screenshots in src/assets/press/ and update these imports
-import libraryViewImg from "@/assets/press/library-view.jpg";
-import profileViewImg from "@/assets/press/profile-view.jpg";
-import gamenightPollImg from "@/assets/press/gamenight-poll.jpg";
-import playStatsImg from "@/assets/press/play-stats.jpg";
+// Press kit screenshots (served from public/presskit/)
+const PK = "/presskit";
 
 export default function Press() {
   return (
@@ -106,24 +102,74 @@ export default function Press() {
         </p>
         <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
           <ScreenshotCard
-            src={libraryViewImg}
-            title="Library Collection View"
+            src={`${PK}/library1-2.jpg`}
+            title="Library Collection — Dark Theme"
             description="Beautiful grid layout with filters, search, and detailed game cards. Supports multiple views and custom sorting."
           />
           <ScreenshotCard
-            src={profileViewImg}
-            title="User Profile & Achievements"
-            description="Rich user profiles with play statistics, achievement badges, activity timeline, and community reputation."
+            src={`${PK}/library2-2.jpg`}
+            title="Library Collection — Teal Theme"
+            description="Every library is fully customizable with unique colors, fonts, and backgrounds to match each owner's style."
           />
           <ScreenshotCard
-            src={gamenightPollImg}
+            src={`${PK}/gamecard-2.jpg`}
+            title="Game Detail Card"
+            description="Rich game pages with box art, AI-generated descriptions, mechanics, designer credits, play history, and documents."
+          />
+          <ScreenshotCard
+            src={`${PK}/badges2-2.jpg`}
+            title="User Profile & Badges"
+            description="Customizable profiles with role badges, follower counts, cover images, and community reputation."
+          />
+          <ScreenshotCard
+            src={`${PK}/userprofile.jpg`}
+            title="Profile Activity Feed"
+            description="Recent activity timeline with achievements earned, games added, and community interactions."
+          />
+          <ScreenshotCard
+            src={`${PK}/playstats.jpg`}
+            title="Play Stats & Analytics"
+            description="Monthly and annual play tracking with H-index, top mechanics, most played games, and session history."
+          />
+          <ScreenshotCard
+            src={`${PK}/poll.jpg`}
             title="Game Night Polls"
-            description="Shareable voting polls for game nights — no account required. Live results, RSVP tracking, and event details."
+            description="Shareable voting polls for game nights — no account required. Live results and RSVP tracking."
           />
           <ScreenshotCard
-            src={playStatsImg}
-            title="Play Logging & Analytics"
-            description="Detailed play session tracking with charts, H-index scores, win rates, and monthly play summaries."
+            src={`${PK}/pollresults.jpg`}
+            title="Poll Results"
+            description="Live ranked results with vote counts, percentages, and trophy indicators for top picks."
+          />
+          <ScreenshotCard
+            src={`${PK}/picker_setup.jpg`}
+            title="Random Game Picker"
+            description="Filter by type, genre, play time, and player count — then spin to let fate choose your next game."
+          />
+          <ScreenshotCard
+            src={`${PK}/picker_result.jpg`}
+            title="Picker Result"
+            description="Tonight's pick displayed with box art, game type, play time, and player count. Share or pick again."
+          />
+          <ScreenshotCard
+            src={`${PK}/borrow1.jpg`}
+            title="Lending Management"
+            description="Full lending dashboard with inventory overview, pending requests, and loan history tracking."
+          />
+          <ScreenshotCard
+            src={`${PK}/borrow2.jpg`}
+            title="Loan Approval"
+            description="Approve borrow requests with condition notes, due dates, and optional pickup instructions."
+          />
+          <ScreenshotCard
+            src={`${PK}/borrow_returned.jpg`}
+            title="Returned & Rated"
+            description="Track return condition and rate borrowers to build community trust and lending reputation."
+          />
+          <ScreenshotCard
+            src={`${PK}/addgames.jpg`}
+            title="Bulk Import"
+            description="Import games from CSV, BGG collection sync, or paste BGG links. Refresh images and ratings in bulk."
           />
         </div>
       </section>
