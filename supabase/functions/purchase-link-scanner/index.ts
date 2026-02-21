@@ -64,7 +64,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       const results = await scanGameAcrossPublishers(sb, game, firecrawlKey);
-      return new Response(JSON.stringify({ success: true, game: game.title, links_found: results }), {
+      return new Response(JSON.stringify({ success: true, game: game.title, links_found: results.count, details: results.details }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -178,9 +178,10 @@ async function scanGameAcrossPublishers(
   sb: any,
   game: { id: string; title: string; bgg_id: string | null },
   firecrawlKey: string | undefined,
-): Promise<number> {
+): Promise<{ count: number; details: Record<string, any> }> {
   let totalAdded = 0;
   const titleSlug = slugifyTitle(game.title);
+  const details: Record<string, any> = {};
   console.log(`[purchase-link-scanner] Scanning "${game.title}" (slug: ${titleSlug}) across ${Object.keys(KNOWN_PUBLISHERS).length} publishers`);
 
   for (const [key, pub] of Object.entries(KNOWN_PUBLISHERS)) {
@@ -188,6 +189,7 @@ async function scanGameAcrossPublishers(
 
     try {
       const result = await checkUrl(candidateUrl, firecrawlKey);
+      details[key] = { url: candidateUrl, ...result };
       console.log(`[purchase-link-scanner] ${key}: ${candidateUrl} → ${result.status} (body: ${result.bodyLen} chars, ok: ${result.ok}, method: ${result.method}, final: ${result.finalUrl})`);
 
       if (result.ok) {
@@ -203,18 +205,22 @@ async function scanGameAcrossPublishers(
         );
         if (!error) {
           totalAdded++;
+          details[key].saved = true;
           console.log(`[purchase-link-scanner] ✅ Added ${pub.name} link for "${game.title}"`);
         } else {
+          details[key].saved = false;
+          details[key].dbError = error.message;
           console.log(`[purchase-link-scanner] DB error for ${pub.name}:`, error.message);
         }
       }
     } catch (_e) {
+      details[key] = { url: candidateUrl, error: (_e as Error).message };
       console.log(`[purchase-link-scanner] ${key}: ${candidateUrl} → failed (${(_e as Error).message})`);
     }
   }
 
   console.log(`[purchase-link-scanner] Scan complete for "${game.title}": ${totalAdded} links found`);
-  return totalAdded;
+  return { count: totalAdded, details };
 }
 
 async function scanPublisherSite(
