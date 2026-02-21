@@ -18,11 +18,13 @@ EXCEPTION WHEN duplicate_object THEN
 END $$;
 
 -- Library member roles (Community-level roles within a specific library)
+-- co_owner  - Full owner-level access (cannot delete the library)
 -- moderator - Can manage polls, events, remove users within their community
 -- member    - Regular community member
 DO $$ BEGIN
-    CREATE TYPE library_member_role AS ENUM ('member', 'moderator');
-EXCEPTION WHEN duplicate_object THEN NULL;
+    CREATE TYPE library_member_role AS ENUM ('member', 'moderator', 'co_owner');
+EXCEPTION WHEN duplicate_object THEN
+    BEGIN ALTER TYPE library_member_role ADD VALUE 'co_owner'; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
 
 -- Game difficulty levels
