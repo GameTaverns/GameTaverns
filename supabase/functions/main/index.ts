@@ -160,9 +160,12 @@ Deno.serve(async (req) => {
       return await handler(req);
     }
   } catch (err) {
-    console.error(`[router] Error loading/executing ${functionName}:`, err);
+    const errObj = err as Error;
+    const detail = errObj?.message || errObj?.toString?.() || String(err);
+    const stack = errObj?.stack || "no stack";
+    console.error(`[router] Error loading/executing ${functionName}:`, detail, stack);
     return new Response(
-      JSON.stringify({ error: `Function "${functionName}" failed to load`, detail: (err as Error).message }),
+      JSON.stringify({ error: `Function "${functionName}" failed to load`, detail, stack: stack.substring(0, 500) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
