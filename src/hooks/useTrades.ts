@@ -141,7 +141,7 @@ export function useTradeMatches() {
   });
 }
 
-// Get trade offers (received and sent)
+// Get trade offers (received and sent) — uses separate queries to avoid PostgREST join issues
 export function useTradeOffers() {
   const { user } = useAuth();
 
@@ -150,37 +150,74 @@ export function useTradeOffers() {
     queryFn: async () => {
       if (!user) return { received: [], sent: [] };
 
+      // Fetch received offers
       const { data: received, error: recvError } = await (supabase as any)
         .from("trade_offers")
-        .select(`
-          *,
-          offering_listing:trade_listings(
-            *,
-            game:games(id, title, image_url)
-          )
-        `)
+        .select("*")
         .eq("receiving_user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (recvError && recvError.code !== "42P01") throw recvError;
 
+      // Fetch sent offers
       const { data: sent, error: sentError } = await (supabase as any)
         .from("trade_offers")
-        .select(`
-          *,
-          offering_listing:trade_listings(
-            *,
-            game:games(id, title, image_url)
-          )
-        `)
+        .select("*")
         .eq("offering_user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (sentError && sentError.code !== "42P01") throw sentError;
 
-      return { 
-        received: (received || []) as TradeOffer[], 
-        sent: (sent || []) as TradeOffer[] 
+      const allOffers = [...(received || []), ...(sent || [])];
+
+      // Collect unique listing IDs to fetch separately
+      const listingIds = [...new Set(
+        allOffers
+          .flatMap(o => [o.offering_listing_id, o.receiving_listing_id])
+          .filter(Boolean)
+      )];
+
+      let listingsMap: Record<string, any> = {};
+      let gamesMap: Record<string, any> = {};
+
+      if (listingIds.length > 0) {
+        const { data: listings } = await (supabase as any)
+          .from("trade_listings")
+          .select("*")
+          .in("id", listingIds);
+
+        if (listings) {
+          for (const l of listings) listingsMap[l.id] = l;
+
+          const gameIds = [...new Set(listings.map((l: any) => l.game_id).filter(Boolean))];
+          if (gameIds.length > 0) {
+            const { data: games } = await (supabase as any)
+              .from("games")
+              .select("id, title, image_url")
+              .in("id", gameIds);
+
+            if (games) {
+              for (const g of games) gamesMap[g.id] = g;
+            }
+          }
+        }
+      }
+
+      // Enrich offers with listing + game data
+      const enrich = (offer: any) => {
+        const listing = listingsMap[offer.offering_listing_id];
+        return {
+          ...offer,
+          offering_listing: listing ? {
+            ...listing,
+            game: gamesMap[listing.game_id] || null,
+          } : null,
+        };
+      };
+
+      return {
+        received: (received || []).map(enrich) as TradeOffer[],
+        sent: (sent || []).map(enrich) as TradeOffer[],
       };
     },
     enabled: !!user,
