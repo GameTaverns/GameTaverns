@@ -121,7 +121,7 @@ export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, o
                   variant="ghost"
                   size="icon"
                   className="bg-background/80 backdrop-blur-sm hover:bg-primary/20 shadow-sm h-8 w-8 text-pink-500 hover:text-pink-600"
-                  title="Add to trade want list"
+                  title="Add to Wishlist"
                   disabled={isWanting && wantingId === game.id}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); onWant(game); }}
                 >
