@@ -186,6 +186,10 @@ async function sendConfirmationEmail(params: { email: string; confirmUrl: string
       to: params.email,
       subject: "Confirm Your GameTaverns Account",
       content: `Confirm your email by visiting: ${params.confirmUrl}`,
+      headers: {
+        "List-Unsubscribe": `<mailto:unsubscribe@gametaverns.com?subject=unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
       html: `
 <!DOCTYPE html>
 <html>

@@ -108,6 +108,10 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
       subject: options.subject,
       html: options.html,
       replyTo: options.replyTo,
+      headers: {
+        'List-Unsubscribe': `<mailto:unsubscribe@gametaverns.com?subject=unsubscribe>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     });
     
     const elapsed = Date.now() - startTime;
