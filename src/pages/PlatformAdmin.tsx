@@ -1,7 +1,7 @@
 // v4 - lazy imports for badges + server tabs 2026-02-20
 import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Crown, BadgeCheck } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,7 +12,7 @@ import { PlatformAnalytics } from "@/components/admin/PlatformAnalytics";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
-import { PremiumRoadmap } from "@/components/admin/PremiumRoadmap";
+import { PlatformRoadmap } from "@/components/admin/PlatformRoadmap";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { Badge } from "@/components/ui/badge";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
@@ -218,11 +218,11 @@ export default function PlatformAdmin() {
               Health
             </TabsTrigger>
             <TabsTrigger 
-              value="premium"
+              value="roadmap"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
-              <Crown className="h-4 w-4 mr-1 sm:mr-2" />
-              Premium
+              <Map className="h-4 w-4 mr-1 sm:mr-2" />
+              Roadmap
             </TabsTrigger>
             <TabsTrigger 
               value="badges"
@@ -268,8 +268,8 @@ export default function PlatformAdmin() {
             <SystemHealth />
           </TabsContent>
           
-          <TabsContent value="premium" className="mt-6">
-            <PremiumRoadmap />
+          <TabsContent value="roadmap" className="mt-6">
+            <PlatformRoadmap />
           </TabsContent>
 
           <TabsContent value="badges" className="mt-6">
