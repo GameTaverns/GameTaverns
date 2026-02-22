@@ -413,60 +413,63 @@ export default function CatalogBrowse() {
 
           {/* Search & Sort Bar */}
           <div className="space-y-4 mb-8">
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search games, designers, or artists..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setCurrentPage(1); }}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="title">Title</SelectItem>
-                  <SelectItem value="rating">BGG Rated</SelectItem>
-                  <SelectItem value="community">Community Rated</SelectItem>
-                  <SelectItem value="weight">Lightest First</SelectItem>
-                  <SelectItem value="year">Newest First</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Search - full width on narrow screens */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search games, designers, or artists..."
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-10"
+            />
+          </div>
 
-              {/* View mode toggle */}
-              <div className="flex border border-border rounded-md">
-                <Button
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  size="icon"
-                  className="h-9 w-9 rounded-r-none"
-                  onClick={() => handleViewToggle("grid")}
-                  title="Grid view"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  size="icon"
-                  className="h-9 w-9 rounded-l-none"
-                  onClick={() => handleViewToggle("list")}
-                  title="List view"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
+          {/* Sort + View + Filter controls */}
+          <div className="flex gap-2 flex-wrap">
+            <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setCurrentPage(1); }}>
+              <SelectTrigger className="w-[140px] sm:w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="title">Title</SelectItem>
+                <SelectItem value="rating">BGG Rated</SelectItem>
+                <SelectItem value="community">Community Rated</SelectItem>
+                <SelectItem value="weight">Lightest First</SelectItem>
+                <SelectItem value="year">Newest First</SelectItem>
+              </SelectContent>
+            </Select>
 
+            {/* View mode toggle */}
+            <div className="flex border border-border rounded-md">
               <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="gap-2"
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="icon"
+                className="h-9 w-9 rounded-r-none"
+                onClick={() => handleViewToggle("grid")}
+                title="Grid view"
               >
-                {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                <span className="hidden sm:inline">Filters</span>
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="icon"
+                className="h-9 w-9 rounded-l-none"
+                onClick={() => handleViewToggle("list")}
+                title="List view"
+              >
+                <List className="h-4 w-4" />
               </Button>
             </div>
+
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="gap-2"
+            >
+              {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              <span className="hidden sm:inline">Filters</span>
+            </Button>
+          </div>
 
             {showFilters && (
               <Card>
