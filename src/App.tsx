@@ -81,6 +81,10 @@ const GamesForNPlayers = lazy(() => import("./pages/seo/GamesForNPlayers"));
 const MechanicPage = lazy(() => import("./pages/seo/MechanicPage"));
 const MechanicsIndex = lazy(() => import("./pages/seo/MechanicsIndex"));
 
+// Studio pages (studio.gametaverns.com)
+const StudioLogin = lazy(() => import("./pages/StudioLogin"));
+const StudioDashboard = lazy(() => import("./pages/StudioDashboard"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -237,9 +241,31 @@ function TenantRouteHandler({ tenantSlugFromParam }: { tenantSlugFromParam: stri
   if (isTenantMode) {
     return <LibraryRoutes />;
   }
+
+  // Studio subdomain detection
+  if (isStudioHost()) {
+    return <StudioRoutes />;
+  }
   
   // Platform mode - show marketing/dashboard routes
   return <PlatformRoutes />;
+}
+
+function isStudioHost(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.hostname.toLowerCase() === "studio.gametaverns.com";
+}
+
+// Routes for studio.gametaverns.com
+function StudioRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<StudioLogin />} />
+      <Route path="/studio" element={<StudioDashboard />} />
+      <Route path="/" element={<StudioLogin />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
 // Routes for the platform (gametaverns.com)
