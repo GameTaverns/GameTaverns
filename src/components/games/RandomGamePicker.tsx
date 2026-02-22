@@ -305,7 +305,7 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
             )}
           >
             <Heart className="h-4 w-4 mr-1" />
-            Wishlist
+            Want to Play
           </Button>
           <Button
             variant={mode === "filter" ? "default" : "outline"}
@@ -346,9 +346,9 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
               className="text-sm text-cream/70"
             >
               {eligibleGames.length > 0 ? (
-                <p>Picking from {eligibleGames.length} wishlisted games</p>
+                <p>Picking from {eligibleGames.length} want-to-play games</p>
               ) : (
-                <p className="text-amber-400">No games on wishlist yet</p>
+                <p className="text-amber-400">No want-to-play games yet</p>
               )}
             </motion.div>
           )}
