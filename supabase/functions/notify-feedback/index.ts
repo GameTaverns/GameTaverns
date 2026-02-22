@@ -124,6 +124,10 @@ const handler = async (req: Request): Promise<Response> => {
           to: "admin@gametaverns.com",
           replyTo: sender_email || smtpFrom,
           subject: `[GameTaverns] ${typeLabel} from ${sender_name}`,
+          headers: {
+            "List-Unsubscribe": `<mailto:unsubscribe@gametaverns.com?subject=unsubscribe>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
           html: `
             <h2>${typeLabel}</h2>
             <p><strong>From:</strong> ${sender_name}${sender_email ? ` (${sender_email})` : ""}</p>
