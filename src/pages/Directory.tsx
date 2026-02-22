@@ -6,6 +6,7 @@ import { useLibraryDirectory } from "@/hooks/useLibraryDirectory";
 import { useAuth } from "@/hooks/useAuth";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
+import { JoinLibraryButton } from "@/components/library/JoinLibraryButton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -172,13 +173,24 @@ export default function Directory() {
             )}
           </div>
 
-          <TenantLink
-            href={getLibraryUrl(library.slug, "/")}
-            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-          >
-            Visit Library
-            <ExternalLink className="h-3 w-3" />
-          </TenantLink>
+          <div className="flex items-center gap-3">
+            <TenantLink
+              href={getLibraryUrl(library.slug, "/")}
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              Visit Library
+              <ExternalLink className="h-3 w-3" />
+            </TenantLink>
+            {user && (
+              <JoinLibraryButton
+                libraryId={library.id}
+                libraryName={library.name}
+                showMemberCount={false}
+                variant="outline"
+                size="sm"
+              />
+            )}
+          </div>
         </CardContent>
       </Card>
     );
