@@ -240,6 +240,7 @@ type FailureBreakdown = {
   missing_title: number;
   create_failed: number;
   exception: number;
+  not_found: number;
 };
 
 // Parse CSV data - handles multi-line quoted fields properly
@@ -1804,7 +1805,9 @@ export default async function handler(req: Request): Promise<Response> {
           missing_title: 0,
           create_failed: 0,
           exception: 0,
+          not_found: 0,
         };
+        const notFoundGames: string[] = [];
 
         // Send initial progress
         console.log(`[BulkImport] Sending SSE start event`);
@@ -2508,10 +2511,26 @@ export default async function handler(req: Request): Promise<Response> {
             }
 
             if (!gameData.title) {
-              failed++;
-              failureBreakdown.missing_title++;
-              errors.push(`Could not determine title for BGG ID: ${gameInput.bgg_id}`);
+              // Check if this game wasn't found in catalog or BGG
+              const gameName = gameInput.title || `BGG ID: ${gameInput.bgg_id}`;
+              if (!catalogHit && gameInput.bgg_id) {
+                failed++;
+                failureBreakdown.not_found++;
+                notFoundGames.push(gameName);
+                errors.push(`"${gameName}" was not found in the catalog or on BoardGameGeek`);
+              } else {
+                failed++;
+                failureBreakdown.missing_title++;
+                errors.push(`Could not determine title for BGG ID: ${gameInput.bgg_id}`);
+              }
               continue;
+            }
+
+            // Track games that had no data from either catalog or BGG
+            // (they have a title from CSV but no enrichment succeeded)
+            if (!catalogHit && !gameData.description && !gameData.image_url && gameInput.bgg_id && enhance_with_bgg !== false) {
+              notFoundGames.push(gameData.title);
+              failureBreakdown.not_found++;
             }
 
             // Check if game already exists
@@ -3132,6 +3151,7 @@ export default async function handler(req: Request): Promise<Response> {
         if (failureBreakdown.missing_title) summaryParts.push(`${failureBreakdown.missing_title} missing title`);
         if (failureBreakdown.create_failed) summaryParts.push(`${failureBreakdown.create_failed} create failed`);
         if (failureBreakdown.exception) summaryParts.push(`${failureBreakdown.exception} exceptions`);
+        if (failureBreakdown.not_found) summaryParts.push(`${failureBreakdown.not_found} not found in catalog or BGG`);
         const errorSummary = summaryParts.length ? summaryParts.join(", ") : "";
 
         console.log(
@@ -3160,6 +3180,7 @@ export default async function handler(req: Request): Promise<Response> {
           failureBreakdown,
           errorSummary,
           games: importedGames,
+          notFoundGames: notFoundGames.length > 0 ? notFoundGames.slice(0, 50) : undefined,
           // Play history stats from CSV import
           playHistory: playLogRows.length > 0 ? {
             imported: playsImported,

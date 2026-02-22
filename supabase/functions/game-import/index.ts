@@ -390,8 +390,8 @@ async function fetchBGGDataFromXML(
     console.error("[GameImport] Jina HTML proxy error:", jinaHtmlErr);
   }
 
-  console.error(`[GameImport] All BGG data sources failed for ${bggId}`);
-  return { bgg_id: bggId };
+      console.error(`[GameImport] All BGG data sources failed for ${bggId}`);
+  return { bgg_id: bggId, _not_found: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -922,19 +922,198 @@ export default async function handler(req: Request): Promise<Response> {
     const bggId = bggIdMatch?.[1];
 
     // ---------------------------------------------------------------------------
-    // STEP 0: Check catalog first for pre-existing enriched data
+    // STEP 0: CATALOG-FIRST — Check local catalog before hitting any external API
+    // If the game exists in our catalog with sufficient data, use it directly.
+    // This avoids unnecessary BGG API calls and is significantly faster.
     // ---------------------------------------------------------------------------
     let catalogData: any = null;
+    let catalogFullEntry: any = null;
     if (bggId) {
       const { data: existingCatalog } = await supabaseAdmin
         .from("game_catalog")
-        .select("id, title, description, image_url, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_community_rating")
+        .select("id, title, description, image_url, additional_images, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_community_rating, bgg_url, bgg_id, parent_catalog_id, slug")
         .eq("bgg_id", bggId)
         .maybeSingle();
 
-      if (existingCatalog?.description && existingCatalog.description.includes("Quick Gameplay Overview")) {
-        catalogData = existingCatalog;
-        console.log(`[GameImport] Found enriched catalog entry for BGG ${bggId}: "${existingCatalog.title}"`);
+      if (existingCatalog?.title) {
+        const hasFormattedDesc = existingCatalog.description?.includes("Quick Gameplay Overview");
+        console.log(`[GameImport] Catalog hit for BGG ${bggId}: "${existingCatalog.title}" (formatted=${hasFormattedDesc})`);
+
+        if (hasFormattedDesc) {
+          catalogData = existingCatalog;
+        }
+
+        // If the catalog has sufficient data (title + image), use it as the PRIMARY source
+        // This completely bypasses BGG API calls
+        if (existingCatalog.title && existingCatalog.image_url) {
+          catalogFullEntry = existingCatalog;
+          console.log(`[GameImport] CATALOG-FIRST: Using catalog as primary source for "${existingCatalog.title}" — skipping BGG API`);
+
+          // Check for duplicate in library
+          const existingId = await findExistingGame(supabaseAdmin, { bgg_url: url, bgg_id: bggId, title: existingCatalog.title }, targetLibraryId);
+          if (existingId) {
+            // Link catalog_id if not already linked
+            await supabaseAdmin.from("games").update({ catalog_id: existingCatalog.id }).eq("id", existingId);
+            return new Response(
+              JSON.stringify({ success: true, action: "updated", game: { id: existingId, title: existingCatalog.title }, source: "catalog" }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          // Fetch related metadata from catalog junction tables
+          const [publishersRes, mechanicsRes, designersRes, artistsRes] = await Promise.all([
+            supabaseAdmin.from("catalog_publishers").select("publisher:publishers(id, name)").eq("catalog_id", existingCatalog.id),
+            supabaseAdmin.from("catalog_mechanics").select("mechanic:mechanics(id, name)").eq("catalog_id", existingCatalog.id),
+            supabaseAdmin.from("catalog_designers").select("designer:designers(id, name)").eq("catalog_id", existingCatalog.id),
+            supabaseAdmin.from("catalog_artists").select("artist:artists(id, name)").eq("catalog_id", existingCatalog.id),
+          ]);
+
+          const publishers = (publishersRes.data || []).map((r: any) => r.publisher).filter(Boolean);
+          const mechanics = (mechanicsRes.data || []).map((r: any) => r.mechanic).filter(Boolean);
+          const designers = (designersRes.data || []).map((r: any) => r.designer).filter(Boolean);
+          const artists = (artistsRes.data || []).map((r: any) => r.artist).filter(Boolean);
+
+          // Map catalog weight to difficulty
+          const weightToDifficulty = (w: number | null): string => {
+            if (w == null) return "3 - Medium";
+            if (w <= 1.5) return "1 - Light";
+            if (w <= 2.25) return "2 - Medium Light";
+            if (w <= 3.0) return "3 - Medium";
+            if (w <= 3.75) return "4 - Medium Heavy";
+            return "5 - Heavy";
+          };
+
+          // Map play_time_minutes to play_time enum
+          const minutesToPlayTime = (m: number | null): string => {
+            if (m == null) return "45-60 Minutes";
+            if (m <= 15) return "0-15 Minutes";
+            if (m <= 30) return "15-30 Minutes";
+            if (m <= 45) return "30-45 Minutes";
+            if (m <= 60) return "45-60 Minutes";
+            if (m <= 120) return "60+ Minutes";
+            if (m <= 180) return "2+ Hours";
+            return "3+ Hours";
+          };
+
+          // Handle expansion parent detection
+          let detectedParentGameId: string | null = null;
+          if (existingCatalog.is_expansion && existingCatalog.parent_catalog_id) {
+            const { data: parentGame } = await supabaseAdmin
+              .from("games")
+              .select("id")
+              .eq("library_id", targetLibraryId)
+              .eq("catalog_id", existingCatalog.parent_catalog_id)
+              .maybeSingle();
+            detectedParentGameId = parentGame?.id || null;
+          }
+
+          const normalizedSaleCondition = normalizeSaleCondition(sale_condition);
+          const catalogGameData = {
+            title: existingCatalog.title,
+            description: existingCatalog.description || `${existingCatalog.title} - added from the GameTaverns catalog.`,
+            image_url: existingCatalog.image_url,
+            additional_images: existingCatalog.additional_images || [],
+            difficulty: weightToDifficulty(existingCatalog.weight),
+            game_type: "Board Game" as const,
+            play_time: minutesToPlayTime(existingCatalog.play_time_minutes),
+            min_players: existingCatalog.min_players || 1,
+            max_players: existingCatalog.max_players || 4,
+            suggested_age: existingCatalog.suggested_age || "10+",
+            publisher_id: publishers[0]?.id || null,
+            bgg_id: bggId,
+            bgg_url: existingCatalog.bgg_url || url,
+            is_expansion: is_expansion === true || existingCatalog.is_expansion === true,
+            parent_game_id: is_expansion === true ? parent_game_id : detectedParentGameId,
+            catalog_id: existingCatalog.id,
+            slug: existingCatalog.slug,
+            library_id: targetLibraryId,
+            is_coming_soon: is_coming_soon === true,
+            is_for_sale: is_for_sale === true,
+            sale_price: is_for_sale === true && sale_price ? Number(sale_price) : null,
+            sale_condition: is_for_sale === true ? normalizedSaleCondition : null,
+            location_room: location_room || null,
+            location_shelf: location_shelf || null,
+            location_misc: location_misc || null,
+            sleeved: sleeved === true,
+            upgraded_components: upgraded_components === true,
+            crowdfunded: crowdfunded === true,
+            inserts: inserts === true,
+          };
+
+          const { data: game, error: gameError } = await supabaseAdmin
+            .from("games")
+            .insert(catalogGameData)
+            .select()
+            .single();
+
+          if (gameError) {
+            console.error("[GameImport] Catalog-first insert error:", gameError);
+            throw gameError;
+          }
+
+          // Link mechanics, designers, artists
+          if (mechanics.length > 0) {
+            await supabaseAdmin.from("game_mechanics").insert(
+              mechanics.map((m: any) => ({ game_id: game.id, mechanic_id: m.id }))
+            );
+          }
+          if (designers.length > 0) {
+            await supabaseAdmin.from("game_designers").insert(
+              designers.map((d: any) => ({ game_id: game.id, designer_id: d.id }))
+            );
+          }
+          if (artists.length > 0) {
+            await supabaseAdmin.from("game_artists").insert(
+              artists.map((a: any) => ({ game_id: game.id, artist_id: a.id }))
+            );
+          }
+
+          // Handle admin data
+          if (purchase_price || purchase_date) {
+            await supabaseAdmin.from("game_admin_data").upsert({
+              game_id: game.id,
+              purchase_price: purchase_price ? Number(purchase_price) : null,
+              purchase_date: purchase_date || null,
+            }, { onConflict: "game_id" });
+          }
+
+          // Discord notification (skip in self-hosted)
+          if (!IS_SELF_HOSTED) {
+            try {
+              const playerCount = game.min_players && game.max_players
+                ? `${game.min_players}-${game.max_players} players`
+                : undefined;
+              const discordPayload = {
+                library_id: targetLibraryId,
+                event_type: "game_added",
+                data: { title: game.title, image_url: game.image_url, player_count: playerCount, play_time: game.play_time },
+              };
+              const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+              const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+              await fetch(`${supabaseUrl}/functions/v1/discord-notify`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify(discordPayload),
+              });
+            } catch (_e) { /* non-critical */ }
+          }
+
+          console.log(`[GameImport] CATALOG-FIRST: Successfully imported "${game.title}" from catalog (no BGG API calls)`);
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              action: "created",
+              source: "catalog",
+              game: {
+                ...game,
+                mechanics: mechanics.map((m: any) => m.name),
+                publisher: publishers[0]?.name || null,
+              }
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
     }
 
@@ -957,6 +1136,7 @@ export default async function handler(req: Request): Promise<Response> {
       artists?: string[];
       is_expansion?: boolean;
       bgg_average_rating?: number;
+      _not_found?: boolean;
     } | null = null;
 
     if (bggId) {
@@ -1383,10 +1563,13 @@ export default async function handler(req: Request): Promise<Response> {
       if (bggData?.title) {
         console.error("Firecrawl API key not configured, using partial BGG data");
       } else {
-        console.error("No data sources available (BGG XML, direct scrape, and Firecrawl all failed)");
+        console.error("No data sources available (catalog, BGG XML, direct scrape, and Firecrawl all failed)");
+        const notFoundMsg = bggId
+          ? `This game (BGG ID: ${bggId}) was not found in our catalog or on BoardGameGeek. It may not exist or BGG may be temporarily blocking requests. You can add the game manually instead.`
+          : `Could not find this game in our catalog or on BoardGameGeek. Please verify the URL is correct or add the game manually.`;
         return new Response(
-          JSON.stringify({ success: false, error: "Could not import this game. BGG may be temporarily blocking requests from this server. Please try again later or add the game manually." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ success: false, error: notFoundMsg, not_found: true }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
