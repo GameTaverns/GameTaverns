@@ -1495,51 +1495,17 @@ export function SystemHealth() {
         </CardContent>
       </Card>
 
-      {/* Maintenance Actions */}
+      {/* Designer & Artist Enrichment */}
       <Card className="bg-wood-medium/10 border-wood-medium/40">
         <CardHeader className="pb-3">
-          <CardTitle className="text-cream text-lg flex items-center gap-2">
-            <Wrench className="h-5 w-5" />
-            Maintenance Actions
-          </CardTitle>
-          <CardDescription className="text-cream/50">
-            One-time data enrichment and cleanup tasks
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
-            <div className="flex items-center gap-3">
-              <Zap className="h-5 w-5 text-secondary" />
-              <div>
-                <div className="text-sm text-cream font-medium">Test BGG Connection</div>
-                <div className="text-xs text-cream/50">
-                  Tests a single BGG API fetch to diagnose connectivity issues. Check browser console for full results.
-                </div>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs shrink-0"
-              onClick={() => backfillMutation.mutate("test")}
-              disabled={backfillMutation.isPending}
-            >
-              {backfillMutation.isPending ? (
-                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Testing...</>
-              ) : (
-                <><Zap className="h-3.5 w-3.5 mr-1" /> Test</>
-              )}
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Palette className="h-5 w-5 text-secondary" />
               <div>
-                <div className="text-sm text-cream font-medium">Backfill Designers & Artists</div>
-                <div className="text-xs text-cream/50">
-                  Re-fetches BGG data for all catalog entries to populate designer and artist metadata across all libraries.
-                </div>
+                <CardTitle className="text-cream text-lg">Designer & Artist Enrichment</CardTitle>
+                <CardDescription className="text-cream/50">
+                  Fetches designers, artists, weight, and ratings from BGG for catalog entries
+                </CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -1552,65 +1518,119 @@ export function SystemHealth() {
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${backfillStatusQuery.isFetching ? "animate-spin" : ""}`} />
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs shrink-0"
-                onClick={() => backfillMutation.mutate("enrich")}
-                disabled={backfillMutation.isPending}
-              >
-                {backfillMutation.isPending ? (
-                  <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
-                ) : (
-                  <><Palette className="h-3.5 w-3.5 mr-1" /> Run Backfill</>
-                )}
-              </Button>
             </div>
           </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {backfillStatusQuery.isError && (
+            <div className="text-sm text-red-400 p-3 rounded bg-red-500/10 border border-red-500/30">
+              Failed to load enrichment status: {backfillStatusQuery.error?.message}
+            </div>
+          )}
 
-          {/* Backfill Progress */}
           {backfillStatusQuery.data && (() => {
             const s = backfillStatusQuery.data;
             return (
-              <div className="ml-8 space-y-3">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
                     <div className="text-lg font-bold text-cream">{s.total_with_bgg.toLocaleString()}</div>
                     <div className="text-xs text-cream/50">Total (w/ BGG ID)</div>
                   </div>
-                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
                     <div className="text-lg font-bold text-green-400">{s.enriched.toLocaleString()}</div>
                     <div className="text-xs text-cream/50">Fully Enriched</div>
                   </div>
-                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
                     <div className="text-lg font-bold text-yellow-400">{s.remaining.toLocaleString()}</div>
                     <div className="text-xs text-cream/50">Remaining</div>
                   </div>
-                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
-                    <div className="text-lg font-bold text-cream">{s.has_rating.toLocaleString()}</div>
-                    <div className="text-xs text-cream/50">Have Rating</div>
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{s.has_designers.toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Have Designers</div>
                   </div>
-                  <div className="p-2 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
-                    <div className="text-lg font-bold text-cream">{s.percent}%</div>
-                    <div className="text-xs text-cream/50">Complete</div>
+                  <div className="p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40 text-center">
+                    <div className="text-lg font-bold text-cream">{s.has_artists.toLocaleString()}</div>
+                    <div className="text-xs text-cream/50">Have Artists</div>
                   </div>
                 </div>
+
                 {/* Progress bar */}
-                <div className="w-full bg-wood-medium/30 rounded-full h-2">
+                <div className="w-full bg-wood-medium/30 rounded-full h-2.5">
                   <div
-                    className="bg-secondary h-2 rounded-full transition-all duration-500"
+                    className="bg-secondary h-2.5 rounded-full transition-all duration-500"
                     style={{ width: `${s.percent}%` }}
                   />
                 </div>
-                <div className="flex gap-4 text-xs text-cream/50">
-                  <span>Has Designers: {s.has_designers.toLocaleString()}</span>
-                  <span>Has Artists: {s.has_artists.toLocaleString()}</span>
-                  <span>~{Math.ceil(s.remaining / 5)} batches remaining (5/batch, 0.5s delay each)</span>
+
+                {/* Additional stats */}
+                <div className="flex flex-wrap gap-4 text-xs text-cream/50">
+                  <span>Has Rating: {s.has_rating.toLocaleString()}</span>
+                  <span>{s.percent}% complete</span>
+                  {s.remaining > 0 && (
+                    <span>~{Math.ceil(s.remaining / 100)} min remaining (100/batch via cron)</span>
+                  )}
                 </div>
-              </div>
+
+                {/* Warning if 0% */}
+                {s.percent === 0 && s.total_with_bgg > 0 && (
+                  <div className="text-xs text-yellow-400 p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
+                    ⚠️ No entries enriched yet despite cron running. Check edge function logs for the <code className="bg-wood-medium/30 px-1 rounded">catalog-backfill</code> function to diagnose issues.
+                  </div>
+                )}
+
+                {/* Controls */}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => backfillMutation.mutate("enrich")}
+                    disabled={backfillMutation.isPending}
+                  >
+                    {backfillMutation.isPending ? (
+                      <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
+                    ) : (
+                      <><Zap className="h-3.5 w-3.5 mr-1" /> Run Enrichment</>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => backfillMutation.mutate("test")}
+                    disabled={backfillMutation.isPending}
+                  >
+                    <Zap className="h-3.5 w-3.5 mr-1" /> Test BGG
+                  </Button>
+                </div>
+
+                <div className="text-xs text-cream/40">
+                  Runs every minute via cron (100 entries/batch, 5 BGG API calls of 20 IDs each).
+                  Enriches weight, community rating, designers, artists, and mechanics.
+                </div>
+              </>
             );
           })()}
 
+          {backfillStatusQuery.isLoading && (
+            <div className="text-sm text-cream/50 text-center py-4">Loading enrichment status...</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Maintenance Actions */}
+      <Card className="bg-wood-medium/10 border-wood-medium/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-cream text-lg flex items-center gap-2">
+            <Wrench className="h-5 w-5" />
+            Maintenance Actions
+          </CardTitle>
+          <CardDescription className="text-cream/50">
+            One-time data enrichment and cleanup tasks
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
           <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
             <div className="flex items-center gap-3">
               <Database className="h-5 w-5 text-secondary" />
