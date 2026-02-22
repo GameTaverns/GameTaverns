@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { useCuratedList, useVoteList, useAddListItem, useRemoveListItem, type CuratedListItem } from "@/hooks/useCuratedLists";
+import { useMyWantList, useRemoveWant, type TradeWant } from "@/hooks/useTrades";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,81 @@ import { format } from "date-fns";
 
 export default function CuratedListDetailPage() {
   const { listId } = useParams<{ listId: string }>();
+
+  // Special case: "wishlist" is the virtual trade wants list
+  if (listId === "wishlist") {
+    return <TradeWishlistDetail />;
+  }
+
+  return <StandardListDetail listId={listId} />;
+}
+
+function TradeWishlistDetail() {
+  const { data: wants = [], isLoading } = useMyWantList();
+  const removeWant = useRemoveWant();
+  const { tenantSlug } = useTenant();
+  const { toast } = useToast();
+  const backUrl = tenantSlug ? getLibraryUrl(tenantSlug, "/lists") : "/lists";
+
+  if (isLoading) {
+    return <Layout><div className="max-w-2xl mx-auto space-y-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div></Layout>;
+  }
+
+  return (
+    <Layout>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Link to={backUrl} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-4 w-4" /> All Lists
+        </Link>
+
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground flex items-center gap-2">
+            <Heart className="h-6 w-6 text-pink-500" />
+            My Wishlist
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Games you're looking to trade for. Add games from the Trade Center.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          {wants.map((want, idx) => (
+            <div key={want.id} className={cn("flex items-center gap-3 p-3 rounded-lg border transition-colors", idx === 0 ? "bg-secondary/10 border-secondary/30" : "bg-card border-border")}>
+              <div className="w-7 flex-shrink-0 text-center">
+                {idx === 0 ? <Crown className="h-4 w-4 text-secondary mx-auto" /> :
+                 idx === 1 ? <Medal className="h-4 w-4 text-muted-foreground mx-auto" /> :
+                 idx === 2 ? <Medal className="h-4 w-4 text-muted-foreground/60 mx-auto" /> :
+                 <span className="text-xs text-muted-foreground font-mono">#{idx + 1}</span>}
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="font-medium text-sm truncate block">{want.game_title}</span>
+                {want.notes && <p className="text-xs text-muted-foreground line-clamp-1">{want.notes}</p>}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
+                onClick={() => removeWant.mutate(want.id, {
+                  onSuccess: () => toast({ title: "Removed from wishlist" }),
+                  onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+                })}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+          {wants.length === 0 && (
+            <p className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-xl">
+              No games in your wishlist yet. Add games from the Trade Center.
+            </p>
+          )}
+        </div>
+      </div>
+    </Layout>
+  );
+}
+
+function StandardListDetail({ listId }: { listId: string | undefined }) {
   const { data: list, isLoading } = useCuratedList(listId);
   const { user } = useAuth();
   const { tenantSlug } = useTenant();

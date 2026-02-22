@@ -54,7 +54,7 @@ const FEATURE_FLAG_ICONS: Record<keyof LibraryFeatureFlags, React.ComponentType<
 
 const FEATURE_FLAG_LABELS: Record<keyof LibraryFeatureFlags, string> = {
   playLogs: "Play Logs",
-  wishlist: "Wishlist / Voting",
+  wishlist: "Want to Play",
   forSale: "For Sale",
   messaging: "Messaging",
   comingSoon: "Coming Soon",
@@ -67,7 +67,7 @@ const FEATURE_FLAG_LABELS: Record<keyof LibraryFeatureFlags, string> = {
 
 const FEATURE_FLAG_DESCRIPTIONS: Record<keyof LibraryFeatureFlags, string> = {
   playLogs: "Track game sessions and play history",
-  wishlist: "Allow guests to vote for games they want to play",
+  wishlist: "Allow guests to mark games they want to play",
   forSale: "Show games that are for sale with pricing",
   messaging: "Allow visitors to send messages about games",
   comingSoon: "Show upcoming games that aren't available yet",

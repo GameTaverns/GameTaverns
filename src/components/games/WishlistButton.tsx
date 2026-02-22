@@ -58,7 +58,7 @@ export function WishlistButton({
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{voted ? "Remove from wishlist" : "Add to game night wishlist"}</p>
+          <p>{voted ? "Remove from want to play" : "Add to want to play list"}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

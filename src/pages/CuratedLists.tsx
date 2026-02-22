@@ -208,7 +208,7 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
 
 function WishlistVirtualCard({ itemCount }: { itemCount: number }) {
   const { tenantSlug } = useTenant();
-  const href = tenantSlug ? getLibraryUrl(tenantSlug, "/dashboard?tab=trades") : "/dashboard?tab=trades";
+  const href = tenantSlug ? getLibraryUrl(tenantSlug, "/lists/wishlist") : "/lists/wishlist";
 
   return (
     <Link
@@ -223,7 +223,7 @@ function WishlistVirtualCard({ itemCount }: { itemCount: number }) {
           My Wishlist
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
-          {itemCount} game{itemCount !== 1 ? "s" : ""} · Auto-generated from your wishlist
+          {itemCount} game{itemCount !== 1 ? "s" : ""} · Games you want to trade for
         </div>
       </div>
       <div className="flex items-center gap-3 flex-shrink-0">

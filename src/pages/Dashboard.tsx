@@ -523,12 +523,12 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Ratings & Wishlist Card */}
+                {/* Ratings & Want to Play Card */}
                 <Card className={cardClass}>
                   <CardHeader className="pb-2 px-4 pt-4">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <Star className="h-4 w-4 text-secondary" />
-                      Ratings & Wishlist
+                      Ratings & Want to Play
                     </CardTitle>
                     <CardDescription className="text-cream/60 text-xs">Community feedback and wanted games</CardDescription>
                   </CardHeader>
@@ -539,9 +539,9 @@ export default function Dashboard() {
                           <Star className="h-3.5 w-3.5" /> View Ratings
                         </Button>
                       </TenantLink>
-                      <TenantLink href={getLibraryUrl(library.slug, "/settings?tab=wishlist")}>
+                      <TenantLink href={getLibraryUrl(library.slug, "/settings?tab=want-to-play")}>
                         <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                          <Heart className="h-3.5 w-3.5" /> View Wishlist
+                          <Heart className="h-3.5 w-3.5" /> Want to Play
                         </Button>
                       </TenantLink>
                     </div>
