@@ -52,7 +52,7 @@ const GameDetail = () => {
   const { data: realGame, isLoading: isRealLoading } = useGame(isDemoMode ? undefined : slug);
   const { data: realGames } = useGames(!isDemoMode);
   const { isAdmin } = useAuth();
-  const isLibraryOwner = user && library?.owner_id === user.id;
+  const { isOwner: isLibraryOwner } = useTenant();
   const canViewAdminData = isAdmin || isLibraryOwner;
   const { playLogs, messaging, forSale, ratings, lending } = useFeatureFlags();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
