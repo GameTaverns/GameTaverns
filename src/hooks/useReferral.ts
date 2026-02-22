@@ -61,7 +61,7 @@ export const FOUNDING_MEMBER_BADGE = {
   key: "is_founding_member" as const,
   label: "Founding Member",
   emoji: "🏛️",
-  description: "Early supporter of GameTaverns — this badge is no longer available",
+  description: "Early supporter of GameTaverns — available until September 1, 2026",
   color: "bg-emerald-100 text-emerald-800 border-emerald-300",
 };
 
