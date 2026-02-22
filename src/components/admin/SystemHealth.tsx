@@ -448,22 +448,24 @@ export function SystemHealth() {
   const backfillStatusQuery = useQuery<BackfillStatus>({
     queryKey: ["catalog-backfill-status"],
     queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
-      const { url: supabaseUrl, anonKey } = getSupabaseConfig();
-      const r = await fetch(`${supabaseUrl}/functions/v1/catalog-backfill`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          apikey: anonKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ mode: "status" }),
-      });
-      if (!r.ok) throw new Error(`Status check failed: ${r.status}`);
-      return r.json();
+      // Query RPC directly — no edge function needed, works instantly
+      const { data: stats, error } = await supabase.rpc("get_catalog_enrichment_status");
+      if (error) throw new Error(error.message);
+      const s = stats as any;
+      const totalWithBgg = s?.total_with_bgg || 0;
+      const remaining = s?.remaining || 0;
+      const enrichedCount = totalWithBgg - remaining;
+      return {
+        total_with_bgg: totalWithBgg,
+        enriched: enrichedCount,
+        has_designers: s?.has_designers || 0,
+        has_artists: s?.has_artists || 0,
+        has_rating: s?.has_rating || 0,
+        remaining,
+        percent: totalWithBgg ? Math.round((enrichedCount / totalWithBgg) * 100) : 0,
+      };
     },
-    refetchInterval: autoRefresh ? 30000 : false,
+    refetchInterval: autoRefresh ? 30000 : 60000, // auto-refresh every 60s even without toggle
     retry: 1,
   });
 
