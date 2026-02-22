@@ -31,7 +31,7 @@ const ESSENTIAL_TABS = [
 const ADVANCED_TABS = [
   { value: "members", label: "Members", icon: Users },
   { value: "ratings", label: "Ratings", icon: Star },
-  { value: "wishlist", label: "Wishlist", icon: Heart },
+  { value: "want-to-play", label: "Want to Play", icon: Heart },
   { value: "discord", label: "Discord", icon: MessageSquare },
   { value: "bgg-sync", label: "BGG Sync", icon: RefreshCw },
 ];
@@ -225,12 +225,12 @@ export default function LibrarySettings() {
             <RatingsAdmin />
           </TabsContent>
 
-          <TabsContent value="wishlist">
+          <TabsContent value="want-to-play">
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-display font-semibold">Wishlist</h2>
+              <h2 className="text-lg font-display font-semibold">Want to Play</h2>
               <InfoPopover
-                title="Wishlist"
-                description="Let visitors express interest in games they'd love to see added to your collection."
+                title="Want to Play"
+                description="Let visitors express interest in games they'd love to play at your next game night."
               />
             </div>
             <WishlistAdmin />

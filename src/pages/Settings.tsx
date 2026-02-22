@@ -1047,9 +1047,9 @@ const Settings = () => {
                   <Users className="h-4 w-4" />
                   Users
                 </TabsTrigger>
-                <TabsTrigger value="wishlist" className="flex items-center gap-2">
+                <TabsTrigger value="want-to-play" className="flex items-center gap-2">
                   <Heart className="h-4 w-4" />
-                  Wishlist
+                  Want to Play
                 </TabsTrigger>
                 <TabsTrigger value="ratings" className="flex items-center gap-2">
                   <Star className="h-4 w-4" />
@@ -2154,9 +2154,9 @@ const Settings = () => {
             </TabsContent>
           )}
 
-          {/* Wishlist Tab (Admin Only) */}
+          {/* Want to Play Tab (Admin Only) */}
           {isAdmin && (
-            <TabsContent value="wishlist" className="space-y-6">
+            <TabsContent value="want-to-play" className="space-y-6">
               <WishlistAdmin />
             </TabsContent>
           )}
