@@ -25,15 +25,18 @@ export default function StudioLogin() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp, isAuthenticated, loading } = useAuth();
+  const { signIn, signUp, isAuthenticated, loading, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      navigate("/studio", { replace: true });
+      // Verify the logged-in user has a @gametaverns.com email
+      if (user?.email && validateStudioEmail(user.email)) {
+        navigate("/studio", { replace: true });
+      }
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, user]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
