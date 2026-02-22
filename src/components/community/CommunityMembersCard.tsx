@@ -37,7 +37,7 @@ export function CommunityMembersCard() {
   const queryClient = useQueryClient();
   const [acting, setActing] = useState<string | null>(null);
 
-  const isOwner = library?.owner_id === user?.id;
+  const isOwner = library?.owner_id === user?.id || members.some(m => m.user_id === user?.id && m.role === "co_owner");
 
   const handleSetRole = async (memberId: string, userId: string, newRole: "member" | "moderator" | "co_owner") => {
     if (!library?.id) return;
