@@ -29,6 +29,16 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedMode, isSelfHostedSupabaseStack, apiClient } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 import { useTenant } from "@/contexts/TenantContext";
+import {
+  detectFileFormat,
+  parseBGStatsGames,
+  parseBGStatsPlays,
+  parseBGAExportCSV,
+  getFormatLabel,
+  type DetectedFormat,
+  type ParsedPlay,
+  type BGStatsExport,
+} from "@/lib/import-parsers";
 
 type ImportMode = "csv" | "bgg_collection" | "bgg_links";
 
@@ -239,9 +249,11 @@ export function BulkImportDialog({
     return () => stopPolling();
   }, []);
 
-  // CSV mode
+  // CSV/JSON mode
   const [csvData, setCsvData] = useState("");
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [detectedFormat, setDetectedFormat] = useState<DetectedFormat | null>(null);
+  const [pendingPlays, setPendingPlays] = useState<ParsedPlay[] | null>(null);
   const filePickerActiveRef = useRef(false);
 
   // BGG Collection mode
@@ -268,6 +280,8 @@ export function BulkImportDialog({
     if (!file) return;
 
     setCsvFile(file);
+    setDetectedFormat(null);
+    setPendingPlays(null);
 
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (ext === "xlsx" || ext === "xls") {
@@ -279,6 +293,7 @@ export function BulkImportDialog({
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const csvText = XLSX.utils.sheet_to_csv(firstSheet);
         setCsvData(csvText);
+        setDetectedFormat("csv");
         toast({
           title: "Excel file loaded",
           description: `Converted "${file.name}" to CSV format (${csvText.split("\n").length - 1} rows)`,
@@ -293,13 +308,49 @@ export function BulkImportDialog({
       }
     } else {
       const text = await file.text();
-      setCsvData(text);
+      const format = detectFileFormat(text, file.name);
+      setDetectedFormat(format);
+
+      if (format === "bgstats") {
+        try {
+          const bgstatsData: BGStatsExport = JSON.parse(text);
+          // Convert games to CSV for the game-import pipeline
+          const csvFromBGStats = parseBGStatsGames(bgstatsData);
+          setCsvData(csvFromBGStats);
+          // Parse plays for import after games are done
+          const plays = parseBGStatsPlays(bgstatsData);
+          setPendingPlays(plays.length > 0 ? plays : null);
+          toast({
+            title: "BGStats export detected",
+            description: `Found ${bgstatsData.games.length} games and ${plays.length} play sessions`,
+          });
+        } catch (err) {
+          console.error("BGStats parse error:", err);
+          setCsvData(text);
+          toast({
+            title: "Failed to parse BGStats file",
+            description: "File will be treated as generic JSON.",
+            variant: "destructive",
+          });
+        }
+      } else if (format === "bga_csv") {
+        const convertedCsv = parseBGAExportCSV(text);
+        setCsvData(convertedCsv);
+        toast({
+          title: "Board Game Arena export detected",
+          description: `Extracted unique games from BGA stats export`,
+        });
+      } else {
+        setCsvData(text);
+      }
     }
   };
 
   const resetForm = () => {
     setCsvData("");
     setCsvFile(null);
+    setDetectedFormat(null);
+    setPendingPlays(null);
     setBggUsername("");
     setBggLinks("");
     setLocationRoom("");
@@ -312,6 +363,71 @@ export function BulkImportDialog({
     setStreamDisconnected(false);
     jobIdRef.current = null;
     stopPolling();
+  };
+
+  // Import pre-parsed plays (from BGStats JSON) after game import
+  const importParsedPlays = async (plays: ParsedPlay[], libraryId: string) => {
+    setPlayImportStatus({ phase: "importing" });
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        setPlayImportStatus({ phase: "error", error: "Authentication expired" });
+        return;
+      }
+
+      const { url: apiUrl, anonKey } = getSupabaseConfig();
+      const fullUrl = `${apiUrl}/functions/v1/bgg-play-import`;
+
+      const response = await fetch(fullUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          apikey: anonKey,
+        },
+        body: JSON.stringify({
+          source: "bgstats",
+          plays: plays,
+          library_id: libraryId,
+          update_existing: false,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        setPlayImportStatus({
+          phase: "error",
+          error: (errorData as any)?.error || `HTTP ${response.status}`,
+        });
+        return;
+      }
+
+      const data = await response.json();
+      setPlayImportStatus({
+        phase: "done",
+        imported: data.imported || 0,
+        skipped: data.skipped || 0,
+        failed: data.failed || 0,
+        unmatchedGames: data.details?.unmatchedGames,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["game-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["play-stats"] });
+
+      if ((data.imported || 0) > 0) {
+        toast({
+          title: "Play history imported!",
+          description: `${data.imported} play${data.imported !== 1 ? "s" : ""} imported from BGStats`,
+        });
+      }
+    } catch (e) {
+      console.error("Parsed play import error:", e);
+      setPlayImportStatus({
+        phase: "error",
+        error: e instanceof Error ? e.message : "Failed to import play history",
+      });
+    }
   };
 
   // Auto-import play history after BGG collection import
@@ -664,9 +780,13 @@ export function BulkImportDialog({
                     });
                     onImportComplete?.();
                     
-                    // Auto-import play history for BGG collection imports (not CSV - that's handled inline)
+                    // Auto-import play history for BGG collection imports
                     if (mode === "bgg_collection" && bggUsername.trim() && library?.id) {
                       autoImportPlayHistory(bggUsername.trim(), library.id);
+                    }
+                    // Auto-import plays from BGStats JSON after games are imported
+                    if (pendingPlays && pendingPlays.length > 0 && library?.id) {
+                      importParsedPlays(pendingPlays, library.id);
                     }
                   } else if ((data.failed || 0) > 0) {
                     toast({
@@ -1059,7 +1179,7 @@ export function BulkImportDialog({
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="csv" className="gap-2" disabled={isImporting}>
                 <FileText className="h-4 w-4" />
-                CSV/Excel
+                File Import
               </TabsTrigger>
               <TabsTrigger value="bgg_collection" className="gap-2" disabled={isImporting}>
                 <Users className="h-4 w-4" />
@@ -1115,18 +1235,14 @@ export function BulkImportDialog({
 
               <TabsContent value="csv" className="mt-0 space-y-4">
                 <div className="space-y-2">
-                  <Label>Upload CSV/Excel File</Label>
-                  {/* Wrapped in div to prevent focus/click events from bubbling to dialog on mobile file picker.
-                      On Android/Capacitor the native file picker can take 10+ seconds — never auto-clear the guard on blur.
-                      Only clear it when onChange fires (file selected) or when the user cancels (detected via focus return + no file). */}
+                  <Label>Upload File</Label>
+                  {/* Wrapped in div to prevent focus/click events from bubbling to dialog on mobile file picker. */}
                   <div onFocus={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                     <input
                       type="file"
-                      accept=".csv,.xlsx,.xls"
+                      accept=".csv,.xlsx,.xls,.json,.bgsplay"
                       onClick={() => { filePickerActiveRef.current = true; }}
                       onBlur={() => {
-                        // On mobile, the picker can stay open for a very long time.
-                        // Use a generous 30-second safety net instead of 2s.
                         setTimeout(() => { filePickerActiveRef.current = false; }, 30000);
                       }}
                       onChange={(e) => { e.stopPropagation(); handleFileUpload(e); setTimeout(() => { filePickerActiveRef.current = false; }, 2000); }}
@@ -1134,8 +1250,14 @@ export function BulkImportDialog({
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     />
                   </div>
-                   <p className="text-xs text-muted-foreground">
-                    Supports CSV and Excel (.xlsx) files including BGG collection exports and BG Stats app exports (with play history). File should have columns: title/name/objectname, optionally bgg_id/objectid/bggId
+                  {detectedFormat && (
+                    <p className="text-xs font-medium text-primary">
+                      ✓ Detected: {getFormatLabel(detectedFormat)}
+                      {pendingPlays && ` (${pendingPlays.length} play sessions will be imported after games)`}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Supports CSV, Excel (.xlsx), BGStats JSON exports (.json/.bgsplay), and Board Game Arena CSV exports.
                   </p>
                 </div>
 

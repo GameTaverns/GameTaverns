@@ -326,11 +326,14 @@ export default async function handler(req: Request): Promise<Response> {
 
     // Parse request body
     const body = await req.json().catch(() => null);
-    const { bgg_username, library_id, update_existing } = body || {};
+    const { bgg_username, library_id, update_existing, source, plays: preParsedsPlays } = body || {};
     const shouldUpdate = update_existing === true;
 
-    if (!bgg_username || typeof bgg_username !== "string") {
-      return new Response(JSON.stringify({ success: false, error: "BGG username is required" }), {
+    // Validate: either bgg_username (BGG fetch) or source=bgstats with plays array
+    const isBGStatsImport = source === "bgstats" && Array.isArray(preParsedsPlays);
+
+    if (!isBGStatsImport && (!bgg_username || typeof bgg_username !== "string")) {
+      return new Response(JSON.stringify({ success: false, error: "BGG username is required (or provide source='bgstats' with plays array)" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -371,17 +374,37 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    console.log(`[BGGPlayImport] Fetching plays for BGG user: ${bgg_username}, update_existing: ${shouldUpdate}`);
+    // Determine import source for plays
+    let bggPlays: BGGPlay[] = [];
+    let parsedPlays: Array<{
+      game_bgg_id: string | null;
+      game_title: string;
+      played_at: string;
+      duration_minutes: number | null;
+      location: string | null;
+      notes: string | null;
+      source_id: string;
+      players: Array<{
+        name: string;
+        score: number | null;
+        is_winner: boolean;
+        is_first_play: boolean;
+        color: string | null;
+        bgg_username?: string | null;
+      }>;
+    }> = [];
 
-    // Fetch plays from BGG
-    const bggPlays = await fetchAllBGGPlays(bgg_username);
-    console.log(`[BGGPlayImport] Fetched ${bggPlays.length} plays from BGG`);
-    
-    // Log first play's player data for debugging
-    if (bggPlays.length > 0 && bggPlays[0].players.length > 0) {
-      console.log(`[BGGPlayImport] First play sample - game: ${bggPlays[0].game.name}, players: ${JSON.stringify(bggPlays[0].players.slice(0, 3))}`);
-    } else if (bggPlays.length > 0) {
-      console.log(`[BGGPlayImport] First play has no players - game: ${bggPlays[0].game.name}`);
+    if (isBGStatsImport) {
+      console.log(`[BGGPlayImport] Processing ${preParsedsPlays.length} pre-parsed plays from BGStats`);
+      parsedPlays = preParsedsPlays;
+    } else {
+      console.log(`[BGGPlayImport] Fetching plays for BGG user: ${bgg_username}, update_existing: ${shouldUpdate}`);
+      bggPlays = await fetchAllBGGPlays(bgg_username);
+      console.log(`[BGGPlayImport] Fetched ${bggPlays.length} plays from BGG`);
+      
+      if (bggPlays.length > 0 && bggPlays[0].players.length > 0) {
+        console.log(`[BGGPlayImport] First play sample - game: ${bggPlays[0].game.name}, players: ${JSON.stringify(bggPlays[0].players.slice(0, 3))}`);
+      }
     }
 
     // Get all games in this library with their BGG IDs
@@ -436,168 +459,150 @@ export default async function handler(req: Request): Promise<Response> {
       },
     };
 
-    // Process each play
-    for (const play of bggPlays) {
-      // Check if already imported (by bgg_play_id)
-      const existingSessionId = existingBggPlayIds.get(play.id);
-      if (existingSessionId) {
-        if (shouldUpdate) {
-          // Update existing session and its players
-          try {
-            // Find matching game in library
-            let matchedGame = gamesByBggId.get(play.game.objectid);
-            if (!matchedGame) {
-              matchedGame = gamesByTitle.get(play.game.name.toLowerCase());
-            }
-            
-            if (!matchedGame) {
-              result.failed++;
-              if (!result.details.unmatchedGames.includes(play.game.name)) {
-                result.details.unmatchedGames.push(play.game.name);
-              }
-              continue;
-            }
-
-            // Update the session
-            await supabaseAdmin
-              .from("game_sessions")
-              .update({
-                duration_minutes: play.length,
-                notes: play.comments,
-                location: play.location,
-              })
-              .eq("id", existingSessionId);
-
-            // Delete old players and re-insert with fresh data
-            await supabaseAdmin
-              .from("game_session_players")
-              .delete()
-              .eq("session_id", existingSessionId);
-
-            if (play.players.length > 0) {
-              await supabaseAdmin
-                .from("game_session_players")
-                .insert(
-                  play.players.map((p) => ({
-                    session_id: existingSessionId,
-                    player_name: p.name, // Already resolved in parser
-                    score: p.score ? parseInt(p.score, 10) : null,
-                    is_winner: p.win,
-                    is_first_play: p.new,
-                    color: p.color || null,
-                  }))
-                );
-            }
-
-            result.updated++;
-            result.details.updatedPlays.push(`${play.game.name} (${play.date})`);
-          } catch (err) {
-            console.error("[BGGPlayImport] Error updating play:", err);
-            result.failed++;
-            result.errors.push(`Failed to update ${play.game.name} (${play.date}): ${(err as Error).message}`);
-          }
-        } else {
+    // Process plays — unified loop for both BGG and BGStats sources
+    if (isBGStatsImport) {
+      for (const play of parsedPlays) {
+        const existingSessionId = existingBggPlayIds.get(play.source_id);
+        if (existingSessionId) {
           result.skipped++;
-          result.details.skippedDuplicates.push(`${play.game.name} (${play.date})`);
+          result.details.skippedDuplicates.push(`${play.game_title} (${play.played_at})`);
+          continue;
         }
-        continue;
-      }
 
-      // Find matching game in library
-      let matchedGame = gamesByBggId.get(play.game.objectid);
-      if (!matchedGame) {
-        // Try matching by title (case-insensitive)
-        matchedGame = gamesByTitle.get(play.game.name.toLowerCase());
-      }
+        let matchedGame = play.game_bgg_id ? gamesByBggId.get(play.game_bgg_id) : undefined;
+        if (!matchedGame) matchedGame = gamesByTitle.get(play.game_title.toLowerCase());
 
-      if (!matchedGame) {
-        result.failed++;
-        if (!result.details.unmatchedGames.includes(play.game.name)) {
-          result.details.unmatchedGames.push(play.game.name);
-        }
-        continue;
-      }
-
-      try {
-        // Create session
-        const { data: session, error: sessionError } = await supabaseAdmin
-          .from("game_sessions")
-          .insert({
-            game_id: matchedGame.id,
-            played_at: `${play.date}T12:00:00Z`, // Default to noon if no time
-            duration_minutes: play.length,
-            notes: play.comments,
-            location: play.location,
-            bgg_play_id: play.id,
-            import_source: "bgg",
-          })
-          .select()
-          .single();
-
-        if (sessionError) throw sessionError;
-
-        // Create players if any
-        if (play.players.length > 0) {
-          const { error: playersError } = await supabaseAdmin
-            .from("game_session_players")
-            .insert(
-              play.players.map((p) => ({
-                session_id: session.id,
-                player_name: p.name, // Already resolved in parser
-                score: p.score ? parseInt(p.score, 10) : null,
-                is_winner: p.win,
-                is_first_play: p.new,
-                color: p.color || null,
-              }))
-            );
-
-          if (playersError) {
-            console.error("[BGGPlayImport] Player insert error:", playersError);
+        if (!matchedGame) {
+          result.failed++;
+          if (!result.details.unmatchedGames.includes(play.game_title)) {
+            result.details.unmatchedGames.push(play.game_title);
           }
+          continue;
         }
 
-        result.imported++;
-        result.details.importedPlays.push(`${play.game.name} (${play.date})`);
+        try {
+          let playedAt = play.played_at;
+          if (playedAt && !playedAt.includes("T")) playedAt = playedAt.replace(" ", "T") + "Z";
+          if (!playedAt.endsWith("Z") && !playedAt.includes("+")) playedAt += "Z";
 
-        // Handle quantity > 1 (multiple plays on same day)
-        for (let i = 1; i < play.quantity; i++) {
-          const { data: extraSession, error: extraError } = await supabaseAdmin
+          const { data: session, error: sessionError } = await supabaseAdmin
             .from("game_sessions")
             .insert({
               game_id: matchedGame.id,
-              played_at: `${play.date}T12:00:00Z`,
-              duration_minutes: play.length,
-              notes: play.comments ? `${play.comments} (play ${i + 1}/${play.quantity})` : `Play ${i + 1}/${play.quantity}`,
+              played_at: playedAt,
+              duration_minutes: play.duration_minutes,
+              notes: play.notes,
               location: play.location,
-              bgg_play_id: `${play.id}_${i + 1}`, // Unique ID for each extra play
-              import_source: "bgg",
+              bgg_play_id: play.source_id,
+              import_source: "bgstats",
             })
             .select()
             .single();
 
-          if (!extraError && extraSession && play.players.length > 0) {
+          if (sessionError) throw sessionError;
+
+          if (play.players && play.players.length > 0) {
             await supabaseAdmin
               .from("game_session_players")
               .insert(
                 play.players.map((p) => ({
-                  session_id: extraSession.id,
-                  player_name: p.name, // Already resolved in parser
-                  score: p.score ? parseInt(p.score, 10) : null,
-                  is_winner: p.win,
-                  is_first_play: false, // Only first play counts as "new"
+                  session_id: session.id,
+                  player_name: p.name,
+                  score: p.score,
+                  is_winner: p.is_winner,
+                  is_first_play: p.is_first_play,
                   color: p.color || null,
                 }))
               );
           }
 
-          if (!extraError) {
-            result.imported++;
-          }
+          result.imported++;
+          result.details.importedPlays.push(`${play.game_title} (${play.played_at})`);
+        } catch (err) {
+          console.error("[BGGPlayImport] Error importing BGStats play:", err);
+          result.failed++;
+          result.errors.push(`Failed: ${play.game_title} (${play.played_at}): ${(err as Error).message}`);
         }
-      } catch (err) {
-        console.error("[BGGPlayImport] Error importing play:", err);
-        result.failed++;
-        result.errors.push(`Failed to import ${play.game.name} (${play.date}): ${(err as Error).message}`);
+      }
+    } else {
+      for (const play of bggPlays) {
+        const existingSessionId = existingBggPlayIds.get(play.id);
+        if (existingSessionId) {
+          if (shouldUpdate) {
+            try {
+              let matchedGame = gamesByBggId.get(play.game.objectid);
+              if (!matchedGame) matchedGame = gamesByTitle.get(play.game.name.toLowerCase());
+              if (!matchedGame) {
+                result.failed++;
+                if (!result.details.unmatchedGames.includes(play.game.name)) result.details.unmatchedGames.push(play.game.name);
+                continue;
+              }
+
+              await supabaseAdmin.from("game_sessions").update({ duration_minutes: play.length, notes: play.comments, location: play.location }).eq("id", existingSessionId);
+              await supabaseAdmin.from("game_session_players").delete().eq("session_id", existingSessionId);
+
+              if (play.players.length > 0) {
+                await supabaseAdmin.from("game_session_players").insert(
+                  play.players.map((p) => ({ session_id: existingSessionId, player_name: p.name, score: p.score ? parseInt(p.score, 10) : null, is_winner: p.win, is_first_play: p.new, color: p.color || null }))
+                );
+              }
+
+              result.updated++;
+              result.details.updatedPlays.push(`${play.game.name} (${play.date})`);
+            } catch (err) {
+              result.failed++;
+              result.errors.push(`Failed to update ${play.game.name} (${play.date}): ${(err as Error).message}`);
+            }
+          } else {
+            result.skipped++;
+            result.details.skippedDuplicates.push(`${play.game.name} (${play.date})`);
+          }
+          continue;
+        }
+
+        let matchedGame = gamesByBggId.get(play.game.objectid);
+        if (!matchedGame) matchedGame = gamesByTitle.get(play.game.name.toLowerCase());
+
+        if (!matchedGame) {
+          result.failed++;
+          if (!result.details.unmatchedGames.includes(play.game.name)) result.details.unmatchedGames.push(play.game.name);
+          continue;
+        }
+
+        try {
+          const { data: session, error: sessionError } = await supabaseAdmin
+            .from("game_sessions")
+            .insert({ game_id: matchedGame.id, played_at: `${play.date}T12:00:00Z`, duration_minutes: play.length, notes: play.comments, location: play.location, bgg_play_id: play.id, import_source: "bgg" })
+            .select().single();
+
+          if (sessionError) throw sessionError;
+
+          if (play.players.length > 0) {
+            await supabaseAdmin.from("game_session_players").insert(
+              play.players.map((p) => ({ session_id: session.id, player_name: p.name, score: p.score ? parseInt(p.score, 10) : null, is_winner: p.win, is_first_play: p.new, color: p.color || null }))
+            );
+          }
+
+          result.imported++;
+          result.details.importedPlays.push(`${play.game.name} (${play.date})`);
+
+          for (let i = 1; i < play.quantity; i++) {
+            const { data: extraSession, error: extraError } = await supabaseAdmin
+              .from("game_sessions")
+              .insert({ game_id: matchedGame.id, played_at: `${play.date}T12:00:00Z`, duration_minutes: play.length, notes: play.comments ? `${play.comments} (play ${i + 1}/${play.quantity})` : `Play ${i + 1}/${play.quantity}`, location: play.location, bgg_play_id: `${play.id}_${i + 1}`, import_source: "bgg" })
+              .select().single();
+
+            if (!extraError && extraSession && play.players.length > 0) {
+              await supabaseAdmin.from("game_session_players").insert(
+                play.players.map((p) => ({ session_id: extraSession.id, player_name: p.name, score: p.score ? parseInt(p.score, 10) : null, is_winner: p.win, is_first_play: false, color: p.color || null }))
+              );
+            }
+            if (!extraError) result.imported++;
+          }
+        } catch (err) {
+          result.failed++;
+          result.errors.push(`Failed to import ${play.game.name} (${play.date}): ${(err as Error).message}`);
+        }
       }
     }
 
