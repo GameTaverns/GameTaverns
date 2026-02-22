@@ -192,11 +192,12 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // =====================================================================
-    // MODE: enrich — BATCHED: fetch 20 BGG IDs per API call, process multiple batches
+    // MODE: enrich — HIGH-THROUGHPUT: pre-cached names, bulk upserts, 100 per batch
     // =====================================================================
     if (mode === "enrich") {
       const BGG_BATCH_SIZE = 20; // BGG API supports up to 20 IDs per request
-      const batchSize = Math.min(body.batch_size || 20, 100); // Default reduced to 20 to avoid timeout
+      const batchSize = Math.min(body.batch_size || 100, 200);
+      const skipGameBackfill = body.skip_game_backfill !== false; // default true for speed
 
       // Get unenriched entries
       const { data: catalogEntries, error: catErr } = await admin
@@ -214,29 +215,47 @@ const handler = async (req: Request): Promise<Response> => {
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      console.log(`[catalog-backfill] Enriching ${catalogEntries.length} entries`);
+      console.log(`[catalog-backfill] Enriching ${catalogEntries.length} entries (skip_game_backfill=${skipGameBackfill})`);
+
+      // ── Pre-load ALL existing designer & artist names into memory ──
+      const designerCache = new Map<string, string>(); // name -> id
+      const artistCache = new Map<string, string>(); // name -> id
+
+      // Fetch all designers (typically < 50k rows, ~2MB)
+      let dOffset = 0;
+      const D_PAGE = 1000;
+      while (true) {
+        const { data: dPage } = await admin.from("designers").select("id, name").range(dOffset, dOffset + D_PAGE - 1);
+        if (!dPage || dPage.length === 0) break;
+        for (const d of dPage) designerCache.set(d.name, d.id);
+        if (dPage.length < D_PAGE) break;
+        dOffset += D_PAGE;
+      }
+
+      // Fetch all artists
+      let aOffset = 0;
+      while (true) {
+        const { data: aPage } = await admin.from("artists").select("id, name").range(aOffset, aOffset + D_PAGE - 1);
+        if (!aPage || aPage.length === 0) break;
+        for (const a of aPage) artistCache.set(a.name, a.id);
+        if (aPage.length < D_PAGE) break;
+        aOffset += D_PAGE;
+      }
+
+      console.log(`[catalog-backfill] Cached ${designerCache.size} designers, ${artistCache.size} artists`);
 
       let processed = 0;
       let designersAdded = 0;
       let artistsAdded = 0;
       const errors: string[] = [];
 
-      // Build a map of catalog entries by bgg_id for fast lookup
       const entryMap = new Map<string, { id: string; title: string; bgg_id: string }>();
-      for (const entry of catalogEntries) {
-        entryMap.set(entry.bgg_id, entry);
-      }
+      for (const entry of catalogEntries) entryMap.set(entry.bgg_id, entry);
 
-      // Pre-cache all designer/artist names we'll need to avoid repeated lookups
-      const designerCache = new Map<string, string>(); // name -> id
-      const artistCache = new Map<string, string>(); // name -> id
-
-      // Process in chunks of 20 (one BGG API call per chunk)
       const allBggIds = catalogEntries.map((e: any) => e.bgg_id);
       for (let i = 0; i < allBggIds.length; i += BGG_BATCH_SIZE) {
         const chunk = allBggIds.slice(i, i + BGG_BATCH_SIZE);
-        const idStr = chunk.join(",");
-        const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&stats=1`;
+        const url = `https://boardgamegeek.com/xmlapi2/thing?id=${chunk.join(",")}&stats=1`;
 
         let xml: string | null = null;
         let fetchAttempts = 0;
@@ -244,21 +263,10 @@ const handler = async (req: Request): Promise<Response> => {
           fetchAttempts++;
           try {
             const res = await fetch(url, { headers: bggHeaders });
-            if (res.status === 429) {
-              console.log(`[catalog-backfill] Rate limited, waiting ${fetchAttempts * 3}s`);
-              await sleep(fetchAttempts * 3000);
-              continue;
-            }
-            if (res.status === 202) {
-              console.log(`[catalog-backfill] BGG queued (202), waiting 3s`);
-              await sleep(3000);
-              continue;
-            }
+            if (res.status === 429) { await sleep(fetchAttempts * 3000); continue; }
+            if (res.status === 202) { await sleep(3000); continue; }
             if (res.ok) xml = await res.text();
-            else {
-              errors.push(`BGG HTTP ${res.status} for chunk starting at ${chunk[0]}`);
-              break;
-            }
+            else { errors.push(`BGG HTTP ${res.status} for chunk ${chunk[0]}`); break; }
           } catch (e) {
             errors.push(`Fetch error: ${e instanceof Error ? e.message : String(e)}`);
             if (fetchAttempts < 3) await sleep(2000);
@@ -268,89 +276,113 @@ const handler = async (req: Request): Promise<Response> => {
         if (!xml) continue;
 
         const parsed = parseBggXmlBatch(xml);
-        console.log(`[catalog-backfill] Chunk ${Math.floor(i / BGG_BATCH_SIZE) + 1}: got ${parsed.length} items from ${chunk.length} IDs`);
+        console.log(`[catalog-backfill] Chunk ${Math.floor(i / BGG_BATCH_SIZE) + 1}: ${parsed.length} items`);
+
+        // ── Collect ALL new designer/artist names from this chunk to batch-insert ──
+        const newDesignerNames = new Set<string>();
+        const newArtistNames = new Set<string>();
+        for (const item of parsed) {
+          for (const n of item.designers) if (!designerCache.has(n)) newDesignerNames.add(n);
+          for (const n of item.artists) if (!artistCache.has(n)) newArtistNames.add(n);
+        }
+
+        // Batch-insert new designers
+        if (newDesignerNames.size > 0) {
+          const rows = [...newDesignerNames].map(name => ({ name }));
+          // Insert in sub-batches of 500 to avoid payload limits
+          for (let j = 0; j < rows.length; j += 500) {
+            const subBatch = rows.slice(j, j + 500);
+            const { data: inserted } = await admin.from("designers")
+              .upsert(subBatch, { onConflict: "name", ignoreDuplicates: true })
+              .select("id, name");
+            if (inserted) for (const d of inserted) designerCache.set(d.name, d.id);
+          }
+          // Re-fetch any that were already present (upsert with ignoreDuplicates may not return them)
+          const missing = [...newDesignerNames].filter(n => !designerCache.has(n));
+          if (missing.length > 0) {
+            const { data: existing } = await admin.from("designers").select("id, name").in("name", missing);
+            if (existing) for (const d of existing) designerCache.set(d.name, d.id);
+          }
+        }
+
+        // Batch-insert new artists
+        if (newArtistNames.size > 0) {
+          const rows = [...newArtistNames].map(name => ({ name }));
+          for (let j = 0; j < rows.length; j += 500) {
+            const subBatch = rows.slice(j, j + 500);
+            const { data: inserted } = await admin.from("artists")
+              .upsert(subBatch, { onConflict: "name", ignoreDuplicates: true })
+              .select("id, name");
+            if (inserted) for (const a of inserted) artistCache.set(a.name, a.id);
+          }
+          const missing = [...newArtistNames].filter(n => !artistCache.has(n));
+          if (missing.length > 0) {
+            const { data: existing } = await admin.from("artists").select("id, name").in("name", missing);
+            if (existing) for (const a of existing) artistCache.set(a.name, a.id);
+          }
+        }
+
+        // ── Now process each item: bulk catalog update + junction upserts ──
+        const allDesignerJunctions: { catalog_id: string; designer_id: string }[] = [];
+        const allArtistJunctions: { catalog_id: string; artist_id: string }[] = [];
+        const catalogUpdates: Promise<any>[] = [];
 
         for (const item of parsed) {
           const entry = entryMap.get(item.bggId);
           if (!entry) continue;
 
-          try {
-            // Update catalog entry with rating, weight, description, and verified type
-            const catalogUpdate: Record<string, unknown> = {
-              bgg_verified_type: item.itemType,
-            };
-            if (item.bggCommunityRating !== null) catalogUpdate.bgg_community_rating = item.bggCommunityRating;
-            if (item.weight !== null) catalogUpdate.weight = item.weight;
-            if (item.description) catalogUpdate.description = item.description;
-            await admin.from("game_catalog").update(catalogUpdate).eq("id", entry.id);
+          const catalogUpdate: Record<string, unknown> = { bgg_verified_type: item.itemType };
+          if (item.bggCommunityRating !== null) catalogUpdate.bgg_community_rating = item.bggCommunityRating;
+          if (item.weight !== null) catalogUpdate.weight = item.weight;
+          if (item.description) catalogUpdate.description = item.description;
+          catalogUpdates.push(admin.from("game_catalog").update(catalogUpdate).eq("id", entry.id));
 
-            // Bulk upsert designers — collect IDs first
-            const designerRows: { catalog_id: string; designer_id: string }[] = [];
-            for (const name of item.designers) {
-              let dId = designerCache.get(name);
-              if (!dId) {
-                const { data: d } = await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single();
-                if (d?.id) { dId = d.id; designerCache.set(name, dId); }
-              }
-              if (dId) designerRows.push({ catalog_id: entry.id, designer_id: dId });
-            }
-            if (designerRows.length > 0) {
-              const { error: dErr } = await admin.from("catalog_designers").upsert(designerRows, { onConflict: "catalog_id,designer_id" });
-              if (!dErr) designersAdded += designerRows.length;
-              else errors.push(`designers for ${entry.title}: ${dErr.message}`);
-            }
+          for (const name of item.designers) {
+            const dId = designerCache.get(name);
+            if (dId) allDesignerJunctions.push({ catalog_id: entry.id, designer_id: dId });
+          }
+          for (const name of item.artists) {
+            const aId = artistCache.get(name);
+            if (aId) allArtistJunctions.push({ catalog_id: entry.id, artist_id: aId });
+          }
+          processed++;
+        }
 
-            // Bulk upsert artists — collect IDs first
-            const artistRows: { catalog_id: string; artist_id: string }[] = [];
-            for (const name of item.artists) {
-              let aId = artistCache.get(name);
-              if (!aId) {
-                const { data: a } = await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
-                if (a?.id) { aId = a.id; artistCache.set(name, aId); }
-              }
-              if (aId) artistRows.push({ catalog_id: entry.id, artist_id: aId });
-            }
-            if (artistRows.length > 0) {
-              const { error: aErr } = await admin.from("catalog_artists").upsert(artistRows, { onConflict: "catalog_id,artist_id" });
-              if (!aErr) artistsAdded += artistRows.length;
-              else errors.push(`artists for ${entry.title}: ${aErr.message}`);
-            }
+        // Fire all catalog updates in parallel
+        await Promise.all(catalogUpdates);
 
-            // Backfill linked games too (bulk)
-            const { data: linkedGames } = await admin.from("games").select("id").eq("catalog_id", entry.id);
-            if (linkedGames && linkedGames.length > 0) {
-              for (const game of linkedGames) {
-                if (designerRows.length > 0) {
-                  await admin.from("game_designers").upsert(
-                    designerRows.map(d => ({ game_id: game.id, designer_id: d.designer_id })),
-                    { onConflict: "game_id,designer_id" }
-                  );
-                }
-                if (artistRows.length > 0) {
-                  await admin.from("game_artists").upsert(
-                    artistRows.map(a => ({ game_id: game.id, artist_id: a.artist_id })),
-                    { onConflict: "game_id,artist_id" }
-                  );
-                }
-              }
-            }
+        // Bulk upsert all designer junctions for this chunk
+        if (allDesignerJunctions.length > 0) {
+          for (let j = 0; j < allDesignerJunctions.length; j += 500) {
+            const batch = allDesignerJunctions.slice(j, j + 500);
+            const { error: dErr } = await admin.from("catalog_designers")
+              .upsert(batch, { onConflict: "catalog_id,designer_id" });
+            if (dErr) errors.push(`designer junctions: ${dErr.message}`);
+            else designersAdded += batch.length;
+          }
+        }
 
-            processed++;
-          } catch (e) {
-            errors.push(`${entry.title}: ${e instanceof Error ? e.message : String(e)}`);
+        // Bulk upsert all artist junctions for this chunk
+        if (allArtistJunctions.length > 0) {
+          for (let j = 0; j < allArtistJunctions.length; j += 500) {
+            const batch = allArtistJunctions.slice(j, j + 500);
+            const { error: aErr } = await admin.from("catalog_artists")
+              .upsert(batch, { onConflict: "catalog_id,artist_id" });
+            if (aErr) errors.push(`artist junctions: ${aErr.message}`);
+            else artistsAdded += batch.length;
           }
         }
 
         // Rate-limit pause between BGG API calls
-        if (i + BGG_BATCH_SIZE < allBggIds.length) {
-          await sleep(1000);
-        }
+        if (i + BGG_BATCH_SIZE < allBggIds.length) await sleep(1000);
       }
 
       const hasMore = catalogEntries.length === batchSize;
       return new Response(JSON.stringify({
         success: true, mode: "enrich", processed, designersAdded, artistsAdded,
-        total: catalogEntries.length, hasMore, errors: errors.slice(0, 20),
+        total: catalogEntries.length, hasMore,
+        cached_designers: designerCache.size, cached_artists: artistCache.size,
+        errors: errors.slice(0, 20),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
