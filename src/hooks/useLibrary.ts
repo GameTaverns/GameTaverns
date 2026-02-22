@@ -8,8 +8,8 @@ import {
 import { useAuth } from "./useAuth";
 import { Library, LibrarySettings } from "@/contexts/TenantContext";
 
-// Hook to get current user's first library (legacy – kept for backward compat)
-// Now returns the oldest library (first created) so creating a 2nd doesn't hide the original.
+// Hook to get current user's first library (owned OR co-owned)
+// Returns the oldest owned library first, falling back to co-owned libraries.
 export function useMyLibrary() {
   const { user, isAuthenticated } = useAuth();
   
@@ -24,7 +24,8 @@ export function useMyLibrary() {
         return (me.libraries?.[0] as Library | undefined) ?? null;
       }
       
-      const { data, error } = await supabase
+      // First check owned libraries
+      const { data: owned, error: ownedErr } = await supabase
         .from("libraries")
         .select("*")
         .eq("owner_id", user.id)
@@ -32,17 +33,31 @@ export function useMyLibrary() {
         .limit(1)
         .maybeSingle();
       
-      if (error && error.code !== "PGRST116") {
-        throw error;
+      if (ownedErr && ownedErr.code !== "PGRST116") throw ownedErr;
+      if (owned) return owned as Library;
+
+      // Fallback: check co-owned libraries
+      const { data: coOwned } = await supabase
+        .from("library_members")
+        .select("library_id, libraries(*)")
+        .eq("user_id", user.id)
+        .eq("role", "co_owner")
+        .limit(1)
+        .maybeSingle();
+
+      if (coOwned?.libraries) {
+        // libraries is returned as object (single) via maybeSingle on the join
+        const lib = Array.isArray(coOwned.libraries) ? coOwned.libraries[0] : coOwned.libraries;
+        return lib as Library | null;
       }
-      
-      return data as Library | null;
+
+      return null;
     },
     enabled: isAuthenticated && !!user,
   });
 }
 
-// Hook to get ALL libraries owned by the current user
+// Hook to get ALL libraries owned OR co-owned by the current user
 export function useMyLibraries() {
   const { user, isAuthenticated } = useAuth();
 
@@ -56,14 +71,34 @@ export function useMyLibraries() {
         return (me.libraries ?? []) as Library[];
       }
 
-      const { data, error } = await supabase
+      // Fetch owned libraries
+      const { data: owned, error: ownedErr } = await supabase
         .from("libraries")
         .select("*")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: true });
 
-      if (error) throw error;
-      return (data ?? []) as Library[];
+      if (ownedErr) throw ownedErr;
+
+      // Fetch co-owned libraries
+      const { data: coOwnedRows } = await supabase
+        .from("library_members")
+        .select("library_id, libraries(*)")
+        .eq("user_id", user.id)
+        .eq("role", "co_owner");
+
+      const coOwnedLibs = (coOwnedRows ?? [])
+        .map((r: any) => Array.isArray(r.libraries) ? r.libraries[0] : r.libraries)
+        .filter(Boolean) as Library[];
+
+      // Merge & deduplicate (in case of overlap)
+      const allLibs = [...(owned ?? []), ...coOwnedLibs];
+      const seen = new Set<string>();
+      return allLibs.filter((lib) => {
+        if (seen.has(lib.id)) return false;
+        seen.add(lib.id);
+        return true;
+      });
     },
     enabled: isAuthenticated && !!user,
   });
