@@ -107,7 +107,7 @@ const PageLoader = () => (
 // even when a library is active on native.
 const PLATFORM_PATHS = [
   '/dashboard', '/catalog', '/dm', '/docs', '/directory', '/achievements',
-  '/community', '/club', '/u/', '/lists', '/create-library',
+  '/community', '/club', '/u/', '/lists', '/create-library', '/studio',
   '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email',
   '/admin', '/setup-2fa', '/install', '/features', '/picker', '/request-club',
   '/join-club', '/legal', '/privacy', '/terms', '/cookies', '/games-for-',
@@ -242,30 +242,8 @@ function TenantRouteHandler({ tenantSlugFromParam }: { tenantSlugFromParam: stri
     return <LibraryRoutes />;
   }
 
-  // Studio subdomain detection
-  if (isStudioHost()) {
-    return <StudioRoutes />;
-  }
-  
   // Platform mode - show marketing/dashboard routes
   return <PlatformRoutes />;
-}
-
-function isStudioHost(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.location.hostname.toLowerCase() === "studio.gametaverns.com";
-}
-
-// Routes for studio.gametaverns.com
-function StudioRoutes() {
-  return (
-    <Routes>
-      <Route path="/login" element={<StudioLogin />} />
-      <Route path="/studio" element={<StudioDashboard />} />
-      <Route path="/" element={<StudioLogin />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
 }
 
 // Routes for the platform (gametaverns.com)
@@ -286,6 +264,9 @@ function PlatformRoutes() {
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />
       <Route path="/admin" element={<Navigate to="/dashboard?tab=admin" replace />} />
+      {/* Studio — internal portal for @gametaverns.com emails */}
+      <Route path="/studio" element={<StudioDashboard />} />
+      <Route path="/studio/login" element={<StudioLogin />} />
       <Route path="/directory" element={<Directory />} />
       <Route path="/achievements" element={<Achievements />} />
       <Route path="/community" element={<Community />} />

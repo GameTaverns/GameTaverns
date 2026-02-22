@@ -12,15 +12,22 @@ export default function StudioDashboard() {
   const { isAuthenticated, loading, user } = useAuth();
   const navigate = useNavigate();
 
+  const ALLOWED_DOMAIN = "gametaverns.com";
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      navigate("/login", { replace: true });
+      navigate("/studio/login", { replace: true });
+    } else if (!loading && isAuthenticated && user?.email) {
+      const domain = user.email.split("@")[1]?.toLowerCase();
+      if (domain !== ALLOWED_DOMAIN) {
+        navigate("/studio/login", { replace: true });
+      }
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, user]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate("/login", { replace: true });
+    navigate("/studio/login", { replace: true });
   };
 
   if (loading || !isAuthenticated) {
