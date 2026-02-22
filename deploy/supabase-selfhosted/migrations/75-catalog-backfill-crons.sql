@@ -23,14 +23,15 @@ SELECT cron.schedule(
 );
 
 -- ─────────────────────────────────────────────────────────────────────
--- 2) Enrichment: backfill designers/mechanics/weight (every 2 min)
+-- 2) Enrichment: backfill designers/mechanics/weight (every minute)
+--    Processes 100 entries per run (5 BGG API calls of 20 IDs each)
 -- ─────────────────────────────────────────────────────────────────────
 SELECT cron.unschedule('catalog-enrichment-cron')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-enrichment-cron');
 
 SELECT cron.schedule(
   'catalog-enrichment-cron',
-  '*/2 * * * *',
+  '* * * * *',
   $$
   SELECT net.http_post(
     url := 'http://kong:8000/functions/v1/catalog-backfill',
@@ -38,7 +39,7 @@ SELECT cron.schedule(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
     ),
-    body := '{"mode": "enrich", "batch_size": 20}'::jsonb
+    body := '{"mode": "enrich", "batch_size": 100}'::jsonb
   ) AS request_id;
   $$
 );
