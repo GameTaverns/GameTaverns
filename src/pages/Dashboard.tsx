@@ -111,7 +111,7 @@ import { PlatformAnalytics } from "@/components/admin/PlatformAnalytics";
 import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
 import { ClubsManagement } from "@/components/admin/ClubsManagement";
 import { SystemHealth } from "@/components/admin/SystemHealth";
-import { PremiumRoadmap } from "@/components/admin/PremiumRoadmap";
+import { PlatformRoadmap } from "@/components/admin/PlatformRoadmap";
 import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 import { usePendingClubs } from "@/hooks/useClubs";
@@ -999,7 +999,7 @@ export default function Dashboard() {
                       <HeartPulse className="h-3 w-3" /> Health
                     </TabsTrigger>
                     <TabsTrigger value="premium" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <Crown className="h-3 w-3" /> Premium
+                      <Crown className="h-3 w-3" /> Roadmap
                     </TabsTrigger>
                     <TabsTrigger value="badges" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
                       <BadgeCheck className="h-3 w-3" /> Badges
@@ -1022,7 +1022,7 @@ export default function Dashboard() {
                   <TabsContent value="feedback"><FeedbackManagement /></TabsContent>
                   <TabsContent value="clubs"><ClubsManagement /></TabsContent>
                   <TabsContent value="health"><SystemHealth /></TabsContent>
-                  <TabsContent value="premium"><PremiumRoadmap /></TabsContent>
+                  <TabsContent value="premium"><PlatformRoadmap /></TabsContent>
                   <TabsContent value="badges">
                     <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading badges…</div>}>
                       <SpecialBadgesManagement />
