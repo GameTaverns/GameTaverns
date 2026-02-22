@@ -53,8 +53,10 @@ type ImportResult = {
     missing_title: number;
     create_failed: number;
     exception: number;
+    not_found: number;
   };
   games: { title: string; id?: string }[];
+  notFoundGames?: string[];
 };
 
 function normalizeImportResult(data: any): ImportResult {
@@ -68,6 +70,7 @@ function normalizeImportResult(data: any): ImportResult {
       ? data.failureBreakdown
       : undefined,
     games: Array.isArray(data?.games) ? data.games : [],
+    notFoundGames: Array.isArray(data?.notFoundGames) ? data.notFoundGames : undefined,
   };
 }
 
@@ -856,28 +859,55 @@ export function BulkImportDialog({
   };
 
   const renderFailureSummary = (r: ImportResult) => {
-    if (!r.failed) return null;
     const b = r.failureBreakdown;
-    if (!b && !r.errorSummary) return null;
+    const hasNotFound = (b?.not_found ?? 0) > 0 || (r.notFoundGames?.length ?? 0) > 0;
+    
+    if (!r.failed && !hasNotFound) return null;
+    if (!b && !r.errorSummary && !hasNotFound) return null;
 
     return (
-      <Alert className="mt-4">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Why some games failed</AlertTitle>
-        <AlertDescription>
-          {r.errorSummary ? (
-            <p className="text-sm">{r.errorSummary}</p>
-          ) : null}
-          {b ? (
-            <ul className="mt-2 list-disc pl-5 text-sm space-y-1">
-              <li>Already existed: {b.already_exists}</li>
-              <li>Missing title: {b.missing_title}</li>
-              <li>Create failed: {b.create_failed}</li>
-              <li>Exceptions: {b.exception}</li>
-            </ul>
-          ) : null}
-        </AlertDescription>
-      </Alert>
+      <>
+        {(r.failed > 0) && (
+          <Alert className="mt-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Why some games failed</AlertTitle>
+            <AlertDescription>
+              {r.errorSummary ? (
+                <p className="text-sm">{r.errorSummary}</p>
+              ) : null}
+              {b ? (
+                <ul className="mt-2 list-disc pl-5 text-sm space-y-1">
+                  {b.already_exists > 0 && <li>Already existed: {b.already_exists}</li>}
+                  {b.missing_title > 0 && <li>Missing title: {b.missing_title}</li>}
+                  {b.create_failed > 0 && <li>Create failed: {b.create_failed}</li>}
+                  {b.exception > 0 && <li>Exceptions: {b.exception}</li>}
+                  {b.not_found > 0 && <li>Not found in catalog or BGG: {b.not_found}</li>}
+                </ul>
+              ) : null}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {hasNotFound && r.notFoundGames && r.notFoundGames.length > 0 && (
+          <Alert className="mt-4 border-amber-500/50">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <AlertTitle>Games Not Found</AlertTitle>
+            <AlertDescription>
+              <p className="text-sm mb-2">
+                The following games were not found in our catalog or on BoardGameGeek. You may need to add them manually:
+              </p>
+              <ul className="list-disc pl-5 text-sm space-y-1">
+                {r.notFoundGames.slice(0, 20).map((title, i) => (
+                  <li key={i}>{title}</li>
+                ))}
+                {r.notFoundGames.length > 20 && (
+                  <li>...and {r.notFoundGames.length - 20} more</li>
+                )}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+      </>
     );
   };
 
