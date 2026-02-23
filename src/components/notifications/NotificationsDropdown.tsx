@@ -251,6 +251,13 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
             ))
           )}
         </ScrollArea>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-center justify-center text-xs text-muted-foreground hover:text-foreground cursor-pointer py-2"
+          onClick={() => navigate("/notifications")}
+        >
+          View all notifications
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

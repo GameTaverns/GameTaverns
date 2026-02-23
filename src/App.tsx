@@ -72,6 +72,7 @@ const CatalogGameDetail = lazy(() => import("./pages/CatalogGameDetail"));
 const Install = lazy(() => import("./pages/Install"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
 const DashboardEditor = lazy(() => import("./components/dashboard/editor/DashboardEditorPage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const DirectMessages = lazy(() => import("./pages/DirectMessages"));
 const CuratedLists = lazy(() => import("./pages/CuratedLists"));
 const CuratedListDetail = lazy(() => import("./pages/CuratedListDetail"));
@@ -260,7 +261,7 @@ function PlatformRoutes() {
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/editor" element={<DashboardEditor />} />
-      <Route path="/dashboard/editor" element={<DashboardEditor />} />
+      <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />
       <Route path="/admin" element={<Navigate to="/dashboard?tab=admin" replace />} />
