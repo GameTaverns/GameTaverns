@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/backend/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, Globe, MapPin, Puzzle, Users } from "lucide-react";
+import { ExternalLink, Globe, MapPin, Puzzle, Users, BookOpen, User, Library, FileText, Megaphone } from "lucide-react";
 
 interface SeoPage {
   type: string;
@@ -13,7 +13,6 @@ interface SeoPage {
 }
 
 export function SeoDirectory() {
-  // Fetch mechanics for SEO pages
   const { data: mechanics = [], isLoading: mechLoading } = useQuery({
     queryKey: ["admin-seo-mechanics"],
     queryFn: async () => {
@@ -26,7 +25,6 @@ export function SeoDirectory() {
     },
   });
 
-  // Fetch cities (distinct from libraries)
   const { data: cities = [], isLoading: citiesLoading } = useQuery({
     queryKey: ["admin-seo-cities"],
     queryFn: async () => {
@@ -41,10 +39,55 @@ export function SeoDirectory() {
     },
   });
 
-  const isLoading = mechLoading || citiesLoading;
+  const { data: catalogGames = [], isLoading: catalogLoading } = useQuery({
+    queryKey: ["admin-seo-catalog"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("game_catalog")
+        .select("id, title, slug")
+        .not("slug", "is", null)
+        .order("title")
+        .limit(5000);
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  // Static SEO pages
+  const { data: profiles = [], isLoading: profilesLoading } = useQuery({
+    queryKey: ["admin-seo-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_user_profiles")
+        .select("username")
+        .not("username", "is", null)
+        .limit(5000);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: libraries = [], isLoading: libsLoading } = useQuery({
+    queryKey: ["admin-seo-libraries"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("libraries_public")
+        .select("slug, name")
+        .not("slug", "is", null)
+        .limit(1000);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const isLoading = mechLoading || citiesLoading || catalogLoading || profilesLoading || libsLoading;
+
   const staticPages: SeoPage[] = [
+    { type: "Static", slug: "home", label: "Homepage", url: "/" },
+    { type: "Static", slug: "features", label: "Features", url: "/features" },
+    { type: "Static", slug: "directory", label: "Library Directory", url: "/directory" },
+    { type: "Static", slug: "catalog", label: "Game Catalog", url: "/catalog" },
+    { type: "Static", slug: "grow", label: "Growth Hub", url: "/grow" },
+    { type: "Player Count", slug: "1", label: "Games for 1 Player", url: "/games-for-1-players" },
     { type: "Player Count", slug: "2", label: "Games for 2 Players", url: "/games-for-2-players" },
     { type: "Player Count", slug: "3", label: "Games for 3 Players", url: "/games-for-3-players" },
     { type: "Player Count", slug: "4", label: "Games for 4 Players", url: "/games-for-4-players" },
@@ -69,20 +112,49 @@ export function SeoDirectory() {
     url: `/libraries/${encodeURIComponent(c)}`,
   }));
 
-  const allPages = [...staticPages, ...mechanicPages, ...cityPages];
+  const catalogPages: SeoPage[] = catalogGames.map((g: any) => ({
+    type: "Catalog Game",
+    slug: g.slug,
+    label: g.title,
+    url: `/catalog/${g.slug}`,
+  }));
 
-  const grouped = {
+  const profilePages: SeoPage[] = profiles.filter((p: any) => p.username).map((p: any) => ({
+    type: "User Profile",
+    slug: p.username,
+    label: p.username,
+    url: `/u/${p.username}`,
+  }));
+
+  const libraryPages: SeoPage[] = libraries.map((l: any) => ({
+    type: "Library",
+    slug: l.slug,
+    label: l.name || l.slug,
+    url: `https://${l.slug}.gametaverns.app/`,
+  }));
+
+  const allPages = [...staticPages, ...mechanicPages, ...cityPages, ...catalogPages, ...profilePages, ...libraryPages];
+
+  const grouped: Record<string, SeoPage[]> = {
+    "Static": allPages.filter((p) => p.type === "Static"),
     "Player Count": allPages.filter((p) => p.type === "Player Count"),
     "Index": allPages.filter((p) => p.type === "Index"),
     "Mechanic": allPages.filter((p) => p.type === "Mechanic"),
     "City": allPages.filter((p) => p.type === "City"),
+    "Catalog Game": allPages.filter((p) => p.type === "Catalog Game"),
+    "User Profile": allPages.filter((p) => p.type === "User Profile"),
+    "Library": allPages.filter((p) => p.type === "Library"),
   };
 
   const typeIcons: Record<string, React.ReactNode> = {
+    "Static": <FileText className="h-4 w-4" />,
     "Player Count": <Users className="h-4 w-4" />,
     "Index": <Globe className="h-4 w-4" />,
     "Mechanic": <Puzzle className="h-4 w-4" />,
     "City": <MapPin className="h-4 w-4" />,
+    "Catalog Game": <BookOpen className="h-4 w-4" />,
+    "User Profile": <User className="h-4 w-4" />,
+    "Library": <Library className="h-4 w-4" />,
   };
 
   if (isLoading) {
