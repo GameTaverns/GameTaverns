@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Upload, Link, Users, FileText, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
@@ -28,6 +28,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedMode, isSelfHostedSupabaseStack, apiClient } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
+import { Capacitor } from "@capacitor/core";
 import { useTenant } from "@/contexts/TenantContext";
 import {
   detectFileFormat,
@@ -258,6 +259,27 @@ export function BulkImportDialog({
   const [detectedFormat, setDetectedFormat] = useState<DetectedFormat | null>(null);
   const [pendingPlays, setPendingPlays] = useState<ParsedPlay[] | null>(null);
   const filePickerActiveRef = useRef(false);
+  const isNative = Capacitor.isNativePlatform();
+
+  // On native, block dialog close for a generous window after ANY interaction
+  // with the file input. Capacitor resume events fire unpredictably.
+  const markFilePickerActive = useCallback(() => {
+    filePickerActiveRef.current = true;
+    // Safety timeout: 60s on native (file picker can take a while), 30s on web
+    const timeout = isNative ? 60000 : 30000;
+    setTimeout(() => { filePickerActiveRef.current = false; }, timeout);
+  }, [isNative]);
+
+  const handleDialogOpenChange = useCallback((v: boolean) => {
+    // Never allow programmatic close while importing
+    if (!v && isImporting) return;
+    // On native, block close while file picker might be active
+    if (!v && filePickerActiveRef.current) {
+      console.log("[BulkImport] Blocked dialog close — file picker active");
+      return;
+    }
+    onOpenChange(v);
+  }, [isImporting, onOpenChange]);
 
   // BGG Collection mode
   const [bggUsername, setBggUsername] = useState("");
@@ -1189,7 +1211,7 @@ export function BulkImportDialog({
   const progressPercent = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v && (isImporting || filePickerActiveRef.current)) return; onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent 
         className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-hidden flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
@@ -1271,10 +1293,8 @@ export function BulkImportDialog({
                     <input
                       type="file"
                       accept=".csv,.xlsx,.xls,.json,.bgsplay"
-                      onClick={() => { filePickerActiveRef.current = true; }}
-                      onBlur={() => {
-                        setTimeout(() => { filePickerActiveRef.current = false; }, 30000);
-                      }}
+                      onPointerDown={() => markFilePickerActive()}
+                      onClick={() => markFilePickerActive()}
                       onChange={(e) => { e.stopPropagation(); handleFileUpload(e); setTimeout(() => { filePickerActiveRef.current = false; }, 2000); }}
                       disabled={isImporting}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
