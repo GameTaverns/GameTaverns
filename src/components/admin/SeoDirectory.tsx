@@ -191,7 +191,7 @@ export function SeoDirectory() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-1">
+              <div className="max-h-[400px] overflow-y-auto space-y-0">
                 {pages.map((page) => (
                   <a
                     key={page.url}
