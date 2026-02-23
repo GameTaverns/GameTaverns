@@ -814,47 +814,6 @@ export function Sidebar({ isOpen }: SidebarProps) {
               </Link>
             )}
 
-            {/* QR Catalog Print - owner only */}
-            {isTenantMode && isOwner && (
-              <Link
-                to={buildUrl("/catalog-print")}
-                className={cn(
-                  "sidebar-link",
-                  location.pathname === "/catalog-print" && "sidebar-link-active"
-                )}
-              >
-                <QrCode className="h-5 w-5" />
-                <span>QR Catalog Print</span>
-              </Link>
-            )}
-
-            {/* Curated Lists */}
-            {isTenantMode && (
-              <Link
-                to={buildUrl("/lists")}
-                className={cn(
-                  "sidebar-link",
-                  location.pathname.startsWith("/lists") && "sidebar-link-active"
-                )}
-              >
-                <ListOrdered className="h-5 w-5" />
-                <span>Lists</span>
-              </Link>
-            )}
-
-            {/* Game Night Calendar */}
-            {isTenantMode && (
-              <Link
-                to={buildUrl("/calendar")}
-                className={cn(
-                  "sidebar-link",
-                  location.pathname === "/calendar" && "sidebar-link-active"
-                )}
-              >
-                <Calendar className="h-5 w-5" />
-                <span>Calendar</span>
-              </Link>
-            )}
             
             {/* Dashboard link - only show when NOT in tenant mode (accessible via header in tenant mode) */}
             {!isTenantMode && (
