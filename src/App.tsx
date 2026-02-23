@@ -305,7 +305,7 @@ function PlatformRoutes() {
       <Route path="/lists/:listId" element={<CuratedListDetail />} />
 
       {/* SEO landing pages */}
-      <Route path="/games-for-:count-players" element={<GamesForNPlayers />} />
+      <Route path="/games-for-:slug" element={<GamesForNPlayers />} />
       <Route path="/catalog/mechanics" element={<MechanicsIndex />} />
       <Route path="/catalog/mechanic/:slug" element={<MechanicPage />} />
       <Route path="/libraries/:city" element={<LibrariesInCity />} />
