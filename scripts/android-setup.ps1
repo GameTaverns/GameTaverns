@@ -74,14 +74,14 @@ Write-Host "      OK - cap sync complete."
 
 # ── Step 6: Upgrade Gradle wrapper to latest ─────────────────────────────────
 Write-Host ""
-Write-Host "[6/9] Upgrading Gradle wrapper to 8.14.3..."
+Write-Host "[6/9] Upgrading Gradle wrapper to 9.1.0..."
 $wrapperProps = "android\gradle\wrapper\gradle-wrapper.properties"
 if (Test-Path $wrapperProps) {
     $wContent = Get-Content $wrapperProps -Raw
-    $wContent = $wContent -replace "gradle-[\d\.]+-all\.zip", "gradle-8.14.3-all.zip"
-    $wContent = $wContent -replace "gradle-[\d\.]+-bin\.zip", "gradle-8.14.3-all.zip"
+    $wContent = $wContent -replace "gradle-[\d\.]+-all\.zip", "gradle-9.1.0-all.zip"
+    $wContent = $wContent -replace "gradle-[\d\.]+-bin\.zip", "gradle-9.1.0-all.zip"
     Set-Content -Path $wrapperProps -Value $wContent -NoNewline
-    Write-Host "      OK - Gradle wrapper set to 8.14.3"
+    Write-Host "      OK - Gradle wrapper set to 9.1.0"
 } else {
     Write-Host "      WARN - gradle-wrapper.properties not found, skipping."
 }
