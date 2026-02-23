@@ -265,7 +265,6 @@ export function BulkImportDialog({
     if (Capacitor.isNativePlatform()) {
       const name = sessionStorage.getItem("bulk_import_fileName");
       if (name) {
-        // Create a stub File so the UI shows the filename
         return new File([""], name, { type: "text/csv" });
       }
     }
@@ -278,6 +277,25 @@ export function BulkImportDialog({
     return null;
   });
   const [pendingPlays, setPendingPlays] = useState<ParsedPlay[] | null>(null);
+
+  // On native, listen for a custom event that signals sessionStorage was updated
+  // by a *previous* component instance's detached input handler. This is needed
+  // because the WebView may remount the component while the FileReader is still
+  // running from the old instance — meaning the old setState calls are no-ops.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handler = () => {
+      const data = sessionStorage.getItem("bulk_import_csvData") || "";
+      const name = sessionStorage.getItem("bulk_import_fileName") || "";
+      const fmt = sessionStorage.getItem("bulk_import_format") as DetectedFormat | null;
+      console.log("[BulkImport] 📱 Picked up file from sessionStorage event:", name);
+      if (data) setCsvData(data);
+      if (name) setCsvFile(new File([""], name, { type: "text/csv" }));
+      if (fmt) setDetectedFormat(fmt);
+    };
+    window.addEventListener("bulk_import_file_ready", handler);
+    return () => window.removeEventListener("bulk_import_file_ready", handler);
+  }, []);
   const filePickerActiveRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isNative = Capacitor.isNativePlatform();
@@ -321,16 +339,18 @@ export function BulkImportDialog({
         reader.onload = () => {
           const text = reader.result as string;
           console.log("[BulkImport] 📱 File read complete, length:", text.length);
+          // Persist to sessionStorage FIRST (survives component remounts)
           sessionStorage.setItem("bulk_import_csvData", text);
           sessionStorage.setItem("bulk_import_fileName", file.name);
-          // Now set React state
+          const format = detectFileFormat(text, file.name);
+          sessionStorage.setItem("bulk_import_format", format || "");
+          // Set React state (works if same instance, no-op if unmounted)
           setCsvFile(file);
           setCsvData(text);
-          // Detect format
-          const format = detectFileFormat(text, file.name);
           setDetectedFormat(format);
-          sessionStorage.setItem("bulk_import_format", format || "");
           console.log("[BulkImport] 📱 State updated — csvFile:", file.name, "format:", format);
+          // Dispatch event so a NEW component instance can pick up the data
+          window.dispatchEvent(new Event("bulk_import_file_ready"));
         };
         reader.readAsText(file);
       }
