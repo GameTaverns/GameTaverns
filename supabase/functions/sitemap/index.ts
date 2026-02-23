@@ -82,7 +82,27 @@ Deno.serve(async (req) => {
     .filter((p) => p.username)
     .map((p) => url(`${BASE_URL}/u/${p.username}`, "0.5", "weekly"));
 
-  const allUrls = [...staticUrls, ...catalogUrls, ...libraryUrls, ...mechanicUrls, ...profileUrls];
+  // City-based library pages
+  const { data: cityLibraries } = await supabase
+    .from("library_directory")
+    .select("location_city")
+    .not("location_city", "is", null);
+
+  const citySet = new Set<string>();
+  (cityLibraries || []).forEach((lib: any) => {
+    const slug = (lib.location_city || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    if (slug) citySet.add(slug);
+  });
+  const cityUrls = [...citySet].map((slug) =>
+    url(`${BASE_URL}/libraries/${slug}`, "0.7", "weekly")
+  );
+
+  // Growth pages
+  const growthUrls = [
+    url(`${BASE_URL}/referrals`, "0.6", "monthly"),
+  ];
+
+  const allUrls = [...staticUrls, ...catalogUrls, ...libraryUrls, ...mechanicUrls, ...profileUrls, ...cityUrls, ...growthUrls];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

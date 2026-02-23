@@ -277,6 +277,47 @@ export default function Platform() {
         </div>
       </section>
 
+      {/* ── Growth tools ── */}
+      <section className="bg-muted/30 border-y border-border/20">
+        <div className="container mx-auto px-4 py-20">
+          <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
+            Share & Grow Your Community
+          </h2>
+          <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
+            Tools to spread the word and bring your gaming group on board.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <Link to="/share-card" className="group">
+              <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
+                <Upload className="h-8 w-8 text-secondary" />
+                <div>
+                  <h3 className="font-display font-bold text-foreground mb-1">Stats Cards</h3>
+                  <p className="text-sm text-muted-foreground">Generate a shareable image of your collection stats for social media.</p>
+                </div>
+              </div>
+            </Link>
+            <Link to="/referrals" className="group">
+              <div className="rounded-2xl border border-secondary/30 bg-secondary/10 ring-1 ring-secondary/20 p-7 text-center hover:bg-secondary/15 transition-colors h-full flex flex-col items-center gap-4">
+                <Star className="h-8 w-8 text-secondary" />
+                <div>
+                  <h3 className="font-display font-bold text-foreground mb-1">Referral Program</h3>
+                  <p className="text-sm text-muted-foreground">Invite friends and earn exclusive badges as they sign up.</p>
+                </div>
+              </div>
+            </Link>
+            <Link to="/embed" className="group">
+              <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
+                <Zap className="h-8 w-8 text-secondary" />
+                <div>
+                  <h3 className="font-display font-bold text-foreground mb-1">Embed Widget</h3>
+                  <p className="text-sm text-muted-foreground">Add your library to your blog, Discord, or forum with a simple embed code.</p>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── Final CTA ── */}
       <section className="bg-muted/30 border-t border-border/20">
         <div className="container mx-auto px-4 py-24 text-center">

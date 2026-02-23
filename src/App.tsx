@@ -81,7 +81,13 @@ const CuratedListDetail = lazy(() => import("./pages/CuratedListDetail"));
 const GamesForNPlayers = lazy(() => import("./pages/seo/GamesForNPlayers"));
 const MechanicPage = lazy(() => import("./pages/seo/MechanicPage"));
 const MechanicsIndex = lazy(() => import("./pages/seo/MechanicsIndex"));
+const LibrariesInCity = lazy(() => import("./pages/seo/LibrariesInCity"));
 const GameCalendar = lazy(() => import("./pages/GameCalendar"));
+
+// Growth pages
+const ShareCard = lazy(() => import("./pages/ShareCard"));
+const Referrals = lazy(() => import("./pages/Referrals"));
+const EmbedWidget = lazy(() => import("./pages/EmbedWidget"));
 
 // Studio pages (studio.gametaverns.com)
 const StudioLogin = lazy(() => import("./pages/StudioLogin"));
@@ -113,6 +119,7 @@ const PLATFORM_PATHS = [
   '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email',
   '/admin', '/setup-2fa', '/install', '/features', '/picker', '/request-club',
   '/join-club', '/legal', '/privacy', '/terms', '/cookies', '/games-for-',
+  '/libraries/', '/share-card', '/referrals', '/embed',
 ];
 
 function isPlatformPath(pathname: string): boolean {
@@ -301,6 +308,12 @@ function PlatformRoutes() {
       <Route path="/games-for-:count-players" element={<GamesForNPlayers />} />
       <Route path="/catalog/mechanics" element={<MechanicsIndex />} />
       <Route path="/catalog/mechanic/:slug" element={<MechanicPage />} />
+      <Route path="/libraries/:city" element={<LibrariesInCity />} />
+
+      {/* Growth pages */}
+      <Route path="/share-card" element={<ShareCard />} />
+      <Route path="/referrals" element={<Referrals />} />
+      <Route path="/embed" element={<EmbedWidget />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
