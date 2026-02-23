@@ -802,6 +802,8 @@ export default function Dashboard() {
         onToggleWidget={(wid) => dashPrefs.toggleWidget(tabId, wid)}
         onMoveWidget={(wid, dir) => dashPrefs.moveWidget(tabId, wid, dir)}
         onResetTab={() => dashPrefs.resetTabWidgets(tabId)}
+        getWidgetSize={(wid) => dashPrefs.getWidgetSize(tabId, wid)}
+        onSetWidgetSize={(wid, span) => dashPrefs.setWidgetSize(tabId, wid, span)}
         contentClassName={contentClass}
       />
     );
