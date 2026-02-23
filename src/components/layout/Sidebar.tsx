@@ -351,6 +351,12 @@ function SidebarUpcomingEvents({ libraryId }: { libraryId: string }) {
           );
         })}
       </div>
+      <Link
+        to="/calendar"
+        className="flex items-center gap-1 text-[10px] text-sidebar-primary hover:text-sidebar-primary/80 mt-2 font-medium transition-colors"
+      >
+        View full calendar →
+      </Link>
     </div>
   );
 }
@@ -833,6 +839,20 @@ export function Sidebar({ isOpen }: SidebarProps) {
               >
                 <ListOrdered className="h-5 w-5" />
                 <span>Lists</span>
+              </Link>
+            )}
+
+            {/* Game Night Calendar */}
+            {isTenantMode && (
+              <Link
+                to={buildUrl("/calendar")}
+                className={cn(
+                  "sidebar-link",
+                  location.pathname === "/calendar" && "sidebar-link-active"
+                )}
+              >
+                <Calendar className="h-5 w-5" />
+                <span>Calendar</span>
               </Link>
             )}
             
