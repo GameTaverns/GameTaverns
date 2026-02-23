@@ -271,42 +271,50 @@ export function BulkImportDialog({
     setTimeout(() => { filePickerActiveRef.current = false; }, timeout);
   }, [isNative]);
 
-  // On native, the file input onChange may not fire after resume.
-  // Poll the input element for files when the app resumes.
   // On native Android, onChange on file inputs is unreliable.
-  // Use three strategies: Capacitor App resume, visibilitychange, and interval polling.
+  // Use refs to avoid stale closure issues with setInterval.
   const fileCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const csvFileRef = useRef<File | null>(null);
+  // Keep csvFileRef in sync
+  useEffect(() => { csvFileRef.current = csvFile; }, [csvFile]);
+
+  // Use a ref for handleFileUpload so polling always calls the latest version
+  // Initialized as no-op; updated via useEffect after handleFileUpload is defined below
+  const handleFileUploadRef = useRef<(e: React.ChangeEvent<HTMLInputElement>) => void>(() => {});
+
+  const stopFilePickerPolling = useCallback(() => {
+    if (fileCheckIntervalRef.current) {
+      clearInterval(fileCheckIntervalRef.current);
+      fileCheckIntervalRef.current = null;
+    }
+  }, []);
 
   const checkFileInput = useCallback(() => {
     const input = fileInputRef.current;
-    if (input && input.files && input.files.length > 0 && !csvFile) {
-      console.log("[BulkImport] Detected file in input via polling/resume");
+    console.log("[BulkImport] Polling check — input:", !!input, "files:", input?.files?.length ?? 0, "csvFile:", !!csvFileRef.current);
+    if (input && input.files && input.files.length > 0 && !csvFileRef.current) {
+      console.log("[BulkImport] ✅ Detected file via polling:", input.files[0].name);
       const syntheticEvent = { target: input, stopPropagation: () => {} } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleFileUpload(syntheticEvent);
+      handleFileUploadRef.current(syntheticEvent);
       filePickerActiveRef.current = false;
-      // Stop polling once we have the file
-      if (fileCheckIntervalRef.current) {
-        clearInterval(fileCheckIntervalRef.current);
-        fileCheckIntervalRef.current = null;
-      }
+      stopFilePickerPolling();
     }
-  }, [csvFile]);
+  }, [stopFilePickerPolling]);
 
   // Start aggressive polling when file picker opens (native only)
   const startFilePickerPolling = useCallback(() => {
     if (!isNative) return;
-    if (fileCheckIntervalRef.current) clearInterval(fileCheckIntervalRef.current);
-    console.log("[BulkImport] Starting file picker polling");
+    stopFilePickerPolling();
+    console.log("[BulkImport] 🚀 Starting file picker polling (native)");
     fileCheckIntervalRef.current = setInterval(checkFileInput, 500);
     // Safety: stop polling after 30s
     setTimeout(() => {
       if (fileCheckIntervalRef.current) {
-        clearInterval(fileCheckIntervalRef.current);
-        fileCheckIntervalRef.current = null;
-        console.log("[BulkImport] File picker polling timed out");
+        console.log("[BulkImport] ⏱ File picker polling timed out after 30s");
+        stopFilePickerPolling();
       }
     }, 30000);
-  }, [isNative, checkFileInput]);
+  }, [isNative, checkFileInput, stopFilePickerPolling]);
 
   useEffect(() => {
     if (!isNative) return;
@@ -442,6 +450,9 @@ export function BulkImportDialog({
       }
     }
   };
+
+  // Keep handleFileUploadRef in sync so polling always uses the latest version
+  useEffect(() => { handleFileUploadRef.current = handleFileUpload; });
 
   const resetForm = () => {
     setCsvData("");
@@ -1366,9 +1377,9 @@ export function BulkImportDialog({
                       ref={fileInputRef}
                       type="file"
                       accept=".csv,.xlsx,.xls,.json,.bgsplay"
-                      onPointerDown={() => { markFilePickerActive(); startFilePickerPolling(); }}
-                      onClick={() => { markFilePickerActive(); startFilePickerPolling(); }}
-                      onChange={(e) => { e.stopPropagation(); handleFileUpload(e); setTimeout(() => { filePickerActiveRef.current = false; }, 2000); if (fileCheckIntervalRef.current) { clearInterval(fileCheckIntervalRef.current); fileCheckIntervalRef.current = null; } }}
+                      onPointerDown={() => { console.log("[BulkImport] 📱 onPointerDown on file input"); markFilePickerActive(); startFilePickerPolling(); }}
+                      onClick={() => { console.log("[BulkImport] 📱 onClick on file input"); markFilePickerActive(); startFilePickerPolling(); }}
+                      onChange={(e) => { console.log("[BulkImport] 📱 onChange fired! files:", e.target.files?.length); e.stopPropagation(); handleFileUpload(e); setTimeout(() => { filePickerActiveRef.current = false; }, 2000); stopFilePickerPolling(); }}
                       disabled={isImporting}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     />
