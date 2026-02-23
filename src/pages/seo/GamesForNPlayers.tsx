@@ -22,8 +22,9 @@ const playerCountDescriptions: Record<number, string> = {
 };
 
 export default function GamesForNPlayers() {
-  const { count } = useParams<{ count: string }>();
-  const n = parseInt(count || "4", 10);
+  const { slug } = useParams<{ slug: string }>();
+  // slug is like "2-players" — extract the number
+  const n = parseInt(slug || "4", 10);
 
   const isValid = VALID_COUNTS.includes(n);
 
