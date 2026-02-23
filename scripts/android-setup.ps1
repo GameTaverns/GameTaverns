@@ -78,10 +78,16 @@ Write-Host "[6/9] Upgrading Gradle wrapper to 9.1.0..."
 $wrapperProps = "android\gradle\wrapper\gradle-wrapper.properties"
 if (Test-Path $wrapperProps) {
     $wContent = Get-Content $wrapperProps -Raw
-    $wContent = $wContent -replace "gradle-[\d\.]+-all\.zip", "gradle-9.1.0-all.zip"
-    $wContent = $wContent -replace "gradle-[\d\.]+-bin\.zip", "gradle-9.1.0-all.zip"
+    # Replace the entire distributionUrl line regardless of current version/format
+    $wContent = $wContent -replace "(?m)^distributionUrl=.*$", "distributionUrl=https\://services.gradle.org/distributions/gradle-9.1.0-all.zip"
     Set-Content -Path $wrapperProps -Value $wContent -NoNewline
-    Write-Host "      OK - Gradle wrapper set to 9.1.0"
+    # Verify it worked
+    if ((Get-Content $wrapperProps -Raw) -match "9\.1\.0") {
+        Write-Host "      OK - Gradle wrapper set to 9.1.0"
+    } else {
+        Write-Host "      ERROR - Failed to patch gradle-wrapper.properties"
+        Write-Host "      Content: $(Get-Content $wrapperProps -Raw)"
+    }
 } else {
     Write-Host "      WARN - gradle-wrapper.properties not found, skipping."
 }
