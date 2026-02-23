@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Vote, PartyPopper, Clock, Users, Share2, Trash2, BarChart3, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { Vote, PartyPopper, Clock, Users, Share2, Trash2, BarChart3, ChevronDown, ChevronUp, Check, Download, ExternalLink } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { GameImage } from "@/components/games/GameImage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { downloadICS, googleCalendarUrl } from "@/lib/calendar";
 
 function getVoterIdentifier(userId?: string): string {
   if (userId) return userId;
@@ -134,6 +135,43 @@ export function PollCard({ poll, libraryId, onViewResults, canManage = true }: P
             <Share2 className="h-3 w-3 mr-1" />
             Share
           </Button>
+
+          {/* Calendar export for game nights */}
+          {poll.poll_type === "game_night" && poll.event_date && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs px-2"
+                onClick={() => downloadICS({
+                  title: `🎲 ${poll.title}`,
+                  description: poll.description || undefined,
+                  location: poll.event_location || undefined,
+                  startDate: new Date(poll.event_date!),
+                  allDay: !poll.event_date!.includes("T"),
+                })}
+              >
+                <Download className="h-3 w-3 mr-1" />
+                .ics
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs px-2" asChild>
+                <a
+                  href={googleCalendarUrl({
+                    title: `🎲 ${poll.title}`,
+                    description: poll.description || undefined,
+                    location: poll.event_location || undefined,
+                    startDate: new Date(poll.event_date!),
+                    allDay: !poll.event_date!.includes("T"),
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Google
+                </a>
+              </Button>
+            </>
+          )}
 
           {onViewResults && (
             <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => onViewResults(poll.id)}>

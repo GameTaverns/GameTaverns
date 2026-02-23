@@ -81,6 +81,7 @@ const CuratedListDetail = lazy(() => import("./pages/CuratedListDetail"));
 const GamesForNPlayers = lazy(() => import("./pages/seo/GamesForNPlayers"));
 const MechanicPage = lazy(() => import("./pages/seo/MechanicPage"));
 const MechanicsIndex = lazy(() => import("./pages/seo/MechanicsIndex"));
+const GameCalendar = lazy(() => import("./pages/GameCalendar"));
 
 // Studio pages (studio.gametaverns.com)
 const StudioLogin = lazy(() => import("./pages/StudioLogin"));
@@ -323,6 +324,7 @@ function LibraryRoutes() {
       <Route path="/edit/:id" element={<GameForm />} />
       <Route path="/stats" element={<PlayStatsPage />} />
       <Route path="/poll/:token" element={<PollPage />} />
+      <Route path="/calendar" element={<GameCalendar />} />
       <Route path="/catalog-print" element={<CatalogPrint />} />
       
       {/* Community/Forum routes for library */}

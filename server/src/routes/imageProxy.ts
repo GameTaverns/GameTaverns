@@ -44,8 +44,10 @@ router.get('/', imageLimiter, async (req: Request, res: Response) => {
     
     res.set({
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=86400',
+      'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable',
+      'CDN-Cache-Control': 'public, max-age=31536000, immutable',
       'X-Content-Type-Options': 'nosniff',
+      'Vary': 'Accept',
     });
     
     res.send(Buffer.from(buffer));

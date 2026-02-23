@@ -159,6 +159,9 @@ export default async function handler(req: Request): Promise<Response> {
         ...corsHeaders,
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
+        "CDN-Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+        "Vary": "Accept",
       },
     });
   } catch (e) {
