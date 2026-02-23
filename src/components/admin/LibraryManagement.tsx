@@ -74,9 +74,39 @@ export function LibraryManagement() {
         .select("user_id, display_name")
         .in("user_id", ownerIds);
 
+      // Get co-owners for all libraries
+      const libIds = libs?.map((l) => l.id) || [];
+      const { data: coOwners } = await supabase
+        .from("library_members")
+        .select("library_id, user_id")
+        .in("library_id", libIds)
+        .eq("role", "co_owner");
+
+      // Fetch co-owner profiles
+      const coOwnerUserIds = [...new Set(coOwners?.map((c) => c.user_id) || [])].filter(id => !ownerIds.includes(id));
+      let coOwnerProfiles: { user_id: string; display_name: string | null }[] = [];
+      if (coOwnerUserIds.length > 0) {
+        const { data } = await supabase
+          .from("user_profiles")
+          .select("user_id, display_name")
+          .in("user_id", coOwnerUserIds);
+        coOwnerProfiles = data || [];
+      }
+      const allProfiles = [...(profiles || []), ...coOwnerProfiles];
+
       // Combine data
       const librariesWithOwners: LibraryWithOwner[] = (libs || []).map((lib) => {
-        const owner = profiles?.find((p) => p.user_id === lib.owner_id);
+        const owner = allProfiles.find((p) => p.user_id === lib.owner_id);
+        const libCoOwners = coOwners?.filter((c) => c.library_id === lib.id) || [];
+        const coOwnerNames = libCoOwners
+          .map((c) => allProfiles.find((p) => p.user_id === c.user_id)?.display_name || "Unknown")
+          .filter(Boolean);
+        
+        let ownerLabel = owner?.display_name || "Unknown";
+        if (coOwnerNames.length > 0) {
+          ownerLabel += ` + ${coOwnerNames.join(", ")}`;
+        }
+
         return {
           id: lib.id,
           name: lib.name,
@@ -85,7 +115,7 @@ export function LibraryManagement() {
           is_active: lib.is_active,
           is_premium: lib.is_premium,
           created_at: lib.created_at,
-          owner_display_name: owner?.display_name || "Unknown",
+          owner_display_name: ownerLabel,
         };
       });
 
