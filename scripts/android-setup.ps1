@@ -72,15 +72,29 @@ npx cap sync android
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: cap sync android failed."; exit 1 }
 Write-Host "      OK - cap sync complete."
 
-# ── Step 6: Run the post-sync patcher ────────────────────────────────────────
+# ── Step 6: Upgrade Gradle wrapper to latest ─────────────────────────────────
 Write-Host ""
-Write-Host "[6/8] Running post-sync patcher..."
+Write-Host "[6/9] Upgrading Gradle wrapper to 8.14.3..."
+$wrapperProps = "android\gradle\wrapper\gradle-wrapper.properties"
+if (Test-Path $wrapperProps) {
+    $wContent = Get-Content $wrapperProps -Raw
+    $wContent = $wContent -replace "gradle-[\d\.]+-all\.zip", "gradle-8.14.3-all.zip"
+    $wContent = $wContent -replace "gradle-[\d\.]+-bin\.zip", "gradle-8.14.3-all.zip"
+    Set-Content -Path $wrapperProps -Value $wContent -NoNewline
+    Write-Host "      OK - Gradle wrapper set to 8.14.3"
+} else {
+    Write-Host "      WARN - gradle-wrapper.properties not found, skipping."
+}
+
+# ── Step 7: Run the post-sync patcher ────────────────────────────────────────
+Write-Host ""
+Write-Host "[7/9] Running post-sync patcher..."
 node scripts/fix-proguard.cjs
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: fix-proguard.cjs failed."; exit 1 }
 
 # ── Step 7: Lock Gradle JDK in gradle.properties ─────────────────────────────
 Write-Host ""
-Write-Host "[7/8] Locking Gradle JDK..."
+Write-Host "[8/9] Locking Gradle JDK..."
 $gradleProps = "android\gradle.properties"
 
 if (Test-Path $gradleProps) {
@@ -116,7 +130,7 @@ if (Test-Path $gradleProps) {
 
 # ── Step 8: Validate no Lovable URLs leaked ───────────────────────────────────
 Write-Host ""
-Write-Host "[8/8] Scanning for Lovable URL leaks..."
+Write-Host "[9/9] Scanning for Lovable URL leaks..."
 
 $leakPatterns = @("lovableproject.com", "lovable.app", "hobby-shelf-spark", "ddfslywz")
 $leakFound = $false
