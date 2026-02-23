@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Menu, X, Library, Globe, HelpCircle, BookOpen, MessageSquare,
-  Mail, LogOut, User, Trophy, Users, LayoutDashboard, List, Share2,
+  Mail, LogOut, User, Trophy, Users, LayoutDashboard, List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -131,13 +131,6 @@ export function MobileNavDrawer() {
               <NavItem href={getPlatformUrl("/directory")} icon={Globe} label="Directory" />
               <NavItem href={getPlatformUrl("/achievements")} icon={Trophy} label="Achievements" />
               <NavItem href={getPlatformUrl("/lists")} icon={List} label="Curated Lists" />
-
-              <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Share & Grow
-              </div>
-              <NavItem href={getPlatformUrl("/share-card")} icon={Share2} label="Stats Card" />
-              <NavItem href={getPlatformUrl("/embed")} icon={Globe} label="Embed Widget" />
-              <NavItem href={getPlatformUrl("/referrals")} icon={Users} label="Referrals" />
 
               <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Messages

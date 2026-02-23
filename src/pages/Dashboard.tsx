@@ -32,6 +32,7 @@ import {
   Gamepad2,
   Flame,
   ListOrdered,
+  Share2,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -509,6 +510,36 @@ export default function Dashboard() {
               <ListOrdered className="h-3.5 w-3.5" /> Browse &amp; Create Lists
             </Button>
           </Link>
+        </CardContent>
+      </Card>
+    ),
+    "growth-tools": (
+      <Card className={cardClass}>
+        <CardHeader className="pb-2 px-4 pt-4">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Share2 className="h-4 w-4 text-secondary" />
+            Share & Grow
+          </CardTitle>
+          <CardDescription className="text-cream/60 text-xs">Tools to spread the word about your library</CardDescription>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <div className="flex flex-col gap-1.5">
+            <Link to="/share-card">
+              <Button size="sm" className={`w-full ${btnPrimary}`}>
+                <Share2 className="h-3 w-3" /> Collection Stats Card
+              </Button>
+            </Link>
+            <Link to="/embed">
+              <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
+                <Globe className="h-3 w-3" /> Embed Widget
+              </Button>
+            </Link>
+            <Link to="/referrals">
+              <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
+                <Users className="h-3 w-3" /> Referrals
+              </Button>
+            </Link>
+          </div>
         </CardContent>
       </Card>
     ),

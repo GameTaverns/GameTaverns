@@ -22,6 +22,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   { id: "challenges", label: "Group Challenges", icon: "Target", description: "Community challenges manager" },
   { id: "random-picker", label: "Random Game Picker", icon: "Target", description: "Pick a random game from library" },
   { id: "create-library", label: "Create Another Library", icon: "Plus", description: "Create additional library slot" },
+  { id: "growth-tools", label: "Share & Grow", icon: "Share2", description: "Stats cards, embed widgets, and referral tools" },
 
   // --- Community widgets ---
   { id: "forums", label: "Forums", icon: "MessageSquare", description: "Community forum threads" },
