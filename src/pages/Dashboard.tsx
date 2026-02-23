@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ExternalLink,
@@ -91,6 +92,8 @@ import { useMyClubs } from "@/hooks/useClubs";
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { useTotpStatus } from "@/hooks/useTotpStatus";
+import { useUserDashboardPrefs } from "@/hooks/useUserDashboardPrefs";
+import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer";
 import { useQuery } from "@tanstack/react-query";
 import { supabase as _supabase } from "@/integrations/backend/client";
 import { InfoPopover } from "@/components/ui/InfoPopover";
@@ -152,6 +155,7 @@ export default function Dashboard() {
   const { data: myMemberships = [] } = useMyMemberships();
   const { data: myClubs = [] } = useMyClubs();
   const pendingLoanRequests = myLentLoans.filter((l) => l.status === "requested").length;
+  const dashPrefs = useUserDashboardPrefs(isAdmin);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showCreateEvent, setShowCreateEvent] = useState(false);
@@ -233,6 +237,14 @@ export default function Dashboard() {
 
   // Sign out handled by AppHeader
 
+  // If active tab is hidden, fall back to first visible tab
+  useEffect(() => {
+    const visibleIds = dashPrefs.visibleTabs.map(t => t.id);
+    if (visibleIds.length > 0 && !visibleIds.includes(activeTab)) {
+      handleTabChange(visibleIds[0]);
+    }
+  }, [dashPrefs.visibleTabs, activeTab]);
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate("/login");
@@ -283,67 +295,47 @@ export default function Dashboard() {
 
         {/* ===== TABS ===== */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1 mb-6 overflow-x-auto no-scrollbar">
-            <TabsTrigger
-              value="library"
-              className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <Library className="h-3.5 w-3.5" />
-              Library
-              {pendingLoanRequests > 0 && <Badge variant="destructive" className="text-[10px] ml-1 px-1">{pendingLoanRequests}</Badge>}
-            </TabsTrigger>
-            <TabsTrigger
-              value="community"
-              className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <Users className="h-3.5 w-3.5" />
-              Community
-            </TabsTrigger>
-            <TabsTrigger
-              value="social"
-              className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <Globe className="h-3.5 w-3.5" />
-              Social
-            </TabsTrigger>
-            <TabsTrigger
-              value="personal"
-              className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <User className="h-3.5 w-3.5" />
-              Personal
-            </TabsTrigger>
-            <TabsTrigger
-              value="referrals"
-              className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <Users className="h-3.5 w-3.5" />
-              Referrals
-            </TabsTrigger>
-            <TabsTrigger
-              value="analytics"
-              className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <BarChart3 className="h-3.5 w-3.5" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger
-              value="danger"
-              className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-red-700 data-[state=active]:text-white data-[state=inactive]:hover:bg-wood-medium/40"
-            >
-              <AlertTriangle className="h-3.5 w-3.5" />
-              Danger
-            </TabsTrigger>
-            {isAdmin && (
-              <TabsTrigger
-                value="admin"
-                className="gap-1.5 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground data-[state=inactive]:hover:bg-wood-medium/40"
-              >
-                <Shield className="h-3.5 w-3.5" />
-                Admin
-              </TabsTrigger>
-            )}
-          </TabsList>
+          <div className="flex items-center gap-2 mb-6">
+            <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1 overflow-x-auto no-scrollbar flex-1">
+              {dashPrefs.visibleTabs.map(tab => {
+                const isDanger = tab.id === "danger";
+                const tabIcon = tab.id === "library" ? <Library className="h-3.5 w-3.5" />
+                  : tab.id === "community" ? <Users className="h-3.5 w-3.5" />
+                  : tab.id === "social" ? <Globe className="h-3.5 w-3.5" />
+                  : tab.id === "personal" ? <User className="h-3.5 w-3.5" />
+                  : tab.id === "referrals" ? <Users className="h-3.5 w-3.5" />
+                  : tab.id === "analytics" ? <BarChart3 className="h-3.5 w-3.5" />
+                  : tab.id === "danger" ? <AlertTriangle className="h-3.5 w-3.5" />
+                  : tab.id === "admin" ? <Shield className="h-3.5 w-3.5" />
+                  : null;
+                return (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    className={cn(
+                      "gap-1.5 text-xs text-cream/70 data-[state=inactive]:hover:bg-wood-medium/40",
+                      isDanger
+                        ? "data-[state=active]:bg-red-700 data-[state=active]:text-white"
+                        : "data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+                    )}
+                  >
+                    {tabIcon}
+                    {tab.label}
+                    {tab.id === "library" && pendingLoanRequests > 0 && (
+                      <Badge variant="destructive" className="text-[10px] ml-1 px-1">{pendingLoanRequests}</Badge>
+                    )}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+            <DashboardCustomizer
+              visibleTabs={dashPrefs.visibleTabs}
+              hiddenTabDefs={dashPrefs.hiddenTabDefs}
+              toggleTab={dashPrefs.toggleTab}
+              moveTab={dashPrefs.moveTab}
+              resetPrefs={dashPrefs.resetPrefs}
+            />
+          </div>
 
           {/* ==================== LIBRARY TAB ==================== */}
           <TabsContent value="library">
