@@ -83,6 +83,7 @@ export const TAB_WIDGET_REGISTRY: Record<string, WidgetDef[]> = {
     { id: "settings", label: "Library Settings", icon: "Settings" },
     { id: "create-library", label: "Create Another Library", icon: "Plus" },
     { id: "curated-lists", label: "Curated Lists", icon: "ListOrdered" },
+    { id: "growth-tools", label: "Share & Grow", icon: "Share2" },
   ],
   community: [
     { id: "forums", label: "Forums", icon: "MessageSquare" },
