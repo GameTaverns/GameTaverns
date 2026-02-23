@@ -210,8 +210,7 @@ export default function Dashboard() {
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "library");
 
-  // Admin sub-tab state
-  const [adminSubTab, setAdminSubTab] = useState("analytics");
+  // Admin badge counts
   const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
   const { data: pendingClubs } = usePendingClubs();
 
@@ -969,85 +968,54 @@ export default function Dashboard() {
                   <h2 className="font-display text-lg font-bold text-cream">Site Administration</h2>
                 </div>
 
-                <Tabs value={adminSubTab} onValueChange={setAdminSubTab} className="w-full">
-                  <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1 mb-4 overflow-x-auto no-scrollbar">
-                    <TabsTrigger value="analytics" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <Activity className="h-3 w-3" /> Analytics
-                    </TabsTrigger>
-                    <TabsTrigger value="users" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <Users className="h-3 w-3" /> Users
-                    </TabsTrigger>
-                    <TabsTrigger value="libraries" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <Database className="h-3 w-3" /> Libraries
-                    </TabsTrigger>
-                    <TabsTrigger value="settings" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <Settings className="h-3 w-3" /> Settings
-                    </TabsTrigger>
-                    <TabsTrigger value="feedback" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative">
-                      <MessageCircle className="h-3 w-3" /> Feedback
+                {renderWidgetTab("admin", {
+                  analytics: <PlatformAnalytics />,
+                  users: <UserManagement />,
+                  libraries: <LibraryManagement />,
+                  settings: <PlatformSettings />,
+                  feedback: (
+                    <div className="relative">
                       {unreadFeedbackCount && unreadFeedbackCount > 0 && (
-                        <Badge className="ml-1 h-4 min-w-[16px] px-1 text-[10px] bg-destructive text-destructive-foreground">
+                        <Badge className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground z-10">
                           {unreadFeedbackCount}
                         </Badge>
                       )}
-                    </TabsTrigger>
-                    <TabsTrigger value="clubs" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative">
-                      <Trophy className="h-3 w-3" /> Clubs
+                      <FeedbackManagement />
+                    </div>
+                  ),
+                  clubs: (
+                    <div className="relative">
                       {pendingClubs && pendingClubs.length > 0 && (
-                        <Badge className="ml-1 h-4 min-w-[16px] px-1 text-[10px] bg-destructive text-destructive-foreground">
+                        <Badge className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground z-10">
                           {pendingClubs.length}
                         </Badge>
                       )}
-                    </TabsTrigger>
-                    <TabsTrigger value="health" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <HeartPulse className="h-3 w-3" /> Health
-                    </TabsTrigger>
-                    <TabsTrigger value="premium" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <Crown className="h-3 w-3" /> Roadmap
-                    </TabsTrigger>
-                    <TabsTrigger value="badges" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <BadgeCheck className="h-3 w-3" /> Badges
-                    </TabsTrigger>
-                    <TabsTrigger value="crons" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <Clock className="h-3 w-3" /> Crons
-                    </TabsTrigger>
-                    <TabsTrigger value="server" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <Terminal className="h-3 w-3" /> Server
-                    </TabsTrigger>
-                    <TabsTrigger value="security" className="gap-1 text-xs text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                      <Shield className="h-3 w-3" /> Security
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="analytics"><PlatformAnalytics /></TabsContent>
-                  <TabsContent value="users"><UserManagement /></TabsContent>
-                  <TabsContent value="libraries"><LibraryManagement /></TabsContent>
-                  <TabsContent value="settings"><PlatformSettings /></TabsContent>
-                  <TabsContent value="feedback"><FeedbackManagement /></TabsContent>
-                  <TabsContent value="clubs"><ClubsManagement /></TabsContent>
-                  <TabsContent value="health"><SystemHealth /></TabsContent>
-                  <TabsContent value="premium"><PlatformRoadmap /></TabsContent>
-                  <TabsContent value="badges">
+                      <ClubsManagement />
+                    </div>
+                  ),
+                  health: <SystemHealth />,
+                  premium: <PlatformRoadmap />,
+                  badges: (
                     <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading badges…</div>}>
                       <SpecialBadgesManagement />
                     </Suspense>
-                  </TabsContent>
-                  <TabsContent value="crons">
+                  ),
+                  crons: (
                     <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading cron monitor…</div>}>
                       <CronJobsMonitor />
                     </Suspense>
-                  </TabsContent>
-                  <TabsContent value="server">
+                  ),
+                  server: (
                     <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading server tools…</div>}>
                       <ServerManagement />
                     </Suspense>
-                  </TabsContent>
-                  <TabsContent value="security">
+                  ),
+                  security: (
                     <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading security logs…</div>}>
                       <AuditLogViewer />
                     </Suspense>
-                  </TabsContent>
-                </Tabs>
+                  ),
+                })}
               </div>
             </TabsContent>
           )}
