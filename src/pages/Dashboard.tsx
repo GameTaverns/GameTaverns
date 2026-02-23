@@ -95,6 +95,7 @@ import { useTotpStatus } from "@/hooks/useTotpStatus";
 import { useUserDashboardPrefs, TAB_WIDGET_REGISTRY } from "@/hooks/useUserDashboardPrefs";
 import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer";
 import { TabWidgetEditor } from "@/components/dashboard/TabWidgetEditor";
+import { AdminSubtabPanel } from "@/components/dashboard/AdminSubtabPanel";
 import { useQuery } from "@tanstack/react-query";
 import { supabase as _supabase } from "@/integrations/backend/client";
 import { InfoPopover } from "@/components/ui/InfoPopover";
@@ -964,61 +965,7 @@ export default function Dashboard() {
           {/* ==================== ADMIN TAB (admin only) ==================== */}
           {isAdmin && (
             <TabsContent value="admin">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <Shield className="h-5 w-5 text-secondary" />
-                  <h2 className="font-display text-lg font-bold text-cream">Site Administration</h2>
-                </div>
-
-                {renderWidgetTab("admin", {
-                  analytics: <PlatformAnalytics />,
-                  users: <UserManagement />,
-                  libraries: <LibraryManagement />,
-                  settings: <PlatformSettings />,
-                  feedback: (
-                    <div className="relative">
-                      {unreadFeedbackCount && unreadFeedbackCount > 0 && (
-                        <Badge className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground z-10">
-                          {unreadFeedbackCount}
-                        </Badge>
-                      )}
-                      <FeedbackManagement />
-                    </div>
-                  ),
-                  clubs: (
-                    <div className="relative">
-                      {pendingClubs && pendingClubs.length > 0 && (
-                        <Badge className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground z-10">
-                          {pendingClubs.length}
-                        </Badge>
-                      )}
-                      <ClubsManagement />
-                    </div>
-                  ),
-                  health: <SystemHealth />,
-                  premium: <PlatformRoadmap />,
-                  badges: (
-                    <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading badges…</div>}>
-                      <SpecialBadgesManagement />
-                    </Suspense>
-                  ),
-                  crons: (
-                    <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading cron monitor…</div>}>
-                      <CronJobsMonitor />
-                    </Suspense>
-                  ),
-                  server: (
-                    <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading server tools…</div>}>
-                      <ServerManagement />
-                    </Suspense>
-                  ),
-                  security: (
-                    <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading security logs…</div>}>
-                      <AuditLogViewer />
-                    </Suspense>
-                  ),
-                })}
-              </div>
+              <AdminSubtabPanel dashPrefs={dashPrefs} unreadFeedbackCount={unreadFeedbackCount} pendingClubs={pendingClubs} />
             </TabsContent>
           )}
         </Tabs>
