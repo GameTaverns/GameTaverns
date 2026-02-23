@@ -271,84 +271,64 @@ export function BulkImportDialog({
     setTimeout(() => { filePickerActiveRef.current = false; }, timeout);
   }, [isNative]);
 
-  // On native Android, onChange on file inputs is unreliable.
-  // Use refs to avoid stale closure issues with setInterval.
-  const fileCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const csvFileRef = useRef<File | null>(null);
-  // Keep csvFileRef in sync
-  useEffect(() => { csvFileRef.current = csvFile; }, [csvFile]);
+  // On native Android, onChange on <input type="file"> inside React is notoriously
+  // unreliable in Capacitor WebView. The WebView often clears the input's files on
+  // resume, and onChange never fires. The fix: on native, we create a *detached*
+  // input element outside the React tree, click it, and read the file via its own
+  // onChange which fires reliably because the element isn't subject to React re-renders.
 
-  // Use a ref for handleFileUpload so polling always calls the latest version
-  // Initialized as no-op; updated via useEffect after handleFileUpload is defined below
+  // Ref for handleFileUpload so the detached input always calls the latest version
   const handleFileUploadRef = useRef<(e: React.ChangeEvent<HTMLInputElement>) => void>(() => {});
 
-  const stopFilePickerPolling = useCallback(() => {
-    if (fileCheckIntervalRef.current) {
-      clearInterval(fileCheckIntervalRef.current);
-      fileCheckIntervalRef.current = null;
-    }
-  }, []);
+  const nativePickFile = useCallback(() => {
+    if (!isNative) return;
+    console.log("[BulkImport] 📱 nativePickFile — creating detached input");
+    markFilePickerActive();
 
-  const checkFileInput = useCallback(() => {
-    const input = fileInputRef.current;
-    console.log("[BulkImport] Polling check — input:", !!input, "files:", input?.files?.length ?? 0, "csvFile:", !!csvFileRef.current);
-    if (input && input.files && input.files.length > 0 && !csvFileRef.current) {
-      console.log("[BulkImport] ✅ Detected file via polling:", input.files[0].name);
-      const syntheticEvent = { target: input, stopPropagation: () => {} } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleFileUploadRef.current(syntheticEvent);
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".csv,.xlsx,.xls,.json,.bgsplay";
+    input.style.display = "none";
+    document.body.appendChild(input);
+
+    input.addEventListener("change", () => {
+      console.log("[BulkImport] 📱 Detached input onChange fired! files:", input.files?.length);
+      const file = input.files?.[0];
+      if (file) {
+        console.log("[BulkImport] ✅ Got file from detached input:", file.name, file.size);
+        const syntheticEvent = {
+          target: input,
+          stopPropagation: () => {},
+        } as unknown as React.ChangeEvent<HTMLInputElement>;
+        handleFileUploadRef.current(syntheticEvent);
+      }
       filePickerActiveRef.current = false;
-      stopFilePickerPolling();
-    }
-  }, [stopFilePickerPolling]);
-
-  // Start aggressive polling when file picker opens (native only)
-  const startFilePickerPolling = useCallback(() => {
-    if (!isNative) return;
-    stopFilePickerPolling();
-    console.log("[BulkImport] 🚀 Starting file picker polling (native)");
-    fileCheckIntervalRef.current = setInterval(checkFileInput, 500);
-    // Safety: stop polling after 30s
-    setTimeout(() => {
-      if (fileCheckIntervalRef.current) {
-        console.log("[BulkImport] ⏱ File picker polling timed out after 30s");
-        stopFilePickerPolling();
-      }
-    }, 30000);
-  }, [isNative, checkFileInput, stopFilePickerPolling]);
-
-  useEffect(() => {
-    if (!isNative) return;
-    // Capacitor App resume listener — most reliable on Android
-    let removeListener: (() => void) | undefined;
-    CapApp.addListener("appStateChange", (state) => {
-      if (state.isActive && filePickerActiveRef.current) {
-        console.log("[BulkImport] App resumed from file picker");
-        setTimeout(checkFileInput, 300);
-        setTimeout(checkFileInput, 800);
-        setTimeout(checkFileInput, 1500);
-      }
-    }).then(handle => {
-      removeListener = () => handle.remove();
+      setTimeout(() => {
+        try { document.body.removeChild(input); } catch (_) {}
+      }, 1000);
     });
 
-    // Also listen for visibilitychange as backup
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible" && filePickerActiveRef.current) {
-        setTimeout(checkFileInput, 500);
-        setTimeout(checkFileInput, 1500);
-      }
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      setTimeout(() => {
+        if (!input.files?.length) {
+          console.log("[BulkImport] 📱 No file selected after resume, cleaning up");
+          filePickerActiveRef.current = false;
+          try { document.body.removeChild(input); } catch (_) {}
+        }
+      }, 2000);
     };
-    document.addEventListener("visibilitychange", onVisibilityChange);
 
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      removeListener?.();
-      if (fileCheckIntervalRef.current) {
-        clearInterval(fileCheckIntervalRef.current);
-        fileCheckIntervalRef.current = null;
-      }
-    };
-  }, [isNative, checkFileInput]);
+    CapApp.addListener("appStateChange", (state) => {
+      if (state.isActive) cleanup();
+    }).then(handle => {
+      setTimeout(() => handle.remove(), 60000);
+    });
+
+    input.click();
+  }, [isNative, markFilePickerActive]);
 
   const handleDialogOpenChange = useCallback((v: boolean) => {
     // Never allow programmatic close while importing
@@ -1371,19 +1351,34 @@ export function BulkImportDialog({
               <TabsContent value="csv" className="mt-0 space-y-4">
                 <div className="space-y-2">
                   <Label>Upload File</Label>
-                  {/* Wrapped in div to prevent focus/click events from bubbling to dialog on mobile file picker. */}
-                  <div onFocus={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".csv,.xlsx,.xls,.json,.bgsplay"
-                      onPointerDown={() => { console.log("[BulkImport] 📱 onPointerDown on file input"); markFilePickerActive(); startFilePickerPolling(); }}
-                      onClick={() => { console.log("[BulkImport] 📱 onClick on file input"); markFilePickerActive(); startFilePickerPolling(); }}
-                      onChange={(e) => { console.log("[BulkImport] 📱 onChange fired! files:", e.target.files?.length); e.stopPropagation(); handleFileUpload(e); setTimeout(() => { filePickerActiveRef.current = false; }, 2000); stopFilePickerPolling(); }}
-                      disabled={isImporting}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                  </div>
+                  {isNative ? (
+                    /* On native Android, use a button that creates a detached file input
+                       to bypass WebView's unreliable onChange on React-managed inputs */
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isImporting}
+                        onClick={nativePickFile}
+                        className="w-full justify-start gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {csvFile ? csvFile.name : "Tap to select file…"}
+                      </Button>
+                    </div>
+                  ) : (
+                    /* On web, use the standard file input */
+                    <div onFocus={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv,.xlsx,.xls,.json,.bgsplay"
+                        onChange={(e) => { e.stopPropagation(); handleFileUpload(e); }}
+                        disabled={isImporting}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      />
+                    </div>
+                  )}
                   {detectedFormat && (
                     <p className="text-xs font-medium text-primary">
                       ✓ Detected: {getFormatLabel(detectedFormat)}
