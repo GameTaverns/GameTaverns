@@ -10,6 +10,7 @@ import {
   BookOpen,
   User,
   MessageSquare,
+  Share2,
 } from "lucide-react";
 import { MobileNavDrawer } from "@/components/mobile/MobileNavDrawer";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -168,6 +169,15 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     <span>My Library</span>
                   </TenantLink>
                 ) : null}
+
+                {/* Growth Tools */}
+                <TenantLink
+                  href={getPlatformUrl("/share-card")}
+                  className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                  <span>Share & Grow</span>
+                </TenantLink>
 
                 {/* Profile link */}
                 {!isProfilePage && !isListsPage && profile?.username && (
