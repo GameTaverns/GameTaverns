@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/backend/client";
 import { Layout } from "@/components/layout/Layout";
@@ -9,14 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Clock, Weight, BookOpen, ChevronDown, ChevronUp, Menu, LayoutGrid, List } from "lucide-react";
+import { Search, Users, Clock, Weight, BookOpen, ChevronDown, ChevronUp, Menu, LayoutGrid, List, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
 import { CatalogSidebar } from "@/components/catalog/CatalogSidebar";
 import { CatalogGameGrid, type CatalogGameItem } from "@/components/catalog/CatalogGameGrid";
 import { CatalogGameList } from "@/components/catalog/CatalogGameList";
-import { CatalogPagination } from "@/components/catalog/CatalogPagination";
 import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
 import { useAddWant } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +44,8 @@ interface CatalogGame {
   community_rating_count: number;
 }
 
+const PAGE_SIZE = 30;
+
 export default function CatalogBrowse() {
   const { isAuthenticated } = useAuth();
   const { data: myLibrary } = useMyLibrary();
@@ -65,8 +66,8 @@ export default function CatalogBrowse() {
   const [sortBy, setSortBy] = useState<string>("title");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = viewMode === "list" ? 50 : 24;
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const sidebarFilter = searchParams.get("filter");
   const sidebarValue = searchParams.get("value");
@@ -77,160 +78,204 @@ export default function CatalogBrowse() {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       setDebouncedSearch(searchTerm);
-      setCurrentPage(1);
     }, 300);
     return () => { if (debounceTimer.current) clearTimeout(debounceTimer.current); };
   }, [searchTerm]);
 
   const showExpansions = sidebarFilter === "status" && sidebarValue === "expansions";
 
-  // Server-side paginated query — only fetches current page
-  const { data: pageResult, isLoading } = useQuery({
-    queryKey: ["catalog-browse", currentPage, PAGE_SIZE, debouncedSearch, sortBy, sidebarFilter, sidebarValue, showFilters, playerCount, maxTime, weightRange],
-    queryFn: async () => {
-      let query = supabase
-        .from("game_catalog")
-        .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age", { count: "exact" })
-        .eq("is_expansion", showExpansions);
+  // Build query with all server-side filters
+  const buildQuery = useCallback(async (pageParam: number) => {
+    let query = supabase
+      .from("game_catalog")
+      .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age", { count: pageParam === 0 ? "exact" : undefined })
+      .eq("is_expansion", showExpansions);
 
-      if (debouncedSearch) {
-        query = query.ilike("title", `%${debouncedSearch}%`);
+    if (debouncedSearch) {
+      query = query.ilike("title", `%${debouncedSearch}%`);
+    }
+
+    // Sidebar filters
+    if (sidebarFilter === "letter" && sidebarValue) {
+      if (sidebarValue === "#") {
+        query = query.not("title", "ilike", "a%").not("title", "ilike", "b%").not("title", "ilike", "c%")
+          .not("title", "ilike", "d%").not("title", "ilike", "e%").not("title", "ilike", "f%")
+          .not("title", "ilike", "g%").not("title", "ilike", "h%").not("title", "ilike", "i%")
+          .not("title", "ilike", "j%").not("title", "ilike", "k%").not("title", "ilike", "l%")
+          .not("title", "ilike", "m%").not("title", "ilike", "n%").not("title", "ilike", "o%")
+          .not("title", "ilike", "p%").not("title", "ilike", "q%").not("title", "ilike", "r%")
+          .not("title", "ilike", "s%").not("title", "ilike", "t%").not("title", "ilike", "u%")
+          .not("title", "ilike", "v%").not("title", "ilike", "w%").not("title", "ilike", "x%")
+          .not("title", "ilike", "y%").not("title", "ilike", "z%");
+      } else {
+        query = query.ilike("title", `${sidebarValue}%`);
       }
+    }
 
-      // Sidebar filters that can be server-side
-      if (sidebarFilter === "letter" && sidebarValue) {
-        if (sidebarValue === "#") {
-          query = query.not("title", "ilike", "a%").not("title", "ilike", "b%").not("title", "ilike", "c%")
-            .not("title", "ilike", "d%").not("title", "ilike", "e%").not("title", "ilike", "f%")
-            .not("title", "ilike", "g%").not("title", "ilike", "h%").not("title", "ilike", "i%")
-            .not("title", "ilike", "j%").not("title", "ilike", "k%").not("title", "ilike", "l%")
-            .not("title", "ilike", "m%").not("title", "ilike", "n%").not("title", "ilike", "o%")
-            .not("title", "ilike", "p%").not("title", "ilike", "q%").not("title", "ilike", "r%")
-            .not("title", "ilike", "s%").not("title", "ilike", "t%").not("title", "ilike", "u%")
-            .not("title", "ilike", "v%").not("title", "ilike", "w%").not("title", "ilike", "x%")
-            .not("title", "ilike", "y%").not("title", "ilike", "z%");
-        } else {
-          query = query.ilike("title", `${sidebarValue}%`);
-        }
-      }
-
-      if (sidebarFilter === "players" && sidebarValue) {
-        const rangeMatch = sidebarValue.match(/(\d+)-(\d+)/);
-        const plusMatch = sidebarValue.match(/(\d+)\+/);
-        const singleMatch = sidebarValue.match(/^(\d+)$/);
-        if (rangeMatch) {
-          query = query.lte("min_players", parseInt(rangeMatch[2])).gte("max_players", parseInt(rangeMatch[1]));
-        } else if (plusMatch) {
-          query = query.gte("max_players", parseInt(plusMatch[1]));
-        } else if (singleMatch) {
-          const count = parseInt(singleMatch[1]);
-          query = query.lte("min_players", count).gte("max_players", count);
-        }
-      }
-
-      if (sidebarFilter === "difficulty" && sidebarValue) {
-        const weightMap: Record<string, [number, number]> = {
-          "1 - Light": [0, 1.5], "2 - Medium Light": [1.5, 2.25],
-          "3 - Medium": [2.25, 3.0], "4 - Medium Heavy": [3.0, 3.75], "5 - Heavy": [3.75, 5.0],
-        };
-        const range = weightMap[sidebarValue];
-        if (range) query = query.gte("weight", range[0]).lte("weight", range[1]);
-      }
-
-      if (sidebarFilter === "designer" && sidebarValue) {
-        const { data: designerIds } = await (supabase as any)
-          .from("catalog_designers")
-          .select("catalog_id, designer:designers!inner(name)")
-          .eq("designer.name", sidebarValue);
-        const matchIds = (designerIds || []).map((d: any) => d.catalog_id);
-        if (matchIds.length > 0) {
-          query = query.in("id", matchIds);
-        } else {
-          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
-        }
-      }
-
-      if (sidebarFilter === "artist" && sidebarValue) {
-        const { data: artistIds } = await (supabase as any)
-          .from("catalog_artists")
-          .select("catalog_id, artist:artists!inner(name)")
-          .eq("artist.name", sidebarValue);
-        const matchIds = (artistIds || []).map((d: any) => d.catalog_id);
-        if (matchIds.length > 0) {
-          query = query.in("id", matchIds);
-        } else {
-          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
-        }
-      }
-
-      if (sidebarFilter === "publisher" && sidebarValue) {
-        const { data: pubIds } = await (supabase as any)
-          .from("catalog_publishers")
-          .select("catalog_id, publisher:publishers!inner(name)")
-          .eq("publisher.name", sidebarValue);
-        const matchIds = (pubIds || []).map((d: any) => d.catalog_id);
-        if (matchIds.length > 0) {
-          query = query.in("id", matchIds);
-        } else {
-          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
-        }
-      }
-
-      if (sidebarFilter === "mechanic" && sidebarValue) {
-        const { data: mechIds } = await (supabase as any)
-          .from("catalog_mechanics")
-          .select("catalog_id, mechanic:mechanics!inner(name)")
-          .eq("mechanic.name", sidebarValue);
-        const matchIds = (mechIds || []).map((d: any) => d.catalog_id);
-        if (matchIds.length > 0) {
-          query = query.in("id", matchIds);
-        } else {
-          query = query.eq("id", "00000000-0000-0000-0000-000000000000");
-        }
-      }
-
-      if (showFilters) {
-        const count = playerCount[0];
+    if (sidebarFilter === "players" && sidebarValue) {
+      const rangeMatch = sidebarValue.match(/(\d+)-(\d+)/);
+      const plusMatch = sidebarValue.match(/(\d+)\+/);
+      const singleMatch = sidebarValue.match(/^(\d+)$/);
+      if (rangeMatch) {
+        query = query.lte("min_players", parseInt(rangeMatch[2])).gte("max_players", parseInt(rangeMatch[1]));
+      } else if (plusMatch) {
+        query = query.gte("max_players", parseInt(plusMatch[1]));
+      } else if (singleMatch) {
+        const count = parseInt(singleMatch[1]);
         query = query.lte("min_players", count).gte("max_players", count);
-        query = query.lte("play_time_minutes", maxTime[0]);
-        query = query.gte("weight", weightRange[0]).lte("weight", weightRange[1]);
       }
+    }
 
-      // Sorting
-      const descSorts = ["rating", "community", "year"];
-      switch (sortBy) {
-        case "rating": query = query.order("bgg_community_rating", { ascending: false, nullsFirst: false }); break;
-        case "weight": query = query.order("weight", { ascending: true, nullsFirst: false }); break;
-        case "year": query = query.order("year_published", { ascending: false, nullsFirst: false }); break;
-        default: query = query.order("title", { ascending: true }); break;
+    if (sidebarFilter === "difficulty" && sidebarValue) {
+      const weightMap: Record<string, [number, number]> = {
+        "1 - Light": [0, 1.5], "2 - Medium Light": [1.5, 2.25],
+        "3 - Medium": [2.25, 3.0], "4 - Medium Heavy": [3.0, 3.75], "5 - Heavy": [3.75, 5.0],
+      };
+      const range = weightMap[sidebarValue];
+      if (range) query = query.gte("weight", range[0]).lte("weight", range[1]);
+    }
+
+    if (sidebarFilter === "designer" && sidebarValue) {
+      const { data: designerIds } = await (supabase as any)
+        .from("catalog_designers")
+        .select("catalog_id, designer:designers!inner(name)")
+        .eq("designer.name", sidebarValue);
+      const matchIds = (designerIds || []).map((d: any) => d.catalog_id);
+      if (matchIds.length > 0) {
+        query = query.in("id", matchIds);
+      } else {
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
       }
+    }
 
-      const from = (currentPage - 1) * PAGE_SIZE;
-      query = query.range(from, from + PAGE_SIZE - 1);
+    if (sidebarFilter === "artist" && sidebarValue) {
+      const { data: artistIds } = await (supabase as any)
+        .from("catalog_artists")
+        .select("catalog_id, artist:artists!inner(name)")
+        .eq("artist.name", sidebarValue);
+      const matchIds = (artistIds || []).map((d: any) => d.catalog_id);
+      if (matchIds.length > 0) {
+        query = query.in("id", matchIds);
+      } else {
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+    }
 
-      const { data, error, count } = await query;
-      if (error) throw error;
-      return { games: data || [], total: count || 0 };
+    if (sidebarFilter === "publisher" && sidebarValue) {
+      const { data: pubIds } = await (supabase as any)
+        .from("catalog_publishers")
+        .select("catalog_id, publisher:publishers!inner(name)")
+        .eq("publisher.name", sidebarValue);
+      const matchIds = (pubIds || []).map((d: any) => d.catalog_id);
+      if (matchIds.length > 0) {
+        query = query.in("id", matchIds);
+      } else {
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+    }
+
+    if (sidebarFilter === "mechanic" && sidebarValue) {
+      const { data: mechIds } = await (supabase as any)
+        .from("catalog_mechanics")
+        .select("catalog_id, mechanic:mechanics!inner(name)")
+        .eq("mechanic.name", sidebarValue);
+      const matchIds = (mechIds || []).map((d: any) => d.catalog_id);
+      if (matchIds.length > 0) {
+        query = query.in("id", matchIds);
+      } else {
+        query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+      }
+    }
+
+    if (showFilters) {
+      const count = playerCount[0];
+      query = query.lte("min_players", count).gte("max_players", count);
+      query = query.lte("play_time_minutes", maxTime[0]);
+      query = query.gte("weight", weightRange[0]).lte("weight", weightRange[1]);
+    }
+
+    // Sorting
+    switch (sortBy) {
+      case "rating": query = query.order("bgg_community_rating", { ascending: false, nullsFirst: false }); break;
+      case "weight": query = query.order("weight", { ascending: true, nullsFirst: false }); break;
+      case "year": query = query.order("year_published", { ascending: false, nullsFirst: false }); break;
+      default: query = query.order("title", { ascending: true }); break;
+    }
+
+    const from = pageParam * PAGE_SIZE;
+    query = query.range(from, from + PAGE_SIZE - 1);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+    return { games: data || [], total: count ?? undefined, page: pageParam };
+  }, [showExpansions, debouncedSearch, sidebarFilter, sidebarValue, showFilters, playerCount, maxTime, weightRange, sortBy]);
+
+  // Infinite query
+  const {
+    data: infiniteData,
+    isLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["catalog-browse-infinite", debouncedSearch, sortBy, sidebarFilter, sidebarValue, showFilters, playerCount, maxTime, weightRange, showExpansions],
+    queryFn: ({ pageParam = 0 }) => buildQuery(pageParam),
+    getNextPageParam: (lastPage) => {
+      if (lastPage.games.length < PAGE_SIZE) return undefined;
+      return lastPage.page + 1;
     },
+    initialPageParam: 0,
     staleTime: 1000 * 60 * 5,
   });
 
-  const rawGames = pageResult?.games || [];
-  const totalCount = pageResult?.total || 0;
+  // Flatten all pages into a single array
+  const rawGames = useMemo(() => infiniteData?.pages.flatMap(p => p.games) || [], [infiniteData]);
+  const totalCount = infiniteData?.pages[0]?.total ?? rawGames.length;
 
-  // Fetch junction metadata only for the current page's game IDs
+  // Intersection Observer for infinite scroll
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [entry] = entries;
+      if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(handleObserver, { rootMargin: "400px" });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  // Fetch junction metadata for all loaded games
+  const allGameIds = useMemo(() => rawGames.map(g => g.id), [rawGames]);
   const { data: metadata } = useQuery({
-    queryKey: ["catalog-browse-metadata", rawGames.map(g => g.id)],
+    queryKey: ["catalog-browse-metadata", allGameIds],
     queryFn: async () => {
       if (rawGames.length === 0) return null;
       const ids = rawGames.map(g => g.id);
 
-      const [designersRows, artistsRows, mechanicsRows, publishersRows, ratingsData] = await Promise.all([
-        supabase.from("catalog_designers").select("catalog_id, designer:designers(name)").in("catalog_id", ids),
-        supabase.from("catalog_artists").select("catalog_id, artist:artists(name)").in("catalog_id", ids),
-        supabase.from("catalog_mechanics").select("catalog_id, mechanic:mechanics(name)").in("catalog_id", ids),
-        supabase.from("catalog_publishers").select("catalog_id, publisher:publishers(name)").in("catalog_id", ids),
-        supabase.from("catalog_ratings_summary").select("catalog_id, visitor_average, visitor_count").in("catalog_id", ids),
+      // Batch in chunks of 200 to avoid URL overflow
+      const batchFetch = async (table: string, selectStr: string) => {
+        const results: any[] = [];
+        for (let i = 0; i < ids.length; i += 200) {
+          const batch = ids.slice(i, i + 200);
+          const { data } = await (supabase as any).from(table).select(selectStr).in("catalog_id", batch);
+          results.push(...(data || []));
+        }
+        return results;
+      };
+
+      const [designersRows, artistsRows, mechanicsRows, publishersRows, ratingsRows] = await Promise.all([
+        batchFetch("catalog_designers", "catalog_id, designer:designers(name)"),
+        batchFetch("catalog_artists", "catalog_id, artist:artists(name)"),
+        batchFetch("catalog_mechanics", "catalog_id, mechanic:mechanics(name)"),
+        batchFetch("catalog_publishers", "catalog_id, publisher:publishers(name)"),
+        batchFetch("catalog_ratings_summary", "catalog_id, visitor_average, visitor_count"),
       ]);
 
       const buildMap = (rows: any[], key: string) => {
@@ -247,17 +292,17 @@ export default function CatalogBrowse() {
       };
 
       const ratingMap = new Map<string, { avg: number; count: number }>();
-      for (const row of ratingsData.data || []) {
+      for (const row of ratingsRows || []) {
         if (row.visitor_count && row.visitor_count > 0) {
           ratingMap.set(row.catalog_id, { avg: Number(row.visitor_average) || 0, count: row.visitor_count });
         }
       }
 
       return {
-        designerMap: buildMap(designersRows.data || [], "designer"),
-        artistMap: buildMap(artistsRows.data || [], "artist"),
-        mechanicMap: buildMap(mechanicsRows.data || [], "mechanic"),
-        publisherMap: buildMap(publishersRows.data || [], "publisher"),
+        designerMap: buildMap(designersRows, "designer"),
+        artistMap: buildMap(artistsRows, "artist"),
+        mechanicMap: buildMap(mechanicsRows, "mechanic"),
+        publisherMap: buildMap(publishersRows, "publisher"),
         ratingMap,
       };
     },
@@ -265,7 +310,7 @@ export default function CatalogBrowse() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // Merge page games with metadata
+  // Merge games with metadata
   const catalogGames: CatalogGame[] = useMemo(() => {
     return rawGames.map(g => {
       const r = metadata?.ratingMap.get(g.id);
@@ -315,20 +360,7 @@ export default function CatalogBrowse() {
     staleTime: 1000 * 60 * 30,
   });
 
-  // Pagination — now server-side
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-  const paginatedGames = catalogGames; // already paginated server-side
-
-  // Reset page when filters change
-  const handleSearchChange = (val: string) => { setSearchTerm(val); setCurrentPage(1); };
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  const handleViewToggle = (mode: "grid" | "list") => {
-    setViewMode(mode);
-    setCurrentPage(1);
-  };
+  const handleSearchChange = (val: string) => { setSearchTerm(val); };
 
   const handleAddGame = (gameId: string) => {
     if (myLibraries.length > 1) {
@@ -426,7 +458,7 @@ export default function CatalogBrowse() {
 
           {/* Sort + View + Filter controls */}
           <div className="flex gap-2 flex-wrap">
-            <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setCurrentPage(1); }}>
+            <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-[140px] sm:w-[160px]">
                 <SelectValue />
               </SelectTrigger>
@@ -445,7 +477,7 @@ export default function CatalogBrowse() {
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="icon"
                 className="h-9 w-9 rounded-r-none"
-                onClick={() => handleViewToggle("grid")}
+                onClick={() => setViewMode("grid")}
                 title="Grid view"
               >
                 <LayoutGrid className="h-4 w-4" />
@@ -454,7 +486,7 @@ export default function CatalogBrowse() {
                 variant={viewMode === "list" ? "default" : "ghost"}
                 size="icon"
                 className="h-9 w-9 rounded-l-none"
-                onClick={() => handleViewToggle("list")}
+                onClick={() => setViewMode("list")}
                 title="List view"
               >
                 <List className="h-4 w-4" />
@@ -478,19 +510,19 @@ export default function CatalogBrowse() {
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <Users className="h-4 w-4" /> Players: {playerCount[0]}
                     </Label>
-                    <Slider value={playerCount} onValueChange={(v) => { setPlayerCount(v); setCurrentPage(1); }} min={1} max={10} step={1} />
+                    <Slider value={playerCount} onValueChange={setPlayerCount} min={1} max={10} step={1} />
                   </div>
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <Clock className="h-4 w-4" /> Max Time: {maxTime[0]} min
                     </Label>
-                    <Slider value={maxTime} onValueChange={(v) => { setMaxTime(v); setCurrentPage(1); }} min={15} max={240} step={15} />
+                    <Slider value={maxTime} onValueChange={setMaxTime} min={15} max={240} step={15} />
                   </div>
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2 text-sm font-medium">
                       <Weight className="h-4 w-4" /> Complexity: {weightRange[0].toFixed(1)} – {weightRange[1].toFixed(1)}
                     </Label>
-                    <Slider value={weightRange} onValueChange={(v) => { setWeightRange(v); setCurrentPage(1); }} min={1} max={5} step={0.5} />
+                    <Slider value={weightRange} onValueChange={setWeightRange} min={1} max={5} step={0.5} />
                   </div>
                 </CardContent>
               </Card>
@@ -512,7 +544,7 @@ export default function CatalogBrowse() {
             </div>
           ) : viewMode === "grid" ? (
             <CatalogGameGrid
-              games={paginatedGames}
+              games={catalogGames}
               isAuthenticated={isAuthenticated}
               addingId={addFromCatalog.variables?.catalogId}
               isPending={addFromCatalog.isPending}
@@ -523,7 +555,7 @@ export default function CatalogBrowse() {
             />
           ) : (
             <CatalogGameList
-              games={paginatedGames}
+              games={catalogGames}
               isAuthenticated={isAuthenticated}
               addingId={addFromCatalog.variables?.catalogId}
               isPending={addFromCatalog.isPending}
@@ -531,12 +563,13 @@ export default function CatalogBrowse() {
             />
           )}
 
-          {/* Pagination */}
-          <CatalogPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-          />
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="h-4" />
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
 
           {catalogGames.length === 0 && !isLoading && (
             <div className="text-center py-12">
