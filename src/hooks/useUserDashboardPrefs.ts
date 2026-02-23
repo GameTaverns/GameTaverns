@@ -37,7 +37,6 @@ function savePrefs(prefs: UserDashboardPrefs) {
 
 /**
  * All available dashboard tabs with their default config.
- * This is the source of truth for what tabs exist.
  */
 export interface DashboardTabDef {
   id: string;
@@ -58,6 +57,47 @@ export const DASHBOARD_TABS: DashboardTabDef[] = [
   { id: "admin", label: "Admin", icon: "Shield", adminOnly: true },
 ];
 
+/** Widget definition for per-tab registries */
+export interface WidgetDef {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+/** Registry of widgets per tab – source of truth for what widgets exist within each tab */
+export const TAB_WIDGET_REGISTRY: Record<string, WidgetDef[]> = {
+  library: [
+    { id: "onboarding", label: "Getting Started", icon: "Activity" },
+    { id: "trending", label: "Trending This Month", icon: "Flame" },
+    { id: "games", label: "My Games", icon: "Gamepad2" },
+    { id: "events", label: "Events", icon: "Calendar" },
+    { id: "polls", label: "Polls", icon: "Vote" },
+    { id: "community-link", label: "Community", icon: "MessageSquare" },
+    { id: "lending", label: "Lending", icon: "BookOpen" },
+    { id: "ratings-wishlist", label: "Ratings & Want to Play", icon: "Star" },
+    { id: "shelf-of-shame", label: "Shelf of Shame", icon: "Gamepad2" },
+    { id: "random-picker", label: "Random Picker", icon: "Shuffle" },
+    { id: "settings", label: "Library Settings", icon: "Settings" },
+    { id: "create-library", label: "Create Another Library", icon: "Plus" },
+    { id: "curated-lists", label: "Curated Lists", icon: "ListOrdered" },
+  ],
+  community: [
+    { id: "forums", label: "Forums", icon: "MessageSquare" },
+    { id: "polls", label: "Polls", icon: "Vote" },
+    { id: "clubs", label: "My Clubs", icon: "Users" },
+    { id: "communities", label: "My Communities", icon: "Globe" },
+    { id: "members", label: "Members", icon: "Users" },
+    { id: "trades", label: "Trading", icon: "ArrowLeftRight" },
+    { id: "challenges", label: "Challenges", icon: "Target" },
+  ],
+  personal: [
+    { id: "profile", label: "My Profile", icon: "User" },
+    { id: "account-settings", label: "Account Settings", icon: "Settings" },
+    { id: "achievements", label: "Achievements", icon: "Trophy" },
+    { id: "borrowed-games", label: "Borrowed Games", icon: "BookOpen" },
+  ],
+};
+
 export function useUserDashboardPrefs(isAdmin: boolean) {
   const [prefs, setPrefs] = useState<UserDashboardPrefs>(loadPrefs);
 
@@ -74,7 +114,6 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
     const allTabs = DASHBOARD_TABS.filter(t => !t.adminOnly || isAdmin);
     const hidden = new Set(prefs.hiddenTabs);
 
-    // If user has a custom order, use it (filtering out unknown/hidden)
     if (prefs.tabOrder.length > 0) {
       const ordered: DashboardTabDef[] = [];
       const seen = new Set<string>();
@@ -86,7 +125,6 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
           seen.add(id);
         }
       }
-      // Append any new tabs not in the saved order
       for (const tab of allTabs) {
         if (!seen.has(tab.id) && !hidden.has(tab.id)) {
           ordered.push(tab);
@@ -98,7 +136,6 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
     return allTabs.filter(t => !hidden.has(t.id));
   }, [prefs, isAdmin]);
 
-  /** All tabs including hidden ones (for the customization panel) */
   const allTabs = useMemo(
     () => DASHBOARD_TABS.filter(t => !t.adminOnly || isAdmin),
     [isAdmin]
@@ -138,6 +175,91 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
     setPrefs(EMPTY_PREFS);
   }, []);
 
+  // ── Per-tab widget customization ──
+
+  /** Get visible widget IDs for a tab in user's preferred order */
+  const getVisibleWidgets = useCallback((tabId: string): string[] => {
+    const registry = TAB_WIDGET_REGISTRY[tabId];
+    if (!registry) return [];
+    const defaultOrder = registry.map(w => w.id);
+    const userOrder = prefs.widgetOrder[tabId] ?? [];
+    const hiddenSet = new Set(prefs.hiddenWidgets[tabId] ?? []);
+
+    if (userOrder.length > 0) {
+      const result: string[] = [];
+      const seen = new Set<string>();
+      for (const id of userOrder) {
+        if (defaultOrder.includes(id) && !hiddenSet.has(id)) {
+          result.push(id);
+          seen.add(id);
+        }
+      }
+      // Append any new widgets not in saved order
+      for (const id of defaultOrder) {
+        if (!seen.has(id) && !hiddenSet.has(id)) {
+          result.push(id);
+        }
+      }
+      return result;
+    }
+
+    return defaultOrder.filter(id => !hiddenSet.has(id));
+  }, [prefs]);
+
+  /** Get hidden widget defs for a tab */
+  const getHiddenWidgets = useCallback((tabId: string): WidgetDef[] => {
+    const registry = TAB_WIDGET_REGISTRY[tabId];
+    if (!registry) return [];
+    const hiddenSet = new Set(prefs.hiddenWidgets[tabId] ?? []);
+    return registry.filter(w => hiddenSet.has(w.id));
+  }, [prefs]);
+
+  /** Toggle a widget's visibility within a tab */
+  const toggleWidget = useCallback((tabId: string, widgetId: string) => {
+    update(prev => {
+      const current = prev.hiddenWidgets[tabId] ?? [];
+      const next = current.includes(widgetId)
+        ? current.filter(id => id !== widgetId)
+        : [...current, widgetId];
+      return {
+        ...prev,
+        hiddenWidgets: { ...prev.hiddenWidgets, [tabId]: next },
+      };
+    });
+  }, [update]);
+
+  /** Reorder widgets within a tab */
+  const reorderWidgets = useCallback((tabId: string, newOrder: string[]) => {
+    update(prev => ({
+      ...prev,
+      widgetOrder: { ...prev.widgetOrder, [tabId]: newOrder },
+    }));
+  }, [update]);
+
+  /** Move a widget up or down within a tab */
+  const moveWidget = useCallback((tabId: string, widgetId: string, direction: -1 | 1) => {
+    const visible = getVisibleWidgets(tabId);
+    const idx = visible.indexOf(widgetId);
+    if (idx < 0) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= visible.length) return;
+    const newOrder = [...visible];
+    [newOrder[idx], newOrder[newIdx]] = [newOrder[newIdx], newOrder[idx]];
+    // Include hidden widgets in the full order to preserve their positions
+    const registry = TAB_WIDGET_REGISTRY[tabId] ?? [];
+    const hiddenIds = (prefs.hiddenWidgets[tabId] ?? []).filter(id => registry.some(w => w.id === id));
+    reorderWidgets(tabId, [...newOrder, ...hiddenIds]);
+  }, [getVisibleWidgets, reorderWidgets, prefs.hiddenWidgets]);
+
+  /** Reset widget customization for a specific tab */
+  const resetTabWidgets = useCallback((tabId: string) => {
+    update(prev => {
+      const { [tabId]: _wo, ...restOrder } = prev.widgetOrder;
+      const { [tabId]: _hw, ...restHidden } = prev.hiddenWidgets;
+      return { ...prev, widgetOrder: restOrder, hiddenWidgets: restHidden };
+    });
+  }, [update]);
+
   return {
     prefs,
     visibleTabs,
@@ -148,5 +270,12 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
     moveTab,
     resetPrefs,
     isTabHidden: (id: string) => prefs.hiddenTabs.includes(id),
+    // Per-tab widget methods
+    getVisibleWidgets,
+    getHiddenWidgets,
+    toggleWidget,
+    reorderWidgets,
+    moveWidget,
+    resetTabWidgets,
   };
 }
