@@ -5,25 +5,33 @@ import { ReferralPanel } from "@/components/referral/ReferralPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Share2, Users, Gift, Trophy, ChevronRight, ImageIcon } from "lucide-react";
+import { Share2, Users, Gift, ChevronRight, ChevronLeft, ImageIcon } from "lucide-react";
 import { REFERRAL_TIERS, FOUNDING_MEMBER_BADGE } from "@/hooks/useReferral";
 
-export default function Referrals() {
+export default function Grow() {
   const { isAuthenticated } = useAuth();
 
   return (
     <Layout hideSidebar>
-      <SEO title="Invite Friends & Earn Badges" description="Share GameTaverns with your gaming group and earn exclusive badges as they join." />
+      <SEO title="Grow Your Community" description="Share GameTaverns with your gaming group, earn badges, and get tools to spread the word." />
 
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Back to dashboard */}
+        {isAuthenticated && (
+          <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+            <ChevronLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Link>
+        )}
+
         {/* Hero */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
             <Gift className="h-3.5 w-3.5" />
-            Referral Program
+            Growth Hub
           </div>
           <h1 className="font-display text-4xl sm:text-5xl font-bold mb-3">
-            Invite Friends, Earn Badges
+            Grow Your Community
           </h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Share GameTaverns with your gaming group. Every friend who signs up earns you progress toward exclusive badges.
