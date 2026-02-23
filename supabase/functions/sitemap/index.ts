@@ -51,15 +51,15 @@ Deno.serve(async (req) => {
     url(`${BASE_URL}/catalog/${g.slug}`, "0.7", "monthly", g.updated_at?.split("T")[0])
   );
 
-  // Public libraries
+  // Public libraries — indexed as subdomain URLs
   const { data: libraries } = await supabase
     .from("libraries_public")
-    .select("slug, updated_at")
+    .select("slug, name, updated_at")
     .limit(1000);
 
-  // Libraries don't have their own /directory/:slug page yet but their slugs
-  // are used as subdomains — we link to the directory page filtered to them
-  // via slug in the URL for now (future improvement when library detail pages exist)
+  const libraryUrls = (libraries || []).map((l) =>
+    url(`https://${l.slug}.gametaverns.app/`, "0.8", "weekly", l.updated_at?.split("T")[0])
+  );
 
   // Mechanics
   const { data: mechanics } = await supabase
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
     .filter((p) => p.username)
     .map((p) => url(`${BASE_URL}/u/${p.username}`, "0.5", "weekly"));
 
-  const allUrls = [...staticUrls, ...catalogUrls, ...mechanicUrls, ...profileUrls];
+  const allUrls = [...staticUrls, ...catalogUrls, ...libraryUrls, ...mechanicUrls, ...profileUrls];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

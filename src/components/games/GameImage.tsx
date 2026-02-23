@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { proxiedImageUrl, directImageUrl, isBggImage } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface GameImageProps {
   imageUrl: string;
@@ -8,7 +9,13 @@ interface GameImageProps {
   loading?: "lazy" | "eager";
   priority?: boolean;
   fallback?: ReactNode;
+  /** Responsive sizes attribute for srcset-like behavior */
+  sizes?: string;
 }
+
+// Tiny 1x1 transparent SVG used as blur placeholder
+const BLUR_PLACEHOLDER =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Crect width='1' height='1' fill='%23374151'/%3E%3C/svg%3E";
 
 export function GameImage({
   imageUrl,
@@ -17,9 +24,12 @@ export function GameImage({
   loading = "lazy",
   priority = false,
   fallback,
+  sizes,
 }: GameImageProps) {
   const [useFallback, setUseFallback] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const getImageSrc = () => {
     // For BGG images: start with proxy, fall back to direct
@@ -47,6 +57,7 @@ export function GameImage({
 
   return (
     <img
+      ref={imgRef}
       src={getImageSrc()}
       alt={alt}
       loading={loading}
@@ -55,7 +66,14 @@ export function GameImage({
       fetchpriority={priority ? "high" : "auto"}
       referrerPolicy="no-referrer"
       onError={handleImageError}
-      className={className}
+      onLoad={() => setLoaded(true)}
+      sizes={sizes}
+      className={cn(
+        className,
+        "transition-opacity duration-300",
+        !loaded && !priority && "opacity-0"
+      )}
+      style={!loaded && !priority ? { backgroundImage: `url("${BLUR_PLACEHOLDER}")`, backgroundSize: "cover" } : undefined}
     />
   );
 }

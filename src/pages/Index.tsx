@@ -7,6 +7,7 @@ import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
 import { GameList } from "@/components/games/GameList";
 import { FeatureTip } from "@/components/ui/FeatureTip";
+import { SEO, collectionPageJsonLd } from "@/components/seo/SEO";
 
 import { QuadrantFilterButton } from "@/components/games/QuadrantFilterButton";
 import { useGames } from "@/hooks/useGames";
@@ -410,8 +411,26 @@ const Index = () => {
     return pages;
   };
 
+  // SEO data for library pages
+  const libraryUrl = library?.slug ? `https://${library.slug}.gametaverns.app` : undefined;
+
   return (
     <Layout>
+      {/* Library Page SEO */}
+      {isTenantMode && library && (
+        <SEO
+          title={library.name}
+          description={library.description || `Browse the board game collection at ${library.name}. ${games.length} games available.`}
+          canonical={libraryUrl}
+          ogType="website"
+          jsonLd={collectionPageJsonLd({
+            name: library.name,
+            description: library.description,
+            url: libraryUrl || window.location.href,
+            gameCount: games.length,
+          })}
+        />
+      )}
       {/* Demo Mode Banner */}
       {isDemoMode && (
         <Alert className="border-amber-500/50 bg-amber-500/10 mb-6">

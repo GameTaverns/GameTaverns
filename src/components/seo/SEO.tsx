@@ -192,3 +192,40 @@ export function gameJsonLd(opts: {
     ].filter(Boolean),
   };
 }
+
+// ─── Convenience factory for CollectionPage JSON-LD (library pages) ──────────
+export function collectionPageJsonLd(opts: {
+  name: string;
+  description?: string | null;
+  url: string;
+  logoUrl?: string | null;
+  gameCount?: number;
+  location?: { city?: string | null; region?: string | null; country?: string | null };
+}): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: opts.name,
+    description: opts.description ?? `Board game library — ${opts.name}`,
+    url: opts.url,
+    ...(opts.logoUrl ? { image: opts.logoUrl } : {}),
+    mainEntity: {
+      "@type": "ItemList",
+      name: `${opts.name} Game Collection`,
+      numberOfItems: opts.gameCount ?? 0,
+    },
+    ...(opts.location?.city || opts.location?.region || opts.location?.country
+      ? {
+          contentLocation: {
+            "@type": "Place",
+            address: {
+              "@type": "PostalAddress",
+              ...(opts.location.city ? { addressLocality: opts.location.city } : {}),
+              ...(opts.location.region ? { addressRegion: opts.location.region } : {}),
+              ...(opts.location.country ? { addressCountry: opts.location.country } : {}),
+            },
+          },
+        }
+      : {}),
+  };
+}

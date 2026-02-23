@@ -10,6 +10,7 @@ Allow: /catalog/mechanic/
 Allow: /games-for-
 Allow: /u/
 Allow: /game/
+Allow: /calendar
 
 # App-shell pages — no SEO value
 Disallow: /dashboard
