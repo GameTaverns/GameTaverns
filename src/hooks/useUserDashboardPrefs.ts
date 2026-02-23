@@ -96,6 +96,20 @@ export const TAB_WIDGET_REGISTRY: Record<string, WidgetDef[]> = {
     { id: "achievements", label: "Achievements", icon: "Trophy" },
     { id: "borrowed-games", label: "Borrowed Games", icon: "BookOpen" },
   ],
+  admin: [
+    { id: "analytics", label: "Analytics", icon: "Activity" },
+    { id: "users", label: "Users", icon: "Users" },
+    { id: "libraries", label: "Libraries", icon: "Database" },
+    { id: "settings", label: "Settings", icon: "Settings" },
+    { id: "feedback", label: "Feedback", icon: "MessageSquare" },
+    { id: "clubs", label: "Clubs", icon: "Trophy" },
+    { id: "health", label: "Health", icon: "HeartPulse" },
+    { id: "premium", label: "Roadmap", icon: "Crown" },
+    { id: "badges", label: "Badges", icon: "BadgeCheck" },
+    { id: "crons", label: "Crons", icon: "Clock" },
+    { id: "server", label: "Server", icon: "Terminal" },
+    { id: "security", label: "Security", icon: "Shield" },
+  ],
 };
 
 export function useUserDashboardPrefs(isAdmin: boolean) {

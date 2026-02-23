@@ -5,7 +5,8 @@ import {
   // Icon imports for widget registry lookups
   Activity, Flame, Gamepad2, Calendar, Vote, MessageSquare,
   BookOpen, Star, Shuffle, Settings, Plus, ListOrdered,
-  Users, Globe, ArrowLeftRight, Target, Trophy, User, Upload
+  Users, Globe, ArrowLeftRight, Target, Trophy, User, Upload,
+  Database, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Flame, Gamepad2, Calendar, Vote, MessageSquare,
   BookOpen, Star, Shuffle, Settings, Plus, ListOrdered,
   Users, Globe, ArrowLeftRight, Target, Trophy, User, Upload,
+  Database, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield,
 };
 
 function getWidgetIcon(iconName: string) {
