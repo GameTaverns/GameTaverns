@@ -210,7 +210,17 @@ export default function Dashboard() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState(tabFromUrl || "library");
+  const STORAGE_KEY = "dashboard_active_tab";
+
+  // Resolve initial tab: URL param > localStorage > "library"
+  const [activeTab, setActiveTab] = useState(() => {
+    if (tabFromUrl) return tabFromUrl;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) return stored;
+    } catch {}
+    return "library";
+  });
 
   // Admin badge counts
   const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
@@ -220,13 +230,11 @@ export default function Dashboard() {
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
     }
-    if (!tabFromUrl && activeTab !== "library") {
-      setActiveTab("library");
-    }
   }, [tabFromUrl]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+    try { localStorage.setItem(STORAGE_KEY, value); } catch {}
     const newParams = new URLSearchParams(searchParams);
     if (value === "library") {
       newParams.delete("tab");

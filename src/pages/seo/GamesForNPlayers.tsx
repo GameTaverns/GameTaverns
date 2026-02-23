@@ -1,14 +1,17 @@
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { SEO } from "@/components/seo/SEO";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Clock, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, Clock, ChevronRight, Loader2 } from "lucide-react";
+import { useEffect, useRef, useCallback } from "react";
 
 const VALID_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8];
+const PAGE_SIZE = 30;
 
 const playerCountDescriptions: Record<number, string> = {
   1: "perfect for solo play — challenge yourself without needing opponents",
@@ -23,15 +26,22 @@ const playerCountDescriptions: Record<number, string> = {
 
 export default function GamesForNPlayers() {
   const { slug } = useParams<{ slug: string }>();
-  // slug is like "2-players" — extract the number
   const n = parseInt(slug || "4", 10);
-
   const isValid = VALID_COUNTS.includes(n);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const { data: games = [], isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["catalog-for-players", n],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       if (!isValid) return [];
+      const from = pageParam * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
       const { data, error } = await supabase
         .from("game_catalog")
         .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, bgg_community_rating, is_expansion")
@@ -39,12 +49,38 @@ export default function GamesForNPlayers() {
         .gte("max_players", n)
         .eq("is_expansion", false)
         .order("bgg_community_rating", { ascending: false, nullsFirst: false })
-        .limit(48);
+        .range(from, to);
       if (error) throw error;
-      return data;
+      return data || [];
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < PAGE_SIZE) return undefined;
+      return allPages.length;
     },
     enabled: isValid,
   });
+
+  const games = data?.pages.flat() ?? [];
+
+  // Intersection Observer for infinite scroll
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [entry] = entries;
+      if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(handleObserver, { rootMargin: "400px" });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [handleObserver]);
 
   const title = `Best Board Games for ${n} Player${n === 1 ? "" : "s"}`;
   const description = `Discover the top board games ${playerCountDescriptions[n] || `supporting ${n} players`}. Browse our community-curated catalog of ${n}-player games.`;
@@ -128,7 +164,7 @@ export default function GamesForNPlayers() {
         {/* Results count */}
         {!isLoading && (
           <p className="text-sm text-muted-foreground mb-6">
-            Showing {games.length} games{games.length === 48 ? "+" : ""} that support {n} {n === 1 ? "player" : "players"}
+            Showing {games.length} games{hasNextPage ? "+" : ""} that support {n} {n === 1 ? "player" : "players"}
           </p>
         )}
 
@@ -154,46 +190,63 @@ export default function GamesForNPlayers() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {games.map((game) => (
-              <Link key={game.id} to={`/catalog/${game.slug || game.id}`}>
-                <Card className="overflow-hidden group hover:shadow-lg transition-all hover:-translate-y-0.5">
-                  <div className="aspect-square bg-muted overflow-hidden">
-                    {game.image_url ? (
-                      <img
-                        src={game.image_url}
-                        alt={game.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs text-center p-2">
-                        {game.title}
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-3">
-                    <h2 className="text-xs font-semibold line-clamp-2 mb-1.5 group-hover:text-primary transition-colors">
-                      {game.title}
-                    </h2>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                      {game.play_time_minutes && (
-                        <span className="flex items-center gap-0.5">
-                          <Clock className="h-3 w-3" />
-                          {game.play_time_minutes}m
-                        </span>
-                      )}
-                      {game.bgg_community_rating && (
-                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                          ★ {game.bgg_community_rating.toFixed(1)}
-                        </Badge>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {games.map((game) => (
+                <Link key={game.id} to={`/catalog/${game.slug || game.id}`}>
+                  <Card className="overflow-hidden group hover:shadow-lg transition-all hover:-translate-y-0.5">
+                    <div className="aspect-square bg-muted overflow-hidden">
+                      {game.image_url ? (
+                        <img
+                          src={game.image_url}
+                          alt={game.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs text-center p-2">
+                          {game.title}
+                        </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+                    <CardContent className="p-3">
+                      <h2 className="text-xs font-semibold line-clamp-2 mb-1.5 group-hover:text-primary transition-colors">
+                        {game.title}
+                      </h2>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                        {game.play_time_minutes && (
+                          <span className="flex items-center gap-0.5">
+                            <Clock className="h-3 w-3" />
+                            {game.play_time_minutes}m
+                          </span>
+                        )}
+                        {game.bgg_community_rating && (
+                          <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                            ★ {game.bgg_community_rating.toFixed(1)}
+                          </Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="py-8 flex justify-center">
+              {isFetchingNextPage && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-sm">Loading more games…</span>
+                </div>
+              )}
+              {!hasNextPage && games.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  All {games.length} games loaded
+                </p>
+              )}
+            </div>
+          </>
         )}
 
         {/* Related links */}
