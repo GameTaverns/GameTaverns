@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DMPopup, type DMPopupPartner } from "./DMPopup";
+import { FloatingMessengerBar } from "./FloatingMessengerBar";
 import type { DirectMessage } from "@/hooks/useDirectMessages";
 
 const MAX_OPEN_POPUPS = 3;
@@ -129,21 +130,33 @@ export function DMPopupManager() {
     return () => clearInterval(interval);
   }, [user, handleNewMessage]);
 
-  if (isDMPage || popups.length === 0) return null;
+  const handleOpenFromBar = useCallback((partner: DMPopupPartner) => {
+    openPopup(partner);
+  }, []);
+
+  if (!user) return null;
 
   return (
-    <div className="fixed bottom-0 right-4 z-50 flex items-end gap-3 pointer-events-none">
-      <AnimatePresence>
-        {[...popups].reverse().map((partner) => (
-          <div key={partner.user_id} className="pointer-events-auto">
-            <DMPopup
-              partner={partner}
-              onClose={() => closePopup(partner.user_id)}
-              isNew={newPopupId === partner.user_id}
-            />
-          </div>
-        ))}
-      </AnimatePresence>
-    </div>
+    <>
+      {/* Floating messenger bar — always visible except on DM page */}
+      {!isDMPage && <FloatingMessengerBar onOpenChat={handleOpenFromBar} />}
+
+      {/* Popup windows */}
+      {popups.length > 0 && !isDMPage && (
+        <div className="fixed bottom-0 right-4 z-50 flex items-end gap-3 pointer-events-none">
+          <AnimatePresence>
+            {[...popups].reverse().map((partner) => (
+              <div key={partner.user_id} className="pointer-events-auto">
+                <DMPopup
+                  partner={partner}
+                  onClose={() => closePopup(partner.user_id)}
+                  isNew={newPopupId === partner.user_id}
+                />
+              </div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+    </>
   );
 }
