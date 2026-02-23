@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Shield, Activity, Users, Database, Settings, MessageSquare,
-  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal,
+  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Globe,
   Pencil, Eye, EyeOff, ChevronUp, ChevronDown, RotateCcw, X,
 } from "lucide-react";
 import { useState } from "react";
@@ -32,10 +32,13 @@ const CronJobsMonitor = lazy(() =>
 const AuditLogViewer = lazy(() =>
   import("@/components/admin/AuditLogViewer").then(m => ({ default: m.AuditLogViewer }))
 );
+const SeoDirectory = lazy(() =>
+  import("@/components/admin/SeoDirectory").then(m => ({ default: m.SeoDirectory }))
+);
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
-  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield,
+  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe,
 };
 
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
@@ -90,6 +93,11 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs 
     security: (
       <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading security logs…</div>}>
         <AuditLogViewer />
+      </Suspense>
+    ),
+    seo: (
+      <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading SEO directory…</div>}>
+        <SeoDirectory />
       </Suspense>
     ),
   };

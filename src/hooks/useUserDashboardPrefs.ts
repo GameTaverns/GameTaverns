@@ -113,6 +113,7 @@ export const TAB_WIDGET_REGISTRY: Record<string, WidgetDef[]> = {
     { id: "crons", label: "Crons", icon: "Clock" },
     { id: "server", label: "Server", icon: "Terminal" },
     { id: "security", label: "Security", icon: "Shield" },
+    { id: "seo", label: "SEO Pages", icon: "Globe" },
   ],
 };
 

@@ -86,7 +86,7 @@ const GameCalendar = lazy(() => import("./pages/GameCalendar"));
 
 // Growth pages
 const ShareCard = lazy(() => import("./pages/ShareCard"));
-const Referrals = lazy(() => import("./pages/Referrals"));
+const Grow = lazy(() => import("./pages/Grow"));
 const EmbedWidget = lazy(() => import("./pages/EmbedWidget"));
 
 // Studio pages (studio.gametaverns.com)
@@ -119,7 +119,7 @@ const PLATFORM_PATHS = [
   '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email',
   '/admin', '/setup-2fa', '/install', '/features', '/picker', '/request-club',
   '/join-club', '/legal', '/privacy', '/terms', '/cookies', '/games-for-',
-  '/libraries/', '/share-card', '/referrals', '/embed',
+  '/libraries/', '/share-card', '/grow', '/embed',
 ];
 
 function isPlatformPath(pathname: string): boolean {
@@ -312,7 +312,8 @@ function PlatformRoutes() {
 
       {/* Growth pages */}
       <Route path="/share-card" element={<ShareCard />} />
-      <Route path="/referrals" element={<Referrals />} />
+      <Route path="/grow" element={<Grow />} />
+      <Route path="/referrals" element={<Navigate to="/grow" replace />} />
       <Route path="/embed" element={<EmbedWidget />} />
       
       <Route path="*" element={<NotFound />} />

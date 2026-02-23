@@ -296,7 +296,7 @@ export default function Platform() {
                 </div>
               </div>
             </Link>
-            <Link to="/referrals" className="group">
+            <Link to="/grow" className="group">
               <div className="rounded-2xl border border-secondary/30 bg-secondary/10 ring-1 ring-secondary/20 p-7 text-center hover:bg-secondary/15 transition-colors h-full flex flex-col items-center gap-4">
                 <Star className="h-8 w-8 text-secondary" />
                 <div>
