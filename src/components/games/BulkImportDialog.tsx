@@ -259,16 +259,41 @@ export function BulkImportDialog({
   const [detectedFormat, setDetectedFormat] = useState<DetectedFormat | null>(null);
   const [pendingPlays, setPendingPlays] = useState<ParsedPlay[] | null>(null);
   const filePickerActiveRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isNative = Capacitor.isNativePlatform();
 
   // On native, block dialog close for a generous window after ANY interaction
   // with the file input. Capacitor resume events fire unpredictably.
   const markFilePickerActive = useCallback(() => {
     filePickerActiveRef.current = true;
-    // Safety timeout: 60s on native (file picker can take a while), 30s on web
     const timeout = isNative ? 60000 : 30000;
     setTimeout(() => { filePickerActiveRef.current = false; }, timeout);
   }, [isNative]);
+
+  // On native, the file input onChange may not fire after resume.
+  // Poll the input element for files when the app resumes.
+  useEffect(() => {
+    if (!isNative) return;
+    const checkFileInput = () => {
+      const input = fileInputRef.current;
+      if (input && input.files && input.files.length > 0 && !csvFile) {
+        console.log("[BulkImport] Resume detected file in input, triggering upload");
+        const syntheticEvent = { target: input, stopPropagation: () => {} } as unknown as React.ChangeEvent<HTMLInputElement>;
+        handleFileUpload(syntheticEvent);
+        filePickerActiveRef.current = false;
+      }
+    };
+    // Check on visibility change (covers most Android resume scenarios)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Small delay to let the input populate
+        setTimeout(checkFileInput, 500);
+        setTimeout(checkFileInput, 1500);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [isNative, csvFile]);
 
   const handleDialogOpenChange = useCallback((v: boolean) => {
     // Never allow programmatic close while importing
@@ -1291,6 +1316,7 @@ export function BulkImportDialog({
                   {/* Wrapped in div to prevent focus/click events from bubbling to dialog on mobile file picker. */}
                   <div onFocus={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept=".csv,.xlsx,.xls,.json,.bgsplay"
                       onPointerDown={() => markFilePickerActive()}
