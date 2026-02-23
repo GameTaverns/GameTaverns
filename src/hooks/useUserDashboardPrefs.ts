@@ -11,6 +11,8 @@ export interface UserDashboardPrefs {
   widgetOrder: Record<string, string[]>;
   /** Per-tab hidden widgets: tabId -> hidden widget IDs */
   hiddenWidgets: Record<string, string[]>;
+  /** Per-tab widget column spans: tabId -> { widgetId -> colSpan (1-3) } */
+  widgetSizes: Record<string, Record<string, number>>;
 }
 
 const EMPTY_PREFS: UserDashboardPrefs = {
@@ -18,6 +20,7 @@ const EMPTY_PREFS: UserDashboardPrefs = {
   hiddenTabs: [],
   widgetOrder: {},
   hiddenWidgets: {},
+  widgetSizes: {},
 };
 
 function loadPrefs(): UserDashboardPrefs {
@@ -270,8 +273,28 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
     update(prev => {
       const { [tabId]: _wo, ...restOrder } = prev.widgetOrder;
       const { [tabId]: _hw, ...restHidden } = prev.hiddenWidgets;
-      return { ...prev, widgetOrder: restOrder, hiddenWidgets: restHidden };
+      const { [tabId]: _ws, ...restSizes } = prev.widgetSizes;
+      return { ...prev, widgetOrder: restOrder, hiddenWidgets: restHidden, widgetSizes: restSizes };
     });
+  }, [update]);
+
+  // ── Per-tab widget sizing ──
+
+  /** Get column span for a widget (default: 3 = full width in a 3-col grid) */
+  const getWidgetSize = useCallback((tabId: string, widgetId: string): number => {
+    return prefs.widgetSizes[tabId]?.[widgetId] ?? 3;
+  }, [prefs]);
+
+  /** Set column span for a widget (1, 2, or 3) */
+  const setWidgetSize = useCallback((tabId: string, widgetId: string, colSpan: number) => {
+    const clamped = Math.max(1, Math.min(3, colSpan));
+    update(prev => ({
+      ...prev,
+      widgetSizes: {
+        ...prev.widgetSizes,
+        [tabId]: { ...(prev.widgetSizes[tabId] ?? {}), [widgetId]: clamped },
+      },
+    }));
   }, [update]);
 
   return {
@@ -291,5 +314,8 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
     reorderWidgets,
     moveWidget,
     resetTabWidgets,
+    // Per-tab widget sizing
+    getWidgetSize,
+    setWidgetSize,
   };
 }

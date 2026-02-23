@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import {
   Pencil, X, RotateCcw, EyeOff, Eye, GripVertical,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, Columns2, Columns3, Square,
   // Icon imports for widget registry lookups
   Activity, Flame, Gamepad2, Calendar, Vote, MessageSquare,
   BookOpen, Star, Shuffle, Settings, Plus, ListOrdered,
@@ -24,6 +24,12 @@ function getWidgetIcon(iconName: string) {
   return ICON_MAP[iconName] || Settings;
 }
 
+const COL_SPAN_CLASS: Record<number, string> = {
+  1: "col-span-1",
+  2: "col-span-2",
+  3: "col-span-3",
+};
+
 interface TabWidgetEditorProps {
   tabId: string;
   /** Map of widget ID → rendered React content */
@@ -38,7 +44,10 @@ interface TabWidgetEditorProps {
   onToggleWidget: (widgetId: string) => void;
   onMoveWidget: (widgetId: string, direction: -1 | 1) => void;
   onResetTab: () => void;
-  /** Optional: grid class for the content layout (default: "space-y-4") */
+  /** Widget sizing */
+  getWidgetSize: (widgetId: string) => number;
+  onSetWidgetSize: (widgetId: string, colSpan: number) => void;
+  /** Optional: grid class for the content layout */
   contentClassName?: string;
 }
 
@@ -51,13 +60,15 @@ export function TabWidgetEditor({
   onToggleWidget,
   onMoveWidget,
   onResetTab,
+  getWidgetSize,
+  onSetWidgetSize,
   contentClassName,
 }: TabWidgetEditorProps) {
   const [editing, setEditing] = useState(false);
   const dragItem = useRef<string | null>(null);
   const dragOverItem = useRef<string | null>(null);
 
-  // Normal mode: render widgets in saved order
+  // Normal mode: render widgets in a 3-column grid
   if (!editing) {
     return (
       <div className="space-y-4">
@@ -71,11 +82,16 @@ export function TabWidgetEditor({
             <Pencil className="h-3.5 w-3.5" /> Customize Widgets
           </Button>
         </div>
-        <div className={contentClassName || "space-y-4"}>
+        <div className={contentClassName || "grid grid-cols-3 gap-4"}>
           {visibleWidgetIds.map(id => {
             const content = widgets[id];
             if (!content) return null;
-            return <div key={id}>{content}</div>;
+            const span = getWidgetSize(id);
+            return (
+              <div key={id} className={cn(COL_SPAN_CLASS[span] || "col-span-3")}>
+                {content}
+              </div>
+            );
           })}
         </div>
       </div>
@@ -91,7 +107,7 @@ export function TabWidgetEditor({
           <Pencil className="h-4 w-4 text-secondary" />
           <span className="text-sm font-medium text-cream">Widget Editor</span>
           <Badge className="bg-secondary/30 text-cream text-xs hidden sm:inline-flex">
-            Drag to reorder · Toggle visibility
+            Resize · Reorder · Toggle
           </Badge>
         </div>
         <div className="flex gap-2">
@@ -129,13 +145,14 @@ export function TabWidgetEditor({
         </div>
       )}
 
-      {/* Draggable widget list */}
-      <div className="space-y-2">
+      {/* Draggable widget grid */}
+      <div className="grid grid-cols-3 gap-2">
         {visibleWidgetIds.map((id, idx) => {
           const def = registry.find(w => w.id === id);
           if (!def) return null;
           const content = widgets[id];
           const Icon = getWidgetIcon(def.icon);
+          const span = getWidgetSize(id);
 
           return (
             <div
@@ -144,11 +161,11 @@ export function TabWidgetEditor({
               onDragStart={() => { dragItem.current = id; }}
               onDragOver={(e) => { e.preventDefault(); dragOverItem.current = id; }}
               onDrop={() => {
-                // Drag-drop reorder is handled via move for simplicity
                 dragItem.current = null;
                 dragOverItem.current = null;
               }}
               className={cn(
+                COL_SPAN_CLASS[span] || "col-span-3",
                 "rounded-xl border-2 border-dashed border-secondary/30 bg-wood-medium/10 overflow-hidden",
                 "transition-all hover:border-secondary/60 cursor-grab active:cursor-grabbing"
               )}
@@ -162,6 +179,40 @@ export function TabWidgetEditor({
                   {!content && <Badge variant="outline" className="text-[10px] text-cream/40">empty</Badge>}
                 </div>
                 <div className="flex items-center gap-0.5">
+                  {/* Size controls */}
+                  <div className="flex items-center border border-secondary/30 rounded-md overflow-hidden mr-1">
+                    <button
+                      onClick={() => onSetWidgetSize(id, 1)}
+                      className={cn(
+                        "h-6 w-6 flex items-center justify-center transition-colors",
+                        span === 1 ? "bg-secondary text-secondary-foreground" : "text-cream/40 hover:text-cream hover:bg-wood-medium/50"
+                      )}
+                      title="1/3 width"
+                    >
+                      <Square className="h-2.5 w-2.5" />
+                    </button>
+                    <button
+                      onClick={() => onSetWidgetSize(id, 2)}
+                      className={cn(
+                        "h-6 w-6 flex items-center justify-center transition-colors border-x border-secondary/30",
+                        span === 2 ? "bg-secondary text-secondary-foreground" : "text-cream/40 hover:text-cream hover:bg-wood-medium/50"
+                      )}
+                      title="2/3 width"
+                    >
+                      <Columns2 className="h-2.5 w-2.5" />
+                    </button>
+                    <button
+                      onClick={() => onSetWidgetSize(id, 3)}
+                      className={cn(
+                        "h-6 w-6 flex items-center justify-center transition-colors",
+                        span === 3 ? "bg-secondary text-secondary-foreground" : "text-cream/40 hover:text-cream hover:bg-wood-medium/50"
+                      )}
+                      title="Full width"
+                    >
+                      <Columns3 className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+
                   {idx > 0 && (
                     <Button size="sm" variant="ghost" onClick={() => onMoveWidget(id, -1)} className="h-6 w-6 p-0 text-cream/40 hover:text-cream">
                       <ChevronUp className="h-3 w-3" />
