@@ -254,10 +254,29 @@ export function BulkImportDialog({
     return () => stopPolling();
   }, []);
 
-  // CSV/JSON mode
-  const [csvData, setCsvData] = useState("");
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [detectedFormat, setDetectedFormat] = useState<DetectedFormat | null>(null);
+  // CSV/JSON mode — restore from sessionStorage on native to survive WebView re-mounts
+  const [csvData, setCsvData] = useState(() => {
+    if (Capacitor.isNativePlatform()) {
+      return sessionStorage.getItem("bulk_import_csvData") || "";
+    }
+    return "";
+  });
+  const [csvFile, setCsvFile] = useState<File | null>(() => {
+    if (Capacitor.isNativePlatform()) {
+      const name = sessionStorage.getItem("bulk_import_fileName");
+      if (name) {
+        // Create a stub File so the UI shows the filename
+        return new File([""], name, { type: "text/csv" });
+      }
+    }
+    return null;
+  });
+  const [detectedFormat, setDetectedFormat] = useState<DetectedFormat | null>(() => {
+    if (Capacitor.isNativePlatform()) {
+      return (sessionStorage.getItem("bulk_import_format") as DetectedFormat) || null;
+    }
+    return null;
+  });
   const [pendingPlays, setPendingPlays] = useState<ParsedPlay[] | null>(null);
   const filePickerActiveRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -296,11 +315,24 @@ export function BulkImportDialog({
       const file = input.files?.[0];
       if (file) {
         console.log("[BulkImport] ✅ Got file from detached input:", file.name, file.size);
-        const syntheticEvent = {
-          target: input,
-          stopPropagation: () => {},
-        } as unknown as React.ChangeEvent<HTMLInputElement>;
-        handleFileUploadRef.current(syntheticEvent);
+        // Read file content immediately and persist to sessionStorage
+        // so it survives WebView re-mounts
+        const reader = new FileReader();
+        reader.onload = () => {
+          const text = reader.result as string;
+          console.log("[BulkImport] 📱 File read complete, length:", text.length);
+          sessionStorage.setItem("bulk_import_csvData", text);
+          sessionStorage.setItem("bulk_import_fileName", file.name);
+          // Now set React state
+          setCsvFile(file);
+          setCsvData(text);
+          // Detect format
+          const format = detectFileFormat(text, file.name);
+          setDetectedFormat(format);
+          sessionStorage.setItem("bulk_import_format", format || "");
+          console.log("[BulkImport] 📱 State updated — csvFile:", file.name, "format:", format);
+        };
+        reader.readAsText(file);
       }
       filePickerActiveRef.current = false;
       setTimeout(() => {
@@ -451,6 +483,10 @@ export function BulkImportDialog({
     setStreamDisconnected(false);
     jobIdRef.current = null;
     stopPolling();
+    // Clear persisted native file data
+    sessionStorage.removeItem("bulk_import_csvData");
+    sessionStorage.removeItem("bulk_import_fileName");
+    sessionStorage.removeItem("bulk_import_format");
   };
 
   // Import pre-parsed plays (from BGStats JSON) after game import
