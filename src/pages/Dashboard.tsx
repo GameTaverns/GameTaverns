@@ -90,7 +90,7 @@ import { ChallengesManager } from "@/components/challenges/ChallengesManager";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
-import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
+import { OnboardingWizard } from "@/components/dashboard/OnboardingWizard";
 import { useTotpStatus } from "@/hooks/useTotpStatus";
 import { useUserDashboardPrefs } from "@/hooks/useUserDashboardPrefs";
 import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer";
@@ -375,8 +375,8 @@ export default function Dashboard() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {/* ── Onboarding Checklist ── shown until dismissed */}
-                <OnboardingChecklist
+                {/* ── Onboarding Wizard ── shown until dismissed */}
+                <OnboardingWizard
                   librarySlug={library.slug}
                   gameCount={gameCountData?.count ?? 0}
                   playCount={playCountData?.count ?? 0}
