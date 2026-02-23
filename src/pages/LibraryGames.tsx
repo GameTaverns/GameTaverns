@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Upload, Tag, Building, Loader2, RefreshCw, Star } from "lucide-react";
@@ -14,8 +14,23 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
+import { Capacitor } from "@capacitor/core";
 
 type ImportMode = "csv" | "bgg_collection" | "bgg_links";
+
+// On native Android, the WebView may re-mount when returning from the file
+// picker. Persist dialog state in sessionStorage so it survives re-mounts.
+const BULK_IMPORT_KEY = "bulk_import_open";
+const BULK_IMPORT_MODE_KEY = "bulk_import_mode";
+
+function getPersistedBulkImport(): { open: boolean; mode: ImportMode } {
+  if (!Capacitor.isNativePlatform()) return { open: false, mode: "csv" };
+  try {
+    const open = sessionStorage.getItem(BULK_IMPORT_KEY) === "true";
+    const mode = (sessionStorage.getItem(BULK_IMPORT_MODE_KEY) as ImportMode) || "csv";
+    return { open, mode };
+  } catch { return { open: false, mode: "csv" }; }
+}
 
 export default function LibraryGames() {
   const navigate = useNavigate();
@@ -25,13 +40,25 @@ export default function LibraryGames() {
   const { buildUrl } = useTenantUrl();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("add");
-  const [showBulkImport, setShowBulkImport] = useState(false);
-  const [bulkImportMode, setBulkImportMode] = useState<ImportMode>("csv");
+
+  const persisted = getPersistedBulkImport();
+  const [showBulkImport, setShowBulkImportRaw] = useState(persisted.open);
+  const [bulkImportMode, setBulkImportMode] = useState<ImportMode>(persisted.mode);
   const [isRefreshingImages, setIsRefreshingImages] = useState(false);
   const [isRefreshingRatings, setIsRefreshingRatings] = useState(false);
 
+  const setShowBulkImport = useCallback((v: boolean) => {
+    setShowBulkImportRaw(v);
+    if (Capacitor.isNativePlatform()) {
+      try { sessionStorage.setItem(BULK_IMPORT_KEY, String(v)); } catch {}
+    }
+  }, []);
+
   const openBulkImport = (mode: ImportMode) => {
     setBulkImportMode(mode);
+    if (Capacitor.isNativePlatform()) {
+      try { sessionStorage.setItem(BULK_IMPORT_MODE_KEY, mode); } catch {}
+    }
     setShowBulkImport(true);
   };
 
@@ -406,6 +433,8 @@ export default function LibraryGames() {
             queryClient.invalidateQueries({ queryKey: ["games"] });
             queryClient.invalidateQueries({ queryKey: ["games-flat"] });
             setShowBulkImport(false);
+            // Clean up persisted state
+            try { sessionStorage.removeItem(BULK_IMPORT_KEY); sessionStorage.removeItem(BULK_IMPORT_MODE_KEY); } catch {}
           }}
         />
       </div>
