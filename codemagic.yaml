@@ -12,7 +12,7 @@ workflows:
       xcode: latest
       cocoapods: default
       vars:
-        XCODE_WORKSPACE: ios/App/App.xcworkspace
+        XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
         APP_STORE_APP_ID: "6759586784"
       ios_signing:
@@ -48,14 +48,6 @@ workflows:
         script: |
           npx cap sync ios
 
-      - name: Verify workspace exists
-        script: |
-          ls -la ios/App/
-          if [ ! -d "ios/App/App.xcworkspace" ]; then
-            echo "Workspace not found, running pod install..."
-            cd ios/App && pod install
-          fi
-
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
@@ -63,7 +55,7 @@ workflows:
       - name: Build ipa for distribution
         script: |
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
+            --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
 
     artifacts:
