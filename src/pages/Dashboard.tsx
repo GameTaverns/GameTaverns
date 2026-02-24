@@ -97,6 +97,7 @@ import { useUserDashboardPrefs, TAB_WIDGET_REGISTRY } from "@/hooks/useUserDashb
 import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer";
 import { TabWidgetEditor } from "@/components/dashboard/TabWidgetEditor";
 import { AdminSubtabPanel } from "@/components/dashboard/AdminSubtabPanel";
+import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
 import { useQuery } from "@tanstack/react-query";
 import { supabase as _supabase } from "@/integrations/backend/client";
 import { InfoPopover } from "@/components/ui/InfoPopover";
@@ -847,14 +848,23 @@ export default function Dashboard() {
       <AppHeader />
 
       <main className="container mx-auto px-4 py-6 max-w-6xl">
-        <h1 className="font-display text-xl sm:text-2xl font-bold text-cream mb-5">
-          Welcome back, {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0]}
-        </h1>
+        <div className="flex items-center justify-between mb-5">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-cream">
+            Welcome back, {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0]}
+          </h1>
+          <DashboardCustomizer
+            visibleTabs={dashPrefs.visibleTabs}
+            hiddenTabDefs={dashPrefs.hiddenTabDefs}
+            toggleTab={dashPrefs.toggleTab}
+            moveTab={dashPrefs.moveTab}
+            resetPrefs={dashPrefs.resetPrefs}
+          />
+        </div>
 
         {/* ===== TABS ===== */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="flex items-center gap-2 mb-6">
-            <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1 overflow-x-auto no-scrollbar flex-1">
+          <div className="flex items-center justify-center mb-6">
+            <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1 overflow-x-auto no-scrollbar">
               {dashPrefs.visibleTabs.map(tab => {
                 const isDanger = tab.id === "danger";
                 const tabIcon = tab.id === "library" ? <Library className="h-3.5 w-3.5" />
@@ -886,13 +896,6 @@ export default function Dashboard() {
                 );
               })}
             </TabsList>
-            <DashboardCustomizer
-              visibleTabs={dashPrefs.visibleTabs}
-              hiddenTabDefs={dashPrefs.hiddenTabDefs}
-              toggleTab={dashPrefs.toggleTab}
-              moveTab={dashPrefs.moveTab}
-              resetPrefs={dashPrefs.resetPrefs}
-            />
           </div>
 
           {/* ==================== LIBRARY TAB ==================== */}
@@ -1014,6 +1017,7 @@ export default function Dashboard() {
       </main>
 
       <Footer />
+      <MobileBottomTabs />
     </div>
   );
 }
