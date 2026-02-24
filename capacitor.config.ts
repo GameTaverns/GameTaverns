@@ -12,6 +12,11 @@ const config: CapacitorConfig = {
     contentInset: 'automatic',
     preferredContentMode: 'mobile',
     scheme: 'GameTaverns',
+    // Info.plist overrides required by App Store
+    infoPlist: {
+      NSPhotoLibraryUsageDescription: 'GameTaverns needs access to your photo library to let you upload profile pictures and game images.',
+      NSCameraUsageDescription: 'GameTaverns needs access to your camera to let you take photos of games and your collection.',
+    },
   },
   // Android-specific configuration
   android: {
