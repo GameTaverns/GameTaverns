@@ -198,6 +198,9 @@ if [ -f "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/post-changelog.sh" ]; t
     bash "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/post-changelog.sh" || echo -e "${YELLOW}Changelog post skipped or failed${NC}"
 fi
 
+# Re-apply execute permissions on scripts (git reset strips them)
+chmod +x "$INSTALL_DIR/deploy/supabase-selfhosted/scripts/"*.sh 2>/dev/null || true
+
 echo ""
 echo "Check logs: source $INSTALL_DIR/deploy/supabase-selfhosted/scripts/compose.sh && gt_logs"
 echo ""
