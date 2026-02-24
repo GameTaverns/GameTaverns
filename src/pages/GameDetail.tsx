@@ -357,7 +357,7 @@ const GameDetail = () => {
           {/* Image Gallery Section */}
           <div className="space-y-4">
             {/* Main Image - short aspect ratio on mobile, square on desktop, hard max-h safety */}
-            <div className="aspect-[4/3] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full mx-auto lg:max-w-none">
+            <div className="aspect-[4/3] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full mx-auto lg:max-w-none max-w-[calc(100vw-2rem)]">
               {allImages.length > 0 ? (
                 <>
                   {(() => {
@@ -373,7 +373,7 @@ const GameDetail = () => {
                          alt={game.title}
                          loading="eager"
                          priority={true}
-                         className="h-full w-full object-cover"
+                         className="h-full w-full object-contain sm:object-cover"
                          fallback={
                            <div className="flex h-full items-center justify-center bg-muted">
                              <span className="text-8xl text-muted-foreground/50">🎲</span>
