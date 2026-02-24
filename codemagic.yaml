@@ -3,10 +3,8 @@ workflows:
     name: iOS Build & TestFlight
     max_build_duration: 60
     instance_type: mac_mini_m2
-    
     integrations:
       app_store_connect: GameTaverns
-    
     environment:
       node: 22
       xcode: latest
@@ -19,29 +17,22 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.gametaverns.app
-
-
     scripts:
       - name: Install dependencies
         script: |
           npm ci
-
       - name: Patch Capacitor plugins
         script: |
           node scripts/patch-capacitor.cjs
-
       - name: Build web assets
         script: |
           npm run build -- --mode ios
-
       - name: Add iOS platform
         script: |
           npx cap add ios
-
       - name: Sync iOS platform
         script: |
           npx cap sync ios
-
       - name: Inject privacy strings into Info.plist
         script: |
           PLIST="ios/App/App/Info.plist"
@@ -55,19 +46,14 @@ workflows:
           /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$PLIST"
           /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$PLIST"
           /usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" "$PLIST"
-
       - name: Set app icon
         script: |
           ICON_SOURCE="resources/ios/AppIcon.png"
           ICONSET_DIR="ios/App/App/Assets.xcassets/AppIcon.appiconset"
-          
-          # Generate all required sizes
           SIZES="20 29 40 58 60 76 80 87 120 152 167 180 1024"
           for SIZE in $SIZES; do
             sips -z $SIZE $SIZE "$ICON_SOURCE" --out "$ICONSET_DIR/AppIcon-${SIZE}x${SIZE}.png"
           done
-          
-          # Write Contents.json
           cat > "$ICONSET_DIR/Contents.json" << 'EOF'
           {
             "images": [
@@ -93,17 +79,14 @@ workflows:
             "info":{"version":1,"author":"xcode"}
           }
           EOF
-
       - name: Generate release notes
         script: |
-          # Get commit messages since last tag, clean up for user-friendly notes
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -n "$LAST_TAG" ]; then
             NOTES=$(git log "$LAST_TAG"..HEAD --pretty=format:"• %s" --no-merges | head -20)
           else
             NOTES=$(git log --pretty=format:"• %s" --no-merges -10)
           fi
-          # Strip conventional commit prefixes (feat:, fix:, chore:, etc.)
           NOTES=$(echo "$NOTES" | sed 's/• [a-z]*[(a-z)]*: /• /g; s/• [a-z]*: /• /g')
           if [ -z "$NOTES" ]; then
             NOTES="• Bug fixes and improvements"
@@ -113,38 +96,30 @@ workflows:
           echo "RELEASE_NOTES<<EOF" >> $CM_ENV
           echo "$NOTES" >> $CM_ENV
           echo "EOF" >> $CM_ENV
-
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
-
       - name: Increment build number and set version
         script: |
           cd ios/App
           LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" || echo "0")
           NEXT=$(( ${LATEST:-0} + 1 ))
-          # Ensure we never reuse a previously rejected build number
           if [ "$NEXT" -lt 3 ]; then NEXT=3; fi
           echo "Setting build number to $NEXT"
           agvtool new-version -all $NEXT
-
-          # Set display version to APP_VERSION_BASE.BUILD (e.g. 1.0.12)
           VERSION="${APP_VERSION_BASE}.${NEXT}"
           echo "Setting marketing version to $VERSION"
           agvtool new-marketing-version "$VERSION"
-
       - name: Build ipa for distribution
         script: |
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
-
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
-
     publishing:
       app_store_connect:
         auth: integration
@@ -171,7 +146,6 @@ workflows:
         - gametaverns_keystore
       groups:
         - google_play
-
     triggering:
       events:
         - push
@@ -179,24 +153,19 @@ workflows:
         - pattern: main
           include: true
       cancel_previous_builds: true
-
     scripts:
       - name: Install dependencies
         script: |
           npm ci
-
       - name: Patch Capacitor plugins
         script: |
           node scripts/patch-capacitor.cjs
-
       - name: Build web assets
         script: |
           npm run build -- --mode android
-
       - name: Add Android platform
         script: |
           npx cap add android
-
       - name: Copy google-services.json
         script: |
           if [ -f "google-services.json" ]; then
@@ -205,21 +174,17 @@ workflows:
           else
             echo "WARNING: google-services.json not found in project root"
           fi
-
       - name: Sync Android platform
         script: |
           npx cap sync android
-
       - name: Upgrade Gradle wrapper
         script: |
           WRAPPER_PROPS="android/gradle/wrapper/gradle-wrapper.properties"
           sed -i "s|distributionUrl=.*|distributionUrl=https\\\\://services.gradle.org/distributions/gradle-9.1.0-all.zip|" "$WRAPPER_PROPS"
           echo "Gradle wrapper set to 9.1.0"
-
       - name: Run post-sync patcher
         script: |
           node scripts/fix-proguard.cjs
-
       - name: Set app icon
         script: |
           ICON_SOURCE="resources/android/AppIcon.png"
@@ -242,7 +207,6 @@ workflows:
           else
             echo "No icon source found, using default"
           fi
-
       - name: Increment version code and set version name
         script: |
           LATEST=$(google-play get-latest-build-number --package-name "$PACKAGE_NAME" --tracks internal 2>/dev/null || echo "0")
@@ -252,8 +216,6 @@ workflows:
           echo "Setting versionCode=$NEXT, versionName=$VERSION"
           cd android
           UPDATED=0
-
-          # Handle Groovy template variants
           if [ -f app/build.gradle ]; then
             perl -i -pe "s/^\s*versionCode\b.*$/        versionCode $NEXT/" app/build.gradle
             perl -i -pe "s/^\s*versionName\b.*$/        versionName \"$VERSION\"/" app/build.gradle
@@ -261,8 +223,6 @@ workflows:
             grep -n "versionCode\|versionName" app/build.gradle | head -5
             UPDATED=1
           fi
-
-          # Handle Kotlin DSL template variants
           if [ -f app/build.gradle.kts ]; then
             perl -i -pe "s/^\s*versionCode\b.*$/        versionCode = $NEXT/" app/build.gradle.kts
             perl -i -pe "s/^\s*versionName\b.*$/        versionName = \"$VERSION\"/" app/build.gradle.kts
@@ -270,13 +230,11 @@ workflows:
             grep -n "versionCode\|versionName" app/build.gradle.kts | head -5
             UPDATED=1
           fi
-
           if [ "$UPDATED" -eq 0 ]; then
             echo "ERROR: Could not find app/build.gradle or app/build.gradle.kts to patch"
             find . -maxdepth 4 -name "build.gradle*" -print
             exit 1
           fi
-
       - name: Generate release notes
         script: |
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -294,12 +252,10 @@ workflows:
           echo "RELEASE_NOTES<<EOF" >> $CM_ENV
           echo "$NOTES" >> $CM_ENV
           echo "EOF" >> $CM_ENV
-
       - name: Build AAB
         script: |
           cd android
           ./gradlew bundleRelease
-
       - name: Ensure AAB is signed
         script: |
           AAB_PATH="android/app/build/outputs/bundle/release/app-release.aab"
@@ -307,22 +263,17 @@ workflows:
             echo "ERROR: AAB not found at $AAB_PATH"
             exit 1
           fi
-
-          # Sign bundle explicitly to guarantee Play Console acceptance
           jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore "$CM_KEYSTORE_PATH" \
             -storepass "$CM_KEYSTORE_PASSWORD" \
             -keypass "$CM_KEY_PASSWORD" \
             "$AAB_PATH" "$CM_KEY_ALIAS"
-
           echo "Verifying AAB signature..."
           jarsigner -verify -verbose -certs "$AAB_PATH"
           echo "AAB signed and verified."
-
     artifacts:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/mapping.txt
-
     publishing:
       google_play:
         credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
