@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout/Layout";
 import { DMInbox } from "@/components/social/DMInbox";
 import { DMThread } from "@/components/social/DMThread";
@@ -10,6 +11,7 @@ import type { DMConversation } from "@/hooks/useDirectMessages";
 import { supabase } from "@/integrations/backend/client";
 
 export default function DirectMessages() {
+  const { t } = useTranslation();
   const { userId: urlUserId } = useParams<{ userId?: string }>();
   const [selectedConv, setSelectedConv] = useState<DMConversation | null>(null);
   const [showDiscovery, setShowDiscovery] = useState(false);
@@ -54,14 +56,14 @@ export default function DirectMessages() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-display font-bold text-cream flex items-center gap-2">
             <MessageSquare className="h-6 w-6 text-secondary" />
-            Direct Messages
+            {t('messages.title')}
           </h1>
           <Link
             to="/dashboard"
             className="flex items-center gap-1.5 text-sm text-cream/60 hover:text-cream transition-colors"
           >
             <LayoutDashboard className="h-4 w-4" />
-            Back to Dashboard
+            {t('messages.backToDashboard')}
           </Link>
         </div>
 
@@ -79,8 +81,8 @@ export default function DirectMessages() {
           <Card className="bg-wood-medium/30 border-wood-medium/50 overflow-hidden flex flex-col">
             {showDiscovery ? (
               <div className="p-4 overflow-auto">
-                <p className="text-sm text-cream/60 mb-4">
-                  Find a user to start a conversation with:
+              <p className="text-sm text-cream/60 mb-4">
+                  {t('messages.findUser')}
                 </p>
                 <SocialDiscovery />
               </div>
@@ -94,7 +96,7 @@ export default function DirectMessages() {
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
                 <MessageSquare className="h-12 w-12 text-cream/20 mb-4" />
-                <p className="text-cream/50 text-sm">Select a conversation or start a new one</p>
+                <p className="text-cream/50 text-sm">{t('messages.selectConversation')}</p>
               </div>
             )}
           </Card>

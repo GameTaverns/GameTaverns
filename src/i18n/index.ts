@@ -7,6 +7,10 @@ import es from './locales/es.json';
 import fr from './locales/fr.json';
 import de from './locales/de.json';
 import pt from './locales/pt.json';
+import it from './locales/it.json';
+import ja from './locales/ja.json';
+import nl from './locales/nl.json';
+import pl from './locales/pl.json';
 
 export const supportedLanguages = [
   { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -14,6 +18,10 @@ export const supportedLanguages = [
   { code: 'fr', label: 'Français', flag: '🇫🇷' },
   { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
   { code: 'pt', label: 'Português', flag: '🇧🇷' },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+  { code: 'ja', label: '日本語', flag: '🇯🇵' },
+  { code: 'nl', label: 'Nederlands', flag: '🇳🇱' },
+  { code: 'pl', label: 'Polski', flag: '🇵🇱' },
 ] as const;
 
 i18n
@@ -26,6 +34,10 @@ i18n
       fr: { translation: fr },
       de: { translation: de },
       pt: { translation: pt },
+      it: { translation: it },
+      ja: { translation: ja },
+      nl: { translation: nl },
+      pl: { translation: pl },
     },
     fallbackLng: 'en',
     interpolation: {
