@@ -48,6 +48,44 @@ workflows:
         script: |
           npx cap sync ios
 
+      - name: Set app icon
+        script: |
+          ICON_SOURCE="resources/ios/AppIcon.png"
+          ICONSET_DIR="ios/App/App/Assets.xcassets/AppIcon.appiconset"
+          
+          # Generate all required sizes
+          SIZES="20 29 40 58 60 76 80 87 120 152 167 180 1024"
+          for SIZE in $SIZES; do
+            sips -z $SIZE $SIZE "$ICON_SOURCE" --out "$ICONSET_DIR/AppIcon-${SIZE}x${SIZE}.png"
+          done
+          
+          # Write Contents.json
+          cat > "$ICONSET_DIR/Contents.json" << 'EOF'
+          {
+            "images": [
+              {"size":"20x20","idiom":"iphone","scale":"2x","filename":"AppIcon-40x40.png"},
+              {"size":"20x20","idiom":"iphone","scale":"3x","filename":"AppIcon-60x60.png"},
+              {"size":"29x29","idiom":"iphone","scale":"2x","filename":"AppIcon-58x58.png"},
+              {"size":"29x29","idiom":"iphone","scale":"3x","filename":"AppIcon-87x87.png"},
+              {"size":"40x40","idiom":"iphone","scale":"2x","filename":"AppIcon-80x80.png"},
+              {"size":"40x40","idiom":"iphone","scale":"3x","filename":"AppIcon-120x120.png"},
+              {"size":"60x60","idiom":"iphone","scale":"2x","filename":"AppIcon-120x120.png"},
+              {"size":"60x60","idiom":"iphone","scale":"3x","filename":"AppIcon-180x180.png"},
+              {"size":"20x20","idiom":"ipad","scale":"1x","filename":"AppIcon-20x20.png"},
+              {"size":"20x20","idiom":"ipad","scale":"2x","filename":"AppIcon-40x40.png"},
+              {"size":"29x29","idiom":"ipad","scale":"1x","filename":"AppIcon-29x29.png"},
+              {"size":"29x29","idiom":"ipad","scale":"2x","filename":"AppIcon-58x58.png"},
+              {"size":"40x40","idiom":"ipad","scale":"1x","filename":"AppIcon-40x40.png"},
+              {"size":"40x40","idiom":"ipad","scale":"2x","filename":"AppIcon-80x80.png"},
+              {"size":"76x76","idiom":"ipad","scale":"1x","filename":"AppIcon-76x76.png"},
+              {"size":"76x76","idiom":"ipad","scale":"2x","filename":"AppIcon-152x152.png"},
+              {"size":"83.5x83.5","idiom":"ipad","scale":"2x","filename":"AppIcon-167x167.png"},
+              {"size":"1024x1024","idiom":"ios-marketing","scale":"1x","filename":"AppIcon-1024x1024.png"}
+            ],
+            "info":{"version":1,"author":"xcode"}
+          }
+          EOF
+
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
