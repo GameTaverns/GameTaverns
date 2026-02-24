@@ -39,6 +39,7 @@ export function Layout({ children, hideSidebar = false }: LayoutProps) {
       )}
 
       <main
+        id="main-content"
         className={cn(
           "container max-w-[2000px] py-4 sm:py-8 px-3 sm:px-4 lg:px-8 pb-20 md:pb-16 flex-1",
           showSidebar && "lg:pl-80"

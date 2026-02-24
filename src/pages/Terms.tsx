@@ -17,7 +17,7 @@ export default function Terms() {
           <Scale className="h-10 w-10 text-primary" />
           <div>
             <h1 className="text-3xl font-display font-bold">Terms of Service</h1>
-            <p className="text-muted-foreground">Last updated: January 2025</p>
+            <p className="text-muted-foreground">Last updated: February 2026</p>
           </div>
         </div>
 
@@ -215,7 +215,7 @@ export default function Terms() {
             <h2 className="text-xl font-semibold border-b pb-2">13. Governing Law</h2>
             <p>
               These terms shall be governed by and construed in accordance with the laws 
-              of [Your Jurisdiction], without regard to conflict of law principles.
+              of the State of Florida, United States, without regard to conflict of law principles.
             </p>
           </section>
 
@@ -225,7 +225,7 @@ export default function Terms() {
               For questions about these Terms of Service:
             </p>
             <ul className="list-none space-y-1">
-              <li>Email: <a href="mailto:legal@gametaverns.com" className="text-primary hover:underline">legal@gametaverns.com</a></li>
+              <li>Email: <a href="mailto:admin@gametaverns.com" className="text-primary hover:underline">admin@gametaverns.com</a></li>
             </ul>
           </section>
         </div>

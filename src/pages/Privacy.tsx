@@ -17,7 +17,7 @@ export default function Privacy() {
           <Shield className="h-10 w-10 text-primary" />
           <div>
             <h1 className="text-3xl font-display font-bold">Privacy Policy</h1>
-            <p className="text-muted-foreground">Last updated: January 2025</p>
+            <p className="text-muted-foreground">Last updated: February 2026</p>
           </div>
         </div>
 
@@ -148,8 +148,8 @@ export default function Privacy() {
             </ul>
             <p>
               To exercise these rights, contact us at{" "}
-              <a href="mailto:privacy@gametaverns.com" className="text-primary hover:underline">
-                privacy@gametaverns.com
+              <a href="mailto:admin@gametaverns.com" className="text-primary hover:underline">
+                admin@gametaverns.com
               </a>
             </p>
           </section>
@@ -157,13 +157,15 @@ export default function Privacy() {
           <section>
             <h2 className="text-xl font-semibold border-b pb-2">8. International Users</h2>
             <p>
-              GameTaverns is operated from [Your Location]. If you access the service from 
+              GameTaverns is operated from the United States. If you access the service from 
               outside this region, your data may be transferred to and processed in servers 
-              located elsewhere. By using our service, you consent to this transfer.
+              located in the United States. By using our service, you consent to this transfer.
             </p>
             <p>
               For EU/EEA users: We process data under legitimate interest for service 
-              operation. You may contact us to exercise your GDPR rights.
+              operation. You may contact us at{" "}
+              <a href="mailto:admin@gametaverns.com" className="text-primary hover:underline">admin@gametaverns.com</a>{" "}
+              to exercise your GDPR rights.
             </p>
           </section>
 
@@ -190,7 +192,7 @@ export default function Privacy() {
               For privacy-related questions or concerns:
             </p>
             <ul className="list-none space-y-1">
-              <li>Email: <a href="mailto:privacy@gametaverns.com" className="text-primary hover:underline">privacy@gametaverns.com</a></li>
+              <li>Email: <a href="mailto:admin@gametaverns.com" className="text-primary hover:underline">admin@gametaverns.com</a></li>
             </ul>
           </section>
         </div>
