@@ -16,6 +16,7 @@ import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironment
 import { MobileAppShell } from "@/components/mobile/MobileAppShell";
 import { isProductionDeployment } from "@/config/runtime";
 import { GlobalFeedbackButton } from "@/components/feedback/FeedbackDialog";
+import { CookieConsent } from "@/components/ui/cookie-consent";
 import { PresenceTracker } from "@/components/social/PresenceTracker";
 import { GlobalDMListener } from "@/components/social/GlobalDMListener";
 import { DMPopupManager } from "@/components/social/DMPopupManager";
@@ -404,12 +405,20 @@ const App = () => (
         <RouterComponent>
           <AuthProvider>
             <TourProvider>
+              {/* Skip to content link for keyboard/screen reader users */}
+              <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[200] focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:text-sm focus:font-medium"
+              >
+                Skip to main content
+              </a>
               <Toaster />
               <Sonner />
               <PresenceTracker />
               <GlobalDMListener />
               <AppRoutes />
               <GlobalFeedbackButton />
+              <CookieConsent />
             </TourProvider>
           </AuthProvider>
         </RouterComponent>
