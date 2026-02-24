@@ -11,11 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, isSelfHostedMode } from "@/integrations/backend/client";
+import { useTranslation } from "react-i18next";
 // IMPORTANT: we do NOT call supabase.auth.signUp() here because it triggers the default
 // provider confirmation email. We use a backend function that creates the user and
 // sends our branded SMTP confirmation email.
 
 export default function Signup() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -33,19 +35,19 @@ export default function Signup() {
     e.preventDefault();
     
     if (honeypot) {
-      toast({ title: "Verification failed", variant: "destructive" });
+      toast({ title: t('errors.verificationFailed'), variant: "destructive" });
       return;
     }
     
     if (!isNative && !turnstileToken) {
-      toast({ title: "Please complete verification", variant: "destructive" });
+      toast({ title: t('signup.pleaseCompleteVerification'), variant: "destructive" });
       return;
     }
     
     if (password !== confirmPassword) {
       toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match",
+        title: t('errors.passwordsDontMatch'),
+        description: t('errors.passwordsDontMatchDesc'),
         variant: "destructive",
       });
       return;
@@ -53,8 +55,8 @@ export default function Signup() {
     
     if (password.length < 6) {
       toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters",
+        title: t('errors.passwordTooShort'),
+        description: t('errors.passwordTooShortDesc'),
         variant: "destructive",
       });
       return;
@@ -63,8 +65,8 @@ export default function Signup() {
     // Validate username
     if (username && (username.length < 3 || username.length > 30)) {
       toast({
-        title: "Invalid username",
-        description: "Username must be between 3 and 30 characters",
+        title: t('errors.invalidUsername'),
+        description: t('errors.invalidUsernameLength'),
         variant: "destructive",
       });
       return;
@@ -72,8 +74,8 @@ export default function Signup() {
     
     if (username && !/^[a-zA-Z0-9_]+$/.test(username)) {
       toast({
-        title: "Invalid username",
-        description: "Username can only contain letters, numbers, and underscores",
+        title: t('errors.invalidUsername'),
+        description: t('errors.invalidUsernameChars'),
         variant: "destructive",
       });
       return;
@@ -97,24 +99,23 @@ export default function Signup() {
 
         if (response.requiresVerification) {
           toast({
-            title: "Check your email!",
+            title: t('login.checkEmail'),
             description: response.message || "We've sent you a confirmation link. Please verify your email to continue.",
           });
           navigate("/login", { 
             state: { message: "Please check your email and click the confirmation link to activate your account." } 
           });
         } else if (response.token) {
-          // Auto-login if no email verification required
           localStorage.setItem("auth_token", response.token);
           toast({
-            title: "Account created!",
-            description: "Welcome to GameTaverns!",
+            title: t('signup.accountCreated'),
+            description: t('signup.welcomeToGameTaverns'),
           });
           navigate("/dashboard");
         } else {
           toast({
-            title: "Account created!",
-            description: "You can now log in.",
+            title: t('signup.accountCreated'),
+            description: t('signup.youCanSignIn'),
           });
           navigate("/login");
         }
@@ -146,18 +147,18 @@ export default function Signup() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData?.error || "Signup failed");
+        throw new Error(errorData?.error || t('signup.signupFailed'));
       }
 
       toast({
-        title: "Account created!",
-        description: "You can now sign in with your credentials.",
+        title: t('signup.accountCreated'),
+        description: t('signup.youCanSignIn'),
       });
       
       navigate("/login");
     } catch (error: any) {
       toast({
-        title: "Signup failed",
+        title: t('signup.signupFailed'),
         description: error.message,
         variant: "destructive",
       });
@@ -177,75 +178,75 @@ export default function Signup() {
             <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
             <span className="font-display text-2xl font-bold text-foreground">GameTaverns</span>
           </Link>
-          <CardTitle className="font-display text-2xl text-foreground">Create Account</CardTitle>
+          <CardTitle className="font-display text-2xl text-foreground">{t('signup.createAccount')}</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Start building your board game library
+            {t('signup.subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username" className="text-foreground/80">
-                Username <span className="text-muted-foreground">(optional, for login)</span>
+                {t('signup.usernameLabel')} <span className="text-muted-foreground">{t('signup.usernameOptional')}</span>
               </Label>
               <Input
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="your_username"
+                placeholder={t('signup.usernamePlaceholder')}
                 maxLength={30}
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
               />
-              <p className="text-xs text-muted-foreground">3-30 characters, letters, numbers, underscores only</p>
+              <p className="text-xs text-muted-foreground">{t('signup.usernameHint')}</p>
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="displayName" className="text-foreground/80">
-                Display Name <span className="text-muted-foreground">(optional)</span>
+                {t('signup.displayNameLabel')} <span className="text-muted-foreground">{t('signup.displayNameOptional')}</span>
               </Label>
               <Input
                 id="displayName"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Your name"
+                placeholder={t('signup.displayNamePlaceholder')}
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground/80">Email</Label>
+              <Label htmlFor="email" className="text-foreground/80">{t('signup.emailLabel')}</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={t('signup.emailPlaceholder')}
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground/80">Password</Label>
+              <Label htmlFor="password" className="text-foreground/80">{t('signup.passwordLabel')}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t('signup.passwordPlaceholder')}
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-foreground/80">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-foreground/80">{t('signup.confirmPasswordLabel')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t('signup.passwordPlaceholder')}
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />
@@ -277,19 +278,19 @@ export default function Signup() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating account...
+                  {t('signup.creatingAccount')}
                 </>
               ) : (
-                "Create Account"
+                t('signup.createAccount')
               )}
             </Button>
           </form>
           
           <div className="mt-6 text-center">
             <p className="text-muted-foreground">
-              Already have an account?{" "}
+              {t('signup.alreadyHaveAccount')}{" "}
               <Link to="/login" className="text-secondary hover:text-secondary/80 underline">
-                Sign in
+                {t('signup.signIn')}
               </Link>
             </p>
           </div>

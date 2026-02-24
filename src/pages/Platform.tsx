@@ -190,7 +190,7 @@ export default function Platform() {
         </div>
       </section>
 
-      {/* ── Feature highlights ── */}
+      {/* ── Feature Showcase with Screenshots ── */}
       <section className="container mx-auto px-4 py-20">
         <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
           Everything in One Platform
@@ -198,6 +198,40 @@ export default function Platform() {
         <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
           No patchwork of apps. No spreadsheets. GameTaverns replaces the lot.
         </p>
+
+        {/* Showcase rows — alternating image/text */}
+        <div className="space-y-20 max-w-5xl mx-auto mb-20">
+          <ShowcaseRow
+            image="/presskit/library1-2.jpg"
+            alt="GameTaverns library view showing a board game collection"
+            title="Beautiful Collection Management"
+            description="Every game displayed with box art, player counts, and play time. Import from BGG in one click and keep everything organised with location tracking, condition grades, and expansion linking."
+            reverse={false}
+          />
+          <ShowcaseRow
+            image="/presskit/playstats.jpg"
+            alt="Play statistics dashboard with charts and H-index"
+            title="Play Logging & Deep Stats"
+            description="Record every session with players, scores, and winners. See your H-index, win rates, monthly summaries, and trending games — all in beautiful charts."
+            reverse
+          />
+          <ShowcaseRow
+            image="/presskit/borrow1.jpg"
+            alt="Game lending and borrowing interface"
+            title="Lending Library Built In"
+            description="Borrow requests, due dates, condition check-in/out, waitlists, and borrower reputation ratings. Know who has your games at all times."
+            reverse={false}
+          />
+          <ShowcaseRow
+            image="/presskit/pollresults.jpg"
+            alt="Game night poll results showing votes"
+            title="Game Night Polls"
+            description="Share a link — anyone votes, no account needed. See live results as they come in. RSVP tracking and event details all in one place."
+            reverse
+          />
+        </div>
+
+        {/* Feature grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <FeatureHighlight icon={<Library className="h-5 w-5" />} title="Collection Management" description="Every game, every detail. BGG auto-fill, location tracking, condition grades, expansions." />
           <FeatureHighlight icon={<RefreshCw className="h-5 w-5" />} title="BGG Auto-Sync" description="Keep your library in sync with your BoardGameGeek account on a daily or weekly schedule." />
@@ -405,6 +439,25 @@ function FeatureHighlight({ icon, title, description }: { icon: React.ReactNode;
       <div>
         <h3 className="font-semibold text-foreground text-sm mb-1">{title}</h3>
         <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function ShowcaseRow({ image, alt, title, description, reverse }: { image: string; alt: string; title: string; description: string; reverse: boolean }) {
+  return (
+    <div className={`flex flex-col ${reverse ? "md:flex-row-reverse" : "md:flex-row"} gap-8 items-center`}>
+      <div className="md:w-1/2">
+        <img
+          src={image}
+          alt={alt}
+          className="rounded-2xl border border-border/30 shadow-lg w-full"
+          loading="lazy"
+        />
+      </div>
+      <div className="md:w-1/2 space-y-3">
+        <h3 className="font-display text-2xl font-bold text-foreground">{title}</h3>
+        <p className="text-muted-foreground leading-relaxed">{description}</p>
       </div>
     </div>
   );
