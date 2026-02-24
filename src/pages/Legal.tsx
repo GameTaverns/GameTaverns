@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { FileText, Shield, Cookie, Scale } from "lucide-react";
+import { FileText, Shield, Cookie, Scale, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const legalPages = [
   {
@@ -27,6 +28,12 @@ export default function Legal() {
   return (
     <div className="min-h-screen parchment-texture">
       <div className="container max-w-4xl py-16 px-4">
+        <Link to="/">
+          <Button variant="ghost" size="sm" className="mb-6">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Home
+          </Button>
+        </Link>
         <div className="text-center mb-12">
           <FileText className="h-12 w-12 mx-auto mb-4 text-primary" />
           <h1 className="text-4xl font-display font-bold mb-4">Legal Information</h1>
