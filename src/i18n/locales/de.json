@@ -358,5 +358,23 @@
     "ctaDesc": "Schließe dich Tausenden von Brettspielbegeisterten an.",
     "ctaButton": "Kostenlos starten",
     "ctaFooter": "Für immer kostenlos für den persönlichen Gebrauch. Keine Kreditkarte erforderlich."
+  },
+  "mobileStart": {
+    "tagline": "Dein Brettspiel-Bibliotheks-Begleiter",
+    "orBrowse": "oder eine Bibliothek durchsuchen",
+    "browseWithout": "Ohne Konto stöbern",
+    "libraryName": "Bibliotheksname",
+    "libraryPlaceholder": "z.B. brettspiel-cafe",
+    "urlHint": "In der URL zu finden:",
+    "urlExample": "bibliotheksname.gametaverns.com",
+    "continue": "Weiter",
+    "connecting": "Verbinde…",
+    "enterLibraryName": "Bitte einen Bibliotheksnamen eingeben",
+    "libraryNotFound": "Bibliothek nicht gefunden",
+    "libraryNotFoundDesc": "Bitte überprüfe den Bibliotheksnamen und versuche es erneut.",
+    "libraryUnavailable": "Bibliothek nicht verfügbar",
+    "libraryUnavailableDesc": "Diese Bibliothek ist derzeit gesperrt.",
+    "connectedTo": "Verbunden mit {{name}}",
+    "connectionFailed": "Verbindung zur Bibliothek fehlgeschlagen"
   }
 }

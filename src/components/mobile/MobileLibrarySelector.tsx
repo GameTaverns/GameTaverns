@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Loader2, LogIn, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/backend/client";
 import { toast } from "sonner";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
 
 interface MobileLibrarySelectorProps {
@@ -13,6 +16,7 @@ interface MobileLibrarySelectorProps {
 }
 
 export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelectorProps) {
+  const { t } = useTranslation();
   const [librarySlug, setLibrarySlug] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showLibrarySearch, setShowLibrarySearch] = useState(false);
@@ -23,7 +27,7 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
 
     const slug = librarySlug.toLowerCase().trim();
     if (!slug) {
-      toast.error("Please enter a library name");
+      toast.error(t("mobileStart.enterLibraryName"));
       return;
     }
 
@@ -36,37 +40,42 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
         .single();
 
       if (error || !data) {
-        toast.error("Library not found", {
-          description: "Please check the library name and try again.",
+        toast.error(t("mobileStart.libraryNotFound"), {
+          description: t("mobileStart.libraryNotFoundDesc"),
         });
         return;
       }
 
       if (!data.is_active) {
-        toast.error("Library is not available", {
-          description: "This library is currently suspended.",
+        toast.error(t("mobileStart.libraryUnavailable"), {
+          description: t("mobileStart.libraryUnavailableDesc"),
         });
         return;
       }
 
-      toast.success(`Connected to ${data.name}`);
+      toast.success(t("mobileStart.connectedTo", { name: data.name }));
 
       if (onLibrarySelected) {
         onLibrarySelected(slug);
       } else {
-        // Navigate in-app using query param routing (works on native Capacitor)
         navigate(`/?tenant=${slug}`, { replace: true });
       }
     } catch (err) {
       console.error("Error checking library:", err);
-      toast.error("Failed to connect to library");
+      toast.error(t("mobileStart.connectionFailed"));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-6 relative">
+      {/* Top-right controls */}
+      <div className="absolute top-4 right-4 flex items-center gap-1">
+        <LanguageSwitcher />
+        <ThemeToggle />
+      </div>
+
       {/* Logo + Title */}
       <div className="flex flex-col items-center gap-3 mb-10">
         <img src={logoImage} alt="GameTaverns" className="h-20 w-auto drop-shadow-lg" />
@@ -74,7 +83,7 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
           GameTaverns
         </h1>
         <p className="text-muted-foreground text-sm text-center font-body">
-          Your board game library companion
+          {t("mobileStart.tagline")}
         </p>
       </div>
 
@@ -86,13 +95,13 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
           onClick={() => navigate("/login")}
         >
           <LogIn className="mr-2 h-5 w-5" />
-          Sign In
+          {t("nav.signIn")}
         </Button>
 
         {/* Divider */}
         <div className="relative flex items-center gap-3 py-2">
           <div className="flex-1 h-px bg-border" />
-          <span className="text-xs text-muted-foreground font-body">or browse a library</span>
+          <span className="text-xs text-muted-foreground font-body">{t("mobileStart.orBrowse")}</span>
           <div className="flex-1 h-px bg-border" />
         </div>
 
@@ -104,17 +113,17 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
             onClick={() => setShowLibrarySearch(true)}
           >
             <ChevronDown className="mr-2 h-4 w-4" />
-            Browse without an account
+            {t("mobileStart.browseWithout")}
           </Button>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3 bg-card/80 border border-border/50 rounded-xl p-4 backdrop-blur-sm">
             <div className="space-y-1.5">
               <Label htmlFor="librarySlug" className="text-foreground/80 font-body text-sm">
-                Library Name
+                {t("mobileStart.libraryName")}
               </Label>
               <Input
                 id="librarySlug"
-                placeholder="e.g., boardgame-cafe"
+                placeholder={t("mobileStart.libraryPlaceholder")}
                 value={librarySlug}
                 onChange={(e) => setLibrarySlug(e.target.value)}
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
@@ -124,8 +133,8 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
                 disabled={isLoading}
               />
               <p className="text-xs text-muted-foreground font-body">
-                Found in the URL:{" "}
-                <span className="font-mono text-foreground/70">library-name</span>.gametaverns.com
+                {t("mobileStart.urlHint")}{" "}
+                <span className="font-mono text-foreground/70">{t("mobileStart.urlExample")}</span>
               </p>
             </div>
 
@@ -138,11 +147,11 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting…
+                  {t("mobileStart.connecting")}
                 </>
               ) : (
                 <>
-                  Continue
+                  {t("mobileStart.continue")}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}

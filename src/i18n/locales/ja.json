@@ -356,5 +356,23 @@
     "ctaDesc": "何千人ものボードゲーム愛好家に参加しましょう。",
     "ctaButton": "無料で始める",
     "ctaFooter": "個人利用は永久無料。クレジットカード不要。"
+  },
+  "mobileStart": {
+    "tagline": "あなたのボードゲームライブラリコンパニオン",
+    "orBrowse": "またはライブラリを閲覧",
+    "browseWithout": "アカウントなしで閲覧",
+    "libraryName": "ライブラリ名",
+    "libraryPlaceholder": "例: boardgame-cafe",
+    "urlHint": "URLに含まれています：",
+    "urlExample": "ライブラリ名.gametaverns.com",
+    "continue": "続ける",
+    "connecting": "接続中…",
+    "enterLibraryName": "ライブラリ名を入力してください",
+    "libraryNotFound": "ライブラリが見つかりません",
+    "libraryNotFoundDesc": "ライブラリ名を確認して再試行してください。",
+    "libraryUnavailable": "ライブラリは利用できません",
+    "libraryUnavailableDesc": "このライブラリは現在停止中です。",
+    "connectedTo": "{{name}}に接続しました",
+    "connectionFailed": "ライブラリへの接続に失敗しました"
   }
 }

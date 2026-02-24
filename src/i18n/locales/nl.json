@@ -356,5 +356,23 @@
     "ctaDesc": "Sluit je aan bij duizenden bordspelliefhebbers.",
     "ctaButton": "Gratis Beginnen",
     "ctaFooter": "Voor altijd gratis voor persoonlijk gebruik. Geen creditcard nodig."
+  },
+  "mobileStart": {
+    "tagline": "Je bordspel bibliotheek metgezel",
+    "orBrowse": "of blader door een bibliotheek",
+    "browseWithout": "Bladeren zonder account",
+    "libraryName": "Bibliotheeknaam",
+    "libraryPlaceholder": "bijv. bordspel-cafe",
+    "urlHint": "Te vinden in de URL:",
+    "urlExample": "bibliotheeknaam.gametaverns.com",
+    "continue": "Doorgaan",
+    "connecting": "Verbinden…",
+    "enterLibraryName": "Voer een bibliotheeknaam in",
+    "libraryNotFound": "Bibliotheek niet gevonden",
+    "libraryNotFoundDesc": "Controleer de bibliotheeknaam en probeer opnieuw.",
+    "libraryUnavailable": "Bibliotheek niet beschikbaar",
+    "libraryUnavailableDesc": "Deze bibliotheek is momenteel geschorst.",
+    "connectedTo": "Verbonden met {{name}}",
+    "connectionFailed": "Verbinding met bibliotheek mislukt"
   }
 }

@@ -378,5 +378,23 @@
     "ctaDesc": "Join thousands of board game enthusiasts already using GameTaverns to manage their collections, track plays, and build communities.",
     "ctaButton": "Get Started — It's Free",
     "ctaFooter": "Free forever for personal use. No credit card required."
+  },
+  "mobileStart": {
+    "tagline": "Your board game library companion",
+    "orBrowse": "or browse a library",
+    "browseWithout": "Browse without an account",
+    "libraryName": "Library Name",
+    "libraryPlaceholder": "e.g., boardgame-cafe",
+    "urlHint": "Found in the URL:",
+    "urlExample": "library-name.gametaverns.com",
+    "continue": "Continue",
+    "connecting": "Connecting…",
+    "enterLibraryName": "Please enter a library name",
+    "libraryNotFound": "Library not found",
+    "libraryNotFoundDesc": "Please check the library name and try again.",
+    "libraryUnavailable": "Library is not available",
+    "libraryUnavailableDesc": "This library is currently suspended.",
+    "connectedTo": "Connected to {{name}}",
+    "connectionFailed": "Failed to connect to library"
   }
 }

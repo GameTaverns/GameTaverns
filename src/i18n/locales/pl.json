@@ -356,5 +356,23 @@
     "ctaDesc": "Dołącz do tysięcy entuzjastów gier planszowych.",
     "ctaButton": "Zacznij Za Darmo",
     "ctaFooter": "Na zawsze za darmo do użytku osobistego. Bez karty kredytowej."
+  },
+  "mobileStart": {
+    "tagline": "Twój towarzysz biblioteki gier planszowych",
+    "orBrowse": "lub przeglądaj bibliotekę",
+    "browseWithout": "Przeglądaj bez konta",
+    "libraryName": "Nazwa biblioteki",
+    "libraryPlaceholder": "np. kawiarnia-gier",
+    "urlHint": "Znajdziesz w URL:",
+    "urlExample": "nazwa-biblioteki.gametaverns.com",
+    "continue": "Kontynuuj",
+    "connecting": "Łączenie…",
+    "enterLibraryName": "Wprowadź nazwę biblioteki",
+    "libraryNotFound": "Nie znaleziono biblioteki",
+    "libraryNotFoundDesc": "Sprawdź nazwę biblioteki i spróbuj ponownie.",
+    "libraryUnavailable": "Biblioteka niedostępna",
+    "libraryUnavailableDesc": "Ta biblioteka jest obecnie zawieszona.",
+    "connectedTo": "Połączono z {{name}}",
+    "connectionFailed": "Nie udało się połączyć z biblioteką"
   }
 }

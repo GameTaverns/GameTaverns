@@ -356,5 +356,23 @@
     "ctaDesc": "加入数千名桌游爱好者的行列。",
     "ctaButton": "免费开始",
     "ctaFooter": "个人使用永久免费。无需信用卡。"
+  },
+  "mobileStart": {
+    "tagline": "您的桌游库伴侣",
+    "orBrowse": "或浏览图书馆",
+    "browseWithout": "无需账户浏览",
+    "libraryName": "图书馆名称",
+    "libraryPlaceholder": "例如 boardgame-cafe",
+    "urlHint": "在URL中找到：",
+    "urlExample": "图书馆名称.gametaverns.com",
+    "continue": "继续",
+    "connecting": "连接中…",
+    "enterLibraryName": "请输入图书馆名称",
+    "libraryNotFound": "未找到图书馆",
+    "libraryNotFoundDesc": "请检查图书馆名称后重试。",
+    "libraryUnavailable": "图书馆不可用",
+    "libraryUnavailableDesc": "此图书馆目前已暂停。",
+    "connectedTo": "已连接到 {{name}}",
+    "connectionFailed": "连接图书馆失败"
   }
 }

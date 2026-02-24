@@ -356,5 +356,23 @@
     "ctaDesc": "Gå med tusentals brädspelsentusiaster.",
     "ctaButton": "Börja Gratis",
     "ctaFooter": "Gratis för alltid för personligt bruk. Inget kreditkort krävs."
+  },
+  "mobileStart": {
+    "tagline": "Din brädspelsbiblioteksföljare",
+    "orBrowse": "eller bläddra i ett bibliotek",
+    "browseWithout": "Bläddra utan konto",
+    "libraryName": "Biblioteksnamn",
+    "libraryPlaceholder": "t.ex. bradspel-cafe",
+    "urlHint": "Finns i URL:en:",
+    "urlExample": "biblioteksnamn.gametaverns.com",
+    "continue": "Fortsätt",
+    "connecting": "Ansluter…",
+    "enterLibraryName": "Ange ett biblioteksnamn",
+    "libraryNotFound": "Bibliotek hittades inte",
+    "libraryNotFoundDesc": "Kontrollera biblioteksnamnet och försök igen.",
+    "libraryUnavailable": "Bibliotek ej tillgängligt",
+    "libraryUnavailableDesc": "Detta bibliotek är för närvarande avstängt.",
+    "connectedTo": "Ansluten till {{name}}",
+    "connectionFailed": "Kunde inte ansluta till biblioteket"
   }
 }
