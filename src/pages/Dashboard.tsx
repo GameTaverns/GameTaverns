@@ -51,16 +51,25 @@ import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 
 import { AccountSettings } from "@/components/settings/AccountSettings";
 import { ProfileThemeCustomizer } from "@/components/settings/ProfileThemeCustomizer";
+import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
+import { TwoFactorSettings } from "@/components/settings/TwoFactorSettings";
 
 function AccountSettingsTabs() {
   return (
     <Tabs defaultValue="profile">
       <TabsList className="mb-4">
         <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsTrigger value="security">Security</TabsTrigger>
         <TabsTrigger value="appearance">Appearance</TabsTrigger>
       </TabsList>
       <TabsContent value="profile">
         <AccountSettings />
+      </TabsContent>
+      <TabsContent value="security">
+        <div className="space-y-6">
+          <ChangePasswordCard />
+          <TwoFactorSettings />
+        </div>
       </TabsContent>
       <TabsContent value="appearance">
         <ProfileThemeCustomizer />
