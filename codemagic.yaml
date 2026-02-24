@@ -104,7 +104,12 @@ workflows:
       - name: Increment build number
         script: |
           cd ios/App
-          agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID") + 1))
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" || echo "0")
+          NEXT=$(( ${LATEST:-0} + 1 ))
+          # Ensure we never reuse a previously rejected build number
+          if [ "$NEXT" -lt 3 ]; then NEXT=3; fi
+          echo "Setting build number to $NEXT"
+          agvtool new-version -all $NEXT
 
       - name: Build ipa for distribution
         script: |
