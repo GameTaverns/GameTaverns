@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "help": "Aide",
+    "directory": "Annuaire",
+    "dashboard": "Tableau de Bord",
+    "catalog": "Catalogue",
+    "myLibrary": "Ma Bibliothèque",
+    "signIn": "Se Connecter",
+    "signOut": "Se Déconnecter"
+  },
+  "login": {
+    "welcomeBack": "Bon Retour",
+    "subtitle": "Connectez-vous pour gérer vos ludothèques",
+    "signIn": "Se Connecter",
+    "signUp": "S'inscrire",
+    "signingIn": "Connexion en cours...",
+    "emailOrUsername": "E-mail ou Nom d'utilisateur",
+    "emailOrUsernamePlaceholder": "vous@exemple.com ou utilisateur",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "createAccount": "Créer un Compte",
+    "creatingAccount": "Création du compte...",
+    "username": "Nom d'utilisateur",
+    "usernameOptional": "(facultatif, pour la connexion)",
+    "usernameHint": "3 à 30 caractères, lettres, chiffres et underscores",
+    "usernamePlaceholder": "votre_utilisateur",
+    "displayName": "Nom d'affichage",
+    "displayNameOptional": "(facultatif)",
+    "displayNamePlaceholder": "Votre nom",
+    "email": "Adresse e-mail",
+    "emailPlaceholder": "vous@exemple.com",
+    "passwordPlaceholder": "••••••••",
+    "loading": "Chargement...",
+    "checkEmail": "Vérifiez votre e-mail !",
+    "confirmationSent": "Nous vous avons envoyé un lien de confirmation.",
+    "welcomeBackToast": "Bon retour !",
+    "register": "S'inscrire"
+  },
+  "errors": {
+    "error": "Erreur",
+    "verificationFailed": "Échec de la vérification",
+    "passwordsDontMatch": "Les mots de passe ne correspondent pas",
+    "passwordsDontMatchDesc": "Veuillez vérifier que vos mots de passe correspondent",
+    "passwordTooShort": "Mot de passe trop court",
+    "passwordTooShortDesc": "Le mot de passe doit contenir au moins 6 caractères",
+    "invalidUsername": "Nom d'utilisateur invalide",
+    "invalidUsernameLength": "Le nom d'utilisateur doit contenir entre 3 et 30 caractères",
+    "invalidUsernameChars": "Le nom d'utilisateur ne peut contenir que des lettres, chiffres et underscores",
+    "signingOut": "Erreur lors de la déconnexion"
+  },
+  "common": {
+    "language": "Langue"
+  }
+}

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logoImage from "@/assets/logo.png";
@@ -19,6 +21,7 @@ import { Capacitor } from "@capacitor/core";
 const isNative = Capacitor.isNativePlatform();
 
 const Login = () => {
+  const { t } = useTranslation();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupUsername, setSignupUsername] = useState("");
@@ -57,7 +60,7 @@ const Login = () => {
     e.preventDefault();
     // Honeypot check — if filled, silently reject (it's a bot)
     if (signinHoneypot) {
-      toast({ title: "Verification failed", variant: "destructive" });
+      toast({ title: t('errors.verificationFailed'), variant: "destructive" });
       return;
     }
     // If reCAPTCHA hasn't resolved yet (blocked by browser), treat as honeypot-only
@@ -71,7 +74,7 @@ const Login = () => {
 
       if (error) {
         toast({
-          title: "Error",
+          title: t('errors.error'),
           description: error.message,
           variant: "destructive",
         });
@@ -124,7 +127,7 @@ const Login = () => {
         }
       }
 
-      toast({ title: "Welcome back!" });
+      toast({ title: t('login.welcomeBackToast') });
       setIsLoading(false);
       setAuthGate("idle");
       navigate("/dashboard", { replace: true });
@@ -139,7 +142,7 @@ const Login = () => {
     setRequires2FA(false);
     setPendingAccessToken(null);
     setAuthGate("idle");
-    toast({ title: "Welcome back!" });
+    toast({ title: t('login.welcomeBackToast') });
     navigate("/dashboard", { replace: true });
   };
 
@@ -154,7 +157,7 @@ const Login = () => {
     e.preventDefault();
     // Honeypot check
     if (signupHoneypot) {
-      toast({ title: "Verification failed", variant: "destructive" });
+      toast({ title: t('errors.verificationFailed'), variant: "destructive" });
       return;
     }
     // If reCAPTCHA hasn't resolved yet (blocked by browser), treat as honeypot-only
@@ -162,8 +165,8 @@ const Login = () => {
 
     if (password !== signupConfirmPassword) {
       toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match",
+        title: t('errors.passwordsDontMatch'),
+        description: t('errors.passwordsDontMatchDesc'),
         variant: "destructive",
       });
       return;
@@ -171,8 +174,8 @@ const Login = () => {
 
     if (password.length < 6) {
       toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters",
+        title: t('errors.passwordTooShort'),
+        description: t('errors.passwordTooShortDesc'),
         variant: "destructive",
       });
       return;
@@ -180,8 +183,8 @@ const Login = () => {
 
     if (signupUsername && (signupUsername.length < 3 || signupUsername.length > 30)) {
       toast({
-        title: "Invalid username",
-        description: "Username must be between 3 and 30 characters",
+        title: t('errors.invalidUsername'),
+        description: t('errors.invalidUsernameLength'),
         variant: "destructive",
       });
       return;
@@ -189,8 +192,8 @@ const Login = () => {
 
     if (signupUsername && !/^[a-zA-Z0-9_]+$/.test(signupUsername)) {
       toast({
-        title: "Invalid username",
-        description: "Username can only contain letters, numbers, and underscores",
+        title: t('errors.invalidUsername'),
+        description: t('errors.invalidUsernameChars'),
         variant: "destructive",
       });
       return;
@@ -207,7 +210,7 @@ const Login = () => {
 
       if (error) {
         toast({
-          title: "Error",
+          title: t('errors.error'),
           description: error.message,
           variant: "destructive",
         });
@@ -218,8 +221,8 @@ const Login = () => {
       }
 
       toast({
-        title: "Check your email!",
-        description: "We've sent you a confirmation link.",
+        title: t('login.checkEmail'),
+        description: t('login.confirmationSent'),
       });
     } finally {
       setIsLoading(false);
@@ -229,7 +232,7 @@ const Login = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center">
-        <div className="animate-pulse text-foreground">Loading...</div>
+        <div className="animate-pulse text-foreground">{t('login.loading')}</div>
       </div>
     );
   }
@@ -252,7 +255,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-4">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <LanguageSwitcher />
         <ThemeToggle />
       </div>
       <Card className="w-full max-w-md bg-card/80 dark:bg-sidebar/80 border-border/50 backdrop-blur-sm">
@@ -261,9 +265,9 @@ const Login = () => {
             <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
             <span className="font-display text-2xl font-bold text-foreground">GameTaverns</span>
           </Link>
-          <CardTitle className="font-display text-2xl text-foreground">Welcome Back</CardTitle>
+          <CardTitle className="font-display text-2xl text-foreground">{t('login.welcomeBack')}</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Sign in to manage your game libraries
+            {t('login.subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -273,25 +277,25 @@ const Login = () => {
                 value="signin" 
                 className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
               >
-                Sign In
+                {t('login.signIn')}
               </TabsTrigger>
               <TabsTrigger 
                 value="signup"
                 className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
               >
-                Sign Up
+                {t('login.signUp')}
               </TabsTrigger>
             </TabsList>
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email" className="text-foreground/80">Email or Username</Label>
+                  <Label htmlFor="signin-email" className="text-foreground/80">{t('login.emailOrUsername')}</Label>
                   <Input
                     id="signin-email"
                     type="text"
                     value={emailOrUsername}
                     onChange={(e) => setEmailOrUsername(e.target.value)}
-                    placeholder="you@example.com or username"
+                    placeholder={t('login.emailOrUsernamePlaceholder')}
                     className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                     required
                   />
@@ -308,7 +312,7 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password" className="text-foreground/80">Password</Label>
+                  <Label htmlFor="signin-password" className="text-foreground/80">{t('login.password')}</Label>
                   <PasswordInput
                     id="signin-password"
                     value={password}
@@ -329,14 +333,14 @@ const Login = () => {
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
                   disabled={isLoading}
                 >
-                  {isLoading ? "Signing in..." : "Sign In"}
+                  {isLoading ? t('login.signingIn') : t('login.signIn')}
                 </Button>
                 <div className="text-center">
                   <Link 
                     to="/forgot-password" 
                     className="text-sm text-secondary hover:text-secondary/80 underline"
                   >
-                    Forgot your password?
+                    {t('login.forgotPassword')}
                   </Link>
                 </div>
               </form>
@@ -345,44 +349,44 @@ const Login = () => {
               <form onSubmit={handleSignUp} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-username" className="text-foreground/80">
-                    Username <span className="text-muted-foreground text-xs">(optional, for login)</span>
+                    {t('login.username')} <span className="text-muted-foreground text-xs">{t('login.usernameOptional')}</span>
                   </Label>
                   <Input
                     id="signup-username"
                     value={signupUsername}
                     onChange={(e) => setSignupUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                    placeholder="your_username"
+                    placeholder={t('login.usernamePlaceholder')}
                     maxLength={30}
                     className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                   />
-                  <p className="text-xs text-muted-foreground">3-30 characters, letters, numbers, underscores only</p>
+                  <p className="text-xs text-muted-foreground">{t('login.usernameHint')}</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-displayname" className="text-foreground/80">
-                    Display Name <span className="text-muted-foreground text-xs">(optional)</span>
+                    {t('login.displayName')} <span className="text-muted-foreground text-xs">{t('login.displayNameOptional')}</span>
                   </Label>
                   <Input
                     id="signup-displayname"
                     value={signupDisplayName}
                     onChange={(e) => setSignupDisplayName(e.target.value)}
-                    placeholder="Your name"
+                    placeholder={t('login.displayNamePlaceholder')}
                     className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email" className="text-foreground/80">Email</Label>
+                  <Label htmlFor="signup-email" className="text-foreground/80">{t('login.email')}</Label>
                   <Input
                     id="signup-email"
                     type="email"
                     value={signupEmail}
                     onChange={(e) => setSignupEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder={t('login.emailPlaceholder')}
                     className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-password" className="text-foreground/80">Password</Label>
+                  <Label htmlFor="signup-password" className="text-foreground/80">{t('login.password')}</Label>
                   <PasswordInput
                     id="signup-password"
                     value={password}
@@ -394,7 +398,7 @@ const Login = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signup-confirm-password" className="text-foreground/80">Confirm Password</Label>
+                  <Label htmlFor="signup-confirm-password" className="text-foreground/80">{t('login.confirmPassword')}</Label>
                   <PasswordInput
                     id="signup-confirm-password"
                     value={signupConfirmPassword}
@@ -427,10 +431,10 @@ const Login = () => {
                   className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display" 
                   disabled={isLoading}
                 >
-                  {isLoading ? "Creating account..." : "Create Account"}
+                  {isLoading ? t('login.creatingAccount') : t('login.createAccount')}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
-                  You'll receive a confirmation email to verify your account
+                  {t('login.confirmationSent')}
                 </p>
               </form>
             </TabsContent>

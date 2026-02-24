@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "help": "Help",
+    "directory": "Directory",
+    "dashboard": "Dashboard",
+    "catalog": "Catalog",
+    "myLibrary": "My Library",
+    "signIn": "Sign In",
+    "signOut": "Sign Out"
+  },
+  "login": {
+    "welcomeBack": "Welcome Back",
+    "subtitle": "Sign in to manage your game libraries",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signingIn": "Signing in...",
+    "emailOrUsername": "Email or Username",
+    "emailOrUsernamePlaceholder": "you@example.com or username",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot your password?",
+    "createAccount": "Create Account",
+    "creatingAccount": "Creating account...",
+    "username": "Username",
+    "usernameOptional": "(optional, for login)",
+    "usernameHint": "3-30 characters, letters, numbers, underscores only",
+    "usernamePlaceholder": "your_username",
+    "displayName": "Display Name",
+    "displayNameOptional": "(optional)",
+    "displayNamePlaceholder": "Your name",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "••••••••",
+    "loading": "Loading...",
+    "checkEmail": "Check your email!",
+    "confirmationSent": "We've sent you a confirmation link.",
+    "welcomeBackToast": "Welcome back!",
+    "register": "Register"
+  },
+  "errors": {
+    "error": "Error",
+    "verificationFailed": "Verification failed",
+    "passwordsDontMatch": "Passwords don't match",
+    "passwordsDontMatchDesc": "Please make sure your passwords match",
+    "passwordTooShort": "Password too short",
+    "passwordTooShortDesc": "Password must be at least 6 characters",
+    "invalidUsername": "Invalid username",
+    "invalidUsernameLength": "Username must be between 3 and 30 characters",
+    "invalidUsernameChars": "Username can only contain letters, numbers, and underscores",
+    "signingOut": "Error signing out"
+  },
+  "common": {
+    "language": "Language"
+  }
+}
