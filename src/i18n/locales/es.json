@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "help": "Ayuda",
+    "directory": "Directorio",
+    "dashboard": "Panel",
+    "catalog": "Catálogo",
+    "myLibrary": "Mi Biblioteca",
+    "signIn": "Iniciar Sesión",
+    "signOut": "Cerrar Sesión"
+  },
+  "login": {
+    "welcomeBack": "Bienvenido de Nuevo",
+    "subtitle": "Inicia sesión para gestionar tus bibliotecas de juegos",
+    "signIn": "Iniciar Sesión",
+    "signUp": "Registrarse",
+    "signingIn": "Iniciando sesión...",
+    "emailOrUsername": "Correo o Nombre de Usuario",
+    "emailOrUsernamePlaceholder": "tu@ejemplo.com o usuario",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "createAccount": "Crear Cuenta",
+    "creatingAccount": "Creando cuenta...",
+    "username": "Nombre de Usuario",
+    "usernameOptional": "(opcional, para iniciar sesión)",
+    "usernameHint": "3-30 caracteres, letras, números y guiones bajos",
+    "usernamePlaceholder": "tu_usuario",
+    "displayName": "Nombre para Mostrar",
+    "displayNameOptional": "(opcional)",
+    "displayNamePlaceholder": "Tu nombre",
+    "email": "Correo Electrónico",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "passwordPlaceholder": "••••••••",
+    "loading": "Cargando...",
+    "checkEmail": "¡Revisa tu correo!",
+    "confirmationSent": "Te hemos enviado un enlace de confirmación.",
+    "welcomeBackToast": "¡Bienvenido de nuevo!",
+    "register": "Registrarse"
+  },
+  "errors": {
+    "error": "Error",
+    "verificationFailed": "Verificación fallida",
+    "passwordsDontMatch": "Las contraseñas no coinciden",
+    "passwordsDontMatchDesc": "Asegúrate de que las contraseñas coincidan",
+    "passwordTooShort": "Contraseña muy corta",
+    "passwordTooShortDesc": "La contraseña debe tener al menos 6 caracteres",
+    "invalidUsername": "Nombre de usuario inválido",
+    "invalidUsernameLength": "El nombre de usuario debe tener entre 3 y 30 caracteres",
+    "invalidUsernameChars": "El nombre de usuario solo puede contener letras, números y guiones bajos",
+    "signingOut": "Error al cerrar sesión"
+  },
+  "common": {
+    "language": "Idioma"
+  }
+}

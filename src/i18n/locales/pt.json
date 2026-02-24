@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "help": "Ajuda",
+    "directory": "Diretório",
+    "dashboard": "Painel",
+    "catalog": "Catálogo",
+    "myLibrary": "Minha Biblioteca",
+    "signIn": "Entrar",
+    "signOut": "Sair"
+  },
+  "login": {
+    "welcomeBack": "Bem-vindo de Volta",
+    "subtitle": "Entre para gerenciar suas bibliotecas de jogos",
+    "signIn": "Entrar",
+    "signUp": "Cadastrar",
+    "signingIn": "Entrando...",
+    "emailOrUsername": "E-mail ou Nome de Usuário",
+    "emailOrUsernamePlaceholder": "voce@exemplo.com ou usuario",
+    "password": "Senha",
+    "confirmPassword": "Confirmar Senha",
+    "forgotPassword": "Esqueceu sua senha?",
+    "createAccount": "Criar Conta",
+    "creatingAccount": "Criando conta...",
+    "username": "Nome de Usuário",
+    "usernameOptional": "(opcional, para login)",
+    "usernameHint": "3-30 caracteres, letras, números e underscores",
+    "usernamePlaceholder": "seu_usuario",
+    "displayName": "Nome de Exibição",
+    "displayNameOptional": "(opcional)",
+    "displayNamePlaceholder": "Seu nome",
+    "email": "E-mail",
+    "emailPlaceholder": "voce@exemplo.com",
+    "passwordPlaceholder": "••••••••",
+    "loading": "Carregando...",
+    "checkEmail": "Verifique seu e-mail!",
+    "confirmationSent": "Enviamos um link de confirmação.",
+    "welcomeBackToast": "Bem-vindo de volta!",
+    "register": "Cadastrar"
+  },
+  "errors": {
+    "error": "Erro",
+    "verificationFailed": "Falha na verificação",
+    "passwordsDontMatch": "As senhas não coincidem",
+    "passwordsDontMatchDesc": "Certifique-se de que as senhas são iguais",
+    "passwordTooShort": "Senha muito curta",
+    "passwordTooShortDesc": "A senha deve ter pelo menos 6 caracteres",
+    "invalidUsername": "Nome de usuário inválido",
+    "invalidUsernameLength": "O nome de usuário deve ter entre 3 e 30 caracteres",
+    "invalidUsernameChars": "O nome de usuário só pode conter letras, números e underscores",
+    "signingOut": "Erro ao sair"
+  },
+  "common": {
+    "language": "Idioma"
+  }
+}

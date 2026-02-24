@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "help": "Hilfe",
+    "directory": "Verzeichnis",
+    "dashboard": "Dashboard",
+    "catalog": "Katalog",
+    "myLibrary": "Meine Bibliothek",
+    "signIn": "Anmelden",
+    "signOut": "Abmelden"
+  },
+  "login": {
+    "welcomeBack": "Willkommen Zurück",
+    "subtitle": "Melde dich an, um deine Spielebibliotheken zu verwalten",
+    "signIn": "Anmelden",
+    "signUp": "Registrieren",
+    "signingIn": "Anmeldung läuft...",
+    "emailOrUsername": "E-Mail oder Benutzername",
+    "emailOrUsernamePlaceholder": "du@beispiel.de oder benutzername",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "forgotPassword": "Passwort vergessen?",
+    "createAccount": "Konto Erstellen",
+    "creatingAccount": "Konto wird erstellt...",
+    "username": "Benutzername",
+    "usernameOptional": "(optional, zum Anmelden)",
+    "usernameHint": "3-30 Zeichen, Buchstaben, Zahlen und Unterstriche",
+    "usernamePlaceholder": "dein_benutzername",
+    "displayName": "Anzeigename",
+    "displayNameOptional": "(optional)",
+    "displayNamePlaceholder": "Dein Name",
+    "email": "E-Mail-Adresse",
+    "emailPlaceholder": "du@beispiel.de",
+    "passwordPlaceholder": "••••••••",
+    "loading": "Laden...",
+    "checkEmail": "Prüfe deine E-Mails!",
+    "confirmationSent": "Wir haben dir einen Bestätigungslink gesendet.",
+    "welcomeBackToast": "Willkommen zurück!",
+    "register": "Registrieren"
+  },
+  "errors": {
+    "error": "Fehler",
+    "verificationFailed": "Überprüfung fehlgeschlagen",
+    "passwordsDontMatch": "Passwörter stimmen nicht überein",
+    "passwordsDontMatchDesc": "Bitte stelle sicher, dass deine Passwörter übereinstimmen",
+    "passwordTooShort": "Passwort zu kurz",
+    "passwordTooShortDesc": "Das Passwort muss mindestens 6 Zeichen lang sein",
+    "invalidUsername": "Ungültiger Benutzername",
+    "invalidUsernameLength": "Der Benutzername muss zwischen 3 und 30 Zeichen lang sein",
+    "invalidUsernameChars": "Der Benutzername darf nur Buchstaben, Zahlen und Unterstriche enthalten",
+    "signingOut": "Fehler beim Abmelden"
+  },
+  "common": {
+    "language": "Sprache"
+  }
+}

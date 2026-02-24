@@ -12,7 +12,9 @@ import {
   MessageSquare,
 } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +39,7 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProps) {
+  const { t } = useTranslation();
   const { signOut, isAuthenticated } = useAuth();
   const { tenantSlug } = useTenant();
   const { data: defaultLibrary } = useMyLibrary();
@@ -97,7 +100,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                 >
                   <HelpCircle className="h-3.5 w-3.5" />
-                  <span>Help</span>
+                  <span>{t('nav.help')}</span>
                 </TenantLink>
 
                 {/* Directory */}
@@ -106,7 +109,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                 >
                   <Globe className="h-3.5 w-3.5" />
-                  <span>Directory</span>
+                  <span>{t('nav.directory')}</span>
                 </TenantLink>
 
                 {/* Catalog / Dashboard toggle */}
@@ -115,7 +118,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     href={getPlatformUrl("/dashboard")}
                     className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
-                    <span>Dashboard</span>
+                    <span>{t('nav.dashboard')}</span>
                   </TenantLink>
                 ) : (
                   <TenantLink
@@ -123,7 +126,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
                     <BookOpen className="h-3.5 w-3.5" />
-                    <span>Catalog</span>
+                    <span>{t('nav.catalog')}</span>
                   </TenantLink>
                 )}
 
@@ -134,7 +137,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
                     <Library className="h-3.5 w-3.5" />
-                    <span>Dashboard</span>
+                    <span>{t('nav.dashboard')}</span>
                   </TenantLink>
                 ) : myLibraries.length > 1 ? (
                   <DropdownMenu>
@@ -144,7 +147,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                         className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream hover:bg-transparent h-auto text-xs"
                       >
                         <Library className="h-3.5 w-3.5" />
-                        <span>My Library</span>
+                        <span>{t('nav.myLibrary')}</span>
                         <ChevronDown className="h-3 w-3" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -165,7 +168,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                     className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                   >
                     <Library className="h-3.5 w-3.5" />
-                    <span>My Library</span>
+                    <span>{t('nav.myLibrary')}</span>
                   </TenantLink>
                 ) : null}
 
@@ -184,6 +187,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
               </>
             )}
 
+            <LanguageSwitcher />
             <ThemeToggle />
 
             {/* Icons visible on all sizes on desktop; hidden on mobile (handled by drawer) */}
@@ -227,13 +231,13 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
                 >
                   <BookOpen className="h-3.5 w-3.5" />
-                  <span>Catalog</span>
+                  <span>{t('nav.catalog')}</span>
                 </TenantLink>
                 <TenantLink
                   href={getPlatformUrl("/login")}
                   className="text-sm font-medium text-cream/70 hover:text-cream transition-colors px-2"
                 >
-                  Sign In
+                  {t('nav.signIn')}
                 </TenantLink>
               </>
             )}
