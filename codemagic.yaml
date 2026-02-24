@@ -138,7 +138,7 @@ workflows:
 
     environment:
       node: 22
-      java: 17
+      java: 21
       vars:
         PACKAGE_NAME: "com.gametaverns.app"
       android_signing:
