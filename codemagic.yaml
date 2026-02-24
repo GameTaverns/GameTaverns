@@ -232,6 +232,25 @@ workflows:
           cd android
           ./gradlew bundleRelease
 
+      - name: Ensure AAB is signed
+        script: |
+          AAB_PATH="android/app/build/outputs/bundle/release/app-release.aab"
+          if [ ! -f "$AAB_PATH" ]; then
+            echo "ERROR: AAB not found at $AAB_PATH"
+            exit 1
+          fi
+
+          # Sign bundle explicitly to guarantee Play Console acceptance
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore "$CM_KEYSTORE_PATH" \
+            -storepass "$CM_KEYSTORE_PASSWORD" \
+            -keypass "$CM_KEY_PASSWORD" \
+            "$AAB_PATH" "$CM_KEY_ALIAS"
+
+          echo "Verifying AAB signature..."
+          jarsigner -verify -verbose -certs "$AAB_PATH"
+          echo "AAB signed and verified."
+
     artifacts:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/mapping.txt
