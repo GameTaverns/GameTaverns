@@ -48,9 +48,13 @@ workflows:
         script: |
           npx cap sync ios
 
-      - name: Install CocoaPods
+      - name: Verify workspace exists
         script: |
-          cd ios/App && pod install
+          ls -la ios/App/
+          if [ ! -d "ios/App/App.xcworkspace" ]; then
+            echo "Workspace not found, running pod install..."
+            cd ios/App && pod install
+          fi
 
       - name: Set up code signing settings on Xcode project
         script: |
