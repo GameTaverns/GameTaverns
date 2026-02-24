@@ -224,8 +224,17 @@ workflows:
           if [ "$NEXT" -lt 2 ]; then NEXT=2; fi
           echo "Setting versionCode to $NEXT"
           cd android
-          sed -i "s/versionCode [0-9]*/versionCode $NEXT/" app/build.gradle
-          echo "versionCode set to $NEXT"
+          # Try both .gradle and .gradle.kts formats
+          if [ -f app/build.gradle.kts ]; then
+            sed -i "s/versionCode\s*=\s*[0-9]*/versionCode = $NEXT/" app/build.gradle.kts
+            echo "Updated build.gradle.kts"
+            grep -n "versionCode" app/build.gradle.kts
+          fi
+          if [ -f app/build.gradle ]; then
+            sed -i "s/versionCode [0-9]*/versionCode $NEXT/" app/build.gradle
+            echo "Updated build.gradle"
+            grep -n "versionCode" app/build.gradle
+          fi
 
       - name: Build AAB
         script: |
