@@ -48,6 +48,17 @@ workflows:
         script: |
           npx cap sync ios
 
+      - name: Inject privacy strings into Info.plist
+        script: |
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'GameTaverns needs access to your photo library to let you upload profile pictures and game images.'" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'GameTaverns needs access to your photo library to let you upload profile pictures and game images.'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'GameTaverns needs access to your camera to let you take photos of games and your collection.'" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'GameTaverns needs access to your camera to let you take photos of games and your collection.'" "$PLIST"
+          echo "Privacy strings injected:"
+          /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$PLIST"
+
       - name: Set app icon
         script: |
           ICON_SOURCE="resources/ios/AppIcon.png"
