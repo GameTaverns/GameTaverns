@@ -42,6 +42,7 @@ export function DangerZone() {
   const [confirmStep, setConfirmStep] = useState<1 | 2>(1);
   const [confirmationText, setConfirmationText] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [finalAcknowledge, setFinalAcknowledge] = useState(false);
 
   const hasLibraries = libraries && libraries.length > 0;
   const hasMultipleLibraries = libraries && libraries.length > 1;
@@ -99,8 +100,8 @@ export function DangerZone() {
       case "delete_account":
         return {
           title: "Delete Account",
-          description: "This will PERMANENTLY and IMMEDIATELY delete your entire account and every piece of data associated with it. There is no grace period, no recovery option, and no way to undo this.",
-          warning: "The following will be deleted instantly and forever: your profile, all libraries, all games, play sessions, messages, forum posts, achievements, ELO ratings, curated lists, loan history, referrals, notifications, and your login credentials. We strongly recommend exporting your data first from the Profile tab.",
+          description: "This will permanently and immediately erase your entire account. Every piece of data you have ever stored on GameTaverns will be destroyed the moment you confirm. There is no cooling-off period, no grace window, and no way to recover any of it — ever.",
+          warning: "Your profile, every library you own, every game entry, play sessions, messages, forum posts, achievements, ELO ratings, curated lists, loan history, referrals, notifications, and your login credentials will all be wiped instantly. We strongly recommend exporting your data first from the Profile tab.",
           confirmLabel: "email address",
           icon: UserX,
         };
@@ -222,6 +223,7 @@ export function DangerZone() {
     setCurrentAction(null);
     setConfirmStep(1);
     setConfirmationText("");
+    setFinalAcknowledge(false);
   };
 
   const actionDetails = getActionDetails();
@@ -374,18 +376,36 @@ export function DangerZone() {
                   </span>
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <div className="py-4">
-                <Label htmlFor="confirmation" className="sr-only">
-                  Confirmation
-                </Label>
-                <Input
-                  id="confirmation"
-                  value={confirmationText}
-                  onChange={(e) => setConfirmationText(e.target.value)}
-                  placeholder={`Type "${getRequiredText()}" to confirm`}
-                  className="font-mono"
-                  disabled={isProcessing}
-                />
+              <div className="py-4 space-y-4">
+                <div>
+                  <Label htmlFor="confirmation" className="sr-only">
+                    Confirmation
+                  </Label>
+                  <Input
+                    id="confirmation"
+                    value={confirmationText}
+                    onChange={(e) => setConfirmationText(e.target.value)}
+                    placeholder={`Type "${getRequiredText()}" to confirm`}
+                    className="font-mono"
+                    disabled={isProcessing}
+                  />
+                </div>
+
+                {currentAction === "delete_account" && (
+                  <label className="flex items-start gap-3 cursor-pointer select-none rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                    <input
+                      type="checkbox"
+                      checked={finalAcknowledge}
+                      onChange={(e) => setFinalAcknowledge(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 accent-destructive"
+                      disabled={isProcessing}
+                    />
+                    <span className="text-sm text-foreground leading-tight">
+                      I understand that this action is <strong>permanent</strong>, <strong>immediate</strong>, and <strong>completely irreversible</strong>. 
+                      All of my data will be erased the moment I click confirm, and GameTaverns cannot restore it under any circumstances.
+                    </span>
+                  </label>
+                )}
               </div>
               <AlertDialogFooter>
                 <Button
@@ -393,6 +413,7 @@ export function DangerZone() {
                   onClick={() => {
                     setConfirmStep(1);
                     setConfirmationText("");
+                    setFinalAcknowledge(false);
                   }}
                   disabled={isProcessing}
                 >
@@ -404,7 +425,11 @@ export function DangerZone() {
                 <Button
                   variant="destructive"
                   onClick={handleAction}
-                  disabled={isProcessing || confirmationText.toLowerCase() !== getRequiredText().toLowerCase()}
+                  disabled={
+                    isProcessing || 
+                    confirmationText.toLowerCase() !== getRequiredText().toLowerCase() ||
+                    (currentAction === "delete_account" && !finalAcknowledge)
+                  }
                 >
                   {isProcessing ? "Processing..." : `Confirm ${actionDetails?.title}`}
                 </Button>
