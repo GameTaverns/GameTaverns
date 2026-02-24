@@ -27,6 +27,7 @@ import bulkImportRoutes from './routes/bulkImport.js';
 import manageAccountRoutes from './routes/manageAccount.js';
 import librarySettingsRoutes from './routes/librarySettings.js';
 import membershipRoutes from './routes/membership.js';
+import exportUserDataRoutes from './routes/exportUserData.js';
 
 export const app = express();
 
@@ -177,6 +178,7 @@ app.use('/api/games/bulk-import', bulkImportRoutes);
 app.use('/api/account', manageAccountRoutes);
 app.use('/api/library-settings', librarySettingsRoutes);
 app.use('/api/membership', membershipRoutes);
+app.use('/api/export-user-data', exportUserDataRoutes);
 
 // Catch-all for unknown API routes
 app.use('/api/*', (req, res) => {
