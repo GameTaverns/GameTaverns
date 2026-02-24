@@ -15,6 +15,7 @@ workflows:
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
         APP_STORE_APP_ID: "6759586784"
+        APP_VERSION_BASE: "1.0"
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.gametaverns.app
@@ -97,7 +98,7 @@ workflows:
         script: |
           xcode-project use-profiles
 
-      - name: Increment build number
+      - name: Increment build number and set version
         script: |
           cd ios/App
           LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" || echo "0")
@@ -106,6 +107,11 @@ workflows:
           if [ "$NEXT" -lt 3 ]; then NEXT=3; fi
           echo "Setting build number to $NEXT"
           agvtool new-version -all $NEXT
+
+          # Set display version to APP_VERSION_BASE.BUILD (e.g. 1.0.12)
+          VERSION="${APP_VERSION_BASE}.${NEXT}"
+          echo "Setting marketing version to $VERSION"
+          agvtool new-marketing-version "$VERSION"
 
       - name: Build ipa for distribution
         script: |
@@ -141,6 +147,7 @@ workflows:
       java: 21
       vars:
         PACKAGE_NAME: "com.gametaverns.app"
+        APP_VERSION_BASE: "1.0"
       android_signing:
         - gametaverns_keystore
       groups:
@@ -217,33 +224,36 @@ workflows:
             echo "No icon source found, using default"
           fi
 
-      - name: Increment version code
+      - name: Increment version code and set version name
         script: |
           LATEST=$(google-play get-latest-build-number --package-name "$PACKAGE_NAME" --tracks internal 2>/dev/null || echo "0")
           NEXT=$(( ${LATEST:-0} + 1 ))
           if [ "$NEXT" -lt 2 ]; then NEXT=2; fi
-          echo "Setting versionCode to $NEXT"
+          VERSION="${APP_VERSION_BASE}.${NEXT}"
+          echo "Setting versionCode=$NEXT, versionName=$VERSION"
           cd android
           UPDATED=0
 
-          # Handle Groovy template variants (literal, assigned, or variable-based versionCode)
+          # Handle Groovy template variants
           if [ -f app/build.gradle ]; then
             perl -i -pe "s/^\s*versionCode\b.*$/        versionCode $NEXT/" app/build.gradle
+            perl -i -pe "s/^\s*versionName\b.*$/        versionName \"$VERSION\"/" app/build.gradle
             echo "Patched app/build.gradle"
-            grep -n "versionCode" app/build.gradle | head -5
+            grep -n "versionCode\|versionName" app/build.gradle | head -5
             UPDATED=1
           fi
 
           # Handle Kotlin DSL template variants
           if [ -f app/build.gradle.kts ]; then
             perl -i -pe "s/^\s*versionCode\b.*$/        versionCode = $NEXT/" app/build.gradle.kts
+            perl -i -pe "s/^\s*versionName\b.*$/        versionName = \"$VERSION\"/" app/build.gradle.kts
             echo "Patched app/build.gradle.kts"
-            grep -n "versionCode" app/build.gradle.kts | head -5
+            grep -n "versionCode\|versionName" app/build.gradle.kts | head -5
             UPDATED=1
           fi
 
           if [ "$UPDATED" -eq 0 ]; then
-            echo "ERROR: Could not find app/build.gradle or app/build.gradle.kts to patch versionCode"
+            echo "ERROR: Could not find app/build.gradle or app/build.gradle.kts to patch"
             find . -maxdepth 4 -name "build.gradle*" -print
             exit 1
           fi
