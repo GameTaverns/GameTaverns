@@ -94,6 +94,26 @@ workflows:
           }
           EOF
 
+      - name: Generate release notes
+        script: |
+          # Get commit messages since last tag, clean up for user-friendly notes
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            NOTES=$(git log "$LAST_TAG"..HEAD --pretty=format:"• %s" --no-merges | head -20)
+          else
+            NOTES=$(git log --pretty=format:"• %s" --no-merges -10)
+          fi
+          # Strip conventional commit prefixes (feat:, fix:, chore:, etc.)
+          NOTES=$(echo "$NOTES" | sed 's/• [a-z]*[(a-z)]*: /• /g; s/• [a-z]*: /• /g')
+          if [ -z "$NOTES" ]; then
+            NOTES="• Bug fixes and improvements"
+          fi
+          echo "Release notes:"
+          echo "$NOTES"
+          echo "RELEASE_NOTES<<EOF" >> $CM_ENV
+          echo "$NOTES" >> $CM_ENV
+          echo "EOF" >> $CM_ENV
+
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
@@ -130,6 +150,7 @@ workflows:
         auth: integration
         submit_to_testflight: true
         expire_build_submitted_for_review: true
+        changelog: $RELEASE_NOTES
       email:
         recipients:
           - tzolakis@gmail.com
@@ -258,6 +279,24 @@ workflows:
             exit 1
           fi
 
+      - name: Generate release notes
+        script: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            NOTES=$(git log "$LAST_TAG"..HEAD --pretty=format:"• %s" --no-merges | head -20)
+          else
+            NOTES=$(git log --pretty=format:"• %s" --no-merges -10)
+          fi
+          NOTES=$(echo "$NOTES" | sed 's/• [a-z]*[(a-z)]*: /• /g; s/• [a-z]*: /• /g')
+          if [ -z "$NOTES" ]; then
+            NOTES="• Bug fixes and improvements"
+          fi
+          echo "Release notes:"
+          echo "$NOTES"
+          echo "RELEASE_NOTES<<EOF" >> $CM_ENV
+          echo "$NOTES" >> $CM_ENV
+          echo "EOF" >> $CM_ENV
+
       - name: Build AAB
         script: |
           cd android
@@ -291,6 +330,9 @@ workflows:
         credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         track: internal
         submit_as_draft: false
+        release_notes:
+          - language: en-US
+            text: $RELEASE_NOTES
       email:
         recipients:
           - tzolakis@gmail.com
