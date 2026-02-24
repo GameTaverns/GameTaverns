@@ -245,7 +245,29 @@ const handler = async (req: Request): Promise<Response> => {
 
         return new Response(JSON.stringify({ 
           success: true, 
-          message: 'Account deleted successfully' 
+          message: 'Account deleted successfully',
+          deletion_receipt: {
+            deleted_at: new Date().toISOString(),
+            user_id: userId,
+            data_removed: [
+              'user_profiles',
+              'user_roles',
+              'libraries (and all games, settings, members, followers, events, polls, import jobs)',
+              'library_logos (storage)',
+              'direct_messages',
+              'forum_threads',
+              'forum_replies',
+              'activity_events',
+              'notification_log',
+              'curated_lists',
+              'game_sessions',
+              'player_elo_ratings',
+              'referrals',
+              'referral_badges',
+              'auth account',
+            ],
+            note: 'All data has been permanently deleted. Database backups are purged within 30 days.',
+          },
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

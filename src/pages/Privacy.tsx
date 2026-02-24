@@ -25,10 +25,10 @@ export default function Privacy() {
           <section>
             <h2 className="text-xl font-semibold border-b pb-2">1. Introduction</h2>
             <p>
-              GameTaverns ("we," "our," or "us") is a hobby project that provides a platform 
-              for board game enthusiasts to catalog and share their game collections. This 
-              Privacy Policy explains how we collect, use, and protect your information when 
-              you use our service.
+              GameTaverns ("we," "our," or "us") operates from Indiana, United States. We 
+              provide a platform for board game enthusiasts to catalog and share their game 
+              collections. This Privacy Policy explains how we collect, use, and protect your 
+              information when you use our service.
             </p>
             <p>
               We are committed to protecting your privacy and handling your data transparently. 
@@ -146,8 +146,36 @@ export default function Privacy() {
               <li><strong>Portability:</strong> Export your library data</li>
               <li><strong>Object:</strong> Opt out of non-essential data processing</li>
             </ul>
+
+            <h3 className="text-lg font-medium mt-4">Self-Service Data Tools</h3>
             <p>
-              To exercise these rights, contact us at{" "}
+              GameTaverns provides built-in tools so you can exercise your rights without 
+              needing to contact us:
+            </p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                <strong>Data Export:</strong> Download a complete JSON file of all your data 
+                from <em>Dashboard → Settings → Profile → Export All My Data</em>. This includes 
+                your profile, libraries, games, messages, activity, achievements, and all other 
+                stored information.
+              </li>
+              <li>
+                <strong>Account Deletion:</strong> Permanently delete your account and all 
+                associated data from <em>Dashboard → Settings → Manage Account</em>. Upon deletion, 
+                you will receive a confirmation receipt listing all data categories that were removed.
+              </li>
+              <li>
+                <strong>Library Clearing/Deletion:</strong> Remove all games from a library or 
+                delete an entire library without deleting your account.
+              </li>
+            </ul>
+            <p className="mt-2">
+              We recommend exporting your data before deleting your account. Deletion is 
+              permanent and cannot be undone. Backups containing deleted data are purged 
+              within 30 days.
+            </p>
+            <p>
+              For any other data requests, contact us at{" "}
               <a href="mailto:admin@gametaverns.com" className="text-primary hover:underline">
                 admin@gametaverns.com
               </a>
@@ -157,7 +185,7 @@ export default function Privacy() {
           <section>
             <h2 className="text-xl font-semibold border-b pb-2">8. International Users</h2>
             <p>
-              GameTaverns is operated from the United States. If you access the service from 
+              GameTaverns is operated from Indiana, United States. If you access the service from 
               outside this region, your data may be transferred to and processed in servers 
               located in the United States. By using our service, you consent to this transfer.
             </p>
