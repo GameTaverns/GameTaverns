@@ -17,7 +17,7 @@ workflows:
         - ios_credentials
       vars:
         BUNDLE_ID: "com.gametaverns.app"
-        APP_STORE_APP_ID: "REPLACE_WITH_APP_STORE_ID"  # Numeric ID from App Store Connect
+        APP_STORE_APP_ID: "6759586784"
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.gametaverns.app
