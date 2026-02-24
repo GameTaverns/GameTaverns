@@ -64,7 +64,7 @@ export function GlobalFeedbackButton() {
         <TooltipTrigger asChild>
           <button
             onClick={() => setOpen(true)}
-            className="fixed bottom-6 left-6 z-50 hidden sm:flex h-auto items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-3 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="fixed bottom-6 left-6 z-50 hidden md:flex h-auto items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-3 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label="Send feedback"
           >
             <MessageSquarePlus className="h-5 w-5" />
