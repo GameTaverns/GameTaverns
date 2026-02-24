@@ -9,7 +9,7 @@ workflows:
     
     environment:
       node: 20
-      xcode: 15.4
+      xcode: latest
       cocoapods: default
       vars:
         XCODE_WORKSPACE: ios/App/App.xcworkspace
