@@ -59,7 +59,7 @@ export function FloatingMessengerBar({ onOpenChat }: FloatingMessengerBarProps) 
     (name || "?").split(" ").map((s) => s[0]).join("").toUpperCase().slice(0, 2);
 
   return (
-    <div className="fixed bottom-0 right-20 z-40 pointer-events-auto">
+    <div className="fixed bottom-0 right-6 z-40 pointer-events-auto hidden sm:block">
       {/* Expanded panel */}
       <AnimatePresence>
         {expanded && (

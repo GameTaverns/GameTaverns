@@ -357,7 +357,7 @@ const GameDetail = () => {
           {/* Image Gallery Section */}
           <div className="space-y-4">
             {/* Main Image - short aspect ratio on mobile, square on desktop, hard max-h safety */}
-            <div className="aspect-[3/2] max-h-[40vh] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full max-w-md mx-auto lg:max-w-none">
+            <div className="aspect-[3/2] max-h-[40vh] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full max-w-[calc(100vw-2rem)] sm:max-w-md mx-auto lg:max-w-none">
               {allImages.length > 0 ? (
                 <>
                   {(() => {
@@ -447,7 +447,7 @@ const GameDetail = () => {
           </div>
 
           {/* Details Section */}
-          <div className="min-w-0 overflow-hidden">
+          <div className="min-w-0 overflow-hidden max-w-[calc(100vw-2rem)]">
             {/* Title with Actions */}
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
               <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
@@ -517,7 +517,7 @@ const GameDetail = () => {
             )}
 
             {/* Categories as clickable badges */}
-            <div className="flex flex-wrap gap-2 mb-6 max-w-full">
+            <div className="flex flex-wrap gap-2 mb-6 max-w-[calc(100vw-2rem)] overflow-hidden">
               {allCategories.map((cat, idx) => {
                 const filterParams = new URLSearchParams();
                 filterParams.set("filter", cat.type);
@@ -558,7 +558,7 @@ const GameDetail = () => {
 
             {/* Tabs for Description and Additional Info */}
             <Tabs defaultValue="description" className="w-full">
-              <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4 max-w-full overflow-x-auto">
+              <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4 max-w-[calc(100vw-2rem)] overflow-x-auto">
                 <TabsTrigger value="description">Description</TabsTrigger>
                 <TabsTrigger value="info">Info</TabsTrigger>
                 <TabsTrigger value="location">Location</TabsTrigger>
