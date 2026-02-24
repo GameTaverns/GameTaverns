@@ -356,5 +356,23 @@
     "ctaDesc": "Rejoignez des milliers de passionnés de jeux de société.",
     "ctaButton": "Commencer — C'est Gratuit",
     "ctaFooter": "Gratuit pour toujours pour un usage personnel. Pas de carte bancaire requise."
+  },
+  "mobileStart": {
+    "tagline": "Votre compagnon de ludothèque",
+    "orBrowse": "ou parcourir une bibliothèque",
+    "browseWithout": "Parcourir sans compte",
+    "libraryName": "Nom de la bibliothèque",
+    "libraryPlaceholder": "ex. cafe-jeux",
+    "urlHint": "Dans l'URL :",
+    "urlExample": "nom-bibliothèque.gametaverns.com",
+    "continue": "Continuer",
+    "connecting": "Connexion…",
+    "enterLibraryName": "Veuillez entrer un nom de bibliothèque",
+    "libraryNotFound": "Bibliothèque introuvable",
+    "libraryNotFoundDesc": "Vérifiez le nom et réessayez.",
+    "libraryUnavailable": "Bibliothèque indisponible",
+    "libraryUnavailableDesc": "Cette bibliothèque est actuellement suspendue.",
+    "connectedTo": "Connecté à {{name}}",
+    "connectionFailed": "Échec de la connexion à la bibliothèque"
   }
 }

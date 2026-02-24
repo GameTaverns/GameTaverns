@@ -356,5 +356,23 @@
     "ctaDesc": "수천 명의 보드게임 애호가와 함께하세요.",
     "ctaButton": "무료로 시작하기",
     "ctaFooter": "개인 사용은 영원히 무료. 신용카드 불필요."
+  },
+  "mobileStart": {
+    "tagline": "보드게임 라이브러리 동반자",
+    "orBrowse": "또는 라이브러리 둘러보기",
+    "browseWithout": "계정 없이 둘러보기",
+    "libraryName": "라이브러리 이름",
+    "libraryPlaceholder": "예: boardgame-cafe",
+    "urlHint": "URL에서 찾을 수 있습니다:",
+    "urlExample": "라이브러리이름.gametaverns.com",
+    "continue": "계속",
+    "connecting": "연결 중…",
+    "enterLibraryName": "라이브러리 이름을 입력하세요",
+    "libraryNotFound": "라이브러리를 찾을 수 없습니다",
+    "libraryNotFoundDesc": "라이브러리 이름을 확인하고 다시 시도하세요.",
+    "libraryUnavailable": "라이브러리를 사용할 수 없습니다",
+    "libraryUnavailableDesc": "이 라이브러리는 현재 중지되었습니다.",
+    "connectedTo": "{{name}}에 연결됨",
+    "connectionFailed": "라이브러리 연결 실패"
   }
 }

@@ -356,5 +356,23 @@
     "ctaDesc": "Unisciti a migliaia di appassionati di giochi da tavolo.",
     "ctaButton": "Inizia — È Gratis",
     "ctaFooter": "Gratis per sempre per uso personale. Nessuna carta di credito richiesta."
+  },
+  "mobileStart": {
+    "tagline": "Il tuo compagno di ludoteca",
+    "orBrowse": "o sfoglia una biblioteca",
+    "browseWithout": "Sfoglia senza account",
+    "libraryName": "Nome della biblioteca",
+    "libraryPlaceholder": "es. cafe-giochi",
+    "urlHint": "Si trova nell'URL:",
+    "urlExample": "nome-biblioteca.gametaverns.com",
+    "continue": "Continua",
+    "connecting": "Connessione…",
+    "enterLibraryName": "Inserisci un nome di biblioteca",
+    "libraryNotFound": "Biblioteca non trovata",
+    "libraryNotFoundDesc": "Controlla il nome della biblioteca e riprova.",
+    "libraryUnavailable": "Biblioteca non disponibile",
+    "libraryUnavailableDesc": "Questa biblioteca è attualmente sospesa.",
+    "connectedTo": "Connesso a {{name}}",
+    "connectionFailed": "Connessione alla biblioteca fallita"
   }
 }

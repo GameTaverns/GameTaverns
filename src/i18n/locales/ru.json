@@ -356,5 +356,23 @@
     "ctaDesc": "Присоединяйтесь к тысячам любителей настольных игр.",
     "ctaButton": "Начать Бесплатно",
     "ctaFooter": "Бесплатно навсегда для личного использования. Без кредитной карты."
+  },
+  "mobileStart": {
+    "tagline": "Ваш спутник библиотеки настольных игр",
+    "orBrowse": "или просмотрите библиотеку",
+    "browseWithout": "Просмотр без аккаунта",
+    "libraryName": "Название библиотеки",
+    "libraryPlaceholder": "напр. cafe-igr",
+    "urlHint": "Находится в URL:",
+    "urlExample": "название-библиотеки.gametaverns.com",
+    "continue": "Продолжить",
+    "connecting": "Подключение…",
+    "enterLibraryName": "Введите название библиотеки",
+    "libraryNotFound": "Библиотека не найдена",
+    "libraryNotFoundDesc": "Проверьте название библиотеки и попробуйте снова.",
+    "libraryUnavailable": "Библиотека недоступна",
+    "libraryUnavailableDesc": "Эта библиотека в данный момент приостановлена.",
+    "connectedTo": "Подключено к {{name}}",
+    "connectionFailed": "Не удалось подключиться к библиотеке"
   }
 }
