@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { SEO, gameJsonLd } from "@/components/seo/SEO";
@@ -46,6 +47,7 @@ import {
 const GameDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { isDemoMode, demoGames } = useDemoMode();
   const { tenantSlug, library } = useTenant();
   const { user } = useAuth();
@@ -179,12 +181,12 @@ const GameDetail = () => {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <span className="text-6xl mb-4">🎲</span>
           <h2 className="font-display text-2xl font-semibold text-foreground mb-2">
-            Game not found
+            {t('game.notFound')}
           </h2>
           <p className="text-muted-foreground mb-4">
-            The game you're looking for doesn't exist.
+            {t('game.notFoundDesc')}
           </p>
-          <Button onClick={() => navigate(baseFilterUrl)}>Back to Collection</Button>
+          <Button onClick={() => navigate(baseFilterUrl)}>{t('game.backToCollection')}</Button>
         </div>
       </Layout>
     );
@@ -271,7 +273,7 @@ const GameDetail = () => {
   // Render markdown description with proper styling
   const DescriptionContent = ({ content }: { content: string | null }) => {
     if (!content) {
-      return <p className="text-muted-foreground italic">No description available.</p>;
+      return <p className="text-muted-foreground italic">{t('game.noDescription')}</p>;
     }
 
     return (
@@ -350,7 +352,7 @@ const GameDetail = () => {
           onClick={() => navigate(-1)}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+          {t('common.back')}
         </Button>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
@@ -478,7 +480,7 @@ const GameDetail = () => {
                     onClick={() => navigate(tenantSlug ? getLibraryUrl(tenantSlug, `/edit/${game.slug || game.id}`) : `/edit/${game.slug || game.id}`)}
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit
+                    {t('common.edit')}
                   </Button>
                 )}
               </div>
@@ -502,7 +504,7 @@ const GameDetail = () => {
                       </div>
                       <div>
                         <p className="font-semibold text-green-700 dark:text-green-300">
-                          {game.sale_price ? `$${game.sale_price.toFixed(2)}` : 'For Sale'}
+                          {game.sale_price ? `$${game.sale_price.toFixed(2)}` : t('game.forSale')}
                         </p>
                         {game.sale_condition && (
                           <p className="text-sm text-green-600/80 dark:text-green-400/80 flex items-center gap-1">
@@ -549,7 +551,7 @@ const GameDetail = () => {
                   className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  View on BoardGameGeek
+                  {t('game.viewOnBGG')}
                 </a>
               )}
               {(game as any).catalog_id && (
@@ -560,17 +562,17 @@ const GameDetail = () => {
             {/* Tabs for Description and Additional Info */}
             <Tabs defaultValue="description" className="w-full">
               <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4 max-w-[calc(100vw-2rem)] overflow-x-auto">
-                <TabsTrigger value="description">Description</TabsTrigger>
-                <TabsTrigger value="info">Info</TabsTrigger>
-                <TabsTrigger value="location">Location</TabsTrigger>
-                {playLogs && <TabsTrigger value="plays">Play History</TabsTrigger>}
-                {!isDemoMode && library && <TabsTrigger value="documents">Documents</TabsTrigger>}
+                <TabsTrigger value="description">{t('game.description')}</TabsTrigger>
+                <TabsTrigger value="info">{t('game.info')}</TabsTrigger>
+                <TabsTrigger value="location">{t('game.location')}</TabsTrigger>
+                {playLogs && <TabsTrigger value="plays">{t('game.playHistory')}</TabsTrigger>}
+                {!isDemoMode && library && <TabsTrigger value="documents">{t('game.documents')}</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="description" className="mt-0">
                 <div className="prose prose-sm max-w-none">
                   <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
-                    Description
+                    {t('game.description')}
                   </h2>
                   <DescriptionContent content={game.description} />
                 </div>
@@ -586,7 +588,7 @@ const GameDetail = () => {
 
               <TabsContent value="info" className="mt-0">
                 <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
-                  Additional Information
+                  {t('game.additionalInfo')}
                 </h2>
                 <div className="overflow-x-auto max-w-full">
                 <Table>
@@ -594,7 +596,7 @@ const GameDetail = () => {
                     {game.play_time && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Play Time
+                          {t('game.playTime')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {game.play_time}
@@ -603,8 +605,8 @@ const GameDetail = () => {
                     )}
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
-                        Number of Players
-                      </TableCell>
+                          {t('game.numberOfPlayers')}
+                        </TableCell>
                       <TableCell className="text-foreground">
                         {playerRange}
                       </TableCell>
@@ -612,7 +614,7 @@ const GameDetail = () => {
                     {game.suggested_age && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Suggested Age
+                          {t('game.suggestedAge')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {game.suggested_age}
@@ -622,7 +624,7 @@ const GameDetail = () => {
                     {game.difficulty && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Difficulty
+                          {t('game.difficulty')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {game.difficulty}
@@ -632,7 +634,7 @@ const GameDetail = () => {
                     {game.game_type && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Game Type
+                          {t('game.gameType')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {game.game_type}
@@ -642,7 +644,7 @@ const GameDetail = () => {
                     {game.publisher && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Publisher
+                          {t('game.publisher')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {game.publisher.name}
@@ -652,7 +654,7 @@ const GameDetail = () => {
                     {(game as any).designers?.length > 0 && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Designer{(game as any).designers.length > 1 ? 's' : ''}
+                          {(game as any).designers.length > 1 ? t('game.designers') : t('game.designer')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {(game as any).designers.map((d: any) => d.name).join(", ")}
@@ -662,7 +664,7 @@ const GameDetail = () => {
                     {(game as any).artists?.length > 0 && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Artist{(game as any).artists.length > 1 ? 's' : ''}
+                          {(game as any).artists.length > 1 ? t('game.artists') : t('game.artist')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {(game as any).artists.map((a: any) => a.name).join(", ")}
@@ -672,7 +674,7 @@ const GameDetail = () => {
                     {game.mechanics.length > 0 && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Mechanics
+                          {t('game.mechanics')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {game.mechanics.map((m) => m.name).join(", ")}
@@ -681,7 +683,7 @@ const GameDetail = () => {
                     )}
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
-                        Copies Owned
+                        {t('game.copiesOwned')}
                       </TableCell>
                       <TableCell className="text-foreground">
                         {(game as any).copies_owned ?? 1}
@@ -689,43 +691,43 @@ const GameDetail = () => {
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
-                        Sleeved
+                        {t('game.sleeved')}
                       </TableCell>
                       <TableCell className="text-foreground">
-                        {game.sleeved ? "Yes" : "No"}
+                        {game.sleeved ? t('common.yes') : t('common.no')}
                       </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
-                        Upgraded Components
+                        {t('game.upgradedComponents')}
                       </TableCell>
                       <TableCell className="text-foreground">
-                        {game.upgraded_components ? "Yes" : "No"}
+                        {game.upgraded_components ? t('common.yes') : t('common.no')}
                       </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
-                        Crowdfunded
+                        {t('game.crowdfunded')}
                       </TableCell>
                       <TableCell className="text-foreground">
-                        {game.crowdfunded ? "Yes" : "No"}
+                        {game.crowdfunded ? t('common.yes') : t('common.no')}
                       </TableCell>
                     </TableRow>
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
-                        Inserts
+                        {t('game.inserts')}
                       </TableCell>
                       <TableCell className="text-foreground">
-                        {game.inserts ? "Yes" : "No"}
+                        {game.inserts ? t('common.yes') : t('common.no')}
                       </TableCell>
                     </TableRow>
                     {game.is_expansion && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Stored In
+                          {t('game.storedIn')}
                         </TableCell>
                         <TableCell className="text-foreground">
-                          {game.in_base_game_box ? "Base game box" : "Separate box"}
+                          {game.in_base_game_box ? t('game.baseGameBox') : t('game.separateBox')}
                         </TableCell>
                       </TableRow>
                     )}
@@ -735,7 +737,7 @@ const GameDetail = () => {
                         {game.admin_data?.purchase_price && (
                           <TableRow className="bg-amber-500/5">
                             <TableCell className="font-medium text-amber-700 dark:text-amber-400">
-                              Purchase Price
+                              {t('game.purchasePrice')}
                             </TableCell>
                             <TableCell className="text-amber-700 dark:text-amber-400">
                               ${game.admin_data.purchase_price.toFixed(2)}
@@ -745,7 +747,7 @@ const GameDetail = () => {
                         {game.admin_data?.purchase_date && (
                           <TableRow className="bg-amber-500/5">
                             <TableCell className="font-medium text-amber-700 dark:text-amber-400">
-                              Purchase Date
+                              {t('game.purchaseDate')}
                             </TableCell>
                             <TableCell className="text-amber-700 dark:text-amber-400">
                               {new Date(game.admin_data.purchase_date).toLocaleDateString()}
@@ -755,7 +757,7 @@ const GameDetail = () => {
                         {(game.admin_data as any)?.current_value && (
                           <TableRow className="bg-amber-500/5">
                             <TableCell className="font-medium text-amber-700 dark:text-amber-400">
-                              Current Value
+                              {t('game.currentValue')}
                             </TableCell>
                             <TableCell className="text-amber-700 dark:text-amber-400">
                               ${(game.admin_data as any).current_value.toFixed(2)}
@@ -777,7 +779,7 @@ const GameDetail = () => {
 
               <TabsContent value="location" className="mt-0">
                 <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
-                  Storage Location
+                  {t('game.storageLocation')}
                 </h2>
                 {(game.location_room || game.location_shelf || game.location_misc) ? (
                   <Table>
@@ -787,7 +789,7 @@ const GameDetail = () => {
                           <TableCell className="font-medium text-muted-foreground">
                             <div className="flex items-center gap-2">
                               <MapPin className="h-4 w-4" />
-                              Room
+                              {t('game.room')}
                             </div>
                           </TableCell>
                           <TableCell className="text-foreground">
@@ -798,7 +800,7 @@ const GameDetail = () => {
                       {game.location_shelf && (
                         <TableRow>
                           <TableCell className="font-medium text-muted-foreground">
-                            Shelf
+                            {t('game.shelf')}
                           </TableCell>
                           <TableCell className="text-foreground">
                             {game.location_shelf}
@@ -808,7 +810,7 @@ const GameDetail = () => {
                       {game.location_misc && (
                         <TableRow>
                           <TableCell className="font-medium text-muted-foreground">
-                            Notes
+                            {t('game.notes')}
                           </TableCell>
                           <TableCell className="text-foreground">
                             {game.location_misc}
@@ -819,7 +821,7 @@ const GameDetail = () => {
                   </Table>
                 ) : (
                   <p className="text-muted-foreground italic">
-                    No location set for this game.
+                    {t('game.noLocation')}
                   </p>
                 )}
               </TabsContent>
@@ -828,12 +830,12 @@ const GameDetail = () => {
                 <TabsContent value="plays" className="mt-0">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="font-display text-xl font-semibold text-foreground">
-                      Play History
+                      {t('game.playHistory')}
                     </h2>
                     <LogPlayDialog gameId={game.id} gameTitle={game.title}>
                       <Button size="sm">
                         <Play className="h-4 w-4 mr-2" />
-                        Log Play
+                        {t('game.logPlay')}
                       </Button>
                     </LogPlayDialog>
                   </div>
@@ -867,7 +869,7 @@ const GameDetail = () => {
             <div className="flex items-center gap-2 mb-6">
               <Package className="h-6 w-6 text-primary" />
               <h2 className="font-display text-2xl font-semibold text-foreground">
-                Expansions ({expansions.length})
+                {t('game.expansions')} ({expansions.length})
               </h2>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -933,6 +935,7 @@ export default GameDetail;
 
 // Inline component for marking a game for trade from the detail page
 function MarkForTradeButton({ gameId, gameTitle, libraryId }: { gameId: string; gameTitle: string; libraryId: string }) {
+  const { t } = useTranslation();
   const { data: listings } = useMyTradeListings();
   const addListing = useAddTradeListing();
   const removeListing = useRemoveTradeListing();
@@ -949,7 +952,7 @@ function MarkForTradeButton({ gameId, gameTitle, libraryId }: { gameId: string; 
     if (!existingListing) return;
     try {
       await removeListing.mutateAsync(existingListing.id);
-      toast({ title: "Removed from trade list" });
+      toast({ title: t('game.removedFromTradeList') });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -964,7 +967,7 @@ function MarkForTradeButton({ gameId, gameTitle, libraryId }: { gameId: string; 
         willing_to_ship: willingToShip,
         local_only: localOnly,
       });
-      toast({ title: `${gameTitle} marked for trade` });
+      toast({ title: t('game.markedForTrade', { title: gameTitle }) });
       setDialogOpen(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -981,7 +984,7 @@ function MarkForTradeButton({ gameId, gameTitle, libraryId }: { gameId: string; 
         title="Remove from trade list"
       >
         <ArrowLeftRight className="h-4 w-4 mr-2" />
-        Listed for Trade
+        {t('game.listedForTrade')}
       </Button>
     );
   }
@@ -989,18 +992,18 @@ function MarkForTradeButton({ gameId, gameTitle, libraryId }: { gameId: string; 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" title="Mark for trade">
+        <Button variant="outline" size="sm" title={t('game.markForTrade')}>
           <ArrowLeftRight className="h-4 w-4 mr-2" />
-          Mark for Trade
+          {t('game.markForTrade')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>List "{gameTitle}" for Trade</DialogTitle>
+          <DialogTitle>{t('game.listGameForTrade', { title: gameTitle })}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Condition</Label>
+            <Label>{t('game.condition')}</Label>
             <Select value={condition} onValueChange={(v) => setCondition(v as SaleCondition)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -1014,16 +1017,16 @@ function MarkForTradeButton({ gameId, gameTitle, libraryId }: { gameId: string; 
           </div>
           <div className="flex items-center gap-3">
             <input type="checkbox" id="willingToShip" checked={willingToShip} onChange={(e) => setWillingToShip(e.target.checked)} className="rounded" />
-            <Label htmlFor="willingToShip">Willing to ship</Label>
+            <Label htmlFor="willingToShip">{t('game.willingToShip')}</Label>
           </div>
           <div className="flex items-center gap-3">
             <input type="checkbox" id="localOnly" checked={localOnly} onChange={(e) => setLocalOnly(e.target.checked)} className="rounded" />
-            <Label htmlFor="localOnly">Local pickup only</Label>
+            <Label htmlFor="localOnly">{t('game.localPickupOnly')}</Label>
           </div>
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleAdd} disabled={addListing.isPending}>List for Trade</Button>
+          <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
+          <Button onClick={handleAdd} disabled={addListing.isPending}>{t('game.listForTrade')}</Button>
         </div>
       </DialogContent>
     </Dialog>
