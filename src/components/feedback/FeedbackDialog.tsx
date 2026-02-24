@@ -96,7 +96,7 @@ export function FeedbackDialog() {
   );
 }
 
-function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const submitFeedback = useSubmitFeedback();
 
   const form = useForm<FeedbackFormValues>({

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Menu, X, Library, Globe, HelpCircle, BookOpen, MessageSquare,
-  Mail, LogOut, User, Trophy, Users, LayoutDashboard, List,
+  Menu, Library, Globe, HelpCircle, BookOpen, MessageSquare,
+  Mail, LogOut, User, Trophy, Users, LayoutDashboard, List, MessageSquarePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import { useMyLibrary, useMyLibraries, useUserProfile } from "@/hooks/useLibrary
 import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { FeedbackNavItem } from "@/components/feedback/FeedbackNavItem";
 
 interface MobileNavDrawerProps {
   trigger?: React.ReactNode;
@@ -93,12 +94,9 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
       </SheetTrigger>
 
       <SheetContent side="right" className="w-72 p-0 flex flex-col bg-background">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b">
+        {/* Header — no manual close button; SheetContent provides its own */}
+        <div className="px-4 py-4 border-b">
           <span className="font-display text-base font-bold">Menu</span>
-          <Button variant="ghost" size="icon" onClick={close} className="h-8 w-8">
-            <X className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Nav items */}
@@ -159,6 +157,11 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                 />
               )}
               <NavItem href={getPlatformUrl("/docs")} icon={HelpCircle} label="Help" />
+
+              <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Support
+              </div>
+              <FeedbackNavItem onClose={close} />
             </>
           ) : (
             <>
