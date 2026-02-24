@@ -1,75 +1,73 @@
 import { Link } from "react-router-dom";
-import { FileText, Shield, Cookie, Scale, ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { FileText, Shield, Cookie, Scale } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-
-const legalPages = [
-  {
-    title: "Privacy Policy",
-    description: "How we collect, use, and protect your personal data",
-    icon: Shield,
-    path: "/privacy",
-  },
-  {
-    title: "Terms of Service",
-    description: "Rules and guidelines for using GameTaverns",
-    icon: Scale,
-    path: "/terms",
-  },
-  {
-    title: "Cookie Policy",
-    description: "Information about cookies and tracking technologies",
-    icon: Cookie,
-    path: "/cookies",
-  },
-];
+import { PublicHeader } from "@/components/layout/PublicHeader";
+import { Footer } from "@/components/layout/Footer";
 
 export default function Legal() {
+  const { t } = useTranslation();
+
+  const legalPages = [
+    {
+      title: t("legal.privacyPolicy"),
+      description: t("legal.privacyDesc"),
+      icon: Shield,
+      path: "/privacy",
+    },
+    {
+      title: t("legal.termsOfService"),
+      description: t("legal.termsDesc"),
+      icon: Scale,
+      path: "/terms",
+    },
+    {
+      title: t("legal.cookiePolicy"),
+      description: t("legal.cookieDesc"),
+      icon: Cookie,
+      path: "/cookies",
+    },
+  ];
+
   return (
-    <div className="min-h-screen parchment-texture">
-      <div className="container max-w-4xl py-16 px-4">
-        <Link to="/">
-          <Button variant="ghost" size="sm" className="mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
-          </Button>
-        </Link>
-        <div className="text-center mb-12">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-primary" />
-          <h1 className="text-4xl font-display font-bold mb-4">Legal Information</h1>
-          <p className="text-lg text-muted-foreground">
-            Important policies and terms governing your use of GameTaverns
-          </p>
-        </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <PublicHeader />
+      <main className="flex-1">
+        <div className="container max-w-4xl py-16 px-4">
+          <div className="text-center mb-12">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-primary" />
+            <h1 className="text-4xl font-display font-bold mb-4">{t("legal.title")}</h1>
+            <p className="text-lg text-muted-foreground">{t("legal.subtitle")}</p>
+          </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {legalPages.map((page) => (
-            <Link key={page.path} to={page.path}>
-              <Card className="h-full transition-all hover:shadow-lg hover:border-primary/50">
-                <CardHeader className="text-center">
-                  <page.icon className="h-10 w-10 mx-auto mb-2 text-primary" />
-                  <CardTitle className="text-lg">{page.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-center">
-                    {page.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {legalPages.map((page) => (
+              <Link key={page.path} to={page.path}>
+                <Card className="h-full transition-all hover:shadow-lg hover:border-primary/50">
+                  <CardHeader className="text-center">
+                    <page.icon className="h-10 w-10 mx-auto mb-2 text-primary" />
+                    <CardTitle className="text-lg">{page.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-center">{page.description}</CardDescription>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
 
-        <div className="mt-12 text-center text-sm text-muted-foreground">
-          <p>Last updated: January 2025</p>
-          <p className="mt-2">
-            Questions about our policies?{" "}
-            <a href="mailto:legal@gametaverns.com" className="text-primary hover:underline">
-              Contact us
-            </a>
-          </p>
+          <div className="mt-12 text-center text-sm text-muted-foreground">
+            <p>{t("legal.lastUpdated")}</p>
+            <p className="mt-2">
+              {t("legal.questions")}{" "}
+              <a href="mailto:legal@gametaverns.com" className="text-primary hover:underline">
+                {t("legal.contactUs")}
+              </a>
+            </p>
+          </div>
         </div>
-      </div>
+      </main>
+      <Footer />
     </div>
   );
 }
