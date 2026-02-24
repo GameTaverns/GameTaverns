@@ -125,7 +125,8 @@ workflows:
         auth: integration
         submit_to_testflight: true
         expire_build_submitted_for_review: true
-        changelog: $RELEASE_NOTES
+        beta_groups:
+          - External Testers
       email:
         recipients:
           - tzolakis@gmail.com
