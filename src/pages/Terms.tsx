@@ -215,7 +215,7 @@ export default function Terms() {
             <h2 className="text-xl font-semibold border-b pb-2">13. Governing Law</h2>
             <p>
               These terms shall be governed by and construed in accordance with the laws 
-              of the State of Florida, United States, without regard to conflict of law principles.
+              of the State of Indiana, United States, without regard to conflict of law principles.
             </p>
           </section>
 
