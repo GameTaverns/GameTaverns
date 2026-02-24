@@ -1,0 +1,89 @@
+workflows:
+  ios-build:
+    name: iOS Build & TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    
+    environment:
+      node: 20
+      xcode: latest
+      cocoapods: default
+      groups:
+        # Create these in Codemagic → Settings → Environment variables → Group: "ios_credentials"
+        # APP_STORE_CONNECT_ISSUER_ID     — App Store Connect API → Keys → Issuer ID
+        # APP_STORE_CONNECT_KEY_IDENTIFIER — Key ID from App Store Connect API key
+        # APP_STORE_CONNECT_PRIVATE_KEY    — Contents of the .p8 file (paste full text)
+        # CERTIFICATE_PRIVATE_KEY          — Run: ssh-keygen -t rsa -b 2048 -m PEM -f cert_key && cat cert_key
+        - ios_credentials
+      vars:
+        BUNDLE_ID: "com.gametaverns.app"
+        APP_STORE_APP_ID: "REPLACE_WITH_APP_STORE_ID"  # Numeric ID from App Store Connect
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.gametaverns.app
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+      cancel_previous_builds: true
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm ci
+
+      - name: Patch Capacitor plugins
+        script: |
+          node scripts/patch-capacitor.cjs
+
+      - name: Build web assets
+        script: |
+          npm run build -- --mode ios
+
+      - name: Add iOS platform
+        script: |
+          npx cap sync ios
+
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Build iOS app
+        script: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath build/App.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+          
+          # Re-sign with proper identity
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme App \
+            --archive-xcargs "CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
+
+    artifacts:
+      - ios/App/build/**/*.ipa
+      - ios/App/build/**/*.xcarchive
+
+    publishing:
+      app_store_connect:
+        # Credentials come from the ios_credentials group
+        auth: integration
+        submit_to_testflight: true
+        expire_build_submitted_for_review: true
+      email:
+        recipients:
+          - tzolakis@gmail.com  # Update with your email
+        notify:
+          success: true
+          failure: true
