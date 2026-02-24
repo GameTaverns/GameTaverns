@@ -1,7 +1,8 @@
-// v4 - lazy imports for badges + server tabs 2026-02-20
+// v5 - i18n support 2026-02-24
 import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +57,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
 }
 
 export default function PlatformAdmin() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated, loading: authLoading, isAdmin, roleLoading } = useAuth();
@@ -133,7 +135,7 @@ export default function PlatformAdmin() {
           <div className="flex items-center gap-3">
             <Shield className="h-8 w-8 text-secondary" />
             <span className="font-display text-2xl font-bold text-cream">
-              Platform Admin
+              {t('admin.title')}
             </span>
           </div>
           <Button 
@@ -141,7 +143,7 @@ export default function PlatformAdmin() {
             className="text-cream hover:text-white hover:bg-wood-medium/50"
             onClick={() => navigate("/dashboard")}
           >
-            Back to Dashboard
+            {t('admin.backToDashboard')}
           </Button>
         </div>
       </header>
@@ -149,10 +151,10 @@ export default function PlatformAdmin() {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-display font-bold text-cream mb-2">
-            Site Administration
+            {t('admin.siteAdmin')}
           </h1>
           <p className="text-cream/70">
-            Manage the GameTaverns platform, users, and global settings.
+            {t('admin.subtitle')}
           </p>
         </div>
         
@@ -163,35 +165,35 @@ export default function PlatformAdmin() {
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
               <Activity className="h-4 w-4 mr-1 sm:mr-2" />
-              Analytics
+              {t('admin.analytics')}
             </TabsTrigger>
             <TabsTrigger 
               value="users"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
               <Users className="h-4 w-4 mr-1 sm:mr-2" />
-              Users
+              {t('admin.users')}
             </TabsTrigger>
             <TabsTrigger 
               value="libraries"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
               <Database className="h-4 w-4 mr-1 sm:mr-2" />
-              Libraries
+              {t('admin.libraries')}
             </TabsTrigger>
             <TabsTrigger 
               value="settings"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
               <Settings className="h-4 w-4 mr-1 sm:mr-2" />
-              Settings
+              {t('admin.settings')}
             </TabsTrigger>
             <TabsTrigger 
               value="feedback"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative text-xs sm:text-sm"
             >
               <MessageCircle className="h-4 w-4 mr-1 sm:mr-2" />
-              Feedback
+              {t('admin.feedback')}
               {unreadFeedbackCount && unreadFeedbackCount > 0 && (
                 <Badge className="ml-1 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground">
                   {unreadFeedbackCount}
@@ -203,7 +205,7 @@ export default function PlatformAdmin() {
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground relative text-xs sm:text-sm"
             >
               <Trophy className="h-4 w-4 mr-1 sm:mr-2" />
-              Clubs
+              {t('admin.clubs')}
               {pendingClubs && pendingClubs.length > 0 && (
                 <Badge className="ml-1 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground">
                   {pendingClubs.length}
@@ -215,28 +217,28 @@ export default function PlatformAdmin() {
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
               <HeartPulse className="h-4 w-4 mr-1 sm:mr-2" />
-              Health
+              {t('admin.health')}
             </TabsTrigger>
             <TabsTrigger 
               value="roadmap"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
               <Map className="h-4 w-4 mr-1 sm:mr-2" />
-              Roadmap
+              {t('admin.roadmap')}
             </TabsTrigger>
             <TabsTrigger 
               value="badges"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
               <BadgeCheck className="h-4 w-4 mr-1 sm:mr-2" />
-              Badges
+              {t('admin.badges')}
             </TabsTrigger>
             <TabsTrigger 
               value="server"
               className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
             >
               <Shield className="h-4 w-4 mr-1 sm:mr-2" />
-              Server
+              {t('admin.server')}
             </TabsTrigger>
           </TabsList>
           
@@ -274,7 +276,7 @@ export default function PlatformAdmin() {
 
           <TabsContent value="badges" className="mt-6">
             <TabErrorBoundary>
-              <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading badges…</div>}>
+              <Suspense fallback={<div className="text-cream/70 text-sm p-4">{t('admin.loadingBadges')}</div>}>
                 <SpecialBadgesManagement />
               </Suspense>
             </TabErrorBoundary>
@@ -282,7 +284,7 @@ export default function PlatformAdmin() {
 
           <TabsContent value="server" className="mt-6">
             <TabErrorBoundary>
-              <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading server tools…</div>}>
+              <Suspense fallback={<div className="text-cream/70 text-sm p-4">{t('admin.loadingServer')}</div>}>
                 <ServerManagement />
               </Suspense>
             </TabErrorBoundary>

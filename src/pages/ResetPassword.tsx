@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
+import { useTranslation } from "react-i18next";
 
 export default function ResetPassword() {
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,19 +26,16 @@ export default function ResetPassword() {
 
   useEffect(() => {
     const verifyToken = async () => {
-      // Check for custom token first
       if (token) {
         try {
           let valid = false;
           let email = '';
           
           if (isSelfHostedMode()) {
-            // Self-hosted: use Express API
             const result = await apiClient.post<{ valid: boolean; email?: string }>('/auth/verify-reset-token', { token });
             valid = result.valid;
             email = result.email || '';
           } else {
-            // Cloud mode: use Supabase edge function
             const { data, error } = await supabase.functions.invoke('verify-reset-token', {
               body: { token, action: 'verify' },
             });
@@ -62,19 +61,16 @@ export default function ResetPassword() {
         return;
       }
 
-      // Fall back to Supabase recovery flow (for backwards compatibility - cloud only)
       if (!isSelfHostedMode()) {
         const { data: { session } } = await supabase.auth.getSession();
         setIsValidToken(!!session);
       } else {
-        // Self-hosted without token = invalid
         setIsValidToken(false);
       }
     };
 
     verifyToken();
 
-    // Listen for auth state changes (recovery link clicked - legacy flow, cloud only)
     if (!isSelfHostedMode()) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
         if (event === "PASSWORD_RECOVERY") {
@@ -90,8 +86,8 @@ export default function ResetPassword() {
 
     if (password !== confirmPassword) {
       toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match",
+        title: t('errors.passwordsDontMatch'),
+        description: t('errors.passwordsDontMatchDesc'),
         variant: "destructive",
       });
       return;
@@ -99,8 +95,8 @@ export default function ResetPassword() {
 
     if (password.length < 6) {
       toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters",
+        title: t('errors.passwordTooShort'),
+        description: t('errors.passwordTooShortDesc'),
         variant: "destructive",
       });
       return;
@@ -110,35 +106,30 @@ export default function ResetPassword() {
 
     try {
       if (isSelfHostedMode()) {
-        // Self-hosted: use Express API
         await apiClient.post('/auth/reset-password', { token, newPassword: password });
       } else if (token) {
-        // Cloud mode with custom token
         const { data, error } = await supabase.functions.invoke('verify-reset-token', {
           body: { token, action: 'reset', newPassword: password },
         });
-
         if (error) throw error;
         if (!data?.success) throw new Error(data?.error || 'Failed to reset password');
       } else {
-        // Legacy Supabase flow (cloud only)
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
       }
 
       setIsSuccess(true);
       toast({
-        title: "Password updated",
-        description: "Your password has been reset successfully.",
+        title: t('resetPassword.passwordUpdated'),
+        description: t('resetPassword.passwordResetSuccess'),
       });
 
-      // Redirect to login after a short delay
       setTimeout(() => {
         navigate("/login");
       }, 3000);
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: t('errors.error'),
         description: error.message || "Failed to reset password",
         variant: "destructive",
       });
@@ -147,19 +138,17 @@ export default function ResetPassword() {
     }
   };
 
-  // Loading state while checking token
   if (isValidToken === null) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center">
         <div className="flex items-center gap-2 text-cream">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Verifying...</span>
+          <span>{t('resetPassword.verifying')}</span>
         </div>
       </div>
     );
   }
 
-  // Invalid or expired token
   if (!isValidToken) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center p-4">
@@ -169,28 +158,28 @@ export default function ResetPassword() {
               <img src={logoImage} alt="GameTaverns" className="h-16 w-auto" />
               <span className="font-display text-2xl font-bold text-cream">GameTaverns</span>
             </Link>
-            <CardTitle className="font-display text-2xl text-cream">Invalid Link</CardTitle>
+            <CardTitle className="font-display text-2xl text-cream">{t('resetPassword.invalidLink')}</CardTitle>
             <CardDescription className="text-muted-foreground">
-              This password reset link is invalid or has expired.
+              {t('resetPassword.linkExpired')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <p className="text-center text-cream/80">
-                Please request a new password reset link.
+                {t('resetPassword.requestNewLinkMessage')}
               </p>
               <Button
                 asChild
                 className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
               >
-                <Link to="/forgot-password">Request New Link</Link>
+                <Link to="/forgot-password">{t('resetPassword.requestNewLink')}</Link>
               </Button>
               <div className="text-center">
                 <Link 
                   to="/login" 
                   className="text-secondary hover:text-secondary/80"
                 >
-                  Back to sign in
+                  {t('forgotPassword.backToSignIn')}
                 </Link>
               </div>
             </div>
@@ -209,14 +198,14 @@ export default function ResetPassword() {
             <span className="font-display text-2xl font-bold text-cream">GameTaverns</span>
           </Link>
           <CardTitle className="font-display text-2xl text-cream">
-            {isSuccess ? "Password Reset!" : "Set New Password"}
+            {isSuccess ? t('resetPassword.passwordReset') : t('resetPassword.setNewPassword')}
           </CardTitle>
           <CardDescription className="text-muted-foreground">
             {isSuccess 
-              ? "You can now sign in with your new password" 
+              ? t('resetPassword.canSignInNow')
               : tokenEmail 
-                ? `Enter a new password for ${tokenEmail}`
-                : "Enter your new password below"
+                ? t('resetPassword.enterNewPasswordFor', { email: tokenEmail })
+                : t('resetPassword.enterNewPassword')
             }
           </CardDescription>
         </CardHeader>
@@ -227,35 +216,35 @@ export default function ResetPassword() {
                 <CheckCircle className="h-12 w-12 text-green-500" />
               </div>
               <p className="text-center text-cream/80">
-                Redirecting you to sign in...
+                {t('resetPassword.redirecting')}
               </p>
               <Button
                 asChild
                 className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-display"
               >
-                <Link to="/login">Sign In Now</Link>
+                <Link to="/login">{t('resetPassword.signInNow')}</Link>
               </Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-cream/80">New Password</Label>
+                <Label htmlFor="password" className="text-cream/80">{t('resetPassword.newPassword')}</Label>
                 <PasswordInput
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('resetPassword.passwordPlaceholder')}
                   className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-cream/80">Confirm Password</Label>
+                <Label htmlFor="confirmPassword" className="text-cream/80">{t('resetPassword.confirmPassword')}</Label>
                 <PasswordInput
                   id="confirmPassword"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('resetPassword.passwordPlaceholder')}
                   className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                   required
                 />
@@ -268,10 +257,10 @@ export default function ResetPassword() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
+                    {t('resetPassword.updating')}
                   </>
                 ) : (
-                  "Update Password"
+                  t('resetPassword.updatePassword')
                 )}
               </Button>
             </form>

@@ -584,7 +584,7 @@ export default function Features() {
             ) : (
               <Link to="/signup">
                 <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-8">
-                  Start Now — It's Free
+                  Create Your Library
                 </Button>
               </Link>
             )}
