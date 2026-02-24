@@ -357,7 +357,7 @@ const GameDetail = () => {
           {/* Image Gallery Section */}
           <div className="space-y-4">
             {/* Main Image - short aspect ratio on mobile, square on desktop, hard max-h safety */}
-            <div className="aspect-[3/2] max-h-[40vh] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full max-w-[calc(100vw-2rem)] sm:max-w-md mx-auto lg:max-w-none">
+            <div className="aspect-[3/2] max-h-[40vh] sm:aspect-[4/3] sm:max-h-[50vh] lg:aspect-square lg:max-h-none overflow-hidden rounded-lg bg-muted card-elevated relative group w-full mx-auto lg:max-w-none">
               {allImages.length > 0 ? (
                 <>
                   {(() => {

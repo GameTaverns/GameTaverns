@@ -7,6 +7,7 @@ import { PresenceDot } from "@/components/social/PresenceDot";
 import { useAuth } from "@/hooks/useAuth";
 import { useDMConversations, useUnreadDMCount, type DMConversation } from "@/hooks/useDirectMessages";
 import { useMultiPresence, type PresenceStatus } from "@/hooks/usePresence";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 interface FloatingMessengerBarProps {
@@ -16,6 +17,7 @@ interface FloatingMessengerBarProps {
 export function FloatingMessengerBar({ onOpenChat }: FloatingMessengerBarProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
   const [search, setSearch] = useState("");
   const { data: conversations = [] } = useDMConversations();
@@ -58,8 +60,29 @@ export function FloatingMessengerBar({ onOpenChat }: FloatingMessengerBarProps) 
   const initials = (name: string | null) =>
     (name || "?").split(" ").map((s) => s[0]).join("").toUpperCase().slice(0, 2);
 
+  // ─── Mobile: Facebook-style floating bubble ───
+  if (isMobile) {
+    return (
+      <div className="fixed bottom-20 right-4 z-40 pointer-events-auto">
+        <button
+          onClick={() => navigate("/dm")}
+          className="relative flex items-center justify-center h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-xl active:scale-95 transition-transform"
+          aria-label="Messages"
+        >
+          <MessageSquare className="h-6 w-6" />
+          {totalUnread > 0 && (
+            <span className="absolute -top-1 -right-1 bg-destructive text-white text-[10px] font-bold rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center shadow-md">
+              {totalUnread > 9 ? "9+" : totalUnread}
+            </span>
+          )}
+        </button>
+      </div>
+    );
+  }
+
+  // ─── Desktop: Expanded messenger bar ───
   return (
-    <div className="fixed bottom-0 right-6 z-40 pointer-events-auto hidden sm:block">
+    <div className="fixed bottom-0 right-6 z-40 pointer-events-auto">
       {/* Expanded panel */}
       <AnimatePresence>
         {expanded && (

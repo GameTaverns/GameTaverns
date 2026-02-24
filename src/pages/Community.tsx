@@ -139,32 +139,32 @@ function ThreadRow({ thread }: { thread: ForumThread }) {
   return (
     <Link
       to={`/community/thread/${thread.id}`}
-      className="flex items-center gap-4 p-4 rounded-lg hover:bg-accent/50 transition-colors border border-border"
+      className="flex items-start sm:items-center gap-3 p-3 sm:p-4 rounded-lg hover:bg-accent/50 transition-colors border border-border"
     >
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           {thread.is_pinned && (
             <Pin className="h-3.5 w-3.5 text-primary flex-shrink-0" />
           )}
           {thread.is_locked && (
             <Lock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           )}
-          <span className="font-medium truncate">{thread.title}</span>
+          <span className="font-medium text-sm truncate">{thread.title}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{thread.author?.display_name || "Unknown"}</span>
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground flex-wrap">
+          <span className="truncate max-w-[120px]">{thread.author?.display_name || "Unknown"}</span>
           <FeaturedBadge achievement={thread.author?.featured_badge ?? null} size="xs" />
           <span>•</span>
-          <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>
+          <span className="whitespace-nowrap">{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>
         </div>
       </div>
-      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-shrink-0">
+      <div className="flex items-center gap-3 text-xs sm:text-sm text-muted-foreground flex-shrink-0">
         <div className="flex items-center gap-1">
-          <MessageCircle className="h-4 w-4" />
+          <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           <span>{thread.reply_count}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Eye className="h-4 w-4" />
+          <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           <span>{thread.view_count}</span>
         </div>
       </div>
@@ -223,28 +223,30 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/community">
-            <Button variant="ghost" className="-ml-2">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Forums
-            </Button>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg border ${colorClass}`}>
-              <Icon className="h-6 w-6" />
+      <div className="space-y-4">
+        <Link to="/community">
+          <Button variant="ghost" className="-ml-2">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Forums
+          </Button>
+        </Link>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`p-2 rounded-lg border flex-shrink-0 ${colorClass}`}>
+              <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">{category.name}</h1>
-              <p className="text-muted-foreground">{category.description}</p>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold truncate">{category.name}</h1>
+              {category.description && (
+                <p className="text-muted-foreground text-sm line-clamp-2">{category.description}</p>
+              )}
             </div>
           </div>
+          <Button onClick={() => setShowCreateThread(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            New Thread
+          </Button>
         </div>
-        <Button onClick={() => setShowCreateThread(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Thread
-        </Button>
       </div>
 
       {/* Category Rules */}
@@ -518,18 +520,18 @@ function ForumHome() {
   const activeClubs = myClubs.filter((c) => c.status === "approved" && c.is_active);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
+    <div className="space-y-6 overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-2">
           <TenantLink href={getPlatformUrl("/dashboard?tab=community")}>
             <Button variant="ghost" className="-ml-2">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
           </TenantLink>
-          <div>
-            <h1 className="text-3xl font-bold">{forumTitle}</h1>
-            <p className="text-muted-foreground mt-1">{forumDescription}</p>
+          <div className="px-1">
+            <h1 className="text-2xl sm:text-3xl font-bold">{forumTitle}</h1>
+            <p className="text-muted-foreground text-sm mt-1">{forumDescription}</p>
           </div>
         </div>
         {canManage && (
