@@ -40,6 +40,10 @@ workflows:
         script: |
           npm run build -- --mode ios
 
+      - name: Add iOS platform
+        script: |
+          npx cap add ios
+
       - name: Sync iOS platform
         script: |
           npx cap sync ios
