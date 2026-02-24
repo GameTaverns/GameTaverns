@@ -3,7 +3,7 @@ import { Download, Loader2, FileJson, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 
 export function DataExportCard() {
   const [isExporting, setIsExporting] = useState(false);
@@ -13,9 +13,24 @@ export function DataExportCard() {
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('export-user-data');
+      let data: any;
 
-      if (error) throw error;
+      if (isSelfHostedMode()) {
+        const token = localStorage.getItem("auth_token");
+        if (!token) throw new Error("Not authenticated");
+        const res = await fetch("/api/export-user-data", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Export failed");
+        }
+        data = await res.json();
+      } else {
+        const result = await supabase.functions.invoke('export-user-data');
+        if (result.error) throw result.error;
+        data = result.data;
+      }
 
       // Download as JSON file
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
