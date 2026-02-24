@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import DOMPurify from "dompurify";
 import { useEditor, EditorContent, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -196,14 +198,19 @@ export function RichTextEditor({
 
 /** Read-only HTML renderer for forum content */
 export function RichTextContent({ html }: { html: string }) {
-  // If it looks like plain text (no HTML tags), wrap in <p>
-  const isHtml = /<[a-z][\s\S]*>/i.test(html);
-  const rendered = isHtml ? html : `<p>${html.replace(/\n/g, "<br/>")}</p>`;
+  const sanitized = useMemo(() => {
+    const isHtml = /<[a-z][\s\S]*>/i.test(html);
+    const raw = isHtml ? html : `<p>${html.replace(/\n/g, "<br/>")}</p>`;
+    return DOMPurify.sanitize(raw, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'blockquote', 'code', 'pre', 'img', 'hr'],
+      ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class'],
+    });
+  }, [html]);
 
   return (
     <div
       className="prose prose-sm max-w-none dark:prose-invert"
-      dangerouslySetInnerHTML={{ __html: rendered }}
+      dangerouslySetInnerHTML={{ __html: sanitized }}
     />
   );
 }

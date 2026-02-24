@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { SEO, websiteJsonLd } from "@/components/seo/SEO";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary } from "@/hooks/useLibrary";
@@ -69,6 +70,7 @@ export default function Platform() {
                 Explore Libraries
               </Button>
             </Link>
+            <LanguageSwitcher />
             <ThemeToggle />
             {isAuthenticated ? (
               <>

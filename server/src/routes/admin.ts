@@ -486,10 +486,36 @@ router.get('/settings', async (req: Request, res: Response) => {
 });
 
 // Update site setting
+const ALLOWED_SETTING_KEYS = new Set([
+  'site_name', 'site_description', 'site_author',
+  'turnstile_site_key',
+  'theme_primary_h', 'theme_primary_s', 'theme_primary_l',
+  'theme_accent_h', 'theme_accent_s', 'theme_accent_l',
+  'theme_background_h', 'theme_background_s', 'theme_background_l',
+  'theme_card_h', 'theme_card_s', 'theme_card_l',
+  'theme_sidebar_h', 'theme_sidebar_s', 'theme_sidebar_l',
+  'theme_dark_primary_h', 'theme_dark_primary_s', 'theme_dark_primary_l',
+  'theme_dark_accent_h', 'theme_dark_accent_s', 'theme_dark_accent_l',
+  'theme_dark_background_h', 'theme_dark_background_s', 'theme_dark_background_l',
+  'theme_dark_card_h', 'theme_dark_card_s', 'theme_dark_card_l',
+  'theme_dark_sidebar_h', 'theme_dark_sidebar_s', 'theme_dark_sidebar_l',
+  'theme_font_display', 'theme_font_body',
+  'footer_text', 'twitter_handle', 'instagram_url', 'facebook_url', 'discord_url', 'contact_email',
+  'feature_play_logs', 'feature_wishlist', 'feature_for_sale', 'feature_messaging',
+  'feature_coming_soon', 'feature_demo_mode', 'feature_ratings', 'feature_events',
+  'announcement_banner', 'announcement_enabled', 'announcement_message', 'announcement_type',
+  'maintenance_mode', 'maintenance_message',
+]);
+
 router.put('/settings/:key', async (req: Request, res: Response) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
+
+    if (!ALLOWED_SETTING_KEYS.has(key)) {
+      res.status(400).json({ error: `Setting key "${key}" is not allowed` });
+      return;
+    }
     
     await pool.query(
       `INSERT INTO site_settings (key, value) VALUES ($1, $2)
