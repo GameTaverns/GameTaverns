@@ -11,13 +11,6 @@ workflows:
       node: 20
       xcode: latest
       cocoapods: default
-      groups:
-        # Create these in Codemagic → Settings → Environment variables → Group: "ios_credentials"
-        # APP_STORE_CONNECT_ISSUER_ID     — App Store Connect API → Keys → Issuer ID
-        # APP_STORE_CONNECT_KEY_IDENTIFIER — Key ID from App Store Connect API key
-        # APP_STORE_CONNECT_PRIVATE_KEY    — Contents of the .p8 file (paste full text)
-        # CERTIFICATE_PRIVATE_KEY          — Run: ssh-keygen -t rsa -b 2048 -m PEM -f cert_key && cat cert_key
-        - ios_credentials
       vars:
         BUNDLE_ID: "com.gametaverns.app"
         APP_STORE_APP_ID: "6759586784"
@@ -46,7 +39,7 @@ workflows:
         script: |
           npm run build -- --mode ios
 
-      - name: Add iOS platform
+      - name: Sync iOS platform
         script: |
           npx cap sync ios
 
@@ -57,36 +50,24 @@ workflows:
       - name: Build iOS app
         script: |
           cd ios/App
-          xcodebuild \
-            -workspace App.xcworkspace \
-            -scheme App \
-            -sdk iphoneos \
-            -configuration Release \
-            -archivePath build/App.xcarchive \
-            archive \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
-          
-          # Re-sign with proper identity
           xcode-project build-ipa \
-            --workspace ios/App/App.xcworkspace \
-            --scheme App \
-            --archive-xcargs "CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
+            --workspace App.xcworkspace \
+            --scheme App
 
     artifacts:
-      - ios/App/build/**/*.ipa
-      - ios/App/build/**/*.xcarchive
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
 
     publishing:
       app_store_connect:
-        # Credentials come from the ios_credentials group
         auth: integration
         submit_to_testflight: true
         expire_build_submitted_for_review: true
       email:
         recipients:
-          - tzolakis@gmail.com  # Update with your email
+          - tzolakis@gmail.com
         notify:
           success: true
           failure: true
