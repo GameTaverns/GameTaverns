@@ -15,7 +15,11 @@ import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-export function MobileNavDrawer() {
+interface MobileNavDrawerProps {
+  trigger?: React.ReactNode;
+}
+
+export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
   const [open, setOpen] = useState(false);
   const { signOut, isAuthenticated } = useAuth();
   const { data: library } = useMyLibrary();
@@ -76,14 +80,16 @@ export function MobileNavDrawer() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
-          aria-label="Open navigation menu"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        {trigger || (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
       </SheetTrigger>
 
       <SheetContent side="right" className="w-72 p-0 flex flex-col bg-background">

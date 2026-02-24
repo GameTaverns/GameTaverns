@@ -4,6 +4,7 @@ import { Sidebar } from "./Sidebar";
 import { Footer } from "./Footer";
 import { AnnouncementBanner } from "./AnnouncementBanner";
 import { OwnerAdminBar } from "./OwnerAdminBar";
+import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
 import { useTenant } from "@/contexts/TenantContext";
 import { cn } from "@/lib/utils";
 
@@ -39,13 +40,14 @@ export function Layout({ children, hideSidebar = false }: LayoutProps) {
 
       <main
         className={cn(
-          "container max-w-[2000px] py-4 sm:py-8 px-3 sm:px-4 lg:px-8 pb-16 flex-1",
+          "container max-w-[2000px] py-4 sm:py-8 px-3 sm:px-4 lg:px-8 pb-20 md:pb-16 flex-1",
           showSidebar && "lg:pl-80"
         )}
       >
         {children}
       </main>
       <Footer />
+      <MobileBottomTabs />
     </div>
   );
 }
