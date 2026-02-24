@@ -11,8 +11,6 @@ workflows:
       node: 20
       xcode: 15.4
       cocoapods: default
-      groups:
-        - ios_credentials
       vars:
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
