@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -55,12 +56,13 @@ import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
 import { TwoFactorSettings } from "@/components/settings/TwoFactorSettings";
 
 function AccountSettingsTabs() {
+  const { t } = useTranslation();
   return (
     <Tabs defaultValue="profile">
       <TabsList className="mb-4">
-        <TabsTrigger value="profile">Profile</TabsTrigger>
-        <TabsTrigger value="security">Security</TabsTrigger>
-        <TabsTrigger value="appearance">Appearance</TabsTrigger>
+        <TabsTrigger value="profile">{t('settings.profile')}</TabsTrigger>
+        <TabsTrigger value="security">{t('settings.security')}</TabsTrigger>
+        <TabsTrigger value="appearance">{t('settings.appearance')}</TabsTrigger>
       </TabsList>
       <TabsContent value="profile">
         <AccountSettings />
@@ -147,6 +149,7 @@ const AuditLogViewer = lazy(() =>
 );
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
   const { data: defaultLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
@@ -277,7 +280,7 @@ export default function Dashboard() {
   if (loading && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-cream">Loading...</div>
+        <div className="animate-pulse text-cream">{t('common.loading')}</div>
       </div>
     );
   }
@@ -315,10 +318,10 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Flame className="h-4 w-4 text-orange-400" />
-              Trending This Month
+              {t('dashboard.trendingThisMonth')}
             </CardTitle>
           </div>
-          <CardDescription className="text-cream/60 text-xs">Games generating the most buzz in your library right now</CardDescription>
+          <CardDescription className="text-cream/60 text-xs">{t('dashboard.trendingDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <HotnessLeaderboard libraryId={library.id} tenantSlug={library.slug} limit={10} />
@@ -329,26 +332,26 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="pb-2 px-4 pt-4">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Gamepad2 className="h-4 w-4 text-secondary" />
-            My Games
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Add or manage your collection</CardDescription>
+             <Gamepad2 className="h-4 w-4 text-secondary" />
+            {t('dashboard.myGames')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.myGamesDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <div className="flex flex-col gap-1.5">
             <TenantLink href={getLibraryUrl(library.slug, "/games")}>
               <Button size="sm" className={`w-full ${btnPrimary}`}>
-                <Plus className="h-3 w-3" /> Add Games
+                <Plus className="h-3 w-3" /> {t('dashboard.addGames')}
               </Button>
             </TenantLink>
             <TenantLink href={getLibraryUrl(library.slug, "/manage")}>
               <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                <Settings className="h-3 w-3" /> Manage Collection
+                <Settings className="h-3 w-3" /> {t('dashboard.manageCollection')}
               </Button>
             </TenantLink>
             <TenantLink href={libraryUrl!}>
               <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                <Eye className="h-3 w-3" /> View Public Page
+                <Eye className="h-3 w-3" /> {t('dashboard.viewPublicPage')}
               </Button>
             </TenantLink>
           </div>
@@ -361,10 +364,10 @@ export default function Dashboard() {
           <CardTitle className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-secondary" />
-              Events
+              {t('dashboard.events')}
             </span>
             <Button size="sm" className={btnPrimary} onClick={() => setShowCreateEvent(true)}>
-              <Plus className="h-3 w-3" /> Create
+              <Plus className="h-3 w-3" /> {t('common.create')}
             </Button>
           </CardTitle>
         </CardHeader>
@@ -382,16 +385,16 @@ export default function Dashboard() {
       <Card className={`${cardClass} overflow-hidden`}>
         <CardHeader className="px-4 pt-4 pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Vote className="h-4 w-4 text-secondary" />
-            Polls
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Create and manage game night polls</CardDescription>
+             <Vote className="h-4 w-4 text-secondary" />
+             {t('dashboard.polls')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.pollsDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <TenantLink href={getLibraryUrl(library.slug, "/community?tab=polls")}>
             <Button variant="outline" size="sm" className={`w-full text-xs ${btnOutline}`}>
               <Vote className="h-3 w-3 mr-1.5" />
-              View &amp; Manage Polls
+              {t('dashboard.viewManagePolls')}
             </Button>
           </TenantLink>
         </CardContent>
@@ -401,16 +404,16 @@ export default function Dashboard() {
       <Card className={`${cardClass} overflow-hidden`}>
         <CardHeader className="px-4 pt-4 pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <MessageSquare className="h-4 w-4 text-secondary" />
-            Community
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Forums, polls &amp; discussions</CardDescription>
+             <MessageSquare className="h-4 w-4 text-secondary" />
+             {t('dashboard.community')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.communityDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <TenantLink href={getLibraryUrl(library.slug, "/community")}>
             <Button variant="outline" size="sm" className={`w-full text-xs ${btnOutline}`}>
               <MessageSquare className="h-3 w-3 mr-1.5" />
-              Go to Community Page
+              {t('dashboard.goToCommunityPage')}
             </Button>
           </TenantLink>
         </CardContent>
@@ -420,13 +423,13 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="pb-2 px-4 pt-4">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <BookOpen className="h-4 w-4 text-secondary" />
-            Lending
+             <BookOpen className="h-4 w-4 text-secondary" />
+             {t('dashboard.lending')}
             {pendingLoanRequests > 0 && (
-              <Badge variant="destructive" className="text-[10px]">{pendingLoanRequests} pending</Badge>
-            )}
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Track loans and borrow requests</CardDescription>
+               <Badge variant="destructive" className="text-[10px]">{pendingLoanRequests} {t('dashboard.pending')}</Badge>
+             )}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.lendingDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <LendingDashboard libraryId={library.id} />
@@ -437,21 +440,21 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="pb-2 px-4 pt-4">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Star className="h-4 w-4 text-secondary" />
-            Ratings & Want to Play
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Community feedback and wanted games</CardDescription>
+             <Star className="h-4 w-4 text-secondary" />
+             {t('dashboard.ratingsWishlist')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.ratingsWishlistDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <div className="flex flex-col gap-1.5">
             <TenantLink href={getLibraryUrl(library.slug, "/settings?tab=ratings")}>
               <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                <Star className="h-3.5 w-3.5" /> View Ratings
+                <Star className="h-3.5 w-3.5" /> {t('dashboard.viewRatings')}
               </Button>
             </TenantLink>
             <TenantLink href={getLibraryUrl(library.slug, "/settings?tab=want-to-play")}>
               <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                <Heart className="h-3.5 w-3.5" /> Want to Play
+                <Heart className="h-3.5 w-3.5" /> {t('dashboard.wantToPlay')}
               </Button>
             </TenantLink>
           </div>
@@ -463,10 +466,10 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="pb-2 px-4 pt-4">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Shuffle className="h-4 w-4 text-secondary" />
-            Random Picker
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Can't decide? Let fate choose!</CardDescription>
+             <Shuffle className="h-4 w-4 text-secondary" />
+             {t('dashboard.randomPicker')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.randomPickerDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />
@@ -477,15 +480,15 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="pb-2 px-4 pt-4">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Settings className="h-4 w-4 text-secondary" />
-            Library Settings
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Customize your library configuration</CardDescription>
+             <Settings className="h-4 w-4 text-secondary" />
+             {t('dashboard.librarySettings')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.librarySettingsDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <TenantLink href={settingsUrl!}>
             <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-              <Settings className="h-3.5 w-3.5" /> Manage Settings
+              <Settings className="h-3.5 w-3.5" /> {t('dashboard.manageSettings')}
             </Button>
           </TenantLink>
         </CardContent>
@@ -495,8 +498,8 @@ export default function Dashboard() {
       <Card className={`${cardClass} border-dashed`}>
         <CardContent className="py-4 px-4 flex items-center justify-between">
           <div>
-            <p className="font-medium text-sm">Create Another Library</p>
-            <p className="text-xs text-cream/60">{myLibraries.length}/{maxLibraries} used</p>
+            <p className="font-medium text-sm">{t('dashboard.createAnotherLibrary')}</p>
+            <p className="text-xs text-cream/60">{myLibraries.length}/{maxLibraries} {t('dashboard.used')}</p>
           </div>
           <Link to="/create-library">
             <Button size="sm" className={btnPrimary}>
@@ -512,20 +515,20 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm">
               <ListOrdered className="h-4 w-4 text-secondary" />
-              Curated Lists
+              {t('dashboard.curatedLists')}
             </CardTitle>
             <Link to="/lists">
               <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
-                View All <ArrowRight className="h-3 w-3" />
+                {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
           </div>
-          <CardDescription className="text-cream/60 text-xs">Ranked game lists — vote for community favourites</CardDescription>
+          <CardDescription className="text-cream/60 text-xs">{t('dashboard.curatedListsDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <Link to="/lists">
             <Button size="sm" className={`w-full ${btnPrimary}`}>
-              <ListOrdered className="h-3.5 w-3.5" /> Browse &amp; Create Lists
+              <ListOrdered className="h-3.5 w-3.5" /> {t('dashboard.browseCreateLists')}
             </Button>
           </Link>
         </CardContent>
@@ -535,15 +538,15 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="pb-2 px-4 pt-4">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Share2 className="h-4 w-4 text-secondary" />
-            Share & Grow
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Referrals, stats cards & embed tools</CardDescription>
+             <Share2 className="h-4 w-4 text-secondary" />
+             {t('dashboard.shareGrow')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.shareGrowDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <Link to="/grow">
             <Button size="sm" className={`w-full ${btnPrimary}`}>
-              <Share2 className="h-3 w-3" /> Open Growth Hub
+              <Share2 className="h-3 w-3" /> {t('dashboard.openGrowthHub')}
             </Button>
           </Link>
         </CardContent>
@@ -559,13 +562,13 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <MessageSquare className="h-4 w-4 text-secondary" />
-                Forums
+                {t('dashboard.forums')}
               </CardTitle>
               <InfoPopover title="Community Forums" description="Engage with the broader GameTaverns community. Library and club forums are accessible from their respective pages." className="text-cream/40 hover:text-cream/70" />
             </div>
             <Link to="/community">
               <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
-                View All <ArrowRight className="h-3 w-3" />
+                {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
           </div>
@@ -579,11 +582,11 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Vote className="h-4 w-4 text-secondary" />
-              Polls
+              {t('dashboard.polls')}
             </CardTitle>
             <Link to="/community?tab=polls">
               <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
-                View All <ArrowRight className="h-3 w-3" />
+                {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
           </div>
@@ -599,18 +602,18 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Users className="h-4 w-4 text-secondary" />
-              My Clubs
+              {t('dashboard.myClubs')}
               {myClubs.length > 0 && <Badge variant="secondary" className="text-[10px]">{myClubs.length}</Badge>}
             </CardTitle>
             <div className="flex gap-1.5">
               <Link to="/join-club">
                 <Button variant="outline" size="sm" className={`text-cream ${btnOutline}`}>
-                  <Ticket className="h-3 w-3" /> Join
+                  <Ticket className="h-3 w-3" /> {t('dashboard.join')}
                 </Button>
               </Link>
               <Link to="/request-club">
                 <Button size="sm" className={btnPrimary}>
-                  <Plus className="h-3 w-3" /> Request
+                  <Plus className="h-3 w-3" /> {t('dashboard.request')}
                 </Button>
               </Link>
             </div>
@@ -620,7 +623,7 @@ export default function Dashboard() {
           {myClubs.length === 0 ? (
             <div className="text-center py-4">
               <Users className="h-8 w-8 mx-auto text-cream/30 mb-2" />
-              <p className="text-cream/60 text-xs">No clubs yet. Create or join one to connect libraries.</p>
+              <p className="text-cream/60 text-xs">{t('dashboard.noClubs')}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -655,10 +658,10 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="px-4 pt-4 pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Globe className="h-4 w-4 text-secondary" />
-            My Communities
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Libraries you own or belong to</CardDescription>
+             <Globe className="h-4 w-4 text-secondary" />
+             {t('dashboard.myCommunities')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.myCommunitiesDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           {(() => {
@@ -675,7 +678,7 @@ export default function Dashboard() {
               return (
                 <Link to="/directory">
                   <Button size="sm" className={`w-full ${btnPrimary}`}>
-                    <Users className="h-3.5 w-3.5" /> Browse Communities
+                    <Users className="h-3.5 w-3.5" /> {t('dashboard.browseCommunities')}
                   </Button>
                 </Link>
               );
@@ -686,10 +689,10 @@ export default function Dashboard() {
                   <a key={entry.key} href={entry.slug ? getLibraryUrl(entry.slug, "/") : "#"} className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors">
                     <span className="text-xs font-medium truncate">{entry.name}</span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {entry.role === 'owner' && <Badge variant="secondary" className="text-[10px]">Owner</Badge>}
-                      {entry.role === 'admin' && <Badge className="text-[10px] bg-blue-600">Admin</Badge>}
-                      {entry.role === 'moderator' && <Badge variant="outline" className="text-[10px]">Mod</Badge>}
-                      {entry.role === 'member' && <Badge variant="outline" className="text-[10px]">Member</Badge>}
+                      {entry.role === 'owner' && <Badge variant="secondary" className="text-[10px]">{t('dashboard.owner')}</Badge>}
+                      {entry.role === 'admin' && <Badge className="text-[10px] bg-blue-600">{t('dashboard.admin')}</Badge>}
+                      {entry.role === 'moderator' && <Badge variant="outline" className="text-[10px]">{t('dashboard.moderator')}</Badge>}
+                      {entry.role === 'member' && <Badge variant="outline" className="text-[10px]">{t('dashboard.member')}</Badge>}
                       <ArrowRight className="h-3 w-3 text-cream/60" />
                     </div>
                   </a>
@@ -705,10 +708,10 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="px-4 pt-4 pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <ArrowLeftRight className="h-4 w-4 text-secondary" />
-            Trading
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Buy, sell, and trade games</CardDescription>
+             <ArrowLeftRight className="h-4 w-4 text-secondary" />
+             {t('dashboard.trading')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.tradingDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           {isSelfHostedSupabaseStack() ? (
@@ -716,7 +719,7 @@ export default function Dashboard() {
           ) : (
             <div className="text-center py-4">
               <ArrowLeftRight className="h-8 w-8 mx-auto text-cream/30 mb-2" />
-              <p className="text-cream/60 text-xs">Available on self-hosted deployments only.</p>
+              <p className="text-cream/60 text-xs">{t('dashboard.selfHostedOnly')}</p>
             </div>
           )}
         </CardContent>
@@ -726,10 +729,10 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="px-4 pt-4 pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Target className="h-4 w-4 text-secondary" />
-            Challenges
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Community gaming challenges</CardDescription>
+             <Target className="h-4 w-4 text-secondary" />
+             {t('dashboard.challenges')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.challengesDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4"><ChallengesManager libraryId={library.id} canManage={true} /></CardContent>
       </Card>
@@ -741,15 +744,15 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="px-4 pt-4 pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4 text-secondary" />
-            My Profile
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Your public profile page</CardDescription>
+             <User className="h-4 w-4 text-secondary" />
+             {t('dashboard.myProfile')}
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.myProfileDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <Link to={`/u/${profile.username}`}>
             <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-              <Eye className="h-3.5 w-3.5" /> View Profile
+              <Eye className="h-3.5 w-3.5" /> {t('dashboard.viewProfile')}
               <ArrowRight className="h-3 w-3 ml-auto" />
             </Button>
           </Link>
@@ -760,10 +763,10 @@ export default function Dashboard() {
       <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
         <CardHeader className="px-4 pt-4 pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Settings className="h-4 w-4 text-secondary" />
-            Account Settings
-          </CardTitle>
-          <CardDescription className="text-cream/70 text-xs">Profile, appearance &amp; security</CardDescription>
+             <Settings className="h-4 w-4 text-secondary" />
+             {t('dashboard.accountSettings')}
+           </CardTitle>
+           <CardDescription className="text-cream/70 text-xs">{t('dashboard.accountSettingsDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           <AccountSettingsTabs />
@@ -775,12 +778,12 @@ export default function Dashboard() {
         <CardHeader className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm">
-              <Trophy className="h-4 w-4 text-secondary" />
-              Achievements
+               <Trophy className="h-4 w-4 text-secondary" />
+               {t('dashboard.achievements')}
             </CardTitle>
             <Link to="/achievements">
               <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 -mr-2 text-xs h-7 gap-1">
-                View All <ArrowRight className="h-3 w-3" />
+                {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
               </Button>
             </Link>
           </div>
@@ -792,15 +795,15 @@ export default function Dashboard() {
       <Card className={cardClass}>
         <CardHeader className="px-4 pt-4 pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <BookOpen className="h-4 w-4 text-secondary" />
-            Borrowed Games
+             <BookOpen className="h-4 w-4 text-secondary" />
+             {t('dashboard.borrowedGames')}
             {activeBorrowedLoans.length > 0 && <Badge variant="secondary" className="ml-auto text-[10px]">{activeBorrowedLoans.length}</Badge>}
-          </CardTitle>
-          <CardDescription className="text-cream/60 text-xs">Games you're currently borrowing</CardDescription>
+           </CardTitle>
+           <CardDescription className="text-cream/60 text-xs">{t('dashboard.borrowedGamesDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="px-4 pb-4">
           {activeBorrowedLoans.length === 0 ? (
-            <p className="text-xs text-cream/60 text-center py-2">No active borrows</p>
+            <p className="text-xs text-cream/60 text-center py-2">{t('dashboard.noActiveBorrows')}</p>
           ) : (
             <div className="space-y-1.5">
               {activeBorrowedLoans.slice(0, 5).map((loan) => (
@@ -810,7 +813,7 @@ export default function Dashboard() {
                     <Badge variant="outline" className="text-[10px]">{loan.status}</Badge>
                   </div>
                   {loan.library?.name && (
-                    <span className="text-[10px] text-cream/60 mt-0.5">From: {loan.library.name}</span>
+                    <span className="text-[10px] text-cream/60 mt-0.5">{t('dashboard.from')}: {loan.library.name}</span>
                   )}
                 </div>
               ))}
@@ -859,7 +862,7 @@ export default function Dashboard() {
       <main className="container mx-auto px-4 py-6 max-w-6xl">
         <div className="flex items-center justify-between mb-5">
           <h1 className="font-display text-xl sm:text-2xl font-bold text-cream">
-            Welcome back, {profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0]}
+            {t('dashboard.welcomeBack', { name: profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0] })}
           </h1>
           <DashboardCustomizer
             visibleTabs={dashPrefs.visibleTabs}
@@ -912,7 +915,7 @@ export default function Dashboard() {
             {/* Library Switcher */}
             {myLibraries.length > 1 && (
               <div className="flex items-center gap-2 flex-wrap mb-4">
-                <span className="text-xs text-cream/70 font-medium">Active Library:</span>
+                <span className="text-xs text-cream/70 font-medium">{t('dashboard.activeLibrary')}</span>
                 {myLibraries.map((lib) => (
                   <Button
                     key={lib.id}
@@ -934,11 +937,11 @@ export default function Dashboard() {
             {!library ? (
               <Card className={cardClass}>
                 <CardContent className="py-8 text-center">
-                  <Library className="h-10 w-10 mx-auto text-cream/30 mb-3" />
-                  <p className="text-sm text-cream/70 mb-4">You don't have a library yet. Create one to get started!</p>
+                   <Library className="h-10 w-10 mx-auto text-cream/30 mb-3" />
+                   <p className="text-sm text-cream/70 mb-4">{t('dashboard.noLibrary')}</p>
                   <Link to="/create-library">
                     <Button className={btnPrimary}>
-                      <Plus className="h-3.5 w-3.5" /> Create Library
+                      <Plus className="h-3.5 w-3.5" /> {t('dashboard.createLibrary')}
                     </Button>
                   </Link>
                 </CardContent>
@@ -967,8 +970,8 @@ export default function Dashboard() {
           <TabsContent value="referrals">
             <div className="max-w-2xl">
               <div className="mb-6">
-                <h2 className="font-display text-xl font-bold mb-1">Invite & Earn Badges</h2>
-                <p className="text-muted-foreground text-sm">Share GameTaverns with friends and earn exclusive badges as they join.</p>
+                <h2 className="font-display text-xl font-bold mb-1">{t('dashboard.inviteEarnBadges')}</h2>
+                <p className="text-muted-foreground text-sm">{t('dashboard.inviteDesc')}</p>
               </div>
               <ReferralPanel />
             </div>
@@ -981,7 +984,7 @@ export default function Dashboard() {
               <Card className={cardClass}>
                 <CardContent className="py-8 text-center">
                   <BarChart3 className="h-10 w-10 mx-auto text-cream/30 mb-3" />
-                  <p className="text-sm text-cream/60">Create a library to start tracking analytics.</p>
+                  <p className="text-sm text-cream/60">{t('dashboard.createAnalytics')}</p>
                 </CardContent>
               </Card>
             )}
@@ -992,10 +995,10 @@ export default function Dashboard() {
             <Card className="bg-red-950/60 border-red-700/50 text-cream">
               <CardHeader className="px-4 pt-4 pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm text-red-400">
-                  <AlertTriangle className="h-4 w-4" />
-                  Danger Zone
+                   <AlertTriangle className="h-4 w-4" />
+                   {t('dashboard.dangerZone')}
                 </CardTitle>
-                <CardDescription className="text-red-300/70 text-xs">Irreversible and destructive actions</CardDescription>
+                 <CardDescription className="text-red-300/70 text-xs">{t('dashboard.dangerZoneDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="px-4 pb-4"><DangerZone /></CardContent>
             </Card>
