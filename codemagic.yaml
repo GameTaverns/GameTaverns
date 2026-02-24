@@ -202,9 +202,9 @@ workflows:
           fi
           if [ -f "$ICON_SOURCE" ]; then
             RES_DIR="android/app/src/main/res"
-            declare -A DENSITIES=( ["mdpi"]=48 ["hdpi"]=72 ["xhdpi"]=96 ["xxhdpi"]=144 ["xxxhdpi"]=192 )
-            for DENSITY in "${!DENSITIES[@]}"; do
-              SIZE=${DENSITIES[$DENSITY]}
+            for PAIR in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+              DENSITY="${PAIR%%:*}"
+              SIZE="${PAIR##*:}"
               MIPMAP_DIR="$RES_DIR/mipmap-$DENSITY"
               mkdir -p "$MIPMAP_DIR"
               npx sharp-cli -i "$ICON_SOURCE" -o "$MIPMAP_DIR/ic_launcher.png" resize "$SIZE" "$SIZE" 2>/dev/null || \
