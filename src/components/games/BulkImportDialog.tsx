@@ -328,55 +328,101 @@ export function BulkImportDialog({
     input.style.display = "none";
     document.body.appendChild(input);
 
-    input.addEventListener("change", () => {
-      console.log("[BulkImport] 📱 Detached input onChange fired! files:", input.files?.length);
-      const file = input.files?.[0];
-      if (file) {
-        console.log("[BulkImport] ✅ Got file from detached input:", file.name, file.size);
-        // Read file content immediately and persist to sessionStorage
-        // so it survives WebView re-mounts
-        const reader = new FileReader();
-        reader.onload = () => {
-          const text = reader.result as string;
-          console.log("[BulkImport] 📱 File read complete, length:", text.length);
-          // Persist to sessionStorage FIRST (survives component remounts)
-          sessionStorage.setItem("bulk_import_csvData", text);
-          sessionStorage.setItem("bulk_import_fileName", file.name);
-          const format = detectFileFormat(text, file.name);
-          sessionStorage.setItem("bulk_import_format", format || "");
-          // Set React state (works if same instance, no-op if unmounted)
-          setCsvFile(file);
-          setCsvData(text);
-          setDetectedFormat(format);
-          console.log("[BulkImport] 📱 State updated — csvFile:", file.name, "format:", format);
-          // Dispatch event so a NEW component instance can pick up the data
-          window.dispatchEvent(new Event("bulk_import_file_ready"));
-        };
-        reader.readAsText(file);
+    let processed = false;
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+    let pollingTimeout: ReturnType<typeof setTimeout> | null = null;
+    let appStateHandle: { remove: () => void } | null = null;
+
+    const cleanup = () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+      if (pollingTimeout) {
+        clearTimeout(pollingTimeout);
+        pollingTimeout = null;
+      }
+      if (appStateHandle) {
+        appStateHandle.remove();
+        appStateHandle = null;
       }
       filePickerActiveRef.current = false;
       setTimeout(() => {
-        try { document.body.removeChild(input); } catch (_) {}
-      }, 1000);
-    });
-
-    let cleaned = false;
-    const cleanup = () => {
-      if (cleaned) return;
-      cleaned = true;
-      setTimeout(() => {
-        if (!input.files?.length) {
-          console.log("[BulkImport] 📱 No file selected after resume, cleaning up");
-          filePickerActiveRef.current = false;
-          try { document.body.removeChild(input); } catch (_) {}
+        try {
+          if (document.body.contains(input)) document.body.removeChild(input);
+        } catch (_) {
+          // ignore detached-input cleanup errors
         }
-      }, 2000);
+      }, 300);
     };
 
+    const processPickedFile = (file: File) => {
+      if (processed) return;
+      processed = true;
+      console.log("[BulkImport] ✅ Got file from detached input:", file.name, file.size);
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = (reader.result as string) || "";
+        const format = detectFileFormat(text, file.name);
+
+        // Persist first when possible (survives WebView remount), but never block UI state if storage fails.
+        try {
+          sessionStorage.setItem("bulk_import_csvData", text);
+          sessionStorage.setItem("bulk_import_fileName", file.name);
+          sessionStorage.setItem("bulk_import_format", format || "");
+        } catch (err) {
+          console.warn("[BulkImport] Failed to persist picked file in sessionStorage:", err);
+        }
+
+        setCsvFile(file);
+        setCsvData(text);
+        setDetectedFormat(format);
+        setPendingPlays(null);
+        window.dispatchEvent(new Event("bulk_import_file_ready"));
+        console.log("[BulkImport] 📱 File attached in dialog:", file.name, "format:", format);
+
+        cleanup();
+      };
+
+      reader.onerror = () => {
+        console.error("[BulkImport] Failed reading selected file");
+        cleanup();
+      };
+
+      reader.readAsText(file);
+    };
+
+    // Primary path
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (file) processPickedFile(file);
+    });
+
+    // Fallback path: some Android WebViews fail to emit 'change' reliably after picker resume.
+    pollingInterval = setInterval(() => {
+      if (processed) return;
+      const file = input.files?.[0];
+      if (file) {
+        console.log("[BulkImport] 📱 Fallback polling detected selected file");
+        processPickedFile(file);
+      }
+    }, 300);
+
+    pollingTimeout = setTimeout(() => {
+      if (!processed) {
+        console.log("[BulkImport] 📱 Picker timed out without a selected file");
+        cleanup();
+      }
+    }, 30000);
+
     CapApp.addListener("appStateChange", (state) => {
-      if (state.isActive) cleanup();
-    }).then(handle => {
-      setTimeout(() => handle.remove(), 60000);
+      if (state.isActive && !processed) {
+        const file = input.files?.[0];
+        if (file) processPickedFile(file);
+      }
+    }).then((handle) => {
+      appStateHandle = handle;
     });
 
     input.click();
