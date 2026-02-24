@@ -99,8 +99,8 @@ export function DangerZone() {
       case "delete_account":
         return {
           title: "Delete Account",
-          description: "This will permanently delete your account and all associated data.",
-          warning: "All libraries, games, and personal data will be permanently deleted. This action cannot be undone.",
+          description: "This will PERMANENTLY and IMMEDIATELY delete your entire account and every piece of data associated with it. There is no grace period, no recovery option, and no way to undo this.",
+          warning: "The following will be deleted instantly and forever: your profile, all libraries, all games, play sessions, messages, forum posts, achievements, ELO ratings, curated lists, loan history, referrals, notifications, and your login credentials. We strongly recommend exporting your data first from the Profile tab.",
           confirmLabel: "email address",
           icon: UserX,
         };
@@ -294,27 +294,44 @@ export function DangerZone() {
           )}
 
           {/* Delete Account */}
-          <div className="flex items-center justify-between p-4 border border-destructive/30 rounded-lg bg-background">
-            <div>
-              <h4 className="font-medium text-foreground">Delete Account</h4>
-              <p className="text-sm text-muted-foreground">
-                Permanently delete your account and all associated data.
-              </p>
-              {isAdmin && (
-                <p className="text-xs text-amber-500 mt-1 flex items-center gap-1">
-                  <ShieldAlert className="h-3 w-3" />
-                  Admins cannot delete their own accounts
+          <div className="p-4 border-2 border-destructive/50 rounded-lg bg-destructive/5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-destructive flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Delete Account
+                </h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Permanently and immediately delete your account and <strong>all</strong> associated data.
                 </p>
-              )}
+              </div>
+              <Button
+                variant="destructive"
+                onClick={() => startAction("delete_account")}
+                disabled={isAdmin}
+              >
+                <UserX className="h-4 w-4 mr-2" />
+                Delete Account
+              </Button>
             </div>
-            <Button
-              variant="destructive"
-              onClick={() => startAction("delete_account")}
-              disabled={isAdmin}
-            >
-              <UserX className="h-4 w-4 mr-2" />
-              Delete Account
-            </Button>
+            <div className="text-xs text-muted-foreground bg-muted/50 rounded p-3 space-y-1">
+              <p className="font-medium text-foreground">This will permanently delete:</p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                <li>Your profile, avatar, and banner</li>
+                <li>All libraries you own (games, settings, members, followers)</li>
+                <li>All play sessions, ELO ratings, and achievements</li>
+                <li>All forum threads, replies, and direct messages</li>
+                <li>All curated lists, loan history, and referrals</li>
+                <li>Your login credentials and authentication data</li>
+              </ul>
+              <p className="font-medium text-destructive pt-1">This action is instant and irreversible. Export your data first.</p>
+            </div>
+            {isAdmin && (
+              <p className="text-xs text-amber-500 flex items-center gap-1">
+                <ShieldAlert className="h-3 w-3" />
+                Admins cannot delete their own accounts
+              </p>
+            )}
           </div>
       </div>
 
