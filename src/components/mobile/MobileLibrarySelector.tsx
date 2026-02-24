@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Loader2, LogIn, ChevronDown } from "lucide-react";
+import { ArrowRight, Loader2, LogIn, ChevronDown, Scale } from "lucide-react";
 import { supabase } from "@/integrations/backend/client";
 import { toast } from "sonner";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
@@ -161,9 +161,18 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
       </div>
 
       {/* Footer */}
-      <p className="mt-10 text-xs text-muted-foreground/60 text-center font-body">
-        © {new Date().getFullYear()} GameTaverns
-      </p>
+      <div className="mt-10 flex flex-col items-center gap-2">
+        <button
+          onClick={() => navigate("/legal")}
+          className="text-xs text-muted-foreground/60 hover:text-muted-foreground flex items-center gap-1 transition-colors font-body"
+        >
+          <Scale className="h-3 w-3" />
+          {t("legal.title")}
+        </button>
+        <p className="text-xs text-muted-foreground/60 text-center font-body">
+          © {new Date().getFullYear()} GameTaverns
+        </p>
+      </div>
     </div>
   );
 }

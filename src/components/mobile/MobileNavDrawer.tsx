@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   Menu, Library, Globe, HelpCircle, BookOpen, MessageSquare,
   Mail, LogOut, User, Trophy, Users, LayoutDashboard, List, MessageSquarePlus,
+  Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -157,6 +158,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                 />
               )}
               <NavItem href={getPlatformUrl("/docs")} icon={HelpCircle} label="Help" />
+              <NavItem href={getPlatformUrl("/legal")} icon={Scale} label="Legal" />
 
               <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Support
@@ -168,6 +170,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               <NavItem href={getPlatformUrl("/catalog")} icon={BookOpen} label="Catalog" />
               <NavItem href={getPlatformUrl("/directory")} icon={Globe} label="Directory" />
               <NavItem href={getPlatformUrl("/docs")} icon={HelpCircle} label="Help" />
+              <NavItem href={getPlatformUrl("/legal")} icon={Scale} label="Legal" />
             </>
           )}
         </nav>
