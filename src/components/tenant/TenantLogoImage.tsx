@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { directImageUrl, proxiedImageUrl } from "@/lib/utils";
+import { Capacitor } from "@capacitor/core";
 
 interface TenantLogoImageProps {
   url: string;
@@ -13,11 +14,15 @@ interface TenantLogoImageProps {
  * Stored URLs may point to a Cloud/Lovable domain that doesn't resolve on
  * self-hosted deployments. Extracting the `/storage/…` path lets the
  * browser resolve it against the current origin (apex or subdomain).
+ *
+ * On native Capacitor apps the origin is capacitor://localhost so relative
+ * storage paths won't resolve — keep the absolute URL as-is.
  */
 function toLocalStorageUrl(url: string): string {
+  if (Capacitor.isNativePlatform()) return url;
+
   try {
     const u = new URL(url);
-    // Match any Supabase-style storage path, regardless of host
     const match = u.pathname.match(/(\/storage\/v1\/object\/public\/.+)/);
     if (match) return match[1];
   } catch {
