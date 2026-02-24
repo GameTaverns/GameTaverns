@@ -137,3 +137,120 @@ workflows:
         notify:
           success: true
           failure: true
+
+  android-build:
+    name: Android Build & Google Play
+    max_build_duration: 60
+    instance_type: linux_x2
+
+    environment:
+      node: 22
+      java: 17
+      vars:
+        PACKAGE_NAME: "com.gametaverns.app"
+      android_signing:
+        - gametaverns_keystore
+      groups:
+        - google_play
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+      cancel_previous_builds: true
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm ci
+
+      - name: Patch Capacitor plugins
+        script: |
+          node scripts/patch-capacitor.cjs
+
+      - name: Build web assets
+        script: |
+          npm run build -- --mode android
+
+      - name: Add Android platform
+        script: |
+          npx cap add android
+
+      - name: Copy google-services.json
+        script: |
+          if [ -f "google-services.json" ]; then
+            cp google-services.json android/app/google-services.json
+            echo "google-services.json copied"
+          else
+            echo "WARNING: google-services.json not found in project root"
+          fi
+
+      - name: Sync Android platform
+        script: |
+          npx cap sync android
+
+      - name: Upgrade Gradle wrapper
+        script: |
+          WRAPPER_PROPS="android/gradle/wrapper/gradle-wrapper.properties"
+          sed -i "s|distributionUrl=.*|distributionUrl=https\\\\://services.gradle.org/distributions/gradle-9.1.0-all.zip|" "$WRAPPER_PROPS"
+          echo "Gradle wrapper set to 9.1.0"
+
+      - name: Run post-sync patcher
+        script: |
+          node scripts/fix-proguard.cjs
+
+      - name: Set app icon
+        script: |
+          ICON_SOURCE="resources/android/AppIcon.png"
+          if [ ! -f "$ICON_SOURCE" ]; then
+            ICON_SOURCE="resources/ios/AppIcon.png"
+          fi
+          if [ -f "$ICON_SOURCE" ]; then
+            RES_DIR="android/app/src/main/res"
+            declare -A DENSITIES=( ["mdpi"]=48 ["hdpi"]=72 ["xhdpi"]=96 ["xxhdpi"]=144 ["xxxhdpi"]=192 )
+            for DENSITY in "${!DENSITIES[@]}"; do
+              SIZE=${DENSITIES[$DENSITY]}
+              MIPMAP_DIR="$RES_DIR/mipmap-$DENSITY"
+              mkdir -p "$MIPMAP_DIR"
+              npx sharp-cli -i "$ICON_SOURCE" -o "$MIPMAP_DIR/ic_launcher.png" resize "$SIZE" "$SIZE" 2>/dev/null || \
+                convert "$ICON_SOURCE" -resize "${SIZE}x${SIZE}" "$MIPMAP_DIR/ic_launcher.png" 2>/dev/null || \
+                cp "$ICON_SOURCE" "$MIPMAP_DIR/ic_launcher.png"
+              cp "$MIPMAP_DIR/ic_launcher.png" "$MIPMAP_DIR/ic_launcher_round.png"
+            done
+            echo "App icons generated"
+          else
+            echo "No icon source found, using default"
+          fi
+
+      - name: Increment version code
+        script: |
+          LATEST=$(google-play get-latest-build-number --package-name "$PACKAGE_NAME" --tracks internal 2>/dev/null || echo "0")
+          NEXT=$(( ${LATEST:-0} + 1 ))
+          if [ "$NEXT" -lt 2 ]; then NEXT=2; fi
+          echo "Setting versionCode to $NEXT"
+          cd android
+          sed -i "s/versionCode [0-9]*/versionCode $NEXT/" app/build.gradle
+          echo "versionCode set to $NEXT"
+
+      - name: Build AAB
+        script: |
+          cd android
+          ./gradlew bundleRelease
+
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/mapping.txt
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+      email:
+        recipients:
+          - tzolakis@gmail.com
+        notify:
+          success: true
+          failure: true
