@@ -11,7 +11,7 @@ import {
   User,
   MessageSquare,
 } from "lucide-react";
-import { MobileNavDrawer } from "@/components/mobile/MobileNavDrawer";
+
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -238,10 +238,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
               </>
             )}
 
-            {/* Mobile hamburger menu — hidden on desktop */}
-            <div className="md:hidden">
-              <MobileNavDrawer />
-            </div>
+            {/* Mobile hamburger removed — bottom tab bar handles navigation */}
           </div>
         </div>
       </div>

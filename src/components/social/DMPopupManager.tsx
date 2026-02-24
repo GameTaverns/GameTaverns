@@ -138,8 +138,12 @@ export function DMPopupManager() {
 
   return (
     <>
-      {/* Floating messenger bar — always visible except on DM page */}
-      {!isDMPage && <FloatingMessengerBar onOpenChat={handleOpenFromBar} />}
+      {/* Floating messenger bar — desktop only; mobile uses bottom tabs */}
+      {!isDMPage && (
+        <div className="hidden md:block">
+          <FloatingMessengerBar onOpenChat={handleOpenFromBar} />
+        </div>
+      )}
 
       {/* Popup windows */}
       {popups.length > 0 && !isDMPage && (
