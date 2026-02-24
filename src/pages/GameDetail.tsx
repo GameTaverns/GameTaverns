@@ -342,7 +342,7 @@ const GameDetail = () => {
           playTime: game.play_time,
         })}
       />
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto overflow-x-hidden">
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -418,7 +418,7 @@ const GameDetail = () => {
 
             {/* Thumbnail Gallery */}
             {allImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-2">
+              <div className="flex gap-2 overflow-x-auto pb-2 max-w-full">
                 {allImages.map((img, idx) => (
                   <button
                     key={idx}
@@ -447,7 +447,7 @@ const GameDetail = () => {
           </div>
 
           {/* Details Section */}
-          <div>
+          <div className="min-w-0 overflow-hidden">
             {/* Title with Actions */}
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-2">
               <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
@@ -517,7 +517,7 @@ const GameDetail = () => {
             )}
 
             {/* Categories as clickable badges */}
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-6 max-w-full">
               {allCategories.map((cat, idx) => {
                 const filterParams = new URLSearchParams();
                 filterParams.set("filter", cat.type);
@@ -558,7 +558,7 @@ const GameDetail = () => {
 
             {/* Tabs for Description and Additional Info */}
             <Tabs defaultValue="description" className="w-full">
-              <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
+              <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4 max-w-full overflow-x-auto">
                 <TabsTrigger value="description">Description</TabsTrigger>
                 <TabsTrigger value="info">Info</TabsTrigger>
                 <TabsTrigger value="location">Location</TabsTrigger>
@@ -587,6 +587,7 @@ const GameDetail = () => {
                 <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
                   Additional Information
                 </h2>
+                <div className="overflow-x-auto max-w-full">
                 <Table>
                   <TableBody>
                     {game.play_time && (
@@ -770,6 +771,7 @@ const GameDetail = () => {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               </TabsContent>
 
               <TabsContent value="location" className="mt-0">
