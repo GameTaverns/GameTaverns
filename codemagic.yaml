@@ -279,7 +279,7 @@ workflows:
       google_play:
         credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         track: internal
-        submit_as_draft: false
+        submit_as_draft: true
       email:
         recipients:
           - tzolakis@gmail.com
