@@ -55,9 +55,12 @@ workflows:
           /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'GameTaverns needs access to your photo library to let you upload profile pictures and game images.'" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'GameTaverns needs access to your camera to let you take photos of games and your collection.'" "$PLIST" || \
           /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'GameTaverns needs access to your camera to let you take photos of games and your collection.'" "$PLIST"
-          echo "Privacy strings injected:"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
+          echo "Privacy strings and export compliance injected:"
           /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$PLIST"
           /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :ITSAppUsesNonExemptEncryption" "$PLIST"
 
       - name: Set app icon
         script: |
