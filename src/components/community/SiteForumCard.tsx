@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { InlineForumManagement } from "./InlineForumManagement";
 import { FORUM_ICON_MAP, FORUM_COLOR_MAP } from "@/lib/forumOptions";
 import { getPlatformUrl } from "@/hooks/useTenantUrl";
+import { TenantLink } from "@/components/TenantLink";
 
 const ICON_MAP = FORUM_ICON_MAP;
 
@@ -42,7 +43,7 @@ function SubcategoryRow({ category }: { category: ForumCategory }) {
   const colorClass = COLOR_MAP[category.color] || "text-blue-500";
 
   return (
-    <a
+    <TenantLink
       href={getPlatformUrl(`/community/${category.slug}`)}
       className="flex items-center gap-4 px-4 py-3 hover:bg-wood-medium/30 transition-colors border-b border-wood-medium/30 last:border-b-0 group"
     >
@@ -59,7 +60,7 @@ function SubcategoryRow({ category }: { category: ForumCategory }) {
           </p>
         )}
       </div>
-    </a>
+    </TenantLink>
   );
 }
 
@@ -93,12 +94,12 @@ function CategorySection({ category }: { category: ForumCategory }) {
           ))}
         </div>
       ) : (
-        <a
+        <TenantLink
           href={getPlatformUrl(`/community/${category.slug}`)}
           className="block px-4 py-3 bg-wood-dark/20 hover:bg-wood-medium/30 transition-colors text-sm text-cream/60"
         >
           Browse threads →
-        </a>
+        </TenantLink>
       )}
     </div>
   );
@@ -124,7 +125,7 @@ export function SiteForumCard() {
                 isLoading={categoriesLoading}
               />
             )}
-            <a href={getPlatformUrl("/community")}>
+            <TenantLink href={getPlatformUrl("/community")}>
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -133,7 +134,7 @@ export function SiteForumCard() {
                 View All
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
-            </a>
+            </TenantLink>
           </div>
         </div>
       </CardHeader>
