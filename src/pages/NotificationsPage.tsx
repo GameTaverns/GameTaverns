@@ -146,9 +146,10 @@ function groupSimilar(notifications: Notification[]): (Notification | { grouped:
   }
 
   // For types with 3+ items, group them; otherwise keep individual
+  const GROUPABLE_TYPES = ["activity_reaction", "new_follower", "achievement_earned"];
   const grouped = new Set<string>();
   for (const [type, items] of Object.entries(typeGroups)) {
-    if (items.length >= 3 && ["activity_reaction", "new_follower"].includes(type)) {
+    if (items.length >= 3 && GROUPABLE_TYPES.includes(type)) {
       result.push({
         grouped: true,
         type,
@@ -280,6 +281,7 @@ export default function NotificationsPage() {
                         const labels: Record<string, string> = {
                           activity_reaction: "people liked your activity",
                           new_follower: "new followers",
+                          achievement_earned: "achievements unlocked",
                         };
                         return (
                           <div
