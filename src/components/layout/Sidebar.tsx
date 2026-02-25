@@ -439,9 +439,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
   // On subdomain deployments, we don't need ?tenant param (already on correct subdomain)
   // Only use ?tenant for Lovable preview/localhost where subdomains don't work
   const handleFilterClick = (filter: string, value: string) => {
-    const newParams: Record<string, string> = { filter, value };
+    // Preserve existing tenant param (critical for native HashRouter)
+    const newParams = new URLSearchParams();
+    const currentTenant = searchParams.get("tenant");
+    if (currentTenant) {
+      newParams.set("tenant", currentTenant);
+    }
+    newParams.set("filter", filter);
+    newParams.set("value", value);
     if (isDemoMode) {
-      newParams.demo = "true";
+      newParams.set("demo", "true");
     }
 
     // Stay on the current page — apply filters in-place
