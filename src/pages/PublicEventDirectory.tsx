@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter, Plus, CalendarPlus } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -14,6 +15,10 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePublicEventDirectory } from "@/hooks/useEventSchedule";
+import { useAuth } from "@/hooks/useAuth";
+import { CreateEventDialog } from "@/components/events/CreateEventDialog";
+import { Layout } from "@/components/layout/Layout";
+import { SEO } from "@/components/seo/SEO";
 
 const EVENT_TYPE_ICONS: Record<string, React.ReactNode> = {
   game_night: <Gamepad2 className="h-4 w-4" />,
@@ -33,17 +38,32 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 
 export default function PublicEventDirectory() {
   const { data: events = [], isLoading } = usePublicEventDirectory();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  // Extract unique cities for filter suggestions
+  // Extract unique cities
   const cities = Array.from(new Set(
     events
       .map((e: any) => e.location_city)
       .filter(Boolean)
   )).sort() as string[];
+
+  // Build city slugs for SEO links
+  const cityLinks = Array.from(
+    events.reduce((map: Map<string, { city: string; count: number }>, e: any) => {
+      const city = e.location_city;
+      if (!city) return map;
+      const slug = city.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const existing = map.get(slug);
+      if (existing) existing.count++;
+      else map.set(slug, { city, count: 1 });
+      return map;
+    }, new Map<string, { city: string; count: number }>())
+  ).map(([slug, data]) => ({ slug, ...data })).sort((a, b) => b.count - a.count);
 
   const filtered = events.filter((e: any) => {
     const matchesSearch = !search ||
@@ -57,88 +77,131 @@ export default function PublicEventDirectory() {
     return matchesSearch && matchesType && matchesCity;
   });
 
-  return (
-    <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Globe className="h-6 w-6 text-primary" />
-          Events Near You
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Discover upcoming board game events, tournaments, and conventions
-        </p>
-      </div>
+  const title = "Board Game Events & Tournaments";
+  const description = "Discover upcoming board game events, tournaments, conventions, and game nights near you. Register and join the community.";
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search events, organizers..."
-            className="pl-9"
-          />
+  return (
+    <Layout hideSidebar>
+      <SEO title={title} description={description} canonical="https://gametaverns.com/events" />
+
+      <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Globe className="h-6 w-6 text-primary" />
+              Events Near You
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Discover upcoming board game events, tournaments, and conventions
+            </p>
+          </div>
+          {isAuthenticated && (
+            <Button onClick={() => setShowCreateDialog(true)} size="sm" className="gap-1.5">
+              <CalendarPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">Create Event</span>
+            </Button>
+          )}
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="game_night">Game Nights</SelectItem>
-            <SelectItem value="tournament">Tournaments</SelectItem>
-            <SelectItem value="convention">Conventions</SelectItem>
-            <SelectItem value="meetup">Meetups</SelectItem>
-            <SelectItem value="public_event">Public Events</SelectItem>
-          </SelectContent>
-        </Select>
-        {cities.length > 0 && (
-          <div className="relative min-w-[160px]">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
+        {/* Filters */}
+        <div className="flex gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              value={cityFilter}
-              onChange={e => setCityFilter(e.target.value)}
-              placeholder="Filter by city..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search events, organizers..."
               className="pl-9"
-              list="city-suggestions"
             />
-            <datalist id="city-suggestions">
-              {cities.map(c => <option key={c} value={c} />)}
-            </datalist>
+          </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="game_night">Game Nights</SelectItem>
+              <SelectItem value="tournament">Tournaments</SelectItem>
+              <SelectItem value="convention">Conventions</SelectItem>
+              <SelectItem value="meetup">Meetups</SelectItem>
+              <SelectItem value="public_event">Public Events</SelectItem>
+            </SelectContent>
+          </Select>
+          {cities.length > 0 && (
+            <div className="relative min-w-[160px]">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={cityFilter}
+                onChange={e => setCityFilter(e.target.value)}
+                placeholder="Filter by city..."
+                className="pl-9"
+                list="city-suggestions"
+              />
+              <datalist id="city-suggestions">
+                {cities.map(c => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+          )}
+        </div>
+
+        {/* Events List */}
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 w-full" />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              <Globe className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm font-medium">No events found</p>
+              <p className="text-xs mt-1">
+                {search || typeFilter !== "all" || cityFilter
+                  ? "Try adjusting your filters"
+                  : "Check back later or create your own event!"}
+              </p>
+              {isAuthenticated && (
+                <Button size="sm" variant="outline" className="mt-4" onClick={() => setShowCreateDialog(true)}>
+                  <CalendarPlus className="h-4 w-4 mr-1" /> Create Event
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map((event: any) => (
+              <EventDirectoryCard
+                key={event.id}
+                event={event}
+                onClick={() => navigate(`/event/${event.id}`)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* City Links for SEO */}
+        {cityLinks.length > 0 && (
+          <div className="border-t border-border pt-8 mt-8">
+            <h2 className="font-display font-bold text-lg mb-4">Browse Events by City</h2>
+            <div className="flex flex-wrap gap-2">
+              {cityLinks.slice(0, 30).map((c) => (
+                <Link
+                  key={c.slug}
+                  to={`/events/${c.slug}`}
+                  className="px-3 py-1.5 rounded-full text-sm border border-border hover:border-primary hover:text-primary transition-colors bg-muted"
+                >
+                  {c.city} ({c.count})
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Events List */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 w-full" />)}
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <Globe className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p className="text-sm font-medium">No events found</p>
-            <p className="text-xs mt-1">
-              {search || typeFilter !== "all" || cityFilter
-                ? "Try adjusting your filters"
-                : "Check back later for upcoming events"}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((event: any) => (
-            <EventDirectoryCard
-              key={event.id}
-              event={event}
-              onClick={() => navigate(`/event/${event.id}`)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+      <CreateEventDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+      />
+    </Layout>
   );
 }
 

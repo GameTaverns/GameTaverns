@@ -10,6 +10,7 @@ import {
   BookOpen,
   User,
   MessageSquare,
+  Calendar,
 } from "lucide-react";
 
 import { useTranslation } from "react-i18next";
@@ -54,6 +55,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   const isProfilePage = location.pathname.startsWith("/u/");
   const isListsPage = location.pathname.startsWith("/lists");
   const isDirectoryPage = location.pathname.startsWith("/directory");
+  const isEventsPage = location.pathname.startsWith("/events") || location.pathname.startsWith("/event/");
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -119,6 +121,24 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   >
                     <Globe className="h-3.5 w-3.5" />
                     <span>{t('nav.directory')}</span>
+                  </TenantLink>
+                )}
+
+                {/* Events / Dashboard toggle */}
+                {isEventsPage ? (
+                  <TenantLink
+                    href={getPlatformUrl("/dashboard")}
+                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <span>{t('nav.dashboard')}</span>
+                  </TenantLink>
+                ) : (
+                  <TenantLink
+                    href={getPlatformUrl("/events")}
+                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>Events</span>
                   </TenantLink>
                 )}
 

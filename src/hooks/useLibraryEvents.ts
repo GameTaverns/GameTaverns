@@ -22,7 +22,8 @@ export interface CalendarEvent {
 }
 
 export interface CreateEventInput {
-  library_id: string;
+  library_id?: string;
+  created_by_user_id?: string;
   title: string;
   description?: string;
   event_date: string;
@@ -37,6 +38,9 @@ export interface CreateEventInput {
   entry_fee?: string;
   age_restriction?: string;
   parking_info?: string;
+  location_city?: string;
+  location_region?: string;
+  location_country?: string;
   status?: string;
 }
 
@@ -60,11 +64,9 @@ export function useUpcomingEvents(libraryId: string | undefined, limit = 5) {
     queryFn: async () => {
       if (!libraryId) return [];
       
-      // Get start of today (midnight) for proper date comparison
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Query the combined view
       const { data, error } = await supabase
         .from("library_calendar_events")
         .select("*")
@@ -113,12 +115,20 @@ export function useCreateEvent() {
   return useMutation({
     mutationFn: async (input: CreateEventInput) => {
       const insertData: Record<string, any> = {
-        library_id: input.library_id,
         title: input.title,
         description: input.description || null,
         event_date: input.event_date,
         event_location: input.event_location || null,
       };
+
+      // Library event or standalone
+      if (input.library_id) {
+        insertData.library_id = input.library_id;
+      }
+      if (input.created_by_user_id) {
+        insertData.created_by_user_id = input.created_by_user_id;
+      }
+
       // Add optional planning fields
       if (input.event_type) insertData.event_type = input.event_type;
       if (input.end_date) insertData.end_date = input.end_date;
@@ -130,6 +140,9 @@ export function useCreateEvent() {
       if (input.entry_fee) insertData.entry_fee = input.entry_fee;
       if (input.age_restriction) insertData.age_restriction = input.age_restriction;
       if (input.parking_info) insertData.parking_info = input.parking_info;
+      if (input.location_city) insertData.location_city = input.location_city;
+      if (input.location_region) insertData.location_region = input.location_region;
+      if (input.location_country) insertData.location_country = input.location_country;
       if (input.status) insertData.status = input.status;
 
       const { data, error } = await (supabase as any)
@@ -142,21 +155,29 @@ export function useCreateEvent() {
       return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["library-events", variables.library_id] });
-      queryClient.invalidateQueries({ queryKey: ["library-all-events", variables.library_id] });
+      if (variables.library_id) {
+        queryClient.invalidateQueries({ queryKey: ["library-events", variables.library_id] });
+        queryClient.invalidateQueries({ queryKey: ["library-all-events", variables.library_id] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["public-event-directory"] });
+      queryClient.invalidateQueries({ queryKey: ["my-events"] });
       
-      // Send Discord notification and forum post with event ID so thread can be saved
-      discord.notifyEventCreated(variables.library_id, {
-        id: data.id,
-        title: variables.title,
-        description: variables.description,
-        event_date: variables.event_date,
-        event_location: variables.event_location,
-      });
+      // Send Discord notification for library events
+      if (variables.library_id) {
+        discord.notifyEventCreated(variables.library_id, {
+          id: data.id,
+          title: variables.title,
+          description: variables.description,
+          event_date: variables.event_date,
+          event_location: variables.event_location,
+        });
+      }
       
       toast({
         title: "Event created",
-        description: "Your event has been added to the calendar.",
+        description: variables.library_id 
+          ? "Your event has been added to the calendar."
+          : "Your community event is now live in the directory.",
       });
     },
     onError: (error: Error) => {
@@ -196,6 +217,7 @@ export function useUpdateEvent() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["library-events", variables.libraryId] });
       queryClient.invalidateQueries({ queryKey: ["library-all-events", variables.libraryId] });
+      queryClient.invalidateQueries({ queryKey: ["public-event-directory"] });
       toast({
         title: "Event updated",
         description: "Your event has been updated.",
@@ -221,7 +243,6 @@ export function useDeleteEvent() {
 
   return useMutation({
     mutationFn: async ({ eventId, libraryId }: { eventId: string; libraryId: string }) => {
-      // First fetch the event to get the discord_thread_id
       const { data: event, error: fetchError } = await supabase
         .from("library_events")
         .select("discord_thread_id")
@@ -230,7 +251,6 @@ export function useDeleteEvent() {
 
       if (fetchError) throw fetchError;
 
-      // Delete the event
       const { error } = await supabase
         .from("library_events")
         .delete()
@@ -242,8 +262,9 @@ export function useDeleteEvent() {
     onSuccess: ({ libraryId, discordThreadId }) => {
       queryClient.invalidateQueries({ queryKey: ["library-events", libraryId] });
       queryClient.invalidateQueries({ queryKey: ["library-all-events", libraryId] });
+      queryClient.invalidateQueries({ queryKey: ["public-event-directory"] });
+      queryClient.invalidateQueries({ queryKey: ["my-events"] });
       
-      // Delete the Discord thread if one was created
       if (discordThreadId) {
         discord.deleteEventThread(libraryId, discordThreadId);
       }
