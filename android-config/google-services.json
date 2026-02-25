@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "677680476694",
+    "project_id": "gametaverns-3612d",
+    "storage_bucket": "gametaverns-3612d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:677680476694:android:2abb50fb9db39dbbe0bb37",
+        "android_client_info": {
+          "package_name": "com.gametaverns.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfpGfQwr8vfsaCyyZCunAWg32gbpXJ1GY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
