@@ -85,6 +85,7 @@ const MechanicPage = lazy(lazyRetry(() => import("./pages/seo/MechanicPage")));
 const MechanicsIndex = lazy(lazyRetry(() => import("./pages/seo/MechanicsIndex")));
 const LibrariesInCity = lazy(lazyRetry(() => import("./pages/seo/LibrariesInCity")));
 const GameCalendar = lazy(() => import("./pages/GameCalendar"));
+const EventDetailPage = lazy(() => import("./pages/EventDetailPage"));
 
 // Growth pages
 const ShareCard = lazy(() => import("./pages/ShareCard"));
@@ -341,6 +342,7 @@ function LibraryRoutes() {
       <Route path="/stats" element={<PlayStatsPage />} />
       <Route path="/poll/:token" element={<PollPage />} />
       <Route path="/calendar" element={<GameCalendar />} />
+      <Route path="/event/:eventId" element={<EventDetailPage />} />
       <Route path="/catalog-print" element={<CatalogPrint />} />
       
       {/* Community/Forum routes for library */}

@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDiscordNotify } from "@/hooks/useDiscordNotify";
 
 export interface CalendarEvent {
-  event_type: "poll" | "standalone" | "event" | "game_night"; // "event"/"game_night" for backwards compat with self-hosted
+  event_type: "poll" | "standalone" | "event" | "game_night";
   id: string;
   library_id: string;
   title: string;
@@ -14,6 +14,11 @@ export interface CalendarEvent {
   share_token: string | null;
   poll_status: string | null;
   created_at: string;
+  // New planning fields from updated view
+  event_category?: string;
+  end_date?: string | null;
+  event_status?: string;
+  is_public?: boolean;
 }
 
 export interface CreateEventInput {
