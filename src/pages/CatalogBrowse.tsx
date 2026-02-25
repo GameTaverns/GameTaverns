@@ -326,35 +326,18 @@ export default function CatalogBrowse() {
     });
   }, [rawGames, metadata]);
 
-  // Sidebar filter lists — fetch once independently (lightweight)
+  // Sidebar filter lists — single RPC call for all distinct names
   const { data: sidebarMeta } = useQuery({
     queryKey: ["catalog-sidebar-meta"],
     queryFn: async () => {
-      const fetchAllJunction = async (table: string, selectStr: string) => {
-        let all: any[] = [];
-        let from = 0;
-        const batchSize = 1000;
-        while (true) {
-          const { data: batch, error } = await (supabase as any).from(table).select(selectStr).range(from, from + batchSize - 1);
-          if (error) throw error;
-          all = all.concat(batch || []);
-          if (!batch || batch.length < batchSize) break;
-          from += batchSize;
-        }
-        return all;
-      };
-      const [d, a, m, p] = await Promise.all([
-        fetchAllJunction("catalog_designers", "designer:designers(name)"),
-        fetchAllJunction("catalog_artists", "artist:artists(name)"),
-        fetchAllJunction("catalog_mechanics", "mechanic:mechanics(name)"),
-        fetchAllJunction("catalog_publishers", "publisher:publishers(name)"),
-      ]);
-      const names = (rows: any[], key: string) => [...new Set(rows.map(r => r[key]?.name).filter(Boolean))].sort() as string[];
+      const { data, error } = await supabase.rpc("get_catalog_filter_options");
+      if (error) throw error;
+      const result = data as any;
       return {
-        designers: names(d, "designer"),
-        artists: names(a, "artist"),
-        mechanics: names(m, "mechanic").map(n => ({ id: n, name: n })),
-        publishers: names(p, "publisher").map(n => ({ id: n, name: n })),
+        designers: (result?.designers || []) as string[],
+        artists: (result?.artists || []) as string[],
+        mechanics: ((result?.mechanics || []) as string[]).map((n: string) => ({ id: n, name: n })),
+        publishers: ((result?.publishers || []) as string[]).map((n: string) => ({ id: n, name: n })),
       };
     },
     staleTime: 1000 * 60 * 30,
