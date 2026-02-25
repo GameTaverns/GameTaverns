@@ -221,9 +221,10 @@ const Login = () => {
       }
 
       toast({
-        title: t('login.checkEmail'),
-        description: t('login.confirmationSent'),
+        title: t('signup.accountCreated'),
+        description: t('signup.youCanSignIn'),
       });
+      navigate("/login");
     } finally {
       setIsLoading(false);
     }
@@ -434,7 +435,7 @@ const Login = () => {
                   {isLoading ? t('login.creatingAccount') : t('login.createAccount')}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center">
-                  {t('login.confirmationSent')}
+                  {t('signup.youCanSignIn')}
                 </p>
               </form>
             </TabsContent>
