@@ -338,7 +338,8 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const requiresAuth = !!(smtpUser && smtpPass);
+    const isRelay = smtpPort === 25;
+    const requiresAuth = !!(smtpUser && smtpPass) && !isRelay;
     const useTls = smtpPort === 465;
 
     const smtpConfig: Record<string, unknown> = {
@@ -347,6 +348,10 @@ export default async function handler(req: Request): Promise<Response> {
         port: smtpPort,
         tls: useTls,
         auth: requiresAuth ? { username: smtpUser, password: smtpPass } : undefined,
+      },
+      debug: {
+        noStartTLS: isRelay,
+        allowUnsecure: isRelay,
       },
     };
 
