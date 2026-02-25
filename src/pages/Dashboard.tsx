@@ -48,6 +48,7 @@ import { HotnessLeaderboard } from "@/components/games/HotnessLeaderboard";
 
 import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
+import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 
 import { AccountSettings } from "@/components/settings/AccountSettings";
@@ -1030,6 +1031,7 @@ export default function Dashboard() {
 
       <Footer />
       <MobileBottomTabs />
+      <GuidedTour librarySlug={library?.slug} />
     </div>
   );
 }
