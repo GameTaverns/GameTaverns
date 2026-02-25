@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { 
   ArrowLeft, Calendar, MapPin, Clock, Users, Gamepad2, 
   Package, LayoutGrid, Settings, Globe, Lock, Pencil,
-  CheckCircle2, XCircle, Send, MoreVertical
+  CheckCircle2, XCircle, Send, MoreVertical, Trophy,
+  UserPlus, CalendarDays
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,9 @@ import { EventSuppliesTab } from "@/components/events/planning/EventSuppliesTab"
 import { EventTablesTab } from "@/components/events/planning/EventTablesTab";
 import { EventLogisticsTab } from "@/components/events/planning/EventLogisticsTab";
 import { EventAttendeesTab } from "@/components/events/planning/EventAttendeesTab";
+import { EventRegistrationTab } from "@/components/events/planning/EventRegistrationTab";
+import { EventScheduleTab } from "@/components/events/planning/EventScheduleTab";
+import { EventTournamentTab } from "@/components/events/planning/EventTournamentTab";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -47,6 +51,35 @@ export default function EventDetailPage() {
   const updateEvent = useUpdateEventDetail();
   const [activeTab, setActiveTab] = useState("details");
 
+  const eventDate = event ? new Date(event.event_date) : null;
+  const isMultiDay = !!event?.end_date;
+  const endDate = event?.end_date ? new Date(event.end_date) : null;
+  const isTournament = event?.event_type === "tournament";
+  const isConventionOrMultiDay = isMultiDay || event?.event_type === "convention";
+
+  // Build dynamic tabs based on event type
+  const tabs = useMemo(() => {
+    const base = [
+      { value: "details", label: "Details", icon: <Settings className="h-3.5 w-3.5" /> },
+      { value: "games", label: "Games", icon: <Gamepad2 className="h-3.5 w-3.5" /> },
+      { value: "attendees", label: "Attendees", icon: <Users className="h-3.5 w-3.5" /> },
+    ];
+    if (event?.max_attendees || event?.is_public) {
+      base.push({ value: "registration", label: "Registration", icon: <UserPlus className="h-3.5 w-3.5" /> });
+    }
+    if (isConventionOrMultiDay) {
+      base.push({ value: "schedule", label: "Schedule", icon: <CalendarDays className="h-3.5 w-3.5" /> });
+    }
+    if (isTournament) {
+      base.push({ value: "tournament", label: "Tournament", icon: <Trophy className="h-3.5 w-3.5" /> });
+    }
+    base.push(
+      { value: "supplies", label: "Supplies", icon: <Package className="h-3.5 w-3.5" /> },
+      { value: "tables", label: "Tables", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+    );
+    return base;
+  }, [event?.max_attendees, event?.is_public, isConventionOrMultiDay, isTournament]);
+
   if (isLoading) {
     return (
       <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
@@ -56,7 +89,7 @@ export default function EventDetailPage() {
     );
   }
 
-  if (!event) {
+  if (!event || !eventDate) {
     return (
       <div className="container max-w-4xl mx-auto py-6 px-4 text-center">
         <p className="text-muted-foreground">Event not found</p>
@@ -66,10 +99,6 @@ export default function EventDetailPage() {
       </div>
     );
   }
-
-  const eventDate = new Date(event.event_date);
-  const isMultiDay = !!event.end_date;
-  const endDate = event.end_date ? new Date(event.end_date) : null;
 
   const handleStatusChange = (newStatus: string) => {
     updateEvent.mutate({ eventId: event.id, updates: { status: newStatus } as any });
@@ -174,29 +203,15 @@ export default function EventDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Tabs */}
+      {/* Dynamic Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-5">
-          <TabsTrigger value="details" className="gap-1.5">
-            <Settings className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Details</span>
-          </TabsTrigger>
-          <TabsTrigger value="games" className="gap-1.5">
-            <Gamepad2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Games</span>
-          </TabsTrigger>
-          <TabsTrigger value="attendees" className="gap-1.5">
-            <Users className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Attendees</span>
-          </TabsTrigger>
-          <TabsTrigger value="supplies" className="gap-1.5">
-            <Package className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Supplies</span>
-          </TabsTrigger>
-          <TabsTrigger value="tables" className="gap-1.5">
-            <LayoutGrid className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Tables</span>
-          </TabsTrigger>
+        <TabsList className="w-full flex overflow-x-auto">
+          {tabs.map(tab => (
+            <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 flex-1 min-w-0">
+              {tab.icon}
+              <span className="hidden sm:inline truncate">{tab.label}</span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="details">
@@ -208,6 +223,21 @@ export default function EventDetailPage() {
         <TabsContent value="attendees">
           <EventAttendeesTab eventId={event.id} />
         </TabsContent>
+        {(event.max_attendees || event.is_public) && (
+          <TabsContent value="registration">
+            <EventRegistrationTab eventId={event.id} maxAttendees={event.max_attendees} />
+          </TabsContent>
+        )}
+        {isConventionOrMultiDay && (
+          <TabsContent value="schedule">
+            <EventScheduleTab eventId={event.id} eventDate={event.event_date} endDate={event.end_date} />
+          </TabsContent>
+        )}
+        {isTournament && (
+          <TabsContent value="tournament">
+            <EventTournamentTab eventId={event.id} />
+          </TabsContent>
+        )}
         <TabsContent value="supplies">
           <EventSuppliesTab eventId={event.id} />
         </TabsContent>
