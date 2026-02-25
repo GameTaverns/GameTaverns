@@ -5,6 +5,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const getEnv = (...keys: string[]): string | null => {
+  for (const key of keys) {
+    const value = Deno.env.get(key);
+    if (value && value.trim().length > 0) return value;
+  }
+  return null;
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -19,9 +27,28 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const token = authHeader.slice('Bearer '.length).trim();
+
+    const supabaseUrl = getEnv('SUPABASE_URL', 'PROJECT_URL');
+    const anonKey = getEnv('SUPABASE_ANON_KEY', 'SUPABASE_PUBLISHABLE_KEY', 'ANON_KEY');
+    const serviceRoleKey = getEnv('SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SECRET_KEY', 'SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+      return new Response(JSON.stringify({
+        error: 'Server misconfiguration',
+        missing: {
+          supabaseUrl: !supabaseUrl,
+          anonKey: !anonKey,
+          serviceRoleKey: !serviceRoleKey,
+        },
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
+      supabaseUrl,
+      anonKey,
       { global: { headers: { Authorization: authHeader } } }
     );
 
@@ -33,8 +60,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const adminClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      supabaseUrl,
+      serviceRoleKey
     );
 
     const userId = user.id;
@@ -136,8 +163,9 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
   } catch (error) {
-    console.error('Export user data error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    const details = error instanceof Error ? error.message : String(error);
+    console.error('Export user data error:', details);
+    return new Response(JSON.stringify({ error: 'Internal server error', details }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
