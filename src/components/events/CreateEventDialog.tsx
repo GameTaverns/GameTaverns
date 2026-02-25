@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, MapPin, Clock } from "lucide-react";
+import { CalendarIcon, MapPin, Clock, Globe, Lock, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -15,12 +15,29 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useCreateEvent, useUpdateEvent, CalendarEvent } from "@/hooks/useLibraryEvents";
+
+const EVENT_TYPES = [
+  { value: "game_night", label: "Game Night" },
+  { value: "tournament", label: "Tournament" },
+  { value: "convention", label: "Convention" },
+  { value: "meetup", label: "Meetup" },
+  { value: "public_event", label: "Public Event" },
+];
 
 interface CreateEventDialogProps {
   open: boolean;
@@ -30,49 +47,61 @@ interface CreateEventDialogProps {
 }
 
 export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: CreateEventDialogProps) {
+  const [activeTab, setActiveTab] = useState("basics");
+  
+  // Basic fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [eventType, setEventType] = useState("game_night");
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("19:00");
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [endTime, setEndTime] = useState("");
   const [location, setLocation] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
+  const [maxAttendees, setMaxAttendees] = useState("");
+  
+  // Venue & Logistics
+  const [venueName, setVenueName] = useState("");
+  const [venueAddress, setVenueAddress] = useState("");
+  const [venueNotes, setVenueNotes] = useState("");
+  const [entryFee, setEntryFee] = useState("");
+  const [ageRestriction, setAgeRestriction] = useState("");
+  const [parkingInfo, setParkingInfo] = useState("");
   
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent();
   
   const isEditMode = !!editEvent;
   
-  // Populate form when editing
   useEffect(() => {
     if (editEvent && open) {
       setTitle(editEvent.title);
       setDescription(editEvent.description || "");
       setLocation(editEvent.event_location || "");
-      
       const eventDate = new Date(editEvent.event_date);
       setDate(eventDate);
       setTime(format(eventDate, "HH:mm"));
+      setActiveTab("basics");
     } else if (!open) {
-      // Reset form when dialog closes
-      setTitle("");
-      setDescription("");
-      setDate(undefined);
-      setTime("19:00");
-      setLocation("");
+      setTitle(""); setDescription(""); setEventType("game_night");
+      setDate(undefined); setTime("19:00"); setEndDate(undefined); setEndTime("");
+      setLocation(""); setIsPublic(false); setMaxAttendees("");
+      setVenueName(""); setVenueAddress(""); setVenueNotes("");
+      setEntryFee(""); setAgeRestriction(""); setParkingInfo("");
+      setActiveTab("basics");
     }
   }, [editEvent, open]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!title.trim() || !date) return;
     
-    // Combine date and time
     const [hours, minutes] = time.split(":").map(Number);
     const eventDate = new Date(date);
     eventDate.setHours(hours, minutes, 0, 0);
     
     if (isEditMode && editEvent) {
-      // Update existing event
       await updateEvent.mutateAsync({
         eventId: editEvent.id,
         libraryId,
@@ -80,121 +109,268 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
           title: title.trim(),
           description: description.trim() || null,
           event_date: eventDate.toISOString(),
-          event_location: location.trim() || null,
+          event_location: location.trim() || venueName.trim() || null,
         },
       });
     } else {
-      // Create new event
       await createEvent.mutateAsync({
         library_id: libraryId,
         title: title.trim(),
         description: description.trim() || undefined,
         event_date: eventDate.toISOString(),
-        event_location: location.trim() || undefined,
+        event_location: location.trim() || venueName.trim() || undefined,
       });
-      // Discord notification is handled by useCreateEvent hook
     }
     
     onOpenChange(false);
   };
   
   const isPending = createEvent.isPending || updateEvent.isPending;
+  const isMultiDayType = eventType === "convention" || eventType === "tournament";
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit Event" : "Create Event"}</DialogTitle>
           <DialogDescription>
             {isEditMode 
               ? "Update the event details." 
-              : "Add a standalone event to your library calendar."}
+              : "Plan a game night, tournament, convention, or other event."}
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Event Title *</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Game Night at Mike's"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What games are you planning to play?"
-              rows={2}
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "MMM d, yyyy") : "Pick date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    disabled={isEditMode ? undefined : (d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+        <form onSubmit={handleSubmit}>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full grid grid-cols-2 mb-4">
+              <TabsTrigger value="basics">Basics</TabsTrigger>
+              <TabsTrigger value="venue">Venue & Logistics</TabsTrigger>
+            </TabsList>
             
-            <div className="space-y-2">
-              <Label htmlFor="time">Time *</Label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <TabsContent value="basics" className="space-y-4 mt-0">
+              {/* Event Type */}
+              {!isEditMode && (
+                <div className="space-y-2">
+                  <Label>Event Type</Label>
+                  <Select value={eventType} onValueChange={setEventType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EVENT_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="title">Event Title *</Label>
                 <Input
-                  id="time"
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="pl-9"
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Game Night at Mike's"
                   required
                 />
               </div>
-            </div>
-          </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What's planned for this event?"
+                  rows={2}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{isMultiDayType ? "Start Date *" : "Date *"}</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "MMM d, yyyy") : "Pick date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        disabled={isEditMode ? undefined : (d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="time">{isMultiDayType ? "Start Time *" : "Time *"}</Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="time"
+                      type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="pl-9"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Multi-day end date */}
+              {isMultiDayType && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(endDate, "MMM d, yyyy") : "Pick end date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          disabled={(d) => date ? d < date : false}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Time</Label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Visibility & Capacity */}
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="flex items-center gap-2">
+                  {isPublic ? <Globe className="h-4 w-4 text-primary" /> : <Lock className="h-4 w-4 text-muted-foreground" />}
+                  <div>
+                    <p className="text-sm font-medium">{isPublic ? "Public Event" : "Private Event"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isPublic ? "Discoverable by non-members" : "Only visible to library members"}
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Max Attendees</Label>
+                <Input
+                  type="number"
+                  value={maxAttendees}
+                  onChange={(e) => setMaxAttendees(e.target.value)}
+                  placeholder="Unlimited"
+                  min={1}
+                />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="venue" className="space-y-4 mt-0">
+              <div className="space-y-2">
+                <Label>Venue Name</Label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={venueName}
+                    onChange={(e) => setVenueName(e.target.value)}
+                    placeholder="e.g. Community Center, Mike's House"
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Address</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={venueAddress || location}
+                    onChange={(e) => { setVenueAddress(e.target.value); setLocation(e.target.value); }}
+                    placeholder="Full address or directions"
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Venue Notes</Label>
+                <Textarea
+                  value={venueNotes}
+                  onChange={(e) => setVenueNotes(e.target.value)}
+                  placeholder="e.g. Ring the doorbell, enter through side gate"
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Entry Fee</Label>
+                  <Input
+                    value={entryFee}
+                    onChange={(e) => setEntryFee(e.target.value)}
+                    placeholder="Free / $5 / etc."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Age Restriction</Label>
+                  <Input
+                    value={ageRestriction}
+                    onChange={(e) => setAgeRestriction(e.target.value)}
+                    placeholder="All ages / 18+ / etc."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Parking Info</Label>
+                <Input
+                  value={parkingInfo}
+                  onChange={(e) => setParkingInfo(e.target.value)}
+                  placeholder="Street parking, garage on 2nd Ave, etc."
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
           
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Where is the event?"
-                className="pl-9"
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
+          <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

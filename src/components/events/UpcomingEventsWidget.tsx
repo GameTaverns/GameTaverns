@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { format, isPast, isToday } from "date-fns";
-import { Calendar, MapPin, Vote, CalendarPlus, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { Calendar, MapPin, Vote, CalendarPlus, ExternalLink, Pencil, Trash2, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,12 +30,14 @@ function EventItem({
   event, 
   isOwner, 
   onEdit, 
-  onDelete 
+  onDelete,
+  onViewDetail,
 }: { 
   event: CalendarEvent; 
   isOwner: boolean;
   onEdit?: (event: CalendarEvent) => void;
   onDelete?: (event: CalendarEvent) => void;
+  onViewDetail?: (event: CalendarEvent) => void;
 }) {
   const { buildUrl } = useTenantUrl();
   const eventDate = new Date(event.event_date);
@@ -114,6 +117,15 @@ function EventItem({
               variant="ghost" 
               size="sm" 
               className="h-6 px-2 text-xs"
+              onClick={() => onViewDetail?.(event)}
+            >
+              <ArrowRight className="h-3 w-3 mr-1" />
+              Plan
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 px-2 text-xs"
               onClick={() => onEdit?.(event)}
             >
               <Pencil className="h-3 w-3 mr-1" />
@@ -144,6 +156,7 @@ export function UpcomingEventsWidget({
   const { data: events, isLoading } = useUpcomingEvents(libraryId);
   const deleteEvent = useDeleteEvent();
   const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
+  const navigate = useNavigate();
   
   const handleDelete = async () => {
     if (!eventToDelete) return;
@@ -212,6 +225,7 @@ export function UpcomingEventsWidget({
                   isOwner={isOwner}
                   onEdit={onEditEvent}
                   onDelete={setEventToDelete}
+                  onViewDetail={(e) => navigate(`/event/${e.id}`)}
                 />
               ))}
             </div>
