@@ -144,6 +144,7 @@ EXTERNAL_HANDLERS=(
   check-login
   export-user-data
   send-push-notification
+  send-rsvp-confirmation
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   if [ -d "$FUNCTIONS_DIR/$handler" ]; then
