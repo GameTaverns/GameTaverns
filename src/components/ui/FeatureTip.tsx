@@ -21,17 +21,12 @@ interface FeatureTipProps {
  * Supports swipe-to-dismiss on touch devices.
  */
 export function FeatureTip({ tipId, title, description, icon, className }: FeatureTipProps) {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(() => {
+    // Initialize synchronously from localStorage to prevent flash
+    return !localStorage.getItem(`tip_dismissed_${tipId}`);
+  });
   const x = useMotionValue(0);
   const opacity = useTransform(x, [-150, 0, 150], [0, 1, 0]);
-
-  useEffect(() => {
-    const dismissed = localStorage.getItem(`tip_dismissed_${tipId}`);
-    if (!dismissed) {
-      const timer = setTimeout(() => setVisible(true), 800);
-      return () => clearTimeout(timer);
-    }
-  }, [tipId]);
 
   const dismiss = () => {
     localStorage.setItem(`tip_dismissed_${tipId}`, "true");
