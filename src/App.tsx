@@ -84,6 +84,7 @@ const GamesForNPlayers = lazy(lazyRetry(() => import("./pages/seo/GamesForNPlaye
 const MechanicPage = lazy(lazyRetry(() => import("./pages/seo/MechanicPage")));
 const MechanicsIndex = lazy(lazyRetry(() => import("./pages/seo/MechanicsIndex")));
 const LibrariesInCity = lazy(lazyRetry(() => import("./pages/seo/LibrariesInCity")));
+const EventsInCity = lazy(lazyRetry(() => import("./pages/seo/EventsInCity")));
 const GameCalendar = lazy(() => import("./pages/GameCalendar"));
 const EventDetailPage = lazy(() => import("./pages/EventDetailPage"));
 const PublicEventDirectory = lazy(() => import("./pages/PublicEventDirectory"));
@@ -313,6 +314,9 @@ function PlatformRoutes() {
       <Route path="/catalog/mechanics" element={<MechanicsIndex />} />
       <Route path="/catalog/mechanic/:slug" element={<MechanicPage />} />
       <Route path="/libraries/:city" element={<LibrariesInCity />} />
+      <Route path="/events/:city" element={<EventsInCity />} />
+      <Route path="/events" element={<PublicEventDirectory />} />
+      <Route path="/event/:eventId" element={<EventDetailPage />} />
 
       {/* Growth pages */}
       <Route path="/share-card" element={<ShareCard />} />

@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useCreateEvent, useUpdateEvent, CalendarEvent } from "@/hooks/useLibraryEvents";
+import { useAuth } from "@/hooks/useAuth";
 
 const EVENT_TYPES = [
   { value: "game_night", label: "Game Night" },
@@ -42,11 +43,12 @@ const EVENT_TYPES = [
 interface CreateEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  libraryId: string;
+  libraryId?: string;
   editEvent?: CalendarEvent | null;
 }
 
 export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: CreateEventDialogProps) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("basics");
   
   // Basic fields
@@ -58,7 +60,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [endTime, setEndTime] = useState("");
   const [location, setLocation] = useState("");
-  const [isPublic, setIsPublic] = useState(false);
+  const [isPublic, setIsPublic] = useState(!libraryId); // Default public for standalone
   const [maxAttendees, setMaxAttendees] = useState("");
   
   // Venue & Logistics
@@ -68,11 +70,17 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
   const [entryFee, setEntryFee] = useState("");
   const [ageRestriction, setAgeRestriction] = useState("");
   const [parkingInfo, setParkingInfo] = useState("");
+
+  // Location fields for standalone events
+  const [locationCity, setLocationCity] = useState("");
+  const [locationRegion, setLocationRegion] = useState("");
+  const [locationCountry, setLocationCountry] = useState("");
   
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent();
   
   const isEditMode = !!editEvent;
+  const isStandalone = !libraryId;
   
   useEffect(() => {
     if (editEvent && open) {
@@ -86,12 +94,13 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
     } else if (!open) {
       setTitle(""); setDescription(""); setEventType("game_night");
       setDate(undefined); setTime("19:00"); setEndDate(undefined); setEndTime("");
-      setLocation(""); setIsPublic(false); setMaxAttendees("");
+      setLocation(""); setIsPublic(!libraryId); setMaxAttendees("");
       setVenueName(""); setVenueAddress(""); setVenueNotes("");
       setEntryFee(""); setAgeRestriction(""); setParkingInfo("");
+      setLocationCity(""); setLocationRegion(""); setLocationCountry("");
       setActiveTab("basics");
     }
-  }, [editEvent, open]);
+  }, [editEvent, open, libraryId]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +125,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
     if (isEditMode && editEvent) {
       await updateEvent.mutateAsync({
         eventId: editEvent.id,
-        libraryId,
+        libraryId: libraryId || "",
         updates: {
           title: title.trim(),
           description: description.trim() || null,
@@ -126,7 +135,8 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
       });
     } else {
       await createEvent.mutateAsync({
-        library_id: libraryId,
+        library_id: libraryId || undefined,
+        created_by_user_id: isStandalone ? user?.id : undefined,
         title: title.trim(),
         description: description.trim() || undefined,
         event_date: eventDate.toISOString(),
@@ -141,6 +151,9 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
         entry_fee: entryFee.trim() || undefined,
         age_restriction: ageRestriction.trim() || undefined,
         parking_info: parkingInfo.trim() || undefined,
+        location_city: locationCity.trim() || undefined,
+        location_region: locationRegion.trim() || undefined,
+        location_country: locationCountry.trim() || undefined,
         status: "published",
       });
     }
@@ -159,15 +172,18 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
           <DialogDescription>
             {isEditMode 
               ? "Update the event details." 
-              : "Plan a game night, tournament, convention, or other event."}
+              : isStandalone
+                ? "Create a community event anyone can discover and join."
+                : "Plan a game night, tournament, convention, or other event."}
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit}>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full grid grid-cols-2 mb-4">
+            <TabsList className={`w-full grid mb-4 ${isStandalone ? "grid-cols-3" : "grid-cols-2"}`}>
               <TabsTrigger value="basics">Basics</TabsTrigger>
-              <TabsTrigger value="venue">Venue & Logistics</TabsTrigger>
+              <TabsTrigger value="venue">Venue</TabsTrigger>
+              {isStandalone && <TabsTrigger value="location">Location</TabsTrigger>}
             </TabsList>
             
             <TabsContent value="basics" className="space-y-4 mt-0">
@@ -194,7 +210,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Game Night at Mike's"
+                  placeholder={isStandalone ? "Board Game Meetup at Central Park" : "Game Night at Mike's"}
                   required
                 />
               </div>
@@ -307,7 +323,9 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
                   <div>
                     <p className="text-sm font-medium">{isPublic ? "Public Event" : "Private Event"}</p>
                     <p className="text-xs text-muted-foreground">
-                      {isPublic ? "Discoverable by non-members" : "Only visible to library members"}
+                      {isPublic 
+                        ? isStandalone ? "Listed in the public events directory" : "Discoverable by non-members"
+                        : "Only visible to library members"}
                     </p>
                   </div>
                 </div>
@@ -391,6 +409,38 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
                 />
               </div>
             </TabsContent>
+
+            {isStandalone && (
+              <TabsContent value="location" className="space-y-4 mt-0">
+                <p className="text-xs text-muted-foreground">
+                  Adding location details helps people discover your event in our directory.
+                </p>
+                <div className="space-y-2">
+                  <Label>City *</Label>
+                  <Input
+                    value={locationCity}
+                    onChange={(e) => setLocationCity(e.target.value)}
+                    placeholder="e.g. Portland"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>State / Region</Label>
+                  <Input
+                    value={locationRegion}
+                    onChange={(e) => setLocationRegion(e.target.value)}
+                    placeholder="e.g. Oregon"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Input
+                    value={locationCountry}
+                    onChange={(e) => setLocationCountry(e.target.value)}
+                    placeholder="e.g. United States"
+                  />
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
           
           <DialogFooter className="mt-6">

@@ -3,6 +3,7 @@ import {
   Trophy, Plus, Trash2, Play, CheckCircle2, Settings2,
   Swords, Users, RotateCcw, Award
 } from "lucide-react";
+import { TournamentBracketVisual } from "@/components/events/TournamentBracketVisual";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,7 @@ export function EventTournamentTab({ eventId }: EventTournamentTabProps) {
   const [activeTab, setActiveTab] = useState("players");
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
+  const [selectedMatch, setSelectedMatch] = useState<TournamentMatch | null>(null);
 
   // Config form
   const [cfgFormat, setCfgFormat] = useState<TournamentFormat>("single_elimination");
@@ -253,36 +255,54 @@ export function EventTournamentTab({ eventId }: EventTournamentTabProps) {
                   <p className="text-xs mt-1">Add players and generate a bracket</p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {Object.entries(matchesByRound).map(([round, roundMatches]) => (
-                    <div key={round}>
-                      <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                        Round {round}
-                        <Badge variant="outline" className="text-[10px]">
-                          {roundMatches.filter(m => m.status === "completed" || m.status === "bye").length}/{roundMatches.length} complete
-                        </Badge>
-                      </h4>
-                      <div className="space-y-2">
-                        {roundMatches.map(match => (
-                          <MatchCard
-                            key={match.id}
-                            match={match}
-                            playerMap={playerMap}
-                            onReportResult={(winnerId, p1Score, p2Score) => {
-                              updateMatch.mutate({
-                                matchId: match.id,
-                                eventId,
-                                winnerId,
-                                player1Score: p1Score,
-                                player2Score: p2Score,
-                              });
-                            }}
-                          />
-                        ))}
-                      </div>
+                <>
+                  {/* Visual bracket for single elimination */}
+                  {(config?.format === "single_elimination" || !config?.format) && (
+                    <div className="mb-6">
+                      <TournamentBracketVisual
+                        matches={matches}
+                        players={players}
+                        onSelectMatch={(match) => {
+                          if (match.status !== "completed" && match.player1_id && match.player2_id) {
+                            setSelectedMatch(match);
+                          }
+                        }}
+                      />
                     </div>
-                  ))}
-                </div>
+                  )}
+
+                  {/* Round-by-round list view (always shown, primary for non-SE formats) */}
+                  <div className="space-y-6">
+                    {Object.entries(matchesByRound).map(([round, roundMatches]) => (
+                      <div key={round}>
+                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                          Round {round}
+                          <Badge variant="outline" className="text-[10px]">
+                            {roundMatches.filter(m => m.status === "completed" || m.status === "bye").length}/{roundMatches.length} complete
+                          </Badge>
+                        </h4>
+                        <div className="space-y-2">
+                          {roundMatches.map(match => (
+                            <MatchCard
+                              key={match.id}
+                              match={match}
+                              playerMap={playerMap}
+                              onReportResult={(winnerId, p1Score, p2Score) => {
+                                updateMatch.mutate({
+                                  matchId: match.id,
+                                  eventId,
+                                  winnerId,
+                                  player1Score: p1Score,
+                                  player2Score: p2Score,
+                                });
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
