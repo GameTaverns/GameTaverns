@@ -3,17 +3,26 @@ import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { 
   ArrowLeft, Calendar, MapPin, Clock, Users, Gamepad2, 
-  Package, LayoutGrid, Settings, Globe, Lock, Pencil
+  Package, LayoutGrid, Settings, Globe, Lock, Pencil,
+  CheckCircle2, XCircle, Send, MoreVertical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useEventDetail } from "@/hooks/useEventPlanning";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useEventDetail, useUpdateEventDetail } from "@/hooks/useEventPlanning";
 import { EventGamesTab } from "@/components/events/planning/EventGamesTab";
 import { EventSuppliesTab } from "@/components/events/planning/EventSuppliesTab";
 import { EventTablesTab } from "@/components/events/planning/EventTablesTab";
 import { EventLogisticsTab } from "@/components/events/planning/EventLogisticsTab";
+import { EventAttendeesTab } from "@/components/events/planning/EventAttendeesTab";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -35,6 +44,7 @@ export default function EventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const { data: event, isLoading } = useEventDetail(eventId);
+  const updateEvent = useUpdateEventDetail();
   const [activeTab, setActiveTab] = useState("details");
 
   if (isLoading) {
@@ -61,6 +71,10 @@ export default function EventDetailPage() {
   const isMultiDay = !!event.end_date;
   const endDate = event.end_date ? new Date(event.end_date) : null;
 
+  const handleStatusChange = (newStatus: string) => {
+    updateEvent.mutate({ eventId: event.id, updates: { status: newStatus } as any });
+  };
+
   return (
     <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
       {/* Header */}
@@ -74,12 +88,11 @@ export default function EventDetailPage() {
             <Badge variant={EVENT_STATUS_VARIANT[event.status] || "outline"}>
               {event.status}
             </Badge>
-            {event.is_public && (
+            {event.is_public ? (
               <Badge variant="secondary" className="gap-1">
                 <Globe className="h-3 w-3" /> Public
               </Badge>
-            )}
-            {!event.is_public && (
+            ) : (
               <Badge variant="outline" className="gap-1">
                 <Lock className="h-3 w-3" /> Private
               </Badge>
@@ -91,6 +104,43 @@ export default function EventDetailPage() {
             </Badge>
           </div>
         </div>
+
+        {/* Status / Actions Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {event.status === "draft" && (
+              <DropdownMenuItem onClick={() => handleStatusChange("published")}>
+                <Send className="h-4 w-4 mr-2" /> Publish
+              </DropdownMenuItem>
+            )}
+            {event.status === "published" && (
+              <DropdownMenuItem onClick={() => handleStatusChange("completed")}>
+                <CheckCircle2 className="h-4 w-4 mr-2" /> Mark Completed
+              </DropdownMenuItem>
+            )}
+            {event.status !== "cancelled" && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleStatusChange("cancelled")}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <XCircle className="h-4 w-4 mr-2" /> Cancel Event
+                </DropdownMenuItem>
+              </>
+            )}
+            {event.status === "cancelled" && (
+              <DropdownMenuItem onClick={() => handleStatusChange("draft")}>
+                <Pencil className="h-4 w-4 mr-2" /> Reopen as Draft
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Quick Info Bar */}
@@ -126,7 +176,7 @@ export default function EventDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="details" className="gap-1.5">
             <Settings className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Details</span>
@@ -134,6 +184,10 @@ export default function EventDetailPage() {
           <TabsTrigger value="games" className="gap-1.5">
             <Gamepad2 className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Games</span>
+          </TabsTrigger>
+          <TabsTrigger value="attendees" className="gap-1.5">
+            <Users className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Attendees</span>
           </TabsTrigger>
           <TabsTrigger value="supplies" className="gap-1.5">
             <Package className="h-3.5 w-3.5" />
@@ -150,6 +204,9 @@ export default function EventDetailPage() {
         </TabsContent>
         <TabsContent value="games">
           <EventGamesTab eventId={event.id} libraryId={event.library_id} />
+        </TabsContent>
+        <TabsContent value="attendees">
+          <EventAttendeesTab eventId={event.id} />
         </TabsContent>
         <TabsContent value="supplies">
           <EventSuppliesTab eventId={event.id} />
