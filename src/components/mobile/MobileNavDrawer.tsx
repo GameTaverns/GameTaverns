@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   Menu, Library, Globe, HelpCircle, BookOpen, MessageSquare,
   Mail, LogOut, User, Trophy, Users, LayoutDashboard, List, MessageSquarePlus,
-  Scale,
+  Scale, Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -134,6 +134,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                 Discover
               </div>
               <NavItem href={getPlatformUrl("/directory")} icon={Globe} label="Directory" />
+              <NavItem href={getPlatformUrl("/events")} icon={Calendar} label="Events" />
               <NavItem href={getPlatformUrl("/achievements")} icon={Trophy} label="Achievements" />
               <NavItem href={getPlatformUrl("/lists")} icon={List} label="Curated Lists" />
 
