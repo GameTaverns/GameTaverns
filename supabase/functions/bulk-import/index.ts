@@ -3267,7 +3267,56 @@ export default async function handler(req: Request): Promise<Response> {
           console.log(`[BulkImport] Play history: imported=${playsImported} skipped=${playsSkipped} failed=${playsFailed}`);
         }
 
-        // Mark job as completed
+        // Post-import: Auto-import BGG play history for BGG collection imports
+        if (mode === "bgg_collection" && bgg_username) {
+          let parsedBggUsername = bgg_username.trim();
+          const bggUrlMatch2 = parsedBggUsername.match(/boardgamegeek\.com\/user\/([^\/\?#]+)/i);
+          if (bggUrlMatch2) parsedBggUsername = decodeURIComponent(bggUrlMatch2[1]);
+
+          console.log(`[BulkImport] Post-import: Triggering BGG play history import for "${parsedBggUsername}"...`);
+          sendProgress({
+            type: "progress",
+            current: totalGames,
+            total: totalGames,
+            imported: imported + updated,
+            failed,
+            currentGame: "Importing BGG play history...",
+            phase: "importing_bgg_plays",
+          });
+
+          try {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const playImportUrl = `${supabaseUrl}/functions/v1/bgg-play-import`;
+            
+            const playRes = await fetch(playImportUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": authHeader,
+                "apikey": Deno.env.get("SUPABASE_ANON_KEY") || "",
+              },
+              body: JSON.stringify({
+                bgg_username: parsedBggUsername,
+                library_id: targetLibraryId,
+                update_existing: false,
+              }),
+            });
+
+            if (playRes.ok) {
+              const playResult = await playRes.json();
+              playsImported = playResult.imported || 0;
+              const playsMatched = playResult.matched || 0;
+              const playsTotal = playResult.total || 0;
+              console.log(`[BulkImport] BGG play import complete: ${playsTotal} total plays, ${playsMatched} matched, ${playsImported} imported`);
+            } else {
+              const errText = await playRes.text().catch(() => "unknown");
+              console.warn(`[BulkImport] BGG play import failed (${playRes.status}): ${errText}`);
+            }
+          } catch (playErr) {
+            console.warn(`[BulkImport] BGG play import error:`, playErr);
+          }
+        }
+
         await supabaseAdmin
           .from("import_jobs")
           .update({
