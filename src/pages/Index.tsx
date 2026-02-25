@@ -378,12 +378,16 @@ const Index = () => {
   };
 
   const clearFilters = () => {
-    // Preserve demo mode when clearing filters
-    if (isDemoMode) {
-      setSearchParams({ demo: "true" });
-    } else {
-      setSearchParams({});
+    // Preserve tenant and demo params when clearing filters
+    const newParams = new URLSearchParams();
+    const currentTenant = searchParams.get("tenant");
+    if (currentTenant) {
+      newParams.set("tenant", currentTenant);
     }
+    if (isDemoMode) {
+      newParams.set("demo", "true");
+    }
+    setSearchParams(newParams);
   };
 
   const hasActiveFilters = !!filter;
