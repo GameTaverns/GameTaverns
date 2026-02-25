@@ -28,6 +28,8 @@ import { EventRegistrationTab } from "@/components/events/planning/EventRegistra
 import { EventScheduleTab } from "@/components/events/planning/EventScheduleTab";
 import { EventTournamentTab } from "@/components/events/planning/EventTournamentTab";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GuestRsvpCard } from "@/components/events/GuestRsvpCard";
+import { useAuth } from "@/hooks/useAuth";
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   game_night: "Game Night",
@@ -49,6 +51,7 @@ export default function EventDetailPage() {
   const navigate = useNavigate();
   const { data: event, isLoading } = useEventDetail(eventId);
   const updateEvent = useUpdateEventDetail();
+  const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState("details");
 
   const eventDate = event ? new Date(event.event_date) : null;
@@ -202,6 +205,16 @@ export default function EventDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Guest RSVP — shown for public events */}
+      {event.is_public && (
+        <GuestRsvpCard
+          eventId={event.id}
+          eventTitle={event.title}
+          maxAttendees={event.max_attendees}
+          isPublic={event.is_public}
+        />
+      )}
 
       {/* Dynamic Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
