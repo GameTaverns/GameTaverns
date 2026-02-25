@@ -1,0 +1,189 @@
+import { useState } from "react";
+import { format } from "date-fns";
+import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { usePublicEventDirectory } from "@/hooks/useEventSchedule";
+
+const EVENT_TYPE_ICONS: Record<string, React.ReactNode> = {
+  game_night: <Gamepad2 className="h-4 w-4" />,
+  tournament: <Trophy className="h-4 w-4" />,
+  convention: <Ticket className="h-4 w-4" />,
+  meetup: <Users className="h-4 w-4" />,
+  public_event: <Globe className="h-4 w-4" />,
+};
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  game_night: "Game Night",
+  tournament: "Tournament",
+  convention: "Convention",
+  meetup: "Meetup",
+  public_event: "Public Event",
+};
+
+export default function PublicEventDirectory() {
+  const { data: events = [], isLoading } = usePublicEventDirectory();
+  const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+
+  const filtered = events.filter((e: any) => {
+    const matchesSearch = !search ||
+      e.title?.toLowerCase().includes(search.toLowerCase()) ||
+      e.library_name?.toLowerCase().includes(search.toLowerCase()) ||
+      e.venue_name?.toLowerCase().includes(search.toLowerCase());
+    const matchesType = typeFilter === "all" || e.event_type === typeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  return (
+    <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Globe className="h-6 w-6 text-primary" />
+          Public Events
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          Discover upcoming board game events, tournaments, and conventions near you
+        </p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search events..."
+            className="pl-9"
+          />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="game_night">Game Nights</SelectItem>
+            <SelectItem value="tournament">Tournaments</SelectItem>
+            <SelectItem value="convention">Conventions</SelectItem>
+            <SelectItem value="meetup">Meetups</SelectItem>
+            <SelectItem value="public_event">Public Events</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Events List */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 w-full" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <Globe className="h-10 w-10 mx-auto mb-3 opacity-40" />
+            <p className="text-sm font-medium">No public events found</p>
+            <p className="text-xs mt-1">
+              {search || typeFilter !== "all"
+                ? "Try adjusting your filters"
+                : "Check back later for upcoming events"}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((event: any) => (
+            <EventDirectoryCard
+              key={event.id}
+              event={event}
+              onClick={() => navigate(`/event/${event.id}`)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EventDirectoryCard({ event, onClick }: { event: any; onClick: () => void }) {
+  const eventDate = new Date(event.event_date);
+  const endDate = event.end_date ? new Date(event.end_date) : null;
+  const isMultiDay = !!endDate;
+
+  return (
+    <Card className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={onClick}>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-4">
+          {/* Date Block */}
+          <div className="shrink-0 w-14 text-center rounded-lg border bg-muted/50 p-2">
+            <div className="text-xs text-muted-foreground uppercase">{format(eventDate, "MMM")}</div>
+            <div className="text-xl font-bold">{format(eventDate, "d")}</div>
+            {isMultiDay && endDate && (
+              <div className="text-[10px] text-muted-foreground">– {format(endDate, "d")}</div>
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-sm">{event.title}</h3>
+              <Badge variant="outline" className="text-[10px] gap-1">
+                {EVENT_TYPE_ICONS[event.event_type]}
+                {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {format(eventDate, "EEE, MMM d 'at' h:mm a")}
+              </span>
+              {(event.venue_name || event.event_location) && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {event.venue_name || event.event_location}
+                </span>
+              )}
+              {event.registration_count > 0 && (
+                <span className="flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  {event.registration_count} registered
+                  {event.max_attendees && ` / ${event.max_attendees}`}
+                </span>
+              )}
+            </div>
+
+            {event.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{event.description}</p>
+            )}
+
+            <div className="flex items-center gap-2 mt-2">
+              {event.library_name && (
+                <Badge variant="secondary" className="text-[10px]">
+                  Hosted by {event.library_name}
+                </Badge>
+              )}
+              {event.entry_fee && event.entry_fee !== "Free" && (
+                <Badge variant="outline" className="text-[10px]">{event.entry_fee}</Badge>
+              )}
+            </div>
+          </div>
+
+          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-2" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

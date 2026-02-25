@@ -176,6 +176,7 @@ else
         "68-activity-triggers.sql"
         "70-ratings-isolation.sql"
         "81-event-planning.sql"
+        "82-event-registrations-tournaments.sql"
     )
 fi
 
