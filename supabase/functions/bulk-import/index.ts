@@ -1129,12 +1129,71 @@ async function fetchBGGData(
   return xmlFallback;
 }
 
-// Fetch BGG collection for a user
-async function fetchBGGCollection(username: string): Promise<{ id: string; name: string; userRating?: number }[]> {
-  // Request stats=1 to get the user's personal rating for each game
-  const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&excludesubtype=boardgameexpansion&stats=1`;
+// Fetch a single BGG collection page (base games or expansions)
+async function fetchBGGCollectionPage(
+  username: string,
+  subtype: "boardgame" | "boardgameexpansion",
+  headers: Record<string, string>,
+): Promise<string> {
+  const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&subtype=${subtype}&stats=1`;
   
-  // BGG auth: send both API token and session cookie (matching bgg-sync pattern)
+  let attempts = 0;
+  while (attempts < 5) {
+    const res = await fetch(collectionUrl, { headers });
+    
+    if (res.status === 202) {
+      console.log(`[BulkImport] BGG collection (${subtype}) 202 (processing), retrying in 3s...`);
+      await new Promise(r => setTimeout(r, 3000));
+      attempts++;
+      continue;
+    }
+    
+    if (res.status === 401 || res.status === 403) {
+      console.warn(`[BulkImport] BGG collection API (${subtype}) returned ${res.status} — auth failed`);
+      await res.text().catch(() => {});
+      return "";
+    }
+    
+    if (res.status === 404 || res.status === 400) {
+      throw new Error(`BGG username "${username}" not found or collection is private. Please check the username is correct and your collection is public.`);
+    }
+    
+    if (!res.ok) {
+      console.warn(`[BulkImport] BGG collection API (${subtype}) returned ${res.status}`);
+      await res.text().catch(() => {});
+      return "";
+    }
+    
+    return await res.text();
+  }
+  return "";
+}
+
+// Parse items from BGG collection XML
+function parseBGGCollectionXml(xml: string): { id: string; name: string; userRating?: number }[] {
+  const games: { id: string; name: string; userRating?: number }[] = [];
+  const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>([\s\S]*?)<\/item>/g;
+  let match;
+  while ((match = itemRegex.exec(xml)) !== null) {
+    const bggId = match[1];
+    const itemBlock = match[2];
+    const nameMatch = itemBlock.match(/<name[^>]*>([^<]+)<\/name>/);
+    const name = nameMatch ? nameMatch[1] : `BGG #${bggId}`;
+    
+    let userRating: number | undefined;
+    const ratingMatch = itemBlock.match(/<rating\s+value="([\d.]+)"/);
+    if (ratingMatch) {
+      const r = parseFloat(ratingMatch[1]);
+      if (r > 0) userRating = r;
+    }
+    
+    games.push({ id: bggId, name, userRating });
+  }
+  return games;
+}
+
+// Fetch BGG collection for a user (base games + expansions)
+async function fetchBGGCollection(username: string): Promise<{ id: string; name: string; userRating?: number }[]> {
   const bggCookie3 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
   const bggToken = Deno.env.get("BGG_API_TOKEN") || "";
   
@@ -1150,82 +1209,45 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
   
   console.log(`[BulkImport] Fetching BGG collection for "${username}" (with stats), cookie present: ${Boolean(bggCookie3)}, token present: ${Boolean(bggToken)}`);
 
-  let xml = "";
-  let directSuccess = false;
-
-  // --- Attempt 1: Direct BGG API ---
-  let attempts = 0;
-  while (attempts < 5) {
-    const res = await fetch(collectionUrl, { headers });
-    
-    if (res.status === 202) {
-      console.log(`[BulkImport] BGG collection 202 (processing), retrying in 3s...`);
-      await new Promise(r => setTimeout(r, 3000));
-      attempts++;
-      continue;
-    }
-    
-    if (res.status === 401 || res.status === 403) {
-      console.warn(`[BulkImport] BGG collection API returned ${res.status} — auth failed`);
-      await res.text().catch(() => {});
-      break;
-    }
-    
-    if (res.status === 404 || res.status === 400) {
-      throw new Error(`BGG username "${username}" not found or collection is private. Please check the username is correct and your collection is public.`);
-    }
-    
-    if (!res.ok) {
-      console.warn(`[BulkImport] BGG collection API returned ${res.status}`);
-      await res.text().catch(() => {});
-      break;
-    }
-    
-    xml = await res.text();
-    directSuccess = true;
-    break;
-  }
-
-  if (!xml) {
+  // Fetch base games
+  const baseXml = await fetchBGGCollectionPage(username, "boardgame", headers);
+  if (!baseXml) {
     throw new Error(
       "BGG API requires authentication. Please ensure your BGG_SESSION_COOKIE is valid. As an alternative, export your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option instead."
     );
   }
 
-  if (xml.includes("<error>") || xml.includes("Invalid username")) {
+  if (baseXml.includes("<error>") || baseXml.includes("Invalid username")) {
     throw new Error(`BGG username "${username}" not found. Please check the username is correct.`);
   }
-  
-  const games: { id: string; name: string; userRating?: number }[] = [];
-  
-  // Parse each <item> block, extracting objectid, name, and user's personal rating
-  const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>([\s\S]*?)<\/item>/g;
-  let match;
-  while ((match = itemRegex.exec(xml)) !== null) {
-    const bggId = match[1];
-    const itemBlock = match[2];
-    const nameMatch = itemBlock.match(/<name[^>]*>([^<]+)<\/name>/);
-    const name = nameMatch ? nameMatch[1] : `BGG #${bggId}`;
-    
-    // Extract user's personal rating: <rating value="N"> (not <average>)
-    // BGG XML: <stats><rating value="7.5"><average value="..."/></rating></stats>
-    let userRating: number | undefined;
-    const ratingMatch = itemBlock.match(/<rating\s+value="([\d.]+)"/);
-    if (ratingMatch) {
-      const r = parseFloat(ratingMatch[1]);
-      if (r > 0) userRating = r;
+
+  const baseGames = parseBGGCollectionXml(baseXml);
+  console.log(`[BulkImport] Parsed ${baseGames.length} base games from BGG collection for "${username}"`);
+
+  // Fetch expansions (separate API call required by BGG)
+  // Small delay to avoid rate limiting
+  await new Promise(r => setTimeout(r, 1500));
+  const expansionXml = await fetchBGGCollectionPage(username, "boardgameexpansion", headers);
+  const expansionGames = parseBGGCollectionXml(expansionXml);
+  console.log(`[BulkImport] Parsed ${expansionGames.length} expansions from BGG collection for "${username}"`);
+
+  // Merge, deduplicating by BGG ID (some items may appear in both)
+  const seen = new Set<string>();
+  const allGames: { id: string; name: string; userRating?: number }[] = [];
+  for (const g of [...baseGames, ...expansionGames]) {
+    if (!seen.has(g.id)) {
+      seen.add(g.id);
+      allGames.push(g);
     }
-    
-    games.push({ id: bggId, name, userRating });
   }
-  
-  const ratedCount = games.filter(g => g.userRating).length;
-  if (games.length === 0 && xml.includes("<items")) {
+
+  const ratedCount = allGames.filter(g => g.userRating).length;
+  if (allGames.length === 0 && baseXml.includes("<items")) {
     console.log(`BGG collection for ${username} is empty or has no owned games`);
   }
   
-  console.log(`[BulkImport] Parsed ${games.length} games from BGG collection for "${username}" (${ratedCount} with user ratings)`);
-  return games;
+  console.log(`[BulkImport] Total: ${allGames.length} unique items (${baseGames.length} base + ${expansionGames.length} expansions, ${ratedCount} with user ratings)`);
+  return allGames;
 }
 
 // Helper functions
@@ -2887,7 +2909,8 @@ export default async function handler(req: Request): Promise<Response> {
             if (gameError || !newGame) {
               failed++;
               failureBreakdown.create_failed++;
-              const reason = `Failed to create "${gameData.title}": ${gameError?.message}`;
+              const reason = `Failed to create "${gameData.title}" (BGG ${gameInput.bgg_id}): ${gameError?.message || "unknown error"}`;
+              console.error(`[BulkImport] CREATE_FAILED: ${reason}`);
               errors.push(reason);
               await logItemError(gameData.title, gameInput.bgg_id, reason, "create_failed");
               // Update job progress for failed creation
