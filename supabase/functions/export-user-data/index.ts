@@ -58,7 +58,6 @@ const handler = async (req: Request): Promise<Response> => {
       eloResult,
       referralsResult,
       referralBadgesResult,
-      sessionsResult,
     ] = await Promise.all([
       adminClient.from('user_profiles').select('*').eq('user_id', userId).maybeSingle(),
       adminClient.from('libraries').select('*, games(*)').eq('owner_id', userId),
@@ -77,24 +76,24 @@ const handler = async (req: Request): Promise<Response> => {
       adminClient.from('player_elo_ratings').select('*').eq('user_id', userId),
       adminClient.from('referrals').select('*').eq('referrer_user_id', userId),
       adminClient.from('referral_badges').select('*').eq('user_id', userId).maybeSingle(),
-      adminClient.from('game_sessions').select('*, game_session_players(*)').eq('logged_by', userId),
     ]);
 
-    // Get library member data (libraries user is a member of but doesn't own)
+    // Get library member data
     const { data: memberships } = await adminClient.from('library_members').select('*, libraries(name, slug)').eq('user_id', userId);
 
-    // Get game admin data for owned libraries
+    // Get game sessions and admin data for owned games
     let gameAdminData: any[] = [];
-    if (librariesResult.data) {
-      for (const lib of librariesResult.data) {
-        const gameIds = (lib.games || []).map((g: any) => g.id);
-        if (gameIds.length > 0) {
-          const { data } = await adminClient.from('game_admin_data').select('*').in('game_id', gameIds);
-          if (data) gameAdminData = [...gameAdminData, ...data];
-        }
-      }
+    let gameSessions: any[] = [];
+    const allGameIds = (librariesResult.data || []).flatMap((lib: any) => (lib.games || []).map((g: any) => g.id));
+    
+    if (allGameIds.length > 0) {
+      const [adminDataResult, sessionsResult] = await Promise.all([
+        adminClient.from('game_admin_data').select('*').in('game_id', allGameIds),
+        adminClient.from('game_sessions').select('*, game_session_players(*)').in('game_id', allGameIds),
+      ]);
+      gameAdminData = adminDataResult.data || [];
+      gameSessions = sessionsResult.data || [];
     }
-
     const exportData = {
       exported_at: new Date().toISOString(),
       user: {
@@ -126,7 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
       elo_ratings: eloResult.data || [],
       referrals: referralsResult.data || [],
       referral_badges: referralBadgesResult.data,
-      game_sessions: sessionsResult.data || [],
+      game_sessions: gameSessions,
     };
 
     return new Response(JSON.stringify(exportData, null, 2), {
