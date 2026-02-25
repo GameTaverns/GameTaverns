@@ -1741,6 +1741,28 @@ export default async function handler(req: Request): Promise<Response> {
     const jobId = job.id;
     console.log(`[BulkImport] Created job ${jobId}, starting SSE stream`);
 
+    // Helper to log individual item errors to import_item_errors table
+    const logItemError = async (
+      itemTitle: string | undefined,
+      bggId: string | undefined,
+      reason: string,
+      category: string,
+      rawInput?: Record<string, unknown>,
+    ) => {
+      try {
+        await supabaseAdmin.from("import_item_errors").insert({
+          job_id: jobId,
+          item_title: itemTitle || null,
+          bgg_id: bggId || null,
+          error_reason: reason,
+          error_category: category,
+          raw_input: rawInput ? JSON.parse(JSON.stringify(rawInput)) : null,
+        });
+      } catch (e) {
+        console.warn(`[BulkImport] Failed to log item error:`, e);
+      }
+    };
+
     // Log import start
     logEvent({
       level: "info",
@@ -2517,11 +2539,15 @@ export default async function handler(req: Request): Promise<Response> {
                 failed++;
                 failureBreakdown.not_found++;
                 notFoundGames.push(gameName);
-                errors.push(`"${gameName}" was not found in the catalog or on BoardGameGeek`);
+                const reason = `"${gameName}" was not found in the catalog or on BoardGameGeek`;
+                errors.push(reason);
+                await logItemError(gameInput.title, gameInput.bgg_id, reason, "not_found");
               } else {
                 failed++;
                 failureBreakdown.missing_title++;
-                errors.push(`Could not determine title for BGG ID: ${gameInput.bgg_id}`);
+                const reason = `Could not determine title for BGG ID: ${gameInput.bgg_id}`;
+                errors.push(reason);
+                await logItemError(gameInput.title, gameInput.bgg_id, reason, "missing_title");
               }
               continue;
             }
@@ -2861,7 +2887,9 @@ export default async function handler(req: Request): Promise<Response> {
             if (gameError || !newGame) {
               failed++;
               failureBreakdown.create_failed++;
-              errors.push(`Failed to create "${gameData.title}": ${gameError?.message}`);
+              const reason = `Failed to create "${gameData.title}": ${gameError?.message}`;
+              errors.push(reason);
+              await logItemError(gameData.title, gameInput.bgg_id, reason, "create_failed");
               // Update job progress for failed creation
               await supabaseAdmin.from("import_jobs").update({
                 processed_items: i + 1,
@@ -2974,7 +3002,9 @@ export default async function handler(req: Request): Promise<Response> {
             console.error("Game import error:", e);
             failed++;
             failureBreakdown.exception++;
-            errors.push(`Error importing "${gameInput.title || gameInput.bgg_id}": ${e instanceof Error ? e.message : "Unknown error"}`);
+            const reason = `Error importing "${gameInput.title || gameInput.bgg_id}": ${e instanceof Error ? e.message : "Unknown error"}`;
+            errors.push(reason);
+            await logItemError(gameInput.title, gameInput.bgg_id, reason, "exception");
             
             // Update job progress on error
             await supabaseAdmin.from("import_jobs").update({

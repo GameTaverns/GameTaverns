@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Shield, Activity, Users, Database, Settings, MessageSquare,
   Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Globe,
-  Pencil, Eye, EyeOff, ChevronUp, ChevronDown, RotateCcw, X,
+  Pencil, Eye, EyeOff, ChevronUp, ChevronDown, RotateCcw, X, AlertTriangle,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -35,10 +35,13 @@ const AuditLogViewer = lazy(() =>
 const SeoDirectory = lazy(() =>
   import("@/components/admin/SeoDirectory").then(m => ({ default: m.SeoDirectory }))
 );
+const ImportErrorsPanel = lazy(() =>
+  import("@/components/admin/ImportErrorsPanel").then(m => ({ default: m.ImportErrorsPanel }))
+);
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
-  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe,
+  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle,
 };
 
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
@@ -98,6 +101,11 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs 
     seo: (
       <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading SEO directory…</div>}>
         <SeoDirectory />
+      </Suspense>
+    ),
+    "import-errors": (
+      <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading import errors…</div>}>
+        <ImportErrorsPanel />
       </Suspense>
     ),
   };
