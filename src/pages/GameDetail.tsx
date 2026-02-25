@@ -473,7 +473,7 @@ const GameDetail = () => {
                     lenderUserId={library.owner_id}
                   />
                 )}
-                {canViewAdminData && (
+                {isLibraryOwner && !isDemoMode && (
                   <Button
                     variant="outline"
                     size="sm"
