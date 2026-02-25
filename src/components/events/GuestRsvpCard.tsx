@@ -102,6 +102,22 @@ export function GuestRsvpCard({ eventId, eventTitle, maxAttendees, isPublic, reg
           ? `You're #${waitlistPosition} on the waitlist for "${eventTitle}"`
           : `You're confirmed for "${eventTitle}"`,
       });
+
+      // Fire-and-forget: send RSVP confirmation email with calendar invite
+      try {
+        await db.functions.invoke("send-rsvp-confirmation", {
+          body: {
+            event_id: eventId,
+            attendee_name: name.trim(),
+            attendee_email: email.trim(),
+            status,
+            waitlist_position: waitlistPosition,
+          },
+        });
+      } catch (_emailErr) {
+        // Non-blocking — don't show error to user if email fails
+        console.warn("RSVP confirmation email failed:", _emailErr);
+      }
     } catch (err: any) {
       toast({ title: "Registration failed", description: err.message, variant: "destructive" });
     } finally {
