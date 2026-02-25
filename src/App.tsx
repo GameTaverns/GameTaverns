@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect } from "react";
+import { lazyRetry } from "@/lib/lazyRetry";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,66 +24,66 @@ import { DMPopupManager } from "@/components/social/DMPopupManager";
 import { useMobileLibrary } from "@/hooks/useCapacitor";
 
 // Lazy load route components to reduce initial bundle size
-const Index = lazy(() => import("./pages/Index"));
-const GameDetail = lazy(() => import("./pages/GameDetail"));
-const Login = lazy(() => import("./pages/Login"));
-const Settings = lazy(() => import("./pages/Settings"));
-const GameForm = lazy(() => import("./pages/GameForm"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const Docs = lazy(() => import("./pages/Docs"));
-const LibrarySuspended = lazy(() => import("./pages/LibrarySuspended"));
+const Index = lazy(lazyRetry(() => import("./pages/Index")));
+const GameDetail = lazy(lazyRetry(() => import("./pages/GameDetail")));
+const Login = lazy(lazyRetry(() => import("./pages/Login")));
+const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
+const GameForm = lazy(lazyRetry(() => import("./pages/GameForm")));
+const NotFound = lazy(lazyRetry(() => import("./pages/NotFound")));
+const Docs = lazy(lazyRetry(() => import("./pages/Docs")));
+const LibrarySuspended = lazy(lazyRetry(() => import("./pages/LibrarySuspended")));
 
 // Legal & Info pages
-const Legal = lazy(() => import("./pages/Legal"));
-const Privacy = lazy(() => import("./pages/Privacy"));
-const Terms = lazy(() => import("./pages/Terms"));
-const Cookies = lazy(() => import("./pages/Cookies"));
+const Legal = lazy(lazyRetry(() => import("./pages/Legal")));
+const Privacy = lazy(lazyRetry(() => import("./pages/Privacy")));
+const Terms = lazy(lazyRetry(() => import("./pages/Terms")));
+const Cookies = lazy(lazyRetry(() => import("./pages/Cookies")));
 
 
 // Platform pages (multi-tenant)
-const Platform = lazy(() => import("./pages/Platform"));
-const Features = lazy(() => import("./pages/Features"));
-const Press = lazy(() => import("./pages/Press"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const CreateLibrary = lazy(() => import("./pages/CreateLibrary"));
-const Signup = lazy(() => import("./pages/Signup"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const Platform = lazy(lazyRetry(() => import("./pages/Platform")));
+const Features = lazy(lazyRetry(() => import("./pages/Features")));
+const Press = lazy(lazyRetry(() => import("./pages/Press")));
+const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
+const CreateLibrary = lazy(lazyRetry(() => import("./pages/CreateLibrary")));
+const Signup = lazy(lazyRetry(() => import("./pages/Signup")));
+const ForgotPassword = lazy(lazyRetry(() => import("./pages/ForgotPassword")));
+const ResetPassword = lazy(lazyRetry(() => import("./pages/ResetPassword")));
+const VerifyEmail = lazy(lazyRetry(() => import("./pages/VerifyEmail")));
 
-const Setup2FA = lazy(() => import("./pages/Setup2FA"));
-const Directory = lazy(() => import("./pages/Directory"));
-const Achievements = lazy(() => import("./pages/Achievements"));
-const Community = lazy(() => import("./pages/Community"));
-const ThreadDetail = lazy(() => import("./pages/ThreadDetail"));
-const ClubPage = lazy(() => import("./pages/ClubPage"));
-const ClubDashboard = lazy(() => import("./pages/ClubDashboard"));
-const RequestClub = lazy(() => import("./pages/RequestClub"));
-const JoinClub = lazy(() => import("./pages/JoinClub"));
+const Setup2FA = lazy(lazyRetry(() => import("./pages/Setup2FA")));
+const Directory = lazy(lazyRetry(() => import("./pages/Directory")));
+const Achievements = lazy(lazyRetry(() => import("./pages/Achievements")));
+const Community = lazy(lazyRetry(() => import("./pages/Community")));
+const ThreadDetail = lazy(lazyRetry(() => import("./pages/ThreadDetail")));
+const ClubPage = lazy(lazyRetry(() => import("./pages/ClubPage")));
+const ClubDashboard = lazy(lazyRetry(() => import("./pages/ClubDashboard")));
+const RequestClub = lazy(lazyRetry(() => import("./pages/RequestClub")));
+const JoinClub = lazy(lazyRetry(() => import("./pages/JoinClub")));
 
 // Library admin pages
-const LibrarySettings = lazy(() => import("./pages/LibrarySettings"));
-const LibraryGames = lazy(() => import("./pages/LibraryGames"));
-const ManageGames = lazy(() => import("./pages/ManageGames"));
-const PlayStatsPage = lazy(() => import("./pages/PlayStatsPage"));
-const PollPage = lazy(() => import("./pages/PollPage"));
-const CatalogPrint = lazy(() => import("./pages/CatalogPrint"));
-const SmartPicker = lazy(() => import("./pages/SmartPicker"));
-const CatalogBrowse = lazy(() => import("./pages/CatalogBrowse"));
-const CatalogGameDetail = lazy(() => import("./pages/CatalogGameDetail"));
-const Install = lazy(() => import("./pages/Install"));
-const UserProfile = lazy(() => import("./pages/UserProfile"));
-const DashboardEditor = lazy(() => import("./components/dashboard/editor/DashboardEditorPage"));
-const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
-const DirectMessages = lazy(() => import("./pages/DirectMessages"));
-const CuratedLists = lazy(() => import("./pages/CuratedLists"));
-const CuratedListDetail = lazy(() => import("./pages/CuratedListDetail"));
+const LibrarySettings = lazy(lazyRetry(() => import("./pages/LibrarySettings")));
+const LibraryGames = lazy(lazyRetry(() => import("./pages/LibraryGames")));
+const ManageGames = lazy(lazyRetry(() => import("./pages/ManageGames")));
+const PlayStatsPage = lazy(lazyRetry(() => import("./pages/PlayStatsPage")));
+const PollPage = lazy(lazyRetry(() => import("./pages/PollPage")));
+const CatalogPrint = lazy(lazyRetry(() => import("./pages/CatalogPrint")));
+const SmartPicker = lazy(lazyRetry(() => import("./pages/SmartPicker")));
+const CatalogBrowse = lazy(lazyRetry(() => import("./pages/CatalogBrowse")));
+const CatalogGameDetail = lazy(lazyRetry(() => import("./pages/CatalogGameDetail")));
+const Install = lazy(lazyRetry(() => import("./pages/Install")));
+const UserProfile = lazy(lazyRetry(() => import("./pages/UserProfile")));
+const DashboardEditor = lazy(lazyRetry(() => import("./components/dashboard/editor/DashboardEditorPage")));
+const NotificationsPage = lazy(lazyRetry(() => import("./pages/NotificationsPage")));
+const DirectMessages = lazy(lazyRetry(() => import("./pages/DirectMessages")));
+const CuratedLists = lazy(lazyRetry(() => import("./pages/CuratedLists")));
+const CuratedListDetail = lazy(lazyRetry(() => import("./pages/CuratedListDetail")));
 
 // SEO landing pages
-const GamesForNPlayers = lazy(() => import("./pages/seo/GamesForNPlayers"));
-const MechanicPage = lazy(() => import("./pages/seo/MechanicPage"));
-const MechanicsIndex = lazy(() => import("./pages/seo/MechanicsIndex"));
-const LibrariesInCity = lazy(() => import("./pages/seo/LibrariesInCity"));
+const GamesForNPlayers = lazy(lazyRetry(() => import("./pages/seo/GamesForNPlayers")));
+const MechanicPage = lazy(lazyRetry(() => import("./pages/seo/MechanicPage")));
+const MechanicsIndex = lazy(lazyRetry(() => import("./pages/seo/MechanicsIndex")));
+const LibrariesInCity = lazy(lazyRetry(() => import("./pages/seo/LibrariesInCity")));
 const GameCalendar = lazy(() => import("./pages/GameCalendar"));
 
 // Growth pages
