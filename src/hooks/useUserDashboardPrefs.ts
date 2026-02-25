@@ -114,6 +114,7 @@ export const TAB_WIDGET_REGISTRY: Record<string, WidgetDef[]> = {
     { id: "server", label: "Server", icon: "Terminal" },
     { id: "security", label: "Security", icon: "Shield" },
     { id: "seo", label: "SEO Pages", icon: "Globe" },
+    { id: "import-errors", label: "Import Errors", icon: "AlertTriangle" },
   ],
 };
 

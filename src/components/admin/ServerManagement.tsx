@@ -521,6 +521,11 @@ const DIAGNOSTIC_COMMANDS: { category: string; icon: React.ReactNode; commands: 
         description: "Shows the 15 most recent import jobs with their final status.",
         command: `${PSQL} "SELECT id, status, total_items, processed_items, error_message, created_at FROM import_jobs ORDER BY created_at DESC LIMIT 15;"`,
       },
+      {
+        label: "View failed import items",
+        description: "Shows individual games that failed during imports with error reasons.",
+        command: `${PSQL} "SELECT item_title, bgg_id, error_category, error_reason, created_at FROM import_item_errors ORDER BY created_at DESC LIMIT 25;"`,
+      },
     ],
   },
   {
