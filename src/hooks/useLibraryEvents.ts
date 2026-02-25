@@ -27,6 +27,17 @@ export interface CreateEventInput {
   description?: string;
   event_date: string;
   event_location?: string;
+  event_type?: string;
+  end_date?: string;
+  max_attendees?: number;
+  is_public?: boolean;
+  venue_name?: string;
+  venue_address?: string;
+  venue_notes?: string;
+  entry_fee?: string;
+  age_restriction?: string;
+  parking_info?: string;
+  status?: string;
 }
 
 export interface UpdateEventInput {
@@ -101,15 +112,29 @@ export function useCreateEvent() {
 
   return useMutation({
     mutationFn: async (input: CreateEventInput) => {
-      const { data, error } = await supabase
+      const insertData: Record<string, any> = {
+        library_id: input.library_id,
+        title: input.title,
+        description: input.description || null,
+        event_date: input.event_date,
+        event_location: input.event_location || null,
+      };
+      // Add optional planning fields
+      if (input.event_type) insertData.event_type = input.event_type;
+      if (input.end_date) insertData.end_date = input.end_date;
+      if (input.max_attendees) insertData.max_attendees = input.max_attendees;
+      if (input.is_public !== undefined) insertData.is_public = input.is_public;
+      if (input.venue_name) insertData.venue_name = input.venue_name;
+      if (input.venue_address) insertData.venue_address = input.venue_address;
+      if (input.venue_notes) insertData.venue_notes = input.venue_notes;
+      if (input.entry_fee) insertData.entry_fee = input.entry_fee;
+      if (input.age_restriction) insertData.age_restriction = input.age_restriction;
+      if (input.parking_info) insertData.parking_info = input.parking_info;
+      if (input.status) insertData.status = input.status;
+
+      const { data, error } = await (supabase as any)
         .from("library_events")
-        .insert({
-          library_id: input.library_id,
-          title: input.title,
-          description: input.description || null,
-          event_date: input.event_date,
-          event_location: input.event_location || null,
-        })
+        .insert(insertData)
         .select()
         .single();
 

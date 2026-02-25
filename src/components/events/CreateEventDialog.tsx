@@ -100,6 +100,18 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
     const [hours, minutes] = time.split(":").map(Number);
     const eventDate = new Date(date);
     eventDate.setHours(hours, minutes, 0, 0);
+
+    let endDateISO: string | undefined;
+    if (endDate) {
+      const ed = new Date(endDate);
+      if (endTime) {
+        const [eh, em] = endTime.split(":").map(Number);
+        ed.setHours(eh, em, 0, 0);
+      } else {
+        ed.setHours(23, 59, 0, 0);
+      }
+      endDateISO = ed.toISOString();
+    }
     
     if (isEditMode && editEvent) {
       await updateEvent.mutateAsync({
@@ -118,7 +130,18 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
         title: title.trim(),
         description: description.trim() || undefined,
         event_date: eventDate.toISOString(),
-        event_location: location.trim() || venueName.trim() || undefined,
+        event_location: location.trim() || venueAddress.trim() || undefined,
+        event_type: eventType,
+        end_date: endDateISO,
+        max_attendees: maxAttendees ? parseInt(maxAttendees) : undefined,
+        is_public: isPublic,
+        venue_name: venueName.trim() || undefined,
+        venue_address: venueAddress.trim() || undefined,
+        venue_notes: venueNotes.trim() || undefined,
+        entry_fee: entryFee.trim() || undefined,
+        age_restriction: ageRestriction.trim() || undefined,
+        parking_info: parkingInfo.trim() || undefined,
+        status: "published",
       });
     }
     
