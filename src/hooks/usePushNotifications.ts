@@ -3,12 +3,38 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { MobileStorage } from './useCapacitor';
 import { getLibraryUrl } from './useTenantUrl';
+import { supabase } from '@/integrations/backend/client';
 
 interface PushNotificationState {
   isSupported: boolean;
   isRegistered: boolean;
   token: string | null;
   notifications: PushNotificationSchema[];
+}
+
+/** Save or update the push token in the database */
+async function upsertPushToken(token: string) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const platform = Capacitor.getPlatform(); // 'android' | 'ios' | 'web'
+
+  const { error } = await supabase
+    .from('user_push_tokens')
+    .upsert(
+      {
+        user_id: user.id,
+        token,
+        platform,
+        device_info: { capacitor_platform: platform },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,token' }
+    );
+
+  if (error) {
+    console.warn('Failed to upsert push token:', error);
+  }
 }
 
 export function usePushNotifications() {
@@ -21,14 +47,12 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    // Push notifications require Firebase (google-services.json) to be configured.
-    // Until a Firebase project is set up, keep isSupported=false to prevent a
-    // fatal native crash when PushNotificationsPlugin.register() calls
-    // FirebaseApp.getInstance() on an uninitialized Firebase app.
-    // To enable: add google-services.json to android/app/ and set isSupported below.
+    if (!Capacitor.isPluginAvailable('PushNotifications')) return;
+
+    // Push notifications are now enabled on native platforms
     setState(prev => ({
       ...prev,
-      isSupported: false, // disabled until Firebase is configured
+      isSupported: true,
     }));
   }, []);
 
@@ -51,7 +75,6 @@ export function usePushNotifications() {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    // Guard: only proceed if the plugin is actually available
     if (!Capacitor.isPluginAvailable('PushNotifications')) return;
 
     let registrationListener: Promise<any> | null = null;
@@ -68,10 +91,19 @@ export function usePushNotifications() {
           isRegistered: true,
           token: token.value,
         }));
+
+        // Save token to local storage
         try {
           await MobileStorage.set('pushToken', token.value);
         } catch (e) {
-          console.warn('Failed to store push token:', e);
+          console.warn('Failed to store push token locally:', e);
+        }
+
+        // Save token to database for server-side push delivery
+        try {
+          await upsertPushToken(token.value);
+        } catch (e) {
+          console.warn('Failed to save push token to database:', e);
         }
       });
 
@@ -107,6 +139,9 @@ export function usePushNotifications() {
             window.location.href = getLibraryUrl(data.librarySlug, `/games/${data.gameSlug}`);
           } else if (data?.librarySlug) {
             window.location.href = getLibraryUrl(data.librarySlug, "/");
+          } else if (data?.route) {
+            // Generic route navigation for DMs, notifications, etc.
+            window.location.href = data.route;
           }
         }
       );
@@ -119,6 +154,8 @@ export function usePushNotifications() {
             isRegistered: true,
             token,
           }));
+          // Re-upsert on app launch to keep the token fresh
+          upsertPushToken(token).catch(() => {});
         }
       }).catch(e => console.warn('Failed to read push token:', e));
 
