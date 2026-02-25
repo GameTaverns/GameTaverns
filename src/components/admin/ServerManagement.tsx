@@ -487,6 +487,184 @@ function ScriptCard({ script, onRun, runningCommands }: {
   );
 }
 
+const DC = "docker compose --env-file /opt/gametaverns/.env -f /opt/gametaverns/deploy/supabase-selfhosted/docker-compose.yml";
+const PSQL = `${DC} exec -T db psql -U postgres -d postgres -c`;
+
+interface DiagCmd {
+  label: string;
+  description: string;
+  command: string;
+}
+
+const DIAGNOSTIC_COMMANDS: { category: string; icon: React.ReactNode; commands: DiagCmd[] }[] = [
+  {
+    category: "Import Jobs",
+    icon: <RefreshCw className="h-4 w-4" />,
+    commands: [
+      {
+        label: "Check stuck/paused imports",
+        description: "Shows import jobs that are stuck in processing, paused, or pending status.",
+        command: `${PSQL} "SELECT id, status, total_items, processed_items, import_metadata->>'bgg_username' as bgg_user, created_at, updated_at FROM import_jobs WHERE status IN ('paused','processing','pending') ORDER BY created_at DESC LIMIT 10;"`,
+      },
+      {
+        label: "Force-resume paused imports",
+        description: "Sets paused import jobs back to processing so the worker picks them up.",
+        command: `${PSQL} "UPDATE import_jobs SET status = 'processing' WHERE status = 'paused' RETURNING id, status;"`,
+      },
+      {
+        label: "Cancel all stuck imports",
+        description: "Marks all non-completed imports as failed. Use when jobs are stuck and won't resume.",
+        command: `${PSQL} "UPDATE import_jobs SET status = 'failed', error_message = 'Manually cancelled by admin' WHERE status IN ('processing','pending','paused') RETURNING id, status;"`,
+      },
+      {
+        label: "Recent import history",
+        description: "Shows the 15 most recent import jobs with their final status.",
+        command: `${PSQL} "SELECT id, status, total_items, processed_items, error_message, created_at FROM import_jobs ORDER BY created_at DESC LIMIT 15;"`,
+      },
+    ],
+  },
+  {
+    category: "Logs",
+    icon: <FileText className="h-4 w-4" />,
+    commands: [
+      {
+        label: "Server (Express) logs",
+        description: "Tail the last 100 lines of the Express API server logs.",
+        command: `${DC} logs --tail=100 server`,
+      },
+      {
+        label: "Edge Functions logs",
+        description: "Tail the last 100 lines from the Edge Functions container.",
+        command: `${DC} logs --tail=100 functions`,
+      },
+      {
+        label: "Database logs",
+        description: "Tail the last 100 lines from the PostgreSQL container.",
+        command: `${DC} logs --tail=100 db`,
+      },
+      {
+        label: "All services (follow)",
+        description: "Live-follow all container logs. Press Ctrl+C to stop.",
+        command: `${DC} logs -f --tail=50`,
+      },
+    ],
+  },
+  {
+    category: "Database",
+    icon: <Database className="h-4 w-4" />,
+    commands: [
+      {
+        label: "Active connections",
+        description: "Shows current active database connections and their state.",
+        command: `${PSQL} "SELECT pid, state, query_start, left(query, 80) as query FROM pg_stat_activity WHERE state != 'idle' ORDER BY query_start;"`,
+      },
+      {
+        label: "Table sizes",
+        description: "Shows the largest tables in the database by total size.",
+        command: `${PSQL} "SELECT relname as table, pg_size_pretty(pg_total_relation_size(relid)) as size FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 15;"`,
+      },
+      {
+        label: "Catalog count",
+        description: "Quick count of games in the catalog.",
+        command: `${PSQL} "SELECT count(*) as catalog_total FROM game_catalog;"`,
+      },
+      {
+        label: "User count",
+        description: "Total registered users.",
+        command: `${PSQL} "SELECT count(*) as total_users FROM auth.users;"`,
+      },
+    ],
+  },
+  {
+    category: "Docker",
+    icon: <Server className="h-4 w-4" />,
+    commands: [
+      {
+        label: "Container status",
+        description: "Shows running/stopped status of all GameTaverns containers.",
+        command: `${DC} ps`,
+      },
+      {
+        label: "Disk usage",
+        description: "Shows Docker disk usage including images, containers, and volumes.",
+        command: `docker system df`,
+      },
+      {
+        label: "Restart all services",
+        description: "Restarts all containers without rebuilding.",
+        command: `${DC} restart`,
+      },
+    ],
+  },
+];
+
+function DiagnosticCommands() {
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
+          Diagnostic Commands
+        </Badge>
+        <span className="text-xs text-cream/40">Copy & paste these into your SSH terminal for quick diagnostics.</span>
+      </div>
+
+      <div className="grid gap-2">
+        {DIAGNOSTIC_COMMANDS.map((group) => {
+          const isExpanded = expandedCat === group.category;
+          return (
+            <Card
+              key={group.category}
+              className="border border-wood-medium/30 bg-wood-dark/40 hover:border-wood-medium/50 transition-colors"
+            >
+              <CardHeader
+                className="pb-2 cursor-pointer"
+                onClick={() => setExpandedCat(isExpanded ? null : group.category)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">{group.icon}</div>
+                    <CardTitle className="text-sm font-semibold text-cream">{group.category}</CardTitle>
+                    <Badge variant="outline" className="text-[10px] border-wood-medium/30 text-cream/40">
+                      {group.commands.length} commands
+                    </Badge>
+                  </div>
+                  {isExpanded ? (
+                    <ChevronUp className="h-4 w-4 text-cream/40" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-cream/40" />
+                  )}
+                </div>
+              </CardHeader>
+
+              {isExpanded && (
+                <CardContent className="pt-0 space-y-3">
+                  <Separator className="bg-wood-medium/20" />
+                  {group.commands.map((cmd) => (
+                    <div key={cmd.label} className="space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-medium text-cream">{cmd.label}</p>
+                          <p className="text-[11px] text-cream/50">{cmd.description}</p>
+                        </div>
+                        <CopyButton text={cmd.command} />
+                      </div>
+                      <div className="p-2 rounded-lg bg-black/30 border border-wood-medium/20 font-mono">
+                        <code className="text-[11px] text-emerald-400 break-all select-all block">{cmd.command}</code>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ServerManagement() {
   const categories = ["routine", "maintenance", "danger"] as const;
   const { toast } = useToast();
@@ -653,6 +831,8 @@ export function ServerManagement() {
       })}
 
       <Separator className="bg-wood-medium/20" />
+
+      <DiagnosticCommands />
 
       <div className="p-3 rounded-lg bg-wood-dark/40 border border-wood-medium/20">
         <p className="text-xs text-cream/50 leading-relaxed">
