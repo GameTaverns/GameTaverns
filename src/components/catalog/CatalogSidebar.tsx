@@ -280,24 +280,17 @@ export function CatalogSidebar({ designers, artists, mechanics, publishers, isOp
                 {/* Publishers */}
                 {publishers.length > 0 && (
                   <FilterSection
-                    title="Publishers"
+                    title={`Publishers (${publishers.length})`}
                     icon={<Building2 className="h-3.5 w-3.5" />}
                     defaultOpen={activeFilter === "publisher"}
                   >
-                    <div className="max-h-40 overflow-y-auto px-2">
-                      {publishers.map((pub) => (
-                        <button
-                          key={pub.id}
-                          onClick={() => setFilter("publisher", pub.name)}
-                          className={cn(
-                            "sidebar-link text-xs w-full text-left py-1",
-                            isActive("publisher", pub.name) && "sidebar-link-active"
-                          )}
-                        >
-                          {pub.name}
-                        </button>
-                      ))}
-                    </div>
+                    <SearchableList
+                      items={publishers.map(p => p.name)}
+                      filterKey="publisher"
+                      isActive={isActive}
+                      onFilterClick={setFilter}
+                      placeholder="Search publishers..."
+                    />
                   </FilterSection>
                 )}
 

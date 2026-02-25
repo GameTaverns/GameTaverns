@@ -691,9 +691,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: null };
     }
 
-    const { error } = await supabase.auth.signOut();
+    // On native, signOut may fail if session token is already expired/missing.
+    // Clear local state regardless to allow re-login.
+    const { error } = await supabase.auth.signOut().catch((e: any) => ({ error: e }));
     adminRoleCache.clear();
     setIsAdmin(false);
+
+    // Force clear auth state even if signOut failed (e.g. expired token on Android)
+    if (error || Capacitor.isNativePlatform()) {
+      setSession(null);
+      setUser(null);
+      // Clear any persisted auth storage keys
+      try {
+        const keys = Object.keys(localStorage);
+        for (const key of keys) {
+          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            localStorage.removeItem(key);
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to clear auth storage:', e);
+      }
+    }
+
     return { error };
   }, []);
 

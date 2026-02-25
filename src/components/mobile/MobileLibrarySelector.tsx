@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Loader2, LogIn, ChevronDown, Scale } from "lucide-react";
+import { ArrowRight, Loader2, LogIn, ChevronDown, Scale, Search } from "lucide-react";
 import { supabase } from "@/integrations/backend/client";
 import { toast } from "sonner";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
@@ -105,15 +105,25 @@ export function MobileLibrarySelector({ onLibrarySelected }: MobileLibrarySelect
           <div className="flex-1 h-px bg-border" />
         </div>
 
-        {/* Library search — collapsed by default */}
+        {/* Library browse — two options */}
+        <Button
+          variant="outline"
+          className="w-full font-body text-muted-foreground border-border/60"
+          onClick={() => navigate("/directory")}
+        >
+          <Search className="mr-2 h-4 w-4" />
+          {t("mobileStart.browseDirectory", "Browse Library Directory")}
+        </Button>
+
+        {/* Manual slug entry — collapsed */}
         {!showLibrarySearch ? (
           <Button
-            variant="outline"
-            className="w-full font-body text-muted-foreground border-border/60"
+            variant="ghost"
+            className="w-full font-body text-muted-foreground/60 text-xs"
             onClick={() => setShowLibrarySearch(true)}
           >
-            <ChevronDown className="mr-2 h-4 w-4" />
-            {t("mobileStart.browseWithout")}
+            <ChevronDown className="mr-2 h-3 w-3" />
+            {t("mobileStart.enterManually", "Enter library code manually")}
           </Button>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3 bg-card/80 border border-border/50 rounded-xl p-4 backdrop-blur-sm">

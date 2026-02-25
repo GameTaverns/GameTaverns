@@ -38,7 +38,7 @@ import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS, GENRE_OPTIONS } from "@/types/game";
-import { useMechanics, usePublishers, useDesigners, useArtists } from "@/hooks/useGames";
+import { useMechanics, usePublishers, useDesigners, useArtists, useLibraryPublishers, useLibraryDesigners, useLibraryArtists } from "@/hooks/useGames";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useAuth } from "@/hooks/useAuth";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -290,6 +290,64 @@ function MechanicsFilter({
   );
 }
 
+// Searchable list for publishers, designers, artists in library sidebar
+function SearchableEntityList({
+  items,
+  filterKey,
+  isActive,
+  onFilterClick,
+  placeholder,
+}: {
+  items: { id: string; name: string }[];
+  filterKey: string;
+  isActive: (filter: string, value: string) => boolean;
+  onFilterClick: (filter: string, value: string) => void;
+  placeholder: string;
+}) {
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return items.slice(0, 50);
+    const q = search.toLowerCase();
+    return items.filter((i) => i.name.toLowerCase().includes(q)).slice(0, 50);
+  }, [items, search]);
+
+  return (
+    <div className="space-y-1 px-3">
+      <div className="relative mb-1">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-sidebar-foreground/40" />
+        <Input
+          placeholder={placeholder}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-7 pl-7 pr-6 text-xs bg-sidebar-accent/30 border-sidebar-border"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2">
+            <X className="h-3 w-3 text-sidebar-foreground/40 hover:text-sidebar-foreground" />
+          </button>
+        )}
+      </div>
+      <div className="max-h-48 overflow-y-auto space-y-0.5">
+        {filtered.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onFilterClick(filterKey, item.name)}
+            className={cn(
+              "sidebar-link text-xs w-full text-left py-1",
+              isActive(filterKey, item.name) && "sidebar-link-active"
+            )}
+          >
+            {item.name}
+          </button>
+        ))}
+        {filtered.length === 0 && (
+          <p className="text-[10px] text-sidebar-foreground/40 px-2 py-1">No matches</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function SidebarUpcomingEvents({ libraryId }: { libraryId: string }) {
   const { data: events = [], isLoading } = useUpcomingEvents(libraryId, 3);
@@ -381,6 +439,11 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const { tenantSlug, library, isTenantMode, isOwner } = useTenant();
   const tenantSettings = useTenantSettings();
   const { buildUrl } = useTenantUrl();
+  // Library-scoped versions for sidebar filters
+  const libraryId = library?.id;
+  const { data: libPublishers = [] } = useLibraryPublishers(libraryId);
+  const { data: libDesigners = [] } = useLibraryDesigners(libraryId);
+  const { data: libArtists = [] } = useLibraryArtists(libraryId);
 
   // Build the base library URL based on mode
   const libraryBaseUrl = isDemoMode ? "/?demo=true" : buildUrl("/");
@@ -397,24 +460,23 @@ export function Sidebar({ isOpen }: SidebarProps) {
   }, [isDemoMode, dbMechanics, demoGames]);
 
   const publishers = useMemo(() => {
-    if (!isDemoMode) return dbPublishers;
-    // Dedupe by name since imported games may have different IDs for the same publisher
+    if (!isDemoMode) return libPublishers;
     const pubMap = new Map<string, { id: string; name: string }>();
     demoGames.forEach(g => {
       if (g.publisher) pubMap.set(g.publisher.name, g.publisher);
     });
     return Array.from(pubMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [isDemoMode, dbPublishers, demoGames]);
+  }, [isDemoMode, libPublishers, demoGames]);
 
   const designers = useMemo(() => {
-    if (!isDemoMode) return dbDesigners;
+    if (!isDemoMode) return libDesigners;
     return [];
-  }, [isDemoMode, dbDesigners]);
+  }, [isDemoMode, libDesigners]);
 
   const artists = useMemo(() => {
-    if (!isDemoMode) return dbArtists;
+    if (!isDemoMode) return libArtists;
     return [];
-  }, [isDemoMode, dbArtists]);
+  }, [isDemoMode, libArtists]);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -717,80 +779,39 @@ export function Sidebar({ isOpen }: SidebarProps) {
                   />
                 </FilterSection>
                 {/* Publishers */}
-                <FilterSection title="Publishers" icon={<Building2 className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "publisher"}>
-                  <div className="max-h-40 overflow-y-auto px-2">
-                    {publishers.map((pub) => (
-                      <button
-                        key={pub.id}
-                        onClick={() => handleFilterClick("publisher", pub.name)}
-                        className={cn(
-                          "sidebar-link text-xs w-full text-left py-1",
-                          isActive("publisher", pub.name) && "sidebar-link-active"
-                        )}
-                      >
-                        {pub.name}
-                      </button>
-                    ))}
-                  </div>
-                </FilterSection>
+                {publishers.length > 0 && (
+                  <FilterSection title={`Publishers (${publishers.length})`} icon={<Building2 className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "publisher"}>
+                    <SearchableEntityList
+                      items={publishers}
+                      filterKey="publisher"
+                      isActive={isActive}
+                      onFilterClick={handleFilterClick}
+                      placeholder="Search publishers..."
+                    />
+                  </FilterSection>
+                )}
                 {/* Designers */}
                 {designers.length > 0 && (
                   <FilterSection title={`Designers (${designers.length})`} icon={<PenTool className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "designer"}>
-                    <div className="max-h-64 overflow-y-auto px-2">
-                      <Input
-                        placeholder="Search designers..."
-                        className="h-6 text-xs mb-1 bg-sidebar-accent/30 border-sidebar-border"
-                        onChange={(e) => {
-                          const container = e.target.closest('.max-h-40');
-                          const buttons = container?.querySelectorAll('button');
-                          buttons?.forEach(btn => {
-                            btn.style.display = btn.textContent?.toLowerCase().includes(e.target.value.toLowerCase()) ? '' : 'none';
-                          });
-                        }}
-                      />
-                      {designers.map((d) => (
-                        <button
-                          key={d.id}
-                          onClick={() => handleFilterClick("designer", d.name)}
-                          className={cn(
-                            "sidebar-link text-xs w-full text-left py-1",
-                            isActive("designer", d.name) && "sidebar-link-active"
-                          )}
-                        >
-                          {d.name}
-                        </button>
-                      ))}
-                    </div>
+                    <SearchableEntityList
+                      items={designers}
+                      filterKey="designer"
+                      isActive={isActive}
+                      onFilterClick={handleFilterClick}
+                      placeholder="Search designers..."
+                    />
                   </FilterSection>
                 )}
                 {/* Artists */}
                 {artists.length > 0 && (
                   <FilterSection title={`Artists (${artists.length})`} icon={<Palette className="h-3.5 w-3.5" />} defaultOpen={currentFilter === "artist"}>
-                    <div className="max-h-64 overflow-y-auto px-2">
-                      <Input
-                        placeholder="Search artists..."
-                        className="h-6 text-xs mb-1 bg-sidebar-accent/30 border-sidebar-border"
-                        onChange={(e) => {
-                          const container = e.target.closest('.max-h-40');
-                          const buttons = container?.querySelectorAll('button');
-                          buttons?.forEach(btn => {
-                            btn.style.display = btn.textContent?.toLowerCase().includes(e.target.value.toLowerCase()) ? '' : 'none';
-                          });
-                        }}
-                      />
-                      {artists.map((a) => (
-                        <button
-                          key={a.id}
-                          onClick={() => handleFilterClick("artist", a.name)}
-                          className={cn(
-                            "sidebar-link text-xs w-full text-left py-1",
-                            isActive("artist", a.name) && "sidebar-link-active"
-                          )}
-                        >
-                          {a.name}
-                        </button>
-                      ))}
-                    </div>
+                    <SearchableEntityList
+                      items={artists}
+                      filterKey="artist"
+                      isActive={isActive}
+                      onFilterClick={handleFilterClick}
+                      placeholder="Search artists..."
+                    />
                   </FilterSection>
                 )}
               </div>

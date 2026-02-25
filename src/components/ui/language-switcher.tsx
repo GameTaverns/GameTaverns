@@ -17,7 +17,7 @@ export function LanguageSwitcher() {
     || supportedLanguages[0];
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -28,11 +28,11 @@ export function LanguageSwitcher() {
           <Globe className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
+      <DropdownMenuContent align="end" className="w-44 z-[9999]" sideOffset={8}>
         {supportedLanguages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}
-            onClick={() => i18n.changeLanguage(lang.code)}
+            onSelect={() => i18n.changeLanguage(lang.code)}
             className={lang.code === currentLang.code ? 'bg-accent' : ''}
           >
             <span className="mr-2">{lang.flag}</span>
