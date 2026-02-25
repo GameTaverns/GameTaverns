@@ -115,64 +115,48 @@ function buildAttendeeEmail(params: {
 }): string {
   const isWaitlisted = params.status === "waitlisted";
   const statusBadge = isWaitlisted
-    ? `<span style="background:#f59e0b;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Waitlisted #${params.waitlistPosition}</span>`
-    : `<span style="background:#22c55e;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">✓ Confirmed</span>`;
+    ? `<span style="background:#b45309;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">Waitlisted #${params.waitlistPosition}</span>`
+    : `<span style="background:#4d7c0f;color:#fff;padding:4px 12px;border-radius:4px;font-size:13px;">&#10003; Confirmed</span>`;
 
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#e8dcc8;font-family:'Georgia','Times New Roman',serif;">
-<div style="max-width:560px;margin:0 auto;padding:24px;">
-  <div style="background:#f5eed9;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(60,40,20,0.15);border:1px solid #d4c4a0;">
-    <div style="background:#3d2b1f;padding:24px 32px;">
-      <h1 style="margin:0;color:#e8d9b0;font-size:20px;font-family:'Georgia',serif;">🎲 GameTaverns</h1>
-    </div>
-    <div style="padding:32px;">
-      <p style="margin:0 0 16px;font-size:15px;color:#3d2b1f;">Hi ${params.attendeeName},</p>
-      <p style="margin:0 0 20px;font-size:15px;color:#3d2b1f;">
-        ${isWaitlisted
-          ? `You've been added to the waitlist for <strong>${params.eventTitle}</strong>. We'll let you know if a spot opens up!`
-          : `You're confirmed for <strong>${params.eventTitle}</strong>! We can't wait to see you there.`
-        }
-      </p>
-      <div style="background:#f0e6d0;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">
-        <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <td style="padding:4px 0;color:#7a6a52;font-size:13px;width:80px;">Event</td>
-            <td style="padding:4px 0;color:#3d2b1f;font-size:13px;font-weight:600;">${params.eventTitle}</td>
-          </tr>
-          <tr>
-            <td style="padding:4px 0;color:#7a6a52;font-size:13px;">Date</td>
-            <td style="padding:4px 0;color:#3d2b1f;font-size:13px;">${params.eventDate}</td>
-          </tr>
-          <tr>
-            <td style="padding:4px 0;color:#7a6a52;font-size:13px;">Location</td>
-            <td style="padding:4px 0;color:#3d2b1f;font-size:13px;">${params.eventLocation || "TBD"}</td>
-          </tr>
-          <tr>
-            <td style="padding:4px 0;color:#7a6a52;font-size:13px;">Status</td>
-            <td style="padding:4px 0;">${statusBadge}</td>
-          </tr>
-        </table>
-      </div>
-      ${!isWaitlisted ? `
-      <p style="margin:0 0 12px;font-size:13px;color:#7a6a52;">Add this event to your calendar:</p>
-      <div style="margin:0 0 24px;">
-        <a href="${params.googleCalUrl}" target="_blank" style="display:inline-block;background:#3a6b35;color:#f5eed9;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;margin-right:8px;">
-          📅 Add to Google Calendar
-        </a>
-      </div>
-      <p style="margin:0 0 8px;font-size:12px;color:#9a8a6e;">An .ics calendar file is also attached for Apple Calendar, Outlook, and other apps.</p>
-      ` : ""}
-      <hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">
-      <p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">
-        <a href="${params.eventUrl}" style="color:#3a6b35;">View event details</a> · Sent by GameTaverns
-      </p>
-    </div>
-  </div>
-</div>
-</body>
-</html>`;
+  const calendarSection = isWaitlisted ? "" : [
+    '<p style="margin:0 0 12px;font-size:13px;color:#78705e;">Add this event to your calendar:</p>',
+    '<div style="margin:0 0 24px;">',
+    `<a href="${params.googleCalUrl}" target="_blank" style="display:inline-block;background:#556b2f;color:#f5eed9;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">&#128197; Add to Google Calendar</a>`,
+    '</div>',
+    '<p style="margin:0 0 8px;font-size:12px;color:#9a8a6e;">An .ics calendar file is also attached for Apple Calendar, Outlook, and other apps.</p>',
+  ].join("");
+
+  return [
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
+    '<body style="margin:0;padding:0;background:#e8dcc8;font-family:Georgia,Times New Roman,serif;">',
+    '<div style="max-width:560px;margin:0 auto;padding:24px;">',
+    '<div style="background:#f5eed9;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(60,40,20,0.15);border:1px solid #d4c4a0;">',
+    '<div style="background:#3d2b1f;padding:24px 32px;">',
+    '<h1 style="margin:0;color:#e8d9b0;font-size:20px;font-family:Georgia,serif;">&#127922; GameTaverns</h1>',
+    '</div>',
+    '<div style="padding:32px;">',
+    `<p style="margin:0 0 16px;font-size:15px;color:#3d2b1f;">Hi ${params.attendeeName},</p>`,
+    '<p style="margin:0 0 20px;font-size:15px;color:#3d2b1f;">',
+    isWaitlisted
+      ? `You've been added to the waitlist for <strong>${params.eventTitle}</strong>. We'll let you know if a spot opens up!`
+      : `You're confirmed for <strong>${params.eventTitle}</strong>! We can't wait to see you there.`,
+    '</p>',
+    '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
+    '<table style="width:100%;border-collapse:collapse;">',
+    `<tr><td style="padding:6px 12px 6px 0;color:#78705e;font-size:13px;width:80px;vertical-align:top;">Event</td><td style="padding:6px 0;color:#3d2b1f;font-size:13px;font-weight:600;">${params.eventTitle}</td></tr>`,
+    `<tr><td style="padding:6px 12px 6px 0;color:#78705e;font-size:13px;vertical-align:top;">Date</td><td style="padding:6px 0;color:#3d2b1f;font-size:13px;">${params.eventDate}</td></tr>`,
+    `<tr><td style="padding:6px 12px 6px 0;color:#78705e;font-size:13px;vertical-align:top;">Location</td><td style="padding:6px 0;color:#3d2b1f;font-size:13px;">${params.eventLocation || "TBD"}</td></tr>`,
+    `<tr><td style="padding:6px 12px 6px 0;color:#78705e;font-size:13px;vertical-align:top;">Status</td><td style="padding:6px 0;">${statusBadge}</td></tr>`,
+    '</table>',
+    '</div>',
+    calendarSection,
+    '<hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">',
+    '<p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">',
+    `<a href="${params.eventUrl}" style="color:#556b2f;">View event details</a> &middot; Sent by GameTaverns`,
+    '</p>',
+    '</div></div></div>',
+    '</body></html>',
+  ].join("");
 }
 
 function buildOrganizerEmail(params: {
@@ -184,41 +168,30 @@ function buildOrganizerEmail(params: {
   maxAttendees: number | null;
   eventUrl: string;
 }): string {
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#e8dcc8;font-family:'Georgia','Times New Roman',serif;">
-<div style="max-width:560px;margin:0 auto;padding:24px;">
-  <div style="background:#f5eed9;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(60,40,20,0.15);border:1px solid #d4c4a0;">
-    <div style="background:#3d2b1f;padding:24px 32px;">
-      <h1 style="margin:0;color:#e8d9b0;font-size:20px;font-family:'Georgia',serif;">🎲 New RSVP Received</h1>
-    </div>
-    <div style="padding:32px;">
-      <p style="margin:0 0 16px;font-size:15px;color:#3d2b1f;">
-        <strong>${params.attendeeName}</strong> (${params.attendeeEmail}) just ${params.status === "waitlisted" ? "joined the waitlist for" : "RSVP'd to"} your event.
-      </p>
-      <div style="background:#f0e6d0;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">
-        <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <td style="padding:4px 0;color:#7a6a52;font-size:13px;width:100px;">Event</td>
-            <td style="padding:4px 0;color:#3d2b1f;font-size:13px;font-weight:600;">${params.eventTitle}</td>
-          </tr>
-          <tr>
-            <td style="padding:4px 0;color:#7a6a52;font-size:13px;">Registrations</td>
-            <td style="padding:4px 0;color:#3d2b1f;font-size:13px;">${params.registrationCount}${params.maxAttendees ? ` / ${params.maxAttendees}` : ""}</td>
-          </tr>
-        </table>
-      </div>
-      <div style="text-align:center;">
-        <a href="${params.eventUrl}" style="display:inline-block;background:#3a6b35;color:#f5eed9;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Event</a>
-      </div>
-      <hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">
-      <p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">Sent by GameTaverns</p>
-    </div>
-  </div>
-</div>
-</body>
-</html>`;
+  return [
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
+    '<body style="margin:0;padding:0;background:#e8dcc8;font-family:Georgia,Times New Roman,serif;">',
+    '<div style="max-width:560px;margin:0 auto;padding:24px;">',
+    '<div style="background:#f5eed9;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(60,40,20,0.15);border:1px solid #d4c4a0;">',
+    '<div style="background:#3d2b1f;padding:24px 32px;">',
+    '<h1 style="margin:0;color:#e8d9b0;font-size:20px;font-family:Georgia,serif;">&#127922; New RSVP Received</h1>',
+    '</div>',
+    '<div style="padding:32px;">',
+    `<p style="margin:0 0 16px;font-size:15px;color:#3d2b1f;"><strong>${params.attendeeName}</strong> (${params.attendeeEmail}) just ${params.status === "waitlisted" ? "joined the waitlist for" : "RSVP'd to"} your event.</p>`,
+    '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
+    '<table style="width:100%;border-collapse:collapse;">',
+    `<tr><td style="padding:6px 12px 6px 0;color:#78705e;font-size:13px;width:100px;">Event</td><td style="padding:6px 0;color:#3d2b1f;font-size:13px;font-weight:600;">${params.eventTitle}</td></tr>`,
+    `<tr><td style="padding:6px 12px 6px 0;color:#78705e;font-size:13px;">Registrations</td><td style="padding:6px 0;color:#3d2b1f;font-size:13px;">${params.registrationCount}${params.maxAttendees ? ` / ${params.maxAttendees}` : ""}</td></tr>`,
+    '</table>',
+    '</div>',
+    '<div style="text-align:center;">',
+    `<a href="${params.eventUrl}" style="display:inline-block;background:#556b2f;color:#f5eed9;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">View Event</a>`,
+    '</div>',
+    '<hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">',
+    '<p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">Sent by GameTaverns</p>',
+    '</div></div></div>',
+    '</body></html>',
+  ].join("");
 }
 
 // ── Handler ────────────────────────────────────────────────────────────────
