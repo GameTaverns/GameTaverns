@@ -91,6 +91,10 @@ services:
       - max_connections=200
       - -c
       - shared_buffers=256MB
+      - -c
+      - app.settings.supabase_url=${API_EXTERNAL_URL:-https://gametaverns.com}
+      - -c
+      - app.settings.supabase_anon_key=${ANON_KEY}
     healthcheck:
       # Use postgres for healthcheck: it always exists in the container, whereas
       # supabase_admin may not be usable until our bootstrap SQL runs.

@@ -142,6 +142,8 @@ EXTERNAL_HANDLERS=(
   cron-status
   purchase-link-scanner
   check-login
+  export-user-data
+  send-push-notification
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   if [ -d "$FUNCTIONS_DIR/$handler" ]; then

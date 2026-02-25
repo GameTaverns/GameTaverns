@@ -71,6 +71,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "purchase-link-scanner":      () => import("./purchase-link-scanner/index.ts"),
   "check-login":                () => import("./check-login/index.ts"),
   "export-user-data":           () => import("./export-user-data/index.ts"),
+  "send-push-notification":     () => import("./send-push-notification/index.ts"),
 };
 
 // All handlers are now external imports - no inlined handlers remaining

@@ -111,7 +111,7 @@ async function getFirebaseAccessToken(serviceAccount: any): Promise<string> {
   return tokenData.access_token;
 }
 
-Deno.serve(async (req: Request) => {
+const handler = async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -278,4 +278,7 @@ Deno.serve(async (req: Request) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+};
+
+export default handler;
+Deno.serve(handler);
