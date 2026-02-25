@@ -134,17 +134,17 @@ export function GameCard({ game, priority = false }: GameCardProps) {
         </Link>
 
         {/* Action Buttons - Outside Link to prevent click conflicts */}
-        <div className="absolute top-1.5 right-1.5 z-10 flex gap-0.5 sm:gap-1">
+        <div className="absolute top-1 right-1 z-10 flex gap-0.5 sm:gap-1">
           {/* Log Play - only for authenticated users */}
           {isAuthenticated && !isDemoMode && (
             <LogPlayDialog gameId={game.id} gameTitle={game.title}>
               <Button
                 variant="ghost"
                 size="icon"
-                className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-6 w-6 sm:h-8 sm:w-8"
+                className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-5 w-5 sm:h-8 sm:w-8 min-h-0 min-w-0 p-0"
                 title="Log a play"
               >
-                <Play className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <Play className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
               </Button>
             </LogPlayDialog>
           )}
@@ -152,13 +152,13 @@ export function GameCard({ game, priority = false }: GameCardProps) {
           <FavoriteButton 
             gameId={game.id} 
             size="sm"
-            className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-6 w-6 sm:h-8 sm:w-8 [&_svg]:h-3 [&_svg]:w-3 sm:[&_svg]:h-3.5 sm:[&_svg]:w-3.5" 
+            className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-5 w-5 sm:h-8 sm:w-8 min-h-0 min-w-0 p-0 [&_svg]:h-2.5 [&_svg]:w-2.5 sm:[&_svg]:h-3.5 sm:[&_svg]:w-3.5" 
           />
           {/* Wishlist Button */}
           {wishlist && (
             <WishlistButton 
               gameId={game.id} 
-              className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-6 w-6 sm:h-8 sm:w-8 [&_svg]:h-3 [&_svg]:w-3 sm:[&_svg]:h-3.5 sm:[&_svg]:w-3.5" 
+              className="bg-background/80 backdrop-blur-sm hover:bg-background shadow-sm h-5 w-5 sm:h-8 sm:w-8 min-h-0 min-w-0 p-0 [&_svg]:h-2.5 [&_svg]:w-2.5 sm:[&_svg]:h-3.5 sm:[&_svg]:w-3.5" 
             />
           )}
         </div>
