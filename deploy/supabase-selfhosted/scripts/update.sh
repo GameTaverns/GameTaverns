@@ -147,12 +147,23 @@ EXTERNAL_HANDLERS=(
   send-rsvp-confirmation
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
-  if [ -d "$FUNCTIONS_DIR/$handler" ]; then
-    rm -rf "$MAIN_DIR/$handler"
-    cp -r "$FUNCTIONS_DIR/$handler" "$MAIN_DIR/$handler"
+  src="$FUNCTIONS_DIR/$handler"
+  dest="$MAIN_DIR/$handler"
+
+  if [ -d "$src" ]; then
+    rm -rf "$dest"
+    cp -r "$src" "$dest"
+
+    # Hard-verify copy succeeded (catches silent path/line-ending issues)
+    if [ ! -d "$dest" ] || [ ! -f "$dest/index.ts" -a "$handler" != "_shared" ]; then
+      echo -e "${RED}Failed to sync handler: $handler${NC}"
+      echo "  source: $src"
+      echo "  dest:   $dest"
+      exit 1
+    fi
   fi
 done
-echo -e "${GREEN}Synced ${#EXTERNAL_HANDLERS[@]} handler directories into main/${NC}"
+echo -e "${GREEN}Synced handler directories into main/ (verified)${NC}"
 
 echo ""
 echo "Recreating Edge Functions container (clears Deno cache)..."
