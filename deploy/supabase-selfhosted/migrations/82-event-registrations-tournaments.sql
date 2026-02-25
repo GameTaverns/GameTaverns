@@ -286,7 +286,6 @@ SELECT
     le.status,
     l.name as library_name,
     l.slug as library_slug,
-    l.logo_url as library_logo,
     le.created_at,
     (SELECT COUNT(*)::INTEGER FROM public.event_registrations er WHERE er.event_id = le.id AND er.status = 'registered') as registration_count
 FROM public.library_events le
