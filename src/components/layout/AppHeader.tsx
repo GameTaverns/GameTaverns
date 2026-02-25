@@ -53,6 +53,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   const isCatalogPage = location.pathname.startsWith("/catalog");
   const isProfilePage = location.pathname.startsWith("/u/");
   const isListsPage = location.pathname.startsWith("/lists");
+  const isDirectoryPage = location.pathname.startsWith("/directory");
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -103,14 +104,23 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
                   <span>{t('nav.help')}</span>
                 </TenantLink>
 
-                {/* Directory */}
-                <TenantLink
-                  href={getPlatformUrl("/directory")}
-                  className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                >
-                  <Globe className="h-3.5 w-3.5" />
-                  <span>{t('nav.directory')}</span>
-                </TenantLink>
+                {/* Directory / Dashboard toggle */}
+                {isDirectoryPage ? (
+                  <TenantLink
+                    href={getPlatformUrl("/dashboard")}
+                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <span>{t('nav.dashboard')}</span>
+                  </TenantLink>
+                ) : (
+                  <TenantLink
+                    href={getPlatformUrl("/directory")}
+                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    <span>{t('nav.directory')}</span>
+                  </TenantLink>
+                )}
 
                 {/* Catalog / Dashboard toggle */}
                 {isCatalogPage ? (
