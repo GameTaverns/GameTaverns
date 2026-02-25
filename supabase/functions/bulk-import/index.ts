@@ -1129,27 +1129,36 @@ async function fetchBGGData(
   return xmlFallback;
 }
 
-// Fetch a single BGG collection page (base games or expansions)
+// BGG collection item with status metadata
+interface BGGCollectionItem {
+  id: string;
+  name: string;
+  userRating?: number;
+  bggStatus: "owned" | "preordered" | "wishlist";
+}
+
+// Fetch a single BGG collection page
 async function fetchBGGCollectionPage(
   username: string,
-  subtype: "boardgame" | "boardgameexpansion",
+  params: string,
+  label: string,
   headers: Record<string, string>,
 ): Promise<string> {
-  const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&subtype=${subtype}&stats=1`;
+  const collectionUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&${params}&stats=1`;
   
   let attempts = 0;
   while (attempts < 5) {
     const res = await fetch(collectionUrl, { headers });
     
     if (res.status === 202) {
-      console.log(`[BulkImport] BGG collection (${subtype}) 202 (processing), retrying in 3s...`);
+      console.log(`[BulkImport] BGG collection (${label}) 202 (processing), retrying in 3s...`);
       await new Promise(r => setTimeout(r, 3000));
       attempts++;
       continue;
     }
     
     if (res.status === 401 || res.status === 403) {
-      console.warn(`[BulkImport] BGG collection API (${subtype}) returned ${res.status} — auth failed`);
+      console.warn(`[BulkImport] BGG collection API (${label}) returned ${res.status} — auth failed`);
       await res.text().catch(() => {});
       return "";
     }
@@ -1159,7 +1168,7 @@ async function fetchBGGCollectionPage(
     }
     
     if (!res.ok) {
-      console.warn(`[BulkImport] BGG collection API (${subtype}) returned ${res.status}`);
+      console.warn(`[BulkImport] BGG collection API (${label}) returned ${res.status}`);
       await res.text().catch(() => {});
       return "";
     }
@@ -1170,8 +1179,8 @@ async function fetchBGGCollectionPage(
 }
 
 // Parse items from BGG collection XML
-function parseBGGCollectionXml(xml: string): { id: string; name: string; userRating?: number }[] {
-  const games: { id: string; name: string; userRating?: number }[] = [];
+function parseBGGCollectionXml(xml: string, status: BGGCollectionItem["bggStatus"]): BGGCollectionItem[] {
+  const games: BGGCollectionItem[] = [];
   const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>([\s\S]*?)<\/item>/g;
   let match;
   while ((match = itemRegex.exec(xml)) !== null) {
@@ -1187,13 +1196,13 @@ function parseBGGCollectionXml(xml: string): { id: string; name: string; userRat
       if (r > 0) userRating = r;
     }
     
-    games.push({ id: bggId, name, userRating });
+    games.push({ id: bggId, name, userRating, bggStatus: status });
   }
   return games;
 }
 
-// Fetch BGG collection for a user (base games + expansions)
-async function fetchBGGCollection(username: string): Promise<{ id: string; name: string; userRating?: number }[]> {
+// Fetch BGG collection for a user (owned + preordered + wishlist, base games + expansions)
+async function fetchBGGCollection(username: string): Promise<BGGCollectionItem[]> {
   const bggCookie3 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
   const bggToken = Deno.env.get("BGG_API_TOKEN") || "";
   
@@ -1207,34 +1216,46 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
   if (bggToken) headers["Authorization"] = `Bearer ${bggToken}`;
   if (bggCookie3) headers["Cookie"] = bggCookie3;
   
-  console.log(`[BulkImport] Fetching BGG collection for "${username}" (with stats), cookie present: ${Boolean(bggCookie3)}, token present: ${Boolean(bggToken)}`);
+  console.log(`[BulkImport] Fetching BGG collection for "${username}" (owned+preordered+wishlist), cookie present: ${Boolean(bggCookie3)}, token present: ${Boolean(bggToken)}`);
 
-  // Fetch base games
-  const baseXml = await fetchBGGCollectionPage(username, "boardgame", headers);
-  if (!baseXml) {
+  const delay = () => new Promise(r => setTimeout(r, 1500));
+
+  // 1. Fetch owned base games
+  const ownedBaseXml = await fetchBGGCollectionPage(username, "own=1&subtype=boardgame", "owned-base", headers);
+  if (!ownedBaseXml) {
     throw new Error(
       "BGG API requires authentication. Please ensure your BGG_SESSION_COOKIE is valid. As an alternative, export your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option instead."
     );
   }
-
-  if (baseXml.includes("<error>") || baseXml.includes("Invalid username")) {
+  if (ownedBaseXml.includes("<error>") || ownedBaseXml.includes("Invalid username")) {
     throw new Error(`BGG username "${username}" not found. Please check the username is correct.`);
   }
+  const ownedBase = parseBGGCollectionXml(ownedBaseXml, "owned");
+  console.log(`[BulkImport] Parsed ${ownedBase.length} owned base games`);
 
-  const baseGames = parseBGGCollectionXml(baseXml);
-  console.log(`[BulkImport] Parsed ${baseGames.length} base games from BGG collection for "${username}"`);
+  // 2. Fetch owned expansions
+  await delay();
+  const ownedExpXml = await fetchBGGCollectionPage(username, "own=1&subtype=boardgameexpansion", "owned-exp", headers);
+  const ownedExp = parseBGGCollectionXml(ownedExpXml, "owned");
+  console.log(`[BulkImport] Parsed ${ownedExp.length} owned expansions`);
 
-  // Fetch expansions (separate API call required by BGG)
-  // Small delay to avoid rate limiting
-  await new Promise(r => setTimeout(r, 1500));
-  const expansionXml = await fetchBGGCollectionPage(username, "boardgameexpansion", headers);
-  const expansionGames = parseBGGCollectionXml(expansionXml);
-  console.log(`[BulkImport] Parsed ${expansionGames.length} expansions from BGG collection for "${username}"`);
+  // 3. Fetch preordered (both subtypes in one call — BGG returns all subtypes if not specified)
+  await delay();
+  const preorderXml = await fetchBGGCollectionPage(username, "preordered=1", "preordered", headers);
+  const preordered = parseBGGCollectionXml(preorderXml, "preordered");
+  console.log(`[BulkImport] Parsed ${preordered.length} preordered items`);
 
-  // Merge, deduplicating by BGG ID (some items may appear in both)
+  // 4. Fetch wishlist
+  await delay();
+  const wishlistXml = await fetchBGGCollectionPage(username, "wishlist=1", "wishlist", headers);
+  const wishlisted = parseBGGCollectionXml(wishlistXml, "wishlist");
+  console.log(`[BulkImport] Parsed ${wishlisted.length} wishlist items`);
+
+  // Merge all, deduplicating by BGG ID (owned takes priority over preordered over wishlist)
   const seen = new Set<string>();
-  const allGames: { id: string; name: string; userRating?: number }[] = [];
-  for (const g of [...baseGames, ...expansionGames]) {
+  const allGames: BGGCollectionItem[] = [];
+  // Process in priority order: owned first, then preordered, then wishlist
+  for (const g of [...ownedBase, ...ownedExp, ...preordered, ...wishlisted]) {
     if (!seen.has(g.id)) {
       seen.add(g.id);
       allGames.push(g);
@@ -1242,11 +1263,11 @@ async function fetchBGGCollection(username: string): Promise<{ id: string; name:
   }
 
   const ratedCount = allGames.filter(g => g.userRating).length;
-  if (allGames.length === 0 && baseXml.includes("<items")) {
-    console.log(`BGG collection for ${username} is empty or has no owned games`);
-  }
+  const ownedCount = allGames.filter(g => g.bggStatus === "owned").length;
+  const preorderCount = allGames.filter(g => g.bggStatus === "preordered").length;
+  const wishlistCount = allGames.filter(g => g.bggStatus === "wishlist").length;
   
-  console.log(`[BulkImport] Total: ${allGames.length} unique items (${baseGames.length} base + ${expansionGames.length} expansions, ${ratedCount} with user ratings)`);
+  console.log(`[BulkImport] Total: ${allGames.length} unique items (${ownedCount} owned, ${preorderCount} preordered, ${wishlistCount} wishlist, ${ratedCount} with user ratings)`);
   return allGames;
 }
 
@@ -1678,6 +1699,12 @@ export default async function handler(req: Request): Promise<Response> {
           bgg_id: game.id,
           bgg_url: `https://boardgamegeek.com/boardgame/${game.id}`,
         };
+        // Set is_coming_soon for preordered items
+        if (game.bggStatus === "preordered") {
+          importItem.is_coming_soon = true;
+        }
+        // Tag BGG status for post-import wishlist processing
+        (importItem as any)._bgg_status = game.bggStatus;
         // Pass user's personal BGG rating through as metadata
         if (game.userRating) {
           (importItem as any)._bgg_user_rating = game.userRating;
@@ -1710,7 +1737,10 @@ export default async function handler(req: Request): Promise<Response> {
 
 
     const totalGames = gamesToImport.length;
-    console.log(`[BulkImport] Total games to process: ${totalGames}`);
+    const wishlistOnlyCount = gamesToImport.filter((g: any) => g._bgg_status === "wishlist").length;
+    const preorderedCount = gamesToImport.filter((g: any) => g._bgg_status === "preordered").length;
+    const libraryCount = totalGames - wishlistOnlyCount;
+    console.log(`[BulkImport] Total items to process: ${totalGames} (${libraryCount} for library, ${preorderedCount} preordered/coming-soon, ${wishlistOnlyCount} wishlist-only → trade_wants)`);
     console.log(`[BulkImport] Enhance with BGG: ${enhance_with_bgg}, Enhance with AI: ${enhance_with_ai}`);
     console.log(`[BulkImport] Firecrawl key present: ${!!firecrawlKey}, AI configured: ${isAIConfigured()}, Provider: ${getAIProviderName()}`);
 
@@ -1893,6 +1923,15 @@ export default async function handler(req: Request): Promise<Response> {
           }
 
           const gameInput = gamesToImport[i];
+          
+          // Wishlist-only items don't get added to the library — they go to trade_wants in post-import
+          if ((gameInput as any)._bgg_status === "wishlist") {
+            skipped++;
+            console.log(`[BulkImport] Skipping wishlist item ${i + 1}/${gamesToImport.length}: ${gameInput.title || gameInput.bgg_id} (will add to trade_wants)`);
+            sendProgress({ type: "progress", current: i + 1, total: totalGames, imported: imported + updated, failed, currentGame: gameInput.title || `BGG #${gameInput.bgg_id}`, phase: "wishlist_skip" });
+            continue;
+          }
+          
           console.log(`[BulkImport] Processing game ${i + 1}/${gamesToImport.length}: ${gameInput.title || gameInput.bgg_id}`);
 
           
@@ -3114,7 +3153,49 @@ export default async function handler(req: Request): Promise<Response> {
           console.log(`[BulkImport] BGG-linked ${bggLinked} expansions to parent games`);
         }
 
-        // Post-import: Import play history from CSV (BG Stats format)
+        // Post-import: Add BGG wishlist items to trade_wants
+        const wishlistItems = gamesToImport.filter((g: any) => g._bgg_status === "wishlist");
+        if (wishlistItems.length > 0 && userId) {
+          console.log(`[BulkImport] Post-import: Adding ${wishlistItems.length} wishlist items to trade_wants...`);
+          let wishlistAdded = 0;
+          let wishlistSkipped = 0;
+
+          for (const item of wishlistItems) {
+            const bggId = (item as any).bgg_id;
+            const title = (item as any).title || `BGG #${bggId}`;
+            if (!bggId) continue;
+
+            // Check if already in trade_wants
+            const { data: existing } = await supabaseAdmin
+              .from("trade_wants")
+              .select("id")
+              .eq("user_id", userId)
+              .eq("bgg_id", bggId)
+              .maybeSingle();
+
+            if (existing) {
+              wishlistSkipped++;
+              continue;
+            }
+
+            const { error: insertErr } = await supabaseAdmin
+              .from("trade_wants")
+              .insert({
+                user_id: userId,
+                bgg_id: bggId,
+                game_title: title,
+                notes: "Imported from BGG wishlist",
+              });
+
+            if (insertErr) {
+              console.warn(`[BulkImport] Failed to add wishlist item "${title}" (BGG ${bggId}): ${insertErr.message}`);
+            } else {
+              wishlistAdded++;
+            }
+          }
+          console.log(`[BulkImport] Wishlist: added ${wishlistAdded}, skipped ${wishlistSkipped} (already existed)`);
+        }
+
         let playsImported = 0;
         let playsSkipped = 0;
         let playsFailed = 0;
