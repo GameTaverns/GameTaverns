@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket } from "lucide-react";
+import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -37,14 +36,25 @@ export default function PublicEventDirectory() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("");
+
+  // Extract unique cities for filter suggestions
+  const cities = Array.from(new Set(
+    events
+      .map((e: any) => e.location_city)
+      .filter(Boolean)
+  )).sort() as string[];
 
   const filtered = events.filter((e: any) => {
     const matchesSearch = !search ||
       e.title?.toLowerCase().includes(search.toLowerCase()) ||
-      e.library_name?.toLowerCase().includes(search.toLowerCase()) ||
-      e.venue_name?.toLowerCase().includes(search.toLowerCase());
+      e.organizer_name?.toLowerCase().includes(search.toLowerCase()) ||
+      e.venue_name?.toLowerCase().includes(search.toLowerCase()) ||
+      e.location_city?.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === "all" || e.event_type === typeFilter;
-    return matchesSearch && matchesType;
+    const matchesCity = !cityFilter ||
+      e.location_city?.toLowerCase().includes(cityFilter.toLowerCase());
+    return matchesSearch && matchesType && matchesCity;
   });
 
   return (
@@ -52,21 +62,21 @@ export default function PublicEventDirectory() {
       <div className="space-y-1">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Globe className="h-6 w-6 text-primary" />
-          Public Events
+          Events Near You
         </h1>
         <p className="text-muted-foreground text-sm">
-          Discover upcoming board game events, tournaments, and conventions near you
+          Discover upcoming board game events, tournaments, and conventions
         </p>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3">
-        <div className="relative flex-1">
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search events..."
+            placeholder="Search events, organizers..."
             className="pl-9"
           />
         </div>
@@ -83,6 +93,21 @@ export default function PublicEventDirectory() {
             <SelectItem value="public_event">Public Events</SelectItem>
           </SelectContent>
         </Select>
+        {cities.length > 0 && (
+          <div className="relative min-w-[160px]">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={cityFilter}
+              onChange={e => setCityFilter(e.target.value)}
+              placeholder="Filter by city..."
+              className="pl-9"
+              list="city-suggestions"
+            />
+            <datalist id="city-suggestions">
+              {cities.map(c => <option key={c} value={c} />)}
+            </datalist>
+          </div>
+        )}
       </div>
 
       {/* Events List */}
@@ -94,9 +119,9 @@ export default function PublicEventDirectory() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <Globe className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p className="text-sm font-medium">No public events found</p>
+            <p className="text-sm font-medium">No events found</p>
             <p className="text-xs mt-1">
-              {search || typeFilter !== "all"
+              {search || typeFilter !== "all" || cityFilter
                 ? "Try adjusting your filters"
                 : "Check back later for upcoming events"}
             </p>
@@ -122,6 +147,12 @@ function EventDirectoryCard({ event, onClick }: { event: any; onClick: () => voi
   const endDate = event.end_date ? new Date(event.end_date) : null;
   const isMultiDay = !!endDate;
 
+  const locationParts = [
+    event.venue_name || event.event_location,
+    event.location_city,
+    event.location_region,
+  ].filter(Boolean);
+
   return (
     <Card className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={onClick}>
       <CardContent className="p-4">
@@ -143,6 +174,9 @@ function EventDirectoryCard({ event, onClick }: { event: any; onClick: () => voi
                 {EVENT_TYPE_ICONS[event.event_type]}
                 {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
               </Badge>
+              {!event.library_id && (
+                <Badge variant="secondary" className="text-[10px]">Community</Badge>
+              )}
             </div>
 
             <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
@@ -150,10 +184,10 @@ function EventDirectoryCard({ event, onClick }: { event: any; onClick: () => voi
                 <Calendar className="h-3 w-3" />
                 {format(eventDate, "EEE, MMM d 'at' h:mm a")}
               </span>
-              {(event.venue_name || event.event_location) && (
+              {locationParts.length > 0 && (
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  {event.venue_name || event.event_location}
+                  {locationParts.join(", ")}
                 </span>
               )}
               {event.registration_count > 0 && (
@@ -170,9 +204,9 @@ function EventDirectoryCard({ event, onClick }: { event: any; onClick: () => voi
             )}
 
             <div className="flex items-center gap-2 mt-2">
-              {event.library_name && (
+              {event.organizer_name && (
                 <Badge variant="secondary" className="text-[10px]">
-                  Hosted by {event.library_name}
+                  {event.library_id ? "Hosted by" : "Organized by"} {event.organizer_name}
                 </Badge>
               )}
               {event.entry_fee && event.entry_fee !== "Free" && (
