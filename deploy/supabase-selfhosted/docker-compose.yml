@@ -319,6 +319,8 @@ services:
       DISCORD_CLIENT_ID: "${DISCORD_CLIENT_ID:-}"
       DISCORD_CLIENT_SECRET: "${DISCORD_CLIENT_SECRET:-}"
       TURNSTILE_SECRET_KEY: "${TURNSTILE_SECRET_KEY:-}"
+      # Push notifications (Firebase Cloud Messaging)
+      FIREBASE_SERVICE_ACCOUNT_JSON: "${FIREBASE_SERVICE_ACCOUNT_JSON:-}"
       # Public site origin for OAuth redirect construction
       APP_URL: "${APP_URL:-}"
       # SMTP for edge functions
