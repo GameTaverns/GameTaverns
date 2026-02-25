@@ -140,7 +140,8 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   const SHELL_PLATFORM_PATHS = [
     '/dashboard', '/catalog', '/dm', '/docs', '/directory', '/achievements',
     '/community', '/club', '/u/', '/lists', '/create-library',
-    '/login', '/signup',
+    '/login', '/signup', '/legal', '/privacy', '/terms', '/cookies',
+    '/features', '/press', '/install',
   ];
   const isOnPlatformPath = SHELL_PLATFORM_PATHS.some(
     p => location.pathname === p || location.pathname.startsWith(p)
@@ -156,7 +157,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   // Not authenticated and no library — show selector, unless the user is
   // navigating to an auth route (login, signup, forgot-password, reset-password),
   // OR is already authenticated (they'll be redirected to dashboard by the effect above).
-  const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password'];
+  const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password', '/legal', '/privacy', '/terms', '/cookies', '/docs'];
   const isAuthPath = AUTH_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p));
 
   if (isNative && !isAuthenticated && !activeLibrary && !isAuthPath) {
