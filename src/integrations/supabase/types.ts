@@ -2474,6 +2474,44 @@ export type Database = {
           },
         ]
       }
+      import_item_errors: {
+        Row: {
+          bgg_id: string | null
+          created_at: string
+          error_message: string
+          error_type: string
+          id: string
+          item_title: string | null
+          job_id: string
+        }
+        Insert: {
+          bgg_id?: string | null
+          created_at?: string
+          error_message: string
+          error_type?: string
+          id?: string
+          item_title?: string | null
+          job_id: string
+        }
+        Update: {
+          bgg_id?: string | null
+          created_at?: string
+          error_message?: string
+          error_type?: string
+          id?: string
+          item_title?: string | null
+          job_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_item_errors_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_jobs: {
         Row: {
           created_at: string
