@@ -290,14 +290,19 @@
 
   /* Bottom tab bar */
   .mobile-bottom-tabs {
-    @apply fixed bottom-0 left-0 right-0 z-40 flex items-stretch justify-around border-t border-border/50 bg-background;
+    @apply fixed z-40 flex items-stretch justify-around border-t border-border/50 bg-background;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
+    margin: 0;
     padding-bottom: env(safe-area-inset-bottom);
     -webkit-transform: translate3d(0, 0, 0);
     transform: translate3d(0, 0, 0);
-    /* Extend background below safe area on iOS */
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+    /* iOS safe area background extension */
+    background-clip: padding-box;
   }
   .mobile-bottom-tab {
     @apply flex flex-col items-center justify-center gap-0 py-1.5 px-1 flex-1 text-muted-foreground transition-colors;

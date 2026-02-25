@@ -465,6 +465,68 @@ export function useArtists() {
   });
 }
 
+// Library-scoped hooks: only return entities that appear in the given library
+export function useLibraryPublishers(libraryId: string | undefined) {
+  return useQuery({
+    queryKey: ["library-publishers", libraryId],
+    queryFn: async (): Promise<Publisher[]> => {
+      if (!libraryId) return [];
+      const { data, error } = await supabase
+        .from("games")
+        .select("publisher:publishers!inner(id, name)")
+        .eq("library_id", libraryId)
+        .not("publisher_id", "is", null);
+      if (error) throw error;
+      const map = new Map<string, Publisher>();
+      (data || []).forEach((row: any) => {
+        if (row.publisher) map.set(row.publisher.id, row.publisher);
+      });
+      return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: !!libraryId,
+  });
+}
+
+export function useLibraryDesigners(libraryId: string | undefined) {
+  return useQuery({
+    queryKey: ["library-designers", libraryId],
+    queryFn: async () => {
+      if (!libraryId) return [];
+      const { data, error } = await supabase
+        .from("game_designers")
+        .select("designer:designers!inner(id, name), game:games!inner(library_id)")
+        .eq("game.library_id", libraryId);
+      if (error) throw error;
+      const map = new Map<string, { id: string; name: string }>();
+      (data || []).forEach((row: any) => {
+        if (row.designer) map.set(row.designer.id, row.designer);
+      });
+      return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: !!libraryId,
+  });
+}
+
+export function useLibraryArtists(libraryId: string | undefined) {
+  return useQuery({
+    queryKey: ["library-artists", libraryId],
+    queryFn: async () => {
+      if (!libraryId) return [];
+      const { data, error } = await supabase
+        .from("game_artists")
+        .select("artist:artists!inner(id, name), game:games!inner(library_id)")
+        .eq("game.library_id", libraryId);
+      if (error) throw error;
+      const map = new Map<string, { id: string; name: string }>();
+      (data || []).forEach((row: any) => {
+        if (row.artist) map.set(row.artist.id, row.artist);
+      });
+      return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    },
+    enabled: !!libraryId,
+  });
+}
+
 export function useCreateGame() {
   const queryClient = useQueryClient();
   const { library } = useTenant();
