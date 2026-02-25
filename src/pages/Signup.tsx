@@ -12,9 +12,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTranslation } from "react-i18next";
-// IMPORTANT: we do NOT call supabase.auth.signUp() here because it triggers the default
-// provider confirmation email. We use a backend function that creates the user and
-// sends our branded SMTP confirmation email.
+// IMPORTANT: we do NOT call supabase.auth.signUp() here. We use a backend function
+// that creates the user directly (email confirmation is disabled on self-hosted).
 
 export default function Signup() {
   const { t } = useTranslation();
@@ -98,13 +97,12 @@ export default function Signup() {
         });
 
         if (response.requiresVerification) {
+          // Self-hosted: email confirmation is disabled, just redirect to login
           toast({
-            title: t('login.checkEmail'),
-            description: response.message || "We've sent you a confirmation link. Please verify your email to continue.",
+            title: t('signup.accountCreated'),
+            description: t('signup.youCanSignIn'),
           });
-          navigate("/login", { 
-            state: { message: "Please check your email and click the confirmation link to activate your account." } 
-          });
+          navigate("/login");
         } else if (response.token) {
           localStorage.setItem("auth_token", response.token);
           toast({
