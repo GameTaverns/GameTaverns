@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, ArrowLeft } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, ArrowLeft, BarChart3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { useAuth } from "@/hooks/useAuth";
 import { ClubForumCard } from "@/components/community/ClubForumCard";
+import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 
 import { format } from "date-fns";
 
@@ -140,7 +141,19 @@ export default function ClubPage() {
               <MessageSquare className="h-4 w-4" />
               Forums
             </TabsTrigger>
+            <TabsTrigger
+              value="analytics"
+              className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Analytics
+            </TabsTrigger>
           </TabsList>
+
+          {/* ── Analytics ── */}
+          <TabsContent value="analytics">
+            <ClubAnalyticsDashboard clubId={club.id} />
+          </TabsContent>
 
           {/* ── Game Catalog ── */}
           <TabsContent value="catalog">
