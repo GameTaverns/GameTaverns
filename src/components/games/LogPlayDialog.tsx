@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Plus, Minus, Trophy, Sparkles, Clock, Calendar, Puzzle, UserPlus, UserCheck, X } from "lucide-react";
 import {
   Dialog,
@@ -45,9 +45,56 @@ interface LogPlayDialogProps {
   children: React.ReactNode;
 }
 
+interface LogPlayDraft {
+  playedAt: string;
+  duration: string;
+  notes: string;
+  players: PlayerInput[];
+  selectedExpansionIds: string[];
+}
+
+function readPersistedValue(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key) ?? localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function persistValue(key: string, value: string) {
+  try {
+    sessionStorage.setItem(key, value);
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function clearPersistedValue(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProps) {
-  const [open, setOpen] = useState(false);
+  const openKey = useMemo(() => `log_play_dialog_open_${gameId}`, [gameId]);
+  const draftKey = useMemo(() => `log_play_dialog_draft_${gameId}`, [gameId]);
+
+  const [open, setOpenRaw] = useState(() => readPersistedValue(openKey) === "true");
+  const hydratedOnOpenRef = useRef(false);
   const { createSession } = useGameSessions(gameId);
+
+  const setOpen = useCallback(
+    (nextOpen: boolean) => {
+      setOpenRaw(nextOpen);
+      persistValue(openKey, String(nextOpen));
+      if (!nextOpen) hydratedOnOpenRef.current = false;
+    },
+    [openKey],
+  );
 
   const [playedAt, setPlayedAt] = useState(() => toDateTimeLocalValue(new Date()));
   const [duration, setDuration] = useState("");
@@ -74,6 +121,43 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
         });
     }
   }, [open, gameId]);
+
+  useEffect(() => {
+    if (!open || hydratedOnOpenRef.current) return;
+
+    const raw = readPersistedValue(draftKey);
+    if (!raw) {
+      hydratedOnOpenRef.current = true;
+      return;
+    }
+
+    try {
+      const draft = JSON.parse(raw) as Partial<LogPlayDraft>;
+      if (typeof draft.playedAt === "string" && draft.playedAt) setPlayedAt(draft.playedAt);
+      if (typeof draft.duration === "string") setDuration(draft.duration);
+      if (typeof draft.notes === "string") setNotes(draft.notes);
+      if (Array.isArray(draft.players) && draft.players.length > 0) setPlayers(draft.players);
+      if (Array.isArray(draft.selectedExpansionIds)) setSelectedExpansions(new Set(draft.selectedExpansionIds));
+    } catch {
+      // Ignore corrupted drafts
+    }
+
+    hydratedOnOpenRef.current = true;
+  }, [open, draftKey]);
+
+  useEffect(() => {
+    if (!open || !hydratedOnOpenRef.current) return;
+
+    const draft: LogPlayDraft = {
+      playedAt,
+      duration,
+      notes,
+      players,
+      selectedExpansionIds: Array.from(selectedExpansions),
+    };
+
+    persistValue(draftKey, JSON.stringify(draft));
+  }, [open, playedAt, duration, notes, players, selectedExpansions, draftKey]);
 
   const toggleExpansion = (expansionId: string) => {
     setSelectedExpansions((prev) => {
@@ -136,6 +220,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
     };
 
     await createSession.mutateAsync(input);
+    clearPersistedValue(draftKey);
     setOpen(false);
     resetForm();
   };
