@@ -205,11 +205,17 @@ const Index = () => {
         }
       });
       result = allExpansions;
+    } else if (filter === "status" && filterValue === "played-only") {
+      result = result.filter((g) => (g as any).ownership_status === "played_only");
+    } else if (filter === "status" && filterValue === "previously-owned") {
+      result = result.filter((g) => (g as any).ownership_status === "previously_owned");
     } else {
       // Exclude coming soon games from main catalog (only if feature is enabled)
       if (comingSoonFlag) {
         result = result.filter((g) => !g.is_coming_soon);
       }
+      // Exclude non-owned games from the default collection view
+      result = result.filter((g) => !(g as any).ownership_status || (g as any).ownership_status === "owned");
 
       // Category filters
       if (filter && filterValue) {

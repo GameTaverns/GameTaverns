@@ -2315,6 +2315,7 @@ export type Database = {
           location_shelf: string | null
           max_players: number | null
           min_players: number | null
+          ownership_status: Database["public"]["Enums"]["ownership_status"]
           parent_game_id: string | null
           play_time: Database["public"]["Enums"]["play_time"] | null
           publisher_id: string | null
@@ -2355,6 +2356,7 @@ export type Database = {
           location_shelf?: string | null
           max_players?: number | null
           min_players?: number | null
+          ownership_status?: Database["public"]["Enums"]["ownership_status"]
           parent_game_id?: string | null
           play_time?: Database["public"]["Enums"]["play_time"] | null
           publisher_id?: string | null
@@ -2395,6 +2397,7 @@ export type Database = {
           location_shelf?: string | null
           max_players?: number | null
           min_players?: number | null
+          ownership_status?: Database["public"]["Enums"]["ownership_status"]
           parent_game_id?: string | null
           play_time?: Database["public"]["Enums"]["play_time"] | null
           publisher_id?: string | null
@@ -5109,6 +5112,7 @@ export type Database = {
         | "returned"
         | "declined"
         | "cancelled"
+      ownership_status: "owned" | "previously_owned" | "played_only"
       play_time:
         | "0-15 Minutes"
         | "15-30 Minutes"
@@ -5287,6 +5291,7 @@ export const Constants = {
         "declined",
         "cancelled",
       ],
+      ownership_status: ["owned", "previously_owned", "played_only"],
       play_time: [
         "0-15 Minutes",
         "15-30 Minutes",

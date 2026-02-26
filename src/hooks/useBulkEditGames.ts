@@ -15,7 +15,8 @@ export type BulkEditField =
   | "location_shelf"
   | "location_misc"
   | "sale_price"
-  | "sale_condition";
+  | "sale_condition"
+  | "ownership_status";
 
 export type BulkEditMode = "set" | "toggle";
 

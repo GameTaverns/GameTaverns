@@ -74,7 +74,92 @@ interface ImportResult {
     updatedPlays: string[];
     skippedDuplicates: string[];
     unmatchedGames: string[];
+    autoCreatedGames: string[];
   };
+}
+
+/**
+ * Try to find a game in the catalog by BGG ID and create a "played_only" entry
+ * in the user's library so play sessions can be logged against it.
+ */
+async function findOrCreatePlayedOnlyGame(
+  supabaseAdmin: any,
+  libraryId: string,
+  bggId: string,
+  gameName: string,
+  gamesByBggId: Map<string, { id: string; title: string }>,
+  gamesByTitle: Map<string, { id: string; title: string }>,
+): Promise<{ id: string; title: string } | null> {
+  // Look up the catalog by bgg_id
+  const { data: catalogEntry } = await supabaseAdmin
+    .from("game_catalog")
+    .select("id, title, description, image_url, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_id, bgg_url, slug")
+    .eq("bgg_id", bggId)
+    .maybeSingle();
+
+  if (!catalogEntry) {
+    console.log(`[BGGPlayImport] No catalog entry found for BGG ID ${bggId} (${gameName})`);
+    return null;
+  }
+
+  // Map catalog play_time_minutes to the play_time enum
+  let playTimeEnum = "45-60 Minutes";
+  if (catalogEntry.play_time_minutes) {
+    const m = catalogEntry.play_time_minutes;
+    if (m <= 15) playTimeEnum = "0-15 Minutes";
+    else if (m <= 30) playTimeEnum = "15-30 Minutes";
+    else if (m <= 45) playTimeEnum = "30-45 Minutes";
+    else if (m <= 60) playTimeEnum = "45-60 Minutes";
+    else if (m <= 120) playTimeEnum = "60+ Minutes";
+    else if (m <= 180) playTimeEnum = "2+ Hours";
+    else playTimeEnum = "3+ Hours";
+  }
+
+  // Map weight to difficulty enum
+  let difficultyEnum = "3 - Medium";
+  if (catalogEntry.weight) {
+    const w = catalogEntry.weight;
+    if (w < 1.5) difficultyEnum = "1 - Light";
+    else if (w < 2.5) difficultyEnum = "2 - Medium Light";
+    else if (w < 3.5) difficultyEnum = "3 - Medium";
+    else if (w < 4.5) difficultyEnum = "4 - Medium Heavy";
+    else difficultyEnum = "5 - Heavy";
+  }
+
+  // Create the game in the library as "played_only"
+  const { data: newGame, error: insertError } = await supabaseAdmin
+    .from("games")
+    .insert({
+      library_id: libraryId,
+      title: catalogEntry.title,
+      description: catalogEntry.description,
+      image_url: catalogEntry.image_url,
+      min_players: catalogEntry.min_players || 1,
+      max_players: catalogEntry.max_players || 4,
+      play_time: playTimeEnum,
+      difficulty: difficultyEnum,
+      suggested_age: catalogEntry.suggested_age || "10+",
+      is_expansion: catalogEntry.is_expansion || false,
+      bgg_id: catalogEntry.bgg_id,
+      bgg_url: catalogEntry.bgg_url,
+      catalog_id: catalogEntry.id,
+      ownership_status: "played_only",
+    })
+    .select("id, title")
+    .single();
+
+  if (insertError) {
+    console.error(`[BGGPlayImport] Failed to create played_only game for ${gameName}:`, insertError.message);
+    return null;
+  }
+
+  console.log(`[BGGPlayImport] Auto-created played_only game: "${newGame.title}" (${newGame.id})`);
+
+  // Update lookup maps so subsequent plays for the same game don't re-create
+  gamesByBggId.set(bggId, { id: newGame.id, title: newGame.title });
+  gamesByTitle.set(newGame.title.toLowerCase(), { id: newGame.id, title: newGame.title });
+
+  return { id: newGame.id, title: newGame.title };
 }
 
 // Parse BGG XML plays response
@@ -494,6 +579,7 @@ export default async function handler(req: Request): Promise<Response> {
         updatedPlays: [],
         skippedDuplicates: [],
         unmatchedGames: [],
+        autoCreatedGames: [],
       },
     };
 
@@ -509,6 +595,17 @@ export default async function handler(req: Request): Promise<Response> {
 
         let matchedGame = play.game_bgg_id ? gamesByBggId.get(play.game_bgg_id) : undefined;
         if (!matchedGame) matchedGame = gamesByTitle.get(play.game_title.toLowerCase());
+
+        if (!matchedGame && play.game_bgg_id) {
+          // Try to auto-create from catalog
+          matchedGame = await findOrCreatePlayedOnlyGame(
+            supabaseAdmin, library_id, play.game_bgg_id, play.game_title,
+            gamesByBggId, gamesByTitle
+          ) ?? undefined;
+          if (matchedGame) {
+            result.details.autoCreatedGames.push(play.game_title);
+          }
+        }
 
         if (!matchedGame) {
           result.failed++;
@@ -571,6 +668,13 @@ export default async function handler(req: Request): Promise<Response> {
               let matchedGame = gamesByBggId.get(play.game.objectid);
               if (!matchedGame) matchedGame = gamesByTitle.get(play.game.name.toLowerCase());
               if (!matchedGame) {
+                matchedGame = await findOrCreatePlayedOnlyGame(
+                  supabaseAdmin, library_id, play.game.objectid, play.game.name,
+                  gamesByBggId, gamesByTitle
+                ) ?? undefined;
+                if (matchedGame) result.details.autoCreatedGames.push(play.game.name);
+              }
+              if (!matchedGame) {
                 result.failed++;
                 if (!result.details.unmatchedGames.includes(play.game.name)) result.details.unmatchedGames.push(play.game.name);
                 continue;
@@ -600,6 +704,17 @@ export default async function handler(req: Request): Promise<Response> {
 
         let matchedGame = gamesByBggId.get(play.game.objectid);
         if (!matchedGame) matchedGame = gamesByTitle.get(play.game.name.toLowerCase());
+
+        if (!matchedGame) {
+          // Try to auto-create from catalog
+          matchedGame = await findOrCreatePlayedOnlyGame(
+            supabaseAdmin, library_id, play.game.objectid, play.game.name,
+            gamesByBggId, gamesByTitle
+          ) ?? undefined;
+          if (matchedGame) {
+            result.details.autoCreatedGames.push(play.game.name);
+          }
+        }
 
         if (!matchedGame) {
           result.failed++;
