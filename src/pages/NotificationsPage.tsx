@@ -174,9 +174,13 @@ function groupSimilar(notifications: Notification[]): (Notification | { grouped:
 // ── Main component ──
 export default function NotificationsPage() {
   const navigate = useNavigate();
-  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications: allNotifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
   const { data: myProfile } = useUserProfile();
   const [filter, setFilter] = useState<NotifCategory>("all");
+
+  // Exclude direct messages — they have their own dedicated messenger section
+  const MESSAGE_TYPES = ["direct_message", "message_received"];
+  const notifications = useMemo(() => allNotifications.filter(n => !MESSAGE_TYPES.includes(n.notification_type)), [allNotifications]);
 
   const filtered = useMemo(() => {
     if (filter === "all") return notifications;
