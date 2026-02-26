@@ -1203,8 +1203,20 @@ function parseBGGCollectionXml(xml: string, status: BGGCollectionItem["bggStatus
 
 // Fetch BGG collection for a user (owned + preordered + wishlist, base games + expansions)
 async function fetchBGGCollection(username: string): Promise<BGGCollectionItem[]> {
-  const bggCookie3 = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+  const rawCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
   const bggToken = Deno.env.get("BGG_API_TOKEN") || "";
+
+  // Only use the cookie if it belongs to the same BGG user being queried.
+  // Using someone else's session cookie causes BGG to return 401.
+  let cookieOwner = "";
+  if (rawCookie) {
+    const match = rawCookie.match(/bggusername=([^;]+)/i);
+    cookieOwner = match ? match[1].trim().toLowerCase() : "";
+  }
+  const shouldUseCookie = !!(rawCookie && cookieOwner && cookieOwner === username.trim().toLowerCase());
+  if (rawCookie && !shouldUseCookie) {
+    console.log(`[BulkImport] Skipping BGG cookie for collection fetch (cookie owner: "${cookieOwner}", requested user: "${username}")`);
+  }
   
   const headers: Record<string, string> = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -1214,9 +1226,9 @@ async function fetchBGGCollection(username: string): Promise<BGGCollectionItem[]
   };
   
   if (bggToken) headers["Authorization"] = `Bearer ${bggToken}`;
-  if (bggCookie3) headers["Cookie"] = bggCookie3;
+  if (shouldUseCookie) headers["Cookie"] = rawCookie;
   
-  console.log(`[BulkImport] Fetching BGG collection for "${username}" (owned+preordered+wishlist), cookie present: ${Boolean(bggCookie3)}, token present: ${Boolean(bggToken)}`);
+  console.log(`[BulkImport] Fetching BGG collection for "${username}" (owned+preordered+wishlist), cookie used: ${shouldUseCookie}, token present: ${Boolean(bggToken)}`);
 
   const delay = () => new Promise(r => setTimeout(r, 1500));
 
@@ -1224,7 +1236,7 @@ async function fetchBGGCollection(username: string): Promise<BGGCollectionItem[]
   const ownedBaseXml = await fetchBGGCollectionPage(username, "own=1&subtype=boardgame", "owned-base", headers);
   if (!ownedBaseXml) {
     throw new Error(
-      "BGG API requires authentication. Please ensure your BGG_SESSION_COOKIE is valid. As an alternative, export your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option instead."
+      "Could not fetch your BGG collection. The BGG API may be temporarily unavailable. If this persists, try exporting your collection as CSV from BoardGameGeek (Collection → Export) and use the CSV import option instead."
     );
   }
   if (ownedBaseXml.includes("<error>") || ownedBaseXml.includes("Invalid username")) {

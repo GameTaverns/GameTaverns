@@ -166,8 +166,24 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
   let page = 1;
 
   // Optional: allow self-hosted operators to provide a BGG cookie if BGG blocks server-to-server traffic.
-  // Example value: "bggusername=...; SessionID=..." (whatever your browser sends to boardgamegeek.com)
-  const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+  // The cookie is tied to a specific BGG account, so only use it when the request matches that account.
+  const rawCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+
+  // Extract the BGG username from the cookie (format: "bggusername=XXXX; SessionID=...")
+  let cookieOwner = "";
+  if (rawCookie) {
+    const match = rawCookie.match(/bggusername=([^;]+)/i);
+    cookieOwner = match ? match[1].trim().toLowerCase() : "";
+  }
+
+  // Only attach the cookie if it belongs to the same BGG user being queried.
+  // Using someone else's session cookie causes BGG to return 401.
+  const shouldUseCookie = !!(rawCookie && cookieOwner && cookieOwner === username.trim().toLowerCase());
+  if (rawCookie && !shouldUseCookie) {
+    console.log(`[BGGPlayImport] Skipping BGG cookie (cookie owner: "${cookieOwner}", requested user: "${username}")`);
+  } else if (shouldUseCookie) {
+    console.log(`[BGGPlayImport] Using BGG cookie for matching user: "${username}"`);
+  }
 
   // Try multiple User-Agent strategies if BGG blocks us
   const userAgents = [
@@ -188,7 +204,6 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
         console.log(`[BGGPlayImport] Fetching page ${page}: ${url} (UA: ${userAgent.slice(0, 30)}...)`);
 
         const headers: Record<string, string> = {
-          // BGG can block “server-y” traffic; these headers mimic a real browser request more closely.
           "User-Agent": userAgent,
           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.9",
@@ -202,8 +217,8 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
           "Upgrade-Insecure-Requests": "1",
         };
 
-        if (bggCookie) {
-          headers["Cookie"] = bggCookie;
+        if (shouldUseCookie) {
+          headers["Cookie"] = rawCookie;
         }
 
         const response = await fetch(url, { headers });
@@ -219,7 +234,6 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
           // 401/403 means BGG is rate-limiting or blocking us
           if (response.status === 401 || response.status === 403 || response.status === 429) {
             const bodySnippet = (await response.text().catch(() => "")).slice(0, 200);
-            // Wait longer before retrying with next UA - BGG rate limits are time-based
             console.log(`[BGGPlayImport] BGG returned ${response.status}, waiting 5s before retry...`);
             await new Promise((r) => setTimeout(r, 5000));
             throw new Error(`BGG returned ${response.status}: ${bodySnippet || "Rate limited / Access denied"}`);
@@ -239,8 +253,6 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
 
         // Check for "Invalid username" which BGG returns as valid XML with total="0"
         if (xmlText.includes('total="0"') && page === 1) {
-          // Could be valid (user has no plays) or invalid username
-          // We'll proceed - empty result is fine
           console.log(`[BGGPlayImport] BGG returned 0 plays for user ${username}`);
         }
 
