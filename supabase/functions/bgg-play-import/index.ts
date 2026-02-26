@@ -216,10 +216,13 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
             continue;
           }
 
-          // 401/403 means BGG is blocking us - try next User-Agent
-          if (response.status === 401 || response.status === 403) {
+          // 401/403 means BGG is rate-limiting or blocking us
+          if (response.status === 401 || response.status === 403 || response.status === 429) {
             const bodySnippet = (await response.text().catch(() => "")).slice(0, 200);
-            throw new Error(`BGG returned ${response.status}: ${bodySnippet || "Access denied"}`);
+            // Wait longer before retrying with next UA - BGG rate limits are time-based
+            console.log(`[BGGPlayImport] BGG returned ${response.status}, waiting 5s before retry...`);
+            await new Promise((r) => setTimeout(r, 5000));
+            throw new Error(`BGG returned ${response.status}: ${bodySnippet || "Rate limited / Access denied"}`);
           }
 
           const bodySnippet = (await response.text().catch(() => "")).slice(0, 300);
@@ -267,18 +270,15 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
     } catch (err) {
       lastError = err as Error;
       console.log(`[BGGPlayImport] User-Agent failed: ${(err as Error).message}, trying next...`);
-      // Small delay before retry with different UA
-      await new Promise((r) => setTimeout(r, 1000));
+      // Longer delay between UA retries to let rate limits cool
+      await new Promise((r) => setTimeout(r, 3000));
     }
   }
 
-  // All User-Agents failed
-  const hasCookie = !!bggCookie;
-  const errorMsg = hasCookie
-    ? `BGG is blocking server requests. Your BGG_SESSION_COOKIE may be expired/invalid (BGG returned: ${lastError?.message || "unknown error"}). Re-login to BGG in a browser and update the cookie value.`
-    : `BGG is blocking server requests (${lastError?.message || "unknown error"}). To fix this, set BGG_SESSION_COOKIE (from your browser) in your server environment and restart the functions service.`;
-  
-  throw new Error(errorMsg);
+  // All User-Agents failed - give a user-friendly message
+  throw new Error(
+    `BGG is temporarily rate-limiting requests from our server. This usually resolves within a few minutes. Please wait 2-3 minutes and try again. (Technical detail: ${lastError?.message || "unknown error"})`
+  );
 }
 
 // Export handler
