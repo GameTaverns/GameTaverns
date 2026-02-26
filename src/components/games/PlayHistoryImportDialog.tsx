@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, History, CheckCircle2, AlertCircle, Users, RefreshCw } from "lucide-react";
 import {
@@ -42,6 +42,9 @@ interface PlayHistoryImportDialogProps {
   onImportComplete?: () => void;
 }
 
+const PLAY_IMPORT_USERNAME_KEY = "play_import_bgg_username";
+const PLAY_IMPORT_UPDATE_EXISTING_KEY = "play_import_update_existing";
+
 export function PlayHistoryImportDialog({
   open,
   onOpenChange,
@@ -50,15 +53,42 @@ export function PlayHistoryImportDialog({
   const { toast } = useToast();
   const { library } = useTenant();
   const queryClient = useQueryClient();
-  const [bggUsername, setBggUsername] = useState("");
-  const [updateExisting, setUpdateExisting] = useState(false);
+  const [bggUsername, setBggUsername] = useState(() => {
+    try {
+      return sessionStorage.getItem(PLAY_IMPORT_USERNAME_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+  const [updateExisting, setUpdateExisting] = useState(() => {
+    try {
+      return sessionStorage.getItem(PLAY_IMPORT_UPDATE_EXISTING_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<PlayImportResult | null>(null);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(PLAY_IMPORT_USERNAME_KEY, bggUsername);
+      sessionStorage.setItem(PLAY_IMPORT_UPDATE_EXISTING_KEY, String(updateExisting));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [bggUsername, updateExisting]);
 
   const resetForm = () => {
     setBggUsername("");
     setUpdateExisting(false);
     setResult(null);
+    try {
+      sessionStorage.removeItem(PLAY_IMPORT_USERNAME_KEY);
+      sessionStorage.removeItem(PLAY_IMPORT_UPDATE_EXISTING_KEY);
+    } catch {
+      // Ignore storage errors
+    }
   };
 
   const handleImport = async () => {
@@ -195,7 +225,6 @@ export function PlayHistoryImportDialog({
     }
 
     if (!isImporting) {
-      resetForm();
       onOpenChange(false);
     }
   };

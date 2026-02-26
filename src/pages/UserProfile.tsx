@@ -497,23 +497,6 @@ export default function UserProfile() {
           )}
         </Tabs>
 
-        {/* Gameplay Stats */}
-        <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-display flex items-center gap-2">
-              <Dices className="h-4 w-4 text-primary" />
-              Collection & Play Stats
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatCard icon={Dices} label="Games" value={profile.games_owned} />
-              <StatCard icon={BookOpen} label="Expansions" value={profile.expansions_owned} />
-              <StatCard icon={Activity} label="Sessions" value={profile.sessions_logged} />
-              <StatCard icon={Trophy} label="Achievements" value={profile.achievements_earned} />
-            </div>
-          </CardContent>
-        </Card>
       </main>
     </div>
   );
@@ -545,19 +528,6 @@ function FeedbackCard({ rating, showRatedUser }: { rating: any; showRatedUser?: 
 
 
 
-function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: number }) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-      <div className="p-2 rounded-lg bg-primary/10">
-        <Icon className="h-5 w-5 text-primary" />
-      </div>
-      <div>
-        <div className="text-xl font-bold text-foreground">{value}</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
-      </div>
-    </div>
-  );
-}
 
 function ProfileSkeleton() {
   return (

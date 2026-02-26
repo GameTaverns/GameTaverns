@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
@@ -36,6 +36,10 @@ import { format } from "date-fns";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 
 const CLUB_EVENT_DIALOG_KEY = "club_dashboard_event_dialog_open";
+const CLUB_EVENT_TITLE_KEY = "club_dashboard_event_title";
+const CLUB_EVENT_DATE_KEY = "club_dashboard_event_date";
+const CLUB_EVENT_LOCATION_KEY = "club_dashboard_event_location";
+const CLUB_EVENT_DESC_KEY = "club_dashboard_event_desc";
 
 export default function ClubDashboard() {
   const { slug } = useParams<{ slug: string }>();
@@ -70,10 +74,56 @@ export default function ClubDashboard() {
     }
   }, []);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [eventTitle, setEventTitle] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [eventLocation, setEventLocation] = useState("");
-  const [eventDesc, setEventDesc] = useState("");
+  const [eventTitle, setEventTitle] = useState(() => {
+    try {
+      return sessionStorage.getItem(CLUB_EVENT_TITLE_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+  const [eventDate, setEventDate] = useState(() => {
+    try {
+      return sessionStorage.getItem(CLUB_EVENT_DATE_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+  const [eventLocation, setEventLocation] = useState(() => {
+    try {
+      return sessionStorage.getItem(CLUB_EVENT_LOCATION_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+  const [eventDesc, setEventDesc] = useState(() => {
+    try {
+      return sessionStorage.getItem(CLUB_EVENT_DESC_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+
+  const clearEventDraft = useCallback(() => {
+    try {
+      sessionStorage.removeItem(CLUB_EVENT_TITLE_KEY);
+      sessionStorage.removeItem(CLUB_EVENT_DATE_KEY);
+      sessionStorage.removeItem(CLUB_EVENT_LOCATION_KEY);
+      sessionStorage.removeItem(CLUB_EVENT_DESC_KEY);
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(CLUB_EVENT_TITLE_KEY, eventTitle);
+      sessionStorage.setItem(CLUB_EVENT_DATE_KEY, eventDate);
+      sessionStorage.setItem(CLUB_EVENT_LOCATION_KEY, eventLocation);
+      sessionStorage.setItem(CLUB_EVENT_DESC_KEY, eventDesc);
+    } catch {
+      // Ignore storage errors
+    }
+  }, [eventTitle, eventDate, eventLocation, eventDesc]);
 
   const isOwner = club?.owner_id === user?.id;
 
@@ -135,6 +185,7 @@ export default function ClubDashboard() {
       setEventDate("");
       setEventLocation("");
       setEventDesc("");
+      clearEventDraft();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
