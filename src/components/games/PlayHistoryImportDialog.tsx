@@ -254,7 +254,7 @@ export function PlayHistoryImportDialog({
                   <CheckCircle2 className="h-4 w-4" />
                   <AlertTitle>Imported Plays</AlertTitle>
                   <AlertDescription>
-                    <ScrollArea className="h-32">
+                    <div className="max-h-32 overflow-y-auto">
                       <ul className="text-xs space-y-1">
                         {result.details.importedPlays.slice(0, 30).map((play, i) => (
                           <li key={i} className="text-muted-foreground">• {play}</li>
@@ -265,7 +265,7 @@ export function PlayHistoryImportDialog({
                           </li>
                         )}
                       </ul>
-                    </ScrollArea>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}
@@ -276,7 +276,7 @@ export function PlayHistoryImportDialog({
                   <RefreshCw className="h-4 w-4" />
                   <AlertTitle>Updated Plays</AlertTitle>
                   <AlertDescription>
-                    <ScrollArea className="h-32">
+                    <div className="max-h-32 overflow-y-auto">
                       <ul className="text-xs space-y-1">
                         {result.details.updatedPlays.slice(0, 30).map((play, i) => (
                           <li key={i} className="text-muted-foreground">• {play}</li>
@@ -287,7 +287,7 @@ export function PlayHistoryImportDialog({
                           </li>
                         )}
                       </ul>
-                    </ScrollArea>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}
@@ -298,7 +298,7 @@ export function PlayHistoryImportDialog({
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Skipped (Already Imported)</AlertTitle>
                   <AlertDescription>
-                    <ScrollArea className="h-32">
+                    <div className="max-h-32 overflow-y-auto">
                       <ul className="text-xs space-y-1">
                         {result.details.skippedDuplicates.slice(0, 20).map((play, i) => (
                           <li key={i} className="text-muted-foreground">• {play}</li>
@@ -309,7 +309,7 @@ export function PlayHistoryImportDialog({
                           </li>
                         )}
                       </ul>
-                    </ScrollArea>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}
@@ -323,7 +323,7 @@ export function PlayHistoryImportDialog({
                     <p className="text-sm mb-2">
                       These games from your BGG plays weren't found in your library:
                     </p>
-                    <ScrollArea className="h-32">
+                    <div className="max-h-32 overflow-y-auto">
                       <ul className="text-xs space-y-1">
                         {result.details.unmatchedGames.slice(0, 20).map((game, i) => (
                           <li key={i} className="text-muted-foreground">• {game}</li>
@@ -334,7 +334,7 @@ export function PlayHistoryImportDialog({
                           </li>
                         )}
                       </ul>
-                    </ScrollArea>
+                    </div>
                     <p className="text-xs text-muted-foreground mt-2">
                       Tip: Import these games first, then re-run the play import.
                     </p>
@@ -347,13 +347,13 @@ export function PlayHistoryImportDialog({
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Errors</AlertTitle>
                   <AlertDescription>
-                    <ScrollArea className="h-24">
+                    <div className="max-h-24 overflow-y-auto">
                       <ul className="text-xs space-y-1">
                         {result.errors.map((err, i) => (
                           <li key={i}>• {err}</li>
                         ))}
                       </ul>
-                    </ScrollArea>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}
