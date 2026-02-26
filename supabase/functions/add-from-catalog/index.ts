@@ -61,7 +61,7 @@ export default async function handler(req: Request): Promise<Response> {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get user's library
+    // Get user's library (owned or co-owned)
     const { data: libraryRows } = await supabaseAdmin
       .from("libraries")
       .select("id")
@@ -69,7 +69,19 @@ export default async function handler(req: Request): Promise<Response> {
       .order("created_at", { ascending: true })
       .limit(1);
 
-    const libraryId = libraryRows?.[0]?.id;
+    let libraryId = libraryRows?.[0]?.id;
+
+    // Also check co-ownership if no owned library
+    if (!libraryId) {
+      const { data: coOwnedRows } = await supabaseAdmin
+        .from("library_members")
+        .select("library_id")
+        .eq("user_id", userId)
+        .eq("role", "co_owner")
+        .limit(1);
+      libraryId = coOwnedRows?.[0]?.library_id;
+    }
+
     if (!libraryId) {
       return new Response(JSON.stringify({ error: "You must own a library to add games" }), {
         status: 403,
