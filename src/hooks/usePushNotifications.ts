@@ -69,6 +69,7 @@ export function usePushNotifications() {
   }, []);
 
   const isRegisteringRef = useRef(false);
+  const isRequestingPermissionRef = useRef(false);
 
   const registerForPush = useCallback(async (): Promise<boolean> => {
     try {
@@ -115,17 +116,25 @@ export function usePushNotifications() {
       }
       if (!pluginAvailable) return false;
 
+      // Block appStateChange from triggering registration while OS dialog is up
+      isRequestingPermissionRef.current = true;
+
       const permission = await PushNotifications.requestPermissions();
+
       if (permission.receive === 'granted') {
-        // Decouple permission flow from registration to avoid native crashes
-        // when returning from the OS permission dialog on some devices.
+        // Longer delay: the app just resumed from the OS permission dialog.
+        // The native bridge and Firebase need time to stabilize.
         setTimeout(() => {
+          isRequestingPermissionRef.current = false;
           registerForPush().catch(() => {});
-        }, 1200);
+        }, 2500);
         return true;
       }
+
+      isRequestingPermissionRef.current = false;
       return false;
     } catch (error) {
+      isRequestingPermissionRef.current = false;
       console.warn('Error requesting push notification permission:', error);
       return false;
     }
@@ -222,9 +231,16 @@ export function usePushNotifications() {
 
         // If user grants permission in system settings and returns to app,
         // retry registration once app becomes active again.
+        // IMPORTANT: Skip if we're in the middle of requesting permissions —
+        // the OS dialog causes an appStateChange cycle that would race with
+        // the delayed registration in requestPermission().
         appStateListener = App.addListener('appStateChange', ({ isActive }) => {
-          if (!isActive || cancelled) return;
-          registerForPush().catch(() => {});
+          if (!isActive || cancelled || isRequestingPermissionRef.current) return;
+          // Extra delay to let native bridge stabilize after resume
+          setTimeout(() => {
+            if (cancelled || isRequestingPermissionRef.current) return;
+            registerForPush().catch(() => {});
+          }, 1500);
         });
 
         // Check if already registered
