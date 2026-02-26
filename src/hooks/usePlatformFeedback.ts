@@ -86,17 +86,47 @@ export function useSubmitFeedback() {
       sender_name: string;
       sender_email: string;
       message: string;
+      screenshots?: File[];
     }) => {
+      // Upload screenshots first
+      const screenshotUrls: string[] = [];
+      if (feedback.screenshots?.length) {
+        for (const file of feedback.screenshots) {
+          const ext = file.name.split(".").pop() || "png";
+          const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("feedback-attachments")
+            .upload(path, file, { contentType: file.type });
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage
+              .from("feedback-attachments")
+              .getPublicUrl(path);
+            screenshotUrls.push(urlData.publicUrl);
+          }
+        }
+      }
+
       // Save to database
       const { error } = await supabase
         .from("platform_feedback")
-        .insert(feedback);
+        .insert({
+          type: feedback.type,
+          sender_name: feedback.sender_name,
+          sender_email: feedback.sender_email,
+          message: feedback.message,
+        });
 
       if (error) throw error;
 
-      // Fire-and-forget: notify admins via Discord DM + email
+      // Fire-and-forget: notify admins via Discord + email
       supabase.functions.invoke("notify-feedback", {
-        body: feedback,
+        body: {
+          type: feedback.type,
+          sender_name: feedback.sender_name,
+          sender_email: feedback.sender_email,
+          message: feedback.message,
+          screenshot_urls: screenshotUrls,
+        },
       }).catch((e) => console.warn("Feedback notification failed:", e));
     },
   });

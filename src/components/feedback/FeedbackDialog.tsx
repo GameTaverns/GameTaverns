@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { MessageSquarePlus } from "lucide-react";
+import { useState, useRef } from "react";
+import { MessageSquarePlus, ImagePlus, X } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -51,10 +51,10 @@ const feedbackTypeLabels: Record<FeedbackType, string> = {
   feature_request: "Feature Request",
 };
 
-/**
- * Global floating feedback button - renders in bottom-right corner on all pages.
- * Also exported as FeedbackDialog for inline use in headers.
- */
+const MAX_SCREENSHOTS = 4;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
 export function GlobalFeedbackButton() {
   const [open, setOpen] = useState(false);
 
@@ -73,15 +73,11 @@ export function GlobalFeedbackButton() {
         </TooltipTrigger>
         <TooltipContent side="left">Send Feedback</TooltipContent>
       </Tooltip>
-
       <FeedbackFormDialog open={open} onOpenChange={setOpen} />
     </>
   );
 }
 
-/**
- * Inline feedback button for use in headers/navs (kept for backwards compat).
- */
 export function FeedbackDialog() {
   const [open, setOpen] = useState(false);
 
@@ -96,8 +92,77 @@ export function FeedbackDialog() {
   );
 }
 
+function ScreenshotUpload({ files, onChange }: { files: File[]; onChange: (files: File[]) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFiles = (selected: FileList | null) => {
+    if (!selected) return;
+    const newFiles = Array.from(selected).filter((f) => {
+      if (!ACCEPTED_TYPES.includes(f.type)) {
+        toast({ title: "Invalid file type", description: "Only PNG, JPG, WebP, and GIF are allowed.", variant: "destructive" });
+        return false;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        toast({ title: "File too large", description: `${f.name} exceeds the 5MB limit.`, variant: "destructive" });
+        return false;
+      }
+      return true;
+    });
+    const combined = [...files, ...newFiles].slice(0, MAX_SCREENSHOTS);
+    onChange(combined);
+  };
+
+  const removeFile = (index: number) => {
+    onChange(files.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Screenshots (optional, max {MAX_SCREENSHOTS})</label>
+      <div className="flex flex-wrap gap-2">
+        {files.map((file, i) => (
+          <div key={i} className="relative group h-16 w-16 rounded-md overflow-hidden border border-border">
+            <img
+              src={URL.createObjectURL(file)}
+              alt={`Screenshot ${i + 1}`}
+              className="h-full w-full object-cover"
+            />
+            <button
+              type="button"
+              onClick={() => removeFile(i)}
+              className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label={`Remove screenshot ${i + 1}`}
+            >
+              <X className="h-4 w-4 text-white" />
+            </button>
+          </div>
+        ))}
+        {files.length < MAX_SCREENSHOTS && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="h-16 w-16 rounded-md border-2 border-dashed border-muted-foreground/30 flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+            aria-label="Add screenshot"
+          >
+            <ImagePlus className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPTED_TYPES.join(",")}
+        multiple
+        className="hidden"
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+    </div>
+  );
+}
+
 export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const submitFeedback = useSubmitFeedback();
+  const [screenshots, setScreenshots] = useState<File[]>([]);
 
   const form = useForm<FeedbackFormValues>({
     resolver: zodResolver(feedbackSchema),
@@ -116,12 +181,14 @@ export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOp
         sender_name: values.sender_name,
         sender_email: values.sender_email,
         message: values.message,
+        screenshots: screenshots.length > 0 ? screenshots : undefined,
       });
       toast({
         title: "Feedback submitted",
         description: "Thank you for your feedback! We'll review it soon.",
       });
       form.reset();
+      setScreenshots([]);
       onOpenChange(false);
     } catch (error) {
       toast({
@@ -210,6 +277,7 @@ export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOp
                 </FormItem>
               )}
             />
+            <ScreenshotUpload files={screenshots} onChange={setScreenshots} />
             <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
