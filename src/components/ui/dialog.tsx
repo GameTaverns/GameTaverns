@@ -4,7 +4,22 @@ import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const Dialog = DialogPrimitive.Root;
+/**
+ * Wrapper that suppresses close events when the browser tab is hidden
+ * (prevents Brave/Chrome tab-switch from dismissing dialogs).
+ */
+const Dialog: React.FC<DialogPrimitive.DialogProps> = ({ onOpenChange, ...props }) => {
+  const stableOnOpenChange = React.useCallback(
+    (open: boolean) => {
+      if (!open && typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      onOpenChange?.(open);
+    },
+    [onOpenChange],
+  );
+  return <DialogPrimitive.Root onOpenChange={stableOnOpenChange} {...props} />;
+};
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
