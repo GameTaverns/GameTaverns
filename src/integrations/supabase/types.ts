@@ -3839,6 +3839,36 @@ export type Database = {
           },
         ]
       }
+      user_dashboard_prefs: {
+        Row: {
+          hidden_tabs: string[]
+          hidden_widgets: Json
+          tab_order: string[]
+          updated_at: string
+          user_id: string
+          widget_order: Json
+          widget_sizes: Json
+        }
+        Insert: {
+          hidden_tabs?: string[]
+          hidden_widgets?: Json
+          tab_order?: string[]
+          updated_at?: string
+          user_id: string
+          widget_order?: Json
+          widget_sizes?: Json
+        }
+        Update: {
+          hidden_tabs?: string[]
+          hidden_widgets?: Json
+          tab_order?: string[]
+          updated_at?: string
+          user_id?: string
+          widget_order?: Json
+          widget_sizes?: Json
+        }
+        Relationships: []
+      }
       user_follows: {
         Row: {
           created_at: string
