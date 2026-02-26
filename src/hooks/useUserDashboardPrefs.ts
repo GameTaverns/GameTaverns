@@ -1,4 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/backend/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const STORAGE_KEY = "user-dashboard-prefs-v1";
 
@@ -34,7 +36,7 @@ function loadPrefs(): UserDashboardPrefs {
   return EMPTY_PREFS;
 }
 
-function savePrefs(prefs: UserDashboardPrefs) {
+function savePrefsLocal(prefs: UserDashboardPrefs) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
 }
 
@@ -118,13 +120,136 @@ export const TAB_WIDGET_REGISTRY: Record<string, WidgetDef[]> = {
   ],
 };
 
+/** Debounced save to DB — avoids spamming during rapid customization */
+function useDebouncedDbSync(prefs: UserDashboardPrefs, userId: string | undefined) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const serialized = JSON.stringify(prefs);
+    // Skip if nothing changed
+    if (serialized === lastSavedRef.current) return;
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(async () => {
+      try {
+        const { error } = await supabase
+          .from("user_dashboard_prefs")
+          .upsert({
+            user_id: userId,
+            tab_order: prefs.tabOrder,
+            hidden_tabs: prefs.hiddenTabs,
+            widget_order: prefs.widgetOrder as any,
+            hidden_widgets: prefs.hiddenWidgets as any,
+            widget_sizes: prefs.widgetSizes as any,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "user_id" });
+
+        if (error) {
+          console.warn("Failed to save dashboard prefs to DB:", error);
+        } else {
+          lastSavedRef.current = serialized;
+        }
+      } catch (e) {
+        console.warn("Dashboard prefs DB sync error:", e);
+      }
+    }, 1500);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [prefs, userId]);
+}
+
 export function useUserDashboardPrefs(isAdmin: boolean) {
+  const { user } = useAuth();
   const [prefs, setPrefs] = useState<UserDashboardPrefs>(loadPrefs);
+  const dbLoadedRef = useRef(false);
+
+  // On mount, load prefs from DB if user is logged in
+  useEffect(() => {
+    if (!user?.id || dbLoadedRef.current) return;
+    dbLoadedRef.current = true;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("user_dashboard_prefs")
+          .select("tab_order, hidden_tabs, widget_order, hidden_widgets, widget_sizes, updated_at")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.warn("Failed to load dashboard prefs from DB:", error);
+          return;
+        }
+
+        if (!data) {
+          // No DB prefs yet — push current localStorage prefs to DB on first load
+          // This handles migration for existing users
+          const localPrefs = loadPrefs();
+          const isEmpty = localPrefs.tabOrder.length === 0 &&
+            localPrefs.hiddenTabs.length === 0 &&
+            Object.keys(localPrefs.widgetOrder).length === 0 &&
+            Object.keys(localPrefs.hiddenWidgets).length === 0;
+
+          if (!isEmpty) {
+            // Upload local prefs to DB for cross-platform sync
+            await supabase
+              .from("user_dashboard_prefs")
+              .upsert({
+                user_id: user.id,
+                tab_order: localPrefs.tabOrder,
+                hidden_tabs: localPrefs.hiddenTabs,
+                widget_order: localPrefs.widgetOrder as any,
+                hidden_widgets: localPrefs.hiddenWidgets as any,
+                widget_sizes: localPrefs.widgetSizes as any,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: "user_id" })
+              .then(({ error: e }) => {
+                if (e) console.warn("Failed to seed DB prefs:", e);
+              });
+          }
+          return;
+        }
+
+        // DB has prefs — compare timestamps to decide which wins
+        const localRaw = localStorage.getItem(STORAGE_KEY + "-ts");
+        const localTs = localRaw ? parseInt(localRaw, 10) : 0;
+        const dbTs = data.updated_at ? new Date(data.updated_at).getTime() : 0;
+
+        // DB is newer (or same) — use DB prefs
+        if (dbTs >= localTs) {
+          const dbPrefs: UserDashboardPrefs = {
+            tabOrder: (data.tab_order as string[]) ?? [],
+            hiddenTabs: (data.hidden_tabs as string[]) ?? [],
+            widgetOrder: (data.widget_order as Record<string, string[]>) ?? {},
+            hiddenWidgets: (data.hidden_widgets as Record<string, string[]>) ?? {},
+            widgetSizes: (data.widget_sizes as Record<string, Record<string, number>>) ?? {},
+          };
+          setPrefs(dbPrefs);
+          savePrefsLocal(dbPrefs);
+          localStorage.setItem(STORAGE_KEY + "-ts", String(dbTs));
+        }
+        // else: local is newer — keep local, DB will be updated via debounced sync
+      } catch (e) {
+        console.warn("Dashboard prefs load error:", e);
+      }
+    })();
+  }, [user?.id]);
+
+  // Debounced sync to DB whenever prefs change
+  useDebouncedDbSync(prefs, user?.id);
 
   const update = useCallback((updater: (prev: UserDashboardPrefs) => UserDashboardPrefs) => {
     setPrefs(prev => {
       const next = updater(prev);
-      savePrefs(next);
+      savePrefsLocal(next);
+      // Store local timestamp for conflict resolution
+      localStorage.setItem(STORAGE_KEY + "-ts", String(Date.now()));
       return next;
     });
   }, []);
@@ -192,8 +317,19 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
 
   const resetPrefs = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY + "-ts");
     setPrefs(EMPTY_PREFS);
-  }, []);
+    // Also clear DB prefs
+    if (user?.id) {
+      supabase
+        .from("user_dashboard_prefs")
+        .delete()
+        .eq("user_id", user.id)
+        .then(({ error }) => {
+          if (error) console.warn("Failed to clear DB prefs:", error);
+        });
+    }
+  }, [user?.id]);
 
   // ── Per-tab widget customization ──
 
