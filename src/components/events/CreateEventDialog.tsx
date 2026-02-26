@@ -166,7 +166,12 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+      <DialogContent 
+        className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit Event" : "Create Event"}</DialogTitle>
           <DialogDescription>
