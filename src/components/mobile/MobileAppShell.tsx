@@ -93,16 +93,10 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
     }
   }, [requestPermission]);
 
-  // Prompt for push notifications on first launch
-  useEffect(() => {
-    if (!isNative || promptedForPush || !pushSupported || isRegistered) return;
-
-    const timer = setTimeout(() => {
-      handleEnablePush().catch(() => {});
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, [isNative, promptedForPush, pushSupported, isRegistered, handleEnablePush]);
+  // Prompt for push notifications — DON'T auto-prompt on first launch.
+  // This was causing crashes on some Android devices. Instead, we only
+  // prompt when the user explicitly taps the bell icon.
+  // The bell icon is shown in the notification banner below.
 
   // Handle deep link tenant param — use React Router location.search (works with HashRouter)
   // On native/HashRouter, window.location.search is always empty; location.search is correct.

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -106,6 +106,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
   });
   const navigate = useNavigate();
   const location = useLocation();
+  const dbCheckDone = useRef(false);
 
   // Persist tour state to localStorage so it survives cross-domain navigation
   useEffect(() => {
@@ -120,7 +121,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("guided_tour_completions", JSON.stringify(completions));
   }, [completions]);
 
-  // Check if user has seen the tour
+  // Check if user has seen the tour — use both localStorage AND database
   useEffect(() => {
     const seen = localStorage.getItem("guided_tour_seen");
     const deferred = localStorage.getItem("guided_tour_deferred");
@@ -138,8 +139,42 @@ export function TourProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setHasSeenTour(false);
-  }, []);
+    // Check the database for tour_complete achievement as a fallback.
+    // This covers cases where localStorage was cleared (e.g. native app restart).
+    if (user && !dbCheckDone.current) {
+      dbCheckDone.current = true;
+      (async () => {
+        try {
+          const { data: achievement } = await supabase
+            .from("achievements")
+            .select("id")
+            .eq("slug", "tour_complete")
+            .maybeSingle();
+          if (!achievement) { setHasSeenTour(false); return; }
+
+          const { data: userAchievement } = await supabase
+            .from("user_achievements")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("achievement_id", achievement.id)
+            .maybeSingle();
+
+          if (userAchievement) {
+            // User already completed tour — persist to localStorage too
+            localStorage.setItem("guided_tour_seen", "true");
+            setHasSeenTour(true);
+          } else {
+            setHasSeenTour(false);
+          }
+        } catch {
+          setHasSeenTour(false);
+        }
+      })();
+    } else if (!user) {
+      // Not logged in — don't show tour
+      setHasSeenTour(true);
+    }
+  }, [user]);
 
   // On resume: skip past all already-completed steps in one go
   useEffect(() => {
@@ -223,9 +258,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, [navigate, user]);
 
   const deferTour = useCallback(() => {
-    localStorage.setItem("guided_tour_deferred", new Date().toISOString());
+    // Permanently dismiss (not just 24h) — users who X the tour don't want to see it again
+    localStorage.setItem("guided_tour_seen", "true");
     localStorage.removeItem("guided_tour_active");
     localStorage.removeItem("guided_tour_step");
+    localStorage.removeItem("guided_tour_completions");
     setIsActive(false);
     setHasSeenTour(true);
   }, []);
