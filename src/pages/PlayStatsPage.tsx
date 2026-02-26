@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -159,12 +159,28 @@ function GameImageGrid({
   );
 }
 
+const PLAY_HISTORY_IMPORT_DIALOG_KEY = "play_history_import_dialog_open";
+
 export default function PlayStatsPage() {
   const { library, isOwner } = useTenant();
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [period, setPeriod] = useState<StatsPeriod>("month");
-  const [showPlayImport, setShowPlayImport] = useState(false);
+  const [showPlayImport, setShowPlayImportRaw] = useState(() => {
+    try {
+      return sessionStorage.getItem(PLAY_HISTORY_IMPORT_DIALOG_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const setShowPlayImport = useCallback((open: boolean) => {
+    setShowPlayImportRaw(open);
+    try {
+      sessionStorage.setItem(PLAY_HISTORY_IMPORT_DIALOG_KEY, String(open));
+    } catch {
+      // Ignore storage errors (private browsing, quota, etc.)
+    }
+  }, []);
   
   const isSelfHosted = isSelfHostedSupabaseStack();
   

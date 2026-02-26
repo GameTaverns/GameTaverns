@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
@@ -35,6 +35,8 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { format } from "date-fns";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 
+const CLUB_EVENT_DIALOG_KEY = "club_dashboard_event_dialog_open";
+
 export default function ClubDashboard() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
@@ -52,7 +54,21 @@ export default function ClubDashboard() {
   const deleteEvent = useDeleteClubEvent();
   const deleteClub = useDeleteClub();
 
-  const [showEventDialog, setShowEventDialog] = useState(false);
+  const [showEventDialog, setShowEventDialogRaw] = useState(() => {
+    try {
+      return sessionStorage.getItem(CLUB_EVENT_DIALOG_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const setShowEventDialog = useCallback((open: boolean) => {
+    setShowEventDialogRaw(open);
+    try {
+      sessionStorage.setItem(CLUB_EVENT_DIALOG_KEY, String(open));
+    } catch {
+      // Ignore storage errors (private browsing, quota, etc.)
+    }
+  }, []);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [eventTitle, setEventTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
