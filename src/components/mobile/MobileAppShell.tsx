@@ -1,4 +1,4 @@
-import { useEffect, useState, Component, type ReactNode } from "react";
+import { useEffect, useState, useCallback, Component, type ReactNode } from "react";
 import { useCapacitor, useMobileLibrary } from "@/hooks/useCapacitor";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useAuth } from "@/hooks/useAuth";
@@ -73,26 +73,36 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
     }
   }, [isOnline, showOfflineNotice]);
 
+  const handleEnablePush = useCallback(async () => {
+    try {
+      const granted = await requestPermission();
+      if (granted) {
+        toast.success("Notifications enabled", {
+          description: "You'll receive updates about game nights and new additions.",
+        });
+      } else {
+        toast.info("Notifications not enabled", {
+          description: "You can enable them later in your device settings.",
+        });
+      }
+    } catch (e) {
+      console.warn("Push notification request failed:", e);
+      toast.error("Could not enable notifications right now");
+    } finally {
+      setPromptedForPush(true);
+    }
+  }, [requestPermission]);
+
   // Prompt for push notifications on first launch
   useEffect(() => {
-    if (!isNative || promptedForPush || !pushSupported) return;
-    const timer = setTimeout(async () => {
-      if (!isRegistered) {
-        try {
-          const granted = await requestPermission();
-          if (granted) {
-            toast.success("Notifications enabled", {
-              description: "You'll receive updates about game nights and new additions.",
-            });
-          }
-        } catch (e) {
-          console.warn("Push notification request failed:", e);
-        }
-      }
-      setPromptedForPush(true);
+    if (!isNative || promptedForPush || !pushSupported || isRegistered) return;
+
+    const timer = setTimeout(() => {
+      handleEnablePush().catch(() => {});
     }, 5000);
+
     return () => clearTimeout(timer);
-  }, [isNative, promptedForPush, pushSupported, isRegistered, requestPermission]);
+  }, [isNative, promptedForPush, pushSupported, isRegistered, handleEnablePush]);
 
   // Handle deep link tenant param — use React Router location.search (works with HashRouter)
   // On native/HashRouter, window.location.search is always empty; location.search is correct.
@@ -189,7 +199,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
                 Get notified about game nights, new games, and more.
               </p>
               <div className="flex gap-2 mt-3">
-                <Button size="sm" onClick={requestPermission}>Enable</Button>
+                <Button size="sm" onClick={handleEnablePush}>Enable</Button>
                 <Button size="sm" variant="ghost" onClick={() => setPromptedForPush(true)}>
                   <BellOff className="h-4 w-4 mr-1" />
                   Not now

@@ -155,7 +155,7 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
   };
 
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
