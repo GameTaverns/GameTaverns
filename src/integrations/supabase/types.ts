@@ -2481,29 +2481,32 @@ export type Database = {
         Row: {
           bgg_id: string | null
           created_at: string
-          error_message: string
-          error_type: string
+          error_category: string
+          error_reason: string
           id: string
           item_title: string | null
           job_id: string
+          raw_input: Json | null
         }
         Insert: {
           bgg_id?: string | null
           created_at?: string
-          error_message: string
-          error_type?: string
+          error_category?: string
+          error_reason: string
           id?: string
           item_title?: string | null
           job_id: string
+          raw_input?: Json | null
         }
         Update: {
           bgg_id?: string | null
           created_at?: string
-          error_message?: string
-          error_type?: string
+          error_category?: string
+          error_reason?: string
           id?: string
           item_title?: string | null
           job_id?: string
+          raw_input?: Json | null
         }
         Relationships: [
           {
