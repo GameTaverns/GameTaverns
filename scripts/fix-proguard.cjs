@@ -67,8 +67,8 @@ if (!fs.existsSync(ANDROID)) {
   process.exit(1);
 }
 
-// ─── Fix 1: ProGuard in android/app/build.gradle ─────────────────────────────
-console.log('[1/6] Fixing ProGuard in android/app/build.gradle...');
+// ─── Fix 1: ProGuard + Firebase in android/app/build.gradle ──────────────────
+console.log('[1/7] Fixing ProGuard & Firebase in android/app/build.gradle...');
 const appBuildGradle = path.join(ANDROID, 'app', 'build.gradle');
 
 if (fs.existsSync(appBuildGradle)) {
@@ -90,6 +90,30 @@ if (fs.existsSync(appBuildGradle)) {
     info('applicationId corrected to ' + APP_ID);
   }
 
+  // ── Firebase / Google Services plugin ──
+  // Required by @capacitor/push-notifications on Android.
+  if (!content.includes("com.google.gms.google-services")) {
+    // Add `apply plugin` right after the existing apply lines at the top
+    content = content.replace(
+      /(apply plugin: 'com\.android\.application')/,
+      "$1\napply plugin: 'com.google.gms.google-services'"
+    );
+    ok('Added com.google.gms.google-services plugin to app/build.gradle.');
+  } else {
+    info('google-services plugin already present in app/build.gradle.');
+  }
+
+  // ── Firebase BoM + Messaging dependency ──
+  if (!content.includes('firebase-bom')) {
+    content = content.replace(
+      /(dependencies\s*\{)/,
+      "$1\n    implementation platform('com.google.firebase:firebase-bom:34.9.0')\n    implementation 'com.google.firebase:firebase-messaging'"
+    );
+    ok('Added Firebase BoM + Messaging dependencies.');
+  } else {
+    info('Firebase BoM already present in app/build.gradle.');
+  }
+
   if (content !== before) {
     fs.writeFileSync(appBuildGradle, content, 'utf8');
     ok('android/app/build.gradle patched.');
@@ -100,9 +124,36 @@ if (fs.existsSync(appBuildGradle)) {
   warn('android/app/build.gradle not found — skipping.');
 }
 
+// ─── Fix 1b: Google Services classpath in project-level build.gradle ─────────
+console.log('');
+console.log('[1b/7] Injecting google-services classpath into android/build.gradle...');
+const projectBuildGradle = path.join(ANDROID, 'build.gradle');
+
+if (fs.existsSync(projectBuildGradle)) {
+  let projContent = fs.readFileSync(projectBuildGradle, 'utf8');
+  if (!projContent.includes('com.google.gms:google-services')) {
+    // Inject into the buildscript dependencies block
+    if (projContent.includes('buildscript')) {
+      projContent = projContent.replace(
+        /(buildscript\s*\{[\s\S]*?dependencies\s*\{)/,
+        "$1\n        classpath 'com.google.gms:google-services:4.4.2'"
+      );
+    } else {
+      // No buildscript block — add one at the top
+      projContent = `buildscript {\n    dependencies {\n        classpath 'com.google.gms:google-services:4.4.2'\n    }\n}\n\n` + projContent;
+    }
+    fs.writeFileSync(projectBuildGradle, projContent, 'utf8');
+    ok('google-services classpath added to android/build.gradle.');
+  } else {
+    info('google-services classpath already in android/build.gradle.');
+  }
+} else {
+  warn('android/build.gradle not found.');
+}
+
 // ─── Fix 2: ProGuard in Capacitor plugin build.gradle files ──────────────────
 console.log('');
-console.log('[2/6] Fixing ProGuard in Capacitor plugin node_modules...');
+console.log('[2/7] Fixing ProGuard in Capacitor plugin node_modules...');
 const plugins = [
   '@capacitor/core',
   '@capacitor/camera',
@@ -133,7 +184,7 @@ ok(`${pluginPatched} plugin build.gradle file(s) patched.`);
 
 // ─── Fix 3: Strip Lovable URLs from strings.xml ───────────────────────────────
 console.log('');
-console.log('[3/6] Sanitizing android/app/src/main/res/values/strings.xml...');
+console.log('[3/7] Sanitizing android/app/src/main/res/values/strings.xml...');
 const stringsXml = path.join(ANDROID, 'app', 'src', 'main', 'res', 'values', 'strings.xml');
 
 if (fs.existsSync(stringsXml)) {
@@ -164,7 +215,7 @@ if (fs.existsSync(stringsXml)) {
 
 // ─── Fix 4: Validate capacitor.settings.gradle ───────────────────────────────
 console.log('');
-console.log('[4/6] Validating capacitor.settings.gradle...');
+console.log('[4/7] Validating capacitor.settings.gradle...');
 const settingsGradle = path.join(ANDROID, 'capacitor.settings.gradle');
 
 if (fs.existsSync(settingsGradle)) {
@@ -180,7 +231,7 @@ if (fs.existsSync(settingsGradle)) {
 
 // ─── Fix 5: Hardcode gt-logo.png as launcher icon ────────────────────────────
 console.log('');
-console.log('[5/6] Copying gt-logo.png to all mipmap icon slots...');
+console.log('[5/7] Copying gt-logo.png to all mipmap icon slots...');
 const sourceIcon = path.join(ROOT, 'public', 'gt-logo.png');
 
 const mipmapFolders = [
@@ -228,7 +279,7 @@ if (!fs.existsSync(sourceIcon)) {
 
 // ─── Fix 6: Final leak scan ───────────────────────────────────────────────────
 console.log('');
-console.log('[6/6] Final Lovable URL leak scan...');
+console.log('[6/7] Final Lovable URL leak scan...');
 
 const filesToScan = [
   path.join(ANDROID, 'app', 'src', 'main', 'res', 'values', 'strings.xml'),
