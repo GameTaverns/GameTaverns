@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
@@ -108,9 +108,44 @@ const GameForm = () => {
   const [originalArtists, setOriginalArtists] = useState<string[]>([]);
   const [youtubeVideos, setYoutubeVideos] = useState<string[]>([]);
   const [copiesOwned, setCopiesOwned] = useState(1);
+  const [mechanicSearch, setMechanicSearch] = useState("");
+  const [designerSearch, setDesignerSearch] = useState("");
+  const [artistSearch, setArtistSearch] = useState("");
+  const [parentGameSearch, setParentGameSearch] = useState("");
 
   // Filter out current game from parent options (can't be its own parent)
-  const parentGameOptions = baseGames.filter((g) => g.id !== id);
+  const parentGameOptions = useMemo(
+    () => baseGames.filter((g) => g.id !== id),
+    [baseGames, id]
+  );
+
+  const filteredMechanics = useMemo(
+    () => mechanicSearch
+      ? mechanics.filter(m => m.name.toLowerCase().includes(mechanicSearch.toLowerCase()))
+      : mechanics,
+    [mechanics, mechanicSearch]
+  );
+
+  const filteredDesigners = useMemo(
+    () => designerSearch
+      ? designers.filter(d => d.name.toLowerCase().includes(designerSearch.toLowerCase()))
+      : designers,
+    [designers, designerSearch]
+  );
+
+  const filteredArtists = useMemo(
+    () => artistSearch
+      ? artists.filter(a => a.name.toLowerCase().includes(artistSearch.toLowerCase()))
+      : artists,
+    [artists, artistSearch]
+  );
+
+  const filteredParentGames = useMemo(
+    () => parentGameSearch
+      ? parentGameOptions.filter(g => g.title.toLowerCase().includes(parentGameSearch.toLowerCase()))
+      : parentGameOptions.slice(0, 50),
+    [parentGameOptions, parentGameSearch]
+  );
 
   // Load existing game data
   useEffect(() => {
@@ -535,12 +570,18 @@ const GameForm = () => {
                   <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-4">
                     <div className="space-y-2">
                       <Label>Base Game</Label>
+                      <Input
+                        value={parentGameSearch}
+                        onChange={(e) => setParentGameSearch(e.target.value)}
+                        placeholder="Search base games..."
+                        className="mb-2"
+                      />
                       <Select value={parentGameId || ""} onValueChange={setParentGameId}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select the base game" />
                         </SelectTrigger>
                         <SelectContent>
-                          {parentGameOptions.map((g) => (
+                          {filteredParentGames.map((g) => (
                             <SelectItem key={g.id} value={g.id}>{g.title}</SelectItem>
                           ))}
                         </SelectContent>
@@ -815,8 +856,13 @@ const GameForm = () => {
               {/* Mechanics */}
               <div className="space-y-3">
                 <Label>Mechanics</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {mechanics.map((m) => (
+                <Input
+                  value={mechanicSearch}
+                  onChange={(e) => setMechanicSearch(e.target.value)}
+                  placeholder="Search mechanics..."
+                />
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                  {filteredMechanics.map((m) => (
                     <div key={m.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`mech-${m.id}`}
@@ -829,6 +875,9 @@ const GameForm = () => {
                     </div>
                   ))}
                 </div>
+                {selectedMechanics.length > 0 && (
+                  <p className="text-xs text-muted-foreground">{selectedMechanics.length} selected</p>
+                )}
                 <div className="flex gap-2">
                   <Input
                     value={newMechanic}
@@ -861,8 +910,13 @@ const GameForm = () => {
               {/* Designers */}
               <div className="space-y-3">
                 <Label>Designers</Label>
+                <Input
+                  value={designerSearch}
+                  onChange={(e) => setDesignerSearch(e.target.value)}
+                  placeholder="Search designers..."
+                />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                  {designers.map((d) => (
+                  {filteredDesigners.map((d) => (
                     <div key={d.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`designer-${d.id}`}
@@ -875,6 +929,9 @@ const GameForm = () => {
                     </div>
                   ))}
                 </div>
+                {selectedDesigners.length > 0 && (
+                  <p className="text-xs text-muted-foreground">{selectedDesigners.length} selected</p>
+                )}
                 <div className="flex gap-2">
                   <Input
                     value={newDesigner}
@@ -891,8 +948,13 @@ const GameForm = () => {
               {/* Artists */}
               <div className="space-y-3">
                 <Label>Artists</Label>
+                <Input
+                  value={artistSearch}
+                  onChange={(e) => setArtistSearch(e.target.value)}
+                  placeholder="Search artists..."
+                />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-                  {artists.map((a) => (
+                  {filteredArtists.map((a) => (
                     <div key={a.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={`artist-${a.id}`}
@@ -905,6 +967,9 @@ const GameForm = () => {
                     </div>
                   ))}
                 </div>
+                {selectedArtists.length > 0 && (
+                  <p className="text-xs text-muted-foreground">{selectedArtists.length} selected</p>
+                )}
                 <div className="flex gap-2">
                   <Input
                     value={newArtist}
