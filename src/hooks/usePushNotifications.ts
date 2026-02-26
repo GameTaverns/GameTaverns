@@ -67,7 +67,14 @@ export function usePushNotifications() {
 
       const permission = await PushNotifications.requestPermissions();
       if (permission.receive === 'granted') {
-        await PushNotifications.register();
+        // Delay to let Firebase / native bridge fully initialize on Android
+        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+          await PushNotifications.register();
+        } catch (registerError) {
+          console.warn('PushNotifications.register() failed, will retry on next app start:', registerError);
+          return false;
+        }
         return true;
       }
       return false;
