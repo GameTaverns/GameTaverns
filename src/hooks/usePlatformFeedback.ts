@@ -93,18 +93,23 @@ export function useSubmitFeedback() {
       if (feedback.screenshots?.length) {
         for (const file of feedback.screenshots) {
           const ext = file.name.split(".").pop() || "png";
-          const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const path = `feedback/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
           const { error: uploadError } = await supabase.storage
             .from("feedback-attachments")
-            .upload(path, file, { contentType: file.type });
-          if (!uploadError) {
+            .upload(path, file, { contentType: file.type, upsert: false });
+          if (uploadError) {
+            console.error("Screenshot upload failed:", uploadError.message);
+          } else {
             const { data: urlData } = supabase.storage
               .from("feedback-attachments")
               .getPublicUrl(path);
-            screenshotUrls.push(urlData.publicUrl);
+            if (urlData?.publicUrl) {
+              screenshotUrls.push(urlData.publicUrl);
+            }
           }
         }
       }
+      console.log("Feedback screenshot URLs:", screenshotUrls);
 
       // Save to database
       const { error } = await supabase

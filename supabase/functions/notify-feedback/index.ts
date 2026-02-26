@@ -42,6 +42,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const urls: string[] = Array.isArray(screenshot_urls) ? screenshot_urls : [];
+    console.log("Received feedback:", { type, sender_name, screenshot_count: urls.length, urls });
     const results: Record<string, unknown> = {};
 
     // 1. Post to Discord forum channel
