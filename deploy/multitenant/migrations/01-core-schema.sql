@@ -54,6 +54,11 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
+    CREATE TYPE ownership_status AS ENUM ('owned', 'previously_owned', 'played_only');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
     CREATE TYPE suspension_action AS ENUM ('suspended', 'unsuspended');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
@@ -269,6 +274,7 @@ CREATE TABLE IF NOT EXISTS games (
     location_room TEXT,
     location_shelf TEXT,
     location_misc TEXT,
+    ownership_status ownership_status NOT NULL DEFAULT 'owned',
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(library_id, slug)
@@ -277,6 +283,7 @@ CREATE TABLE IF NOT EXISTS games (
 CREATE INDEX IF NOT EXISTS idx_games_library ON games(library_id);
 CREATE INDEX IF NOT EXISTS idx_games_slug ON games(library_id, slug);
 CREATE INDEX IF NOT EXISTS idx_games_bgg_id ON games(bgg_id);
+CREATE INDEX IF NOT EXISTS idx_games_ownership_status ON games(library_id, ownership_status);
 
 -- =====================
 -- Game Mechanics (Junction)

@@ -47,6 +47,7 @@ const FIELD_OPTIONS: { value: BulkEditField; label: string; group: string }[] = 
   { value: "inserts", label: "Inserts", group: "Flags" },
   { value: "is_for_sale", label: "For Sale", group: "Flags" },
   { value: "is_coming_soon", label: "Coming Soon", group: "Flags" },
+  { value: "ownership_status", label: "Ownership Status", group: "Metadata" },
   { value: "game_type", label: "Game Type", group: "Metadata" },
   { value: "difficulty", label: "Difficulty", group: "Metadata" },
   { value: "location_room", label: "Location (Room)", group: "Metadata" },

@@ -33,6 +33,8 @@ import {
   Palette,
   ListOrdered,
   QrCode,
+  Disc,
+  Archive,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
@@ -592,6 +594,26 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 <span>For Sale</span>
               </button>
             )}
+            <button
+              onClick={() => handleFilterClick("status", "played-only")}
+              className={cn(
+                "sidebar-link w-full text-left",
+                isActive("status", "played-only") && "sidebar-link-active"
+              )}
+            >
+              <Disc className="h-5 w-5" />
+              <span>Played Only</span>
+            </button>
+            <button
+              onClick={() => handleFilterClick("status", "previously-owned")}
+              className={cn(
+                "sidebar-link w-full text-left",
+                isActive("status", "previously-owned") && "sidebar-link-active"
+              )}
+            >
+              <Archive className="h-5 w-5" />
+              <span>Previously Owned</span>
+            </button>
             {!isTenantMode && (
               <Link
                 to="/directory"

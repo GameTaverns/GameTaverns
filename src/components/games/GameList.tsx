@@ -97,6 +97,16 @@ export function GameList({ games, hasActiveFilters }: GameListProps) {
                       Soon
                     </Badge>
                   )}
+                  {(game as any).ownership_status === "played_only" && (
+                    <Badge className="text-[9px] px-1 py-0 bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                      Played Only
+                    </Badge>
+                  )}
+                  {(game as any).ownership_status === "previously_owned" && (
+                    <Badge className="text-[9px] px-1 py-0 bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30">
+                      Prev. Owned
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
