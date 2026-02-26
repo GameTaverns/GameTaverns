@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -149,6 +149,8 @@ const AuditLogViewer = lazy(() =>
   import("@/components/admin/AuditLogViewer").then(m => ({ default: m.AuditLogViewer }))
 );
 
+const DASHBOARD_CREATE_EVENT_DIALOG_KEY = "dashboard_create_event_dialog_open";
+
 export default function Dashboard() {
   const { t } = useTranslation();
   const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
@@ -174,7 +176,21 @@ export default function Dashboard() {
   const dashPrefs = useUserDashboardPrefs(isAdmin);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [showCreateEvent, setShowCreateEventRaw] = useState(() => {
+    try {
+      return sessionStorage.getItem(DASHBOARD_CREATE_EVENT_DIALOG_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const setShowCreateEvent = useCallback((open: boolean) => {
+    setShowCreateEventRaw(open);
+    try {
+      sessionStorage.setItem(DASHBOARD_CREATE_EVENT_DIALOG_KEY, String(open));
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
   const [editEvent, setEditEvent] = useState<import("@/hooks/useLibraryEvents").CalendarEvent | null>(null);
 
   // Onboarding checklist data
@@ -1018,10 +1034,9 @@ export default function Dashboard() {
           <CreateEventDialog
             open={showCreateEvent || !!editEvent}
             onOpenChange={(open) => {
-              if (!open) {
-                setShowCreateEvent(false);
-                setEditEvent(null);
-              }
+              if (open) return;
+              setShowCreateEvent(false);
+              setEditEvent(null);
             }}
             libraryId={library.id}
             editEvent={editEvent}

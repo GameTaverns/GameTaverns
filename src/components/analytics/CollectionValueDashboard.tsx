@@ -57,30 +57,30 @@ export function CollectionValueDashboard({ libraryId }: CollectionValueDashboard
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-card/50">
+        <Card className="bg-card/50 border-border/60">
           <CardContent className="p-4 text-center">
-            <PiggyBank className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-            <div className="text-2xl font-bold">${summary.totalPurchaseValue.toFixed(0)}</div>
+            <PiggyBank className="h-6 w-6 mx-auto mb-2 text-primary" />
+            <div className="text-2xl font-bold text-foreground">${summary.totalPurchaseValue.toFixed(0)}</div>
             <div className="text-xs text-muted-foreground">Total Invested</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50">
+        <Card className="bg-card/50 border-border/60">
           <CardContent className="p-4 text-center">
-            <DollarSign className="h-6 w-6 mx-auto mb-2 text-green-500" />
-            <div className="text-2xl font-bold">${summary.totalCurrentValue.toFixed(0)}</div>
+            <DollarSign className="h-6 w-6 mx-auto mb-2 text-primary" />
+            <div className="text-2xl font-bold text-foreground">${summary.totalCurrentValue.toFixed(0)}</div>
             <div className="text-xs text-muted-foreground">Current Value</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50">
+        <Card className="bg-card/50 border-border/60">
           <CardContent className="p-4 text-center">
             {isPositiveChange ? (
-              <TrendingUp className="h-6 w-6 mx-auto mb-2 text-green-500" />
+              <TrendingUp className="h-6 w-6 mx-auto mb-2 text-primary" />
             ) : (
-              <TrendingDown className="h-6 w-6 mx-auto mb-2 text-red-500" />
+              <TrendingDown className="h-6 w-6 mx-auto mb-2 text-destructive" />
             )}
-            <div className={`text-2xl font-bold ${isPositiveChange ? "text-green-600" : "text-red-600"}`}>
+            <div className={`text-2xl font-bold ${isPositiveChange ? "text-primary" : "text-destructive"}`}>
               {isPositiveChange ? "+" : ""}${summary.valueChange.toFixed(0)}
             </div>
             <div className="text-xs text-muted-foreground">
@@ -89,10 +89,10 @@ export function CollectionValueDashboard({ libraryId }: CollectionValueDashboard
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50">
+        <Card className="bg-card/50 border-border/60">
           <CardContent className="p-4 text-center">
-            <Package className="h-6 w-6 mx-auto mb-2 text-purple-500" />
-            <div className="text-2xl font-bold">{summary.gamesWithValues}</div>
+            <Package className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+            <div className="text-2xl font-bold text-foreground">{summary.gamesWithValues}</div>
             <div className="text-xs text-muted-foreground">of {summary.totalGames} valued</div>
           </CardContent>
         </Card>
