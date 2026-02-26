@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications';
 import { MobileStorage } from './useCapacitor';
 import { getLibraryUrl } from './useTenantUrl';
@@ -67,6 +68,41 @@ export function usePushNotifications() {
     }
   }, []);
 
+  const isRegisteringRef = useRef(false);
+
+  const registerForPush = useCallback(async (): Promise<boolean> => {
+    try {
+      if (!Capacitor.isNativePlatform()) return false;
+
+      let pluginAvailable = false;
+      try {
+        pluginAvailable = Capacitor.isPluginAvailable('PushNotifications');
+      } catch (_e) {
+        return false;
+      }
+      if (!pluginAvailable) return false;
+      if (isRegisteringRef.current) return false;
+
+      const permissions = await PushNotifications.checkPermissions();
+      if (permissions.receive !== 'granted') return false;
+
+      isRegisteringRef.current = true;
+      try {
+        await PushNotifications.register();
+        return true;
+      } catch (registerError) {
+        console.warn('PushNotifications.register() failed:', registerError);
+        return false;
+      } finally {
+        isRegisteringRef.current = false;
+      }
+    } catch (error) {
+      isRegisteringRef.current = false;
+      console.warn('Error during push registration:', error);
+      return false;
+    }
+  }, []);
+
   const requestPermission = useCallback(async (): Promise<boolean> => {
     try {
       if (!Capacitor.isNativePlatform()) return false;
@@ -81,14 +117,11 @@ export function usePushNotifications() {
 
       const permission = await PushNotifications.requestPermissions();
       if (permission.receive === 'granted') {
-        // Longer delay to let Firebase / native bridge fully initialize on Android
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        try {
-          await PushNotifications.register();
-        } catch (registerError) {
-          console.warn('PushNotifications.register() failed:', registerError);
-          return false;
-        }
+        // Decouple permission flow from registration to avoid native crashes
+        // when returning from the OS permission dialog on some devices.
+        setTimeout(() => {
+          registerForPush().catch(() => {});
+        }, 1200);
         return true;
       }
       return false;
@@ -96,7 +129,7 @@ export function usePushNotifications() {
       console.warn('Error requesting push notification permission:', error);
       return false;
     }
-  }, []);
+  }, [registerForPush]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +153,7 @@ export function usePushNotifications() {
     let registrationErrorListener: Promise<any> | null = null;
     let notificationListener: Promise<any> | null = null;
     let actionListener: Promise<any> | null = null;
+    let appStateListener: Promise<any> | null = null;
 
     // Longer delay to let native bridge fully initialize
     const timer = setTimeout(() => {
@@ -186,6 +220,13 @@ export function usePushNotifications() {
           }
         );
 
+        // If user grants permission in system settings and returns to app,
+        // retry registration once app becomes active again.
+        appStateListener = App.addListener('appStateChange', ({ isActive }) => {
+          if (!isActive || cancelled) return;
+          registerForPush().catch(() => {});
+        });
+
         // Check if already registered
         MobileStorage.get<string>('pushToken').then(token => {
           if (token) {
@@ -195,7 +236,10 @@ export function usePushNotifications() {
               token,
             }));
             upsertPushToken(token).catch(() => {});
+            return;
           }
+
+          registerForPush().catch(() => {});
         }).catch(e => console.warn('Failed to read push token:', e));
 
       } catch (e) {
@@ -211,6 +255,7 @@ export function usePushNotifications() {
         registrationErrorListener?.then(h => h?.remove()).catch(() => {});
         notificationListener?.then(h => h?.remove()).catch(() => {});
         actionListener?.then(h => h?.remove()).catch(() => {});
+        appStateListener?.then(h => h?.remove()).catch(() => {});
       } catch (e) {
         console.warn('PushNotifications cleanup failed:', e);
       }
