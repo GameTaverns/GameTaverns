@@ -188,7 +188,12 @@ export function PlayHistoryImportDialog({
     }
   };
 
-  const handleClose = () => {
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      onOpenChange(true);
+      return;
+    }
+
     if (!isImporting) {
       resetForm();
       onOpenChange(false);
@@ -199,11 +204,12 @@ export function PlayHistoryImportDialog({
   const isAvailable = isSelfHostedSupabaseStack();
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
           className="sm:max-w-lg max-h-[100dvh] sm:max-h-[85vh] overflow-hidden flex flex-col"
           onInteractOutside={(e) => e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
+          onFocusOutside={(e) => e.preventDefault()}
         >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -428,7 +434,7 @@ export function PlayHistoryImportDialog({
         </div>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={handleClose} disabled={isImporting}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isImporting}>
             {result ? "Close" : "Cancel"}
           </Button>
           {!result && isAvailable && (

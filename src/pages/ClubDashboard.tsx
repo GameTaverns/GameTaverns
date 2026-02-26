@@ -284,7 +284,7 @@ export default function ClubDashboard() {
                     <Plus className="h-4 w-4" /> Add Event
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
                   <DialogHeader>
                     <DialogTitle>Create Club Event</DialogTitle>
                   </DialogHeader>

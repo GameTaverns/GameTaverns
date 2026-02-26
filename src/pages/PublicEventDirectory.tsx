@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { format } from "date-fns";
 import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter, Plus, CalendarPlus } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
@@ -36,6 +36,8 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   public_event: "Public Event",
 };
 
+const PUBLIC_EVENT_CREATE_DIALOG_KEY = "public_event_create_dialog_open";
+
 export default function PublicEventDirectory() {
   const { data: events = [], isLoading } = usePublicEventDirectory();
   const { isAuthenticated } = useAuth();
@@ -43,7 +45,21 @@ export default function PublicEventDirectory() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("");
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialogRaw] = useState(() => {
+    try {
+      return sessionStorage.getItem(PUBLIC_EVENT_CREATE_DIALOG_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const setShowCreateDialog = useCallback((open: boolean) => {
+    setShowCreateDialogRaw(open);
+    try {
+      sessionStorage.setItem(PUBLIC_EVENT_CREATE_DIALOG_KEY, String(open));
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
 
   // Extract unique cities
   const cities = Array.from(new Set(
