@@ -34,7 +34,9 @@ export function useUserProfileStats(userId: string | null) {
         .eq("user_id", userId)
         .order("elo", { ascending: false });
 
-      if (eloErr) throw eloErr;
+      if (eloErr) {
+        console.warn("[useUserProfileStats] ELO query failed, falling back to empty stats", eloErr);
+      }
 
       const globalEntry = (eloData || []).find((e: any) => e.game_id === null);
       const gameEntries = (eloData || []).filter((e: any) => e.game_id !== null);
@@ -59,7 +61,9 @@ export function useUserProfileStats(userId: string | null) {
         .eq("tag_status", "accepted")
         .limit(1000);
 
-      if (lsErr) throw lsErr;
+      if (lsErr) {
+        console.warn("[useUserProfileStats] Session query failed, falling back to empty sessions", lsErr);
+      }
 
       const sessions = linkedSessions || [];
       const totalSessions = sessions.length;
@@ -139,7 +143,10 @@ export function useUserProfileStats(userId: string | null) {
             .select("player_name, linked_user_id")
             .in("session_id", batch);
 
-          if (otherPlayersError) continue;
+          if (otherPlayersError) {
+            console.warn("[useUserProfileStats] Co-player query batch failed", otherPlayersError);
+            continue;
+          }
 
           otherPlayers?.forEach((p: any) => {
             if (p.linked_user_id === userId) return;
