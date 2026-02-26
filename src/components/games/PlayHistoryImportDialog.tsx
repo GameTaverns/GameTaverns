@@ -45,6 +45,36 @@ interface PlayHistoryImportDialogProps {
 const PLAY_IMPORT_USERNAME_KEY = "play_import_bgg_username";
 const PLAY_IMPORT_UPDATE_EXISTING_KEY = "play_import_update_existing";
 
+function readPersistedText(key: string): string {
+  try {
+    return sessionStorage.getItem(key) ?? localStorage.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function readPersistedBoolean(key: string): boolean {
+  return readPersistedText(key) === "true";
+}
+
+function persistValue(key: string, value: string) {
+  try {
+    sessionStorage.setItem(key, value);
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function clearPersistedValue(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export function PlayHistoryImportDialog({
   open,
   onOpenChange,
@@ -53,42 +83,28 @@ export function PlayHistoryImportDialog({
   const { toast } = useToast();
   const { library } = useTenant();
   const queryClient = useQueryClient();
-  const [bggUsername, setBggUsername] = useState(() => {
-    try {
-      return sessionStorage.getItem(PLAY_IMPORT_USERNAME_KEY) || "";
-    } catch {
-      return "";
-    }
-  });
-  const [updateExisting, setUpdateExisting] = useState(() => {
-    try {
-      return sessionStorage.getItem(PLAY_IMPORT_UPDATE_EXISTING_KEY) === "true";
-    } catch {
-      return false;
-    }
-  });
+  const [bggUsername, setBggUsername] = useState(() => readPersistedText(PLAY_IMPORT_USERNAME_KEY));
+  const [updateExisting, setUpdateExisting] = useState(() => readPersistedBoolean(PLAY_IMPORT_UPDATE_EXISTING_KEY));
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<PlayImportResult | null>(null);
 
   useEffect(() => {
-    try {
-      sessionStorage.setItem(PLAY_IMPORT_USERNAME_KEY, bggUsername);
-      sessionStorage.setItem(PLAY_IMPORT_UPDATE_EXISTING_KEY, String(updateExisting));
-    } catch {
-      // Ignore storage errors
-    }
+    persistValue(PLAY_IMPORT_USERNAME_KEY, bggUsername);
+    persistValue(PLAY_IMPORT_UPDATE_EXISTING_KEY, String(updateExisting));
   }, [bggUsername, updateExisting]);
+
+  useEffect(() => {
+    if (!open || isImporting || result) return;
+    setBggUsername(readPersistedText(PLAY_IMPORT_USERNAME_KEY));
+    setUpdateExisting(readPersistedBoolean(PLAY_IMPORT_UPDATE_EXISTING_KEY));
+  }, [open, isImporting, result]);
 
   const resetForm = () => {
     setBggUsername("");
     setUpdateExisting(false);
     setResult(null);
-    try {
-      sessionStorage.removeItem(PLAY_IMPORT_USERNAME_KEY);
-      sessionStorage.removeItem(PLAY_IMPORT_UPDATE_EXISTING_KEY);
-    } catch {
-      // Ignore storage errors
-    }
+    clearPersistedValue(PLAY_IMPORT_USERNAME_KEY);
+    clearPersistedValue(PLAY_IMPORT_UPDATE_EXISTING_KEY);
   };
 
   const handleImport = async () => {
@@ -409,7 +425,11 @@ export function PlayHistoryImportDialog({
                   id="bgg-username"
                   placeholder="Enter your BGG username"
                   value={bggUsername}
-                  onChange={(e) => setBggUsername(e.target.value)}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    setBggUsername(nextValue);
+                    persistValue(PLAY_IMPORT_USERNAME_KEY, nextValue);
+                  }}
                   disabled={isImporting}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -421,7 +441,11 @@ export function PlayHistoryImportDialog({
                 <Checkbox
                   id="update-existing"
                   checked={updateExisting}
-                  onCheckedChange={(checked) => setUpdateExisting(checked === true)}
+                  onCheckedChange={(checked) => {
+                    const nextValue = checked === true;
+                    setUpdateExisting(nextValue);
+                    persistValue(PLAY_IMPORT_UPDATE_EXISTING_KEY, String(nextValue));
+                  }}
                   disabled={isImporting}
                 />
                 <Label htmlFor="update-existing" className="text-sm font-normal cursor-pointer">
