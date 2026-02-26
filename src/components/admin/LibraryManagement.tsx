@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -33,6 +34,41 @@ interface SuspensionRecord {
   performed_by: string;
   created_at: string;
   performer_name?: string;
+}
+
+/** View Library button that uses React Router on native, <a> on web */
+function ViewLibraryButton({ slug }: { slug: string }) {
+  const navigate = useNavigate();
+  const url = getLibraryUrl(slug, "/");
+
+  const isNative =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.protocol === "capacitor:");
+
+  if (isNative) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-cream/70 hover:text-cream"
+        onClick={() => navigate(`/?tenant=${slug}`)}
+      >
+        <ExternalLink className="w-4 h-4 mr-1" />
+        View
+      </Button>
+    );
+  }
+
+  return (
+    <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream" asChild>
+      <a href={url} target="_blank" rel="noopener noreferrer">
+        <ExternalLink className="w-4 h-4 mr-1" />
+        View
+      </a>
+    </Button>
+  );
 }
 
 export function LibraryManagement() {
@@ -414,17 +450,7 @@ export function LibraryManagement() {
                       <History className="w-4 h-4 mr-1" />
                       History
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-cream/70 hover:text-cream"
-                      asChild
-                    >
-                      <a href={getLibraryUrl(library.slug, "/")} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="w-4 h-4 mr-1" />
-                        View
-                      </a>
-                    </Button>
+                    <ViewLibraryButton slug={library.slug} />
                   </div>
                 </TableCell>
               </TableRow>
