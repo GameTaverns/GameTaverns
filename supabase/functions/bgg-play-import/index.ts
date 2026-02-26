@@ -165,24 +165,46 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
   const allPlays: BGGPlay[] = [];
   let page = 1;
 
-  // Optional: allow self-hosted operators to provide a BGG cookie if BGG blocks server-to-server traffic.
-  // The cookie is tied to a specific BGG account, so only use it when the request matches that account.
+  // Optional auth aids for BGG XML API access.
+  // 1) Session cookie can help with anti-bot/rate limits.
+  // 2) API token (if configured) can authenticate server requests.
   const rawCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+  const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
 
-  // Extract the BGG username from the cookie (format: "bggusername=XXXX; SessionID=...")
+  // Extract the BGG username from cookie when present (e.g. "bggusername=tzolak").
   let cookieOwner = "";
   if (rawCookie) {
     const match = rawCookie.match(/bggusername=([^;]+)/i);
     cookieOwner = match ? match[1].trim().toLowerCase() : "";
   }
 
-  // Only attach the cookie if it belongs to the same BGG user being queried.
-  // Using someone else's session cookie causes BGG to return 401.
-  const shouldUseCookie = !!(rawCookie && cookieOwner && cookieOwner === username.trim().toLowerCase());
-  if (rawCookie && !shouldUseCookie) {
-    console.log(`[BGGPlayImport] Skipping BGG cookie (cookie owner: "${cookieOwner}", requested user: "${username}")`);
-  } else if (shouldUseCookie) {
-    console.log(`[BGGPlayImport] Using BGG cookie for matching user: "${username}"`);
+  const requestedUser = username.trim().toLowerCase();
+  const cookiePairs = rawCookie
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  // If cookie owner matches requested username, use full cookie.
+  // If it doesn't match, strip bggusername but keep remaining session cookies to avoid 401 mismatch.
+  const sanitizedCookie = cookiePairs
+    .filter((part) => !/^bggusername=/i.test(part))
+    .join("; ");
+
+  const requestCookie =
+    rawCookie && cookieOwner && cookieOwner === requestedUser
+      ? rawCookie
+      : sanitizedCookie;
+
+  if (rawCookie && cookieOwner && cookieOwner !== requestedUser) {
+    console.log(
+      `[BGGPlayImport] Cookie owner mismatch (cookie owner: "${cookieOwner}", requested: "${username}") - using sanitized cookie without bggusername`
+    );
+  } else if (requestCookie) {
+    console.log(`[BGGPlayImport] Using BGG cookie context for user: "${username}"`);
+  }
+
+  if (bggApiToken) {
+    console.log("[BGGPlayImport] Using BGG_API_TOKEN for plays requests");
   }
 
   // Try multiple User-Agent strategies if BGG blocks us
@@ -217,8 +239,12 @@ async function fetchAllBGGPlays(username: string): Promise<BGGPlay[]> {
           "Upgrade-Insecure-Requests": "1",
         };
 
-        if (shouldUseCookie) {
-          headers["Cookie"] = rawCookie;
+        if (requestCookie) {
+          headers["Cookie"] = requestCookie;
+        }
+
+        if (bggApiToken) {
+          headers["Authorization"] = `Bearer ${bggApiToken}`;
         }
 
         const response = await fetch(url, { headers });
