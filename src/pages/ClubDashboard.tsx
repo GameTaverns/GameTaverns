@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
-  Calendar, Loader2, ExternalLink, AlertTriangle
+  Calendar, Loader2, ExternalLink, AlertTriangle, BarChart3
 } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { format } from "date-fns";
+import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 
 export default function ClubDashboard() {
   const { slug } = useParams<{ slug: string }>();
@@ -163,8 +164,11 @@ export default function ClubDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="members" className="w-full">
+        <Tabs defaultValue="analytics" className="w-full">
           <TabsList className="mb-6 bg-wood-dark/60 border border-wood-medium/40">
+            <TabsTrigger value="analytics" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+              <BarChart3 className="h-4 w-4" /> Analytics
+            </TabsTrigger>
             <TabsTrigger value="members" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <Users className="h-4 w-4" /> Members ({libraries.length})
             </TabsTrigger>
@@ -178,6 +182,11 @@ export default function ClubDashboard() {
               <Settings className="h-4 w-4" /> Settings
             </TabsTrigger>
           </TabsList>
+
+          {/* Analytics */}
+          <TabsContent value="analytics">
+            <ClubAnalyticsDashboard clubId={club.id} />
+          </TabsContent>
 
           {/* Members */}
           <TabsContent value="members">
