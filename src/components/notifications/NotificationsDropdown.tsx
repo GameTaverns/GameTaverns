@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { Bell, Check, CheckCheck, BookOpen, Trophy, Calendar, MessageSquare, Heart, Mail, UserPlus, UserCheck, ArrowLeftRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -254,7 +255,14 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-center justify-center text-xs text-muted-foreground hover:text-foreground cursor-pointer py-2"
-          onClick={() => navigate("/notifications")}
+          onClick={() => {
+            const url = getPlatformUrl("/notifications");
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              navigate(url);
+            }
+          }}
         >
           View all notifications
         </DropdownMenuItem>
