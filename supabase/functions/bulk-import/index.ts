@@ -1489,7 +1489,7 @@ export default async function handler(req: Request): Promise<Response> {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check if user is either a global admin OR owns a library
+    // Check if user is either a global admin, owns a library, or is a co-owner
     const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -1497,13 +1497,27 @@ export default async function handler(req: Request): Promise<Response> {
       .eq("role", "admin")
       .maybeSingle();
 
-    const { data: libraryData } = await supabaseAdmin
+    // Check owned libraries
+    const { data: ownedLibraryRows } = await supabaseAdmin
       .from("libraries")
       .select("id")
       .eq("owner_id", userId)
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
 
-    if (!roleData && !libraryData) {
+    const libraryData = ownedLibraryRows?.[0] || null;
+
+    // Also check co-ownership
+    const { data: coOwnedRows } = await supabaseAdmin
+      .from("library_members")
+      .select("library_id")
+      .eq("user_id", userId)
+      .eq("role", "co_owner")
+      .limit(1);
+
+    const coOwnedLibrary = coOwnedRows?.[0] || null;
+
+    if (!roleData && !libraryData && !coOwnedLibrary) {
       return new Response(
         JSON.stringify({ success: false, error: "You must own a library to import games" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -1531,7 +1545,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
     const { mode, library_id, csv_data, bgg_username, bgg_links, enhance_with_bgg, enhance_with_ai, default_options } = body;
 
-    const targetLibraryId = library_id || libraryData?.id;
+    const targetLibraryId = library_id || libraryData?.id || coOwnedLibrary?.library_id;
     if (!targetLibraryId) {
       return new Response(
         JSON.stringify({ success: false, error: "No library specified and user has no library" }),

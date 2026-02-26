@@ -839,7 +839,7 @@ export default async function handler(req: Request): Promise<Response> {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check if user is either a global admin OR owns a library
+    // Check if user is either a global admin, owns a library, or is a co-owner
     const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -857,8 +857,18 @@ export default async function handler(req: Request): Promise<Response> {
 
     const libraryData = libraryRows?.[0] || null;
 
-    // Allow access if user is admin OR owns a library
-    if (!roleData && !libraryData) {
+    // Also check co-ownership
+    const { data: coOwnedRows } = await supabaseAdmin
+      .from("library_members")
+      .select("library_id")
+      .eq("user_id", userId)
+      .eq("role", "co_owner")
+      .limit(1);
+
+    const coOwnedLibrary = coOwnedRows?.[0] || null;
+
+    // Allow access if user is admin OR owns/co-owns a library
+    if (!roleData && !libraryData && !coOwnedLibrary) {
       return new Response(
         JSON.stringify({ success: false, error: "You must own a library to import games" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -872,6 +882,9 @@ export default async function handler(req: Request): Promise<Response> {
     let targetLibraryId = library_id;
     if (!targetLibraryId && libraryData) {
       targetLibraryId = libraryData.id;
+    }
+    if (!targetLibraryId && coOwnedLibrary) {
+      targetLibraryId = coOwnedLibrary.library_id;
     }
     
     if (!targetLibraryId) {
