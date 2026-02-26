@@ -1,9 +1,10 @@
 import { Library } from "lucide-react";
 import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyticsDashboard";
 import { CollectionValueDashboard } from "@/components/analytics/CollectionValueDashboard";
+import { CollectionBreakdownCharts } from "@/components/analytics/CollectionBreakdownCharts";
 import { TopNineGrid } from "@/components/analytics/TopNineGrid";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign } from "lucide-react";
+import { DollarSign, PieChart } from "lucide-react";
 
 interface AnalyticsTabProps {
   isAdmin: boolean;
@@ -25,6 +26,22 @@ export function AnalyticsTab({ isAdmin, libraryId, libraryName }: AnalyticsTabPr
       <LibraryAnalyticsDashboard libraryId={libraryId} />
 
       <TopNineGrid libraryId={libraryId} libraryName={libraryName} />
+
+      {/* Collection Breakdown */}
+      <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <PieChart className="h-5 w-5 text-secondary" />
+            Collection Breakdown
+          </CardTitle>
+          <CardDescription className="text-cream/70">
+            Player counts, difficulty, growth, and shelf of shame
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CollectionBreakdownCharts libraryId={libraryId} />
+        </CardContent>
+      </Card>
 
       <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
         <CardHeader>

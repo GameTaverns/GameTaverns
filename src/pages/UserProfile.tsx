@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, ArrowLeft } from "lucide-react";
+import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, ArrowLeft, BarChart3 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -25,6 +25,7 @@ import { UserSpecialBadges } from "@/components/social/SpecialBadge";
 import { useUserSpecialBadges } from "@/hooks/useSpecialBadges";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
+import { UserStatsPanel } from "@/components/analytics/UserStatsPanel";
 
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -282,6 +283,9 @@ export default function UserProfile() {
             <TabsTrigger value="activity" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Activity className="h-3.5 w-3.5" />Activity
             </TabsTrigger>
+            <TabsTrigger value="stats" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
+              <BarChart3 className="h-3.5 w-3.5" />Stats
+            </TabsTrigger>
             <TabsTrigger value="achievements" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Trophy className="h-3.5 w-3.5" />Achievements
             </TabsTrigger>
@@ -319,6 +323,13 @@ export default function UserProfile() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Stats tab */}
+          <TabsContent value="stats">
+            {profile.user_id && (
+              <UserStatsPanel userId={profile.user_id} hasTheme={hasTheme} profileBgColor={profileBgColor} />
+            )}
           </TabsContent>
 
           {/* Achievements tab */}
