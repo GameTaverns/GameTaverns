@@ -48,9 +48,16 @@ export function usePushNotifications() {
   useEffect(() => {
     try {
       if (!Capacitor.isNativePlatform()) return;
-      if (!Capacitor.isPluginAvailable('PushNotifications')) return;
+      // Use a safer check — isPluginAvailable can throw on some devices
+      let pluginAvailable = false;
+      try {
+        pluginAvailable = Capacitor.isPluginAvailable('PushNotifications');
+      } catch (_e) {
+        console.warn('PushNotifications plugin check threw:', _e);
+        return;
+      }
+      if (!pluginAvailable) return;
 
-      // Push notifications are now enabled on native platforms
       setState(prev => ({
         ...prev,
         isSupported: true,
@@ -63,23 +70,30 @@ export function usePushNotifications() {
   const requestPermission = useCallback(async (): Promise<boolean> => {
     try {
       if (!Capacitor.isNativePlatform()) return false;
-      if (!Capacitor.isPluginAvailable('PushNotifications')) return false;
+
+      let pluginAvailable = false;
+      try {
+        pluginAvailable = Capacitor.isPluginAvailable('PushNotifications');
+      } catch (_e) {
+        return false;
+      }
+      if (!pluginAvailable) return false;
 
       const permission = await PushNotifications.requestPermissions();
       if (permission.receive === 'granted') {
-        // Delay to let Firebase / native bridge fully initialize on Android
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Longer delay to let Firebase / native bridge fully initialize on Android
+        await new Promise(resolve => setTimeout(resolve, 1500));
         try {
           await PushNotifications.register();
         } catch (registerError) {
-          console.warn('PushNotifications.register() failed, will retry on next app start:', registerError);
+          console.warn('PushNotifications.register() failed:', registerError);
           return false;
         }
         return true;
       }
       return false;
     } catch (error) {
-      console.error('Error requesting push notification permission:', error);
+      console.warn('Error requesting push notification permission:', error);
       return false;
     }
   }, []);
@@ -89,7 +103,14 @@ export function usePushNotifications() {
 
     try {
       if (!Capacitor.isNativePlatform()) return;
-      if (!Capacitor.isPluginAvailable('PushNotifications')) return;
+      let pluginAvailable = false;
+      try {
+        pluginAvailable = Capacitor.isPluginAvailable('PushNotifications');
+      } catch (_e) {
+        console.warn('PushNotifications plugin check failed:', _e);
+        return;
+      }
+      if (!pluginAvailable) return;
     } catch (e) {
       console.warn('PushNotifications plugin check failed:', e);
       return;
@@ -100,7 +121,7 @@ export function usePushNotifications() {
     let notificationListener: Promise<any> | null = null;
     let actionListener: Promise<any> | null = null;
 
-    // Delay listener setup to let native bridge fully initialize
+    // Longer delay to let native bridge fully initialize
     const timer = setTimeout(() => {
       if (cancelled) return;
 
@@ -180,7 +201,7 @@ export function usePushNotifications() {
       } catch (e) {
         console.warn('PushNotifications listener setup failed:', e);
       }
-    }, 500);
+    }, 2000);
 
     return () => {
       cancelled = true;

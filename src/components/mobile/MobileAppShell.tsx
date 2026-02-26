@@ -90,7 +90,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
         }
       }
       setPromptedForPush(true);
-    }, 3000);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [isNative, promptedForPush, pushSupported, isRegistered, requestPermission]);
 
