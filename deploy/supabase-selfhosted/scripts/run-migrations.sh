@@ -177,6 +177,7 @@ else
         "70-ratings-isolation.sql"
         "81-event-planning.sql"
         "82-event-registrations-tournaments.sql"
+        "84-ownership-status.sql"
     )
 fi
 
