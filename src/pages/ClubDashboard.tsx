@@ -60,7 +60,7 @@ export default function ClubDashboard() {
 
   const [showEventDialog, setShowEventDialogRaw] = useState(() => {
     try {
-      return sessionStorage.getItem(CLUB_EVENT_DIALOG_KEY) === "true";
+      return (sessionStorage.getItem(CLUB_EVENT_DIALOG_KEY) || localStorage.getItem(CLUB_EVENT_DIALOG_KEY)) === "true";
     } catch {
       return false;
     }
@@ -68,7 +68,9 @@ export default function ClubDashboard() {
   const setShowEventDialog = useCallback((open: boolean) => {
     setShowEventDialogRaw(open);
     try {
-      sessionStorage.setItem(CLUB_EVENT_DIALOG_KEY, String(open));
+      const value = String(open);
+      sessionStorage.setItem(CLUB_EVENT_DIALOG_KEY, value);
+      localStorage.setItem(CLUB_EVENT_DIALOG_KEY, value);
     } catch {
       // Ignore storage errors (private browsing, quota, etc.)
     }
@@ -76,28 +78,28 @@ export default function ClubDashboard() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [eventTitle, setEventTitle] = useState(() => {
     try {
-      return sessionStorage.getItem(CLUB_EVENT_TITLE_KEY) || "";
+      return sessionStorage.getItem(CLUB_EVENT_TITLE_KEY) || localStorage.getItem(CLUB_EVENT_TITLE_KEY) || "";
     } catch {
       return "";
     }
   });
   const [eventDate, setEventDate] = useState(() => {
     try {
-      return sessionStorage.getItem(CLUB_EVENT_DATE_KEY) || "";
+      return sessionStorage.getItem(CLUB_EVENT_DATE_KEY) || localStorage.getItem(CLUB_EVENT_DATE_KEY) || "";
     } catch {
       return "";
     }
   });
   const [eventLocation, setEventLocation] = useState(() => {
     try {
-      return sessionStorage.getItem(CLUB_EVENT_LOCATION_KEY) || "";
+      return sessionStorage.getItem(CLUB_EVENT_LOCATION_KEY) || localStorage.getItem(CLUB_EVENT_LOCATION_KEY) || "";
     } catch {
       return "";
     }
   });
   const [eventDesc, setEventDesc] = useState(() => {
     try {
-      return sessionStorage.getItem(CLUB_EVENT_DESC_KEY) || "";
+      return sessionStorage.getItem(CLUB_EVENT_DESC_KEY) || localStorage.getItem(CLUB_EVENT_DESC_KEY) || "";
     } catch {
       return "";
     }
@@ -105,10 +107,15 @@ export default function ClubDashboard() {
 
   const clearEventDraft = useCallback(() => {
     try {
-      sessionStorage.removeItem(CLUB_EVENT_TITLE_KEY);
-      sessionStorage.removeItem(CLUB_EVENT_DATE_KEY);
-      sessionStorage.removeItem(CLUB_EVENT_LOCATION_KEY);
-      sessionStorage.removeItem(CLUB_EVENT_DESC_KEY);
+      [
+        CLUB_EVENT_TITLE_KEY,
+        CLUB_EVENT_DATE_KEY,
+        CLUB_EVENT_LOCATION_KEY,
+        CLUB_EVENT_DESC_KEY,
+      ].forEach((key) => {
+        sessionStorage.removeItem(key);
+        localStorage.removeItem(key);
+      });
     } catch {
       // Ignore storage errors
     }
@@ -120,6 +127,10 @@ export default function ClubDashboard() {
       sessionStorage.setItem(CLUB_EVENT_DATE_KEY, eventDate);
       sessionStorage.setItem(CLUB_EVENT_LOCATION_KEY, eventLocation);
       sessionStorage.setItem(CLUB_EVENT_DESC_KEY, eventDesc);
+      localStorage.setItem(CLUB_EVENT_TITLE_KEY, eventTitle);
+      localStorage.setItem(CLUB_EVENT_DATE_KEY, eventDate);
+      localStorage.setItem(CLUB_EVENT_LOCATION_KEY, eventLocation);
+      localStorage.setItem(CLUB_EVENT_DESC_KEY, eventDesc);
     } catch {
       // Ignore storage errors
     }
