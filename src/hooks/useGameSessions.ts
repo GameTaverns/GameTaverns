@@ -176,15 +176,20 @@ export function useGameSessions(gameId: string) {
         const { data: insertedPlayers, error: playersError } = await supabase
           .from("game_session_players")
           .insert(
-            input.players.map((p) => ({
-              session_id: session.id,
-              player_name: p.player_name,
-              score: p.score,
-              is_winner: p.is_winner,
-              is_first_play: p.is_first_play,
-              linked_user_id: (p as any).linked_user_id ?? null,
-              tag_status: (p as any).tag_status ?? "none",
-            }))
+            input.players.map((p) => {
+              const linkedId = (p as any).linked_user_id ?? null;
+              // Auto-accept tag if the tagged user is the person logging the session
+              const isself = linkedId && linkedId === currentUserId;
+              return {
+                session_id: session.id,
+                player_name: p.player_name,
+                score: p.score,
+                is_winner: p.is_winner,
+                is_first_play: p.is_first_play,
+                linked_user_id: linkedId,
+                tag_status: isself ? "accepted" : ((p as any).tag_status ?? "none"),
+              };
+            })
           )
           .select();
 
@@ -196,7 +201,7 @@ export function useGameSessions(gameId: string) {
       if (currentUserId) {
         const taggedPlayers = input.players
           .map((p, i) => ({ p, playerRow: createdPlayers[i] }))
-          .filter(({ p }) => (p as any).linked_user_id && (p as any).tag_status === "pending");
+          .filter(({ p }) => (p as any).linked_user_id && (p as any).linked_user_id !== currentUserId && (p as any).tag_status === "pending");
 
         // Fetch game title for the notification
         const { data: gameData } = await supabase
