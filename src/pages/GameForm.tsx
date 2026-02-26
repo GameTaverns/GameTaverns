@@ -119,26 +119,33 @@ const GameForm = () => {
     [baseGames, id]
   );
 
-  const filteredMechanics = useMemo(
-    () => mechanicSearch
-      ? mechanics.filter(m => m.name.toLowerCase().includes(mechanicSearch.toLowerCase()))
-      : mechanics,
-    [mechanics, mechanicSearch]
-  );
+  const MAX_VISIBLE = 30;
 
-  const filteredDesigners = useMemo(
-    () => designerSearch
-      ? designers.filter(d => d.name.toLowerCase().includes(designerSearch.toLowerCase()))
-      : designers,
-    [designers, designerSearch]
-  );
+  const filteredMechanics = useMemo(() => {
+    // Always show selected items first, then filter/cap the rest
+    const term = mechanicSearch.toLowerCase();
+    if (term) return mechanics.filter(m => m.name.toLowerCase().includes(term));
+    // When not searching, show selected + first N unselected
+    const selected = mechanics.filter(m => selectedMechanics.includes(m.id));
+    const unselected = mechanics.filter(m => !selectedMechanics.includes(m.id)).slice(0, MAX_VISIBLE);
+    return [...selected, ...unselected];
+  }, [mechanics, mechanicSearch, selectedMechanics]);
 
-  const filteredArtists = useMemo(
-    () => artistSearch
-      ? artists.filter(a => a.name.toLowerCase().includes(artistSearch.toLowerCase()))
-      : artists,
-    [artists, artistSearch]
-  );
+  const filteredDesigners = useMemo(() => {
+    const term = designerSearch.toLowerCase();
+    if (term) return designers.filter(d => d.name.toLowerCase().includes(term));
+    const selected = designers.filter(d => selectedDesigners.includes(d.id));
+    const unselected = designers.filter(d => !selectedDesigners.includes(d.id)).slice(0, MAX_VISIBLE);
+    return [...selected, ...unselected];
+  }, [designers, designerSearch, selectedDesigners]);
+
+  const filteredArtists = useMemo(() => {
+    const term = artistSearch.toLowerCase();
+    if (term) return artists.filter(a => a.name.toLowerCase().includes(term));
+    const selected = artists.filter(a => selectedArtists.includes(a.id));
+    const unselected = artists.filter(a => !selectedArtists.includes(a.id)).slice(0, MAX_VISIBLE);
+    return [...selected, ...unselected];
+  }, [artists, artistSearch, selectedArtists]);
 
   const filteredParentGames = useMemo(
     () => parentGameSearch
@@ -490,7 +497,7 @@ const GameForm = () => {
                       <SelectValue placeholder="Select publisher" />
                     </SelectTrigger>
                     <SelectContent>
-                      {publishers.map((p) => (
+                      {publishers.slice(0, 100).map((p) => (
                         <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -859,7 +866,7 @@ const GameForm = () => {
                 <Input
                   value={mechanicSearch}
                   onChange={(e) => setMechanicSearch(e.target.value)}
-                  placeholder="Search mechanics..."
+                  placeholder="Type to search all mechanics..."
                 />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                   {filteredMechanics.map((m) => (
@@ -913,7 +920,7 @@ const GameForm = () => {
                 <Input
                   value={designerSearch}
                   onChange={(e) => setDesignerSearch(e.target.value)}
-                  placeholder="Search designers..."
+                  placeholder="Type to search all designers..."
                 />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                   {filteredDesigners.map((d) => (
@@ -951,7 +958,7 @@ const GameForm = () => {
                 <Input
                   value={artistSearch}
                   onChange={(e) => setArtistSearch(e.target.value)}
-                  placeholder="Search artists..."
+                  placeholder="Type to search all artists..."
                 />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                   {filteredArtists.map((a) => (
