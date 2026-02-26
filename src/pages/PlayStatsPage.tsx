@@ -5,10 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlayStats, StatsPeriod } from "@/hooks/usePlayStats";
+import { usePlayAnalytics } from "@/hooks/playStats/usePlayAnalytics";
 import { useTenant } from "@/contexts/TenantContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { isSelfHostedSupabaseStack } from "@/integrations/backend/client";
 import { PlayHistoryImportDialog } from "@/components/games/PlayHistoryImportDialog";
+import {
+  DayOfWeekChart,
+  PlaysTrendChart,
+  PlayerCountChart,
+  PlayerWinRateChart,
+  PlayCalendarHeatmap,
+  PlayStreakStats,
+} from "@/components/stats/PlayAnalyticsCharts";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -157,10 +166,15 @@ export default function PlayStatsPage() {
   const [period, setPeriod] = useState<StatsPeriod>("month");
   const [showPlayImport, setShowPlayImport] = useState(false);
   
-  // Check if self-hosted Supabase stack for play history import feature
   const isSelfHosted = isSelfHostedSupabaseStack();
   
   const { data: stats, isLoading, error } = usePlayStats(
+    library?.id || null,
+    selectedDate,
+    period
+  );
+
+  const { data: analytics, isLoading: analyticsLoading } = usePlayAnalytics(
     library?.id || null,
     selectedDate,
     period
@@ -177,14 +191,10 @@ export default function PlayStatsPage() {
   const handleNext = () => {
     if (period === "month") {
       const next = addMonths(selectedDate, 1);
-      if (next <= new Date()) {
-        setSelectedDate(next);
-      }
+      if (next <= new Date()) setSelectedDate(next);
     } else {
       const next = addYears(selectedDate, 1);
-      if (next <= new Date()) {
-        setSelectedDate(next);
-      }
+      if (next <= new Date()) setSelectedDate(next);
     }
   };
 
@@ -200,12 +210,8 @@ export default function PlayStatsPage() {
     return (
       <Layout>
         <div className="text-center py-12">
-          <h1 className="text-2xl font-bold text-foreground mb-2">
-            Access Denied
-          </h1>
-          <p className="text-muted-foreground">
-            Only library owners can view play statistics.
-          </p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
+          <p className="text-muted-foreground">Only library owners can view play statistics.</p>
         </div>
       </Layout>
     );
@@ -213,25 +219,17 @@ export default function PlayStatsPage() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header with period toggle and navigation */}
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold font-display text-foreground">
-              Play Stats
-            </h1>
-            <p className="text-muted-foreground">
-              Your gaming activity summary
-            </p>
+            <h1 className="text-3xl font-bold font-display text-foreground">Play Stats</h1>
+            <p className="text-muted-foreground">Your gaming activity summary</p>
           </div>
           
           <div className="flex items-center gap-4 flex-wrap">
-            {isSelfHostedSupabaseStack() && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowPlayImport(true)}
-              >
+            {isSelfHosted && (
+              <Button variant="outline" size="sm" onClick={() => setShowPlayImport(true)}>
                 <Download className="h-4 w-4 mr-2" />
                 Import from BGG
               </Button>
@@ -245,35 +243,20 @@ export default function PlayStatsPage() {
             </Tabs>
             
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePrev}
-              >
+              <Button variant="outline" size="icon" onClick={handlePrev}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="min-w-[100px] text-center">
-                <span className="text-lg font-semibold text-foreground">
-                  {displayLabel}
-                </span>
+                <span className="text-lg font-semibold text-foreground">{displayLabel}</span>
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleNext}
-                disabled={!canGoNext}
-              >
+              <Button variant="outline" size="icon" onClick={handleNext} disabled={!canGoNext}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </div>
 
-        {/* BGG Play Import Dialog */}
-        <PlayHistoryImportDialog
-          open={showPlayImport}
-          onOpenChange={setShowPlayImport}
-        />
+        <PlayHistoryImportDialog open={showPlayImport} onOpenChange={setShowPlayImport} />
 
         {isLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -288,66 +271,63 @@ export default function PlayStatsPage() {
             </CardContent>
           </Card>
         ) : stats ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left column - Game images grid */}
-            <div className="lg:col-span-1">
-              <Card className="overflow-hidden">
-                <CardContent className="p-2">
-                  <GameImageGrid games={stats.topGames} />
-                </CardContent>
-              </Card>
+          <div className="space-y-6">
+            {/* Top section: Image grid + stat cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1">
+                <Card className="overflow-hidden">
+                  <CardContent className="p-2">
+                    <GameImageGrid games={stats.topGames} />
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="lg:col-span-2 space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <StatCard value={stats.totalPlays} label="Plays" icon={Dices} />
+                  <StatCard value={stats.hIndex} label="H-Index" icon={TrendingUp} />
+                  <StatCard value={stats.gamesPlayed} label="Games" icon={Gamepad2} />
+                  <StatCard value={stats.newGamesThisPeriod} label="New" icon={Sparkles} />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <StatCard value={stats.uniquePlayers} label="Players" icon={Users} />
+                  <StatCard value={stats.totalHours} label="Hours" icon={Clock} />
+                  <StatCard value={stats.daysWithPlays} label="Days" icon={Calendar} />
+                  <StatCard value={`${stats.topMechanics.length}`} label="Mechanics" icon={Hash} />
+                </div>
+
+                {/* Streaks & avg duration */}
+                {analytics && (
+                  <PlayStreakStats
+                    longestStreak={analytics.longestStreak}
+                    currentStreak={analytics.currentStreak}
+                    avgDuration={analytics.avgPlayDuration}
+                  />
+                )}
+              </div>
             </div>
 
-            {/* Right column - Stats */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Main stats grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard 
-                  value={stats.totalPlays} 
-                  label="Plays" 
-                  icon={Dices}
-                />
-                <StatCard 
-                  value={stats.hIndex} 
-                  label="H-Index" 
-                  icon={TrendingUp}
-                />
-                <StatCard 
-                  value={stats.gamesPlayed} 
-                  label="Games" 
-                  icon={Gamepad2}
-                />
-                <StatCard 
-                  value={stats.newGamesThisPeriod} 
-                  label="New" 
-                  icon={Sparkles}
-                />
+            {/* Charts row 1: Day of Week + Player Count */}
+            {analytics && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <DayOfWeekChart data={analytics.dayOfWeek} />
+                <PlayerCountChart data={analytics.playerCounts} />
               </div>
+            )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard 
-                  value={stats.uniquePlayers} 
-                  label="Players" 
-                  icon={Users}
-                />
-                <StatCard 
-                  value={stats.totalHours} 
-                  label="Hours" 
-                  icon={Clock}
-                />
-                <StatCard 
-                  value={stats.daysWithPlays} 
-                  label="Days" 
-                  icon={Calendar}
-                />
-                <StatCard 
-                  value={`${stats.topMechanics.length}`} 
-                  label="Mechanics" 
-                  icon={Hash}
-                />
-              </div>
+            {/* Charts row 2: Plays trend */}
+            {analytics && (
+              <PlaysTrendChart data={analytics.dailyPlays} />
+            )}
 
-              {/* Mechanics breakdown */}
+            {/* Calendar heatmap */}
+            {analytics && (
+              <PlayCalendarHeatmap data={analytics.calendarHeatmap} />
+            )}
+
+            {/* Bottom section: Mechanics + Top Games + Win Rates */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
                 <CardContent className="p-4">
                   <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -358,7 +338,6 @@ export default function PlayStatsPage() {
                 </CardContent>
               </Card>
 
-              {/* Top games */}
               <Card>
                 <CardContent className="p-4">
                   <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -368,6 +347,10 @@ export default function PlayStatsPage() {
                   <TopGamesList games={stats.topGames} />
                 </CardContent>
               </Card>
+
+              {analytics && analytics.topPlayers.length > 0 && (
+                <PlayerWinRateChart data={analytics.topPlayers} />
+              )}
             </div>
           </div>
         ) : null}
