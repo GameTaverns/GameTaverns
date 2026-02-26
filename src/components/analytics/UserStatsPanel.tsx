@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, AreaChart, Area,
 } from "recharts";
-import { Trophy, Swords, Users, Target, TrendingUp, Gamepad2, Flame, Calendar, Clock } from "lucide-react";
+import { Trophy, Swords, Users, Target, TrendingUp, Gamepad2, Flame, Calendar, Clock, Layers } from "lucide-react";
 import { useUserProfileStats } from "@/hooks/useUserProfileStats";
 import { formatDistanceToNow } from "date-fns";
 
@@ -240,8 +240,8 @@ export function UserStatsPanel({ userId, hasTheme, profileBgColor }: Props) {
   );
 }
 
-// Needed for the Layers icon import at top
-import { Layers } from "lucide-react";
+
+
 
 function SummaryCardThemed({ icon: Icon, label, value, style, children }: {
   icon: any; label: string; value: string | number; style: React.CSSProperties; children?: React.ReactNode;
