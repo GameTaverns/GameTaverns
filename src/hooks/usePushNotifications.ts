@@ -5,6 +5,7 @@ import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } fro
 import { MobileStorage } from './useCapacitor';
 import { getLibraryUrl } from './useTenantUrl';
 import { supabase } from '@/integrations/backend/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface PushNotificationState {
   isSupported: boolean;
@@ -39,12 +40,25 @@ async function upsertPushToken(token: string) {
 }
 
 export function usePushNotifications() {
+  const { user } = useAuth();
   const [state, setState] = useState<PushNotificationState>({
     isSupported: false,
     isRegistered: false,
     token: null,
     notifications: [],
   });
+
+  // When the user authenticates, re-upsert the stored push token.
+  // This handles the case where FCM registration happened before login.
+  useEffect(() => {
+    if (!user || !Capacitor.isNativePlatform()) return;
+    MobileStorage.get<string>('pushToken').then(token => {
+      if (token) {
+        console.log('Re-upserting push token after auth for user:', user.id);
+        upsertPushToken(token).catch(e => console.warn('Post-auth token upsert failed:', e));
+      }
+    }).catch(() => {});
+  }, [user?.id]);
 
   useEffect(() => {
     try {
