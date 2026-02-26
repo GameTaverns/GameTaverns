@@ -167,17 +167,18 @@ workflows:
       - name: Add Android platform
         script: |
           npx cap add android
+      - name: Sync Android platform
+        script: |
+          npx cap sync android
       - name: Copy google-services.json
         script: |
           if [ -f "google-services.json" ]; then
             cp google-services.json android/app/google-services.json
-            echo "google-services.json copied"
+            echo "✓ google-services.json copied to android/app/"
           else
-            echo "WARNING: google-services.json not found in project root"
+            echo "ERROR: google-services.json not found in project root!"
+            exit 1
           fi
-      - name: Sync Android platform
-        script: |
-          npx cap sync android
       - name: Upgrade Gradle wrapper
         script: |
           WRAPPER_PROPS="android/gradle/wrapper/gradle-wrapper.properties"
