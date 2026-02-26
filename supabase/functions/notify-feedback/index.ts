@@ -11,12 +11,11 @@ const FEEDBACK_TYPE_LABELS: Record<string, string> = {
 };
 
 const FEEDBACK_COLORS: Record<string, number> = {
-  feedback: 0x3b82f6,       // Blue
-  bug: 0xef4444,            // Red
-  feature_request: 0x8b5cf6, // Purple
+  feedback: 0x3b82f6,
+  bug: 0xef4444,
+  feature_request: 0x8b5cf6,
 };
 
-// Discord forum channel IDs for each feedback type
 const FEEDBACK_FORUM_CHANNELS: Record<string, string> = {
   feedback: "1472011480105746635",
   bug: "1472011323670794302",
@@ -33,7 +32,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
 
-    const { type, sender_name, sender_email, message } = await req.json();
+    const { type, sender_name, sender_email, message, screenshot_urls } = await req.json();
 
     if (!type || !sender_name || !message) {
       return new Response(
@@ -42,13 +41,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    const urls: string[] = Array.isArray(screenshot_urls) ? screenshot_urls : [];
     const results: Record<string, unknown> = {};
 
-    // 1. Post to Discord forum channel (name + message only, no email)
+    // 1. Post to Discord forum channel
     const channelId = FEEDBACK_FORUM_CHANNELS[type];
     if (botToken && channelId) {
       try {
-        const embed = {
+        const embed: Record<string, unknown> = {
           title: FEEDBACK_TYPE_LABELS[type] || "📝 Feedback",
           description: message.substring(0, 4000),
           color: FEEDBACK_COLORS[type] || 0x3b82f6,
@@ -58,6 +58,18 @@ const handler = async (req: Request): Promise<Response> => {
           footer: { text: "GameTaverns Platform Feedback" },
           timestamp: new Date().toISOString(),
         };
+
+        // Attach first image as embed image
+        if (urls.length > 0) {
+          embed.image = { url: urls[0] };
+        }
+
+        const embeds = [embed];
+
+        // Additional images as separate embeds (Discord supports up to 10 embeds)
+        for (let i = 1; i < Math.min(urls.length, 4); i++) {
+          embeds.push({ image: { url: urls[i] }, color: FEEDBACK_COLORS[type] || 0x3b82f6 });
+        }
 
         const threadName = `${sender_name} - ${message.substring(0, 80)}`.substring(0, 100);
 
@@ -69,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
           },
           body: JSON.stringify({
             name: threadName,
-            message: { embeds: [embed] },
+            message: { embeds },
             auto_archive_duration: 1440,
           }),
         });
@@ -90,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
       results.discord = "not_configured";
     }
 
-    // 2. Send email to admin@gametaverns.com with reply-to as user's email
+    // 2. Send email with inline images
     const smtpHost = Deno.env.get("SMTP_HOST");
     const smtpFrom = Deno.env.get("SMTP_FROM");
     if (smtpHost && smtpFrom) {
@@ -119,6 +131,11 @@ const handler = async (req: Request): Promise<Response> => {
 
         const typeLabel = FEEDBACK_TYPE_LABELS[type] || "Feedback";
 
+        // Build screenshot HTML
+        const screenshotHtml = urls.length > 0
+          ? `<h3>Screenshots</h3>${urls.map((u: string, i: number) => `<p><a href="${u}"><img src="${u}" alt="Screenshot ${i + 1}" style="max-width:600px;max-height:400px;border:1px solid #ddd;border-radius:4px;margin:4px 0;" /></a></p>`).join("")}`
+          : "";
+
         await client.send({
           from: smtpFrom,
           to: "admin@gametaverns.com",
@@ -128,14 +145,13 @@ const handler = async (req: Request): Promise<Response> => {
             "List-Unsubscribe": `<mailto:unsubscribe@gametaverns.com?subject=unsubscribe>`,
             "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
           },
-          html: `
-            <h2>${typeLabel}</h2>
-            <p><strong>From:</strong> ${sender_name}${sender_email ? ` (${sender_email})` : ""}</p>
-            <hr />
-            <p>${message.replace(/\n/g, "<br />")}</p>
-            <hr />
-            <p style="color: #888; font-size: 12px;">This feedback was submitted via the GameTaverns platform.</p>
-          `,
+          html: `<h2>${typeLabel}</h2>
+<p><strong>From:</strong> ${sender_name}${sender_email ? ` (${sender_email})` : ""}</p>
+<hr />
+<p>${message.replace(/\n/g, "<br />")}</p>
+${screenshotHtml}
+<hr />
+<p style="color: #888; font-size: 12px;">This feedback was submitted via the GameTaverns platform.</p>`,
         });
 
         await client.close();
