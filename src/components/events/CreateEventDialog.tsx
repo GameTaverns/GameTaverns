@@ -47,6 +47,60 @@ interface CreateEventDialogProps {
   editEvent?: CalendarEvent | null;
 }
 
+interface EventDraft {
+  activeTab: string;
+  title: string;
+  description: string;
+  eventType: string;
+  date: string | null;
+  time: string;
+  endDate: string | null;
+  endTime: string;
+  location: string;
+  isPublic: boolean;
+  maxAttendees: string;
+  venueName: string;
+  venueAddress: string;
+  venueNotes: string;
+  entryFee: string;
+  ageRestriction: string;
+  parkingInfo: string;
+  locationCity: string;
+  locationRegion: string;
+  locationCountry: string;
+}
+
+const getDraftKey = (libraryId?: string) => `create_event_dialog_draft:${libraryId || "public"}`;
+
+function readDraft(draftKey: string): EventDraft | null {
+  try {
+    const raw = sessionStorage.getItem(draftKey) || localStorage.getItem(draftKey);
+    if (!raw) return null;
+    return JSON.parse(raw) as EventDraft;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(draftKey: string, draft: EventDraft) {
+  try {
+    const serialized = JSON.stringify(draft);
+    sessionStorage.setItem(draftKey, serialized);
+    localStorage.setItem(draftKey, serialized);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function clearDraft(draftKey: string) {
+  try {
+    sessionStorage.removeItem(draftKey);
+    localStorage.removeItem(draftKey);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: CreateEventDialogProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("basics");
@@ -81,26 +135,99 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
   
   const isEditMode = !!editEvent;
   const isStandalone = !libraryId;
+  const draftKey = getDraftKey(libraryId);
   
   useEffect(() => {
-    if (editEvent && open) {
+    if (!open) return;
+
+    if (editEvent) {
       setTitle(editEvent.title);
       setDescription(editEvent.description || "");
       setLocation(editEvent.event_location || "");
       const eventDate = new Date(editEvent.event_date);
       setDate(eventDate);
       setTime(format(eventDate, "HH:mm"));
+      setEndDate(undefined);
+      setEndTime("");
       setActiveTab("basics");
-    } else if (!open) {
-      setTitle(""); setDescription(""); setEventType("game_night");
-      setDate(undefined); setTime("19:00"); setEndDate(undefined); setEndTime("");
-      setLocation(""); setIsPublic(!libraryId); setMaxAttendees("");
-      setVenueName(""); setVenueAddress(""); setVenueNotes("");
-      setEntryFee(""); setAgeRestriction(""); setParkingInfo("");
-      setLocationCity(""); setLocationRegion(""); setLocationCountry("");
-      setActiveTab("basics");
+      return;
     }
-  }, [editEvent, open, libraryId]);
+
+    const draft = readDraft(draftKey);
+    if (!draft) return;
+
+    setActiveTab(draft.activeTab || "basics");
+    setTitle(draft.title || "");
+    setDescription(draft.description || "");
+    setEventType(draft.eventType || "game_night");
+    setDate(draft.date ? new Date(draft.date) : undefined);
+    setTime(draft.time || "19:00");
+    setEndDate(draft.endDate ? new Date(draft.endDate) : undefined);
+    setEndTime(draft.endTime || "");
+    setLocation(draft.location || "");
+    setIsPublic(draft.isPublic ?? !libraryId);
+    setMaxAttendees(draft.maxAttendees || "");
+    setVenueName(draft.venueName || "");
+    setVenueAddress(draft.venueAddress || "");
+    setVenueNotes(draft.venueNotes || "");
+    setEntryFee(draft.entryFee || "");
+    setAgeRestriction(draft.ageRestriction || "");
+    setParkingInfo(draft.parkingInfo || "");
+    setLocationCity(draft.locationCity || "");
+    setLocationRegion(draft.locationRegion || "");
+    setLocationCountry(draft.locationCountry || "");
+  }, [editEvent, open, libraryId, draftKey]);
+
+  useEffect(() => {
+    if (!open || isEditMode) return;
+
+    writeDraft(draftKey, {
+      activeTab,
+      title,
+      description,
+      eventType,
+      date: date ? date.toISOString() : null,
+      time,
+      endDate: endDate ? endDate.toISOString() : null,
+      endTime,
+      location,
+      isPublic,
+      maxAttendees,
+      venueName,
+      venueAddress,
+      venueNotes,
+      entryFee,
+      ageRestriction,
+      parkingInfo,
+      locationCity,
+      locationRegion,
+      locationCountry,
+    });
+  }, [
+    open,
+    isEditMode,
+    draftKey,
+    activeTab,
+    title,
+    description,
+    eventType,
+    date,
+    time,
+    endDate,
+    endTime,
+    location,
+    isPublic,
+    maxAttendees,
+    venueName,
+    venueAddress,
+    venueNotes,
+    entryFee,
+    ageRestriction,
+    parkingInfo,
+    locationCity,
+    locationRegion,
+    locationCountry,
+  ]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,6 +285,10 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
       });
     }
     
+    if (!isEditMode) {
+      clearDraft(draftKey);
+    }
+
     onOpenChange(false);
   };
   

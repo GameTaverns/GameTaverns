@@ -134,14 +134,17 @@ export function useUserProfileStats(userId: string | null) {
         const coPlayers = new Map<string, number>();
         for (let i = 0; i < sessionIds.length; i += 200) {
           const batch = sessionIds.slice(i, i + 200);
-          const { data: otherPlayers } = await supabase
+          const { data: otherPlayers, error: otherPlayersError } = await supabase
             .from("game_session_players")
             .select("player_name, linked_user_id")
             .in("session_id", batch);
 
+          if (otherPlayersError) continue;
+
           otherPlayers?.forEach((p: any) => {
             if (p.linked_user_id === userId) return;
-            const name = p.player_name.trim();
+            const name = typeof p.player_name === "string" ? p.player_name.trim() : "";
+            if (!name) return;
             coPlayers.set(name, (coPlayers.get(name) || 0) + 1);
           });
         }

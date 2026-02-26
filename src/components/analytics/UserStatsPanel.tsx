@@ -34,7 +34,7 @@ interface Props {
 }
 
 export function UserStatsPanel({ userId, hasTheme, profileBgColor }: Props) {
-  const { data, isLoading } = useUserProfileStats(userId);
+  const { data, isLoading, error } = useUserProfileStats(userId);
 
   const cardStyle = hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' };
 
@@ -46,6 +46,16 @@ export function UserStatsPanel({ userId, hasTheme, profileBgColor }: Props) {
         </div>
         <Skeleton className="h-48" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="backdrop-blur-sm border-border" style={cardStyle}>
+        <CardContent className="py-8 text-center text-muted-foreground text-sm">
+          We couldn't load stats right now. Please refresh and try again.
+        </CardContent>
+      </Card>
     );
   }
 
