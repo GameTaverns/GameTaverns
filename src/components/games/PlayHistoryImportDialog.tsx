@@ -200,7 +200,11 @@ export function PlayHistoryImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[100dvh] sm:max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent
+          className="sm:max-w-lg max-h-[100dvh] sm:max-h-[85vh] overflow-hidden flex flex-col"
+          onInteractOutside={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
@@ -211,7 +215,7 @@ export function PlayHistoryImportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
+        <div className="flex-1 overflow-y-auto pr-1 min-h-0">
           {!isAvailable ? (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -421,7 +425,7 @@ export function PlayHistoryImportDialog({
               )}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={handleClose} disabled={isImporting}>
