@@ -96,6 +96,7 @@ function FeedbackDetailDialog({
       });
 
       // If it's a reply, also send email via edge function
+      let emailSent = false;
       if (noteType === "reply" && feedback.sender_email) {
         try {
           const { data: emailResult, error: emailError } = await supabase.functions.invoke("reply-feedback", {
@@ -107,10 +108,15 @@ function FeedbackDetailDialog({
               from_name: displayName,
             },
           });
+          console.log("Reply invoke result:", { emailResult, emailError });
           if (emailError) {
             console.error("Reply email error:", emailError);
             toast({ title: "Note saved, but email failed", description: String(emailError.message || emailError), variant: "destructive" });
+          } else if (emailResult && typeof emailResult === "object" && emailResult.error) {
+            console.error("Reply email function error:", emailResult.error);
+            toast({ title: "Note saved, but email failed", description: String(emailResult.error), variant: "destructive" });
           } else {
+            emailSent = true;
             console.log("Reply email sent:", emailResult);
           }
         } catch (emailErr: any) {
@@ -120,7 +126,11 @@ function FeedbackDetailDialog({
       }
 
       setNoteContent("");
-      toast({ title: noteType === "reply" ? "Reply sent" : "Note added" });
+      if (noteType === "reply") {
+        toast({ title: emailSent ? "Reply sent & emailed" : "Reply note saved" });
+      } else {
+        toast({ title: "Note added" });
+      }
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     }
@@ -298,8 +308,7 @@ function FeedbackDetailDialog({
 
 // ─── Feedback Card ──────────────────────────────────────────────────────────
 
-function FeedbackCard({ feedback }: { feedback: PlatformFeedback }) {
-  const [viewOpen, setViewOpen] = useState(false);
+function FeedbackCard({ feedback, isOpen, onOpen, onClose }: { feedback: PlatformFeedback; isOpen: boolean; onOpen: () => void; onClose: () => void }) {
   const markRead = useMarkFeedbackRead();
   const deleteFeedback = useDeleteFeedback();
   const updateStatus = useUpdateFeedbackStatus();
@@ -325,7 +334,7 @@ function FeedbackCard({ feedback }: { feedback: PlatformFeedback }) {
   };
 
   const handleView = () => {
-    setViewOpen(true);
+    onOpen();
     if (!feedback.is_read) {
       markRead.mutate(feedback.id);
     }
@@ -420,7 +429,7 @@ function FeedbackCard({ feedback }: { feedback: PlatformFeedback }) {
         </CardContent>
       </Card>
 
-      <FeedbackDetailDialog feedback={feedback} open={viewOpen} onOpenChange={setViewOpen} />
+      <FeedbackDetailDialog feedback={feedback} open={isOpen} onOpenChange={(v) => { if (!v) onClose(); }} />
     </>
   );
 }
@@ -431,6 +440,19 @@ export function FeedbackManagement() {
   const { data: feedback, isLoading, error } = usePlatformFeedback();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [openFeedbackId, setOpenFeedbackId] = useState<string | null>(() => {
+    try { return sessionStorage.getItem("admin-open-feedback-id"); } catch { return null; }
+  });
+
+  const handleOpenFeedback = (id: string) => {
+    setOpenFeedbackId(id);
+    try { sessionStorage.setItem("admin-open-feedback-id", id); } catch {}
+  };
+
+  const handleCloseFeedback = () => {
+    setOpenFeedbackId(null);
+    try { sessionStorage.removeItem("admin-open-feedback-id"); } catch {}
+  };
 
   if (isLoading) {
     return (
@@ -534,7 +556,7 @@ export function FeedbackManagement() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {filtered.map((item) => (
-            <FeedbackCard key={item.id} feedback={item} />
+            <FeedbackCard key={item.id} feedback={item} isOpen={openFeedbackId === item.id} onOpen={() => handleOpenFeedback(item.id)} onClose={handleCloseFeedback} />
           ))}
         </div>
       )}
