@@ -110,9 +110,20 @@ function FeedbackDetailDialog({
   };
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Staff";
+  const hasReplyEmail = !!feedback.sender_email?.trim();
 
   const handleAddNote = async () => {
     if (!noteContent.trim() || !user) return;
+
+    if (noteType === "reply" && !hasReplyEmail) {
+      toast({
+        title: "Cannot send reply",
+        description: "This feedback has no sender email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await addNote.mutateAsync({
         feedback_id: feedback.id,
@@ -125,7 +136,7 @@ function FeedbackDetailDialog({
       // If it's a reply, also send email via edge function
       let emailSent = false;
       let emailErrorMsg: string | null = null;
-      if (noteType === "reply" && feedback.sender_email) {
+      if (noteType === "reply" && hasReplyEmail) {
         try {
           const { data: emailResult, error: emailError } = await supabase.functions.invoke("reply-feedback", {
             body: {
@@ -140,7 +151,7 @@ function FeedbackDetailDialog({
           if (emailError) {
             console.error("Reply email error:", emailError);
             emailErrorMsg = String(emailError.message || emailError);
-          } else if (emailResult && typeof emailResult === "object" && emailResult.error) {
+          } else if (emailResult && typeof emailResult === "object" && "error" in emailResult && emailResult.error) {
             console.error("Reply email function error:", emailResult.error);
             emailErrorMsg = String(emailResult.error);
           } else {
@@ -156,9 +167,9 @@ function FeedbackDetailDialog({
       clearNoteDraft();
       if (noteType === "reply") {
         if (emailSent) {
-          toast({ title: "Reply sent & emailed" });
+          toast({ title: "Reply sent to user" });
         } else if (emailErrorMsg) {
-          toast({ title: "Note saved, but email failed", description: emailErrorMsg, variant: "destructive" });
+          toast({ title: "Reply note saved, but email failed", description: emailErrorMsg, variant: "destructive" });
         } else {
           toast({ title: "Reply note saved" });
         }
@@ -316,7 +327,9 @@ function FeedbackDetailDialog({
                 onChange={(e) => handleNoteContentChange(e.target.value)}
                 placeholder={
                   noteType === "reply"
-                    ? `Reply will be emailed to ${feedback.sender_email}...`
+                    ? hasReplyEmail
+                      ? `Reply will be emailed to ${feedback.sender_email}...`
+                      : "This feedback has no sender email, so reply email cannot be sent."
                     : "Add an internal note (only visible to staff)..."
                 }
                 rows={3}
@@ -324,7 +337,7 @@ function FeedbackDetailDialog({
               <Button
                 size="sm"
                 onClick={handleAddNote}
-                disabled={!noteContent.trim() || addNote.isPending}
+                disabled={!noteContent.trim() || addNote.isPending || (noteType === "reply" && !hasReplyEmail)}
               >
                 {addNote.isPending
                   ? "Sending..."
