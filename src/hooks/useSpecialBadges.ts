@@ -126,4 +126,5 @@ export const SPECIAL_BADGE_PRESETS = [
   { badge_type: "reviewer", badge_label: "Reviewer", badge_color: "#16a34a", badge_icon: "Star" },
   { badge_type: "developer", badge_label: "Game Developer", badge_color: "#dc2626", badge_icon: "Code" },
   { badge_type: "verified", badge_label: "Verified", badge_color: "#2563eb", badge_icon: "BadgeCheck" },
+  { badge_type: "retailer", badge_label: "Retailer", badge_color: "#059669", badge_icon: "Store" },
 ];

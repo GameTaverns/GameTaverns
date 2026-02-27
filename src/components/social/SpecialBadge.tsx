@@ -1,5 +1,5 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Palette, Video, BookOpen, Star, Code, BadgeCheck } from "lucide-react";
+import { Pencil, Palette, Video, BookOpen, Star, Code, BadgeCheck, Store } from "lucide-react";
 import type { SpecialBadge as SpecialBadgeType } from "@/hooks/useSpecialBadges";
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -10,6 +10,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Star,
   Code,
   BadgeCheck,
+  Store,
 };
 
 interface SpecialBadgeProps {
