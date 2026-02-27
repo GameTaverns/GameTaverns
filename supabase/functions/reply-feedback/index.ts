@@ -35,18 +35,23 @@ const handler = async (req: Request): Promise<Response> => {
     const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
 
     const port = Number(SMTP_PORT);
-    const client = new SMTPClient({
+    const isRelay = port === 25;
+    const useImplicitTls = port === 465;
+
+    const clientConfig: Record<string, unknown> = {
       connection: {
         hostname: SMTP_HOST,
         port,
-        tls: port === 465,
-        auth: {
-          username: SMTP_USER,
-          password: SMTP_PASS,
-        },
-        ...(port === 25 ? { noStartTLS: true, allowUnsecure: true } : {}),
+        tls: useImplicitTls,
+        auth: isRelay ? undefined : { username: SMTP_USER, password: SMTP_PASS },
       },
-    });
+      debug: {
+        noStartTLS: isRelay,
+        allowUnsecure: isRelay,
+      },
+    };
+
+    const client = new SMTPClient(clientConfig as any);
 
     const senderLabel = from_name || "Game Taverns Staff";
     const recipientLabel = to_name || to_email;
