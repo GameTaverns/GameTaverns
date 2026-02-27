@@ -1,10 +1,5 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 
 const FEEDBACK_TYPE_LABELS: Record<string, string> = {
   feedback: "💬 General Feedback",
@@ -27,9 +22,10 @@ const FEEDBACK_FORUM_CHANNELS: Record<string, string> = {
 const DISCORD_API = "https://discord.com/api/v10";
 
 const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handleCorsPreFlight(req);
+  if (preflight) return preflight;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
