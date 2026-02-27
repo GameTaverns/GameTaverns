@@ -47,7 +47,7 @@ export interface DashboardTabDef {
   id: string;
   label: string;
   icon: string;
-  /** If true, only visible to admins */
+  /** If true, only visible to admins/staff */
   adminOnly?: boolean;
 }
 
@@ -165,7 +165,8 @@ function useDebouncedDbSync(prefs: UserDashboardPrefs, userId: string | undefine
   }, [prefs, userId]);
 }
 
-export function useUserDashboardPrefs(isAdmin: boolean) {
+export function useUserDashboardPrefs(isAdmin: boolean, isStaff: boolean = false) {
+  const isAdminOrStaff = isAdmin || isStaff;
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<UserDashboardPrefs>(loadPrefs);
   const dbLoadedRef = useRef(false);
@@ -257,7 +258,7 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
 
   /** Visible tabs in user's preferred order */
   const visibleTabs = useMemo(() => {
-    const allTabs = DASHBOARD_TABS.filter(t => !t.adminOnly || isAdmin);
+    const allTabs = DASHBOARD_TABS.filter(t => !t.adminOnly || isAdminOrStaff);
     const hidden = new Set(prefs.hiddenTabs);
 
     if (prefs.tabOrder.length > 0) {
@@ -280,11 +281,11 @@ export function useUserDashboardPrefs(isAdmin: boolean) {
     }
 
     return allTabs.filter(t => !hidden.has(t.id));
-  }, [prefs, isAdmin]);
+  }, [prefs, isAdminOrStaff]);
 
   const allTabs = useMemo(
-    () => DASHBOARD_TABS.filter(t => !t.adminOnly || isAdmin),
-    [isAdmin]
+    () => DASHBOARD_TABS.filter(t => !t.adminOnly || isAdminOrStaff),
+    [isAdminOrStaff]
   );
 
   const hiddenTabDefs = useMemo(
