@@ -592,7 +592,7 @@ const Index = () => {
 
       {/* Pagination (sticky within content so it won't cover the footer) */}
       {totalPages > 1 && (
-        <div className="sticky bottom-0 z-30 bg-background/95 backdrop-blur-sm border-t border-border py-3 px-4 shadow-lg min-h-[60px]">
+        <div className="sticky bottom-[60px] md:bottom-0 z-30 bg-background/95 backdrop-blur-sm border-t border-border py-3 px-4 shadow-lg min-h-[60px]">
           <Pagination>
             <PaginationContent>
               <PaginationItem>

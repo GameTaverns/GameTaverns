@@ -74,7 +74,7 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        className="fixed z-50 bottom-6 right-6 w-full max-w-sm px-4 sm:px-0"
+        className="fixed z-50 bottom-[76px] md:bottom-6 right-6 w-full max-w-sm px-4 sm:px-0"
       >
         <Card className="bg-card border-border shadow-2xl shadow-black/30">
           <CardContent className="pt-5 pb-4">

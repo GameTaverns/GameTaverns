@@ -33,7 +33,7 @@ export function CookieConsent() {
     <div
       role="dialog"
       aria-label="Cookie consent"
-      className="fixed bottom-0 left-0 right-0 z-[100] border-t border-border bg-background/95 backdrop-blur-sm p-4 shadow-lg animate-in slide-in-from-bottom-4 duration-300"
+      className="fixed bottom-[60px] md:bottom-0 left-0 right-0 z-[100] border-t border-border bg-background/95 backdrop-blur-sm p-4 shadow-lg animate-in slide-in-from-bottom-4 duration-300"
     >
       <div className="container max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Cookie className="h-5 w-5 text-primary shrink-0 mt-0.5 sm:mt-0" />
