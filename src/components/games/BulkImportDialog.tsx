@@ -429,15 +429,22 @@ export function BulkImportDialog({
   }, [isNative, markFilePickerActive]);
 
   const handleDialogOpenChange = useCallback((v: boolean) => {
-    // Never allow programmatic close while importing
-    if (!v && isImporting) return;
+    // Allow close while importing — import continues on server
+    if (!v && isImporting && jobIdRef.current) {
+      toast({
+        title: "Import continues in background",
+        description: "Your games will appear in your library as they're processed.",
+      });
+      onOpenChange(false);
+      return;
+    }
     // On native, block close while file picker might be active
     if (!v && filePickerActiveRef.current) {
       console.log("[BulkImport] Blocked dialog close — file picker active");
       return;
     }
     onOpenChange(v);
-  }, [isImporting, onOpenChange]);
+  }, [isImporting, onOpenChange, toast]);
 
   // BGG Collection mode
   const [bggUsername, setBggUsername] = useState("");
@@ -1443,10 +1450,13 @@ export function BulkImportDialog({
                     </span>
                   </div>
                   <Progress value={progressPercent} className="h-2" />
+                  <p className="text-xs text-muted-foreground">
+                    💡 You can safely close this dialog — your import will continue in the background on the server and your games will appear in your library as they're processed.
+                  </p>
                   {streamDisconnected && (
                     <p className="text-xs text-muted-foreground">
                       ℹ️ Connection was interrupted but your import continues on the server. 
-                      You can close this dialog or switch tabs — progress will update when you return.
+                      Progress will update when you return.
                     </p>
                   )}
                   <div className="flex items-center gap-2 text-sm">
