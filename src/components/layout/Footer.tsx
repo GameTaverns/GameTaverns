@@ -1,16 +1,17 @@
+import { forwardRef } from "react";
 import { Link } from "react-router-dom";
 import { isLovableCloud } from "@/config/runtime";
 
 const LTN_LOGO_SRC = "/ltn-logo.png";
 const BGG_LOGO_SRC = "/bgg-logo.svg";
 
-export function Footer() {
+export const Footer = forwardRef<HTMLElement>((_, ref) => {
   const currentYear = new Date().getFullYear();
   // Show attributions on self-hosted/production deployments, NOT on Lovable Cloud
   const showAttributions = !isLovableCloud();
 
   return (
-    <footer className="border-t bg-card/50">
+    <footer ref={ref} className="border-t bg-card/50">
       <div className="container py-8 px-4">
         <div className="grid gap-8 md:grid-cols-4">
           {/* Brand */}
@@ -131,4 +132,6 @@ export function Footer() {
       </div>
     </footer>
   );
-}
+});
+
+Footer.displayName = "Footer";

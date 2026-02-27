@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Library, Users, Dice6, ArrowLeftRight, Calendar, MessageSquare,
@@ -465,14 +466,18 @@ function ShowcaseRow({ image, alt, title, description, reverse }: { image: strin
   );
 }
 
-function Step({ n, title, description }: { n: number; title: string; description: string }) {
-  return (
-    <div className="text-center flex flex-col items-center gap-4">
-      <div className="w-12 h-12 rounded-full bg-secondary text-secondary-foreground font-bold text-lg flex items-center justify-center font-display">
-        {n}
+const Step = forwardRef<HTMLDivElement, { n: number; title: string; description: string }>(
+  ({ n, title, description }, ref) => {
+    return (
+      <div ref={ref} className="text-center flex flex-col items-center gap-4">
+        <div className="w-12 h-12 rounded-full bg-secondary text-secondary-foreground font-bold text-lg flex items-center justify-center font-display">
+          {n}
+        </div>
+        <h3 className="font-display font-bold text-foreground text-lg">{title}</h3>
+        <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
       </div>
-      <h3 className="font-display font-bold text-foreground text-lg">{title}</h3>
-      <p className="text-muted-foreground text-sm leading-relaxed">{description}</p>
-    </div>
-  );
-}
+    );
+  }
+);
+
+Step.displayName = "Step";
