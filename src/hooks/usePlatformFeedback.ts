@@ -81,12 +81,26 @@ export function useUpdateFeedbackStatus() {
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: FeedbackStatus }) => {
+      // Get current feedback to check for discord_thread_id
+      const { data: feedback } = await supabase
+        .from("platform_feedback")
+        .select("discord_thread_id")
+        .eq("id", id)
+        .maybeSingle();
+
       const { error } = await supabase
         .from("platform_feedback")
         .update({ status, updated_at: new Date().toISOString() })
         .eq("id", id);
 
       if (error) throw error;
+
+      // Lock the Discord thread when resolved
+      if (status === "resolved" && feedback?.discord_thread_id) {
+        supabase.functions.invoke("discord-lock-thread", {
+          body: { thread_id: feedback.discord_thread_id },
+        }).catch((e) => console.warn("Failed to lock Discord thread:", e));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-feedback"] });
@@ -201,18 +215,20 @@ export function useSubmitFeedback() {
       }
 
       // Save to database
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from("platform_feedback")
         .insert({
           type: feedback.type,
           sender_name: feedback.sender_name,
           sender_email: feedback.sender_email,
           message: feedback.message,
-        });
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
 
-      // Fire-and-forget: notify admins via Discord + email
+      // Fire-and-forget: notify admins via Discord + email (pass feedback_id so thread ID is saved back)
       supabase.functions.invoke("notify-feedback", {
         body: {
           type: feedback.type,
@@ -220,6 +236,7 @@ export function useSubmitFeedback() {
           sender_email: feedback.sender_email,
           message: feedback.message,
           screenshot_urls: screenshotUrls,
+          feedback_id: inserted?.id,
         },
       }).catch((e) => console.warn("Feedback notification failed:", e));
     },

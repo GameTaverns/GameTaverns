@@ -50,6 +50,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "discord-create-event":   () => import("./discord-create-event/index.ts"),
   "discord-forum-post":     () => import("./discord-forum-post/index.ts"),
   "discord-delete-thread":  () => import("./discord-delete-thread/index.ts"),
+  "discord-lock-thread":    () => import("./discord-lock-thread/index.ts"),
   "discord-oauth-callback": () => import("./discord-oauth-callback/index.ts"),
   "discord-send-dm":        () => import("./discord-send-dm/index.ts"),
   "system-health":          () => import("./system-health/index.ts"),

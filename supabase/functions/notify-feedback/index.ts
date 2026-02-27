@@ -1,3 +1,5 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -32,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
 
-    const { type, sender_name, sender_email, message, screenshot_urls } = await req.json();
+    const { type, sender_name, sender_email, message, screenshot_urls, feedback_id } = await req.json();
 
     if (!type || !sender_name || !message) {
       return new Response(
@@ -42,7 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const urls: string[] = Array.isArray(screenshot_urls) ? screenshot_urls : [];
-    console.log("Received feedback:", { type, sender_name, screenshot_count: urls.length, urls });
+    console.log("Received feedback:", { type, sender_name, screenshot_count: urls.length, urls, feedback_id });
     const results: Record<string, unknown> = {};
 
     // 1. Post to Discord forum channel
@@ -90,6 +92,24 @@ const handler = async (req: Request): Promise<Response> => {
         if (response.ok) {
           const thread = await response.json();
           results.discord = { sent: true, thread_id: thread.id };
+
+          // Save the Discord thread ID back to the feedback record
+          if (feedback_id && thread.id) {
+            try {
+              const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+              const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+              const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+              await supabase
+                .from("platform_feedback")
+                .update({ discord_thread_id: thread.id })
+                .eq("id", feedback_id);
+
+              console.log("Saved discord_thread_id", thread.id, "to feedback", feedback_id);
+            } catch (e) {
+              console.error("Failed to save discord_thread_id:", (e as Error).message);
+            }
+          }
         } else {
           const errorText = await response.text();
           console.error("Discord forum post failed:", response.status, errorText);

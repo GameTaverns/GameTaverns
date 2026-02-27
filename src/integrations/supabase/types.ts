@@ -3396,6 +3396,7 @@ export type Database = {
           assigned_to: string | null
           assigned_to_name: string | null
           created_at: string
+          discord_thread_id: string | null
           id: string
           is_read: boolean
           message: string
@@ -3409,6 +3410,7 @@ export type Database = {
           assigned_to?: string | null
           assigned_to_name?: string | null
           created_at?: string
+          discord_thread_id?: string | null
           id?: string
           is_read?: boolean
           message: string
@@ -3422,6 +3424,7 @@ export type Database = {
           assigned_to?: string | null
           assigned_to_name?: string | null
           created_at?: string
+          discord_thread_id?: string | null
           id?: string
           is_read?: boolean
           message?: string

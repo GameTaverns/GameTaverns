@@ -1,0 +1,1 @@
+ALTER TABLE public.platform_feedback ADD COLUMN IF NOT EXISTS discord_thread_id text;

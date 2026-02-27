@@ -128,7 +128,7 @@ EXTERNAL_HANDLERS=(
   refresh-images refresh-ratings signup
   resolve-username sync-achievements
   discord-notify discord-create-event discord-forum-post
-  discord-delete-thread discord-oauth-callback discord-send-dm
+  discord-delete-thread discord-lock-thread discord-oauth-callback discord-send-dm
   system-health
   catalog-backfill
   catalog-scraper
