@@ -3400,6 +3400,7 @@ export type Database = {
           id: string
           is_read: boolean
           message: string
+          screenshot_urls: string[] | null
           sender_email: string | null
           sender_name: string
           status: string
@@ -3414,6 +3415,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message: string
+          screenshot_urls?: string[] | null
           sender_email?: string | null
           sender_name: string
           status?: string
@@ -3428,6 +3430,7 @@ export type Database = {
           id?: string
           is_read?: boolean
           message?: string
+          screenshot_urls?: string[] | null
           sender_email?: string | null
           sender_name?: string
           status?: string

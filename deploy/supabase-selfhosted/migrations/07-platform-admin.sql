@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.platform_feedback (
     sender_name TEXT NOT NULL,
     sender_email TEXT NOT NULL,
     message TEXT NOT NULL,
+    screenshot_urls TEXT[] DEFAULT '{}',
     is_read BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

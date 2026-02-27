@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Mail, Trash2, Check, Bug, Lightbulb, MessageCircle, Eye, Send, StickyNote, UserCog, ArrowRight } from "lucide-react";
+import { Mail, Trash2, Check, Bug, Lightbulb, MessageCircle, Eye, Send, StickyNote, UserCog, ArrowRight, Image } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -228,6 +228,33 @@ function FeedbackDetailDialog({
             </p>
           </div>
 
+          {/* Screenshots */}
+          {feedback.screenshot_urls && feedback.screenshot_urls.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium flex items-center gap-1.5">
+                <Image className="h-4 w-4" />
+                Screenshots ({feedback.screenshot_urls.length})
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {feedback.screenshot_urls.map((url, i) => (
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block relative group"
+                  >
+                    <img
+                      src={url}
+                      alt={`Screenshot ${i + 1}`}
+                      className="h-24 w-24 object-cover rounded-md border border-border hover:border-primary transition-colors"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Status + Assignment controls */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
@@ -429,6 +456,12 @@ function FeedbackCard({ feedback, isOpen, onOpen, onClose }: { feedback: Platfor
           <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
             {feedback.message}
           </p>
+          {feedback.screenshot_urls && feedback.screenshot_urls.length > 0 && (
+            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+              <Image className="h-3 w-3" />
+              {feedback.screenshot_urls.length} screenshot{feedback.screenshot_urls.length > 1 ? "s" : ""} attached
+            </p>
+          )}
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={handleView}>
               <Eye className="h-3 w-3 mr-1" />

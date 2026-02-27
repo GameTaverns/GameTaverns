@@ -20,6 +20,7 @@ export interface PlatformFeedback {
   sender_name: string;
   sender_email: string;
   message: string;
+  screenshot_urls: string[];
   is_read: boolean;
   status: FeedbackStatus;
   assigned_to: string | null;
@@ -250,6 +251,7 @@ export function useSubmitFeedback() {
           sender_name: feedback.sender_name,
           sender_email: feedback.sender_email,
           message: feedback.message,
+          screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : [],
         })
         .select("id")
         .single();
