@@ -381,7 +381,6 @@ function LibraryRoutes() {
       <Route path="/club/:slug" element={<ClubPage />} />
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
       <Route path="/picker" element={<SmartPicker />} />
-      <Route path="/picker" element={<SmartPicker />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -399,9 +398,13 @@ function LibraryRoutes() {
 //   - Any web/Lovable URL → hostname is never "localhost"
 function isRunningNative(): boolean {
   if (Capacitor.isNativePlatform()) return true;
+  // Only treat localhost as native if NOT running on a standard dev port (Vite/webpack).
+  // This prevents local web development from incorrectly routing through HashRouter.
   if (typeof window !== 'undefined') {
     const h = window.location.hostname.toLowerCase();
-    if (h === 'localhost' || h === '127.0.0.1') return true;
+    const p = window.location.port;
+    const isDevServer = ['5173', '5174', '3000', '3001', '4173', '8080'].includes(p);
+    if ((h === 'localhost' || h === '127.0.0.1') && !isDevServer) return true;
   }
   return false;
 }

@@ -379,7 +379,7 @@ export default function SmartPicker() {
                       onClick={() => setPickedGame(game)}
                     >
                       {game.image_url ? (
-                        <img src={game.image_url} alt="" className="w-8 h-8 rounded object-cover" />
+                        <img src={game.image_url} alt={game.title || "Game cover"} className="w-8 h-8 rounded object-cover" />
                       ) : (
                         <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
                           <Dices className="h-4 w-4 text-muted-foreground" />

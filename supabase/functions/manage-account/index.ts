@@ -231,6 +231,35 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
 
+        // Clean up all user-associated data across the platform
+        await adminClient.from('direct_messages').delete().or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
+        await adminClient.from('activity_reactions').delete().eq('user_id', userId);
+        await adminClient.from('activity_events').delete().eq('user_id', userId);
+        await adminClient.from('game_session_players').delete().eq('linked_user_id', userId);
+        await adminClient.from('player_elo_ratings').delete().eq('user_id', userId);
+        await adminClient.from('notification_log').delete().eq('user_id', userId);
+        await adminClient.from('user_achievements').delete().eq('user_id', userId);
+        await adminClient.from('game_wishlist').delete().eq('user_id', userId);
+        await adminClient.from('curated_list_votes').delete().eq('user_id', userId);
+        await adminClient.from('curated_list_items').delete().in('list_id', 
+          (await adminClient.from('curated_lists').select('id').eq('user_id', userId)).data?.map((l: any) => l.id) || []
+        );
+        await adminClient.from('curated_lists').delete().eq('user_id', userId);
+        await adminClient.from('forum_replies').delete().eq('author_id', userId);
+        await adminClient.from('forum_threads').delete().eq('author_id', userId);
+        await adminClient.from('catalog_video_votes').delete().eq('user_id', userId);
+        await adminClient.from('catalog_ratings').delete().eq('guest_identifier', userId);
+        await adminClient.from('library_followers').delete().or(`follower_user_id.eq.${userId},library_id.in.(${(userLibraries || []).map((l: any) => l.id).join(',')})`);
+        await adminClient.from('user_follows').delete().or(`follower_id.eq.${userId},following_id.eq.${userId}`);
+        await adminClient.from('referral_badges').delete().eq('user_id', userId);
+        await adminClient.from('referrals').delete().or(`referrer_user_id.eq.${userId},referred_user_id.eq.${userId}`);
+        await adminClient.from('user_totp_settings').delete().eq('user_id', userId);
+        await adminClient.from('push_subscriptions').delete().eq('user_id', userId);
+        await adminClient.from('password_reset_tokens').delete().eq('user_id', userId);
+        await adminClient.from('email_confirmation_tokens').delete().eq('user_id', userId);
+        await adminClient.from('login_attempts').delete().eq('email', user.email?.toLowerCase() || '');
+        await adminClient.from('audit_log').delete().eq('user_id', userId);
+        await adminClient.from('library_members').delete().eq('user_id', userId);
         await adminClient.from('user_roles').delete().eq('user_id', userId);
         await adminClient.from('user_profiles').delete().eq('user_id', userId);
 
@@ -255,15 +284,19 @@ const handler = async (req: Request): Promise<Response> => {
               'libraries (and all games, settings, members, followers, events, polls, import jobs)',
               'library_logos (storage)',
               'direct_messages',
-              'forum_threads',
-              'forum_replies',
-              'activity_events',
+              'forum_threads & replies',
+              'activity_events & reactions',
               'notification_log',
-              'curated_lists',
-              'game_sessions',
-              'player_elo_ratings',
-              'referrals',
-              'referral_badges',
+              'curated_lists & votes',
+              'game_sessions & player_elo_ratings',
+              'user_achievements',
+              'game_wishlist',
+              'catalog_ratings & video_votes',
+              'user_follows & library_followers',
+              'referrals & referral_badges',
+              'TOTP settings & push_subscriptions',
+              'password_reset_tokens & email_confirmation_tokens',
+              'login_attempts & audit_log',
               'auth account',
             ],
             note: 'All data has been permanently deleted. Database backups are purged within 30 days.',

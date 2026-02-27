@@ -11,9 +11,9 @@ const corsHeaders = {
 };
 
 // Secret token baked into the Android APK — allows native apps to bypass Turnstile.
-// Must match VITE_NATIVE_APP_SECRET in .env.android. Not stored in cloud secrets
-// because it's embedded in the APK binary anyway (same security model as the anon key).
-const NATIVE_APP_SECRET = "gt-android-2026-a7f3k9m2p4x8q1n5";
+// Must match VITE_NATIVE_APP_SECRET in .env.android. Loaded from environment variable
+// to avoid hardcoding secrets in source control.
+const NATIVE_APP_SECRET = Deno.env.get("NATIVE_APP_SECRET") || "";
 
 interface SignupRequest {
   email: string;

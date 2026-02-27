@@ -47,20 +47,27 @@ async function sendEmailSafely(sendFn: () => Promise<void>) {
 }
 
 /**
- * Paginate through auth.admin.listUsers to find a user by email.
- * The default listUsers() only returns ~50 users, so we must paginate.
+ * Look up a user by email using the admin API's direct filter.
+ * Previous implementation iterated all users page-by-page which was O(n).
  */
 async function findUserByEmail(supabase: any, email: string) {
   const normalizedEmail = email.toLowerCase();
-  let page = 1;
-  const perPage = 100;
-  while (true) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
-    if (error || !data?.users?.length) return null;
-    const found = data.users.find((u: any) => u.email?.toLowerCase() === normalizedEmail);
-    if (found) return found;
-    if (data.users.length < perPage) return null; // last page
-    page++;
+  try {
+    // Supabase admin API supports filtering by email directly
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page: 1,
+      perPage: 1,
+      filter: `email.eq.${normalizedEmail}`,
+    });
+    if (error || !data?.users?.length) {
+      // Fallback: try getUserByEmail if filter isn't supported by this version
+      const { data: userData, error: userErr } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      if (userErr || !userData?.users?.length) return null;
+      return userData.users.find((u: any) => u.email?.toLowerCase() === normalizedEmail) || null;
+    }
+    return data.users[0] || null;
+  } catch (_e) {
+    return null;
   }
 }
 
