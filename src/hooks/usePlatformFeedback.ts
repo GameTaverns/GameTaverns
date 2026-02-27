@@ -3,12 +3,15 @@ import { supabase } from "@/integrations/backend/client";
 
 async function invokeBackendFunction(functionName: string, body: Record<string, unknown>) {
   try {
-    const { error } = await supabase.functions.invoke(functionName, { body });
+    const { data, error } = await supabase.functions.invoke(functionName, { body });
     if (error) {
       console.warn(`[Feedback] ${functionName} invoke failed:`, error.message || error);
+      return { ok: false, data: null, error: error.message || String(error) };
     }
+    return { ok: true, data, error: null };
   } catch (error) {
     console.warn(`[Feedback] ${functionName} invoke threw:`, error);
+    return { ok: false, data: null, error: error instanceof Error ? error.message : String(error) };
   }
 }
 export type FeedbackType = "feedback" | "bug" | "feature_request";
@@ -37,6 +40,36 @@ export interface FeedbackNote {
   content: string;
   note_type: "internal" | "reply";
   created_at: string;
+}
+
+async function ensureDiscordThreadId(feedbackId: string): Promise<string | null> {
+  const { data: feedback, error } = await supabase
+    .from("platform_feedback")
+    .select("id,type,sender_name,sender_email,message,screenshot_urls,discord_thread_id")
+    .eq("id", feedbackId)
+    .maybeSingle();
+
+  if (error || !feedback) return null;
+  if (feedback.discord_thread_id) return feedback.discord_thread_id;
+
+  const notifyResult = await invokeBackendFunction("notify-feedback", {
+    type: feedback.type,
+    sender_name: feedback.sender_name,
+    sender_email: feedback.sender_email,
+    message: feedback.message,
+    screenshot_urls: Array.isArray(feedback.screenshot_urls) ? feedback.screenshot_urls : [],
+    feedback_id: feedback.id,
+  });
+
+  if (!notifyResult.ok) return null;
+
+  const { data: refreshed } = await supabase
+    .from("platform_feedback")
+    .select("discord_thread_id")
+    .eq("id", feedbackId)
+    .maybeSingle();
+
+  return refreshed?.discord_thread_id ?? null;
 }
 
 export function usePlatformFeedback() {
@@ -92,13 +125,6 @@ export function useUpdateFeedbackStatus() {
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: FeedbackStatus }) => {
-      // Get current feedback to check for discord_thread_id
-      const { data: feedback } = await supabase
-        .from("platform_feedback")
-        .select("discord_thread_id")
-        .eq("id", id)
-        .maybeSingle();
-
       const { error } = await supabase
         .from("platform_feedback")
         .update({ status, updated_at: new Date().toISOString() })
@@ -106,11 +132,16 @@ export function useUpdateFeedbackStatus() {
 
       if (error) throw error;
 
-      // Lock the Discord thread when resolved
-      if (status === "resolved" && feedback?.discord_thread_id) {
-        void invokeBackendFunction("discord-lock-thread", {
-          thread_id: feedback.discord_thread_id,
-        });
+      // Lock the Discord thread when resolved (auto-create thread if missing)
+      if (status === "resolved") {
+        const threadId = await ensureDiscordThreadId(id);
+        if (threadId) {
+          await invokeBackendFunction("discord-lock-thread", {
+            thread_id: threadId,
+          });
+        } else {
+          console.warn("[Feedback] Could not resolve discord_thread_id for", id);
+        }
       }
     },
     onSuccess: () => {
@@ -187,21 +218,19 @@ export function useAddFeedbackNote() {
 
       if (error) throw error;
 
-      // Post note to Discord thread if one exists
-      const { data: feedback } = await supabase
-        .from("platform_feedback")
-        .select("discord_thread_id")
-        .eq("id", input.feedback_id)
-        .maybeSingle();
+      // Post note to Discord thread (auto-create thread if one doesn't exist yet)
+      const threadId = await ensureDiscordThreadId(input.feedback_id);
 
-      if (feedback?.discord_thread_id) {
-        void invokeBackendFunction("discord-lock-thread", {
+      if (threadId) {
+        await invokeBackendFunction("discord-lock-thread", {
           action: "post_note",
-          thread_id: feedback.discord_thread_id,
+          thread_id: threadId,
           author_name: input.author_name,
           content: input.content,
           note_type: input.note_type,
         });
+      } else {
+        console.warn("[Feedback] Could not resolve discord_thread_id for note on", input.feedback_id);
       }
 
       return data;
