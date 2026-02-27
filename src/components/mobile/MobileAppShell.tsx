@@ -47,7 +47,9 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [showOfflineNotice, setShowOfflineNotice] = useState(false);
-  const [promptedForPush, setPromptedForPush] = useState(false);
+  const [promptedForPush, setPromptedForPush] = useState(() => {
+    try { return localStorage.getItem('push_prompted') === '1'; } catch { return false; }
+  });
 
   // Global safety net: prevent unhandled promise rejections from crashing the app
   useEffect(() => {
@@ -90,6 +92,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
       toast.error("Could not enable notifications right now");
     } finally {
       setPromptedForPush(true);
+      try { localStorage.setItem('push_prompted', '1'); } catch {}
     }
   }, [requestPermission]);
 
@@ -194,7 +197,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
               </p>
               <div className="flex gap-2 mt-3">
                 <Button size="sm" onClick={handleEnablePush}>Enable</Button>
-                <Button size="sm" variant="ghost" onClick={() => setPromptedForPush(true)}>
+                <Button size="sm" variant="ghost" onClick={() => { setPromptedForPush(true); try { localStorage.setItem('push_prompted', '1'); } catch {} }}>
                   <BellOff className="h-4 w-4 mr-1" />
                   Not now
                 </Button>
