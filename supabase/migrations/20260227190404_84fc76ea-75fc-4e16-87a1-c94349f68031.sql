@@ -1,0 +1,1 @@
+ALTER TABLE public.platform_feedback ADD COLUMN IF NOT EXISTS screenshot_urls TEXT[] DEFAULT '{}';
