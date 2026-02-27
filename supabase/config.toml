@@ -173,3 +173,6 @@ verify_jwt = false
 
 [functions.reply-feedback]
 verify_jwt = false
+
+[functions.discord-lock-thread]
+verify_jwt = false
