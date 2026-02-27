@@ -114,35 +114,44 @@ export function usePlayStats(
       );
       const daysWithPlays = playDates.size;
 
-      // Get unique players from session players
+      // Get unique players from session players (batched to avoid URL overflow)
       const sessionIds = sessionList.map((s) => s.id);
       let uniquePlayers = 0;
       if (sessionIds.length > 0) {
-        const { data: players, error: playersError } = await supabase
-          .from("game_session_players")
-          .select("player_name")
-          .in("session_id", sessionIds);
+        const BATCH = 200;
+        const allPlayerNames: string[] = [];
+        for (let i = 0; i < sessionIds.length; i += BATCH) {
+          const batch = sessionIds.slice(i, i + BATCH);
+          const { data: players, error: playersError } = await supabase
+            .from("game_session_players")
+            .select("player_name")
+            .in("session_id", batch);
+          if (playersError) throw playersError;
+          if (players) allPlayerNames.push(...players.map((p) => p.player_name.toLowerCase().trim()));
+        }
 
-        if (playersError) throw playersError;
-
-        const uniquePlayerNames = new Set(
-          (players || []).map((p) => p.player_name.toLowerCase().trim())
-        );
+        const uniquePlayerNames = new Set(allPlayerNames);
         uniquePlayers = uniquePlayerNames.size;
       }
 
       // New games this month (games with first play this month)
-      // Get all sessions for these games to find first play dates
-      const { data: allSessions, error: allSessionsError } = await supabase
-        .from("game_sessions")
-        .select("game_id, played_at")
-        .in("game_id", Array.from(uniqueGameIds))
-        .order("played_at", { ascending: true });
-
-      if (allSessionsError) throw allSessionsError;
+      // Get all sessions for these games to find first play dates (batched)
+      const uniqueGameArray = Array.from(uniqueGameIds);
+      const BATCH_IDS = 50;
+      const allFirstPlaySessions: any[] = [];
+      for (let i = 0; i < uniqueGameArray.length; i += BATCH_IDS) {
+        const batch = uniqueGameArray.slice(i, i + BATCH_IDS);
+        const { data, error: batchErr } = await supabase
+          .from("game_sessions")
+          .select("game_id, played_at")
+          .in("game_id", batch)
+          .order("played_at", { ascending: true });
+        if (batchErr) throw batchErr;
+        if (data) allFirstPlaySessions.push(...data);
+      }
 
       const firstPlayDates = new Map<string, Date>();
-      (allSessions || []).forEach((s) => {
+      allFirstPlaySessions.forEach((s) => {
         if (!firstPlayDates.has(s.game_id)) {
           firstPlayDates.set(s.game_id, parseISO(s.played_at));
         }
