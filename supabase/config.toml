@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.cron-status]
 verify_jwt = false
+
+[functions.reply-feedback]
+verify_jwt = false
