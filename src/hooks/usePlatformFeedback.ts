@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 
 export type FeedbackType = "feedback" | "bug" | "feature_request";
+export type FeedbackStatus = "open" | "in_progress" | "resolved" | "wont_fix";
 
 export interface PlatformFeedback {
   id: string;
@@ -10,6 +11,20 @@ export interface PlatformFeedback {
   sender_email: string;
   message: string;
   is_read: boolean;
+  status: FeedbackStatus;
+  assigned_to: string | null;
+  assigned_to_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeedbackNote {
+  id: string;
+  feedback_id: string;
+  author_id: string;
+  author_name: string | null;
+  content: string;
+  note_type: "internal" | "reply";
   created_at: string;
 }
 
@@ -61,6 +76,42 @@ export function useMarkFeedbackRead() {
   });
 }
 
+export function useUpdateFeedbackStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: FeedbackStatus }) => {
+      const { error } = await supabase
+        .from("platform_feedback")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-feedback"] });
+    },
+  });
+}
+
+export function useAssignFeedback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, assignedTo, assignedToName }: { id: string; assignedTo: string | null; assignedToName: string | null }) => {
+      const { error } = await supabase
+        .from("platform_feedback")
+        .update({ assigned_to: assignedTo, assigned_to_name: assignedToName, updated_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-feedback"] });
+    },
+  });
+}
+
 export function useDeleteFeedback() {
   const queryClient = useQueryClient();
 
@@ -75,6 +126,45 @@ export function useDeleteFeedback() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-feedback"] });
+    },
+  });
+}
+
+// Feedback Notes
+export function useFeedbackNotes(feedbackId: string | undefined) {
+  return useQuery({
+    queryKey: ["feedback-notes", feedbackId],
+    queryFn: async (): Promise<FeedbackNote[]> => {
+      if (!feedbackId) return [];
+      const { data, error } = await supabase
+        .from("feedback_notes")
+        .select("*")
+        .eq("feedback_id", feedbackId)
+        .order("created_at", { ascending: true });
+
+      if (error) throw error;
+      return (data || []) as FeedbackNote[];
+    },
+    enabled: !!feedbackId,
+  });
+}
+
+export function useAddFeedbackNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { feedback_id: string; author_id: string; author_name: string; content: string; note_type: "internal" | "reply" }) => {
+      const { data, error } = await supabase
+        .from("feedback_notes")
+        .insert(input)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["feedback-notes", data.feedback_id] });
     },
   });
 }
@@ -109,7 +199,6 @@ export function useSubmitFeedback() {
           }
         }
       }
-      console.log("Feedback screenshot URLs:", screenshotUrls);
 
       // Save to database
       const { error } = await supabase
