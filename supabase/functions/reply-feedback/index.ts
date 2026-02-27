@@ -34,15 +34,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
 
+    const port = Number(SMTP_PORT);
     const client = new SMTPClient({
       connection: {
         hostname: SMTP_HOST,
-        port: Number(SMTP_PORT),
-        tls: Number(SMTP_PORT) === 465,
+        port,
+        tls: port === 465,
         auth: {
           username: SMTP_USER,
           password: SMTP_PASS,
         },
+        ...(port === 25 ? { noStartTLS: true, allowUnsecure: true } : {}),
       },
     });
 
