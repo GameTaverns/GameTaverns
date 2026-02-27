@@ -11,6 +11,7 @@ import {
 import type { PlayStats, StatsPeriod } from "@/hooks/playStats/types";
 import { calculateHIndex } from "@/hooks/playStats/calculateHIndex";
 import { fetchLibrarySessionsForPeriod } from "@/hooks/playStats/fetchLibrarySessions";
+import { fetchSessionPlayersBySessionIds } from "@/hooks/playStats/fetchSessionPlayers";
 
 export type { PlayStats, StatsPeriod };
 
@@ -118,19 +119,15 @@ export function usePlayStats(
       const sessionIds = sessionList.map((s) => s.id);
       let uniquePlayers = 0;
       if (sessionIds.length > 0) {
-        const BATCH = 200;
-        const allPlayerNames: string[] = [];
-        for (let i = 0; i < sessionIds.length; i += BATCH) {
-          const batch = sessionIds.slice(i, i + BATCH);
-          const { data: players, error: playersError } = await supabase
-            .from("game_session_players")
-            .select("player_name")
-            .in("session_id", batch);
-          if (playersError) throw playersError;
-          if (players) allPlayerNames.push(...players.map((p) => p.player_name.toLowerCase().trim()));
-        }
+        const players = await fetchSessionPlayersBySessionIds<{ player_name: string }>({
+          sessionIds,
+          select: "player_name",
+          batchSize: 50,
+        });
 
-        const uniquePlayerNames = new Set(allPlayerNames);
+        const uniquePlayerNames = new Set(
+          players.map((p) => p.player_name.toLowerCase().trim())
+        );
         uniquePlayers = uniquePlayerNames.size;
       }
 

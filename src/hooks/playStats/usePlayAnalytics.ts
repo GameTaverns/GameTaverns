@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/backend/client";
+
 import {
   startOfMonth, endOfMonth, startOfYear, endOfYear,
   format, parseISO, getDay, eachDayOfInterval,
@@ -7,6 +7,7 @@ import {
 } from "date-fns";
 import type { StatsPeriod } from "./types";
 import { fetchLibrarySessionsForPeriod } from "./fetchLibrarySessions";
+import { fetchSessionPlayersBySessionIds } from "./fetchSessionPlayers";
 
 export interface DayOfWeekData {
   day: string;
@@ -173,17 +174,15 @@ export function usePlayAnalytics(
       let topPlayers: PlayerWinData[] = [];
 
       if (sessionIds.length > 0) {
-        const BATCH = 200;
-        const allPlayers: any[] = [];
-        for (let i = 0; i < sessionIds.length; i += BATCH) {
-          const batch = sessionIds.slice(i, i + BATCH);
-          const { data, error } = await supabase
-            .from("game_session_players")
-            .select("session_id, player_name, is_winner")
-            .in("session_id", batch);
-          if (error) throw error;
-          if (data) allPlayers.push(...data);
-        }
+        const allPlayers = await fetchSessionPlayersBySessionIds<{
+          session_id: string;
+          player_name: string;
+          is_winner: boolean | null;
+        }>({
+          sessionIds,
+          select: "session_id, player_name, is_winner",
+          batchSize: 50,
+        });
 
         // Player count distribution
         const sessionPlayerCounts = new Map<string, number>();
