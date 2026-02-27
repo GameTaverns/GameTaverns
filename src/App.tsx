@@ -381,6 +381,9 @@ function LibraryRoutes() {
       <Route path="/club/:slug" element={<ClubPage />} />
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
       <Route path="/picker" element={<SmartPicker />} />
+      <Route path="/notifications" element={<Dashboard />} />
+      <Route path="/grow" element={<Dashboard />} />
+      <Route path="/share-card" element={<ShareCard />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>

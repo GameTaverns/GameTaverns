@@ -233,7 +233,7 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
 
         <ScrollArea className="h-[300px]">
           {isLoading ? (
-            <div className="p-4 text-center text-muted-foreground text-sm">
+            <div className="p-4 text-center text-muted-foreground text-sm" role="status" aria-live="polite">
               Loading...
             </div>
           ) : notifications.length === 0 && unreadMessageCount === 0 ? (
