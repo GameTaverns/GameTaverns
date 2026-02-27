@@ -47,7 +47,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
 
 // Subtabs that staff can access (non-admin)
-const STAFF_SUBTABS = new Set(["analytics", "users", "libraries", "feedback", "clubs", "health"]);
+const STAFF_SUBTABS = new Set(["analytics", "users", "libraries", "feedback", "clubs", "health", "import-errors"]);
 
 interface AdminSubtabPanelProps {
   dashPrefs: {
