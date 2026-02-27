@@ -10,12 +10,40 @@ CREATE TABLE IF NOT EXISTS public.platform_feedback (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type feedback_type NOT NULL,
     sender_name TEXT NOT NULL,
-    sender_email TEXT NOT NULL,
+    sender_email TEXT,
     message TEXT NOT NULL,
-    screenshot_urls TEXT[] DEFAULT '{}',
+    screenshot_urls TEXT[] NOT NULL DEFAULT '{}',
     is_read BOOLEAN NOT NULL DEFAULT false,
+    status TEXT NOT NULL DEFAULT 'open',
+    assigned_to UUID,
+    assigned_to_name TEXT,
+    discord_thread_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Backward-compatible parity upgrades for existing self-hosted installs
+ALTER TABLE public.platform_feedback ADD COLUMN IF NOT EXISTS screenshot_urls TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE public.platform_feedback ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open';
+ALTER TABLE public.platform_feedback ADD COLUMN IF NOT EXISTS assigned_to UUID;
+ALTER TABLE public.platform_feedback ADD COLUMN IF NOT EXISTS assigned_to_name TEXT;
+ALTER TABLE public.platform_feedback ADD COLUMN IF NOT EXISTS discord_thread_id TEXT;
+ALTER TABLE public.platform_feedback ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- ===========================================
+-- Feedback Notes (staff activity/replies)
+-- ===========================================
+CREATE TABLE IF NOT EXISTS public.feedback_notes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    feedback_id UUID NOT NULL REFERENCES public.platform_feedback(id) ON DELETE CASCADE,
+    author_id UUID NOT NULL,
+    author_name TEXT,
+    content TEXT NOT NULL,
+    note_type TEXT NOT NULL DEFAULT 'internal',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS idx_feedback_notes_feedback_id ON public.feedback_notes(feedback_id);
 
 -- ===========================================
 -- Site Settings (global platform settings)

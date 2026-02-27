@@ -259,16 +259,20 @@ export function useSubmitFeedback() {
           const { error: uploadError } = await supabase.storage
             .from("feedback-attachments")
             .upload(path, file, { contentType: file.type, upsert: false });
+
           if (uploadError) {
-            console.error("Screenshot upload failed:", uploadError.message);
-          } else {
-            const { data: urlData } = supabase.storage
-              .from("feedback-attachments")
-              .getPublicUrl(path);
-            if (urlData?.publicUrl) {
-              screenshotUrls.push(urlData.publicUrl);
-            }
+            throw new Error(`Failed to upload screenshot "${file.name}": ${uploadError.message}`);
           }
+
+          const { data: urlData } = supabase.storage
+            .from("feedback-attachments")
+            .getPublicUrl(path);
+
+          if (!urlData?.publicUrl) {
+            throw new Error(`Failed to resolve public URL for screenshot "${file.name}"`);
+          }
+
+          screenshotUrls.push(urlData.publicUrl);
         }
       }
 
