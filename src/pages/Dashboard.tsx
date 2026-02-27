@@ -154,7 +154,7 @@ const DASHBOARD_CREATE_EVENT_DIALOG_KEY = "dashboard_create_event_dialog_open";
 
 export default function Dashboard() {
   const { t } = useTranslation();
-  const { user, signOut, isAuthenticated, isAdmin, loading } = useAuth();
+  const { user, signOut, isAuthenticated, isAdmin, isStaff, loading } = useAuth();
   const { data: defaultLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
   const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();
@@ -174,7 +174,7 @@ export default function Dashboard() {
   const { data: myMemberships = [] } = useMyMemberships();
   const { data: myClubs = [] } = useMyClubs();
   const pendingLoanRequests = myLentLoans.filter((l) => l.status === "requested").length;
-  const dashPrefs = useUserDashboardPrefs(isAdmin);
+  const dashPrefs = useUserDashboardPrefs(isAdmin, isStaff);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showCreateEvent, setShowCreateEventRaw] = useState(() => {
@@ -1025,10 +1025,10 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* ==================== ADMIN TAB (admin only) ==================== */}
-          {isAdmin && (
+          {/* ==================== ADMIN TAB (admin & staff) ==================== */}
+          {(isAdmin || isStaff) && (
             <TabsContent value="admin" forceMount className={activeTab !== "admin" ? "hidden" : ""}>
-              <AdminSubtabPanel dashPrefs={dashPrefs} unreadFeedbackCount={unreadFeedbackCount} pendingClubs={pendingClubs} />
+              <AdminSubtabPanel dashPrefs={dashPrefs} unreadFeedbackCount={unreadFeedbackCount} pendingClubs={pendingClubs} isAdmin={isAdmin} />
             </TabsContent>
           )}
         </Tabs>

@@ -46,6 +46,9 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
 
+// Subtabs that staff can access (non-admin)
+const STAFF_SUBTABS = new Set(["analytics", "users", "libraries", "feedback", "clubs", "health"]);
+
 interface AdminSubtabPanelProps {
   dashPrefs: {
     getVisibleWidgets: (tabId: string) => string[];
@@ -56,13 +59,17 @@ interface AdminSubtabPanelProps {
   };
   unreadFeedbackCount?: number | null;
   pendingClubs?: any[] | null;
+  isAdmin?: boolean;
 }
 
-export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs }: AdminSubtabPanelProps) {
+export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs, isAdmin = false }: AdminSubtabPanelProps) {
   const [editing, setEditing] = useState(false);
-  const visibleIds = dashPrefs.getVisibleWidgets("admin");
+  const allVisibleIds = dashPrefs.getVisibleWidgets("admin");
   const hiddenWidgets = dashPrefs.getHiddenWidgets("admin");
   const registry = TAB_WIDGET_REGISTRY["admin"] ?? [];
+
+  // Staff can only see allowed subtabs
+  const visibleIds = isAdmin ? allVisibleIds : allVisibleIds.filter(id => STAFF_SUBTABS.has(id));
 
   const [activeSubtab, setActiveSubtab] = useState(visibleIds[0] || "analytics");
 
