@@ -478,7 +478,10 @@ export function PlayHistoryImportDialog({
                   </div>
                   <Progress className="h-2" />
                   <p className="text-xs text-muted-foreground">
-                    This may take a while for large play histories...
+                    This may take a while for large play histories.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    💡 You can safely close this dialog — your import will continue in the background and your plays will appear as they're processed.
                   </p>
                 </div>
               )}
