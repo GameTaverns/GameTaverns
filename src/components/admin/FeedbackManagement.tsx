@@ -96,16 +96,27 @@ function FeedbackDetailDialog({
       });
 
       // If it's a reply, also send email via edge function
-      if (noteType === "reply") {
-        supabase.functions.invoke("reply-feedback", {
-          body: {
-            to_email: feedback.sender_email,
-            to_name: feedback.sender_name,
-            subject: `Re: Your ${feedback.type === "bug" ? "bug report" : feedback.type === "feature_request" ? "feature request" : "feedback"}`,
-            message: noteContent.trim(),
-            from_name: displayName,
-          },
-        }).catch((e) => console.warn("Reply email failed:", e));
+      if (noteType === "reply" && feedback.sender_email) {
+        try {
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke("reply-feedback", {
+            body: {
+              to_email: feedback.sender_email,
+              to_name: feedback.sender_name,
+              subject: `Re: Your ${feedback.type === "bug" ? "bug report" : feedback.type === "feature_request" ? "feature request" : "feedback"}`,
+              message: noteContent.trim(),
+              from_name: displayName,
+            },
+          });
+          if (emailError) {
+            console.error("Reply email error:", emailError);
+            toast({ title: "Note saved, but email failed", description: String(emailError.message || emailError), variant: "destructive" });
+          } else {
+            console.log("Reply email sent:", emailResult);
+          }
+        } catch (emailErr: any) {
+          console.error("Reply email exception:", emailErr);
+          toast({ title: "Note saved, but email failed", description: emailErr.message, variant: "destructive" });
+        }
       }
 
       setNoteContent("");
