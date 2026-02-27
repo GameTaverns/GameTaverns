@@ -1098,6 +1098,44 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_notes: {
+        Row: {
+          author_id: string
+          author_name: string | null
+          content: string
+          created_at: string
+          feedback_id: string
+          id: string
+          note_type: string
+        }
+        Insert: {
+          author_id: string
+          author_name?: string | null
+          content: string
+          created_at?: string
+          feedback_id: string
+          id?: string
+          note_type?: string
+        }
+        Update: {
+          author_id?: string
+          author_name?: string | null
+          content?: string
+          created_at?: string
+          feedback_id?: string
+          id?: string
+          note_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_notes_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forum_categories: {
         Row: {
           club_id: string | null
@@ -3355,31 +3393,43 @@ export type Database = {
       }
       platform_feedback: {
         Row: {
+          assigned_to: string | null
+          assigned_to_name: string | null
           created_at: string
           id: string
           is_read: boolean
           message: string
           sender_email: string | null
           sender_name: string
+          status: string
           type: Database["public"]["Enums"]["feedback_type"]
+          updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
+          assigned_to_name?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
           message: string
           sender_email?: string | null
           sender_name: string
+          status?: string
           type: Database["public"]["Enums"]["feedback_type"]
+          updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
+          assigned_to_name?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
           message?: string
           sender_email?: string | null
           sender_name?: string
+          status?: string
           type?: Database["public"]["Enums"]["feedback_type"]
+          updated_at?: string
         }
         Relationships: []
       }

@@ -17,8 +17,10 @@ type SelfHostedMe = {
   avatarUrl?: string;
 };
 
-function mapSelfHostedMeToUser(me: SelfHostedMe): { user: User; isAdmin: boolean } {
-  const isAdminFlag = !!me.isAdmin || (me.roles ?? []).includes("admin");
+function mapSelfHostedMeToUser(me: SelfHostedMe): { user: User; isAdmin: boolean; isStaff: boolean } {
+  const roles = me.roles ?? [];
+  const isAdminFlag = !!me.isAdmin || roles.includes("admin");
+  const isStaffFlag = isAdminFlag || roles.includes("staff");
   const user = ({
     id: me.id,
     email: me.email,
@@ -28,13 +30,12 @@ function mapSelfHostedMeToUser(me: SelfHostedMe): { user: User; isAdmin: boolean
       username: me.username || undefined,
       avatar_url: me.avatarUrl || undefined,
     },
-    // Store admin flag so other hooks can access it directly
     app_metadata: {
       is_admin: isAdminFlag,
     },
   } as unknown) as User;
 
-  return { user, isAdmin: isAdminFlag };
+  return { user, isAdmin: isAdminFlag, isStaff: isStaffFlag };
 }
 
 interface AuthContextType {
@@ -43,6 +44,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isStaff: boolean;
   roleLoading: boolean;
   signIn: (emailOrUsername: string, password: string) => Promise<{ error: { message: string } | null }>;
   signUp: (email: string, password: string, options?: { username?: string; displayName?: string; referralCode?: string }) => Promise<{ error: { message: string } | null }>;
@@ -51,8 +53,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Cache admin role check results to avoid duplicate queries
-const adminRoleCache = new Map<string, { isAdmin: boolean; timestamp: number }>();
+// Cache role check results to avoid duplicate queries
+const roleCache = new Map<string, { isAdmin: boolean; isStaff: boolean; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -60,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
   const [roleLoading, setRoleLoading] = useState(true);
 
   const { url: apiUrl, anonKey } = getSupabaseConfig();
@@ -117,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(null);
             setUser(null);
             setIsAdmin(false);
+            setIsStaff(false);
             setLoading(false);
             setRoleLoading(false);
             return;
@@ -130,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const mapped = mapSelfHostedMeToUser(me);
           setUser(mapped.user);
           setIsAdmin(mapped.isAdmin);
+          setIsStaff(mapped.isStaff);
           setLoading(false);
           setRoleLoading(false);
         } catch {
@@ -141,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setSession(null);
           setUser(null);
           setIsAdmin(false);
+          setIsStaff(false);
           setLoading(false);
           setRoleLoading(false);
         }
@@ -179,16 +185,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return false;
     };
 
-    const fetchIsAdmin = async (userId: string, accessToken?: string) => {
+    const fetchRoles = async (userId: string, accessToken?: string): Promise<{ isAdmin: boolean; isStaff: boolean }> => {
       // Check cache first
-      const cached = adminRoleCache.get(userId);
+      const cached = roleCache.get(userId);
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.isAdmin;
+        return { isAdmin: cached.isAdmin, isStaff: cached.isStaff };
       }
 
       const timeoutMs = 3000;
 
-      const tryDirect = async () => {
+      // Try fetching all roles for this user from the table
+      const tryDirect = async (): Promise<{ isAdmin: boolean; isStaff: boolean } | null> => {
         if (!accessToken) return null;
         const controller = new AbortController();
         const t = setTimeout(() => controller.abort(), timeoutMs);
@@ -196,8 +203,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const url = new URL(`${apiUrl}/rest/v1/user_roles`);
           url.searchParams.set("select", "role");
           url.searchParams.set("user_id", `eq.${userId}`);
-          url.searchParams.set("role", "eq.admin");
-          url.searchParams.set("limit", "1");
 
           const res = await fetch(url.toString(), {
             headers: {
@@ -207,11 +212,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             signal: controller.signal,
           });
 
-          // If RLS blocks direct access to user_roles, allow fallback to the
-          // SECURITY DEFINER has_role() RPC instead of incorrectly marking false.
           if (!res.ok) return null;
           const json = (await res.json().catch(() => [])) as Array<{ role: string }>;
-          return Array.isArray(json) && json.length > 0;
+          if (!Array.isArray(json)) return null;
+          const roles = json.map(r => r.role);
+          return { isAdmin: roles.includes("admin"), isStaff: roles.includes("admin") || roles.includes("staff") };
         } catch {
           return null;
         } finally {
@@ -222,30 +227,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const direct = await tryDirect();
         if (direct !== null) {
-          adminRoleCache.set(userId, { isAdmin: direct, timestamp: Date.now() });
+          roleCache.set(userId, { ...direct, timestamp: Date.now() });
           return direct;
         }
 
-        // Prefer security-definer function call (avoids RLS chicken/egg on user_roles)
-        // Function exists in DB: public.has_role(_user_id uuid, _role app_role) returns boolean
+        // Fallback: use has_role_level RPC to check staff-level access (includes admin)
         try {
           const rpc = await Promise.race([
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (supabase as any).rpc("has_role", { _user_id: userId, _role: "admin" }),
+            (supabase as any).rpc("has_role_level", { _user_id: userId, _min_role: "staff" }),
             new Promise<{ data: null; error: null }>((resolve) =>
               setTimeout(() => resolve({ data: null, error: null }), timeoutMs)
             ),
           ]);
 
-          const { data: rpcData, error: rpcError } = rpc as any;
-          if (!rpcError && typeof rpcData === "boolean") {
-            adminRoleCache.set(userId, { isAdmin: rpcData, timestamp: Date.now() });
-            return rpcData;
+          const { data: isStaffLevel, error: rpcError } = rpc as any;
+          if (!rpcError && typeof isStaffLevel === "boolean") {
+            // If staff-level, check if specifically admin
+            let adminFlag = false;
+            if (isStaffLevel) {
+              try {
+                const adminRpc = await Promise.race([
+                  (supabase as any).rpc("has_role", { _user_id: userId, _role: "admin" }),
+                  new Promise<{ data: null; error: null }>((resolve) =>
+                    setTimeout(() => resolve({ data: null, error: null }), timeoutMs)
+                  ),
+                ]);
+                if (!adminRpc.error && typeof adminRpc.data === "boolean") {
+                  adminFlag = adminRpc.data;
+                }
+              } catch {
+                // assume staff-only
+              }
+            }
+            const result = { isAdmin: adminFlag, isStaff: isStaffLevel };
+            roleCache.set(userId, { ...result, timestamp: Date.now() });
+            return result;
           }
         } catch {
-          // fall through to table query
+          // fall through
         }
 
+        // Last resort: check admin role directly
         const result = await Promise.race([
           supabase
             .from("user_roles")
@@ -264,13 +286,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const isAdminResult = !!data;
-        adminRoleCache.set(userId, { isAdmin: isAdminResult, timestamp: Date.now() });
-        return isAdminResult;
+        const roleResult = { isAdmin: isAdminResult, isStaff: isAdminResult };
+        roleCache.set(userId, { ...roleResult, timestamp: Date.now() });
+        return roleResult;
       } catch (e) {
         if (import.meta.env.DEV) {
           console.error("[AuthContext] role lookup exception", e);
         }
-        return false;
+        return { isAdmin: false, isStaff: false };
       }
     };
 
@@ -284,6 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!nextSession?.user) {
         setIsAdmin(false);
+        setIsStaff(false);
         setRoleLoading(false);
         return;
       }
@@ -294,9 +318,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const tok = (nextSession as any)?.access_token;
       // Use setTimeout(0) to avoid deadlock inside onAuthStateChange callback
       setTimeout(() => {
-        fetchIsAdmin(uid, tok).then((nextIsAdmin) => {
+        fetchRoles(uid, tok).then((roles) => {
           if (!mounted) return;
-          setIsAdmin(nextIsAdmin);
+          setIsAdmin(roles.isAdmin);
+          setIsStaff(roles.isStaff);
           setRoleLoading(false);
         });
       }, 0);
@@ -314,7 +339,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !nextSession)) {
         clearAuthStorage();
-        adminRoleCache.clear();
+        roleCache.clear();
         clearSharedAuthTokens();
       }
 
@@ -379,6 +404,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(null);
             setUser(null);
             setIsAdmin(false);
+            setIsStaff(false);
             setLoading(false);
             setRoleLoading(false);
           }
@@ -468,11 +494,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const mapped = mapSelfHostedMeToUser(me);
           setUser(mapped.user);
           setIsAdmin(mapped.isAdmin);
+          setIsStaff(mapped.isStaff);
         } catch {
           // Fallback to login response if /auth/me fails (still lets user proceed)
           setUser(({ id: res.user.id, email: res.user.email } as unknown) as User);
           const roles = res.user.roles ?? (res.user.role ? [res.user.role] : []);
           setIsAdmin(roles.includes("admin"));
+          setIsStaff(roles.includes("admin") || roles.includes("staff"));
         } finally {
           setLoading(false);
           setRoleLoading(false);
@@ -684,8 +712,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         localStorage.removeItem("auth_token");
       } catch {}
-      adminRoleCache.clear();
+      roleCache.clear();
       setIsAdmin(false);
+      setIsStaff(false);
       setSession(null);
       setUser(null);
       return { error: null };
@@ -694,8 +723,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // On native, signOut may fail if session token is already expired/missing.
     // Clear local state regardless to allow re-login.
     const { error } = await supabase.auth.signOut().catch((e: any) => ({ error: e }));
-    adminRoleCache.clear();
+    roleCache.clear();
     setIsAdmin(false);
+    setIsStaff(false);
 
     // Force clear auth state even if signOut failed (e.g. expired token on Android)
     if (error || Capacitor.isNativePlatform()) {
@@ -723,11 +753,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     isAuthenticated: !!user,
     isAdmin,
+    isStaff,
     roleLoading,
     signIn,
     signUp,
     signOut,
-  }), [user, session, loading, isAdmin, roleLoading, signIn, signUp, signOut]);
+  }), [user, session, loading, isAdmin, isStaff, roleLoading, signIn, signUp, signOut]);
 
   return (
     <AuthContext.Provider value={value}>
