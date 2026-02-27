@@ -85,14 +85,14 @@ const MechanicPage = lazy(lazyRetry(() => import("./pages/seo/MechanicPage")));
 const MechanicsIndex = lazy(lazyRetry(() => import("./pages/seo/MechanicsIndex")));
 const LibrariesInCity = lazy(lazyRetry(() => import("./pages/seo/LibrariesInCity")));
 const EventsInCity = lazy(lazyRetry(() => import("./pages/seo/EventsInCity")));
-const GameCalendar = lazy(() => import("./pages/GameCalendar"));
-const EventDetailPage = lazy(() => import("./pages/EventDetailPage"));
-const PublicEventDirectory = lazy(() => import("./pages/PublicEventDirectory"));
+const GameCalendar = lazy(lazyRetry(() => import("./pages/GameCalendar")));
+const EventDetailPage = lazy(lazyRetry(() => import("./pages/EventDetailPage")));
+const PublicEventDirectory = lazy(lazyRetry(() => import("./pages/PublicEventDirectory")));
 
 // Growth pages
-const ShareCard = lazy(() => import("./pages/ShareCard"));
-const Grow = lazy(() => import("./pages/Grow"));
-const EmbedWidget = lazy(() => import("./pages/EmbedWidget"));
+const ShareCard = lazy(lazyRetry(() => import("./pages/ShareCard")));
+const Grow = lazy(lazyRetry(() => import("./pages/Grow")));
+const EmbedWidget = lazy(lazyRetry(() => import("./pages/EmbedWidget")));
 
 // Studio pages (studio.gametaverns.com)
 const StudioLogin = lazy(() => import("./pages/StudioLogin"));

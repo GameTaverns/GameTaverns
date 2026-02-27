@@ -9,7 +9,7 @@ export interface LibrarySessionRow {
 
 /**
  * Fetch sessions scoped by library via join filtering.
- * Avoids huge `in(game_id, ...)` URLs that can get truncated.
+ * Paginates to avoid the default 1000-row limit.
  */
 export async function fetchLibrarySessionsForPeriod(params: {
   libraryId: string;
@@ -18,23 +18,41 @@ export async function fetchLibrarySessionsForPeriod(params: {
 }): Promise<LibrarySessionRow[]> {
   const { libraryId, periodStartIso, periodEndIso } = params;
 
-  const { data, error } = await supabase
-    .from("game_sessions")
-    .select(
-      "id, game_id, played_at, duration_minutes, games!inner(library_id, is_expansion)"
-    )
-    .eq("games.library_id", libraryId)
-    .eq("games.is_expansion", false)
-    .gte("played_at", periodStartIso)
-    .lte("played_at", periodEndIso);
+  const PAGE_SIZE = 1000;
+  const allRows: LibrarySessionRow[] = [];
+  let offset = 0;
+  let hasMore = true;
 
-  if (error) throw error;
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from("game_sessions")
+      .select(
+        "id, game_id, played_at, duration_minutes, games!inner(library_id, is_expansion)"
+      )
+      .eq("games.library_id", libraryId)
+      .eq("games.is_expansion", false)
+      .gte("played_at", periodStartIso)
+      .lte("played_at", periodEndIso)
+      .order("played_at", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
 
-  // Strip the joined `games` object, keep a stable shape
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    game_id: row.game_id,
-    played_at: row.played_at,
-    duration_minutes: row.duration_minutes ?? null,
-  }));
+    if (error) throw error;
+
+    const rows = (data || []).map((row: any) => ({
+      id: row.id,
+      game_id: row.game_id,
+      played_at: row.played_at,
+      duration_minutes: row.duration_minutes ?? null,
+    }));
+
+    allRows.push(...rows);
+
+    if (rows.length < PAGE_SIZE) {
+      hasMore = false;
+    } else {
+      offset += PAGE_SIZE;
+    }
+  }
+
+  return allRows;
 }
