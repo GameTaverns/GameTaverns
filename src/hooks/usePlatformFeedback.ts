@@ -1,6 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
+import { supabase } from "@/integrations/backend/client";
 
+async function invokeBackendFunction(functionName: string, body: Record<string, unknown>) {
+  try {
+    const { error } = await supabase.functions.invoke(functionName, { body });
+    if (error) {
+      console.warn(`[Feedback] ${functionName} invoke failed:`, error.message || error);
+    }
+  } catch (error) {
+    console.warn(`[Feedback] ${functionName} invoke threw:`, error);
+  }
+}
 export type FeedbackType = "feedback" | "bug" | "feature_request";
 export type FeedbackStatus = "open" | "in_progress" | "resolved" | "wont_fix";
 
@@ -97,9 +107,9 @@ export function useUpdateFeedbackStatus() {
 
       // Lock the Discord thread when resolved
       if (status === "resolved" && feedback?.discord_thread_id) {
-        supabase.functions.invoke("discord-lock-thread", {
-          body: { thread_id: feedback.discord_thread_id },
-        }).catch((e) => console.warn("Failed to lock Discord thread:", e));
+        void invokeBackendFunction("discord-lock-thread", {
+          thread_id: feedback.discord_thread_id,
+        });
       }
     },
     onSuccess: () => {
@@ -184,15 +194,13 @@ export function useAddFeedbackNote() {
         .maybeSingle();
 
       if (feedback?.discord_thread_id) {
-        supabase.functions.invoke("discord-lock-thread", {
-          body: {
-            action: "post_note",
-            thread_id: feedback.discord_thread_id,
-            author_name: input.author_name,
-            content: input.content,
-            note_type: input.note_type,
-          },
-        }).catch((e) => console.warn("Failed to post note to Discord:", e));
+        void invokeBackendFunction("discord-lock-thread", {
+          action: "post_note",
+          thread_id: feedback.discord_thread_id,
+          author_name: input.author_name,
+          content: input.content,
+          note_type: input.note_type,
+        });
       }
 
       return data;
@@ -249,16 +257,14 @@ export function useSubmitFeedback() {
       if (error) throw error;
 
       // Fire-and-forget: notify admins via Discord + email (pass feedback_id so thread ID is saved back)
-      supabase.functions.invoke("notify-feedback", {
-        body: {
-          type: feedback.type,
-          sender_name: feedback.sender_name,
-          sender_email: feedback.sender_email,
-          message: feedback.message,
-          screenshot_urls: screenshotUrls,
-          feedback_id: inserted?.id,
-        },
-      }).catch((e) => console.warn("Feedback notification failed:", e));
+      void invokeBackendFunction("notify-feedback", {
+        type: feedback.type,
+        sender_name: feedback.sender_name,
+        sender_email: feedback.sender_email,
+        message: feedback.message,
+        screenshot_urls: screenshotUrls,
+        feedback_id: inserted?.id,
+      });
     },
   });
 }
