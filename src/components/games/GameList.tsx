@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Users, Clock, DollarSign, BookOpen } from "lucide-react";
+import { Users, Clock, DollarSign, BookOpen, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { GameImage } from "./GameImage";
 import { StarRating } from "./StarRating";
 import { useDemoMode } from "@/contexts/DemoContext";
@@ -32,6 +33,15 @@ export function GameList({ games, hasActiveFilters }: GameListProps) {
             ? "Try clearing some filters or searching with different terms."
             : "This library doesn't have any games yet."}
         </p>
+        {!hasActiveFilters && (
+          <Link to="/catalog" className="mt-4">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              Browse Catalog
+              <Plus className="h-3 w-3 text-primary" />
+            </Button>
+          </Link>
+        )}
       </div>
     );
   }
