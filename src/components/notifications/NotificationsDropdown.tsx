@@ -161,9 +161,10 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
           variant="ghost"
           size="icon"
           className={cn(
-            "relative",
+            "relative z-50",
             variant === "dashboard" && "text-cream hover:text-white hover:bg-wood-medium/50"
           )}
+          style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
         >
           <Bell className="h-5 w-5" />
           {totalUnread > 0 && (

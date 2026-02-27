@@ -110,6 +110,7 @@ import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer"
 import { TabWidgetEditor } from "@/components/dashboard/TabWidgetEditor";
 import { AdminSubtabPanel } from "@/components/dashboard/AdminSubtabPanel";
 import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
+import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidget";
 import { useQuery } from "@tanstack/react-query";
 import { supabase as _supabase } from "@/integrations/backend/client";
 import { InfoPopover } from "@/components/ui/InfoPopover";
@@ -568,6 +569,9 @@ export default function Dashboard() {
           </Link>
         </CardContent>
       </Card>
+    ),
+    "import-progress": (
+      <ImportProgressWidget libraryIds={myLibraries.map(l => l.id)} />
     ),
   } : {};
 
