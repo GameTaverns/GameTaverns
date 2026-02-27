@@ -71,7 +71,18 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
   // Staff can only see allowed subtabs
   const visibleIds = isAdmin ? allVisibleIds : allVisibleIds.filter(id => STAFF_SUBTABS.has(id));
 
-  const [activeSubtab, setActiveSubtab] = useState(visibleIds[0] || "analytics");
+  const [activeSubtab, setActiveSubtab] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("admin-subtab");
+      if (saved && visibleIds.includes(saved)) return saved;
+    } catch {}
+    return visibleIds[0] || "analytics";
+  });
+
+  const handleSubtabChange = (value: string) => {
+    setActiveSubtab(value);
+    try { sessionStorage.setItem("admin-subtab", value); } catch {}
+  };
 
   // If active subtab got hidden, switch to first visible
   const effectiveTab = visibleIds.includes(activeSubtab) ? activeSubtab : visibleIds[0] || "analytics";
@@ -205,7 +216,7 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
       )}
 
       {/* Subtabs */}
-      <Tabs value={effectiveTab} onValueChange={setActiveSubtab}>
+      <Tabs value={effectiveTab} onValueChange={handleSubtabChange}>
         <TabsList className="bg-wood-medium/30 border border-wood-medium/50 h-auto flex-wrap gap-1 p-1 w-full overflow-x-auto">
           {visibleIds.map(id => {
             const def = registry.find(w => w.id === id);
