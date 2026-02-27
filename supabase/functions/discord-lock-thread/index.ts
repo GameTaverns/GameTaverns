@@ -1,5 +1,3 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -10,7 +8,7 @@ const DISCORD_API = "https://discord.com/api/v10";
 
 /**
  * Lock and archive a Discord forum thread (channel).
- * PATCH /channels/{id} with { locked: true, archived: true }
+ * Posts a closing message first, then locks + archives.
  */
 async function lockDiscordThread(
   threadId: string
@@ -20,14 +18,47 @@ async function lockDiscordThread(
     return { success: false, error: "DISCORD_BOT_TOKEN not configured" };
   }
 
+  const headers = {
+    Authorization: `Bot ${botToken}`,
+    "Content-Type": "application/json",
+  };
+
   console.log("Locking Discord thread:", threadId);
 
+  // 1. First, unarchive the thread if it was auto-archived (so we can post)
+  await fetch(`${DISCORD_API}/channels/${threadId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ archived: false }),
+  }).catch((_e: unknown) => {});
+
+  // 2. Post the closing message while the thread is still open
+  const msgRes = await fetch(`${DISCORD_API}/channels/${threadId}/messages`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      embeds: [{
+        title: "✅ Resolved",
+        description: "This feedback item has been marked as resolved. The thread is now locked.",
+        color: 0x22c55e,
+        timestamp: new Date().toISOString(),
+      }],
+    }),
+  });
+
+  if (!msgRes.ok) {
+    const errText = await msgRes.text();
+    console.warn("Failed to post closing message:", msgRes.status, errText);
+    // 404 = thread deleted, treat as success
+    if (msgRes.status === 404) {
+      return { success: true };
+    }
+  }
+
+  // 3. Now lock and archive the thread
   const response = await fetch(`${DISCORD_API}/channels/${threadId}`, {
     method: "PATCH",
-    headers: {
-      Authorization: `Bot ${botToken}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       archived: true,
       locked: true,
@@ -38,7 +69,6 @@ async function lockDiscordThread(
     const errorText = await response.text();
     console.error("Discord thread lock failed:", response.status, errorText);
 
-    // 404 means thread already deleted — treat as success
     if (response.status === 404) {
       return { success: true };
     }
@@ -46,25 +76,57 @@ async function lockDiscordThread(
     return { success: false, error: `Discord API error: ${response.status} - ${errorText}` };
   }
 
-  // Optionally post a closing message before archiving
-  const botToken2 = Deno.env.get("DISCORD_BOT_TOKEN");
-  await fetch(`${DISCORD_API}/channels/${threadId}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bot ${botToken2}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      embeds: [{
-        title: "✅ Resolved",
-        description: "This feedback item has been marked as resolved. The thread is now locked.",
-        color: 0x22c55e, // green-500
-        timestamp: new Date().toISOString(),
-      }],
-    }),
-  }).catch((e: unknown) => console.warn("Failed to post closing message:", e));
-
   console.log("Discord thread locked successfully");
+  return { success: true };
+}
+
+/**
+ * Post a note/message to a Discord forum thread.
+ */
+async function postToThread(
+  threadId: string,
+  authorName: string,
+  content: string,
+  noteType: string
+): Promise<{ success: boolean; error?: string }> {
+  const botToken = Deno.env.get("DISCORD_BOT_TOKEN");
+  if (!botToken) {
+    return { success: false, error: "DISCORD_BOT_TOKEN not configured" };
+  }
+
+  const headers = {
+    Authorization: `Bot ${botToken}`,
+    "Content-Type": "application/json",
+  };
+
+  // Unarchive first if needed
+  await fetch(`${DISCORD_API}/channels/${threadId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ archived: false }),
+  }).catch((_e: unknown) => {});
+
+  const isReply = noteType === "reply";
+  const embed = {
+    title: isReply ? "💬 Staff Reply" : "📝 Internal Note",
+    description: content.substring(0, 4000),
+    color: isReply ? 0x3b82f6 : 0x6b7280,
+    footer: { text: `By ${authorName}` },
+    timestamp: new Date().toISOString(),
+  };
+
+  const response = await fetch(`${DISCORD_API}/channels/${threadId}/messages`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ embeds: [embed] }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Discord thread message failed:", response.status, errorText);
+    return { success: false, error: errorText };
+  }
+
   return { success: true };
 }
 
@@ -74,7 +136,8 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { thread_id } = await req.json();
+    const body = await req.json();
+    const { action, thread_id, author_name, content, note_type } = body;
 
     if (!thread_id) {
       return new Response(
@@ -83,7 +146,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const result = await lockDiscordThread(thread_id);
+    let result: { success: boolean; error?: string };
+
+    if (action === "post_note") {
+      result = await postToThread(thread_id, author_name || "Staff", content || "", note_type || "internal");
+    } else {
+      // Default action: lock
+      result = await lockDiscordThread(thread_id);
+    }
 
     if (!result.success) {
       return new Response(
