@@ -29,6 +29,7 @@ import { EventScheduleTab } from "@/components/events/planning/EventScheduleTab"
 import { EventTournamentTab } from "@/components/events/planning/EventTournamentTab";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GuestRsvpCard } from "@/components/events/GuestRsvpCard";
+import { EditEventDialog } from "@/components/events/planning/EditEventDialog";
 import { useAuth } from "@/hooks/useAuth";
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
@@ -137,7 +138,9 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        {/* Status / Actions Menu */}
+        {/* Edit + Status / Actions Menu */}
+        <div className="flex items-center gap-2">
+        <EditEventDialog event={event} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon">
@@ -173,6 +176,7 @@ export default function EventDetailPage() {
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       {/* Quick Info Bar */}
