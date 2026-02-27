@@ -135,7 +135,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   // (authLoading=true on first mount). Never block rendering after login completes.
   if (isNative && authLoading && !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background" role="status" aria-live="polite">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
@@ -148,14 +148,15 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
     '/dashboard', '/catalog', '/dm', '/docs', '/directory', '/achievements',
     '/community', '/club', '/u/', '/lists', '/create-library',
     '/login', '/signup', '/legal', '/privacy', '/terms', '/cookies',
-    '/features', '/press', '/install',
+    '/features', '/press', '/install', '/notifications', '/grow', '/share-card',
+    '/picker',
   ];
   const isOnPlatformPath = SHELL_PLATFORM_PATHS.some(
     p => location.pathname === p || location.pathname.startsWith(p)
   );
   if (isNative && isAuthenticated && !activeLibrary && !isOnPlatformPath) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background" role="status" aria-live="polite">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );

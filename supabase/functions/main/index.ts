@@ -6,12 +6,7 @@
 // For Lovable Cloud, each function is deployed independently.
 
 import { withLogging } from "./_shared/system-logger.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { getCorsHeaders, handleCorsPreFlight } from "./_shared/cors.ts";
 
 // Handler cache: once a module is dynamically imported, we keep the reference
 const handlerCache = new Map<string, (req: Request) => Promise<Response> | Response>();
@@ -74,6 +69,7 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "send-push-notification":     () => import("./send-push-notification/index.ts"),
   "send-rsvp-confirmation":     () => import("./send-rsvp-confirmation/index.ts"),
   "reply-feedback":             () => import("./reply-feedback/index.ts"),
+  "fix-expansion-flags":        () => import("./fix-expansion-flags/index.ts"),
 };
 
 // All handlers are now external imports - no inlined handlers remaining
@@ -140,9 +136,10 @@ const ALL_FUNCTIONS = [
 ];
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const corsHeaders = getCorsHeaders(req);
+
+  const preflight = handleCorsPreFlight(req);
+  if (preflight) return preflight;
 
   const url = new URL(req.url);
   const pathParts = url.pathname.split("/").filter(Boolean);

@@ -22,7 +22,7 @@ export function MaintenanceGuard({ children }: MaintenanceGuardProps) {
   // During loading, show a minimal loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center" role="status" aria-live="polite">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
