@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, LayoutGrid, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Plus, LayoutGrid, Trash2, UserPlus, Users, X, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useEventTables, useAddEventTable, useRemoveEventTable, useTableSeats, useAddTableSeat, useRemoveTableSeat, type EventTable } from "@/hooks/useEventPlanning";
+import { useEventTables, useAddEventTable, useRemoveEventTable, useUpdateEventTable, useTableSeats, useAddTableSeat, useRemoveTableSeat, type EventTable } from "@/hooks/useEventPlanning";
 
 interface EventTablesTabProps {
   eventId: string;
@@ -22,7 +22,9 @@ export function EventTablesTab({ eventId }: EventTablesTabProps) {
   const { data: tables = [], isLoading } = useEventTables(eventId);
   const addTable = useAddEventTable();
   const removeTable = useRemoveEventTable();
+  const updateTable = useUpdateEventTable();
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingTable, setEditingTable] = useState<EventTable | null>(null);
 
   const [tableLabel, setTableLabel] = useState("");
   const [gameTitle, setGameTitle] = useState("");
@@ -44,6 +46,30 @@ export function EventTablesTab({ eventId }: EventTablesTabProps) {
     });
     resetForm();
     setShowAddDialog(false);
+  };
+
+  const openEdit = (table: EventTable) => {
+    setTableLabel(table.table_label);
+    setGameTitle(table.game_title || "");
+    setCapacity(table.capacity.toString());
+    setNotes(table.notes || "");
+    setEditingTable(table);
+  };
+
+  const handleEdit = async () => {
+    if (!editingTable || !tableLabel.trim()) return;
+    await updateTable.mutateAsync({
+      tableId: editingTable.id,
+      eventId,
+      updates: {
+        table_label: tableLabel.trim(),
+        game_title: gameTitle.trim() || null,
+        capacity: parseInt(capacity) || 4,
+        notes: notes.trim() || null,
+      },
+    });
+    resetForm();
+    setEditingTable(null);
   };
 
   return (
@@ -78,6 +104,7 @@ export function EventTablesTab({ eventId }: EventTablesTabProps) {
                 <TableCard
                   key={table.id}
                   table={table}
+                  onEdit={() => openEdit(table)}
                   onRemove={() => removeTable.mutate({ tableId: table.id, eventId })}
                 />
               ))}
@@ -86,29 +113,18 @@ export function EventTablesTab({ eventId }: EventTablesTabProps) {
         </CardContent>
       </Card>
 
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      {/* Add Table Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={(o) => { if (!o) resetForm(); setShowAddDialog(o); }}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Add Table / Group</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Table Label *</Label>
-              <Input value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder="e.g. Table 1, Living Room" />
-            </div>
-            <div className="space-y-2">
-              <Label>Game</Label>
-              <Input value={gameTitle} onChange={(e) => setGameTitle(e.target.value)} placeholder="Game being played at this table" />
-            </div>
-            <div className="space-y-2">
-              <Label>Capacity</Label>
-              <Input type="number" value={capacity} onChange={(e) => setCapacity(e.target.value)} min={1} />
-            </div>
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Teaching table, competitive" />
-            </div>
-          </div>
+          <TableFormFields
+            tableLabel={tableLabel} setTableLabel={setTableLabel}
+            gameTitle={gameTitle} setGameTitle={setGameTitle}
+            capacity={capacity} setCapacity={setCapacity}
+            notes={notes} setNotes={setNotes}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={!tableLabel.trim() || addTable.isPending}>
@@ -117,11 +133,62 @@ export function EventTablesTab({ eventId }: EventTablesTabProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Table Dialog */}
+      <Dialog open={!!editingTable} onOpenChange={(o) => { if (!o) { resetForm(); setEditingTable(null); } }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Edit Table</DialogTitle>
+          </DialogHeader>
+          <TableFormFields
+            tableLabel={tableLabel} setTableLabel={setTableLabel}
+            gameTitle={gameTitle} setGameTitle={setGameTitle}
+            capacity={capacity} setCapacity={setCapacity}
+            notes={notes} setNotes={setNotes}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { resetForm(); setEditingTable(null); }}>Cancel</Button>
+            <Button onClick={handleEdit} disabled={!tableLabel.trim() || updateTable.isPending}>
+              {updateTable.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function TableCard({ table, onRemove }: { table: EventTable; onRemove: () => void }) {
+function TableFormFields({
+  tableLabel, setTableLabel, gameTitle, setGameTitle, capacity, setCapacity, notes, setNotes,
+}: {
+  tableLabel: string; setTableLabel: (v: string) => void;
+  gameTitle: string; setGameTitle: (v: string) => void;
+  capacity: string; setCapacity: (v: string) => void;
+  notes: string; setNotes: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Table Label *</Label>
+        <Input value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder="e.g. Table 1, Living Room" />
+      </div>
+      <div className="space-y-2">
+        <Label>Game</Label>
+        <Input value={gameTitle} onChange={(e) => setGameTitle(e.target.value)} placeholder="Game being played at this table" />
+      </div>
+      <div className="space-y-2">
+        <Label>Capacity</Label>
+        <Input type="number" value={capacity} onChange={(e) => setCapacity(e.target.value)} min={1} />
+      </div>
+      <div className="space-y-2">
+        <Label>Notes</Label>
+        <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Teaching table, competitive" />
+      </div>
+    </div>
+  );
+}
+
+function TableCard({ table, onEdit, onRemove }: { table: EventTable; onEdit: () => void; onRemove: () => void }) {
   const { data: seats = [] } = useTableSeats(table.id);
   const addSeat = useAddTableSeat();
   const removeSeat = useRemoveTableSeat();
@@ -149,11 +216,14 @@ function TableCard({ table, onRemove }: { table: EventTable; onRemove: () => voi
               <p className="text-xs text-muted-foreground mt-0.5">{table.game_title}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Badge variant={isFull ? "default" : "outline"} className="text-xs">
               <Users className="h-3 w-3 mr-1" />
               {seatsFilled}/{table.capacity}
             </Badge>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onRemove}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

@@ -180,6 +180,29 @@ export function useAddEventGame() {
   });
 }
 
+export function useUpdateEventGame() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ gameId, eventId, updates }: { gameId: string; eventId: string; updates: Partial<EventGame> }) => {
+      const { data, error } = await db
+        .from("event_games")
+        .update(updates)
+        .eq("id", gameId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { ...data, event_id: eventId };
+    },
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ["event-games", data.event_id] });
+      toast({ title: "Game updated" });
+    },
+    onError: (e: Error) => toast({ title: "Failed to update game", description: e.message, variant: "destructive" }),
+  });
+}
+
 export function useRemoveEventGame() {
   const qc = useQueryClient();
   return useMutation({
@@ -254,6 +277,29 @@ export function useRemoveEventSupply() {
   });
 }
 
+export function useUpdateEventSupply() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ supplyId, eventId, updates }: { supplyId: string; eventId: string; updates: Partial<EventSupply> }) => {
+      const { data, error } = await db
+        .from("event_supplies")
+        .update(updates)
+        .eq("id", supplyId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { ...data, event_id: eventId };
+    },
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ["event-supplies", data.event_id] });
+      toast({ title: "Supply updated" });
+    },
+    onError: (e: Error) => toast({ title: "Failed to update supply", description: e.message, variant: "destructive" }),
+  });
+}
+
 // ── Tables / Groups ────────────────────────────────────────────────────────
 
 export function useEventTables(eventId: string | undefined) {
@@ -298,6 +344,29 @@ export function useRemoveEventTable() {
       return { eventId };
     },
     onSuccess: (data: any) => qc.invalidateQueries({ queryKey: ["event-tables", data.eventId] }),
+  });
+}
+
+export function useUpdateEventTable() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ tableId, eventId, updates }: { tableId: string; eventId: string; updates: Partial<EventTable> }) => {
+      const { data, error } = await db
+        .from("event_tables")
+        .update(updates)
+        .eq("id", tableId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { ...data, event_id: eventId };
+    },
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ["event-tables", data.event_id] });
+      toast({ title: "Table updated" });
+    },
+    onError: (e: Error) => toast({ title: "Failed to update table", description: e.message, variant: "destructive" }),
   });
 }
 
