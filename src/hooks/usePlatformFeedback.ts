@@ -1,8 +1,43 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
+import { getSupabaseConfig, isSelfHostedSupabaseStack } from "@/config/runtime";
 
 async function invokeBackendFunction(functionName: string, body: Record<string, unknown>) {
   try {
+    // Self-hosted consolidated runtime: route through main/<function>
+    if (isSelfHostedSupabaseStack()) {
+      const { url, anonKey } = getSupabaseConfig();
+      if (url && anonKey) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+
+        const response = await fetch(`${url}/functions/v1/main/${functionName}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: anonKey,
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: JSON.stringify(body),
+        });
+
+        const raw = await response.text();
+        const parsed = raw ? (() => {
+          try { return JSON.parse(raw); } catch { return raw; }
+        })() : null;
+
+        if (!response.ok) {
+          const errMessage = typeof parsed === "object" && parsed && "error" in (parsed as Record<string, unknown>)
+            ? String((parsed as Record<string, unknown>).error)
+            : raw || `HTTP ${response.status}`;
+          console.warn(`[Feedback] ${functionName} self-hosted invoke failed:`, response.status, errMessage);
+          return { ok: false, data: parsed, error: errMessage };
+        }
+
+        return { ok: true, data: parsed, error: null };
+      }
+    }
+
     const { data, error } = await supabase.functions.invoke(functionName, { body });
     if (error) {
       console.warn(`[Feedback] ${functionName} invoke failed:`, error.message || error);
