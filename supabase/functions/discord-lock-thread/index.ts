@@ -3,7 +3,7 @@ import { getCorsHeaders, handleCorsPreFlight } from "../_shared/cors.ts";
 const DISCORD_API = "https://discord.com/api/v10";
 
 /**
- * Lock and archive a Discord forum thread (channel).
+ * Close and archive a Discord forum thread (channel).
  * Posts a closing message first, then locks + archives.
  */
 async function lockDiscordThread(
@@ -35,7 +35,7 @@ async function lockDiscordThread(
     body: JSON.stringify({
       embeds: [{
         title: "✅ Resolved",
-        description: "This feedback item has been marked as resolved. The thread is now locked.",
+        description: "This feedback item has been marked as resolved. The thread is now closed.",
         color: 0x22c55e,
         timestamp: new Date().toISOString(),
       }],
