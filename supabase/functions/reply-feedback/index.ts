@@ -56,28 +56,33 @@ const handler = async (req: Request): Promise<Response> => {
     const senderLabel = from_name || "Game Taverns Staff";
     const recipientLabel = to_name || to_email;
 
-    const htmlBody = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background: #f9f7f4; border-radius: 12px; padding: 32px; border: 1px solid #e8e0d4;">
-    <div style="text-align: center; margin-bottom: 24px;">
-      <h2 style="color: #2d2418; margin: 0;">Game Taverns</h2>
-      <p style="color: #8b7355; font-size: 14px; margin: 4px 0 0;">Staff Response</p>
-    </div>
-    <p style="color: #4a3f35; font-size: 15px;">Hi ${recipientLabel},</p>
-    <div style="background: #ffffff; border-radius: 8px; padding: 20px; margin: 16px 0; border: 1px solid #e8e0d4;">
-      <p style="color: #2d2418; font-size: 14px; line-height: 1.6; white-space: pre-wrap; margin: 0;">${message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
-    </div>
-    <p style="color: #8b7355; font-size: 13px; margin-top: 16px;">— ${senderLabel}</p>
-    <hr style="border: none; border-top: 1px solid #e8e0d4; margin: 24px 0;" />
-    <p style="color: #b0a08a; font-size: 11px; text-align: center;">
-      This is a reply to feedback you submitted on Game Taverns.
-    </p>
-  </div>
-</body>
-</html>`;
+    const logoUrl = "https://gametaverns.com/gt-logo.png";
+    const escapedMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const htmlBody = [
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
+      '<body style="margin:0;padding:0;background:#e8dcc8;font-family:Georgia,\'Times New Roman\',serif;">',
+      '<div style="max-width:560px;margin:0 auto;padding:24px;">',
+      '<div style="background:#f5eed9;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(60,40,20,0.15);border:1px solid #d4c4a0;">',
+      // Header with logo
+      '<div style="background:#3d2b1f;padding:24px 32px;text-align:center;">',
+      `<img src="${logoUrl}" alt="GameTaverns" style="max-height:48px;margin-bottom:8px;" />`,
+      '<p style="margin:0;color:#e8d9b0;font-size:13px;font-family:Georgia,serif;">Staff Response</p>',
+      '</div>',
+      // Body
+      '<div style="padding:32px;">',
+      `<p style="margin:0 0 16px;font-size:15px;color:#3d2b1f;">Hi ${recipientLabel},</p>`,
+      '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
+      `<p style="color:#3d2b1f;font-size:14px;line-height:1.7;white-space:pre-wrap;margin:0;">${escapedMessage}</p>`,
+      '</div>',
+      `<p style="color:#78705e;font-size:13px;margin:0 0 24px;">— ${senderLabel}</p>`,
+      '<hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">',
+      '<p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">',
+      'This is a reply to feedback you submitted on <a href="https://gametaverns.com" style="color:#556b2f;">GameTaverns</a>.',
+      '</p>',
+      '</div></div></div>',
+      '</body></html>',
+    ].join("");
 
     await client.send({
       from: SMTP_FROM,
