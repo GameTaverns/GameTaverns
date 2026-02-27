@@ -32,7 +32,7 @@ export default function Terms() {
             <section>
               <h2 className="text-xl font-semibold border-b pb-2">1. Agreement to Terms</h2>
               <p>By accessing or using GameTaverns, you agree to be bound by these Terms of Service. If you disagree with any part of these terms, you may not use our service.</p>
-              <p>GameTaverns is a hobby project providing a platform for board game enthusiasts to catalog and share their game collections. The service is provided "as is" without warranties.</p>
+              <p>GameTaverns LLC is a limited liability company registered in Indiana, United States, providing a platform for board game enthusiasts to catalog and share their game collections. The service is provided "as is" without warranties.</p>
             </section>
 
             <section>
@@ -109,25 +109,25 @@ export default function Terms() {
 
             <section>
               <h2 className="text-xl font-semibold border-b pb-2">8. Disclaimer of Warranties</h2>
-              <p>GameTaverns is provided "AS IS" and "AS AVAILABLE" without warranties of any kind, either express or implied, including but not limited to:</p>
+              <p>GameTaverns LLC provides this service "AS IS" and "AS AVAILABLE" without warranties of any kind, either express or implied, including but not limited to:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li>Merchantability or fitness for a particular purpose</li>
                 <li>Uninterrupted or error-free operation</li>
                 <li>Accuracy or reliability of any information</li>
                 <li>Security from unauthorized access</li>
               </ul>
-              <p>As a hobby project, we cannot guarantee uptime, data preservation, or continued operation of the service.</p>
+              <p>We cannot guarantee uptime, data preservation, or continued operation of the service.</p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold border-b pb-2">9. Limitation of Liability</h2>
-              <p>To the maximum extent permitted by law, GameTaverns and its operators shall not be liable for any indirect, incidental, special, consequential, or punitive damages.</p>
+              <p>To the maximum extent permitted by law, GameTaverns LLC and its members, officers, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages.</p>
               <p>Our total liability for any claim shall not exceed the amount you paid us (if any) in the past 12 months.</p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold border-b pb-2">10. Indemnification</h2>
-              <p>You agree to defend, indemnify, and hold harmless GameTaverns and its operators from any claims, damages, or expenses arising from your use of the service, violation of these terms, your content, or violation of any third-party rights.</p>
+              <p>You agree to defend, indemnify, and hold harmless GameTaverns LLC and its members, officers, and agents from any claims, damages, or expenses arising from your use of the service, violation of these terms, your content, or violation of any third-party rights.</p>
             </section>
 
             <section>

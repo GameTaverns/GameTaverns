@@ -60,7 +60,7 @@ export default function Legal() {
             <p>{t("legal.lastUpdated")}</p>
             <p className="mt-2">
               {t("legal.questions")}{" "}
-              <a href="mailto:legal@gametaverns.com" className="text-primary hover:underline">
+              <a href="mailto:admin@gametaverns.com" className="text-primary hover:underline">
                 {t("legal.contactUs")}
               </a>
             </p>

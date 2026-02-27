@@ -101,7 +101,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
         <div className="mt-8 pt-6 border-t">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground text-center md:text-left">
-              © {currentYear} GameTaverns. A hobby project made with ❤️ for board game enthusiasts.
+              © {currentYear} GameTaverns LLC. Made with ❤️ for board game enthusiasts.
             </p>
 
             {/* Only show attributions on self-hosted */}

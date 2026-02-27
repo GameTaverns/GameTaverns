@@ -51,7 +51,7 @@ export default function Cookies() {
 
             <section>
               <h2 className="text-xl font-semibold border-b pb-2">2. How We Use Cookies</h2>
-              <p>GameTaverns uses a minimal set of cookies focused on essential functionality. We do not use cookies for advertising or third-party tracking.</p>
+              <p>GameTaverns LLC uses a minimal set of cookies focused on essential functionality. We do not use cookies for advertising or third-party tracking.</p>
               <p>Our cookies fall into these categories:</p>
               <ul className="list-disc pl-6 space-y-1">
                 <li><strong>Essential:</strong> Required for the site to function (login, security)</li>
@@ -128,7 +128,7 @@ export default function Cookies() {
 
             <section>
               <h2 className="text-xl font-semibold border-b pb-2">7. Do Not Track</h2>
-              <p>GameTaverns respects "Do Not Track" browser signals. We do not track users across third-party websites.</p>
+              <p>GameTaverns LLC respects "Do Not Track" browser signals. We do not track users across third-party websites.</p>
             </section>
 
             <section>
