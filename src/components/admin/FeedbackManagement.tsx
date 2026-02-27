@@ -97,6 +97,7 @@ function FeedbackDetailDialog({
 
       // If it's a reply, also send email via edge function
       let emailSent = false;
+      let emailErrorMsg: string | null = null;
       if (noteType === "reply" && feedback.sender_email) {
         try {
           const { data: emailResult, error: emailError } = await supabase.functions.invoke("reply-feedback", {
@@ -111,23 +112,29 @@ function FeedbackDetailDialog({
           console.log("Reply invoke result:", { emailResult, emailError });
           if (emailError) {
             console.error("Reply email error:", emailError);
-            toast({ title: "Note saved, but email failed", description: String(emailError.message || emailError), variant: "destructive" });
+            emailErrorMsg = String(emailError.message || emailError);
           } else if (emailResult && typeof emailResult === "object" && emailResult.error) {
             console.error("Reply email function error:", emailResult.error);
-            toast({ title: "Note saved, but email failed", description: String(emailResult.error), variant: "destructive" });
+            emailErrorMsg = String(emailResult.error);
           } else {
             emailSent = true;
             console.log("Reply email sent:", emailResult);
           }
         } catch (emailErr: any) {
           console.error("Reply email exception:", emailErr);
-          toast({ title: "Note saved, but email failed", description: emailErr.message, variant: "destructive" });
+          emailErrorMsg = emailErr.message || "Unknown error";
         }
       }
 
       setNoteContent("");
       if (noteType === "reply") {
-        toast({ title: emailSent ? "Reply sent & emailed" : "Reply note saved" });
+        if (emailSent) {
+          toast({ title: "Reply sent & emailed" });
+        } else if (emailErrorMsg) {
+          toast({ title: "Note saved, but email failed", description: emailErrorMsg, variant: "destructive" });
+        } else {
+          toast({ title: "Reply note saved" });
+        }
       } else {
         toast({ title: "Note added" });
       }
