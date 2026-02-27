@@ -34,14 +34,14 @@ export default function Privacy() {
             <section>
               <h2 className="text-xl font-semibold border-b pb-2">1. Introduction</h2>
               <p>
-                GameTaverns ("we," "our," or "us") operates from Indiana, United States. We 
+                GameTaverns LLC ("we," "our," or "us") operates from Indiana, United States. We 
                 provide a platform for board game enthusiasts to catalog and share their game 
                 collections. This Privacy Policy explains how we collect, use, and protect your 
                 information when you use our service.
               </p>
               <p>
                 We are committed to protecting your privacy and handling your data transparently. 
-                This policy applies to all users of GameTaverns, including library owners and 
+                This policy applies to all users of GameTaverns LLC, including library owners and 
                 visitors.
               </p>
             </section>
@@ -155,7 +155,7 @@ export default function Privacy() {
             <section>
               <h2 className="text-xl font-semibold border-b pb-2">8. International Users</h2>
               <p>
-                GameTaverns is operated from Indiana, United States. If you access the service from 
+                GameTaverns LLC is operated from Indiana, United States. If you access the service from 
                 outside this region, your data may be transferred to and processed in servers 
                 located in the United States. By using our service, you consent to this transfer.
               </p>
@@ -169,7 +169,7 @@ export default function Privacy() {
             <section>
               <h2 className="text-xl font-semibold border-b pb-2">9. Children's Privacy</h2>
               <p>
-                GameTaverns is not intended for children under 13. We do not knowingly 
+                GameTaverns LLC is not intended for children under 13. We do not knowingly 
                 collect personal information from children. If you believe a child has 
                 provided us with data, please contact us for removal.
               </p>
