@@ -282,8 +282,18 @@
 
   /* Sticky mobile action bar */
   .mobile-action-bar {
-    @apply fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur-sm px-4 py-3;
-    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    @apply fixed z-40 border-t bg-background/95 backdrop-blur-sm px-4 py-3;
+    bottom: 60px; /* Clear the bottom tab bar on mobile */
+    left: 0;
+    right: 0;
+    padding-bottom: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .mobile-action-bar {
+      bottom: 0;
+      padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
   }
 
   /* Bottom tab bar */
