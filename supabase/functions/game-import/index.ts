@@ -798,35 +798,6 @@ async function findExistingGame(
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// insertGameWithSlugRetry - insert a game, retrying with disambiguated slug
-// on unique constraint violation (e.g. "Stop Thief" vs "Stop Thief!")
-// ---------------------------------------------------------------------------
-async function insertGameWithSlugRetry(
-  supabaseAdmin: ReturnType<typeof createClient>,
-  gameData: Record<string, unknown>,
-  existingId: string | null
-): Promise<{ data: any; error: any }> {
-  if (existingId) {
-    return supabaseAdmin.from("games").update(gameData).eq("id", existingId).select().single();
-  }
-
-  const { data, error } = await supabaseAdmin.from("games").insert(gameData).select().single();
-
-  if (error && error.code === "23505" && error.message?.includes("idx_games_slug_library")) {
-    // Slug conflict — append bgg_id or a random suffix to disambiguate
-    const bggId = gameData.bgg_id as string | null;
-    const title = gameData.title as string;
-    const suffix = bggId || Math.random().toString(36).substring(2, 8);
-    const disambiguatedSlug = `${title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')}-${suffix}`;
-    console.log(`[GameImport] Slug conflict for "${title}", retrying with slug: ${disambiguatedSlug}`);
-    return supabaseAdmin.from("games").insert({ ...gameData, slug: disambiguatedSlug }).select().single();
-  }
-
-  return { data, error };
-}
-
-
 // Export handler for self-hosted router
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
@@ -1346,9 +1317,11 @@ export default async function handler(req: Request): Promise<Response> {
       // Upsert: check by bgg_url, bgg_id, or slug to avoid duplicates
       const existingId = await findExistingGame(supabaseAdmin, gameData, targetLibraryId);
 
-      const write = await insertGameWithSlugRetry(supabaseAdmin, gameData, existingId);
+      const write = existingId
+        ? supabaseAdmin.from("games").update(gameData).eq("id", existingId).select().single()
+        : supabaseAdmin.from("games").insert(gameData).select().single();
 
-      const { data: game, error: gameError } = write;
+      const { data: game, error: gameError } = await write;
 
       if (gameError) {
         console.error("Game insert error:", gameError);
@@ -1668,8 +1641,10 @@ export default async function handler(req: Request): Promise<Response> {
         };
 
         const partialExistingId = await findExistingGame(supabaseAdmin, partialGameData, targetLibraryId);
-        const partialWrite = await insertGameWithSlugRetry(supabaseAdmin, partialGameData, partialExistingId);
-        const { data: game, error: insertError } = partialWrite;
+        const partialWrite = partialExistingId
+          ? supabaseAdmin.from("games").update(partialGameData).eq("id", partialExistingId).select().single()
+          : supabaseAdmin.from("games").insert(partialGameData).select().single();
+        const { data: game, error: insertError } = await partialWrite;
 
         if (insertError || !game) {
           console.error("Insert error (partial):", insertError?.message, insertError?.code, insertError?.details, insertError?.hint);
@@ -1780,8 +1755,10 @@ export default async function handler(req: Request): Promise<Response> {
               };
 
               const scrapeExistingId = await findExistingGame(supabaseAdmin, scrapedGameData, targetLibraryId);
-              const scrapeWrite = await insertGameWithSlugRetry(supabaseAdmin, scrapedGameData, scrapeExistingId);
-              const { data: game, error: insertError } = scrapeWrite;
+              const scrapeWrite = scrapeExistingId
+                ? supabaseAdmin.from("games").update(scrapedGameData).eq("id", scrapeExistingId).select().single()
+                : supabaseAdmin.from("games").insert(scrapedGameData).select().single();
+              const { data: game, error: insertError } = await scrapeWrite;
 
               if (insertError || !game) {
                 console.error("Insert error (direct scrape):", insertError?.message);
@@ -2292,9 +2269,11 @@ ${markdown.slice(0, 18000)}`,
     // Upsert: check by bgg_url, bgg_id, or slug to avoid duplicates
     const existingId = await findExistingGame(supabaseAdmin, { ...gameData, bgg_id: bggId || null }, targetLibraryId);
 
-    const write = await insertGameWithSlugRetry(supabaseAdmin, gameData, existingId);
+    const write = existingId
+      ? supabaseAdmin.from("games").update(gameData).eq("id", existingId).select().single()
+      : supabaseAdmin.from("games").insert(gameData).select().single();
 
-    const { data: game, error: gameError } = write;
+    const { data: game, error: gameError } = await write;
 
     if (gameError) {
       console.error("Game insert error:", gameError);
