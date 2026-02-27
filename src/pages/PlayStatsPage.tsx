@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -217,7 +217,13 @@ export default function PlayStatsPage() {
   const canGoNext = period === "month" 
     ? addMonths(selectedDate, 1) <= new Date()
     : addYears(selectedDate, 1) <= new Date();
-  
+
+  useEffect(() => {
+    if (error) {
+      console.error("[PlayStatsPage] Failed to load stats:", error);
+    }
+  }, [error]);
+
   const displayLabel = period === "month" 
     ? format(selectedDate, "MMM yyyy") 
     : format(selectedDate, "yyyy");
@@ -282,8 +288,9 @@ export default function PlayStatsPage() {
           </div>
         ) : error ? (
           <Card>
-            <CardContent className="py-8 text-center text-destructive">
-              Failed to load statistics
+            <CardContent className="py-8 text-center text-destructive space-y-2">
+              <p>Failed to load statistics</p>
+              <p className="text-xs text-muted-foreground">{error instanceof Error ? error.message : "Unknown error"}</p>
             </CardContent>
           </Card>
         ) : stats ? (
