@@ -145,6 +145,7 @@ EXTERNAL_HANDLERS=(
   export-user-data
   send-push-notification
   send-rsvp-confirmation
+  reply-feedback
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   src="$FUNCTIONS_DIR/$handler"
