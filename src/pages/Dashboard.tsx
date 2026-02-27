@@ -932,7 +932,7 @@ export default function Dashboard() {
           </div>
 
           {/* ==================== LIBRARY TAB ==================== */}
-          <TabsContent value="library">
+          <TabsContent value="library" forceMount className={activeTab !== "library" ? "hidden" : ""}>
             {/* Library Switcher */}
             {myLibraries.length > 1 && (
               <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -973,22 +973,22 @@ export default function Dashboard() {
           </TabsContent>
 
           {/* ==================== COMMUNITY TAB ==================== */}
-          <TabsContent value="community">
+          <TabsContent value="community" forceMount className={activeTab !== "community" ? "hidden" : ""}>
             {renderWidgetTab("community", communityWidgets)}
           </TabsContent>
 
           {/* ==================== SOCIAL TAB ==================== */}
-          <TabsContent value="social">
+          <TabsContent value="social" forceMount className={activeTab !== "social" ? "hidden" : ""}>
             <SocialTab currentUserId={user?.id} />
           </TabsContent>
 
           {/* ==================== PERSONAL TAB ==================== */}
-          <TabsContent value="personal">
+          <TabsContent value="personal" forceMount className={activeTab !== "personal" ? "hidden" : ""}>
             {renderWidgetTab("personal", personalWidgets)}
           </TabsContent>
 
           {/* ==================== REFERRALS TAB ==================== */}
-          <TabsContent value="referrals">
+          <TabsContent value="referrals" forceMount className={activeTab !== "referrals" ? "hidden" : ""}>
             <div className="max-w-2xl">
               <div className="mb-6">
                 <h2 className="font-display text-xl font-bold mb-1">{t('dashboard.inviteEarnBadges')}</h2>
@@ -998,7 +998,7 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="analytics">
+          <TabsContent value="analytics" forceMount className={activeTab !== "analytics" ? "hidden" : ""}>
             {library ? (
               <AnalyticsTab isAdmin={isAdmin} libraryId={library.id} libraryName={library.name} />
             ) : (
@@ -1012,7 +1012,7 @@ export default function Dashboard() {
           </TabsContent>
 
           {/* ==================== DANGER ZONE TAB ==================== */}
-          <TabsContent value="danger">
+          <TabsContent value="danger" forceMount className={activeTab !== "danger" ? "hidden" : ""}>
             <Card className="bg-red-950/60 border-red-700/50 text-cream">
               <CardHeader className="px-4 pt-4 pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm text-red-400">
@@ -1027,7 +1027,7 @@ export default function Dashboard() {
 
           {/* ==================== ADMIN TAB (admin only) ==================== */}
           {isAdmin && (
-            <TabsContent value="admin">
+            <TabsContent value="admin" forceMount className={activeTab !== "admin" ? "hidden" : ""}>
               <AdminSubtabPanel dashPrefs={dashPrefs} unreadFeedbackCount={unreadFeedbackCount} pendingClubs={pendingClubs} />
             </TabsContent>
           )}

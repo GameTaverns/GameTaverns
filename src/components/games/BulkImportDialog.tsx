@@ -691,6 +691,28 @@ export function BulkImportDialog({
     console.log("[BulkImport] isSelfHostedMode():", isSelfHostedMode());
     console.log("[BulkImport] isSelfHostedSupabaseStack():", isSelfHostedSupabaseStack());
     console.log("[BulkImport] library_id:", library?.id);
+
+    // Prevent duplicate imports — check if one is already processing for this library
+    if (library?.id && !isDemo) {
+      try {
+        const { data: existing } = await supabase
+          .from("import_jobs")
+          .select("id")
+          .eq("library_id", library.id)
+          .in("status", ["processing", "paused"])
+          .limit(1);
+        if (existing && existing.length > 0) {
+          toast({
+            title: "Import already in progress",
+            description: "Please wait for the current import to finish before starting another.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } catch (_e) {
+        // Non-blocking — proceed if check fails
+      }
+    }
     
     setIsImporting(true);
     setResult(null);
