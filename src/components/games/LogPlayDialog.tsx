@@ -292,7 +292,7 @@ export function LogPlayDialog({ gameId, gameTitle, children }: LogPlayDialogProp
                       onCheckedChange={() => toggleExpansion(expansion.id)}
                     />
                     {expansion.image_url && (
-                      <img src={expansion.image_url} alt="" className="w-8 h-8 rounded object-cover" />
+                      <img src={expansion.image_url} alt={expansion.title || "Expansion cover"} className="w-8 h-8 rounded object-cover" />
                     )}
                     <span className="text-sm font-medium truncate">{expansion.title}</span>
                   </label>

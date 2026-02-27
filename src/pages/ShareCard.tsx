@@ -216,7 +216,7 @@ export default function ShareCard() {
 
               {/* Header */}
               <div className="flex items-center gap-3 mb-5">
-                <img src={logoImage} alt="" className="h-7 w-7 opacity-80" />
+                <img src={logoImage} alt="GameTaverns logo" className="h-7 w-7 opacity-80" />
                 <div>
                   <h2 className={`font-display text-lg font-bold ${theme.text}`}>
                     {stats.displayName}

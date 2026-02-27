@@ -152,7 +152,7 @@ function SessionCard({
             {session.expansions.map((exp) => (
               <div key={exp.id} className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50 text-xs">
                 {exp.image_url && (
-                  <img src={exp.image_url} alt="" className="w-5 h-5 rounded object-cover" />
+                  <img src={exp.image_url} alt={exp.title || "Expansion cover"} className="w-5 h-5 rounded object-cover" />
                 )}
                 <span>{exp.title}</span>
               </div>

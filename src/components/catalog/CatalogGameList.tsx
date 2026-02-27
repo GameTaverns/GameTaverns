@@ -36,7 +36,7 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
           {/* Title + image */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             {game.image_url ? (
-              <img src={game.image_url} alt="" className="h-10 w-10 rounded object-cover flex-shrink-0" loading="lazy" />
+              <img src={game.image_url} alt={game.title || "Game cover"} className="h-10 w-10 rounded object-cover flex-shrink-0" loading="lazy" />
             ) : (
               <div className="h-10 w-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
