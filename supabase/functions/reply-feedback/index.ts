@@ -53,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const client = new SMTPClient(clientConfig as any);
 
-    const senderLabel = from_name || "Game Taverns Staff";
+    const senderLabel = "GameTaverns Staff";
     const recipientLabel = to_name || to_email;
 
     const logoUrl = "https://gametaverns.com/gt-logo.png";
