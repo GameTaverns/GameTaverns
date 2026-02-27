@@ -60,6 +60,7 @@ const statusConfig: Record<FeedbackStatus, { label: string; color: string }> = {
   open: { label: "Open", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   in_progress: { label: "In Progress", color: "bg-amber-500/20 text-amber-400 border-amber-500/30" },
   resolved: { label: "Resolved", color: "bg-green-500/20 text-green-400 border-green-500/30" },
+  closed: { label: "Closed", color: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30" },
   wont_fix: { label: "Won't Fix", color: "bg-muted text-muted-foreground border-muted" },
 };
 
@@ -270,6 +271,7 @@ function FeedbackDetailDialog({
                   <SelectItem value="open">Open</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
                   <SelectItem value="wont_fix">Won't Fix</SelectItem>
                 </SelectContent>
               </Select>
@@ -564,9 +566,11 @@ export function FeedbackManagement() {
   const openCount = feedback?.filter((f) => f.status === "open").length || 0;
   const inProgressCount = feedback?.filter((f) => f.status === "in_progress").length || 0;
 
-  // Apply filters
+  // Apply filters — hide "closed" unless explicitly selected
   let filtered = feedback || [];
-  if (statusFilter !== "all") {
+  if (statusFilter === "all") {
+    filtered = filtered.filter((f) => f.status !== "closed");
+  } else {
     filtered = filtered.filter((f) => f.status === statusFilter);
   }
   if (typeFilter !== "all") {
@@ -602,6 +606,7 @@ export function FeedbackManagement() {
               <SelectItem value="open">Open</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
               <SelectItem value="resolved">Resolved</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
               <SelectItem value="wont_fix">Won't Fix</SelectItem>
             </SelectContent>
           </Select>

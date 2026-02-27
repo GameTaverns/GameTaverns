@@ -15,7 +15,7 @@ async function invokeBackendFunction(functionName: string, body: Record<string, 
   }
 }
 export type FeedbackType = "feedback" | "bug" | "feature_request";
-export type FeedbackStatus = "open" | "in_progress" | "resolved" | "wont_fix";
+export type FeedbackStatus = "open" | "in_progress" | "resolved" | "closed" | "wont_fix";
 
 export interface PlatformFeedback {
   id: string;
@@ -146,8 +146,8 @@ export function useUpdateFeedbackStatus() {
 
       if (error) throw error;
 
-      // Lock the Discord thread when resolved (auto-create thread if missing)
-      if (status === "resolved") {
+      // Close the Discord thread when resolved or closed
+      if (status === "resolved" || status === "closed") {
         const threadId = await ensureDiscordThreadId(id);
         if (threadId) {
           await invokeBackendFunction("discord-lock-thread", {
