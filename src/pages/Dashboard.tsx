@@ -50,6 +50,7 @@ import { DangerZone } from "@/components/settings/DangerZone";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
+import { CatalogDiscoveryCard } from "@/components/dashboard/CatalogDiscoveryCard";
 
 import { AccountSettings } from "@/components/settings/AccountSettings";
 import { ProfileThemeCustomizer } from "@/components/settings/ProfileThemeCustomizer";
@@ -968,7 +969,10 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              renderWidgetTab("library", libraryWidgets)
+              <>
+                <CatalogDiscoveryCard />
+                {renderWidgetTab("library", libraryWidgets)}
+              </>
             )}
           </TabsContent>
 

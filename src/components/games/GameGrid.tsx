@@ -1,5 +1,7 @@
+import { Link } from "react-router-dom";
 import { GameCard } from "./GameCard";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, BookOpen, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { GameWithRelations } from "@/types/game";
 
 interface GameGridProps {
@@ -26,6 +28,15 @@ export function GameGrid({ games, hasActiveFilters }: GameGridProps) {
             ? "Try clearing some filters or searching with different terms to find what you're looking for."
             : "This library doesn't have any games yet. Check back soon — games may be added at any time!"}
         </p>
+        {!hasActiveFilters && (
+          <Link to="/catalog" className="mt-4">
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              Browse Catalog
+              <Plus className="h-3 w-3 text-primary" />
+            </Button>
+          </Link>
+        )}
       </div>
     );
   }

@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowUpDown, ArrowUp, ArrowDown, X, AlertTriangle, Settings, Plus, Upload, BarChart3, LayoutGrid, List, Flame } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, X, AlertTriangle, Settings, Plus, Upload, BarChart3, LayoutGrid, List, Flame, BookOpen } from "lucide-react";
 import { HotnessLeaderboard } from "@/components/games/HotnessLeaderboard";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
@@ -456,12 +456,21 @@ const Index = () => {
 
       {/* Feature Discovery Tip - only for owners */}
       {isAuthenticated && isOwner && isTenantMode && !isDemoMode && (
-        <FeatureTip
-          tipId="owner_edit_collection"
-          title="Manage your collection"
-          description="Use the sidebar links or the buttons above to edit your full collection, add games, or customize your library settings."
-          className="mb-6"
-        />
+        <>
+          <FeatureTip
+            tipId="owner_edit_collection"
+            title="Manage your collection"
+            description="Use the sidebar links or the buttons above to edit your full collection, add games, or customize your library settings."
+            className="mb-4"
+          />
+          <FeatureTip
+            tipId="catalog_add_games"
+            title="Add games from the Catalog"
+            description="Browse our catalog of thousands of board games and tap the + button to instantly add any game to your library — no manual entry needed!"
+            icon={<BookOpen className="h-4 w-4 text-primary" />}
+            className="mb-6"
+          />
+        </>
       )}
 
       <div className="mb-8">
