@@ -30,6 +30,10 @@ workflows:
       - name: Add iOS platform
         script: |
           npx cap add ios
+      - name: Clean previous build artifacts
+        script: |
+          rm -rf ios/App/App/public
+          rm -rf ios/App/build
       - name: Sync iOS platform
         script: |
           npx cap sync ios
@@ -167,6 +171,10 @@ workflows:
       - name: Add Android platform
         script: |
           npx cap add android
+      - name: Clean previous build artifacts
+        script: |
+          rm -rf android/app/src/main/assets/public
+          rm -rf android/app/build
       - name: Sync Android platform
         script: |
           npx cap sync android
