@@ -42,6 +42,16 @@ export interface FeedbackNote {
   created_at: string;
 }
 
+function extractNotifyThreadId(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const results = (payload as Record<string, unknown>).results;
+  if (!results || typeof results !== "object") return null;
+  const discord = (results as Record<string, unknown>).discord;
+  if (!discord || typeof discord !== "object") return null;
+  const threadId = (discord as Record<string, unknown>).thread_id;
+  return typeof threadId === "string" && threadId.length > 0 ? threadId : null;
+}
+
 async function ensureDiscordThreadId(feedbackId: string): Promise<string | null> {
   const { data: feedback, error } = await supabase
     .from("platform_feedback")
@@ -62,6 +72,10 @@ async function ensureDiscordThreadId(feedbackId: string): Promise<string | null>
   });
 
   if (!notifyResult.ok) return null;
+
+  // Prefer direct function response to avoid hard dependency on immediate DB persistence
+  const threadIdFromNotify = extractNotifyThreadId(notifyResult.data);
+  if (threadIdFromNotify) return threadIdFromNotify;
 
   const { data: refreshed } = await supabase
     .from("platform_feedback")
