@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Package, Trash2, Check, UtensilsCrossed, Coffee, Wrench, Gamepad2, HelpCircle } from "lucide-react";
+import { Plus, Package, Trash2, Check, UtensilsCrossed, Coffee, Wrench, Gamepad2, HelpCircle, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useEventSupplies, useAddEventSupply, useRemoveEventSupply, useClaimSupply, type EventSupply } from "@/hooks/useEventPlanning";
+import { useEventSupplies, useAddEventSupply, useRemoveEventSupply, useClaimSupply, useUpdateEventSupply, type EventSupply } from "@/hooks/useEventPlanning";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   food: <UtensilsCrossed className="h-3.5 w-3.5" />,
@@ -46,7 +46,9 @@ export function EventSuppliesTab({ eventId }: EventSuppliesTabProps) {
   const addSupply = useAddEventSupply();
   const removeSupply = useRemoveEventSupply();
   const claimSupply = useClaimSupply();
+  const updateSupply = useUpdateEventSupply();
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingSupply, setEditingSupply] = useState<EventSupply | null>(null);
 
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState("1");
@@ -67,6 +69,28 @@ export function EventSuppliesTab({ eventId }: EventSuppliesTabProps) {
     });
     resetForm();
     setShowAddDialog(false);
+  };
+
+  const openEdit = (supply: EventSupply) => {
+    setItemName(supply.item_name);
+    setQuantity(supply.quantity.toString());
+    setCategory(supply.category);
+    setEditingSupply(supply);
+  };
+
+  const handleEdit = async () => {
+    if (!editingSupply || !itemName.trim()) return;
+    await updateSupply.mutateAsync({
+      supplyId: editingSupply.id,
+      eventId,
+      updates: {
+        item_name: itemName.trim(),
+        quantity: parseInt(quantity) || 1,
+        category,
+      },
+    });
+    resetForm();
+    setEditingSupply(null);
   };
 
   const handleClaim = (supply: EventSupply) => {
@@ -128,6 +152,7 @@ export function EventSuppliesTab({ eventId }: EventSuppliesTabProps) {
                         key={supply.id}
                         supply={supply}
                         onClaim={() => handleClaim(supply)}
+                        onEdit={() => openEdit(supply)}
                         onRemove={() => removeSupply.mutate({ supplyId: supply.id, eventId })}
                       />
                     ))}
@@ -139,38 +164,17 @@ export function EventSuppliesTab({ eventId }: EventSuppliesTabProps) {
         </CardContent>
       </Card>
 
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      {/* Add Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={(o) => { if (!o) resetForm(); setShowAddDialog(o); }}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Add Supply Item</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Item *</Label>
-              <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Chips & dip" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Quantity</Label>
-                <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} min={1} />
-              </div>
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="food">Food</SelectItem>
-                    <SelectItem value="drinks">Drinks</SelectItem>
-                    <SelectItem value="equipment">Equipment</SelectItem>
-                    <SelectItem value="games">Games</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+          <SupplyFormFields
+            itemName={itemName} setItemName={setItemName}
+            quantity={quantity} setQuantity={setQuantity}
+            category={category} setCategory={setCategory}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={!itemName.trim() || addSupply.isPending}>
@@ -179,11 +183,69 @@ export function EventSuppliesTab({ eventId }: EventSuppliesTabProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingSupply} onOpenChange={(o) => { if (!o) { resetForm(); setEditingSupply(null); } }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Edit Supply Item</DialogTitle>
+          </DialogHeader>
+          <SupplyFormFields
+            itemName={itemName} setItemName={setItemName}
+            quantity={quantity} setQuantity={setQuantity}
+            category={category} setCategory={setCategory}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { resetForm(); setEditingSupply(null); }}>Cancel</Button>
+            <Button onClick={handleEdit} disabled={!itemName.trim() || updateSupply.isPending}>
+              {updateSupply.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function SupplyItem({ supply, onClaim, onRemove }: { supply: EventSupply; onClaim: () => void; onRemove: () => void }) {
+function SupplyFormFields({
+  itemName, setItemName, quantity, setQuantity, category, setCategory,
+}: {
+  itemName: string; setItemName: (v: string) => void;
+  quantity: string; setQuantity: (v: string) => void;
+  category: string; setCategory: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Item *</Label>
+        <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="e.g. Chips & dip" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Quantity</Label>
+          <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} min={1} />
+        </div>
+        <div className="space-y-2">
+          <Label>Category</Label>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="food">Food</SelectItem>
+              <SelectItem value="drinks">Drinks</SelectItem>
+              <SelectItem value="equipment">Equipment</SelectItem>
+              <SelectItem value="games">Games</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SupplyItem({ supply, onClaim, onEdit, onRemove }: { supply: EventSupply; onClaim: () => void; onEdit: () => void; onRemove: () => void }) {
   return (
     <div className={`flex items-center gap-3 p-2 rounded-md border transition-colors group ${supply.is_fulfilled ? "bg-muted/50 opacity-75" : "bg-card hover:bg-muted/30"}`}>
       <div className="flex-1 min-w-0">
@@ -203,6 +265,14 @@ function SupplyItem({ supply, onClaim, onRemove }: { supply: EventSupply; onClai
             <Check className="h-3 w-3 mr-1" /> Claim
           </Button>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 opacity-0 group-hover:opacity-100"
+          onClick={onEdit}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
         <Button
           variant="ghost"
           size="icon"

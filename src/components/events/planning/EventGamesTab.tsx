@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Gamepad2, Clock, Users, Trash2, GripVertical, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useEventGames, useAddEventGame, useRemoveEventGame, type EventGame } from "@/hooks/useEventPlanning";
+import { useEventGames, useAddEventGame, useRemoveEventGame, useUpdateEventGame, type EventGame } from "@/hooks/useEventPlanning";
 
 interface EventGamesTabProps {
   eventId: string;
@@ -24,7 +23,9 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
   const { data: games = [], isLoading } = useEventGames(eventId);
   const addGame = useAddEventGame();
   const removeGame = useRemoveEventGame();
+  const updateGame = useUpdateEventGame();
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingGame, setEditingGame] = useState<EventGame | null>(null);
 
   // Add game form state
   const [title, setTitle] = useState("");
@@ -38,6 +39,16 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
   const resetForm = () => {
     setTitle(""); setScheduledTime(""); setDuration("");
     setMinPlayers(""); setMaxPlayers(""); setTableLabel(""); setNotes("");
+  };
+
+  const populateForm = (game: EventGame) => {
+    setTitle(game.title);
+    setScheduledTime(game.scheduled_time || "");
+    setDuration(game.duration_minutes?.toString() || "");
+    setMinPlayers(game.min_players?.toString() || "");
+    setMaxPlayers(game.max_players?.toString() || "");
+    setTableLabel(game.table_label || "");
+    setNotes(game.notes || "");
   };
 
   const handleAdd = async () => {
@@ -58,6 +69,30 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
     });
     resetForm();
     setShowAddDialog(false);
+  };
+
+  const handleEdit = async () => {
+    if (!editingGame || !title.trim()) return;
+    await updateGame.mutateAsync({
+      gameId: editingGame.id,
+      eventId,
+      updates: {
+        title: title.trim(),
+        scheduled_time: scheduledTime || null,
+        duration_minutes: duration ? parseInt(duration) : null,
+        min_players: minPlayers ? parseInt(minPlayers) : null,
+        max_players: maxPlayers ? parseInt(maxPlayers) : null,
+        table_label: tableLabel || null,
+        notes: notes || null,
+      },
+    });
+    resetForm();
+    setEditingGame(null);
+  };
+
+  const openEdit = (game: EventGame) => {
+    populateForm(game);
+    setEditingGame(game);
   };
 
   return (
@@ -92,6 +127,7 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
                 <GameLineupItem
                   key={game.id}
                   game={game}
+                  onEdit={() => openEdit(game)}
                   onRemove={() => removeGame.mutate({ gameId: game.id, eventId })}
                 />
               ))}
@@ -101,45 +137,20 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
       </Card>
 
       {/* Add Game Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      <Dialog open={showAddDialog} onOpenChange={(o) => { if (!o) resetForm(); setShowAddDialog(o); }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Add Game to Lineup</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Game Title *</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Catan" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Start Time</Label>
-                <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Duration (min)</Label>
-                <Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="60" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Min Players</Label>
-                <Input type="number" value={minPlayers} onChange={(e) => setMinPlayers(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Max Players</Label>
-                <Input type="number" value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Table / Group</Label>
-              <Input value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder="e.g. Table 1" />
-            </div>
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Teaching session, bring expansion, etc." />
-            </div>
-          </div>
+          <GameFormFields
+            title={title} setTitle={setTitle}
+            scheduledTime={scheduledTime} setScheduledTime={setScheduledTime}
+            duration={duration} setDuration={setDuration}
+            minPlayers={minPlayers} setMinPlayers={setMinPlayers}
+            maxPlayers={maxPlayers} setMaxPlayers={setMaxPlayers}
+            tableLabel={tableLabel} setTableLabel={setTableLabel}
+            notes={notes} setNotes={setNotes}
+          />
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={!title.trim() || addGame.isPending}>
@@ -148,11 +159,86 @@ export function EventGamesTab({ eventId, libraryId }: EventGamesTabProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Game Dialog */}
+      <Dialog open={!!editingGame} onOpenChange={(o) => { if (!o) { resetForm(); setEditingGame(null); } }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Game</DialogTitle>
+          </DialogHeader>
+          <GameFormFields
+            title={title} setTitle={setTitle}
+            scheduledTime={scheduledTime} setScheduledTime={setScheduledTime}
+            duration={duration} setDuration={setDuration}
+            minPlayers={minPlayers} setMinPlayers={setMinPlayers}
+            maxPlayers={maxPlayers} setMaxPlayers={setMaxPlayers}
+            tableLabel={tableLabel} setTableLabel={setTableLabel}
+            notes={notes} setNotes={setNotes}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { resetForm(); setEditingGame(null); }}>Cancel</Button>
+            <Button onClick={handleEdit} disabled={!title.trim() || updateGame.isPending}>
+              {updateGame.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function GameLineupItem({ game, onRemove }: { game: EventGame; onRemove: () => void }) {
+function GameFormFields({
+  title, setTitle, scheduledTime, setScheduledTime, duration, setDuration,
+  minPlayers, setMinPlayers, maxPlayers, setMaxPlayers, tableLabel, setTableLabel,
+  notes, setNotes,
+}: {
+  title: string; setTitle: (v: string) => void;
+  scheduledTime: string; setScheduledTime: (v: string) => void;
+  duration: string; setDuration: (v: string) => void;
+  minPlayers: string; setMinPlayers: (v: string) => void;
+  maxPlayers: string; setMaxPlayers: (v: string) => void;
+  tableLabel: string; setTableLabel: (v: string) => void;
+  notes: string; setNotes: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Game Title *</Label>
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Catan" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Start Time</Label>
+          <Input type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Duration (min)</Label>
+          <Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="60" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Min Players</Label>
+          <Input type="number" value={minPlayers} onChange={(e) => setMinPlayers(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Max Players</Label>
+          <Input type="number" value={maxPlayers} onChange={(e) => setMaxPlayers(e.target.value)} />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Table / Group</Label>
+        <Input value={tableLabel} onChange={(e) => setTableLabel(e.target.value)} placeholder="e.g. Table 1" />
+      </div>
+      <div className="space-y-2">
+        <Label>Notes</Label>
+        <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Teaching session, bring expansion, etc." />
+      </div>
+    </div>
+  );
+}
+
+function GameLineupItem({ game, onEdit, onRemove }: { game: EventGame; onEdit: () => void; onRemove: () => void }) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
       <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
@@ -186,14 +272,24 @@ function GameLineupItem({ game, onRemove }: { game: EventGame; onRemove: () => v
           {game.notes && <span className="truncate">{game.notes}</span>}
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-        onClick={onRemove}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={onEdit}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+          onClick={onRemove}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }
