@@ -175,6 +175,26 @@ export function useAddFeedbackNote() {
         .single();
 
       if (error) throw error;
+
+      // Post note to Discord thread if one exists
+      const { data: feedback } = await supabase
+        .from("platform_feedback")
+        .select("discord_thread_id")
+        .eq("id", input.feedback_id)
+        .maybeSingle();
+
+      if (feedback?.discord_thread_id) {
+        supabase.functions.invoke("discord-lock-thread", {
+          body: {
+            action: "post_note",
+            thread_id: feedback.discord_thread_id,
+            author_name: input.author_name,
+            content: input.content,
+            note_type: input.note_type,
+          },
+        }).catch((e) => console.warn("Failed to post note to Discord:", e));
+      }
+
       return data;
     },
     onSuccess: (data: any) => {
