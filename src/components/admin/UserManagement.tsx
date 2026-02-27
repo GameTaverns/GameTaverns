@@ -646,15 +646,17 @@ export function UserManagement() {
                                   <Ban className="w-3 h-3 mr-1" />
                                   Suspend
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 text-xs border-destructive/50 text-destructive hover:bg-destructive/20"
-                                  onClick={() => setDeleteDialog({ open: true, user })}
-                                >
-                                  <Trash2 className="w-3 h-3 mr-1" />
-                                  Delete
-                                </Button>
+                                {currentUserRole === "admin" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs border-destructive/50 text-destructive hover:bg-destructive/20"
+                                    onClick={() => setDeleteDialog({ open: true, user })}
+                                  >
+                                    <Trash2 className="w-3 h-3 mr-1" />
+                                    Delete
+                                  </Button>
+                                )}
                               </>
                             ) : null}
                             
