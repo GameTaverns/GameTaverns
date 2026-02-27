@@ -264,6 +264,9 @@ export function PlayHistoryImportDialog({
           <DialogDescription>
             Import your logged plays from BoardGameGeek and merge them with your library
           </DialogDescription>
+          <p className="text-xs text-muted-foreground mt-1">
+            💡 Once started, your import runs on the server — you can safely close this dialog and your plays will appear as they're processed.
+          </p>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-1 min-h-0">

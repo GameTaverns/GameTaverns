@@ -153,7 +153,8 @@ export function GameUrlImport({ libraryId }: GameUrlImportProps) {
             Quick Add from URL
           </CardTitle>
           <CardDescription>
-            Import a game directly from BoardGameGeek with all its details
+            Import a game directly from BoardGameGeek with all its details.
+            You can safely navigate away after clicking Import — the process runs on the server.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

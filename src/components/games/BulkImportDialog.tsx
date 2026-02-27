@@ -1418,6 +1418,9 @@ export function BulkImportDialog({
           <DialogDescription>
             Import multiple games at once from CSV, BGG collection, or BGG links
           </DialogDescription>
+          <p className="text-xs text-muted-foreground mt-1">
+            💡 Once started, your import runs on the server — you can safely close this dialog and your games will appear as they're processed.
+          </p>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
