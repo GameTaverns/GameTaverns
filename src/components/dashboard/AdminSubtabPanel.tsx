@@ -242,7 +242,7 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
         </TabsList>
 
         {visibleIds.map(id => (
-          <TabsContent key={id} value={id} className="mt-6">
+          <TabsContent key={id} value={id} className="mt-6" forceMount={id === "feedback" ? true : undefined} style={id === "feedback" && effectiveTab !== "feedback" ? { display: "none" } : undefined}>
             {subtabContent[id] || <div className="text-cream/50 text-sm">No content</div>}
           </TabsContent>
         ))}
