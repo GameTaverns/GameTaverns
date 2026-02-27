@@ -79,8 +79,35 @@ function FeedbackDetailDialog({
   const assignFeedback = useAssignFeedback();
   const { data: notes = [], isLoading: notesLoading } = useFeedbackNotes(open ? feedback.id : undefined);
   const addNote = useAddFeedbackNote();
-  const [noteContent, setNoteContent] = useState("");
-  const [noteType, setNoteType] = useState<"internal" | "reply">("internal");
+  const noteStorageKey = `feedback-note-${feedback.id}`;
+  const typeStorageKey = `feedback-note-type-${feedback.id}`;
+  const [noteContent, setNoteContent] = useState(() => {
+    try { return sessionStorage.getItem(noteStorageKey) || ""; } catch { return ""; }
+  });
+  const [noteType, setNoteType] = useState<"internal" | "reply">(() => {
+    try {
+      const saved = sessionStorage.getItem(typeStorageKey);
+      return saved === "reply" ? "reply" : "internal";
+    } catch { return "internal"; }
+  });
+
+  // Persist draft to sessionStorage
+  const handleNoteContentChange = (value: string) => {
+    setNoteContent(value);
+    try { sessionStorage.setItem(noteStorageKey, value); } catch {}
+  };
+  const handleNoteTypeChange = (type: "internal" | "reply") => {
+    setNoteType(type);
+    try { sessionStorage.setItem(typeStorageKey, type); } catch {}
+  };
+  const clearNoteDraft = () => {
+    setNoteContent("");
+    setNoteType("internal");
+    try {
+      sessionStorage.removeItem(noteStorageKey);
+      sessionStorage.removeItem(typeStorageKey);
+    } catch {}
+  };
 
   const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Staff";
 
@@ -126,7 +153,7 @@ function FeedbackDetailDialog({
         }
       }
 
-      setNoteContent("");
+      clearNoteDraft();
       if (noteType === "reply") {
         if (emailSent) {
           toast({ title: "Reply sent & emailed" });
@@ -271,7 +298,7 @@ function FeedbackDetailDialog({
                   variant={noteType === "internal" ? "default" : "outline"}
                   size="sm"
                   className="h-7 text-xs gap-1"
-                  onClick={() => setNoteType("internal")}
+                  onClick={() => handleNoteTypeChange("internal")}
                 >
                   <StickyNote className="h-3 w-3" /> Internal Note
                 </Button>
@@ -279,14 +306,14 @@ function FeedbackDetailDialog({
                   variant={noteType === "reply" ? "default" : "outline"}
                   size="sm"
                   className="h-7 text-xs gap-1"
-                  onClick={() => setNoteType("reply")}
+                  onClick={() => handleNoteTypeChange("reply")}
                 >
                   <Send className="h-3 w-3" /> Reply to User
                 </Button>
               </div>
               <Textarea
                 value={noteContent}
-                onChange={(e) => setNoteContent(e.target.value)}
+                onChange={(e) => handleNoteContentChange(e.target.value)}
                 placeholder={
                   noteType === "reply"
                     ? `Reply will be emailed to ${feedback.sender_email}...`
