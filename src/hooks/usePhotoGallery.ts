@@ -58,34 +58,36 @@ export function useUploadPhoto() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ file, caption }: { file: File; caption?: string }) => {
+    mutationFn: async ({ files, caption }: { files: File[]; caption?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      for (const file of files) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("user-photos")
-        .upload(path, file, { contentType: file.type, upsert: false });
+        const { error: uploadError } = await supabase.storage
+          .from("user-photos")
+          .upload(path, file, { contentType: file.type, upsert: false });
 
-      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+        if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-      const { data: urlData } = supabase.storage
-        .from("user-photos")
-        .getPublicUrl(path);
+        const { data: urlData } = supabase.storage
+          .from("user-photos")
+          .getPublicUrl(path);
 
-      if (!urlData?.publicUrl) throw new Error("Failed to get public URL");
+        if (!urlData?.publicUrl) throw new Error("Failed to get public URL");
 
-      const { error: insertError } = await supabase
-        .from("user_photos")
-        .insert({
-          user_id: user.id,
-          image_url: urlData.publicUrl,
-          caption: caption?.trim() || null,
-        });
+        const { error: insertError } = await supabase
+          .from("user_photos")
+          .insert({
+            user_id: user.id,
+            image_url: urlData.publicUrl,
+            caption: caption?.trim() || null,
+          });
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-photos"] });
