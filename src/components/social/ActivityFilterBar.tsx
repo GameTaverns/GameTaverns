@@ -21,10 +21,11 @@ export function useActivityFilters(items: FeedItem[]) {
     if (hiddenTypes.size === 0) return items;
     return items.filter((item) => {
       if (item.type === "batch") {
-        // Batches are always game_added/expansion_added
+        if (item.event_type === "photos_posted_batch") return !hiddenTypes.has("photo_posted");
         return !hiddenTypes.has("game_added") || !hiddenTypes.has("expansion_added");
       }
-      return !hiddenTypes.has(item.event.event_type);
+      const eventType = item.event.event_type === "photo_tagged" ? "photo_posted" : item.event.event_type;
+      return !hiddenTypes.has(eventType);
     });
   }, [items, hiddenTypes]);
 
@@ -45,9 +46,10 @@ export function useActivityFilters(items: FeedItem[]) {
     const types = new Set<string>();
     for (const item of items) {
       if (item.type === "batch") {
-        types.add("game_added");
+        types.add(item.event_type === "photos_posted_batch" ? "photo_posted" : "game_added");
       } else {
-        types.add(item.event.event_type);
+        const t = item.event.event_type === "photo_tagged" ? "photo_posted" : item.event.event_type;
+        types.add(t);
       }
     }
     return FILTER_OPTIONS.filter((f) => types.has(f.key));

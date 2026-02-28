@@ -17,6 +17,7 @@ const EVENT_CONFIG: Record<string, { icon: any; verb: string; color: string }> =
   library_created: { icon: Users, verb: "Created a library", color: "text-pink-500" },
   review_posted: { icon: Star, verb: "Posted a review", color: "text-amber-500" },
   photo_posted: { icon: Camera, verb: "Posted a photo", color: "text-rose-500" },
+  photo_tagged: { icon: Camera, verb: "Was tagged in a photo", color: "text-rose-500" },
 };
 
 export function ActivityFeedItem({ event, showUser = false, canDelete = false }: { event: ActivityEvent; showUser?: boolean; canDelete?: boolean }) {
@@ -24,7 +25,7 @@ export function ActivityFeedItem({ event, showUser = false, canDelete = false }:
   const config = EVENT_CONFIG[event.event_type] || { icon: Dices, verb: event.event_type, color: "text-muted-foreground" };
   const Icon = config.icon;
   const detail = event.metadata?.title || event.metadata?.name || event.metadata?.caption || event.metadata?.description || "";
-  const photoUrl = event.event_type === "photo_posted" ? event.metadata?.image_url : null;
+  const photoUrl = (event.event_type === "photo_posted" || event.event_type === "photo_tagged") ? event.metadata?.image_url : null;
 
   const initials = (event.user_display_name || "?")
     .split(" ")
@@ -60,13 +61,26 @@ export function ActivityFeedItem({ event, showUser = false, canDelete = false }:
               </Link>{" "}
             </>
           )}
-          <span className={showUser ? "text-muted-foreground" : "font-medium text-foreground"}>
-            {showUser ? config.verb.toLowerCase() : config.verb}
-          </span>
+          {!showUser && event.event_type === "photo_tagged" && event.metadata?.tagged_by_display_name && (
+            <>
+              <Link
+                to={event.metadata?.tagged_by_username ? `/u/${event.metadata.tagged_by_username}` : "#"}
+                className="font-medium text-foreground hover:underline"
+              >
+                {event.metadata.tagged_by_display_name as string}
+              </Link>{" "}
+              <span className="text-muted-foreground">tagged you</span>
+            </>
+          )}
+          {!((!showUser && event.event_type === "photo_tagged" && event.metadata?.tagged_by_display_name)) && (
+            <span className={showUser ? "text-muted-foreground" : "font-medium text-foreground"}>
+              {showUser ? config.verb.toLowerCase() : config.verb}
+            </span>
+          )}
           {detail && (
             <>
               {" · "}
-              {event.event_type === "photo_posted" ? (
+              {(event.event_type === "photo_posted" || event.event_type === "photo_tagged") ? (
                 <MentionRenderer caption={detail} className="text-foreground/80" />
               ) : (
                 <span className="text-foreground/80">
