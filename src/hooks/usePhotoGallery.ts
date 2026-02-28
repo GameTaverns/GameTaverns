@@ -232,6 +232,8 @@ export function useDeletePhoto() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-photos"] });
+      queryClient.invalidateQueries({ queryKey: ["user-activity"] });
+      queryClient.invalidateQueries({ queryKey: ["following-feed"] });
     },
   });
 }

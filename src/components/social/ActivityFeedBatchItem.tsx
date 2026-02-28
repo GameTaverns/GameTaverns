@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Gamepad2, BookOpen } from "lucide-react";
+import { Gamepad2, BookOpen, Camera } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { BatchedActivityEvent } from "@/utils/groupActivityEvents";
 import { ActivityReactionButton } from "@/components/social/ActivityReactionButton";
+import { MentionRenderer } from "@/components/photos/MentionRenderer";
 
 export function ActivityFeedBatchItem({
   batch,
@@ -12,13 +13,25 @@ export function ActivityFeedBatchItem({
   batch: BatchedActivityEvent;
   showUser?: boolean;
 }) {
+  const isPhotoBatch = batch.event_type === "photos_posted_batch";
   const gameCount = batch.events.filter((e) => e.event_type === "game_added").length;
   const expansionCount = batch.events.filter((e) => e.event_type === "expansion_added").length;
 
-  const parts: string[] = [];
-  if (gameCount > 0) parts.push(`${gameCount} game${gameCount !== 1 ? "s" : ""}`);
-  if (expansionCount > 0) parts.push(`${expansionCount} expansion${expansionCount !== 1 ? "s" : ""}`);
-  const summary = `Added ${parts.join(" and ")}`;
+  let summary: string;
+  let caption: string | null = null;
+  if (isPhotoBatch) {
+    const photoCount = batch.events.length;
+    summary = `Posted ${photoCount} photo${photoCount !== 1 ? "s" : ""}`;
+    caption = batch.events[0]?.metadata?.caption as string | null;
+  } else {
+    const parts: string[] = [];
+    if (gameCount > 0) parts.push(`${gameCount} game${gameCount !== 1 ? "s" : ""}`);
+    if (expansionCount > 0) parts.push(`${expansionCount} expansion${expansionCount !== 1 ? "s" : ""}`);
+    summary = `Added ${parts.join(" and ")}`;
+  }
+
+  const BatchIcon = isPhotoBatch ? Camera : Gamepad2;
+  const batchColor = isPhotoBatch ? "text-rose-500" : "text-blue-500";
 
   const initials = (batch.user_display_name || "?")
     .split(" ")
@@ -55,8 +68,8 @@ export function ActivityFeedBatchItem({
         </Link>
       )}
       {!showUser && (
-        <div className="mt-0.5 shrink-0 p-1.5 rounded-md bg-muted/50 text-blue-500">
-          <Gamepad2 className="h-3.5 w-3.5" />
+        <div className={`mt-0.5 shrink-0 p-1.5 rounded-md bg-muted/50 ${batchColor}`}>
+          <BatchIcon className="h-3.5 w-3.5" />
         </div>
       )}
       <div className="flex-1 min-w-0">
@@ -74,6 +87,12 @@ export function ActivityFeedBatchItem({
           <span className={showUser ? "text-muted-foreground" : "font-medium text-foreground"}>
             {showUser ? summary.toLowerCase() : summary}
           </span>
+          {caption && (
+            <>
+              {" · "}
+              <MentionRenderer caption={caption} className="text-foreground/80" />
+            </>
+          )}
         </p>
 
         {/* Thumbnail grid */}
@@ -109,8 +128,8 @@ export function ActivityFeedBatchItem({
         </div>
       </div>
       {showUser && (
-        <div className="shrink-0 mt-1 text-blue-500">
-          <Gamepad2 className="h-4 w-4" />
+        <div className={`shrink-0 mt-1 ${batchColor}`}>
+          <BatchIcon className="h-4 w-4" />
         </div>
       )}
     </div>

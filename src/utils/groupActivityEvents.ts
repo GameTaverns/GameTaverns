@@ -1,6 +1,6 @@
 import type { ActivityEvent } from "@/hooks/useActivityFeed";
 
-const GROUPABLE_TYPES = new Set(["game_added", "expansion_added"]);
+const GROUPABLE_TYPES = new Set(["game_added", "expansion_added", "photo_posted"]);
 const MAX_GROUP_SIZE = 9;
 // Events within this window (ms) from each other get grouped
 const GROUP_WINDOW_MS = 60 * 60 * 1000; // 1 hour
@@ -12,7 +12,7 @@ export interface GroupedActivityEvent {
 
 export interface BatchedActivityEvent {
   type: "batch";
-  event_type: "games_added_batch";
+  event_type: "games_added_batch" | "photos_posted_batch";
   user_id: string;
   user_display_name?: string;
   user_avatar_url?: string;
@@ -63,9 +63,10 @@ export function groupActivityEvents(events: ActivityEvent[]): FeedItem[] {
     if (batch.length === 1) {
       result.push({ type: "single", event: current });
     } else {
+      const batchType = current.event_type === "photo_posted" ? "photos_posted_batch" : "games_added_batch";
       result.push({
         type: "batch",
-        event_type: "games_added_batch",
+        event_type: batchType as "games_added_batch" | "photos_posted_batch",
         user_id: current.user_id,
         user_display_name: current.user_display_name,
         user_avatar_url: current.user_avatar_url,
