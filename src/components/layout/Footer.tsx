@@ -55,7 +55,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
             <ul className="space-y-2 text-sm">
               <li>
                 <a
-                  href="https://discord.gg/d6PywfxNG4"
+                  href="https://discord.gg/jTqgCPX8DD"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"

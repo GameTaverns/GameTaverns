@@ -62,7 +62,7 @@ export function GlobalFeedbackButton() {
     <>
       {/* Discord link */}
       <a
-        href="https://discord.gg/d6PywfxNG4"
+        href="https://discord.gg/jTqgCPX8DD"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 left-[150px] z-50 hidden md:flex h-auto items-center gap-2 rounded-full bg-[#5865F2] text-white shadow-lg px-4 py-3 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
