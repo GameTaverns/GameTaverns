@@ -211,16 +211,19 @@ export default function UserProfile() {
             )}
           </div>
           <CardContent className="relative pt-0 pb-6 px-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-14">
-              {/* Avatar lifted above banner — needs z-index to stay on top */}
+            {/* Avatar row — only avatar overlaps the banner */}
+            <div className="flex items-end gap-4 -mt-14">
               <Avatar className="h-28 w-28 border-4 border-card shadow-lg flex-shrink-0 relative z-10">
                 <AvatarImage src={profile.avatar_url || undefined} alt={profile.display_name || profile.username} className="object-cover" />
                 <AvatarFallback className="text-2xl font-display bg-primary/20 text-primary">
                   {initials}
                 </AvatarFallback>
               </Avatar>
+            </div>
 
-              <div className="flex-1 min-w-0 pt-2">
+            {/* Name, badges, actions — fully in card body, never overlapping banner */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-3">
+              <div className="flex-1 min-w-0">
                 <h1
                   className="font-display text-2xl font-bold truncate flex items-center gap-2"
                   style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}
