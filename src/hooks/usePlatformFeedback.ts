@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig, isSelfHostedSupabaseStack } from "@/config/runtime";
 
@@ -142,6 +143,25 @@ async function ensureDiscordThreadId(feedbackId: string): Promise<string | null>
 }
 
 export function usePlatformFeedback() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("platform-feedback-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "platform_feedback" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["platform-feedback"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   return useQuery({
     queryKey: ["platform-feedback"],
     queryFn: async (): Promise<PlatformFeedback[]> => {
