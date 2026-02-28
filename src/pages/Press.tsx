@@ -208,6 +208,22 @@ export default function Press() {
               />
             </div>
           </ScreenshotGroup>
+
+          {/* Social Platform */}
+          <ScreenshotGroup label="Social Platform & Activity Feed">
+            <div className="grid md:grid-cols-2 gap-8">
+              <ScreenshotCard
+                src={`${PK}/social-profile.jpg`}
+                title="Social Profile with Activity Feed"
+                description="Rich user profiles with photo galleries, activity timelines, achievement badges, and follower counts. Activity feeds show games added, play sessions logged, and photo posts — all grouped intelligently to reduce noise."
+              />
+              <ScreenshotCard
+                src={`${PK}/social-feed.jpg`}
+                title="Following Feed"
+                description="Instagram-style social feed showing activity from people you follow. Photo posts with @mentions, batched game additions with cover art grids, and tag notifications. Filter by activity type with one tap."
+              />
+            </div>
+          </ScreenshotGroup>
         </div>
       </section>
 
@@ -265,6 +281,11 @@ export default function Press() {
               icon={<Zap className="h-6 w-6" />}
               title="Smart Recommendations"
               description="Get personalized game suggestions based on your play history and preferences — only recommending games that actually exist in your library or local community."
+            />
+            <DiffCard
+              icon={<Users className="h-6 w-6" />}
+              title="Social Activity Feed"
+              description="Follow other collectors, see their games added, play sessions, photo posts, and achievements in a unified feed. Instagram-style photo sharing with @mentions, batch grouping, and activity filters."
             />
             <DiffCard
               icon={<Shield className="h-6 w-6" />}
@@ -374,15 +395,15 @@ export default function Press() {
         <div className="max-w-4xl mx-auto space-y-8">
           <CopyBlock
             label="One-Liner"
-            text="GameTaverns is the free, all-in-one platform for board game collectors and communities to catalog, lend, and celebrate their collections."
+            text="GameTaverns is the free, all-in-one social platform for board game collectors and communities to catalog, share, lend, and celebrate their collections."
           />
           <CopyBlock
             label="Short Description (50 words)"
-            text="GameTaverns is a free platform that turns your board game collection into a shareable, fully customizable library. Import from BoardGameGeek in seconds, log plays with ELO rankings, lend games with tracking, run game night polls, earn achievements, and connect with other enthusiasts. Built for collectors, game groups, and community lending libraries."
+            text="GameTaverns is a free platform that turns your board game collection into a shareable, fully customizable library with a built-in social layer. Import from BoardGameGeek in seconds, log plays with ELO rankings, share photos with @mentions, follow other collectors, lend games with tracking, run game night polls, and earn achievements."
           />
           <CopyBlock
             label="Long Description (100 words)"
-            text="GameTaverns is the all-in-one board game library management platform designed for collectors, game groups, and community lending libraries. Import your entire BoardGameGeek collection with one click, then track every game's condition, location, and value. Log play sessions with scores, tag other players, and track competitive ELO rankings from Beginner to Elite. Every library and profile is fully customizable with unique themes, colors, fonts, and backgrounds. The built-in lending system handles borrow requests, due dates, and borrower reputation. Game night polls let anyone vote — no account needed. Libraries can form Clubs to create multi-library networks. Trade matching connects you with nearby collections. Free, privacy-first, and open to all."
+            text="GameTaverns is the all-in-one board game library management and social platform designed for collectors, game groups, and community lending libraries. Import your entire BoardGameGeek collection with one click, then track every game's condition, location, and value. Log play sessions with scores, tag other players, and track competitive ELO rankings from Beginner to Elite. Follow other collectors and see their activity in a real-time social feed — games added, play sessions, photo posts with @mentions, and achievements earned. Every library and profile is fully customizable with unique themes and colors. The built-in lending system handles borrow requests, due dates, and borrower reputation. Game night polls let anyone vote — no account needed. Free, privacy-first, and open to all."
           />
         </div>
       </section>

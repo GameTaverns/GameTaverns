@@ -232,6 +232,13 @@ export default function Platform() {
             description="Share a link — anyone votes, no account needed. See live results as they come in. RSVP tracking and event details all in one place."
             reverse
           />
+          <ShowcaseRow
+            image="/presskit/social-feed.jpg"
+            alt="Social activity feed showing followed users' game activity and photo posts"
+            title="Social Activity Feed"
+            description="Follow other collectors and see their activity in a real-time feed. Photo posts with @mentions, batched game additions, play sessions, and achievements — all in one place."
+            reverse={false}
+          />
         </div>
 
         {/* Feature grid */}
@@ -250,6 +257,7 @@ export default function Platform() {
           <FeatureHighlight icon={<Star className="h-5 w-5" />} title="Ratings & Wishlist" description="Visitors can rate games and wishlist titles — no account required." />
           <FeatureHighlight icon={<Zap className="h-5 w-5" />} title="AI Recommendations" description="Games like this — powered by AI, only suggesting titles actually in your library." />
           <FeatureHighlight icon={<Building2 className="h-5 w-5" />} title="Clubs" description="Connect libraries into a shared network with combined catalogs, shared events, and cross-library forums." />
+          <FeatureHighlight icon={<Users className="h-5 w-5" />} title="Social Feed & Photos" description="Follow collectors, share game day photos with @mentions, and see activity from your community." />
           <FeatureHighlight icon={<Shield className="h-5 w-5" />} title="Privacy First" description="Toggle every feature on or off. Public or private. You're always in control." />
         </div>
       </section>
