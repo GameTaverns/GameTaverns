@@ -4,6 +4,7 @@ import { Gamepad2, Trophy, BookOpen, Dices, MessageSquare, Users, Star, Camera }
 import { formatDistanceToNow } from "date-fns";
 import type { ActivityEvent } from "@/hooks/useActivityFeed";
 import { ActivityReactionButton } from "@/components/social/ActivityReactionButton";
+import { MentionRenderer } from "@/components/photos/MentionRenderer";
 
 const EVENT_CONFIG: Record<string, { icon: any; verb: string; color: string }> = {
   game_added: { icon: Gamepad2, verb: "Added a game", color: "text-blue-500" },
@@ -62,10 +63,14 @@ export function ActivityFeedItem({ event, showUser = false }: { event: ActivityE
           {detail && (
             <>
               {" · "}
-              <span className="text-foreground/80">
-                {event.metadata?.icon && <span className="mr-1">{event.metadata.icon}</span>}
-                {detail}
-              </span>
+              {event.event_type === "photo_posted" ? (
+                <MentionRenderer caption={detail} className="text-foreground/80" />
+              ) : (
+                <span className="text-foreground/80">
+                  {event.metadata?.icon && <span className="mr-1">{event.metadata.icon}</span>}
+                  {detail}
+                </span>
+              )}
             </>
           )}
         </p>
