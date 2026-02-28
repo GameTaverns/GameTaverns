@@ -116,9 +116,9 @@ export function PhotoGalleryGrid({ photos, isOwnProfile }: PhotoGalleryGridProps
 
       {/* Lightbox */}
       <Dialog open={selectedIndex !== null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
-        <DialogContent className="max-w-3xl p-0 bg-black/95 border-none gap-0 [&>button]:hidden">
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl p-0 bg-black/95 border-none gap-0 [&>button]:hidden overflow-hidden">
           {selectedPhoto && (
-            <div className="relative">
+            <div className="relative flex flex-col max-h-[100dvh] sm:max-h-[90vh]">
               <Button
                 variant="ghost"
                 size="icon"
@@ -150,25 +150,27 @@ export function PhotoGalleryGrid({ photos, isOwnProfile }: PhotoGalleryGridProps
               )}
 
               {/* Media content */}
-              {selectedPhoto.media_type === "video" ? (
-                <video
-                  ref={videoRef}
-                  src={selectedPhoto.image_url}
-                  controls
-                  playsInline
-                  className="w-full max-h-[75vh] object-contain bg-black"
-                  poster={selectedPhoto.thumbnail_url || undefined}
-                />
-              ) : (
-                <img
-                  src={selectedPhoto.image_url}
-                  alt={selectedPhoto.caption || "Photo"}
-                  className="w-full max-h-[75vh] object-contain"
-                />
-              )}
+              <div className="flex-1 min-h-0 flex items-center justify-center">
+                {selectedPhoto.media_type === "video" ? (
+                  <video
+                    ref={videoRef}
+                    src={selectedPhoto.image_url}
+                    controls
+                    playsInline
+                    className="w-full max-h-[calc(100dvh-60px)] sm:max-h-[calc(90vh-60px)] object-contain bg-black"
+                    poster={selectedPhoto.thumbnail_url || undefined}
+                  />
+                ) : (
+                  <img
+                    src={selectedPhoto.image_url}
+                    alt={selectedPhoto.caption || "Photo"}
+                    className="w-full max-h-[calc(100dvh-60px)] sm:max-h-[calc(90vh-60px)] object-contain"
+                  />
+                )}
+              </div>
 
               {/* Bottom bar */}
-              <div className="px-4 py-3 flex items-center justify-between bg-black/80">
+              <div className="shrink-0 px-4 py-3 flex items-center justify-between bg-black/80">
                 <div className="flex items-center gap-3">
                   <Button
                     variant="ghost"
