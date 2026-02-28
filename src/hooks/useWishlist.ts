@@ -54,8 +54,9 @@ export function useWishlist() {
       // Use join filtering to avoid huge IN() clauses that cause 502 errors
       const { data, error } = await supabase
         .from("game_wishlist_summary")
-        .select("game_id, vote_count, games!inner(library_id)")
-        .eq("games.library_id", library.id);
+        .select("game_id, vote_count, games!inner(library_id, ownership_status)")
+        .eq("games.library_id", library.id)
+        .eq("games.ownership_status", "owned");
       
       if (error) throw error;
       
