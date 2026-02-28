@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
+import { extractMentions, resolveUsernames } from "@/hooks/useMentionAutocomplete";
 
 export type MediaType = "image" | "video";
 
@@ -25,17 +26,44 @@ export function useUserPhotos(userId: string | undefined) {
       const { data: { user } } = await supabase.auth.getUser();
       const myId = user?.id;
 
-      const { data, error } = await supabase
+      // Fetch own photos
+      const { data: ownPhotos, error } = await supabase
         .from("user_photos")
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      if (!data?.length) return [];
+
+      // Fetch photos where this user is tagged (using rpc-style raw query for untyped table)
+      const { data: taggedRows } = await (supabase as any)
+        .from("photo_tags")
+        .select("photo_id")
+        .eq("tagged_user_id", userId);
+
+      let taggedPhotos: any[] = [];
+      if (taggedRows?.length) {
+        const taggedIds = taggedRows.map((t: any) => t.photo_id);
+        const { data } = await supabase
+          .from("user_photos")
+          .select("*")
+          .in("id", taggedIds)
+          .order("created_at", { ascending: false });
+        taggedPhotos = data || [];
+      }
+
+      // Merge & deduplicate
+      const allPhotosMap = new Map<string, any>();
+      for (const p of [...(ownPhotos || []), ...taggedPhotos]) {
+        if (!allPhotosMap.has(p.id)) allPhotosMap.set(p.id, p);
+      }
+      const allPhotos = Array.from(allPhotosMap.values())
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      if (!allPhotos.length) return [];
 
       // Get like counts
-      const photoIds = data.map((p: any) => p.id);
+      const photoIds = allPhotos.map((p: any) => p.id);
       const { data: likes } = await supabase
         .from("photo_likes")
         .select("photo_id, user_id")
@@ -48,7 +76,7 @@ export function useUserPhotos(userId: string | undefined) {
         if (like.user_id === myId) myLikes.add(like.photo_id);
       }
 
-      return data.map((p: any) => ({
+      return allPhotos.map((p: any) => ({
         ...p,
         media_type: p.media_type || "image",
         like_count: likeCounts[p.id] || 0,
@@ -95,7 +123,7 @@ export function useUploadPhoto() {
           }
         }
 
-        const { error: insertError } = await supabase
+        const { data: insertedData, error: insertError } = await (supabase as any)
           .from("user_photos")
           .insert({
             user_id: user.id,
@@ -103,9 +131,29 @@ export function useUploadPhoto() {
             caption: caption?.trim() || null,
             media_type: mediaType,
             thumbnail_url: thumbnailUrl,
-          });
+          })
+          .select("id")
+          .single();
 
         if (insertError) throw insertError;
+
+        // Insert photo tags from @mentions in caption
+        if (caption && insertedData?.id) {
+          const mentions = extractMentions(caption);
+          if (mentions.length > 0) {
+            const usernameMap = await resolveUsernames(mentions);
+            const tagRows = Object.values(usernameMap)
+              .filter(uid => uid !== user.id) // don't tag yourself
+              .map(uid => ({
+                photo_id: insertedData.id,
+                tagged_user_id: uid,
+                tagged_by: user.id,
+              }));
+            if (tagRows.length > 0) {
+              await (supabase as any).from("photo_tags").insert(tagRows);
+            }
+          }
+        }
       }
     },
     onSuccess: () => {

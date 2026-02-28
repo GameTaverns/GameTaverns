@@ -12,6 +12,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useUploadPhoto } from "@/hooks/usePhotoGallery";
 import { toast } from "@/hooks/use-toast";
+import { useMentionAutocomplete } from "@/hooks/useMentionAutocomplete";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
@@ -28,7 +30,20 @@ export function PhotoUploadButton() {
   const [previews, setPreviews] = useState<FilePreview[]>([]);
   const [caption, setCaption] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const captionRef = useRef<HTMLTextAreaElement>(null);
   const uploadPhoto = useUploadPhoto();
+
+  const {
+    suggestions,
+    showSuggestions,
+    checkForMention,
+    selectSuggestion,
+    closeSuggestions,
+  } = useMentionAutocomplete({
+    value: caption,
+    onChange: setCaption,
+    textareaRef: captionRef,
+  });
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -181,17 +196,46 @@ export function PhotoUploadButton() {
             className="hidden"
             onChange={handleFileChange}
           />
-          <div>
-            <Label htmlFor="caption" className="text-sm">Caption (optional)</Label>
+          <div className="relative">
+            <Label htmlFor="caption" className="text-sm">Caption (optional — use @username to tag)</Label>
             <Textarea
               id="caption"
-              placeholder="What's in this photo?"
+              ref={captionRef}
+              placeholder="What's happening? Tag someone with @username"
               value={caption}
-              onChange={(e) => setCaption(e.target.value)}
+              onChange={(e) => { setCaption(e.target.value); }}
+              onKeyUp={checkForMention}
+              onClick={checkForMention}
+              onBlur={() => setTimeout(closeSuggestions, 200)}
               maxLength={500}
               className="mt-1"
               rows={2}
             />
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 bottom-full mb-1 left-0 right-0 bg-popover border border-border rounded-md shadow-lg overflow-hidden">
+                {suggestions.map((s) => (
+                  <button
+                    key={s.user_id}
+                    type="button"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                    onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
+                  >
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={s.avatar_url || undefined} />
+                      <AvatarFallback className="text-[10px]">
+                        {(s.display_name || s.username || "?")[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <span className="font-medium">@{s.username}</span>
+                      {s.display_name && (
+                        <span className="ml-1.5 text-muted-foreground">{s.display_name}</span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <Button
             className="w-full"
