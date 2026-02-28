@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Gamepad2, Dices, Trophy, BookOpen, MessageSquare, Users, Star, Filter } from "lucide-react";
+import { Gamepad2, Dices, Trophy, BookOpen, MessageSquare, Users, Star, Camera } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import type { FeedItem } from "@/utils/groupActivityEvents";
 
@@ -8,6 +8,7 @@ const FILTER_OPTIONS = [
   { key: "session_logged", label: "Sessions", icon: Dices },
   { key: "achievement_earned", label: "Achievements", icon: Trophy },
   { key: "expansion_added", label: "Expansions", icon: BookOpen },
+  { key: "photo_posted", label: "Photos", icon: Camera },
   { key: "forum_post", label: "Forums", icon: MessageSquare },
   { key: "library_created", label: "Libraries", icon: Users },
   { key: "review_posted", label: "Reviews", icon: Star },
