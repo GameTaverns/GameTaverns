@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/tooltip";
 
 const feedbackSchema = z.object({
-  type: z.enum(["feedback", "bug", "feature_request"]),
+  type: z.enum(["feedback", "bug", "feature_request", "badge_request"]),
   sender_name: z.string().trim().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
   sender_email: z.string().trim().email("Please enter a valid email").max(255, "Email must be less than 255 characters"),
   message: z.string().trim().min(10, "Message must be at least 10 characters").max(2000, "Message must be less than 2000 characters"),
@@ -49,6 +49,7 @@ const feedbackTypeLabels: Record<FeedbackType, string> = {
   feedback: "General Feedback",
   bug: "Bug Report",
   feature_request: "Feature Request",
+  badge_request: "Badge Request",
 };
 
 const MAX_SCREENSHOTS = 4;

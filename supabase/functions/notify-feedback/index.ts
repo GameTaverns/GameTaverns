@@ -5,18 +5,21 @@ const FEEDBACK_TYPE_LABELS: Record<string, string> = {
   feedback: "💬 General Feedback",
   bug: "🐛 Bug Report",
   feature_request: "✨ Feature Request",
+  badge_request: "🏅 Badge Request",
 };
 
 const FEEDBACK_COLORS: Record<string, number> = {
   feedback: 0x3b82f6,
   bug: 0xef4444,
   feature_request: 0x8b5cf6,
+  badge_request: 0xf59e0b,
 };
 
 const FEEDBACK_FORUM_CHANNELS: Record<string, string> = {
   feedback: "1472011480105746635",
   bug: "1472011323670794302",
   feature_request: "1472011413512917033",
+  badge_request: "1477156452199043106",
 };
 
 const DISCORD_API = "https://discord.com/api/v10";

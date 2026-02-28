@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Mail, Trash2, Check, Bug, Lightbulb, MessageCircle, Eye, Send, StickyNote, UserCog, ArrowRight, Image } from "lucide-react";
+import { Mail, Trash2, Check, Bug, Lightbulb, MessageCircle, Eye, Send, StickyNote, UserCog, ArrowRight, Image, Shield } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,7 @@ const feedbackTypeConfig: Record<FeedbackType, { label: string; icon: React.Reac
   feedback: { label: "Feedback", icon: <MessageCircle className="h-3 w-3" />, variant: "secondary" },
   bug: { label: "Bug", icon: <Bug className="h-3 w-3" />, variant: "destructive" },
   feature_request: { label: "Feature", icon: <Lightbulb className="h-3 w-3" />, variant: "default" },
+  badge_request: { label: "Badge", icon: <Shield className="h-3 w-3" />, variant: "outline" },
 };
 
 const statusConfig: Record<FeedbackStatus, { label: string; color: string }> = {
@@ -622,6 +623,7 @@ export function FeedbackManagement() {
               <SelectItem value="bug">Bug</SelectItem>
               <SelectItem value="feature_request">Feature</SelectItem>
               <SelectItem value="feedback">Feedback</SelectItem>
+              <SelectItem value="badge_request">Badge</SelectItem>
             </SelectContent>
           </Select>
         </div>

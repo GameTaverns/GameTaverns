@@ -5153,7 +5153,7 @@ export type Database = {
         | "3 - Medium"
         | "4 - Medium Heavy"
         | "5 - Heavy"
-      feedback_type: "feedback" | "bug" | "feature_request"
+      feedback_type: "feedback" | "bug" | "feature_request" | "badge_request"
       game_type:
         | "Board Game"
         | "Card Game"
@@ -5330,7 +5330,7 @@ export const Constants = {
         "4 - Medium Heavy",
         "5 - Heavy",
       ],
-      feedback_type: ["feedback", "bug", "feature_request"],
+      feedback_type: ["feedback", "bug", "feature_request", "badge_request"],
       game_type: [
         "Board Game",
         "Card Game",

@@ -69,7 +69,7 @@ async function invokeBackendFunction(functionName: string, body: Record<string, 
   console.warn(`[Feedback] ${functionName} invoke failed:`, errorMessage);
   return { ok: false, data: null, error: errorMessage };
 }
-export type FeedbackType = "feedback" | "bug" | "feature_request";
+export type FeedbackType = "feedback" | "bug" | "feature_request" | "badge_request";
 export type FeedbackStatus = "open" | "in_progress" | "resolved" | "closed" | "wont_fix";
 
 export interface PlatformFeedback {
@@ -349,7 +349,7 @@ export function useSubmitFeedback() {
       const { data: inserted, error } = await supabase
         .from("platform_feedback")
         .insert({
-          type: feedback.type,
+          type: feedback.type as any,
           sender_name: feedback.sender_name,
           sender_email: feedback.sender_email,
           message: feedback.message,

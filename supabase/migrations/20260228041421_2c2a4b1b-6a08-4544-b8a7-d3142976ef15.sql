@@ -1,0 +1,1 @@
+ALTER TYPE public.feedback_type ADD VALUE IF NOT EXISTS 'badge_request';
