@@ -3983,6 +3983,7 @@ export type Database = {
       }
       user_photos: {
         Row: {
+          batch_id: string | null
           caption: string | null
           created_at: string
           id: string
@@ -3991,6 +3992,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          batch_id?: string | null
           caption?: string | null
           created_at?: string
           id?: string
@@ -3999,6 +4001,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          batch_id?: string | null
           caption?: string | null
           created_at?: string
           id?: string

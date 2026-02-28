@@ -1,0 +1,1 @@
+ALTER TABLE public.user_photos ADD COLUMN IF NOT EXISTS batch_id uuid;
