@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, ArrowLeft, BarChart3 } from "lucide-react";
+import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, ArrowLeft, BarChart3, Camera } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -29,6 +29,9 @@ import { useUserSpecialBadges } from "@/hooks/useSpecialBadges";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
 import { UserStatsPanel } from "@/components/analytics/UserStatsPanel";
+import { useUserPhotos } from "@/hooks/usePhotoGallery";
+import { PhotoGalleryGrid } from "@/components/photos/PhotoGalleryGrid";
+import { PhotoUploadButton } from "@/components/photos/PhotoUploadButton";
 
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -58,6 +61,7 @@ export default function UserProfile() {
   const { filtered: filteredActivity, hiddenTypes, toggle, availableFilters } = useActivityFilters(groupedActivity);
   const { data: feedback } = useUserFeedback(profile?.user_id);
   const { data: specialBadges = [] } = useUserSpecialBadges(profile?.user_id);
+  const { data: userPhotos = [] } = useUserPhotos(profile?.user_id);
 
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -288,6 +292,12 @@ export default function UserProfile() {
             <TabsTrigger value="activity" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Activity className="h-3.5 w-3.5" />Activity
             </TabsTrigger>
+            <TabsTrigger value="photos" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
+              <Camera className="h-3.5 w-3.5" />Photos
+              {userPhotos.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">{userPhotos.length}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="stats" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <BarChart3 className="h-3.5 w-3.5" />Stats
             </TabsTrigger>
@@ -333,6 +343,27 @@ export default function UserProfile() {
                     )}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Photos tab */}
+          <TabsContent value="photos">
+            <Card className="backdrop-blur-sm border-border" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : { backgroundColor: 'hsl(var(--card) / 0.9)' }}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-display flex items-center gap-2">
+                    <Camera className="h-4 w-4 text-primary" />
+                    Photos
+                  </CardTitle>
+                  {currentUserId === profile.user_id && <PhotoUploadButton />}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <PhotoGalleryGrid
+                  photos={userPhotos}
+                  isOwnProfile={currentUserId === profile.user_id}
+                />
               </CardContent>
             </Card>
           </TabsContent>
