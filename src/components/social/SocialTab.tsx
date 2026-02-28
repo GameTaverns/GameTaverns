@@ -7,10 +7,12 @@ import { ActivityFeedItem } from "@/components/social/ActivityFeedItem";
 import { ActivityFeedBatchItem } from "@/components/social/ActivityFeedBatchItem";
 import { SocialDiscovery } from "@/components/social/SocialDiscovery";
 import { groupActivityEvents } from "@/utils/groupActivityEvents";
+import { useActivityFilters, ActivityFilterBar } from "@/components/social/ActivityFilterBar";
 
 export function SocialTab({ currentUserId }: { currentUserId: string | undefined }) {
   const { data: events, isLoading } = useFollowingFeed(currentUserId);
   const groupedEvents = useMemo(() => groupActivityEvents(events || []), [events]);
+  const { filtered: filteredEvents, hiddenTypes, toggle, availableFilters } = useActivityFilters(groupedEvents);
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -43,23 +45,28 @@ export function SocialTab({ currentUserId }: { currentUserId: string | undefined
             <CardContent>
               {isLoading ? (
                 <p className="text-sm text-cream/50 py-8 text-center">Loading feed...</p>
-              ) : groupedEvents.length === 0 ? (
+              ) : filteredEvents.length === 0 ? (
                 <div className="text-center py-8">
                   <Globe className="h-10 w-10 mx-auto text-cream/20 mb-3" />
                   <p className="text-sm text-cream/50">
-                    No activity yet. Follow some users to see their updates here!
+                    {groupedEvents.length === 0
+                      ? "No activity yet. Follow some users to see their updates here!"
+                      : "No matching activity."}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {groupedEvents.map((item, idx) =>
-                    item.type === "batch" ? (
-                      <ActivityFeedBatchItem key={`batch-${idx}`} batch={item} showUser />
-                    ) : (
-                      <ActivityFeedItem key={item.event.id} event={item.event} showUser />
-                    )
-                  )}
-                </div>
+                <>
+                  <ActivityFilterBar hiddenTypes={hiddenTypes} toggle={toggle} availableFilters={availableFilters} />
+                  <div className="space-y-3">
+                    {filteredEvents.map((item, idx) =>
+                      item.type === "batch" ? (
+                        <ActivityFeedBatchItem key={`batch-${idx}`} batch={item} showUser />
+                      ) : (
+                        <ActivityFeedItem key={item.event.id} event={item.event} showUser />
+                      )
+                    )}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
