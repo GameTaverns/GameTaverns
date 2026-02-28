@@ -39,7 +39,7 @@ SELECT cron.schedule(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
     ),
-    body := '{"mode": "enrich", "batch_size": 100}'::jsonb
+    body := '{"mode": "enrich", "batch_size": 200}'::jsonb
   ) AS request_id;
   $$
 );
