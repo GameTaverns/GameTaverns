@@ -35,8 +35,8 @@ export function groupActivityEvents(events: ActivityEvent[]): FeedItem[] {
   const usedPhotoIds = new Set<string>();
 
   for (const e of events) {
-    if (e.event_type === "photo_posted" && e.metadata?.batch_id) {
-      const bid = e.metadata.batch_id as string;
+    if ((e.event_type === "photo_posted" || e.event_type === "photo_tagged") && e.metadata?.batch_id) {
+      const bid = `${e.user_id}:${e.metadata.batch_id}`;
       if (!photoBatches.has(bid)) photoBatches.set(bid, []);
       photoBatches.get(bid)!.push(e);
       usedPhotoIds.add(e.id);
@@ -85,7 +85,7 @@ export function groupActivityEvents(events: ActivityEvent[]): FeedItem[] {
     }
 
     // Skip consumed photo events (non-first in a batch)
-    if (current.event_type === "photo_posted" && usedPhotoIds.has(current.id) && !photoBatchByFirstId.has(current.id)) {
+    if ((current.event_type === "photo_posted" || current.event_type === "photo_tagged") && usedPhotoIds.has(current.id) && !photoBatchByFirstId.has(current.id)) {
       i++;
       continue;
     }
