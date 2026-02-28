@@ -30,11 +30,23 @@ export type FeedItem = GroupedActivityEvent | BatchedActivityEvent;
 export function groupActivityEvents(events: ActivityEvent[]): FeedItem[] {
   if (!events || events.length === 0) return [];
 
+  // Deduplicate: if a photo_posted and photo_tagged share the same photo_id, keep only photo_posted
+  const postedPhotoIds = new Set<string>();
+  for (const e of events) {
+    if (e.event_type === "photo_posted" && e.metadata?.photo_id) {
+      postedPhotoIds.add(e.metadata.photo_id as string);
+    }
+  }
+  const deduped = events.filter(
+    (e) =>
+      !(e.event_type === "photo_tagged" && e.metadata?.photo_id && postedPhotoIds.has(e.metadata.photo_id as string))
+  );
+
   // First pass: group photo_posted by batch_id
   const photoBatches = new Map<string, ActivityEvent[]>();
   const usedPhotoIds = new Set<string>();
 
-  for (const e of events) {
+  for (const e of deduped) {
     if ((e.event_type === "photo_posted" || e.event_type === "photo_tagged") && e.metadata?.batch_id) {
       const bid = `${e.user_id}:${e.metadata.batch_id}`;
       if (!photoBatches.has(bid)) photoBatches.set(bid, []);
@@ -73,8 +85,8 @@ export function groupActivityEvents(events: ActivityEvent[]): FeedItem[] {
   const result: FeedItem[] = [];
   let i = 0;
 
-  while (i < events.length) {
-    const current = events[i];
+  while (i < deduped.length) {
+    const current = deduped[i];
 
     // Check if this is the first event of a photo batch
     if (photoBatchByFirstId.has(current.id) && !emittedBatches.has(current.id)) {
@@ -95,16 +107,16 @@ export function groupActivityEvents(events: ActivityEvent[]): FeedItem[] {
       const batch: ActivityEvent[] = [current];
       let j = i + 1;
       while (
-        j < events.length &&
+        j < deduped.length &&
         batch.length < MAX_GROUP_SIZE &&
-        TIME_GROUPABLE_TYPES.has(events[j].event_type) &&
-        events[j].user_id === current.user_id
+        TIME_GROUPABLE_TYPES.has(deduped[j].event_type) &&
+        deduped[j].user_id === current.user_id
       ) {
         const timeDiff = Math.abs(
-          new Date(current.created_at).getTime() - new Date(events[j].created_at).getTime()
+          new Date(current.created_at).getTime() - new Date(deduped[j].created_at).getTime()
         );
         if (timeDiff > GROUP_WINDOW_MS) break;
-        batch.push(events[j]);
+        batch.push(deduped[j]);
         j++;
       }
 
