@@ -1,18 +1,22 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Gamepad2, BookOpen, Camera } from "lucide-react";
+import { Gamepad2, BookOpen, Camera, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { BatchedActivityEvent } from "@/utils/groupActivityEvents";
 import { ActivityReactionButton } from "@/components/social/ActivityReactionButton";
 import { MentionRenderer } from "@/components/photos/MentionRenderer";
+import { useDeleteActivityEvent } from "@/hooks/useDeleteActivityEvent";
 
 export function ActivityFeedBatchItem({
   batch,
   showUser = false,
+  canDelete = false,
 }: {
   batch: BatchedActivityEvent;
   showUser?: boolean;
+  canDelete?: boolean;
 }) {
+  const deleteEvent = useDeleteActivityEvent();
   const isPhotoBatch = batch.event_type === "photos_posted_batch";
   const gameCount = batch.events.filter((e) => e.event_type === "game_added").length;
   const expansionCount = batch.events.filter((e) => e.event_type === "expansion_added").length;
@@ -125,6 +129,16 @@ export function ActivityFeedBatchItem({
           </p>
           {/* Reaction on the first event in the batch */}
           <ActivityReactionButton eventId={batch.events[0].id} />
+          {canDelete && (
+            <button
+              onClick={() => deleteEvent.mutate(batch.events.map(e => e.id))}
+              disabled={deleteEvent.isPending}
+              className="text-muted-foreground/50 hover:text-destructive transition-colors"
+              title="Remove from feed"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </div>
       {showUser && (

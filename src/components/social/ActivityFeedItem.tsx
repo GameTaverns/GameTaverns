@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Gamepad2, Trophy, BookOpen, Dices, MessageSquare, Users, Star, Camera } from "lucide-react";
+import { Gamepad2, Trophy, BookOpen, Dices, MessageSquare, Users, Star, Camera, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import type { ActivityEvent } from "@/hooks/useActivityFeed";
 import { ActivityReactionButton } from "@/components/social/ActivityReactionButton";
 import { MentionRenderer } from "@/components/photos/MentionRenderer";
+import { useDeleteActivityEvent } from "@/hooks/useDeleteActivityEvent";
 
 const EVENT_CONFIG: Record<string, { icon: any; verb: string; color: string }> = {
   game_added: { icon: Gamepad2, verb: "Added a game", color: "text-blue-500" },
@@ -17,7 +18,8 @@ const EVENT_CONFIG: Record<string, { icon: any; verb: string; color: string }> =
   photo_posted: { icon: Camera, verb: "Posted a photo", color: "text-rose-500" },
 };
 
-export function ActivityFeedItem({ event, showUser = false }: { event: ActivityEvent; showUser?: boolean }) {
+export function ActivityFeedItem({ event, showUser = false, canDelete = false }: { event: ActivityEvent; showUser?: boolean; canDelete?: boolean }) {
+  const deleteEvent = useDeleteActivityEvent();
   const config = EVENT_CONFIG[event.event_type] || { icon: Dices, verb: event.event_type, color: "text-muted-foreground" };
   const Icon = config.icon;
   const detail = event.metadata?.title || event.metadata?.name || event.metadata?.caption || event.metadata?.description || "";
@@ -87,6 +89,16 @@ export function ActivityFeedItem({ event, showUser = false }: { event: ActivityE
             {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
           </p>
           <ActivityReactionButton eventId={event.id} />
+          {canDelete && (
+            <button
+              onClick={() => deleteEvent.mutate([event.id])}
+              disabled={deleteEvent.isPending}
+              className="text-muted-foreground/50 hover:text-destructive transition-colors"
+              title="Remove from feed"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </div>
       {showUser && (
