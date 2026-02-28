@@ -95,6 +95,9 @@ export function useUploadPhoto() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Generate a shared batch_id for all files in this upload
+      const batchId = crypto.randomUUID();
+
       for (const file of files) {
         const isVideo = file.type.startsWith("video/");
         const mediaType: MediaType = isVideo ? "video" : "image";
@@ -131,6 +134,7 @@ export function useUploadPhoto() {
             caption: caption?.trim() || null,
             media_type: mediaType,
             thumbnail_url: thumbnailUrl,
+            batch_id: batchId,
           })
           .select("id")
           .single();
