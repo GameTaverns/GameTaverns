@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 
+export type MediaType = "image" | "video";
+
 export interface UserPhoto {
   id: string;
   user_id: string;
   image_url: string;
   caption: string | null;
+  media_type: MediaType;
+  thumbnail_url: string | null;
   created_at: string;
   updated_at: string;
   like_count?: number;
@@ -46,6 +50,7 @@ export function useUserPhotos(userId: string | undefined) {
 
       return data.map((p: any) => ({
         ...p,
+        media_type: p.media_type || "image",
         like_count: likeCounts[p.id] || 0,
         liked_by_me: myLikes.has(p.id),
       }));
@@ -63,7 +68,9 @@ export function useUploadPhoto() {
       if (!user) throw new Error("Not authenticated");
 
       for (const file of files) {
-        const ext = file.name.split(".").pop() || "jpg";
+        const isVideo = file.type.startsWith("video/");
+        const mediaType: MediaType = isVideo ? "video" : "image";
+        const ext = file.name.split(".").pop() || (isVideo ? "mp4" : "jpg");
         const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
@@ -78,12 +85,24 @@ export function useUploadPhoto() {
 
         if (!urlData?.publicUrl) throw new Error("Failed to get public URL");
 
+        // For videos, generate a thumbnail from the first frame
+        let thumbnailUrl: string | null = null;
+        if (isVideo) {
+          try {
+            thumbnailUrl = await generateVideoThumbnail(file, user.id);
+          } catch (e) {
+            console.warn("Thumbnail generation failed, continuing without:", e);
+          }
+        }
+
         const { error: insertError } = await supabase
           .from("user_photos")
           .insert({
             user_id: user.id,
             image_url: urlData.publicUrl,
             caption: caption?.trim() || null,
+            media_type: mediaType,
+            thumbnail_url: thumbnailUrl,
           });
 
         if (insertError) throw insertError;
@@ -92,6 +111,62 @@ export function useUploadPhoto() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-photos"] });
     },
+  });
+}
+
+async function generateVideoThumbnail(file: File, userId: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+
+    const url = URL.createObjectURL(file);
+    video.src = url;
+
+    video.onloadeddata = () => {
+      video.currentTime = Math.min(1, video.duration / 2);
+    };
+
+    video.onseeked = async () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.min(video.videoWidth, 480);
+        canvas.height = Math.round((canvas.width / video.videoWidth) * video.videoHeight);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(async (blob) => {
+          URL.revokeObjectURL(url);
+          if (!blob) { resolve(null); return; }
+
+          const thumbPath = `${userId}/thumb-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+          const { error } = await supabase.storage
+            .from("user-photos")
+            .upload(thumbPath, blob, { contentType: "image/jpeg", upsert: false });
+
+          if (error) { resolve(null); return; }
+
+          const { data } = supabase.storage.from("user-photos").getPublicUrl(thumbPath);
+          resolve(data?.publicUrl || null);
+        }, "image/jpeg", 0.7);
+      } catch {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      }
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+
+    // Timeout fallback
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    }, 10000);
   });
 }
 

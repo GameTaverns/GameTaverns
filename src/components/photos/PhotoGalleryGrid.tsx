@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Heart, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useRef } from "react";
+import { Heart, Trash2, X, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -19,6 +19,7 @@ export function PhotoGalleryGrid({ photos, isOwnProfile }: PhotoGalleryGridProps
   const toggleLike = useTogglePhotoLike();
   const deletePhoto = useDeletePhoto();
   const { isAuthenticated } = useAuth();
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const selectedPhoto = selectedIndex !== null ? photos[selectedIndex] : null;
 
@@ -42,7 +43,7 @@ export function PhotoGalleryGrid({ photos, isOwnProfile }: PhotoGalleryGridProps
   const handleDelete = (photoId: string) => {
     deletePhoto.mutate(photoId, {
       onSuccess: () => {
-        toast({ title: "Photo deleted" });
+        toast({ title: "Deleted" });
         setSelectedIndex(null);
       },
     });
@@ -51,43 +52,72 @@ export function PhotoGalleryGrid({ photos, isOwnProfile }: PhotoGalleryGridProps
   if (photos.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-4">
-        {isOwnProfile ? "You haven't posted any photos yet." : "No photos yet."}
+        {isOwnProfile ? "You haven't posted any media yet." : "No media yet."}
       </p>
     );
   }
 
   return (
     <>
-      {/* Instagram-style grid */}
+      {/* Grid */}
       <div className="grid grid-cols-3 gap-1 sm:gap-1.5">
-        {photos.map((photo, idx) => (
-          <button
-            key={photo.id}
-            onClick={() => setSelectedIndex(idx)}
-            className="relative aspect-square overflow-hidden rounded-sm group bg-muted"
-          >
-            <img
-              src={photo.image_url}
-              alt={photo.caption || "Photo"}
-              className="w-full h-full object-cover transition-transform group-hover:scale-105"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-white text-sm font-medium">
-                <Heart className="h-4 w-4 fill-white" />
-                {photo.like_count || 0}
+        {photos.map((photo, idx) => {
+          const isVideo = photo.media_type === "video";
+          const thumbSrc = isVideo ? (photo.thumbnail_url || photo.image_url) : photo.image_url;
+
+          return (
+            <button
+              key={photo.id}
+              onClick={() => setSelectedIndex(idx)}
+              className="relative aspect-square overflow-hidden rounded-sm group bg-muted"
+            >
+              {isVideo && photo.thumbnail_url ? (
+                <img
+                  src={thumbSrc}
+                  alt={photo.caption || "Video thumbnail"}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  loading="lazy"
+                />
+              ) : isVideo ? (
+                <video
+                  src={photo.image_url}
+                  className="w-full h-full object-cover"
+                  muted
+                  preload="metadata"
+                />
+              ) : (
+                <img
+                  src={photo.image_url}
+                  alt={photo.caption || "Photo"}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  loading="lazy"
+                />
+              )}
+
+              {/* Video play badge */}
+              {isVideo && (
+                <div className="absolute top-1.5 left-1.5 bg-black/60 rounded px-1.5 py-0.5 flex items-center gap-0.5">
+                  <Play className="h-3 w-3 text-white fill-white" />
+                </div>
+              )}
+
+              {/* Hover overlay */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-white text-sm font-medium">
+                  <Heart className="h-4 w-4 fill-white" />
+                  {photo.like_count || 0}
+                </div>
               </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Lightbox dialog */}
+      {/* Lightbox */}
       <Dialog open={selectedIndex !== null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
         <DialogContent className="max-w-3xl p-0 bg-black/95 border-none gap-0 [&>button]:hidden">
           {selectedPhoto && (
             <div className="relative">
-              {/* Close button */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -97,7 +127,6 @@ export function PhotoGalleryGrid({ photos, isOwnProfile }: PhotoGalleryGridProps
                 <X className="h-5 w-5" />
               </Button>
 
-              {/* Navigation */}
               {selectedIndex !== null && selectedIndex > 0 && (
                 <Button
                   variant="ghost"
@@ -119,12 +148,23 @@ export function PhotoGalleryGrid({ photos, isOwnProfile }: PhotoGalleryGridProps
                 </Button>
               )}
 
-              {/* Image */}
-              <img
-                src={selectedPhoto.image_url}
-                alt={selectedPhoto.caption || "Photo"}
-                className="w-full max-h-[75vh] object-contain"
-              />
+              {/* Media content */}
+              {selectedPhoto.media_type === "video" ? (
+                <video
+                  ref={videoRef}
+                  src={selectedPhoto.image_url}
+                  controls
+                  playsInline
+                  className="w-full max-h-[75vh] object-contain bg-black"
+                  poster={selectedPhoto.thumbnail_url || undefined}
+                />
+              ) : (
+                <img
+                  src={selectedPhoto.image_url}
+                  alt={selectedPhoto.caption || "Photo"}
+                  className="w-full max-h-[75vh] object-contain"
+                />
+              )}
 
               {/* Bottom bar */}
               <div className="px-4 py-3 flex items-center justify-between bg-black/80">
