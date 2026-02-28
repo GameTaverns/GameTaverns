@@ -3,51 +3,71 @@ import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig, isSelfHostedSupabaseStack } from "@/config/runtime";
 
 async function invokeBackendFunction(functionName: string, body: Record<string, unknown>) {
-  try {
-    // Self-hosted consolidated runtime: route through main/<function>
-    if (isSelfHostedSupabaseStack()) {
-      const { url, anonKey } = getSupabaseConfig();
-      if (url && anonKey) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token;
+  const { url, anonKey } = getSupabaseConfig();
+  const errors: string[] = [];
 
-        const response = await fetch(`${url}/functions/v1/main/${functionName}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: anonKey,
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
-          body: JSON.stringify(body),
-        });
+  const invokeViaMainRoute = async () => {
+    if (!url || !anonKey) return null;
 
-        const raw = await response.text();
-        const parsed = raw ? (() => {
-          try { return JSON.parse(raw); } catch { return raw; }
-        })() : null;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
 
-        if (!response.ok) {
-          const errMessage = typeof parsed === "object" && parsed && "error" in (parsed as Record<string, unknown>)
-            ? String((parsed as Record<string, unknown>).error)
-            : raw || `HTTP ${response.status}`;
-          console.warn(`[Feedback] ${functionName} self-hosted invoke failed:`, response.status, errMessage);
-          return { ok: false, data: parsed, error: errMessage };
-        }
+    const response = await fetch(`${url}/functions/v1/main/${functionName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: anonKey,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
 
-        return { ok: true, data: parsed, error: null };
-      }
+    const raw = await response.text();
+    const parsed = raw ? (() => {
+      try { return JSON.parse(raw); } catch { return raw; }
+    })() : null;
+
+    if (!response.ok) {
+      const errMessage = typeof parsed === "object" && parsed && "error" in (parsed as Record<string, unknown>)
+        ? String((parsed as Record<string, unknown>).error)
+        : raw || `HTTP ${response.status}`;
+      errors.push(`main/${functionName}: ${response.status} ${errMessage}`);
+      return null;
     }
 
+    return { ok: true, data: parsed, error: null };
+  };
+
+  const invokeDirect = async () => {
     const { data, error } = await supabase.functions.invoke(functionName, { body });
     if (error) {
-      console.warn(`[Feedback] ${functionName} invoke failed:`, error.message || error);
-      return { ok: false, data: null, error: error.message || String(error) };
+      errors.push(`direct/${functionName}: ${error.message || String(error)}`);
+      return null;
     }
     return { ok: true, data, error: null };
+  };
+
+  try {
+    if (isSelfHostedSupabaseStack()) {
+      const viaMain = await invokeViaMainRoute();
+      if (viaMain) return viaMain;
+
+      const direct = await invokeDirect();
+      if (direct) return direct;
+    } else {
+      const direct = await invokeDirect();
+      if (direct) return direct;
+
+      const viaMain = await invokeViaMainRoute();
+      if (viaMain) return viaMain;
+    }
   } catch (error) {
-    console.warn(`[Feedback] ${functionName} invoke threw:`, error);
-    return { ok: false, data: null, error: error instanceof Error ? error.message : String(error) };
+    errors.push(error instanceof Error ? error.message : String(error));
   }
+
+  const errorMessage = errors.join(" | ") || "Unknown backend function error";
+  console.warn(`[Feedback] ${functionName} invoke failed:`, errorMessage);
+  return { ok: false, data: null, error: errorMessage };
 }
 export type FeedbackType = "feedback" | "bug" | "feature_request";
 export type FeedbackStatus = "open" | "in_progress" | "resolved" | "closed" | "wont_fix";
