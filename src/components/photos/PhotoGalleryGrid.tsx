@@ -8,6 +8,7 @@ import type { UserPhoto } from "@/hooks/usePhotoGallery";
 import { useTogglePhotoLike, useDeletePhoto } from "@/hooks/usePhotoGallery";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { MentionRenderer } from "@/components/photos/MentionRenderer";
 
 interface PhotoGalleryGridProps {
   photos: UserPhoto[];
@@ -183,7 +184,7 @@ export function PhotoGalleryGrid({ photos, isOwnProfile }: PhotoGalleryGridProps
                     {selectedPhoto.like_count || 0}
                   </Button>
                   {selectedPhoto.caption && (
-                    <p className="text-sm text-white/80 truncate max-w-xs">{selectedPhoto.caption}</p>
+                    <MentionRenderer caption={selectedPhoto.caption} className="text-sm text-white/80 truncate max-w-xs" />
                   )}
                 </div>
                 <div className="flex items-center gap-2">
