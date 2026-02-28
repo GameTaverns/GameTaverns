@@ -198,7 +198,7 @@ export default function UserProfile() {
           {/* Banner area — overflow-hidden only on the banner, not the card */}
           <div className="relative overflow-hidden rounded-t-lg">
             <div
-              className={`h-32 ${!profile.banner_url && !profileBgImageUrl && !profile.profile_primary_h ? 'bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10' : ''}`}
+              className={`h-64 ${!profile.banner_url && !profileBgImageUrl && !profile.profile_primary_h ? 'bg-gradient-to-r from-primary/30 via-accent/20 to-primary/10' : ''}`}
               style={profileHeaderStyle}
             >
               {profileBgImageUrl && !profileIsGradient && (
@@ -207,7 +207,7 @@ export default function UserProfile() {
             </div>
             {/* Banner overlay (if set separately) */}
             {profile.banner_url && (
-              <div className="absolute inset-0 h-32" style={bannerStyle} />
+              <div className="absolute inset-0 h-64" style={bannerStyle} />
             )}
           </div>
           <CardContent className="relative pt-0 pb-6 px-6">
@@ -581,7 +581,7 @@ function ProfileSkeleton() {
       <AppHeader />
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
         <Card className="bg-card/90 backdrop-blur-sm border-border">
-          <div className="h-32 bg-muted" />
+          <div className="h-64 bg-muted" />
           <CardContent className="pt-0 pb-6 px-6">
             <div className="flex items-end gap-4 -mt-14">
               <Skeleton className="h-28 w-28 rounded-full" />
