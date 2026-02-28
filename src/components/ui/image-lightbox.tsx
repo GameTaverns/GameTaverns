@@ -7,14 +7,15 @@ interface ImageLightboxProps {
   src: string;
   alt?: string;
   children: React.ReactNode;
+  className?: string;
 }
 
-export function ImageLightbox({ src, alt = "Image", children }: ImageLightboxProps) {
+export function ImageLightbox({ src, alt = "Image", children, className }: ImageLightboxProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="cursor-pointer">
+      <button type="button" onClick={() => setOpen(true)} className={className || "cursor-pointer w-full h-full block"}>
         {children}
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
