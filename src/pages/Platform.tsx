@@ -45,8 +45,8 @@ export default function Platform() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
       <SEO
-        title="GameTaverns — Board Game Library Management"
-        description="Create your free board game library. Track collections, log plays, manage lending, run game night polls, and build your gaming community."
+        title="GameTaverns — Board Game Library & Social Platform"
+        description="Create your free board game library. Track collections, log plays, share photos, follow fellow collectors, and build your gaming community — all in one social platform."
         noSuffix
         jsonLd={websiteJsonLd()}
       />
