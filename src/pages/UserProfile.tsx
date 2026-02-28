@@ -336,9 +336,9 @@ export default function UserProfile() {
                   <div className="space-y-3">
                     {filteredActivity.map((item, idx) =>
                       item.type === "batch" ? (
-                        <ActivityFeedBatchItem key={`batch-${idx}`} batch={item} />
+                        <ActivityFeedBatchItem key={`batch-${idx}`} batch={item} canDelete={currentUserId === profile.user_id} />
                       ) : (
-                        <ActivityFeedItem key={item.event.id} event={item.event} />
+                        <ActivityFeedItem key={item.event.id} event={item.event} canDelete={currentUserId === profile.user_id} />
                       )
                     )}
                   </div>
