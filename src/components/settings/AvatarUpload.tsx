@@ -72,7 +72,8 @@ export function AvatarUpload({ currentAvatarUrl, displayName }: AvatarUploadProp
         .from('avatars')
         .getPublicUrl(filePath);
 
-      await saveAvatarUrl(publicUrl);
+      // Append cache-busting param so the browser fetches the new image
+      await saveAvatarUrl(`${publicUrl}?t=${Date.now()}`);
     } catch (error: any) {
       console.error("Avatar upload error:", error);
       toast({ title: "Upload failed", description: error.message || "Could not upload avatar", variant: "destructive" });
