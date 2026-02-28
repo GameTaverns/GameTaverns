@@ -116,9 +116,9 @@ export function PhotoGalleryGrid({ photos, isOwnProfile }: PhotoGalleryGridProps
 
       {/* Lightbox */}
       <Dialog open={selectedIndex !== null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-3xl p-0 bg-black/95 border-none gap-0 [&>button]:hidden overflow-hidden">
+        <DialogContent className="max-w-[100vw] sm:max-w-3xl p-0 bg-black/95 border-none gap-0 [&>button]:hidden overflow-hidden rounded-none sm:rounded-lg fixed inset-0 sm:inset-auto sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] m-0">
           {selectedPhoto && (
-            <div className="relative flex flex-col max-h-[100dvh] sm:max-h-[90vh]">
+            <div className="relative flex flex-col h-[100dvh] sm:h-auto sm:max-h-[90vh]">
               <Button
                 variant="ghost"
                 size="icon"
