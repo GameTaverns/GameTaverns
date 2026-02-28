@@ -22,11 +22,19 @@ export function ActivityFeedBatchItem({
   const gameCount = batch.events.filter((e) => e.event_type === "game_added").length;
   const expansionCount = batch.events.filter((e) => e.event_type === "expansion_added").length;
 
+  const isTaggedBatch = isPhotoBatch && batch.events[0]?.event_type === "photo_tagged";
+  const taggedByName = isTaggedBatch ? (batch.events[0]?.metadata?.tagged_by_display_name as string) : null;
+  const taggedByUsername = isTaggedBatch ? (batch.events[0]?.metadata?.tagged_by_username as string) : null;
+
   let summary: string;
   let caption: string | null = null;
   if (isPhotoBatch) {
     const photoCount = batch.events.length;
-    summary = `Posted ${photoCount} photo${photoCount !== 1 ? "s" : ""}`;
+    if (isTaggedBatch && taggedByName) {
+      summary = `was tagged in ${photoCount} photo${photoCount !== 1 ? "s" : ""}`;
+    } else {
+      summary = `Posted ${photoCount} photo${photoCount !== 1 ? "s" : ""}`;
+    }
     caption = batch.events[0]?.metadata?.caption as string | null;
   } else {
     const parts: string[] = [];
@@ -89,9 +97,31 @@ export function ActivityFeedBatchItem({
               </Link>{" "}
             </>
           )}
-          <span className={showUser ? "text-muted-foreground" : "font-medium text-foreground"}>
-            {showUser ? summary.toLowerCase() : summary}
-          </span>
+          {isTaggedBatch && taggedByName && !showUser && (
+            <>
+              <Link
+                to={taggedByUsername ? `/u/${taggedByUsername}` : "#"}
+                className="font-medium text-foreground hover:underline"
+              >
+                {taggedByName}
+              </Link>{" "}
+              <span className="text-muted-foreground">tagged you in {batch.events.length} photo{batch.events.length !== 1 ? "s" : ""}</span>
+            </>
+          )}
+          {isTaggedBatch && taggedByName && showUser && (
+            <span className="text-muted-foreground">
+              was tagged by{" "}
+              <Link to={taggedByUsername ? `/u/${taggedByUsername}` : "#"} className="font-medium text-foreground hover:underline">
+                {taggedByName}
+              </Link>
+              {" "}in {batch.events.length} photo{batch.events.length !== 1 ? "s" : ""}
+            </span>
+          )}
+          {!isTaggedBatch && (
+            <span className={showUser ? "text-muted-foreground" : "font-medium text-foreground"}>
+              {showUser ? summary.toLowerCase() : summary}
+            </span>
+          )}
           {caption && (
             <>
               {" · "}
