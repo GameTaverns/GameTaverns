@@ -6,6 +6,7 @@ import type { ActivityEvent } from "@/hooks/useActivityFeed";
 import { ActivityReactionButton } from "@/components/social/ActivityReactionButton";
 import { MentionRenderer } from "@/components/photos/MentionRenderer";
 import { useDeleteActivityEvent } from "@/hooks/useDeleteActivityEvent";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 
 const EVENT_CONFIG: Record<string, { icon: any; verb: string; color: string }> = {
   game_added: { icon: Gamepad2, verb: "Added a game", color: "text-blue-500" },
@@ -77,12 +78,14 @@ export function ActivityFeedItem({ event, showUser = false, canDelete = false }:
           )}
         </p>
         {photoUrl && (
-          <img
-            src={photoUrl}
-            alt={detail || "Photo"}
-            className="mt-2 rounded-md max-h-64 object-cover w-full"
-            loading="lazy"
-          />
+          <ImageLightbox src={photoUrl} alt={detail || "Photo"}>
+            <img
+              src={photoUrl}
+              alt={detail || "Photo"}
+              className="mt-2 rounded-md max-h-64 object-cover w-full hover:opacity-90 transition-opacity"
+              loading="lazy"
+            />
+          </ImageLightbox>
         )}
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-muted-foreground">

@@ -6,6 +6,7 @@ import type { BatchedActivityEvent } from "@/utils/groupActivityEvents";
 import { ActivityReactionButton } from "@/components/social/ActivityReactionButton";
 import { MentionRenderer } from "@/components/photos/MentionRenderer";
 import { useDeleteActivityEvent } from "@/hooks/useDeleteActivityEvent";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 
 export function ActivityFeedBatchItem({
   batch,
@@ -108,12 +109,14 @@ export function ActivityFeedBatchItem({
               title={t.title}
             >
               {t.image ? (
-                <img
-                  src={t.image}
-                  alt={t.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                <ImageLightbox src={t.image} alt={t.title}>
+                  <img
+                    src={t.image}
+                    alt={t.title}
+                    className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                    loading="lazy"
+                  />
+                </ImageLightbox>
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Gamepad2 className="h-4 w-4 text-muted-foreground/40" />
