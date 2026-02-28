@@ -1,13 +1,16 @@
-import { useState } from "react";
-import { Users, Globe, MessageSquare, UserPlus } from "lucide-react";
+import { useMemo } from "react";
+import { Users, Globe, UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFollowingFeed } from "@/hooks/useActivityFeed";
 import { ActivityFeedItem } from "@/components/social/ActivityFeedItem";
+import { ActivityFeedBatchItem } from "@/components/social/ActivityFeedBatchItem";
 import { SocialDiscovery } from "@/components/social/SocialDiscovery";
+import { groupActivityEvents } from "@/utils/groupActivityEvents";
 
 export function SocialTab({ currentUserId }: { currentUserId: string | undefined }) {
   const { data: events, isLoading } = useFollowingFeed(currentUserId);
+  const groupedEvents = useMemo(() => groupActivityEvents(events || []), [events]);
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -40,7 +43,7 @@ export function SocialTab({ currentUserId }: { currentUserId: string | undefined
             <CardContent>
               {isLoading ? (
                 <p className="text-sm text-cream/50 py-8 text-center">Loading feed...</p>
-              ) : !events || events.length === 0 ? (
+              ) : groupedEvents.length === 0 ? (
                 <div className="text-center py-8">
                   <Globe className="h-10 w-10 mx-auto text-cream/20 mb-3" />
                   <p className="text-sm text-cream/50">
@@ -49,9 +52,13 @@ export function SocialTab({ currentUserId }: { currentUserId: string | undefined
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {events.map((event) => (
-                    <ActivityFeedItem key={event.id} event={event} showUser />
-                  ))}
+                  {groupedEvents.map((item, idx) =>
+                    item.type === "batch" ? (
+                      <ActivityFeedBatchItem key={`batch-${idx}`} batch={item} showUser />
+                    ) : (
+                      <ActivityFeedItem key={item.event.id} event={item.event} showUser />
+                    )
+                  )}
                 </div>
               )}
             </CardContent>

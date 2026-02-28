@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, ArrowLeft, BarChart3 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -19,6 +19,8 @@ import {
 import { useUserActivity } from "@/hooks/useActivityFeed";
 import { useUserFeedback } from "@/hooks/useUserFeedback";
 import { ActivityFeedItem } from "@/components/social/ActivityFeedItem";
+import { ActivityFeedBatchItem } from "@/components/social/ActivityFeedBatchItem";
+import { groupActivityEvents } from "@/utils/groupActivityEvents";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { FollowButton } from "@/components/social/FollowButton";
 import { UserSpecialBadges } from "@/components/social/SpecialBadge";
@@ -51,6 +53,7 @@ export default function UserProfile() {
   const { data: followCounts } = useFollowCounts(profile?.user_id);
   const { data: featuredAchievement } = useFeaturedAchievement(profile?.featured_achievement_id);
   const { data: activityEvents } = useUserActivity(profile?.user_id);
+  const groupedActivity = useMemo(() => groupActivityEvents(activityEvents || []), [activityEvents]);
   const { data: feedback } = useUserFeedback(profile?.user_id);
   const { data: specialBadges = [] } = useUserSpecialBadges(profile?.user_id);
 
@@ -312,13 +315,17 @@ export default function UserProfile() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {!activityEvents || activityEvents.length === 0 ? (
+                {groupedActivity.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No activity yet.</p>
                 ) : (
                   <div className="space-y-3">
-                    {activityEvents.map((event) => (
-                      <ActivityFeedItem key={event.id} event={event} />
-                    ))}
+                    {groupedActivity.map((item, idx) =>
+                      item.type === "batch" ? (
+                        <ActivityFeedBatchItem key={`batch-${idx}`} batch={item} />
+                      ) : (
+                        <ActivityFeedItem key={item.event.id} event={item.event} />
+                      )
+                    )}
                   </div>
                 )}
               </CardContent>
