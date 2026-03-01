@@ -210,7 +210,7 @@ export function MonthlySummaryCard({ libraryId, libraryName }: MonthlySummaryCar
             style={{ backgroundColor: theme.bg }}
           >
             {/* Two-column layout: games get more space */}
-            <div className="grid grid-cols-[3fr_2fr] gap-0">
+            <div className="grid grid-cols-[5fr_2fr] gap-0">
               {/* LEFT: Game images */}
               <div className="p-3 space-y-1.5">
                 {/* Header */}
