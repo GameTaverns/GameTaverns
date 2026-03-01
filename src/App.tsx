@@ -71,6 +71,7 @@ const CatalogPrint = lazy(lazyRetry(() => import("./pages/CatalogPrint")));
 const SmartPicker = lazy(lazyRetry(() => import("./pages/SmartPicker")));
 const CatalogBrowse = lazy(lazyRetry(() => import("./pages/CatalogBrowse")));
 const CatalogGameDetail = lazy(lazyRetry(() => import("./pages/CatalogGameDetail")));
+const CatalogAnalytics = lazy(lazyRetry(() => import("./pages/CatalogAnalytics")));
 const Install = lazy(lazyRetry(() => import("./pages/Install")));
 const UserProfile = lazy(lazyRetry(() => import("./pages/UserProfile")));
 const DashboardEditor = lazy(lazyRetry(() => import("./components/dashboard/editor/DashboardEditorPage")));
@@ -293,6 +294,7 @@ function PlatformRoutes() {
       <Route path="/join-club" element={<JoinClub />} />
       <Route path="/picker" element={<SmartPicker />} />
       <Route path="/catalog" element={<CatalogBrowse />} />
+      <Route path="/catalog/analytics" element={<CatalogAnalytics />} />
       <Route path="/catalog/:slug" element={<CatalogGameDetail />} />
       <Route path="/install" element={<Install />} />
       <Route path="/docs" element={<Docs />} />
