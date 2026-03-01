@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isAdminSubdomain } from "@/lib/subdomainDetection";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +18,7 @@ import { PlatformRoadmap } from "@/components/admin/PlatformRoadmap";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
 import { usePendingClubs } from "@/hooks/useClubs";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const SpecialBadgesManagement = lazy(() =>
   import("@/components/admin/SpecialBadgesManagement").then(m => ({ default: m.SpecialBadgesManagement }))
@@ -63,7 +64,7 @@ export default function PlatformAdmin() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAuthenticated, loading: authLoading, isAdmin, isStaff, roleLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, isAdmin, isStaff, roleLoading, signOut } = useAuth();
   
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "analytics");
@@ -151,20 +152,36 @@ export default function PlatformAdmin() {
               )}
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            className="text-cream hover:text-white hover:bg-wood-medium/50"
-            onClick={() => {
-              if (isAdminSubdomain()) {
-                // On admin subdomain, link to main site dashboard
-                window.location.href = `${window.location.protocol}//gametaverns.com/dashboard`;
-              } else {
-                navigate("/dashboard");
-              }
-            }}
-          >
-            {t('admin.backToDashboard')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button 
+              variant="ghost" 
+              className="text-cream hover:text-white hover:bg-wood-medium/50"
+              onClick={() => {
+                if (isAdminSubdomain()) {
+                  window.location.href = `${window.location.protocol}//gametaverns.com/dashboard`;
+                } else {
+                  navigate("/dashboard");
+                }
+              }}
+            >
+              {t('admin.backToDashboard')}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-cream hover:text-white hover:bg-wood-medium/50"
+              onClick={async () => {
+                await signOut();
+                if (isAdminSubdomain()) {
+                  navigate("/login");
+                }
+              }}
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </header>
       
