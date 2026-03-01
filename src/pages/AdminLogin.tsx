@@ -29,7 +29,7 @@ export default function AdminLogin() {
   useEffect(() => {
     if (!loading && !roleLoading && isAuthenticated && user?.email) {
       if (validateAdminEmail(user.email) && (isAdmin || isStaff)) {
-        navigate("/", { replace: true });
+        navigate("/admin", { replace: true });
       }
     }
   }, [isAuthenticated, loading, roleLoading, navigate, user, isAdmin, isStaff]);

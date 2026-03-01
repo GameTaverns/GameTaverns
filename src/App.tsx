@@ -159,8 +159,9 @@ function AdminRoutes() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/login" element={<AdminLogin />} />
-        <Route path="/" element={<PlatformAdmin />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/admin" element={<PlatformAdmin />} />
+        <Route path="/" element={<Navigate to="/admin" replace />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </Suspense>
   );
