@@ -129,21 +129,12 @@ export default function PlatformAdmin() {
   }, [isAuthenticated, authLoading, navigate]);
   
   useEffect(() => {
-    // On admin subdomain, also check email domain
-    if (!authLoading && !roleLoading && isAuthenticated && isAdminSubdomain()) {
-      const emailDomain = user?.email?.split("@")[1]?.toLowerCase();
-      if (emailDomain !== "gametaverns.com") {
-        console.log('[PlatformAdmin] Email not @gametaverns.com, redirecting to login');
-        navigate("/login");
-        return;
-      }
-    }
     // Staff OR admin can access this page
     if (!authLoading && !roleLoading && !isStaff && !isAdmin && isAuthenticated) {
       console.log('[PlatformAdmin] Not staff/admin, redirecting to dashboard');
       navigate(isAdminSubdomain() ? "/login" : "/dashboard");
     }
-  }, [isAdmin, isStaff, roleLoading, authLoading, isAuthenticated, navigate, user]);
+  }, [isAdmin, isStaff, roleLoading, authLoading, isAuthenticated, navigate]);
   
   if (authLoading || roleLoading) {
     return (

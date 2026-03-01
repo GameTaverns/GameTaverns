@@ -107,6 +107,30 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_email_allowlist: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          email: string
+          id: string
+          note: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       artists: {
         Row: {
           created_at: string | null
@@ -5186,6 +5210,7 @@ export type Database = {
         Returns: boolean
       }
       is_account_locked: { Args: { _email: string }; Returns: boolean }
+      is_admin_email_allowed: { Args: { _email: string }; Returns: boolean }
       is_club_member: {
         Args: { _club_id: string; _user_id: string }
         Returns: boolean
