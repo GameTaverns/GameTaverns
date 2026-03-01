@@ -65,21 +65,54 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Fetch recent platform updates (resolved feedback items)
+    // Fetch recent platform updates (resolved feedback items) — more generous window
     const { data: recentUpdates } = await supabase
       .from("platform_feedback")
-      .select("title, type, resolved_at")
-      .eq("status", "resolved")
+      .select("title, type, status, resolved_at, description")
+      .in("status", ["resolved", "closed"])
       .order("resolved_at", { ascending: false })
-      .limit(8);
+      .limit(20);
 
-    const updatesList = (recentUpdates || [])
-      .map((u: any) => {
-        const typeEmoji = u.type === "bug" ? "🐛" : u.type === "feature" ? "✨" : "🔧";
-        const label = u.type === "bug" ? "Fix" : u.type === "feature" ? "New" : "Improved";
-        return `<tr><td style="padding:8px 12px 8px 0;color:#78705e;font-size:13px;vertical-align:top;">${typeEmoji}</td><td style="padding:8px 0;color:#3d2b1f;font-size:13px;"><strong style="color:#556b2f;">${label}:</strong> ${escapeHtml(u.title)}</td></tr>`;
-      })
-      .join("");
+    // Group updates by type for a richer presentation
+    const features = (recentUpdates || []).filter((u: any) => u.type === "feature");
+    const fixes = (recentUpdates || []).filter((u: any) => u.type === "bug");
+    const enhancements = (recentUpdates || []).filter((u: any) => u.type !== "feature" && u.type !== "bug");
+
+    const buildUpdateRows = (items: any[], limit: number) =>
+      items.slice(0, limit).map((u: any) => {
+        const desc = u.description ? ` — <span style="color:#78705e;font-size:12px;">${escapeHtml(u.description.substring(0, 80))}${u.description.length > 80 ? "…" : ""}</span>` : "";
+        return `<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;">${escapeHtml(u.title)}${desc}</li>`;
+      }).join("");
+
+    const updatesHtml = (() => {
+      const sections: string[] = [];
+      if (features.length > 0) {
+        sections.push(
+          `<p style="margin:16px 0 8px;font-size:13px;font-weight:700;color:#556b2f;">✨ New Features</p>`,
+          `<ul style="margin:0;padding:0 0 0 20px;">${buildUpdateRows(features, 5)}</ul>`
+        );
+      }
+      if (enhancements.length > 0) {
+        sections.push(
+          `<p style="margin:16px 0 8px;font-size:13px;font-weight:700;color:#6b5b3e;">🔧 Improvements</p>`,
+          `<ul style="margin:0;padding:0 0 0 20px;">${buildUpdateRows(enhancements, 5)}</ul>`
+        );
+      }
+      if (fixes.length > 0) {
+        sections.push(
+          `<p style="margin:16px 0 8px;font-size:13px;font-weight:700;color:#8b6914;">🐛 Bug Fixes</p>`,
+          `<ul style="margin:0;padding:0 0 0 20px;">${buildUpdateRows(fixes, 5)}</ul>`
+        );
+      }
+      if (sections.length === 0) return "";
+      return [
+        '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
+        '<p style="margin:0 0 4px;font-size:15px;font-weight:600;color:#3d2b1f;">What\'s New Since You Left</p>',
+        '<p style="margin:0 0 8px;font-size:12px;color:#9a8a6e;">Here\'s what the team has been working on:</p>',
+        ...sections,
+        '</div>',
+      ].join("");
+    })();
 
     // Fetch upcoming public events
     const { data: upcomingEvents } = await supabase
@@ -159,14 +192,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Stats
       statsHtml,
       // Updates section
-      updatesList ? [
-        '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
-        '<p style="margin:0 0 12px;font-size:14px;font-weight:600;color:#3d2b1f;">✨ Recent Updates &amp; Fixes</p>',
-        '<table style="width:100%;border-collapse:collapse;">',
-        updatesList,
-        '</table>',
-        '</div>',
-      ].join("") : "",
+      updatesHtml,
       // Events section
       eventsHtml,
       '<p style="margin:0 0 24px;font-size:15px;color:#3d2b1f;line-height:1.6;">',
