@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/backend/client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Dices, Star, TrendingUp } from "lucide-react";
+import { Trophy, Dices, Star, TrendingUp, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Layout } from "@/components/layout/Layout";
 
 
 interface CatalogEntry {
@@ -163,9 +164,12 @@ export default function CatalogAnalytics() {
   const ratings = useTopByRating();
 
   return (
-    <>
-
-      <div className="container max-w-3xl mx-auto py-8 px-4 space-y-6">
+    <Layout hideSidebar>
+      <div className="container max-w-3xl mx-auto py-8 px-4 space-y-6 pb-24">
+        <Link to="/catalog" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2">
+          <ArrowLeft className="h-4 w-4" />
+          Back to Catalog
+        </Link>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <TrendingUp className="h-6 w-6 text-primary" />
@@ -280,6 +284,6 @@ export default function CatalogAnalytics() {
           </TabsContent>
         </Tabs>
       </div>
-    </>
+    </Layout>
   );
 }
