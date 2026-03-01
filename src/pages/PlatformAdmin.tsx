@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { isAdminSubdomain } from "@/lib/subdomainDetection";
 import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -95,17 +96,27 @@ export default function PlatformAdmin() {
   
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      navigate("/login");
+      // On admin subdomain, redirect to its own /login; otherwise main site login
+      navigate(isAdminSubdomain() ? "/login" : "/login");
     }
   }, [isAuthenticated, authLoading, navigate]);
   
   useEffect(() => {
+    // On admin subdomain, also check email domain
+    if (!authLoading && !roleLoading && isAuthenticated && isAdminSubdomain()) {
+      const emailDomain = user?.email?.split("@")[1]?.toLowerCase();
+      if (emailDomain !== "gametaverns.com") {
+        console.log('[PlatformAdmin] Email not @gametaverns.com, redirecting to login');
+        navigate("/login");
+        return;
+      }
+    }
     // Staff OR admin can access this page
     if (!authLoading && !roleLoading && !isStaff && !isAdmin && isAuthenticated) {
       console.log('[PlatformAdmin] Not staff/admin, redirecting to dashboard');
-      navigate("/dashboard");
+      navigate(isAdminSubdomain() ? "/login" : "/dashboard");
     }
-  }, [isAdmin, isStaff, roleLoading, authLoading, isAuthenticated, navigate]);
+  }, [isAdmin, isStaff, roleLoading, authLoading, isAuthenticated, navigate, user]);
   
   if (authLoading || roleLoading) {
     return (
@@ -143,7 +154,14 @@ export default function PlatformAdmin() {
           <Button 
             variant="ghost" 
             className="text-cream hover:text-white hover:bg-wood-medium/50"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => {
+              if (isAdminSubdomain()) {
+                // On admin subdomain, link to main site dashboard
+                window.location.href = `${window.location.protocol}//gametaverns.com/dashboard`;
+              } else {
+                navigate("/dashboard");
+              }
+            }}
           >
             {t('admin.backToDashboard')}
           </Button>
