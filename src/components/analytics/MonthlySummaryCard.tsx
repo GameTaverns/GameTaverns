@@ -23,6 +23,12 @@ const MONTHS = [
 
 const DEFAULT_BG = { h: "39", s: "45", l: "94" };
 
+/** Strip any trailing '%' and return a plain numeric string */
+function clean(val: string | null | undefined, fallback: string): string {
+  if (!val) return fallback;
+  return val.replace(/%/g, "").trim() || fallback;
+}
+
 function useLibraryLightBackground(libraryId: string) {
   return useQuery({
     queryKey: ["library-light-bg", libraryId],
@@ -33,9 +39,9 @@ function useLibraryLightBackground(libraryId: string) {
         .eq("library_id", libraryId)
         .maybeSingle();
       return {
-        h: data?.theme_background_h || DEFAULT_BG.h,
-        s: data?.theme_background_s || DEFAULT_BG.s,
-        l: data?.theme_background_l || DEFAULT_BG.l,
+        h: clean(data?.theme_background_h, DEFAULT_BG.h),
+        s: clean(data?.theme_background_s, DEFAULT_BG.s),
+        l: clean(data?.theme_background_l, DEFAULT_BG.l),
       };
     },
     staleTime: 1000 * 60 * 10,
@@ -67,23 +73,25 @@ export function MonthlySummaryCard({ libraryId, libraryName }: MonthlySummaryCar
     const h = bg?.h || DEFAULT_BG.h;
     const s = bg?.s || DEFAULT_BG.s;
     const l = bg?.l || DEFAULT_BG.l;
-    const isLight = Number(l) > 60;
+    const hN = Number(h), sN = Number(s), lN = Number(l);
+    const isLight = lN > 60;
     return {
-      bg: `hsl(${h}, ${s}%, ${l}%)`,
-      bgHex: hslToHex(Number(h), Number(s), Number(l)),
-      card: `hsl(${h}, ${Number(s) * 0.6}%, ${isLight ? Math.max(Number(l) - 10, 20) : Math.min(Number(l) + 10, 80)}%)`,
+      bg: `hsl(${hN}, ${sN}%, ${lN}%)`,
+      bgHex: hslToHex(hN, sN, lN),
+      card: `hsl(${hN}, ${Math.round(sN * 0.6)}%, ${isLight ? Math.max(lN - 10, 20) : Math.min(lN + 10, 80)}%)`,
       cardBg: isLight
-        ? `hsla(${h}, ${s}%, ${Math.max(Number(l) - 8, 20)}%, 0.6)`
-        : `hsla(${h}, ${s}%, ${Math.min(Number(l) + 8, 80)}%, 0.3)`,
+        ? `hsla(${hN}, ${sN}%, ${Math.max(lN - 8, 20)}%, 0.6)`
+        : `hsla(${hN}, ${sN}%, ${Math.min(lN + 8, 80)}%, 0.3)`,
       text: isLight ? "#1a1207" : "#f5f0e8",
       textSub: isLight ? "#1a1207bb" : "#f5f0e8bb",
       textMuted: isLight ? "#1a120766" : "#f5f0e888",
       accent: isLight
-        ? `hsl(${h}, ${Math.min(Number(s) + 20, 100)}%, 35%)`
-        : `hsl(${h}, ${Math.min(Number(s) + 20, 100)}%, 65%)`,
+        ? `hsl(${hN}, ${Math.min(sN + 20, 100)}%, 35%)`
+        : `hsl(${hN}, ${Math.min(sN + 20, 100)}%, 65%)`,
       barColor: isLight
-        ? `hsl(${h}, ${Math.min(Number(s) + 15, 100)}%, 55%)`
-        : `hsl(${h}, ${Math.min(Number(s) + 15, 100)}%, 60%)`,
+        ? `hsl(${hN}, ${Math.min(sN + 15, 100)}%, 55%)`
+        : `hsl(${hN}, ${Math.min(sN + 15, 100)}%, 60%)`,
+      barBg: isLight ? `hsla(${hN}, ${sN}%, 50%, 0.15)` : `hsla(${hN}, ${sN}%, 60%, 0.15)`,
     };
   }, [bg]);
 
@@ -201,16 +209,16 @@ export function MonthlySummaryCard({ libraryId, libraryName }: MonthlySummaryCar
             className="max-w-lg mx-auto rounded-xl overflow-hidden"
             style={{ backgroundColor: theme.bg }}
           >
-            {/* Two-column layout */}
-            <div className="grid grid-cols-[1fr_1fr] gap-0">
+            {/* Two-column layout: games get more space */}
+            <div className="grid grid-cols-[3fr_2fr] gap-0">
               {/* LEFT: Game images */}
-              <div className="p-3 space-y-1">
+              <div className="p-3 space-y-1.5">
                 {/* Header */}
                 <div className="mb-2">
                   <p className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: theme.textMuted }}>
                     #GameTaverns
                   </p>
-                  <p className="text-sm font-bold" style={{ color: theme.text }}>
+                  <p className="text-base font-bold" style={{ color: theme.text }}>
                     {shortLabel}
                   </p>
                 </div>
@@ -220,96 +228,105 @@ export function MonthlySummaryCard({ libraryId, libraryName }: MonthlySummaryCar
                   <GameTile game={stats.topGames[0]} size="large" theme={theme} />
                 )}
 
-                {/* Games 2-3 */}
-                <div className="grid grid-cols-2 gap-1">
-                  {stats.topGames.slice(1, 3).map(g => (
-                    <GameTile key={g.id} game={g} size="small" theme={theme} />
-                  ))}
-                </div>
-
-                {/* Games 4-5 */}
-                <div className="grid grid-cols-2 gap-1">
-                  {stats.topGames.slice(3, 5).map(g => (
-                    <GameTile key={g.id} game={g} size="small" theme={theme} />
-                  ))}
-                </div>
-
-                {/* Games 6-7 */}
-                <div className="grid grid-cols-2 gap-1">
-                  {stats.topGames.slice(5, 7).map(g => (
-                    <GameTile key={g.id} game={g} size="small" theme={theme} />
-                  ))}
-                </div>
-
-                {/* Games 8-9 */}
-                <div className="grid grid-cols-2 gap-1">
-                  {stats.topGames.slice(7, 9).map(g => (
-                    <GameTile key={g.id} game={g} size="small" theme={theme} />
-                  ))}
-                </div>
+                {/* Games 2-9 in pairs */}
+                {[1, 3, 5, 7].map(start => {
+                  const pair = stats.topGames.slice(start, start + 2);
+                  if (pair.length === 0) return null;
+                  return (
+                    <div key={start} className="grid grid-cols-2 gap-1.5">
+                      {pair.map(g => (
+                        <GameTile key={g.id} game={g} size="small" theme={theme} />
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* RIGHT: Stats */}
-              <div className="p-3 space-y-1.5">
+              {/* RIGHT: Stats + Charts */}
+              <div className="p-3 flex flex-col gap-2">
                 {/* Library name */}
-                <div className="text-right mb-2">
-                  <p className="text-xs font-bold" style={{ color: theme.accent }}>
+                <div className="text-right">
+                  <p className="text-xs font-bold truncate" style={{ color: theme.accent }}>
                     {libraryName || "My Library"}
                   </p>
                 </div>
 
                 {/* Stats grid */}
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-2 gap-1.5">
                   <StatBox value={stats.totalPlays} label="PLAYS" theme={theme} />
                   <StatBox value={stats.hIndex} label="H-INDEX" theme={theme} />
-                  <StatBox value={stats.uniqueGames} label="GAMES" theme={theme} />
+                  <StatBox value={stats.uniqueGames} label="UNIQUE" theme={theme} />
                   <StatBox value={stats.newGames} label="NEW" theme={theme} />
                   <StatBox value={stats.totalHours} label="HOURS" theme={theme} />
                   <StatBox value={stats.daysPlayed} label="DAYS" theme={theme} />
                 </div>
 
+                {/* Mini daily activity chart */}
+                {stats.dailyPlays.length > 0 && (
+                  <div className="rounded-lg p-2" style={{ backgroundColor: theme.cardBg }}>
+                    <p className="text-[8px] font-bold tracking-wider mb-1.5" style={{ color: theme.textMuted }}>
+                      DAILY ACTIVITY
+                    </p>
+                    <div className="flex items-end gap-[1px] h-12">
+                      {stats.dailyPlays.map((d, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 rounded-t-sm min-w-[1px]"
+                          style={{
+                            height: d.count > 0 ? `${Math.max(12, (d.count / maxDaily) * 100)}%` : "2px",
+                            backgroundColor: d.count > 0 ? theme.barColor : theme.barBg,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-[7px]" style={{ color: theme.textMuted }}>1</span>
+                      <span className="text-[7px]" style={{ color: theme.textMuted }}>
+                        {stats.dailyPlays.length}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Categories with bar chart */}
+                {stats.topCategories.length > 0 && (
+                  <div className="rounded-lg p-2" style={{ backgroundColor: theme.cardBg }}>
+                    <p className="text-[8px] font-bold tracking-wider mb-1.5" style={{ color: theme.textMuted }}>
+                      TOP CATEGORIES
+                    </p>
+                    <div className="space-y-1.5">
+                      {stats.topCategories.map((cat, i) => (
+                        <div key={i}>
+                          <div className="flex justify-between items-center mb-0.5">
+                            <span className="text-[9px] truncate mr-1" style={{ color: theme.textSub }}>
+                              {cat.name}
+                            </span>
+                            <span className="text-[9px] font-semibold tabular-nums flex-shrink-0" style={{ color: theme.text }}>
+                              {cat.percentage}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: theme.barBg }}>
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${cat.percentage}%`,
+                                backgroundColor: theme.barColor,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Watermark */}
-                <div className="flex items-center justify-center gap-1 py-1">
-                  <img src={logoImage} alt="GameTaverns" className="h-3 w-auto opacity-50" />
-                  <span className="text-[8px] font-semibold tracking-wide" style={{ color: theme.textMuted }}>
+                <div className="flex items-center justify-center gap-1.5 mt-auto pt-1">
+                  <img src={logoImage} alt="GameTaverns" className="h-3.5 w-auto opacity-50" />
+                  <span className="text-[9px] font-semibold tracking-wide" style={{ color: theme.textMuted }}>
                     GameTaverns
                   </span>
                 </div>
-
-                {/* Mini daily chart */}
-                <div className="rounded-md p-2" style={{ backgroundColor: theme.cardBg }}>
-                  <div className="flex items-end gap-[1px] h-10">
-                    {stats.dailyPlays.map((d, i) => (
-                      <div
-                        key={i}
-                        className="flex-1 rounded-t-sm min-w-[2px]"
-                        style={{
-                          height: d.count > 0 ? `${Math.max(15, (d.count / maxDaily) * 100)}%` : "2px",
-                          backgroundColor: d.count > 0 ? theme.barColor : `${theme.textMuted}33`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Categories */}
-                {stats.topCategories.length > 0 && (
-                  <div className="rounded-md p-2" style={{ backgroundColor: theme.cardBg }}>
-                    <p className="text-[9px] font-bold mb-1" style={{ color: theme.textSub }}>
-                      TOP CATEGORIES
-                    </p>
-                    {stats.topCategories.map((cat, i) => (
-                      <div key={i} className="flex justify-between items-center">
-                        <span className="text-[9px] truncate mr-2" style={{ color: theme.textSub }}>
-                          {cat.name}
-                        </span>
-                        <span className="text-[9px] font-semibold tabular-nums" style={{ color: theme.text }}>
-                          {cat.percentage}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -328,13 +345,15 @@ interface GameTileProps {
 }
 
 function GameTile({ game, size, theme }: GameTileProps) {
-  const height = size === "large" ? "h-28" : "h-20";
   return (
-    <div className={`relative ${height} rounded-lg overflow-hidden`} style={{ backgroundColor: theme.card }}>
+    <div
+      className={`relative rounded-xl overflow-hidden ${size === "large" ? "aspect-[4/3]" : "aspect-[3/4]"}`}
+      style={{ backgroundColor: theme.card }}
+    >
       {game.image_url ? (
         <GameImage imageUrl={game.image_url} alt={game.title} className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full flex items-center justify-center p-1">
+        <div className="w-full h-full flex items-center justify-center p-2">
           <span className="text-[10px] text-center leading-tight" style={{ color: theme.textSub }}>
             {game.title}
           </span>
@@ -342,11 +361,13 @@ function GameTile({ game, size, theme }: GameTileProps) {
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-1.5">
-        <p className="text-[9px] font-semibold text-white leading-tight truncate">{game.title}</p>
+        <p className={`font-semibold text-white leading-tight truncate ${size === "large" ? "text-xs" : "text-[9px]"}`}>
+          {game.title}
+        </p>
       </div>
-      {/* Play count badge */}
-      <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded-full bg-black/50 backdrop-blur-sm">
-        <span className="text-[9px] font-bold text-white">{game.playCount}</span>
+      {/* Compact play count badge */}
+      <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+        <span className="text-[8px] font-bold text-white">{game.playCount}</span>
       </div>
     </div>
   );
@@ -360,9 +381,9 @@ interface StatBoxProps {
 
 function StatBox({ value, label, theme }: StatBoxProps) {
   return (
-    <div className="rounded-md px-2 py-1.5 text-center" style={{ backgroundColor: theme.cardBg }}>
+    <div className="rounded-lg px-2 py-1.5 text-center" style={{ backgroundColor: theme.cardBg }}>
       <p className="text-lg font-bold leading-tight" style={{ color: theme.text }}>{value}</p>
-      <p className="text-[8px] font-semibold tracking-wider" style={{ color: theme.textMuted }}>{label}</p>
+      <p className="text-[7px] font-semibold tracking-wider" style={{ color: theme.textMuted }}>{label}</p>
     </div>
   );
 }
