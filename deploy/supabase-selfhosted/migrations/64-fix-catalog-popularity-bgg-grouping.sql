@@ -7,6 +7,8 @@
 -- of aggregated totals. This version groups by BGG ID when available.
 -- =============================================================================
 
+DROP VIEW IF EXISTS public.catalog_popularity CASCADE;
+
 CREATE OR REPLACE VIEW public.catalog_popularity WITH (security_invoker = true) AS
 SELECT
     -- Pick the first catalog entry as the representative (uuid has no MIN, cast to text)
@@ -15,7 +17,7 @@ SELECT
     MIN(gc.slug) AS slug,
     COALESCE(gc.bgg_id, gc.id::text) AS bgg_id,
     MIN(gc.image_url) AS image_url,
-    MIN(gc.weight) AS weight,
+    MIN(gc.weight)::numeric(3,2) AS weight,
     MIN(gc.min_players) AS min_players,
     MIN(gc.max_players) AS max_players,
     MIN(gc.play_time_minutes) AS play_time_minutes,
