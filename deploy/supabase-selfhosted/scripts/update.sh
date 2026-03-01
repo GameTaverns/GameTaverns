@@ -147,6 +147,7 @@ EXTERNAL_HANDLERS=(
   send-rsvp-confirmation
   reply-feedback
   fix-expansion-flags
+  send-reengagement
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   src="$FUNCTIONS_DIR/$handler"

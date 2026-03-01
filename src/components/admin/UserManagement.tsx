@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2, MailCheck, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2, MailCheck, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Send } from "lucide-react";
 import { toast } from "sonner";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { PresenceDot } from "@/components/social/PresenceDot";
 import { useMultiPresence } from "@/hooks/usePresence";
@@ -285,6 +285,28 @@ export function UserManagement() {
     onError: (error) => {
       console.error("Failed to resend confirmation:", error);
       toast.error(error instanceof Error ? error.message : "Failed to resend confirmation email");
+    },
+  });
+
+  // Re-engagement email mutation
+  const reengagementMutation = useMutation({
+    mutationFn: async ({ userId, userEmail, userName }: { userId: string; userEmail: string; userName: string }) => {
+      if (isSelfHostedMode()) {
+        await apiClient.post("/admin/send-reengagement", { userId, userEmail, userName });
+        return { success: true };
+      }
+      const { data, error } = await supabase.functions.invoke("send-reengagement", {
+        body: { userId, userEmail, userName },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Re-engagement email sent!");
+    },
+    onError: (error) => {
+      console.error("Failed to send re-engagement email:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to send re-engagement email");
     },
   });
 
@@ -674,6 +696,33 @@ export function UserManagement() {
                                   <RefreshCw className="w-3 h-3 mr-1" />
                                 )}
                                 Resend Confirm
+                              </Button>
+                            )}
+
+                            {/* Re-engagement email for inactive users (14+ days) */}
+                            {user.id !== currentUser?.id && user.email_confirmed_at && !user.is_banned && (() => {
+                              const lastActive = user.last_sign_in_at ? new Date(user.last_sign_in_at) : null;
+                              const daysInactive = lastActive ? differenceInDays(new Date(), lastActive) : 999;
+                              return daysInactive >= 14;
+                            })() && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/20"
+                                onClick={() => reengagementMutation.mutate({
+                                  userId: user.id,
+                                  userEmail: user.email,
+                                  userName: user.display_name || user.email.split("@")[0],
+                                })}
+                                disabled={reengagementMutation.isPending}
+                                title={`Send re-engagement email to ${user.email}`}
+                              >
+                                {reengagementMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                ) : (
+                                  <Send className="w-3 h-3 mr-1" />
+                                )}
+                                Touch Base
                               </Button>
                             )}
                           </div>
