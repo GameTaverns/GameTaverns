@@ -145,10 +145,30 @@ export function MonthlySummaryCard({ libraryId, libraryName }: MonthlySummaryCar
     }
   }, [periodLabel, theme.bgHex]);
 
-  const maxDaily = useMemo(() => {
-    if (!stats?.dailyPlays) return 1;
-    return Math.max(1, ...stats.dailyPlays.map(d => d.count));
-  }, [stats?.dailyPlays]);
+  const activityData = useMemo(() => {
+    if (!stats?.dailyPlays) return [] as { count: number; label: string }[];
+
+    if (month !== null) {
+      return stats.dailyPlays.map((d, i) => ({ count: d.count, label: String(i + 1) }));
+    }
+
+    const monthlyCounts = Array.from({ length: 12 }, (_, i) => ({
+      count: 0,
+      label: MONTHS[i].slice(0, 3),
+    }));
+
+    for (const d of stats.dailyPlays) {
+      const monthIndex = new Date(`${d.date}T00:00:00`).getMonth();
+      monthlyCounts[monthIndex].count += d.count;
+    }
+
+    return monthlyCounts;
+  }, [stats?.dailyPlays, month]);
+
+  const maxActivity = useMemo(() => {
+    if (activityData.length === 0) return 1;
+    return Math.max(1, ...activityData.map((d) => d.count));
+  }, [activityData]);
 
   return (
     <Card>
@@ -261,28 +281,31 @@ export function MonthlySummaryCard({ libraryId, libraryName }: MonthlySummaryCar
                   <StatBox value={stats.daysPlayed} label="DAYS" theme={theme} />
                 </div>
 
-                {/* Mini daily activity chart */}
-                {stats.dailyPlays.length > 0 && (
+                {/* Mini activity chart */}
+                {activityData.length > 0 && (
                   <div className="rounded-lg p-2" style={{ backgroundColor: theme.cardBg }}>
                     <p className="text-[8px] font-bold tracking-wider mb-1.5" style={{ color: theme.textMuted }}>
-                      DAILY ACTIVITY
+                      {month !== null ? "DAILY ACTIVITY" : "MONTHLY ACTIVITY"}
                     </p>
-                    <div className="flex items-end gap-[1px] h-12">
-                      {stats.dailyPlays.map((d, i) => (
+                    <div className={`flex items-end h-12 ${month !== null ? "gap-[1px]" : "gap-1"}`}>
+                      {activityData.map((d, i) => (
                         <div
                           key={i}
-                          className="flex-1 rounded-t-sm min-w-[1px]"
+                          className={`rounded-t-sm ${month !== null ? "flex-1 min-w-[1px]" : "flex-1 min-w-[8px]"}`}
                           style={{
-                            height: d.count > 0 ? `${Math.max(12, (d.count / maxDaily) * 100)}%` : "2px",
+                            height: d.count > 0 ? `${Math.max(12, (d.count / maxActivity) * 100)}%` : "2px",
                             backgroundColor: d.count > 0 ? theme.barColor : theme.barBg,
                           }}
+                          title={`${d.label}: ${d.count}`}
                         />
                       ))}
                     </div>
                     <div className="flex justify-between mt-1">
-                      <span className="text-[7px]" style={{ color: theme.textMuted }}>1</span>
                       <span className="text-[7px]" style={{ color: theme.textMuted }}>
-                        {stats.dailyPlays.length}
+                        {activityData[0]?.label}
+                      </span>
+                      <span className="text-[7px]" style={{ color: theme.textMuted }}>
+                        {activityData[activityData.length - 1]?.label}
                       </span>
                     </div>
                   </div>
