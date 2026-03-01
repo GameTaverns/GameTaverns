@@ -15,6 +15,7 @@ import { FeaturedBadgeSelector } from "./FeaturedBadgeSelector";
 import { AvatarUpload } from "./AvatarUpload";
 import { BannerUpload } from "./BannerUpload";
 import { DataExportCard } from "./DataExportCard";
+import { EmailPreferencesCard } from "./EmailPreferencesCard";
 
 export function AccountSettings() {
   const { user } = useAuth();
@@ -274,6 +275,9 @@ export function AccountSettings() {
 
       {/* Discord Integration */}
       <DiscordLinkCard />
+
+      {/* Email Preferences */}
+      <EmailPreferencesCard />
 
       {/* Data Export */}
       <DataExportCard />

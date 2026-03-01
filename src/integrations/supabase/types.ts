@@ -4043,6 +4043,7 @@ export type Database = {
           display_name: string | null
           featured_achievement_id: string | null
           id: string
+          marketing_emails_opted_out: boolean
           profile_accent_h: string | null
           profile_accent_l: string | null
           profile_accent_s: string | null
@@ -4068,6 +4069,7 @@ export type Database = {
           display_name?: string | null
           featured_achievement_id?: string | null
           id?: string
+          marketing_emails_opted_out?: boolean
           profile_accent_h?: string | null
           profile_accent_l?: string | null
           profile_accent_s?: string | null
@@ -4093,6 +4095,7 @@ export type Database = {
           display_name?: string | null
           featured_achievement_id?: string | null
           id?: string
+          marketing_emails_opted_out?: boolean
           profile_accent_h?: string | null
           profile_accent_l?: string | null
           profile_accent_s?: string | null

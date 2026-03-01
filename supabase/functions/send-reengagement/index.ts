@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { createHmac } from "node:crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,10 @@ function escapeHtml(str: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function generateUnsubscribeToken(userId: string, secret: string): string {
+  return createHmac("sha256", secret).update(userId).digest("hex");
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -65,54 +70,44 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Fetch recent platform updates (resolved feedback items) — more generous window
-    const { data: recentUpdates } = await supabase
-      .from("platform_feedback")
-      .select("title, type, status, resolved_at, description")
-      .in("status", ["resolved", "closed"])
-      .order("resolved_at", { ascending: false })
-      .limit(20);
+    // Check if user has opted out of marketing emails
+    const { data: profileData } = await supabase
+      .from("user_profiles")
+      .select("marketing_emails_opted_out")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    // Group updates by type for a richer presentation
-    const features = (recentUpdates || []).filter((u: any) => u.type === "feature");
-    const fixes = (recentUpdates || []).filter((u: any) => u.type === "bug");
-    const enhancements = (recentUpdates || []).filter((u: any) => u.type !== "feature" && u.type !== "bug");
+    if (profileData?.marketing_emails_opted_out) {
+      return new Response(JSON.stringify({ error: "User has unsubscribed from marketing emails" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const buildUpdateRows = (items: any[], limit: number) =>
-      items.slice(0, limit).map((u: any) => {
-        const desc = u.description ? ` — <span style="color:#78705e;font-size:12px;">${escapeHtml(u.description.substring(0, 80))}${u.description.length > 80 ? "…" : ""}</span>` : "";
-        return `<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;">${escapeHtml(u.title)}${desc}</li>`;
-      }).join("");
-
-    const updatesHtml = (() => {
-      const sections: string[] = [];
-      if (features.length > 0) {
-        sections.push(
-          `<p style="margin:16px 0 8px;font-size:13px;font-weight:700;color:#556b2f;">✨ New Features</p>`,
-          `<ul style="margin:0;padding:0 0 0 20px;">${buildUpdateRows(features, 5)}</ul>`
-        );
-      }
-      if (enhancements.length > 0) {
-        sections.push(
-          `<p style="margin:16px 0 8px;font-size:13px;font-weight:700;color:#6b5b3e;">🔧 Improvements</p>`,
-          `<ul style="margin:0;padding:0 0 0 20px;">${buildUpdateRows(enhancements, 5)}</ul>`
-        );
-      }
-      if (fixes.length > 0) {
-        sections.push(
-          `<p style="margin:16px 0 8px;font-size:13px;font-weight:700;color:#8b6914;">🐛 Bug Fixes</p>`,
-          `<ul style="margin:0;padding:0 0 0 20px;">${buildUpdateRows(fixes, 5)}</ul>`
-        );
-      }
-      if (sections.length === 0) return "";
-      return [
-        '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
-        '<p style="margin:0 0 4px;font-size:15px;font-weight:600;color:#3d2b1f;">What\'s New Since You Left</p>',
-        '<p style="margin:0 0 8px;font-size:12px;color:#9a8a6e;">Here\'s what the team has been working on:</p>',
-        ...sections,
-        '</div>',
-      ].join("");
-    })();
+    // ── Hardcoded "What's New" updates ─────────────────────────────────────
+    const updatesHtml = [
+      '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
+      '<p style="margin:0 0 4px;font-size:15px;font-weight:600;color:#3d2b1f;">What\'s New Since You Left</p>',
+      '<p style="margin:0 0 8px;font-size:12px;color:#9a8a6e;">Here\'s what the team has been working on:</p>',
+      // Features
+      '<p style="margin:16px 0 8px;font-size:13px;font-weight:700;color:#556b2f;">✨ New Features</p>',
+      '<ul style="margin:0;padding:0 0 0 20px;">',
+      '<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;"><strong>Game Catalog</strong> — Browse over 150,000 board games and add any to your library with a single click</li>',
+      '<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;"><strong>Curated Lists</strong> — Create, share, and vote on custom game lists with the community</li>',
+      '<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;"><strong>Direct Messages</strong> — Private messaging between users with a floating chat bar</li>',
+      '<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;"><strong>Public Events Directory</strong> — Discover and create game nights, tournaments, and conventions open to the community</li>',
+      '<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;"><strong>Photo Gallery</strong> — Upload gameplay photos, tag games, and share moments from your sessions</li>',
+      '</ul>',
+      // Improvements
+      '<p style="margin:16px 0 8px;font-size:13px;font-weight:700;color:#6b5b3e;">🔧 Improvements</p>',
+      '<ul style="margin:0;padding:0 0 0 20px;">',
+      '<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;"><strong>Smarter Imports</strong> — Drop in a BGStats export and we\'ll auto-detect your games and play history. Plus CSV, Excel, and BGG sync</li>',
+      '<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;"><strong>Event Planning Upgrades</strong> — Table assignments, registration caps, game lineups, and automated RSVP emails with calendar invites</li>',
+      '<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;"><strong>Social Features</strong> — Activity feed reactions, real-time online presence indicators, and referral tracking</li>',
+      '<li style="margin:0 0 8px;font-size:13px;color:#3d2b1f;line-height:1.5;"><strong>Catalog Analytics</strong> — Leaderboards for most-owned, most-played, and highest-rated games across the platform</li>',
+      '</ul>',
+      '</div>',
+    ].join("");
 
     // Fetch upcoming public events
     const { data: upcomingEvents } = await supabase
@@ -163,8 +158,8 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="font-size:11px;color:#9a8a6e;text-transform:uppercase;letter-spacing:1px;">Games</div>
           </td>
           <td style="padding:8px 20px;text-align:center;border-left:1px solid #d4c4a0;">
-            <div style="font-size:24px;font-weight:700;color:#556b2f;">${(recentUpdates || []).length}</div>
-            <div style="font-size:11px;color:#9a8a6e;text-transform:uppercase;letter-spacing:1px;">Updates</div>
+            <div style="font-size:24px;font-weight:700;color:#556b2f;">150K+</div>
+            <div style="font-size:11px;color:#9a8a6e;text-transform:uppercase;letter-spacing:1px;">In Catalog</div>
           </td>
         </tr>
       </table>
@@ -172,6 +167,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     const displayName = userName || userEmail.split("@")[0];
     const logoUrl = "https://gametaverns.com/gt-logo.png";
+
+    // Generate unsubscribe link
+    const unsubSecret = Deno.env.get("PII_ENCRYPTION_KEY") || serviceKey;
+    const unsubToken = generateUnsubscribeToken(userId, unsubSecret);
+    const unsubscribeUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?uid=${userId}&token=${unsubToken}`;
 
     const htmlBody = [
       '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
@@ -196,7 +196,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Events section
       eventsHtml,
       '<p style="margin:0 0 24px;font-size:15px;color:#3d2b1f;line-height:1.6;">',
-      'Your library is still here waiting for you. Come check out what\'s new, log some plays, or see what the community has been up to!',
+      'Your library is still here waiting for you. Come check out what\'s new, browse the catalog, log some plays, or see what the community has been up to!',
       '</p>',
       // CTA
       '<div style="text-align:center;margin:0 0 24px;">',
@@ -205,13 +205,13 @@ const handler = async (req: Request): Promise<Response> => {
       '<hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">',
       '<p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">',
       'You\'re receiving this because you have an account at <a href="https://gametaverns.com" style="color:#556b2f;">GameTaverns</a>.<br>',
-      'If you\'d like to stop receiving these emails, reply and let us know.',
+      `<a href="${unsubscribeUrl}" style="color:#556b2f;">Unsubscribe</a> · <a href="https://gametaverns.com" style="color:#556b2f;">Manage email preferences</a>`,
       '</p>',
       '</div></div></div>',
       '</body></html>',
     ].join("");
 
-    // Send via SMTP (dynamic import like reply-feedback)
+    // Send via SMTP
     const SMTP_HOST = Deno.env.get("SMTP_HOST");
     const SMTP_FROM = Deno.env.get("SMTP_FROM");
     if (!SMTP_HOST || !SMTP_FROM) {
@@ -248,6 +248,10 @@ const handler = async (req: Request): Promise<Response> => {
       to: userEmail,
       subject: `We miss you at GameTaverns, ${displayName}! 🎲`,
       html: htmlBody,
+      headers: {
+        "List-Unsubscribe": `<${unsubscribeUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     });
 
     await client.close();
