@@ -303,7 +303,7 @@ function PlatformRoutes() {
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />
-      <Route path="/admin" element={<Navigate to="/dashboard?tab=admin" replace />} />
+      <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
       {/* Studio — internal portal for @gametaverns.com emails */}
       <Route path="/studio" element={<StudioDashboard />} />
       <Route path="/studio/login" element={<StudioLogin />} />

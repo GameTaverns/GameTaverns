@@ -109,7 +109,7 @@ import { useTotpStatus } from "@/hooks/useTotpStatus";
 import { useUserDashboardPrefs, TAB_WIDGET_REGISTRY } from "@/hooks/useUserDashboardPrefs";
 import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer";
 import { TabWidgetEditor } from "@/components/dashboard/TabWidgetEditor";
-import { AdminSubtabPanel } from "@/components/dashboard/AdminSubtabPanel";
+
 import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
 import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidget";
 import { useQuery } from "@tanstack/react-query";
@@ -1029,12 +1029,6 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* ==================== ADMIN TAB (admin & staff) ==================== */}
-          {(isAdmin || isStaff) && (
-            <TabsContent value="admin" forceMount className={activeTab !== "admin" ? "hidden" : ""}>
-              <AdminSubtabPanel dashPrefs={dashPrefs} unreadFeedbackCount={unreadFeedbackCount} pendingClubs={pendingClubs} isAdmin={isAdmin} />
-            </TabsContent>
-          )}
         </Tabs>
 
         {/* Create/Edit Event Dialog */}

@@ -59,7 +59,7 @@ export const DASHBOARD_TABS: DashboardTabDef[] = [
   { id: "referrals", label: "Referrals", icon: "Users" },
   { id: "analytics", label: "Analytics", icon: "BarChart3" },
   { id: "danger", label: "Danger", icon: "AlertTriangle" },
-  { id: "admin", label: "Admin", icon: "Shield", adminOnly: true },
+  
 ];
 
 /** Widget definition for per-tab registries */
