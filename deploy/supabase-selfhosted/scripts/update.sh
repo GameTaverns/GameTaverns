@@ -148,6 +148,8 @@ EXTERNAL_HANDLERS=(
   reply-feedback
   fix-expansion-flags
   send-reengagement
+  email-unsubscribe
+  email-track
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   src="$FUNCTIONS_DIR/$handler"
