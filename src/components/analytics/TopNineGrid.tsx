@@ -8,6 +8,7 @@ import { GameImage } from "@/components/games/GameImage";
 import { Download, Grid3X3, Share2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { format } from "date-fns";
+import logoImage from "@/assets/logo.png";
 
 interface TopNineGridProps {
   libraryId: string;
@@ -219,8 +220,11 @@ export function TopNineGrid({ libraryId, libraryName }: TopNineGridProps) {
               ))}
             </div>
 
-            {/* Footer watermark */}
-            <p className="text-center text-[9px] text-cream/30 mt-2">GameTaverns</p>
+            {/* Footer watermark with logo */}
+            <div className="flex items-center justify-end gap-1.5 mt-3 pr-1">
+              <img src={logoImage} alt="GameTaverns" className="h-4 w-auto opacity-50" />
+              <span className="text-[10px] font-semibold text-cream/40 tracking-wide">GameTaverns</span>
+            </div>
           </div>
         )}
       </CardContent>
