@@ -16,6 +16,7 @@ import { MaintenanceGuard } from "@/components/system/MaintenanceGuard";
 import { TestingEnvironmentBanner } from "@/components/layout/TestingEnvironmentBanner";
 import { MobileAppShell } from "@/components/mobile/MobileAppShell";
 import { isProductionDeployment } from "@/config/runtime";
+import { isAdminSubdomain } from "@/lib/subdomainDetection";
 import { GlobalFeedbackButton } from "@/components/feedback/FeedbackDialog";
 import { CookieConsent } from "@/components/ui/cookie-consent";
 import { PresenceTracker } from "@/components/social/PresenceTracker";
@@ -99,6 +100,10 @@ const EmbedWidget = lazy(lazyRetry(() => import("./pages/EmbedWidget")));
 const StudioLogin = lazy(() => import("./pages/StudioLogin"));
 const StudioDashboard = lazy(() => import("./pages/StudioDashboard"));
 
+// Admin pages (admin.gametaverns.com) — fully isolated subdomain
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const PlatformAdmin = lazy(() => import("./pages/PlatformAdmin"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -147,18 +152,31 @@ function getNativeEffectivePath(): string {
   return qIndex >= 0 ? withoutHash.slice(0, qIndex) : withoutHash;
 }
 
+// Admin subdomain routes (admin.gametaverns.com)
+// Completely isolated — no tenant logic, no mobile shell, no main app code
+function AdminRoutes() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/login" element={<AdminLogin />} />
+        <Route path="/" element={<PlatformAdmin />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
 // Wrapper component to check for tenant mode
 function AppRoutes() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Always call the hook (rules of hooks) — on web it's a no-op (returns null)
+  // Always call hooks unconditionally (rules of hooks)
   const { activeLibrary } = useMobileLibrary();
 
-  // On native (HashRouter), location.pathname correctly reflects the hash-based route
-  // (e.g. '/dashboard', '/catalog') because useLocation() inside HashRouter extracts it.
-  // However window.location.hash is the fallback for edge cases during initial render.
+  const isOnAdminSubdomain = isAdminSubdomain();
+
   const effectivePath = isRunningNative()
     ? (location.pathname !== '/' ? location.pathname : getNativeEffectivePath())
     : location.pathname;
@@ -168,6 +186,7 @@ function AppRoutes() {
 
   // Inject ?tenant= ONLY for library routes on native, never for platform routes.
   useEffect(() => {
+    if (isOnAdminSubdomain) return;
     if (!isRunningNative() || !activeLibrary) return;
     if (isOnPlatformPath) return;
     const currentTenant = new URLSearchParams(location.search).get("tenant");
@@ -176,7 +195,12 @@ function AppRoutes() {
       newParams.set("tenant", activeLibrary);
       navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
     }
-  }, [activeLibrary, location.search, location.pathname, navigate, isOnPlatformPath]);
+  }, [activeLibrary, location.search, location.pathname, navigate, isOnPlatformPath, isOnAdminSubdomain]);
+
+  // Admin subdomain — render isolated admin routes, skip everything else
+  if (isOnAdminSubdomain) {
+    return <AdminRoutes />;
+  }
 
   return (
     <TenantProvider>
