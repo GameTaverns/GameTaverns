@@ -9,8 +9,8 @@
 
 CREATE OR REPLACE VIEW public.catalog_popularity WITH (security_invoker = true) AS
 SELECT
-    -- Pick the first catalog entry as the representative
-    MIN(gc.id) AS catalog_id,
+    -- Pick the first catalog entry as the representative (uuid has no MIN, cast to text)
+    (MIN(gc.id::text))::uuid AS catalog_id,
     MIN(gc.title) AS title,
     MIN(gc.slug) AS slug,
     COALESCE(gc.bgg_id, gc.id::text) AS bgg_id,
