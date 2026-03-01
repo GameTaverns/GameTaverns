@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users, Clock, Weight, BookOpen, ChevronDown, ChevronUp, Menu, LayoutGrid, List, Loader2 } from "lucide-react";
+import { Search, Users, Clock, Weight, BookOpen, ChevronDown, ChevronUp, Menu, LayoutGrid, List, Loader2, BarChart3 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
@@ -419,11 +420,19 @@ export default function CatalogBrowse() {
       <div className="lg:ml-72">
         <div className="container mx-auto px-4 py-8 max-w-[2000px]">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="font-display text-3xl font-bold">GameTaverns Library</h1>
-            <p className="text-muted-foreground">
-              {totalCount} games in collection
-            </p>
+          <div className="mb-8 flex items-start justify-between">
+            <div>
+              <h1 className="font-display text-3xl font-bold">GameTaverns Library</h1>
+              <p className="text-muted-foreground">
+                {totalCount} games in collection
+              </p>
+            </div>
+            <Link to="/catalog/analytics">
+              <Button variant="outline" size="sm" className="gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Analytics
+              </Button>
+            </Link>
           </div>
 
           {/* Search & Sort Bar */}
