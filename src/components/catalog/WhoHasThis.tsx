@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { Badge } from "@/components/ui/badge";
@@ -18,18 +19,40 @@ interface OwnerLibrary {
 }
 
 export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
+  const [showAll, setShowAll] = useState(false);
+
   const { data: owners = [], isLoading } = useQuery({
     queryKey: ["who-has-this", catalogId, clubId],
     queryFn: async (): Promise<OwnerLibrary[]> => {
-      // Find all games linked to this catalog entry, join with libraries
-      let query = supabase
+      // Collect related catalog IDs by bgg_id first (helps with duplicate catalog rows for same game)
+      const catalogIds = new Set<string>([catalogId]);
+
+      const { data: currentCatalog } = await supabase
+        .from("game_catalog")
+        .select("bgg_id")
+        .eq("id", catalogId)
+        .maybeSingle();
+
+      if (currentCatalog?.bgg_id) {
+        const { data: relatedCatalogRows, error: relatedCatalogError } = await supabase
+          .from("game_catalog")
+          .select("id")
+          .eq("bgg_id", currentCatalog.bgg_id);
+
+        if (relatedCatalogError) throw relatedCatalogError;
+        for (const row of relatedCatalogRows || []) {
+          catalogIds.add(row.id);
+        }
+      }
+
+      // Find all games linked to this catalog entry (or related duplicates), join with libraries
+      const { data, error } = await supabase
         .from("games")
         .select("library_id, libraries!inner(id, name, slug, is_active)")
-        .eq("catalog_id", catalogId)
+        .in("catalog_id", Array.from(catalogIds))
         .eq("is_expansion", false)
         .eq("ownership_status", "owned");
 
-      const { data, error } = await query;
       if (error) throw error;
 
       // Deduplicate by library_id
@@ -64,14 +87,17 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
     );
   }
 
+  const hiddenCount = Math.max(0, owners.length - 5);
+  const visibleOwners = showAll ? owners : owners.slice(0, 5);
+
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-medium flex items-center gap-1">
-        <Library className="h-3 w-3" /> 
+        <Library className="h-3 w-3" />
         {owners.length} {owners.length === 1 ? "library has" : "libraries have"} this
       </p>
       <div className="flex flex-wrap gap-1">
-        {owners.slice(0, 5).map((owner) => (
+        {visibleOwners.map((owner) => (
           <TenantLink
             key={owner.library_id}
             href={getLibraryUrl(owner.library_slug, "/")}
@@ -83,12 +109,34 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
             </Badge>
           </TenantLink>
         ))}
-        {owners.length > 5 && (
-          <Badge variant="outline" className="text-[10px]">
-            +{owners.length - 5} more
-          </Badge>
+
+        {!showAll && hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowAll(true);
+            }}
+            className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] hover:bg-secondary/20"
+          >
+            +{hiddenCount} more
+          </button>
+        )}
+
+        {showAll && hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowAll(false);
+            }}
+            className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] hover:bg-secondary/20"
+          >
+            Show less
+          </button>
         )}
       </div>
     </div>
   );
 }
+
