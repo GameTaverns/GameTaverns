@@ -703,7 +703,7 @@ export function UserManagement() {
                             {user.id !== currentUser?.id && user.email_confirmed_at && !user.is_banned && (() => {
                               const lastActive = user.last_sign_in_at ? new Date(user.last_sign_in_at) : null;
                               const daysInactive = lastActive ? differenceInDays(new Date(), lastActive) : 999;
-                              return daysInactive >= 14;
+                              return daysInactive >= 0;
                             })() && (
                               <Button
                                 variant="outline"
