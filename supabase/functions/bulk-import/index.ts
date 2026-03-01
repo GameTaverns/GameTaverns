@@ -1954,6 +1954,7 @@ export default async function handler(req: Request): Promise<Response> {
           if ((gameInput as any)._bgg_status === "wishlist") {
             skipped++;
             console.log(`[BulkImport] Skipping wishlist item ${i + 1}/${gamesToImport.length}: ${gameInput.title || gameInput.bgg_id} (will add to trade_wants)`);
+            await logItemError(gameInput.title, gameInput.bgg_id, `Wishlist item — added to trade wants instead of library`, "wishlist_skip");
             sendProgress({ type: "progress", current: i + 1, total: totalGames, imported: imported + updated, failed, currentGame: gameInput.title || `BGG #${gameInput.bgg_id}`, phase: "wishlist_skip" });
             continue;
           }
@@ -2838,6 +2839,7 @@ export default async function handler(req: Request): Promise<Response> {
 
               skipped++;
               failureBreakdown.already_exists++;
+              await logItemError(gameData.title, gameInput.bgg_id, `"${gameData.title}" already exists in this library (no fields needed updating)`, "already_exists");
               // Update job progress for skipped games
               await supabaseAdmin.from("import_jobs").update({
                 processed_items: i + 1,
