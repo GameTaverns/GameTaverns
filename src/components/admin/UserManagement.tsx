@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AdminEmailAllowlist } from "./AdminEmailAllowlist";
+import { AdminEmailDialog } from "./AdminEmailDialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2, MailCheck, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Send } from "lucide-react";
+import { Loader2, Shield, User, UserCog, Ban, UserCheck, Mail, Clock, AlertTriangle, Crown, Star, Library, Trash2, MailCheck, RefreshCw, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Send, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +56,7 @@ export function UserManagement() {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [suspendDialog, setSuspendDialog] = useState<{ open: boolean; user: UserWithDetails | null }>({ open: false, user: null });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; user: UserWithDetails | null }>({ open: false, user: null });
+  const [adminEmailDialog, setAdminEmailDialog] = useState<{ open: boolean; user: UserWithDetails | null }>({ open: false, user: null });
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [suspendDuration, setSuspendDuration] = useState<string>("7d");
   const [suspendReason, setSuspendReason] = useState("");
@@ -141,6 +142,25 @@ export function UserManagement() {
       const map = new Map<string, string | null>();
       for (const row of data || []) {
         map.set(row.user_id, row.avatar_url ?? null);
+      }
+      return map;
+    },
+    enabled: userIds.length > 0,
+  });
+
+  // Fetch admin_email aliases for all users
+  const { data: adminEmails } = useQuery({
+    queryKey: ["admin-user-admin-emails", userIds.join(",")],
+    queryFn: async () => {
+      if (userIds.length === 0) return new Map<string, string | null>();
+      const { data } = await supabase
+        .from("user_profiles")
+        .select("user_id, admin_email")
+        .in("user_id", userIds)
+        .not("admin_email", "is", null);
+      const map = new Map<string, string | null>();
+      for (const row of data || []) {
+        map.set(row.user_id, (row as any).admin_email ?? null);
       }
       return map;
     },
@@ -382,9 +402,6 @@ export function UserManagement() {
 
   return (
     <div className="space-y-4">
-      {/* Admin Email Allowlist - only visible to admins */}
-      {currentUserRole === "admin" && <AdminEmailAllowlist />}
-
       {/* Role Legend - 5 Tier System */}
       <div className="bg-wood-medium/20 rounded-lg p-4 border border-wood-medium/30">
         <h4 className="font-semibold text-cream mb-3">Role Hierarchy (5 Tiers)</h4>
@@ -565,9 +582,17 @@ export function UserManagement() {
                           </div>
                         </TableCell>
                         <TableCell className="py-2">
-                          <div className="flex items-center gap-1 text-cream/80">
-                            <Mail className="w-3 h-3 text-cream/50 flex-shrink-0" />
-                            <span className="text-xs">{user.email}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1 text-cream/80">
+                              <Mail className="w-3 h-3 text-cream/50 flex-shrink-0" />
+                              <span className="text-xs">{user.email}</span>
+                            </div>
+                            {adminEmails?.get(user.id) && (
+                              <div className="flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3 text-secondary/70 flex-shrink-0" />
+                                <span className="text-[10px] text-secondary/70">{adminEmails.get(user.id)}</span>
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-cream/70 text-xs py-2">
@@ -673,15 +698,27 @@ export function UserManagement() {
                                   Suspend
                                 </Button>
                                 {currentUserRole === "admin" && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 text-xs border-destructive/50 text-destructive hover:bg-destructive/20"
-                                    onClick={() => setDeleteDialog({ open: true, user })}
-                                  >
-                                    <Trash2 className="w-3 h-3 mr-1" />
-                                    Delete
-                                  </Button>
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-xs border-destructive/50 text-destructive hover:bg-destructive/20"
+                                      onClick={() => setDeleteDialog({ open: true, user })}
+                                    >
+                                      <Trash2 className="w-3 h-3 mr-1" />
+                                      Delete
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-xs border-secondary/50 text-secondary hover:bg-secondary/20"
+                                      onClick={() => setAdminEmailDialog({ open: true, user })}
+                                      title={adminEmails?.get(user.id) ? `Admin: ${adminEmails.get(user.id)}` : "Assign admin email"}
+                                    >
+                                      <ShieldCheck className="w-3 h-3 mr-1" />
+                                      {adminEmails?.get(user.id) ? "Edit Alias" : "Admin Email"}
+                                    </Button>
+                                  </>
                                 )}
                               </>
                             ) : null}
@@ -939,6 +976,17 @@ export function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Admin Email Dialog */}
+      {adminEmailDialog.user && (
+        <AdminEmailDialog
+          open={adminEmailDialog.open}
+          onOpenChange={(open) => !open && setAdminEmailDialog({ open: false, user: null })}
+          userId={adminEmailDialog.user.id}
+          userDisplayName={adminEmailDialog.user.display_name || adminEmailDialog.user.email}
+          currentAdminEmail={adminEmails?.get(adminEmailDialog.user.id) || null}
+        />
+      )}
     </div>
   );
 }
