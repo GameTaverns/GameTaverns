@@ -3,6 +3,7 @@ import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyti
 import { CollectionValueDashboard } from "@/components/analytics/CollectionValueDashboard";
 import { CollectionBreakdownCharts } from "@/components/analytics/CollectionBreakdownCharts";
 import { TopNineGrid } from "@/components/analytics/TopNineGrid";
+import { MonthlySummaryCard } from "@/components/analytics/MonthlySummaryCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AnalyticsTabProps {
@@ -23,6 +24,8 @@ export function AnalyticsTab({ isAdmin, libraryId, libraryName }: AnalyticsTabPr
   return (
     <div className="space-y-6">
       <TopNineGrid libraryId={libraryId} libraryName={libraryName} />
+
+      <MonthlySummaryCard libraryId={libraryId} libraryName={libraryName} />
 
       <LibraryAnalyticsDashboard libraryId={libraryId} />
 
