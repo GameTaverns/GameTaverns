@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Shield } from "lucide-react";
+import { supabase } from "@/integrations/backend/client";
+import { getSupabaseConfig } from "@/config/runtime";
+import { TotpVerify } from "@/components/auth/TotpVerify";
 
 const ALLOWED_DOMAIN = "gametaverns.com";
 
@@ -22,17 +25,40 @@ export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, isAuthenticated, loading, user, isAdmin, isStaff, roleLoading } = useAuth();
+  const [forceSignedOut, setForceSignedOut] = useState(false);
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [pendingAccessToken, setPendingAccessToken] = useState<string | null>(null);
+  const hasSignedOut = useRef(false);
+  const { signIn, signOut, isAuthenticated, loading, user, isAdmin, isStaff, roleLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { url: apiUrl, anonKey } = getSupabaseConfig();
 
+  // Force sign out on mount — admin must always re-authenticate
   useEffect(() => {
-    if (!loading && !roleLoading && isAuthenticated && user?.email) {
+    if (hasSignedOut.current) return;
+    if (loading) return;
+
+    hasSignedOut.current = true;
+
+    if (isAuthenticated) {
+      signOut().then(() => {
+        setForceSignedOut(true);
+      });
+    } else {
+      setForceSignedOut(true);
+    }
+  }, [loading, isAuthenticated, signOut]);
+
+  // After successful login, redirect to admin panel
+  useEffect(() => {
+    // Only redirect if user just signed in (forceSignedOut was true, meaning we went through the gate)
+    if (!loading && !roleLoading && isAuthenticated && user?.email && forceSignedOut && !requires2FA) {
       if (validateAdminEmail(user.email) && (isAdmin || isStaff)) {
         navigate("/admin", { replace: true });
       }
     }
-  }, [isAuthenticated, loading, roleLoading, navigate, user, isAdmin, isStaff]);
+  }, [isAuthenticated, loading, roleLoading, navigate, user, isAdmin, isStaff, forceSignedOut, requires2FA]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,13 +73,63 @@ export default function AdminLogin() {
         toast({ title: "Error", description: error.message, variant: "destructive" });
         return;
       }
-      // Navigation will be handled by the useEffect above once auth state updates
+
+      // Check if user has 2FA enabled — admin always requires verification (ignore grace period)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        try {
+          const controller = new AbortController();
+          const totpTimeout = setTimeout(() => controller.abort(), 4000);
+
+          const response = await fetch(`${apiUrl}/functions/v1/totp-status`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+              apikey: anonKey,
+            },
+            signal: controller.signal,
+          }).catch(() => null);
+
+          clearTimeout(totpTimeout);
+
+          if (response?.ok) {
+            const data = await response.json().catch(() => ({}));
+            if (data.isEnabled) {
+              setPendingAccessToken(session.access_token);
+              setRequires2FA(true);
+              setIsLoading(false);
+              return;
+            }
+          }
+        } catch {
+          // Timed out or failed — proceed without 2FA
+        }
+      }
+
+      // No 2FA required — navigation handled by useEffect
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (loading || roleLoading) {
+  const handle2FASuccess = () => {
+    setRequires2FA(false);
+    setPendingAccessToken(null);
+    toast({ title: "Authenticated successfully" });
+    // Navigation will be handled by the useEffect
+  };
+
+  const handle2FACancel = async () => {
+    await supabase.auth.signOut();
+    setRequires2FA(false);
+    setPendingAccessToken(null);
+  };
+
+  // Show loading while we force sign-out
+  if (loading || !forceSignedOut) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted flex items-center justify-center">
         <div className="animate-pulse text-foreground">Loading...</div>
@@ -61,7 +137,24 @@ export default function AdminLogin() {
     );
   }
 
-  if (isAuthenticated) return null;
+  // Show 2FA screen
+  if (requires2FA && pendingAccessToken) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center p-4">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <TotpVerify
+          accessToken={pendingAccessToken}
+          onSuccess={handle2FASuccess}
+          onCancel={handle2FACancel}
+        />
+      </div>
+    );
+  }
+
+  // If authenticated after login (waiting for redirect), show nothing
+  if (isAuthenticated && !requires2FA) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex flex-col items-center justify-center p-4">
