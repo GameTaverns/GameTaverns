@@ -165,6 +165,13 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                 Support
               </div>
               <FeedbackNavItem onClose={close} />
+              <button
+                onClick={handleSignOut}
+                className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <LogOut className="h-5 w-5 shrink-0" />
+                <span>Sign Out</span>
+              </button>
             </>
           ) : (
             <>
@@ -176,18 +183,6 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
           )}
         </nav>
 
-        {/* Footer */}
-        {isAuthenticated && (
-          <div className="border-t px-2 py-3">
-            <button
-              onClick={handleSignOut}
-              className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              <LogOut className="h-5 w-5 shrink-0" />
-              <span>Sign Out</span>
-            </button>
-          </div>
-        )}
       </SheetContent>
     </Sheet>
   );
