@@ -160,8 +160,8 @@ function AdminRoutes() {
       <Routes>
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/admin" element={<PlatformAdmin />} />
-        <Route path="/" element={<Navigate to="/admin" replace />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
   );
