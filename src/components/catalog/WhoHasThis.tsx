@@ -9,13 +9,14 @@ import { TenantLink } from "@/components/TenantLink";
 interface WhoHasThisProps {
   catalogId: string;
   gameTitle: string;
-  clubId?: string; // If provided, scope to club libraries first
+  clubId?: string;
 }
 
 interface OwnerLibrary {
   library_id: string;
   library_name: string;
   library_slug: string;
+  is_private: boolean;
 }
 
 export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
@@ -24,8 +25,9 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
   const { data: owners = [], isLoading } = useQuery({
     queryKey: ["who-has-this", catalogId, clubId],
     queryFn: async (): Promise<OwnerLibrary[]> => {
-      // Collect related catalog IDs by bgg_id first (helps with duplicate catalog rows for same game)
+      // 1) Collect all related catalog IDs by bgg_id
       const catalogIds = new Set<string>([catalogId]);
+      let bggId: string | null = null;
 
       const { data: currentCatalog } = await supabase
         .from("game_catalog")
@@ -34,40 +36,71 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
         .maybeSingle();
 
       if (currentCatalog?.bgg_id) {
-        const { data: relatedCatalogRows, error: relatedCatalogError } = await supabase
+        bggId = currentCatalog.bgg_id;
+        const { data: relatedCatalogRows } = await supabase
           .from("game_catalog")
           .select("id")
-          .eq("bgg_id", currentCatalog.bgg_id);
+          .eq("bgg_id", bggId);
 
-        if (relatedCatalogError) throw relatedCatalogError;
         for (const row of relatedCatalogRows || []) {
           catalogIds.add(row.id);
         }
       }
 
-      // Find all games linked to this catalog entry (or related duplicates), join with libraries
-      const { data, error } = await supabase
+      // 2) Find games by catalog_id
+      const { data: byCatalog } = await supabase
         .from("games")
         .select("library_id, libraries!inner(id, name, slug, is_active)")
         .in("catalog_id", Array.from(catalogIds))
         .eq("is_expansion", false)
         .eq("ownership_status", "owned");
 
-      if (error) throw error;
+      // 3) Also find games by bgg_id directly (catches games without catalog_id link)
+      let byBggId: any[] = [];
+      if (bggId) {
+        const { data } = await supabase
+          .from("games")
+          .select("library_id, libraries!inner(id, name, slug, is_active)")
+          .eq("bgg_id", bggId)
+          .eq("is_expansion", false)
+          .eq("ownership_status", "owned");
+        byBggId = data || [];
+      }
 
-      // Deduplicate by library_id
+      // 4) Fetch discoverable settings to determine privacy
       const seen = new Set<string>();
       const results: OwnerLibrary[] = [];
-      for (const row of data || []) {
+      const allRows = [...(byCatalog || []), ...byBggId];
+
+      // Collect unique library IDs first
+      const libIds = new Set<string>();
+      for (const row of allRows) {
+        const lib = row.libraries as any;
+        if (lib?.id) libIds.add(lib.id);
+      }
+
+      // Check which libraries are discoverable (public in directory)
+      let discoverableSet = new Set<string>();
+      if (libIds.size > 0) {
+        const { data: dirEntries } = await supabase
+          .from("library_directory")
+          .select("id")
+          .in("id", Array.from(libIds));
+        for (const entry of dirEntries || []) {
+          discoverableSet.add(entry.id);
+        }
+      }
+
+      for (const row of allRows) {
         const lib = row.libraries as any;
         if (!lib || seen.has(lib.id)) continue;
-        // Only show active (public) libraries
         if (lib.is_active === false) continue;
         seen.add(lib.id);
         results.push({
           library_id: lib.id,
           library_name: lib.name,
           library_slug: lib.slug,
+          is_private: !discoverableSet.has(lib.id),
         });
       }
       return results;
@@ -87,8 +120,10 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
     );
   }
 
-  const hiddenCount = Math.max(0, owners.length - 5);
-  const visibleOwners = showAll ? owners : owners.slice(0, 5);
+  const publicOwners = owners.filter((o) => !o.is_private);
+  const privateCount = owners.filter((o) => o.is_private).length;
+  const hiddenCount = Math.max(0, publicOwners.length - 5);
+  const visibleOwners = showAll ? publicOwners : publicOwners.slice(0, 5);
 
   return (
     <div className="space-y-1.5">
@@ -109,6 +144,12 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
             </Badge>
           </TenantLink>
         ))}
+
+        {privateCount > 0 && (
+          <Badge variant="outline" className="text-[10px] text-muted-foreground">
+            +{privateCount} private
+          </Badge>
+        )}
 
         {!showAll && hiddenCount > 0 && (
           <button
