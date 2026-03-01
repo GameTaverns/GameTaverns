@@ -94,14 +94,14 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
         )}
       </SheetTrigger>
 
-      <SheetContent side="right" className="w-72 p-0 flex flex-col bg-background">
+      <SheetContent side="right" className="w-72 p-0 flex h-[100dvh] flex-col bg-background">
         {/* Header — no manual close button; SheetContent provides its own */}
         <div className="px-4 py-4 border-b">
           <span className="font-display text-base font-bold">Menu</span>
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-2 py-3 pb-24 space-y-1">
           {isAuthenticated ? (
             <>
               <NavItem href={getPlatformUrl("/dashboard")} icon={LayoutDashboard} label="Dashboard" />
@@ -158,6 +158,13 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                   label={profile.display_name || profile.username}
                 />
               )}
+
+              <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Support
+              </div>
+              <FeedbackNavItem onClose={close} />
+              <NavItem href={getPlatformUrl("/docs")} icon={HelpCircle} label="Help" />
+              <NavItem href={getPlatformUrl("/legal")} icon={Scale} label="Legal" />
               <button
                 onClick={handleSignOut}
                 className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
@@ -165,13 +172,6 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                 <LogOut className="h-5 w-5 shrink-0" />
                 <span>Sign Out</span>
               </button>
-              <NavItem href={getPlatformUrl("/docs")} icon={HelpCircle} label="Help" />
-              <NavItem href={getPlatformUrl("/legal")} icon={Scale} label="Legal" />
-
-              <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Support
-              </div>
-              <FeedbackNavItem onClose={close} />
             </>
           ) : (
             <>

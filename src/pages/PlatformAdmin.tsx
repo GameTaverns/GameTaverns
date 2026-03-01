@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isAdminSubdomain } from "@/lib/subdomainDetection";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut, Clock, Globe, AlertTriangle, Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +25,21 @@ const SpecialBadgesManagement = lazy(() =>
 );
 const ServerManagement = lazy(() =>
   import("@/components/admin/ServerManagement").then(m => ({ default: m.ServerManagement }))
+);
+const CronJobsMonitor = lazy(() =>
+  import("@/components/admin/CronJobsMonitor").then(m => ({ default: m.CronJobsMonitor }))
+);
+const AuditLogViewer = lazy(() =>
+  import("@/components/admin/AuditLogViewer").then(m => ({ default: m.AuditLogViewer }))
+);
+const SeoDirectory = lazy(() =>
+  import("@/components/admin/SeoDirectory").then(m => ({ default: m.SeoDirectory }))
+);
+const ImportErrorsPanel = lazy(() =>
+  import("@/components/admin/ImportErrorsPanel").then(m => ({ default: m.ImportErrorsPanel }))
+);
+const EmailEngagementAnalytics = lazy(() =>
+  import("@/components/admin/EmailEngagementAnalytics").then(m => ({ default: m.EmailEngagementAnalytics }))
 );
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
@@ -57,8 +72,8 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
 }
 
 // Define which tabs each role can access
-const STAFF_TABS = ["analytics", "users", "libraries", "feedback", "clubs", "health"] as const;
-const ADMIN_ONLY_TABS = ["settings", "roadmap", "badges", "server"] as const;
+const STAFF_TABS = ["analytics", "users", "libraries", "feedback", "clubs", "health", "import-errors"] as const;
+const ADMIN_ONLY_TABS = ["settings", "roadmap", "badges", "crons", "server", "security", "seo", "email-analytics"] as const;
 const ADMIN_REAUTH_KEY = "gt_admin_reauth_ok";
 
 export default function PlatformAdmin() {
@@ -259,6 +274,13 @@ export default function PlatformAdmin() {
               <HeartPulse className="h-4 w-4 mr-1 sm:mr-2" />
               {t('admin.health')}
             </TabsTrigger>
+            <TabsTrigger 
+              value="import-errors"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+            >
+              <AlertTriangle className="h-4 w-4 mr-1 sm:mr-2" />
+              Import Errors
+            </TabsTrigger>
             {isAdmin && (
               <>
                 <TabsTrigger 
@@ -276,11 +298,39 @@ export default function PlatformAdmin() {
                   {t('admin.badges')}
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="crons"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <Clock className="h-4 w-4 mr-1 sm:mr-2" />
+                  Crons
+                </TabsTrigger>
+                <TabsTrigger 
                   value="server"
                   className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
                 >
                   <Shield className="h-4 w-4 mr-1 sm:mr-2" />
                   {t('admin.server')}
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="security"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <Shield className="h-4 w-4 mr-1 sm:mr-2" />
+                  Security
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="seo"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <Globe className="h-4 w-4 mr-1 sm:mr-2" />
+                  SEO Pages
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="email-analytics"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <Mail className="h-4 w-4 mr-1 sm:mr-2" />
+                  Email Analytics
                 </TabsTrigger>
               </>
             )}
@@ -315,6 +365,14 @@ export default function PlatformAdmin() {
           <TabsContent value="health" className="mt-6">
             <SystemHealth />
           </TabsContent>
+
+          <TabsContent value="import-errors" className="mt-6">
+            <TabErrorBoundary>
+              <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading import errors…</div>}>
+                <ImportErrorsPanel />
+              </Suspense>
+            </TabErrorBoundary>
+          </TabsContent>
           
           {isAdmin && (
             <>
@@ -330,10 +388,42 @@ export default function PlatformAdmin() {
                 </TabErrorBoundary>
               </TabsContent>
 
+              <TabsContent value="crons" className="mt-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading cron monitor…</div>}>
+                    <CronJobsMonitor />
+                  </Suspense>
+                </TabErrorBoundary>
+              </TabsContent>
+
               <TabsContent value="server" className="mt-6">
                 <TabErrorBoundary>
                   <Suspense fallback={<div className="text-cream/70 text-sm p-4">{t('admin.loadingServer')}</div>}>
                     <ServerManagement />
+                  </Suspense>
+                </TabErrorBoundary>
+              </TabsContent>
+
+              <TabsContent value="security" className="mt-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading security logs…</div>}>
+                    <AuditLogViewer />
+                  </Suspense>
+                </TabErrorBoundary>
+              </TabsContent>
+
+              <TabsContent value="seo" className="mt-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading SEO directory…</div>}>
+                    <SeoDirectory />
+                  </Suspense>
+                </TabErrorBoundary>
+              </TabsContent>
+
+              <TabsContent value="email-analytics" className="mt-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading email analytics…</div>}>
+                    <EmailEngagementAnalytics />
                   </Suspense>
                 </TabErrorBoundary>
               </TabsContent>
