@@ -92,6 +92,7 @@ const Login = () => {
         await new Promise(resolve => setTimeout(resolve, 300));
         
         const { data: { session } } = await supabase.auth.getSession();
+        console.log("[Login] 2FA check — session available:", !!session?.access_token);
         
         if (session?.access_token) {
           try {
@@ -106,12 +107,17 @@ const Login = () => {
                 apikey: anonKey,
               },
               signal: controller.signal,
-            }).catch(() => null);
+            }).catch((err) => {
+              console.error("[Login] totp-status fetch failed:", err);
+              return null;
+            });
             
             clearTimeout(totpTimeout);
+            console.log("[Login] totp-status response status:", response?.status);
             
             if (response?.ok) {
               const data = await response.json().catch(() => ({}));
+              console.log("[Login] totp-status data:", data);
               
               if (data.isEnabled && data.requiresVerification !== false) {
                 setPendingAccessToken(session.access_token);
@@ -120,8 +126,12 @@ const Login = () => {
                 setIsLoading(false);
                 return;
               }
+            } else if (response) {
+              const errorBody = await response.text().catch(() => "");
+              console.error("[Login] totp-status error response:", response.status, errorBody);
             }
           } catch (e) {
+            console.error("[Login] 2FA check exception:", e);
             // Timed out or failed — proceed to dashboard
           }
         }

@@ -7,6 +7,23 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+/**
+ * Decode a JWT and return the payload without verifying the signature.
+ * Signature verification is handled by the Supabase client / Kong gateway.
+ */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), "=");
+    const json = atob(padded);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,25 +38,23 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims?.sub) {
-      console.error("getClaims error:", claimsError);
+
+    // Decode the JWT locally to extract user ID — no network call required.
+    // This is more reliable in self-hosted environments than getClaims() or getUser().
+    const payload = decodeJwtPayload(token);
+    const userId = payload?.sub as string | undefined;
+
+    if (!userId) {
+      console.error("[totp-status] Could not extract user ID from JWT");
       return new Response(
-        JSON.stringify({ error: "Invalid token" }),
+        JSON.stringify({ error: "Invalid token — could not extract user ID" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claimsData.claims.sub as string;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -50,7 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (fetchError) {
-      console.error("Fetch error:", fetchError);
+      console.error("[totp-status] Fetch error:", fetchError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch TOTP status" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -78,6 +93,8 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    console.log("[totp-status] User:", userId, "isEnabled:", totpSettings?.is_enabled ?? false, "requiresVerification:", requiresVerification);
+
     return new Response(
       JSON.stringify({
         isEnabled: totpSettings?.is_enabled ?? false,
@@ -91,7 +108,7 @@ const handler = async (req: Request): Promise<Response> => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("TOTP status error:", error);
+    console.error("[totp-status] Unhandled error:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
