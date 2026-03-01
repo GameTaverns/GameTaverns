@@ -210,7 +210,7 @@ export function MonthlySummaryCard({ libraryId, libraryName }: MonthlySummaryCar
             style={{ backgroundColor: theme.bg }}
           >
             {/* Two-column layout: games get more space */}
-            <div className="grid grid-cols-[5fr_2fr] gap-0">
+            <div className="grid grid-cols-[3fr_2fr] gap-0">
               {/* LEFT: Game images */}
               <div className="p-3 space-y-1.5">
                 {/* Header */}
@@ -321,9 +321,9 @@ export function MonthlySummaryCard({ libraryId, libraryName }: MonthlySummaryCar
                 )}
 
                 {/* Watermark */}
-                <div className="flex items-center justify-center gap-1.5 mt-auto pt-1">
-                  <img src={logoImage} alt="GameTaverns" className="h-3.5 w-auto opacity-50" />
-                  <span className="text-[9px] font-semibold tracking-wide" style={{ color: theme.textMuted }}>
+                <div className="flex items-center justify-center gap-1.5 mt-auto pt-2">
+                  <img src={logoImage} alt="GameTaverns" className="h-4 w-auto opacity-60" crossOrigin="anonymous" />
+                  <span className="text-[10px] font-semibold tracking-wide" style={{ color: theme.textMuted }}>
                     GameTaverns
                   </span>
                 </div>
