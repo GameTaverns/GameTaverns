@@ -173,7 +173,13 @@ const handler = async (req: Request): Promise<Response> => {
     const unsubToken = generateUnsubscribeToken(userId, unsubSecret);
     // Use SITE_URL for public-facing links (SUPABASE_URL may be internal kong)
     const siteUrl = Deno.env.get("SITE_URL") || "https://gametaverns.com";
-    const publicFunctionsBase = `${siteUrl.replace(/\/$/, "")}/functions/v1`;
+    const isSelfHosted =
+      supabaseUrl.startsWith("http://") ||
+      supabaseUrl.includes("kong") ||
+      supabaseUrl.includes("localhost") ||
+      supabaseUrl.includes("127.0.0.1");
+    const functionsPath = isSelfHosted ? "/functions/v1/main" : "/functions/v1";
+    const publicFunctionsBase = `${siteUrl.replace(/\/$/, "")}${functionsPath}`;
     const unsubscribeUrl = `${publicFunctionsBase}/email-unsubscribe?uid=${userId}&token=${unsubToken}`;
     const trackOpenUrl = `${publicFunctionsBase}/email-track?t=open&uid=${userId}`;
     const trackClickUrl = (dest: string) => `${publicFunctionsBase}/email-track?t=click&uid=${userId}&r=${encodeURIComponent(dest)}`;

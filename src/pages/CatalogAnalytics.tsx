@@ -43,7 +43,8 @@ function useTopByOwnership() {
       if (error) throw error;
       return (data || []) as CatalogEntry[];
     },
-    staleTime: 1000 * 60 * 10,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
@@ -60,7 +61,8 @@ function useTopByPlays() {
       if (error) throw error;
       return (data || []) as CatalogEntry[];
     },
-    staleTime: 1000 * 60 * 10,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
@@ -96,7 +98,8 @@ function useTopByRating() {
         image_url: catalogMap.get(r.catalog_id)?.image_url,
       })) as RatedEntry[];
     },
-    staleTime: 1000 * 60 * 10,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
