@@ -172,6 +172,10 @@ const handler = async (req: Request): Promise<Response> => {
     const unsubSecret = Deno.env.get("PII_ENCRYPTION_KEY") || serviceKey;
     const unsubToken = generateUnsubscribeToken(userId, unsubSecret);
     const unsubscribeUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?uid=${userId}&token=${unsubToken}`;
+    const trackOpenUrl = `${supabaseUrl}/functions/v1/email-track?t=open&uid=${userId}`;
+    const trackClickUrl = (dest: string) => `${supabaseUrl}/functions/v1/email-track?t=click&uid=${userId}&r=${encodeURIComponent(dest)}`;
+
+    const ctaUrl = trackClickUrl("https://gametaverns.com");
 
     const htmlBody = [
       '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
@@ -200,7 +204,7 @@ const handler = async (req: Request): Promise<Response> => {
       '</p>',
       // CTA
       '<div style="text-align:center;margin:0 0 24px;">',
-      '<a href="https://gametaverns.com" style="display:inline-block;background:#556b2f;color:#f5eed9;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">Visit GameTaverns →</a>',
+      `<a href="${ctaUrl}" style="display:inline-block;background:#556b2f;color:#f5eed9;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">Visit GameTaverns →</a>`,
       '</div>',
       '<hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">',
       '<p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">',
@@ -208,6 +212,7 @@ const handler = async (req: Request): Promise<Response> => {
       `<a href="${unsubscribeUrl}" style="color:#556b2f;">Unsubscribe</a> · <a href="https://gametaverns.com" style="color:#556b2f;">Manage email preferences</a>`,
       '</p>',
       '</div></div></div>',
+      `<img src="${trackOpenUrl}" width="1" height="1" alt="" style="display:none;" />`,
       '</body></html>',
     ].join("");
 
@@ -256,12 +261,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     await client.close();
 
-    // Log in audit
-    await supabase.from("audit_log").insert({
-      user_id: user.id,
-      action: "reengagement_email_sent",
-      details: { target_user_id: userId, target_email: userEmail },
-    });
+    // Log in audit + email events table
+    await Promise.all([
+      supabase.from("audit_log").insert({
+        user_id: user.id,
+        action: "reengagement_email_sent",
+        details: { target_user_id: userId, target_email: userEmail },
+      }),
+      supabase.from("reengagement_email_events").insert({
+        user_id: userId,
+        event_type: "sent",
+        metadata: { sent_by: user.id },
+      }),
+    ]);
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

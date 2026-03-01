@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Shield, Activity, Users, Database, Settings, MessageSquare,
   Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Globe,
-  Pencil, Eye, EyeOff, ChevronUp, ChevronDown, RotateCcw, X, AlertTriangle,
+  Pencil, Eye, EyeOff, ChevronUp, ChevronDown, RotateCcw, X, AlertTriangle, Mail,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -38,10 +38,13 @@ const SeoDirectory = lazy(() =>
 const ImportErrorsPanel = lazy(() =>
   import("@/components/admin/ImportErrorsPanel").then(m => ({ default: m.ImportErrorsPanel }))
 );
+const EmailEngagementAnalytics = lazy(() =>
+  import("@/components/admin/EmailEngagementAnalytics").then(m => ({ default: m.EmailEngagementAnalytics }))
+);
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
-  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle,
+  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail,
 };
 
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
@@ -124,6 +127,11 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
     "import-errors": (
       <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading import errors…</div>}>
         <ImportErrorsPanel />
+      </Suspense>
+    ),
+    "email-analytics": (
+      <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading email analytics…</div>}>
+        <EmailEngagementAnalytics />
       </Suspense>
     ),
   };
