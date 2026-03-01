@@ -26,7 +26,8 @@ export function WhoHasThis({ catalogId, gameTitle, clubId }: WhoHasThisProps) {
         .from("games")
         .select("library_id, libraries!inner(id, name, slug, is_active)")
         .eq("catalog_id", catalogId)
-        .eq("is_expansion", false);
+        .eq("is_expansion", false)
+        .eq("ownership_status", "owned");
 
       const { data, error } = await query;
       if (error) throw error;
