@@ -114,6 +114,7 @@ router.put('/users/:id/role', async (req: Request, res: Response) => {
 
 // Delete user
 router.delete('/users/:id', async (req: Request, res: Response) => {
+  const client = await pool.connect();
   try {
     const { id } = req.params;
     console.log(`[Admin] Deleting user ${id}`);
@@ -124,70 +125,58 @@ router.delete('/users/:id', async (req: Request, res: Response) => {
       return;
     }
     
-    // Best-effort cleanup of dependent rows.
-    // In the supabase-selfhosted schema, user_profiles.user_id may not be a FK to users,
-    // so deleting from users does NOT necessarily remove the profile row. That can leave
-    // UNIQUE(username) stuck and block re-signups.
-    // Delete all libraries owned by this user (and their child data)
-    const userLibraries = await pool.query(
+    await client.query('BEGIN');
+
+    // Delete all libraries owned by this user (CASCADE handles all child data)
+    const userLibraries = await client.query(
       'SELECT id FROM libraries WHERE owner_id = $1',
       [id]
     );
     
     for (const lib of userLibraries.rows) {
       console.log(`[Admin] Deleting library ${lib.id} owned by user ${id}`);
-      await pool.query('DELETE FROM library_settings WHERE library_id = $1', [lib.id]);
-      await pool.query('DELETE FROM library_suspensions WHERE library_id = $1', [lib.id]);
-      await pool.query('DELETE FROM library_members WHERE library_id = $1', [lib.id]);
-      await pool.query('DELETE FROM library_followers WHERE library_id = $1', [lib.id]);
-      await pool.query('DELETE FROM library_events WHERE library_id = $1', [lib.id]);
-      await pool.query('DELETE FROM game_polls WHERE library_id = $1', [lib.id]);
-      await pool.query('DELETE FROM import_jobs WHERE library_id = $1', [lib.id]);
-      await pool.query('DELETE FROM forum_categories WHERE library_id = $1', [lib.id]);
-      await pool.query('DELETE FROM games WHERE library_id = $1', [lib.id]);
-      await pool.query('DELETE FROM libraries WHERE id = $1', [lib.id]);
+      await client.query('DELETE FROM libraries WHERE id = $1', [lib.id]);
     }
 
-    console.log(`[Admin] Deleting user_roles for ${id}`);
-    await pool.query('DELETE FROM user_roles WHERE user_id = $1', [id]);
-    
-    console.log(`[Admin] Deleting library_members for ${id}`);
-    await pool.query('DELETE FROM library_members WHERE user_id = $1', [id]);
-    
-    console.log(`[Admin] Deleting library_followers for ${id}`);
-    await pool.query('DELETE FROM library_followers WHERE follower_user_id = $1', [id]);
-    
-    console.log(`[Admin] Deleting notification_preferences for ${id}`);
-    await pool.query('DELETE FROM notification_preferences WHERE user_id = $1', [id]);
-    
-    console.log(`[Admin] Deleting notification_log for ${id}`);
-    await pool.query('DELETE FROM notification_log WHERE user_id = $1', [id]);
-    
-    console.log(`[Admin] Deleting user_totp_settings for ${id}`);
-    await pool.query('DELETE FROM user_totp_settings WHERE user_id = $1', [id]);
-    
-    console.log(`[Admin] Deleting refresh_tokens for ${id}`);
-    await pool.query('DELETE FROM refresh_tokens WHERE user_id = $1', [id]);
-    
-    console.log(`[Admin] Deleting email_confirmation_tokens for ${id}`);
-    await pool.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [id]);
-    
-    console.log(`[Admin] Deleting password_reset_tokens for ${id}`);
-    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [id]);
+    // Clean up user-related data
+    console.log(`[Admin] Cleaning up user data for ${id}`);
+    await client.query('DELETE FROM user_roles WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM library_members WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM library_followers WHERE follower_user_id = $1', [id]);
+    await client.query('DELETE FROM notification_preferences WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM notification_log WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM user_totp_settings WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM refresh_tokens WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM email_confirmation_tokens WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM activity_events WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM activity_reactions WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM direct_messages WHERE sender_id = $1 OR recipient_id = $1', [id, id]);
+    await client.query('DELETE FROM user_follows WHERE follower_id = $1 OR following_id = $1', [id, id]);
+    await client.query('DELETE FROM referral_badges WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM referrals WHERE referrer_user_id = $1 OR referred_user_id = $1', [id, id]);
+    await client.query('DELETE FROM push_subscriptions WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM audit_log WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM user_achievements WHERE user_id = $1', [id]);
+    await client.query('DELETE FROM player_elo_ratings WHERE user_id = $1', [id]);
     
     console.log(`[Admin] Deleting user_profiles for ${id}`);
-    const profileResult = await pool.query('DELETE FROM user_profiles WHERE user_id = $1 RETURNING username', [id]);
+    const profileResult = await client.query('DELETE FROM user_profiles WHERE user_id = $1 RETURNING username', [id]);
     console.log(`[Admin] Deleted profile rows:`, profileResult.rowCount, profileResult.rows);
 
     console.log(`[Admin] Deleting users row for ${id}`);
-    const userResult = await pool.query('DELETE FROM users WHERE id = $1 RETURNING email', [id]);
+    const userResult = await client.query('DELETE FROM users WHERE id = $1 RETURNING email', [id]);
     console.log(`[Admin] Deleted user rows:`, userResult.rowCount, userResult.rows);
     
+    await client.query('COMMIT');
     console.log(`[Admin] User ${id} deleted successfully`);
     res.json({ success: true });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Delete user error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
+  } finally {
+    client.release();
   }
 });
 
