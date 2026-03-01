@@ -2,6 +2,7 @@ import { DollarSign, PieChart } from "lucide-react";
 import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyticsDashboard";
 import { CollectionValueDashboard } from "@/components/analytics/CollectionValueDashboard";
 import { CollectionBreakdownCharts } from "@/components/analytics/CollectionBreakdownCharts";
+import { TopNineGrid } from "@/components/analytics/TopNineGrid";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AnalyticsTabProps {
@@ -21,6 +22,8 @@ export function AnalyticsTab({ isAdmin, libraryId, libraryName }: AnalyticsTabPr
 
   return (
     <div className="space-y-6">
+      <TopNineGrid libraryId={libraryId} libraryName={libraryName} />
+
       <LibraryAnalyticsDashboard libraryId={libraryId} />
 
       <div className="grid gap-6 xl:grid-cols-2">
