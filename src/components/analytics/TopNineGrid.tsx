@@ -23,6 +23,12 @@ const MONTHS = [
 
 const DEFAULT_BG = { h: "39", s: "45", l: "94" };
 
+/** Strip any trailing '%' and return a plain numeric string */
+function clean(val: string | null | undefined, fallback: string): string {
+  if (!val) return fallback;
+  return val.replace(/%/g, "").trim() || fallback;
+}
+
 function useLibraryLightBackground(libraryId: string) {
   return useQuery({
     queryKey: ["library-light-bg", libraryId],
@@ -33,9 +39,9 @@ function useLibraryLightBackground(libraryId: string) {
         .eq("library_id", libraryId)
         .maybeSingle();
       return {
-        h: data?.theme_background_h || DEFAULT_BG.h,
-        s: data?.theme_background_s || DEFAULT_BG.s,
-        l: data?.theme_background_l || DEFAULT_BG.l,
+        h: clean(data?.theme_background_h, DEFAULT_BG.h),
+        s: clean(data?.theme_background_s, DEFAULT_BG.s),
+        l: clean(data?.theme_background_l, DEFAULT_BG.l),
       };
     },
     staleTime: 1000 * 60 * 10,
