@@ -4082,6 +4082,7 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          admin_email: string | null
           avatar_url: string | null
           banner_gradient: string | null
           banner_url: string | null
@@ -4108,6 +4109,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          admin_email?: string | null
           avatar_url?: string | null
           banner_gradient?: string | null
           banner_url?: string | null
@@ -4134,6 +4136,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          admin_email?: string | null
           avatar_url?: string | null
           banner_gradient?: string | null
           banner_url?: string | null
@@ -5232,6 +5235,7 @@ export type Database = {
         Returns: boolean
       }
       is_slug_available: { Args: { check_slug: string }; Returns: boolean }
+      resolve_admin_email: { Args: { _admin_email: string }; Returns: string }
       set_timezone: { Args: never; Returns: undefined }
       slugify: { Args: { input: string }; Returns: string }
       update_player_elo: {

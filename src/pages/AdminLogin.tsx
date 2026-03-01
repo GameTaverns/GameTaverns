@@ -14,8 +14,12 @@ import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 import { TotpVerify } from "@/components/auth/TotpVerify";
 
-// Email validation is now handled by the admin_email_allowlist table
-// No hardcoded domain restriction
+const ALLOWED_DOMAIN = "gametaverns.com";
+
+function isGametavernsEmail(email: string): boolean {
+  const parts = email.split("@");
+  return parts.length === 2 && parts[1].toLowerCase() === ALLOWED_DOMAIN;
+}
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -49,38 +53,41 @@ export default function AdminLogin() {
     }
   }, [loading, isAuthenticated, signOut]);
 
-  // After successful login, check allowlist + role, then redirect to admin panel
+  // After successful login, redirect to admin panel
   useEffect(() => {
     if (!loading && !roleLoading && isAuthenticated && user?.email && forceSignedOut && !requires2FA) {
       if (isAdmin || isStaff) {
-        // Check if email is on the allowlist
-        supabase.rpc("is_admin_email_allowed", { _email: user.email }).then(({ data: allowed }) => {
-          if (allowed) {
-            if (typeof window !== "undefined") {
-              sessionStorage.setItem("gt_admin_reauth_ok", "1");
-            }
-            navigate("/admin", { replace: true });
-          } else {
-            toast({ title: "Access Denied", description: "Your email is not on the admin allowlist.", variant: "destructive" });
-            supabase.auth.signOut();
-          }
-        });
-      } else {
-        toast({ title: "Access Denied", description: "You do not have an admin or staff role.", variant: "destructive" });
-        supabase.auth.signOut();
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("gt_admin_reauth_ok", "1");
+        }
+        navigate("/admin", { replace: true });
       }
     }
   }, [isAuthenticated, loading, roleLoading, navigate, user, isAdmin, isStaff, forceSignedOut, requires2FA]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
-      toast({ title: "Error", description: "Please enter your email.", variant: "destructive" });
+
+    // Must be a @gametaverns.com email (could be a native account OR an alias)
+    if (!isGametavernsEmail(email)) {
+      toast({ title: "Access Denied", description: "Only @gametaverns.com emails are allowed.", variant: "destructive" });
       return;
     }
+
     setIsLoading(true);
     try {
-      const { error } = await signIn(email, password);
+      // Step 1: Try to resolve the email as an admin alias
+      // If user has a native @gametaverns.com auth email, this returns null and we use the email directly
+      let authEmail = email;
+      
+      const { data: resolvedEmail } = await supabase.rpc("resolve_admin_email", { _admin_email: email });
+      if (resolvedEmail) {
+        // This @gametaverns.com email is an alias — sign in with the real email
+        authEmail = resolvedEmail;
+      }
+      // If no alias found, try signing in with the @gametaverns.com email directly (native account)
+
+      const { error } = await signIn(authEmail, password);
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
         return;
@@ -131,7 +138,6 @@ export default function AdminLogin() {
     setRequires2FA(false);
     setPendingAccessToken(null);
     toast({ title: "Authenticated successfully" });
-    // Navigation will be handled by the useEffect
   };
 
   const handle2FACancel = async () => {
@@ -140,7 +146,6 @@ export default function AdminLogin() {
     setPendingAccessToken(null);
   };
 
-  // Show loading while we force sign-out
   if (loading || !forceSignedOut) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted flex items-center justify-center">
@@ -149,7 +154,6 @@ export default function AdminLogin() {
     );
   }
 
-  // Show 2FA screen
   if (requires2FA && pendingAccessToken) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted dark:from-wood-dark dark:via-sidebar dark:to-wood-medium flex items-center justify-center p-4">
@@ -165,7 +169,6 @@ export default function AdminLogin() {
     );
   }
 
-  // If authenticated after login (waiting for redirect), show nothing
   if (isAuthenticated && !requires2FA) return null;
 
   return (
@@ -186,7 +189,7 @@ export default function AdminLogin() {
           </div>
           <CardTitle className="font-display text-2xl text-foreground">Admin Access</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Restricted — authorized staff accounts only
+            Restricted — @gametaverns.com accounts only
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -198,7 +201,7 @@ export default function AdminLogin() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="you@gametaverns.com"
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />

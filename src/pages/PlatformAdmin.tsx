@@ -129,7 +129,7 @@ export default function PlatformAdmin() {
   }, [isAuthenticated, authLoading, navigate]);
   
   useEffect(() => {
-    // Staff OR admin can access this page
+    // Staff OR admin can access this page (email domain validated at admin login gate)
     if (!authLoading && !roleLoading && !isStaff && !isAdmin && isAuthenticated) {
       console.log('[PlatformAdmin] Not staff/admin, redirecting to dashboard');
       navigate(isAdminSubdomain() ? "/login" : "/dashboard");
