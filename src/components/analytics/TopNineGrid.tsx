@@ -41,7 +41,7 @@ export function TopNineGrid({ libraryId, libraryName }: TopNineGridProps) {
     setExporting(true);
     try {
       const dataUrl = await toPng(gridRef.current, {
-        backgroundColor: "#1a1207",
+        backgroundColor: "#f5f0e8",
         pixelRatio: 2,
         cacheBust: true,
       });
@@ -61,7 +61,7 @@ export function TopNineGrid({ libraryId, libraryName }: TopNineGridProps) {
     setExporting(true);
     try {
       const dataUrl = await toPng(gridRef.current, {
-        backgroundColor: "#1a1207",
+        backgroundColor: "#f5f0e8",
         pixelRatio: 2,
         cacheBust: true,
       });
@@ -152,7 +152,7 @@ export function TopNineGrid({ libraryId, libraryName }: TopNineGridProps) {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="grid grid-cols-3 gap-2 max-w-md mx-auto">
+          <div className="grid grid-cols-3 gap-1 max-w-md mx-auto">
             {[...Array(9)].map((_, i) => (
               <Skeleton key={i} className="aspect-square rounded-lg" />
             ))}
@@ -164,22 +164,23 @@ export function TopNineGrid({ libraryId, libraryName }: TopNineGridProps) {
         ) : (
           <div 
             ref={gridRef} 
-            className="max-w-md mx-auto p-4 rounded-xl"
-            style={{ backgroundColor: "#1a1207" }}
+            className="max-w-md mx-auto p-3 rounded-xl"
+            style={{ backgroundColor: "#f5f0e8" }}
           >
             {/* Header inside the exportable area */}
             <div className="text-center mb-3">
-              <h3 className="text-lg font-bold text-cream">
-                {libraryName ? `${libraryName}'s` : "My"} Top {Math.min(topGames.length, 9)}
+              <h3 className="text-lg font-bold" style={{ color: "#2c1810" }}>
+                {libraryName ? `${libraryName}'s` : "My"} Top 9
               </h3>
-              <p className="text-sm text-cream/60">{periodLabel}</p>
+              <p className="text-sm" style={{ color: "#2c1810aa" }}>{periodLabel}</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1">
               {topGames.map((game, index) => (
                 <div
                   key={game.id}
-                  className="relative aspect-square rounded-lg overflow-hidden bg-wood-dark/50 group"
+                  className="relative aspect-square rounded-lg overflow-hidden group"
+                  style={{ backgroundColor: "#d9cfc0" }}
                 >
                   {game.image_url ? (
                     <GameImage
@@ -188,8 +189,8 @@ export function TopNineGrid({ libraryId, libraryName }: TopNineGridProps) {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-wood-medium/30">
-                      <span className="text-xs text-cream/50 text-center px-1 leading-tight">
+                    <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#d9cfc0" }}>
+                      <span className="text-xs text-center px-1 leading-tight" style={{ color: "#2c181080" }}>
                         {game.title}
                       </span>
                     </div>
@@ -215,15 +216,16 @@ export function TopNineGrid({ libraryId, libraryName }: TopNineGridProps) {
               {Array.from({ length: Math.max(0, 9 - topGames.length) }).map((_, i) => (
                 <div
                   key={`empty-${i}`}
-                  className="aspect-square rounded-lg bg-wood-dark/20 border border-dashed border-cream/10"
+                  className="aspect-square rounded-lg border border-dashed"
+                  style={{ borderColor: "#2c181020", backgroundColor: "#d9cfc040" }}
                 />
               ))}
             </div>
 
             {/* Footer watermark with logo */}
             <div className="flex items-center justify-end gap-1.5 mt-3 pr-1">
-              <img src={logoImage} alt="GameTaverns" className="h-4 w-auto opacity-50" />
-              <span className="text-[10px] font-semibold text-cream/40 tracking-wide">GameTaverns</span>
+              <img src={logoImage} alt="GameTaverns" className="h-4 w-auto opacity-60" />
+              <span className="text-[10px] font-semibold tracking-wide" style={{ color: "#2c181060" }}>GameTaverns</span>
             </div>
           </div>
         )}
