@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -13,6 +13,7 @@ import {
   useArtists,
   useCreateGame, 
   useUpdateGame,
+  useDeleteGame,
   useCreateMechanic,
   useCreatePublisher,
   useCreateDesigner,
@@ -31,6 +32,16 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { 
   DIFFICULTY_OPTIONS, 
@@ -57,6 +68,7 @@ const GameForm = () => {
   const { data: baseGames = [] } = useAllGamesFlat();
   const createGame = useCreateGame();
   const updateGame = useUpdateGame();
+  const deleteGame = useDeleteGame();
   const createMechanic = useCreateMechanic();
   const createPublisher = useCreatePublisher();
   const createDesigner = useCreateDesigner();
@@ -64,6 +76,7 @@ const GameForm = () => {
   const { toast } = useToast();
 
   const isEditing = !!id;
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -990,23 +1003,66 @@ const GameForm = () => {
                 </div>
               </div>
 
-              {/* Submit */}
-              <Button type="submit" className="w-full" disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {isEditing ? "Update Game" : "Create Game"}
-                  </>
+              {/* Submit & Delete */}
+              <div className="flex flex-col gap-3">
+                <Button type="submit" className="w-full" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      {isEditing ? "Update Game" : "Create Game"}
+                    </>
+                  )}
+                </Button>
+
+                {isEditing && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-destructive/50 text-destructive hover:bg-destructive/10"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Game
+                  </Button>
                 )}
-              </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
+
+        {/* Delete confirmation dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Game</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{title}"? This action cannot be undone and will remove all associated data including play history, loans, and documents.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={async () => {
+                  try {
+                    await deleteGame.mutateAsync(id!);
+                    toast({ title: "Game deleted", description: `"${title}" has been removed from your collection.` });
+                    navigate(buildUrl("/manage"));
+                  } catch {
+                    toast({ title: "Delete failed", description: "Failed to delete the game. Please try again.", variant: "destructive" });
+                  }
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
