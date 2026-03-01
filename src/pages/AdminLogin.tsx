@@ -14,12 +14,8 @@ import { supabase } from "@/integrations/backend/client";
 import { getSupabaseConfig } from "@/config/runtime";
 import { TotpVerify } from "@/components/auth/TotpVerify";
 
-const ALLOWED_DOMAIN = "gametaverns.com";
-
-function validateAdminEmail(email: string): boolean {
-  const parts = email.split("@");
-  return parts.length === 2 && parts[1].toLowerCase() === ALLOWED_DOMAIN;
-}
+// Email validation is now handled by the admin_email_allowlist table
+// No hardcoded domain restriction
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -53,23 +49,33 @@ export default function AdminLogin() {
     }
   }, [loading, isAuthenticated, signOut]);
 
-  // After successful login, redirect to admin panel
+  // After successful login, check allowlist + role, then redirect to admin panel
   useEffect(() => {
-    // Only redirect if user just signed in (forceSignedOut was true, meaning we went through the gate)
     if (!loading && !roleLoading && isAuthenticated && user?.email && forceSignedOut && !requires2FA) {
-      if (validateAdminEmail(user.email) && (isAdmin || isStaff)) {
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("gt_admin_reauth_ok", "1");
-        }
-        navigate("/admin", { replace: true });
+      if (isAdmin || isStaff) {
+        // Check if email is on the allowlist
+        supabase.rpc("is_admin_email_allowed", { _email: user.email }).then(({ data: allowed }) => {
+          if (allowed) {
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("gt_admin_reauth_ok", "1");
+            }
+            navigate("/admin", { replace: true });
+          } else {
+            toast({ title: "Access Denied", description: "Your email is not on the admin allowlist.", variant: "destructive" });
+            supabase.auth.signOut();
+          }
+        });
+      } else {
+        toast({ title: "Access Denied", description: "You do not have an admin or staff role.", variant: "destructive" });
+        supabase.auth.signOut();
       }
     }
   }, [isAuthenticated, loading, roleLoading, navigate, user, isAdmin, isStaff, forceSignedOut, requires2FA]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateAdminEmail(email)) {
-      toast({ title: "Access Denied", description: "Only @gametaverns.com emails are allowed.", variant: "destructive" });
+    if (!email.trim()) {
+      toast({ title: "Error", description: "Please enter your email.", variant: "destructive" });
       return;
     }
     setIsLoading(true);
@@ -180,7 +186,7 @@ export default function AdminLogin() {
           </div>
           <CardTitle className="font-display text-2xl text-foreground">Admin Access</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Restricted — @gametaverns.com accounts only
+            Restricted — authorized staff accounts only
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -192,7 +198,7 @@ export default function AdminLogin() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@gametaverns.com"
+                placeholder="you@example.com"
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />

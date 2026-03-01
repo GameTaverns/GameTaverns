@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AdminEmailAllowlist } from "./AdminEmailAllowlist";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -381,6 +382,9 @@ export function UserManagement() {
 
   return (
     <div className="space-y-4">
+      {/* Admin Email Allowlist - only visible to admins */}
+      {currentUserRole === "admin" && <AdminEmailAllowlist />}
+
       {/* Role Legend - 5 Tier System */}
       <div className="bg-wood-medium/20 rounded-lg p-4 border border-wood-medium/30">
         <h4 className="font-semibold text-cream mb-3">Role Hierarchy (5 Tiers)</h4>
