@@ -59,12 +59,19 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Audit log
-    await supabase.from("audit_log").insert({
-      user_id: userId,
-      action: "marketing_email_unsubscribed",
-      details: { method: "one_click_link" },
-    });
+    // Audit log + email events
+    await Promise.all([
+      supabase.from("audit_log").insert({
+        user_id: userId,
+        action: "marketing_email_unsubscribed",
+        details: { method: "one_click_link" },
+      }),
+      supabase.from("reengagement_email_events").insert({
+        user_id: userId,
+        event_type: "unsubscribed",
+        metadata: { method: "one_click_link" },
+      }),
+    ]);
 
     return new Response(
       renderPage(
