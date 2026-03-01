@@ -59,6 +59,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
 // Define which tabs each role can access
 const STAFF_TABS = ["analytics", "users", "libraries", "feedback", "clubs", "health"] as const;
 const ADMIN_ONLY_TABS = ["settings", "roadmap", "badges", "server"] as const;
+const ADMIN_REAUTH_KEY = "gt_admin_reauth_ok";
 
 export default function PlatformAdmin() {
   const { t } = useTranslation();
@@ -77,6 +78,16 @@ export default function PlatformAdmin() {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
+
+  useEffect(() => {
+    if (!isAdminSubdomain()) return;
+    if (authLoading || roleLoading) return;
+
+    const hasPassedGate = typeof window !== "undefined" && sessionStorage.getItem(ADMIN_REAUTH_KEY) === "1";
+    if (!hasPassedGate) {
+      navigate("/login", { replace: true });
+    }
+  }, [authLoading, roleLoading, navigate]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -154,24 +165,14 @@ export default function PlatformAdmin() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button 
-              variant="ghost" 
-              className="text-cream hover:text-white hover:bg-wood-medium/50"
-              onClick={() => {
-                if (isAdminSubdomain()) {
-                  window.location.href = `${window.location.protocol}//gametaverns.com/dashboard`;
-                } else {
-                  navigate("/dashboard");
-                }
-              }}
-            >
-              {t('admin.backToDashboard')}
-            </Button>
             <Button
               variant="ghost"
               size="icon"
               className="text-cream hover:text-white hover:bg-wood-medium/50"
               onClick={async () => {
+                if (typeof window !== "undefined") {
+                  sessionStorage.removeItem(ADMIN_REAUTH_KEY);
+                }
                 await signOut();
                 if (isAdminSubdomain()) {
                   navigate("/login");

@@ -40,6 +40,9 @@ export default function AdminLogin() {
     if (loading) return;
 
     hasSignedOut.current = true;
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("gt_admin_reauth_ok");
+    }
 
     if (isAuthenticated) {
       signOut().then(() => {
@@ -55,6 +58,9 @@ export default function AdminLogin() {
     // Only redirect if user just signed in (forceSignedOut was true, meaning we went through the gate)
     if (!loading && !roleLoading && isAuthenticated && user?.email && forceSignedOut && !requires2FA) {
       if (validateAdminEmail(user.email) && (isAdmin || isStaff)) {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("gt_admin_reauth_ok", "1");
+        }
         navigate("/admin", { replace: true });
       }
     }
