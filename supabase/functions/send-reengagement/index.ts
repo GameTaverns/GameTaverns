@@ -1,12 +1,20 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function handler(req: Request): Promise<Response> {
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -57,7 +65,7 @@ async function handler(req: Request): Promise<Response> {
       });
     }
 
-    // Fetch recent platform updates (changelog-style from platform_feedback resolved items)
+    // Fetch recent platform updates (resolved feedback items)
     const { data: recentUpdates } = await supabase
       .from("platform_feedback")
       .select("title, type, resolved_at")
@@ -68,70 +76,65 @@ async function handler(req: Request): Promise<Response> {
     const updatesList = (recentUpdates || [])
       .map((u: any) => {
         const typeEmoji = u.type === "bug" ? "🐛" : u.type === "feature" ? "✨" : "🔧";
-        return `<li style="margin-bottom:8px;">${typeEmoji} <strong>${escapeHtml(u.title)}</strong></li>`;
+        return `<tr><td style="padding:6px 12px 6px 0;color:#78705e;font-size:13px;vertical-align:top;">${typeEmoji}</td><td style="padding:6px 0;color:#3d2b1f;font-size:13px;">${escapeHtml(u.title)}</td></tr>`;
       })
       .join("");
 
     const displayName = userName || userEmail.split("@")[0];
+    const logoUrl = "https://gametaverns.com/gt-logo.png";
 
-    const htmlBody = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f5f0e8;font-family:Georgia,'Times New Roman',serif;">
-  <div style="max-width:600px;margin:0 auto;padding:32px 24px;">
-    <div style="text-align:center;margin-bottom:24px;">
-      <h1 style="color:#3a2e1f;font-size:28px;margin:0;">🏰 GameTaverns</h1>
-      <p style="color:#6b5d4a;font-size:14px;margin:4px 0 0;">Your Board Game Community</p>
-    </div>
-    
-    <div style="background:#ffffff;border-radius:12px;padding:32px;border:1px solid #d4c8b0;">
-      <h2 style="color:#3a2e1f;font-size:20px;margin:0 0 16px;">Hey ${escapeHtml(displayName)}! 👋</h2>
-      
-      <p style="color:#5a4e3a;font-size:15px;line-height:1.6;margin:0 0 16px;">
-        We noticed you haven't visited in a while — and a lot has happened since your last visit! 
-        The community has been growing, and we've been busy making GameTaverns even better.
-      </p>
+    const htmlBody = [
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
+      '<body style="margin:0;padding:0;background:#e8dcc8;font-family:Georgia,Times New Roman,serif;">',
+      '<div style="max-width:560px;margin:0 auto;padding:24px;">',
+      '<div style="background:#f5eed9;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(60,40,20,0.15);border:1px solid #d4c4a0;">',
+      // Header
+      '<div style="background:#3d2b1f;padding:24px 32px;text-align:center;">',
+      `<img src="${logoUrl}" alt="GameTaverns" style="max-height:48px;margin-bottom:4px;" />`,
+      '<p style="margin:0;color:#e8d9b0;font-size:13px;font-family:Georgia,serif;">We Miss You!</p>',
+      '</div>',
+      // Body
+      '<div style="padding:32px;">',
+      `<p style="margin:0 0 16px;font-size:15px;color:#3d2b1f;">Hi ${escapeHtml(displayName)},</p>`,
+      '<p style="margin:0 0 20px;font-size:15px;color:#3d2b1f;line-height:1.6;">',
+      "We noticed you haven't visited in a while — and a lot has happened since your last visit! The community has been growing, and we've been busy making GameTaverns even better.",
+      '</p>',
+      // Updates section
+      updatesList ? [
+        '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
+        '<p style="margin:0 0 12px;font-size:14px;font-weight:600;color:#3d2b1f;">Recent Updates &amp; Fixes</p>',
+        '<table style="width:100%;border-collapse:collapse;">',
+        updatesList,
+        '</table>',
+        '</div>',
+      ].join("") : "",
+      '<p style="margin:0 0 24px;font-size:15px;color:#3d2b1f;line-height:1.6;">',
+      'Your library is still here waiting for you. Come check out what\'s new, log some plays, or see what the community has been up to!',
+      '</p>',
+      // CTA
+      '<div style="text-align:center;margin:0 0 24px;">',
+      '<a href="https://gametaverns.com" style="display:inline-block;background:#556b2f;color:#f5eed9;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;">Visit GameTaverns →</a>',
+      '</div>',
+      '<hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">',
+      '<p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">',
+      'You\'re receiving this because you have an account at <a href="https://gametaverns.com" style="color:#556b2f;">GameTaverns</a>.<br>',
+      'If you\'d like to stop receiving these emails, reply and let us know.',
+      '</p>',
+      '</div></div></div>',
+      '</body></html>',
+    ].join("");
 
-      ${updatesList ? `
-      <div style="background:#f9f6f0;border-radius:8px;padding:20px;margin:20px 0;border-left:4px solid #8b7355;">
-        <h3 style="color:#3a2e1f;font-size:16px;margin:0 0 12px;">Recent Updates & Fixes</h3>
-        <ul style="color:#5a4e3a;font-size:14px;line-height:1.5;padding-left:16px;margin:0;">
-          ${updatesList}
-        </ul>
-      </div>
-      ` : ""}
-
-      <p style="color:#5a4e3a;font-size:15px;line-height:1.6;margin:16px 0;">
-        Your library is still here waiting for you. Come check out what's new, 
-        log some plays, or see what the community has been up to!
-      </p>
-
-      <div style="text-align:center;margin:28px 0 16px;">
-        <a href="https://gametaverns.com" 
-           style="display:inline-block;background:#5c4a2e;color:#f5f0e8;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
-          Visit GameTaverns →
-        </a>
-      </div>
-    </div>
-
-    <p style="color:#8b7d6b;font-size:12px;text-align:center;margin:24px 0 0;line-height:1.5;">
-      You're receiving this because you have an account at GameTaverns.<br>
-      If you'd like to stop receiving these emails, reply and let us know.
-    </p>
-  </div>
-</body>
-</html>`;
-
-    // Send via SMTP
-    const smtpHost = Deno.env.get("SMTP_HOST");
-    const smtpFrom = Deno.env.get("SMTP_FROM");
-    if (!smtpHost || !smtpFrom) {
+    // Send via SMTP (dynamic import like reply-feedback)
+    const SMTP_HOST = Deno.env.get("SMTP_HOST");
+    const SMTP_FROM = Deno.env.get("SMTP_FROM");
+    if (!SMTP_HOST || !SMTP_FROM) {
       return new Response(JSON.stringify({ error: "SMTP not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
 
     const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465", 10);
     const smtpUser = Deno.env.get("SMTP_USER") || "";
@@ -140,23 +143,23 @@ async function handler(req: Request): Promise<Response> {
 
     const clientConfig: Record<string, unknown> = {
       connection: {
-        hostname: smtpHost,
+        hostname: SMTP_HOST,
         port: smtpPort,
         tls: smtpPort === 465,
         auth: isRelay ? undefined : { username: smtpUser, password: smtpPass },
       },
       debug: {
-        ...(isRelay ? { allowUnsecure: true, noStartTLS: true } : {}),
+        noStartTLS: isRelay,
+        allowUnsecure: isRelay,
       },
     };
 
     const client = new SMTPClient(clientConfig as any);
 
     await client.send({
-      from: `GameTaverns <${smtpFrom}>`,
+      from: SMTP_FROM,
       to: userEmail,
       subject: `We miss you at GameTaverns, ${displayName}! 🎲`,
-      content: "auto",
       html: htmlBody,
     });
 
@@ -179,15 +182,10 @@ async function handler(req: Request): Promise<Response> {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-}
+};
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-Deno.serve(handler);
 export default handler;
+
+if (import.meta.main) {
+  Deno.serve(handler);
+}
