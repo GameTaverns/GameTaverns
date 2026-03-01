@@ -171,9 +171,12 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate unsubscribe link
     const unsubSecret = Deno.env.get("PII_ENCRYPTION_KEY") || serviceKey;
     const unsubToken = generateUnsubscribeToken(userId, unsubSecret);
-    const unsubscribeUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?uid=${userId}&token=${unsubToken}`;
-    const trackOpenUrl = `${supabaseUrl}/functions/v1/email-track?t=open&uid=${userId}`;
-    const trackClickUrl = (dest: string) => `${supabaseUrl}/functions/v1/email-track?t=click&uid=${userId}&r=${encodeURIComponent(dest)}`;
+    // Use SITE_URL for public-facing links (SUPABASE_URL may be internal kong)
+    const siteUrl = Deno.env.get("SITE_URL") || "https://gametaverns.com";
+    const publicFunctionsBase = `${siteUrl.replace(/\/$/, "")}/functions/v1`;
+    const unsubscribeUrl = `${publicFunctionsBase}/email-unsubscribe?uid=${userId}&token=${unsubToken}`;
+    const trackOpenUrl = `${publicFunctionsBase}/email-track?t=open&uid=${userId}`;
+    const trackClickUrl = (dest: string) => `${publicFunctionsBase}/email-track?t=click&uid=${userId}&r=${encodeURIComponent(dest)}`;
 
     const ctaUrl = trackClickUrl("https://gametaverns.com");
 
