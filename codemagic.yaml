@@ -141,9 +141,17 @@ workflows:
           agvtool new-marketing-version "$VERSION"
       - name: Build ipa for distribution
         script: |
+          set -o pipefail
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME"
+            --scheme "$XCODE_SCHEME" \
+            2>&1 | tee /tmp/xcodebuild_logs/build.log
+          BUILD_EXIT=$?
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "=== LAST 150 LINES OF BUILD LOG ==="
+            tail -150 /tmp/xcodebuild_logs/build.log
+            exit $BUILD_EXIT
+          fi
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
@@ -211,6 +219,7 @@ workflows:
             -storepass "$CM_KEYSTORE_PASSWORD" \
             -alias "$CM_KEY_ALIAS" \
             -keypass "$CM_KEY_PASSWORD" | grep -E "SHA1:|SHA256:"
+      - name: Copy google-services.json
         script: |
           if [ -f "google-services.json" ]; then
             cp google-services.json android/app/google-services.json
