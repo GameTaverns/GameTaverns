@@ -209,25 +209,32 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
         </div>
       )}
 
-      {/* Push debug overlay — tap bottom-left corner to toggle (moved to avoid blocking UI) */}
+      {/* Push debug overlay — button sits above bottom nav to avoid touch conflicts */}
       {isNative && (
         <>
-          <div
-            className="fixed bottom-16 left-1 z-[9998] w-10 h-10 opacity-0"
-            onClick={() => setShowPushDebug(prev => !prev)}
-          />
+          <button
+            type="button"
+            className="fixed right-3 z-[9998] rounded-full border bg-card/95 px-3 py-1.5 text-xs font-medium text-foreground shadow-lg backdrop-blur-sm"
+            style={{ bottom: "calc(60px + env(safe-area-inset-bottom) + 12px)" }}
+            onClick={() => setShowPushDebug((prev) => !prev)}
+            aria-label="Toggle push debug panel"
+          >
+            Push Debug
+          </button>
           {showPushDebug && (
-            <div className="fixed inset-x-2 top-12 bottom-24 z-[9999] bg-black/90 text-green-400 rounded-lg p-3 overflow-auto text-[10px] font-mono">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-white font-bold text-xs">Push Debug</span>
-                <button className="text-white text-xs px-2 py-1 bg-red-600 rounded" onClick={() => setShowPushDebug(false)}>Close</button>
+            <div className="fixed inset-x-2 top-12 bottom-24 z-[9999] rounded-lg border border-border bg-popover/95 p-3 overflow-auto text-[10px] font-mono text-popover-foreground">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-bold">Push Debug</span>
+                <Button size="sm" variant="destructive" onClick={() => setShowPushDebug(false)}>
+                  Close
+                </Button>
               </div>
-              <div className="mb-2 text-yellow-300">
+              <div className="mb-2 text-muted-foreground">
                 supported: {String(pushSupported)} | registered: {String(isRegistered)} | token: {token ? token.substring(0, 25) + '...' : 'null'}
               </div>
-              {debugLog.length === 0 && <div className="text-gray-500">No debug entries yet...</div>}
+              {debugLog.length === 0 && <div className="text-muted-foreground">No debug entries yet...</div>}
               {debugLog.map((entry, i) => (
-                <div key={i} className="border-b border-green-900 py-0.5">{entry}</div>
+                <div key={i} className="border-b border-border py-0.5">{entry}</div>
               ))}
             </div>
           )}
