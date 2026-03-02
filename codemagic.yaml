@@ -37,6 +37,31 @@ workflows:
       - name: Sync iOS platform
         script: |
           npx cap sync ios
+      - name: Copy GoogleService-Info.plist
+        script: |
+          cp ios-config/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
+          echo "✓ GoogleService-Info.plist copied"
+      - name: Add Push Notification entitlements
+        script: |
+          # Copy entitlements file
+          cp ios-config/App.entitlements ios/App/App/App.entitlements
+          echo "✓ App.entitlements copied"
+
+          # Add entitlements to Xcode project build settings
+          PBXPROJ="ios/App/App.xcodeproj/project.pbxproj"
+          if grep -q "CODE_SIGN_ENTITLEMENTS" "$PBXPROJ"; then
+            echo "Entitlements already referenced in project"
+          else
+            # Inject entitlements into all build configurations
+            sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = com.gametaverns.app;/PRODUCT_BUNDLE_IDENTIFIER = com.gametaverns.app;\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = App\/App.entitlements;/g' "$PBXPROJ"
+            echo "✓ Entitlements injected into Xcode project"
+          fi
+
+          # Enable push notifications capability via adding to Info.plist
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST" 2>/dev/null || true
+          echo "✓ Background remote-notification mode enabled"
       - name: Inject privacy strings into Info.plist
         script: |
           PLIST="ios/App/App/Info.plist"
