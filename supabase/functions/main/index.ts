@@ -72,6 +72,8 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "reply-feedback":             () => import("./reply-feedback/index.ts"),
   "fix-expansion-flags":        () => import("./fix-expansion-flags/index.ts"),
   "send-reengagement":          () => import("./send-reengagement/index.ts"),
+  "email-unsubscribe":          () => import("./email-unsubscribe/index.ts"),
+  "email-track":                () => import("./email-track/index.ts"),
 };
 
 // All handlers are now external imports - no inlined handlers remaining
