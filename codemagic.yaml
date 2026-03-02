@@ -203,7 +203,14 @@ workflows:
       - name: Sync Android platform
         script: |
           npx cap sync android
-      - name: Copy google-services.json
+      - name: Print signing certificate fingerprints
+        script: |
+          echo "Computing fingerprints from Codemagic signing keystore..."
+          keytool -list -v \
+            -keystore "$CM_KEYSTORE_PATH" \
+            -storepass "$CM_KEYSTORE_PASSWORD" \
+            -alias "$CM_KEY_ALIAS" \
+            -keypass "$CM_KEY_PASSWORD" | grep -E "SHA1:|SHA256:"
         script: |
           if [ -f "google-services.json" ]; then
             cp google-services.json android/app/google-services.json
