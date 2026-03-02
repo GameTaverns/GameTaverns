@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpDown, ArrowUp, ArrowDown, X, AlertTriangle, Settings, Plus, Upload, BarChart3, LayoutGrid, List, Flame, BookOpen } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { HotnessLeaderboard } from "@/components/games/HotnessLeaderboard";
 import { Layout } from "@/components/layout/Layout";
 import { GameGrid } from "@/components/games/GameGrid";
@@ -123,6 +124,8 @@ const Index = () => {
 
   const filter = searchParams.get("filter");
   const filterValue = searchParams.get("value");
+  const includeExpansions = searchParams.get("incExp") === "1";
+  const isEntityFilter = filter === "designer" || filter === "artist" || filter === "publisher";
   const sortBy = (searchParams.get("sort") as SortOption) || "title";
   const sortDir = (searchParams.get("dir") as SortDir) || "asc";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
@@ -255,7 +258,21 @@ const Index = () => {
             );
             break;
           case "publisher":
-            result = result.filter((g) => g.publisher?.name === filterValue);
+            if (includeExpansions) {
+              // Flatten: include base games AND their expansions that match the publisher
+              const pubMatched: typeof result = [];
+              result.forEach((g) => {
+                if (g.publisher?.name === filterValue) pubMatched.push(g);
+                if (g.expansions) {
+                  g.expansions.forEach((exp) => {
+                    if ((exp as any).publisher?.name === filterValue) pubMatched.push(exp);
+                  });
+                }
+              });
+              result = pubMatched;
+            } else {
+              result = result.filter((g) => g.publisher?.name === filterValue);
+            }
             break;
           case "letter":
             result = result.filter((g) => 
@@ -275,14 +292,40 @@ const Index = () => {
             result = result.filter((g) => (g as any).genre === filterValue);
             break;
           case "designer":
-            result = result.filter((g) =>
-              (g as any).designers?.some((d: any) => d.name === filterValue)
-            );
+            if (includeExpansions) {
+              const desMatched: typeof result = [];
+              result.forEach((g) => {
+                if ((g as any).designers?.some((d: any) => d.name === filterValue)) desMatched.push(g);
+                if (g.expansions) {
+                  g.expansions.forEach((exp) => {
+                    if ((exp as any).designers?.some((d: any) => d.name === filterValue)) desMatched.push(exp);
+                  });
+                }
+              });
+              result = desMatched;
+            } else {
+              result = result.filter((g) =>
+                (g as any).designers?.some((d: any) => d.name === filterValue)
+              );
+            }
             break;
           case "artist":
-            result = result.filter((g) =>
-              (g as any).artists?.some((a: any) => a.name === filterValue)
-            );
+            if (includeExpansions) {
+              const artMatched: typeof result = [];
+              result.forEach((g) => {
+                if ((g as any).artists?.some((a: any) => a.name === filterValue)) artMatched.push(g);
+                if (g.expansions) {
+                  g.expansions.forEach((exp) => {
+                    if ((exp as any).artists?.some((a: any) => a.name === filterValue)) artMatched.push(exp);
+                  });
+                }
+              });
+              result = artMatched;
+            } else {
+              result = result.filter((g) =>
+                (g as any).artists?.some((a: any) => a.name === filterValue)
+              );
+            }
             break;
         }
       }
@@ -352,7 +395,7 @@ const Index = () => {
     });
 
     return result;
-  }, [games, filter, filterValue, sortBy, sortDir, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter]);
+  }, [games, filter, filterValue, sortBy, sortDir, forSaleFlag, comingSoonFlag, wishlistFlag, ratingsData, myVotes, quadrantFilter, includeExpansions]);
 
   // Pagination
   const totalPages = Math.ceil(filteredGames.length / ITEMS_PER_PAGE);
@@ -552,12 +595,30 @@ const Index = () => {
 
         {/* Active Filters */}
         {hasActiveFilters && (
-          <div className="flex items-center gap-2 mt-4">
+          <div className="flex items-center gap-2 mt-4 flex-wrap">
             <span className="text-sm text-muted-foreground">Filters:</span>
             {filter && filterValue && (
               <Badge variant="secondary" className="gap-1">
                 {filter}: {filterValue}
               </Badge>
+            )}
+            {isEntityFilter && (
+              <label className="flex items-center gap-1.5 cursor-pointer ml-2">
+                <Checkbox
+                  checked={includeExpansions}
+                  onCheckedChange={(checked) => {
+                    const newParams = new URLSearchParams(searchParams);
+                    if (checked) {
+                      newParams.set("incExp", "1");
+                    } else {
+                      newParams.delete("incExp");
+                    }
+                    newParams.delete("page");
+                    setSearchParams(newParams);
+                  }}
+                />
+                <span className="text-sm text-muted-foreground">Include expansions</span>
+              </label>
             )}
             <Button
               variant="ghost"
