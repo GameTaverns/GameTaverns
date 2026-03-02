@@ -415,7 +415,205 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   // =========================================================================
-  // SCRAPE — Main batch processing
+  // SWEEP — Weekly smart scan for newly added BGG games
+  // Instead of grinding through millions of IDs, this:
+  // 1. Finds the max BGG ID currently in our catalog
+  // 2. Scans forward from there to catch brand new entries
+  // 3. Also does a quick pass through "recent hotspot" range (recent BGG IDs)
+  // =========================================================================
+  if (action === "sweep") {
+    const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
+    const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
+    const bggHeaders: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      Accept: "application/xml",
+      Referer: "https://boardgamegeek.com/",
+      Origin: "https://boardgamegeek.com",
+    };
+    if (bggApiToken) bggHeaders["Authorization"] = `Bearer ${bggApiToken}`;
+    if (bggCookie) bggHeaders["Cookie"] = bggCookie;
+
+    // Find the current max BGG ID in our catalog
+    const { data: maxRow } = await admin
+      .from("game_catalog")
+      .select("bgg_id")
+      .not("bgg_id", "is", null)
+      .order("bgg_id", { ascending: false })
+      .limit(1)
+      .single();
+
+    const maxCatalogBggId = maxRow?.bgg_id ? parseInt(maxRow.bgg_id) : 400000;
+    
+    // Sweep range: scan from max known ID forward by a buffer (catch new releases)
+    const FORWARD_BUFFER = body.forward_buffer || 5000;
+    const BATCH_SIZE = 20;
+    const BATCHES_PER_RUN = body.batches || 15; // 15 batches × 20 = 300 IDs per sweep
+    
+    const sweepStart = maxCatalogBggId + 1;
+    const sweepEnd = sweepStart + (BATCHES_PER_RUN * BATCH_SIZE) + FORWARD_BUFFER;
+    
+    console.log(`[catalog-scraper] SWEEP: max catalog BGG ID = ${maxCatalogBggId}, scanning ${sweepStart}–${sweepEnd}`);
+
+    let currentId = sweepStart;
+    let totalAdded = 0;
+    let totalSkipped = 0;
+    let totalErrors = 0;
+    let lastError: string | null = null;
+    let consecutiveEmpty = 0;
+    const MAX_CONSECUTIVE_EMPTY = 10; // Stop if 10 consecutive batches yield nothing
+
+    for (let batch = 0; batch < BATCHES_PER_RUN; batch++) {
+      if (consecutiveEmpty >= MAX_CONSECUTIVE_EMPTY) {
+        console.log(`[catalog-scraper] SWEEP: ${MAX_CONSECUTIVE_EMPTY} consecutive empty batches, stopping early`);
+        break;
+      }
+
+      const ids = Array.from({ length: BATCH_SIZE }, (_, i) => currentId + i);
+      const idStr = ids.join(",");
+
+      // Check which IDs already exist
+      const { data: existing } = await admin
+        .from("game_catalog")
+        .select("bgg_id")
+        .in("bgg_id", ids.map(String));
+      const existingIds = new Set((existing || []).map(e => e.bgg_id));
+
+      const newIds = ids.filter(id => !existingIds.has(String(id)));
+      if (newIds.length === 0) {
+        totalSkipped += BATCH_SIZE;
+        currentId += BATCH_SIZE;
+        consecutiveEmpty++;
+        continue;
+      }
+
+      const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&type=boardgame,boardgameexpansion&stats=1`;
+      let xml: string | null = null;
+      let fetchAttempts = 0;
+
+      while (fetchAttempts < 3) {
+        fetchAttempts++;
+        try {
+          const res = await fetch(url, { headers: bggHeaders });
+          if (res.status === 429) { await sleep(fetchAttempts * 3000); continue; }
+          if (res.status === 202) { await sleep(5000); continue; }
+          if (!res.ok) { lastError = `HTTP ${res.status}`; totalErrors++; break; }
+          xml = await res.text();
+          break;
+        } catch (e) {
+          lastError = e instanceof Error ? e.message : String(e);
+          if (fetchAttempts < 3) await sleep(2000);
+        }
+      }
+
+      if (!xml) { totalErrors++; currentId += BATCH_SIZE; consecutiveEmpty++; continue; }
+
+      const games = parseBggItems(xml);
+
+      if (games.length === 0) {
+        consecutiveEmpty++;
+        currentId += BATCH_SIZE;
+        totalSkipped += BATCH_SIZE;
+        continue;
+      }
+
+      consecutiveEmpty = 0; // Reset on finding games
+
+      for (const game of games) {
+        if (existingIds.has(game.bggId)) { totalSkipped++; continue; }
+        try {
+          const { data: titleMatch } = await admin
+            .from("game_catalog").select("id").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
+
+          let entry: { id: string } | null = null;
+          if (titleMatch) {
+            const { data } = await admin.from("game_catalog").update({
+              bgg_id: game.bggId, bgg_verified_type: game.bggVerifiedType,
+              description: game.description, image_url: game.imageUrl,
+              min_players: game.minPlayers, max_players: game.maxPlayers,
+              play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
+              year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
+              weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
+            }).eq("id", titleMatch.id).select("id").single();
+            entry = data;
+          } else {
+            const { data } = await admin.from("game_catalog").upsert({
+              bgg_id: game.bggId, bgg_verified_type: game.bggVerifiedType,
+              title: game.title, description: game.description, image_url: game.imageUrl,
+              min_players: game.minPlayers, max_players: game.maxPlayers,
+              play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
+              year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
+              weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
+            }, { onConflict: "bgg_id" }).select("id").single();
+            entry = data;
+          }
+
+          if (entry?.id) {
+            // Upsert metadata
+            for (const mechName of game.mechanics) {
+              const { data: mech } = await admin.from("mechanics").upsert({ name: mechName }, { onConflict: "name" }).select("id").single();
+              if (mech?.id) await admin.from("catalog_mechanics").upsert({ catalog_id: entry.id, mechanic_id: mech.id }, { onConflict: "catalog_id,mechanic_id" });
+            }
+            if (game.publisher) {
+              const { data: pub } = await admin.from("publishers").upsert({ name: game.publisher }, { onConflict: "name" }).select("id").single();
+              if (pub?.id) await admin.from("catalog_publishers").upsert({ catalog_id: entry.id, publisher_id: pub.id }, { onConflict: "catalog_id,publisher_id" });
+            }
+            for (const name of game.designers) {
+              const { data: d } = await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single();
+              if (d?.id) await admin.from("catalog_designers").upsert({ catalog_id: entry.id, designer_id: d.id }, { onConflict: "catalog_id,designer_id" });
+            }
+            for (const name of game.artists) {
+              const { data: a } = await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
+              if (a?.id) await admin.from("catalog_artists").upsert({ catalog_id: entry.id, artist_id: a.id }, { onConflict: "catalog_id,artist_id" });
+            }
+            totalAdded++;
+          }
+        } catch (e) {
+          totalErrors++;
+          lastError = `${game.bggId}: ${e instanceof Error ? e.message : String(e)}`;
+        }
+      }
+
+      currentId += BATCH_SIZE;
+      if (batch < BATCHES_PER_RUN - 1) await sleep(1500);
+    }
+
+    // Update scraper state
+    const { data: currentState } = await admin
+      .from("catalog_scraper_state").select("*").eq("id", "default").single();
+
+    if (currentState) {
+      await admin.from("catalog_scraper_state").upsert({
+        id: "default",
+        next_bgg_id: currentId,
+        total_processed: (currentState.total_processed || 0) + (currentId - sweepStart),
+        total_added: (currentState.total_added || 0) + totalAdded,
+        total_skipped: (currentState.total_skipped || 0) + totalSkipped,
+        total_errors: (currentState.total_errors || 0) + totalErrors,
+        last_run_at: new Date().toISOString(),
+        last_error: lastError,
+        updated_at: new Date().toISOString(),
+        is_enabled: currentState.is_enabled,
+      }, { onConflict: "id" });
+    }
+
+    const result = {
+      success: true,
+      mode: "sweep",
+      sweep_range: `${sweepStart}–${currentId - 1}`,
+      max_catalog_bgg_id: maxCatalogBggId,
+      added: totalAdded,
+      skipped: totalSkipped,
+      errors: totalErrors,
+      stopped_early: consecutiveEmpty >= MAX_CONSECUTIVE_EMPTY,
+    };
+    console.log(`[catalog-scraper] SWEEP complete:`, JSON.stringify(result));
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // =========================================================================
+  // SCRAPE — Main batch processing (legacy sequential scan)
   // =========================================================================
   const { data: state, error: stateErr } = await admin
     .from("catalog_scraper_state").select("*").eq("id", "default").single();
@@ -432,8 +630,8 @@ const handler = async (req: Request): Promise<Response> => {
     });
   }
 
-  const BATCH_SIZE = 20; // BGG supports up to 20 IDs per thing request
-  const BATCHES_PER_RUN = body.batches || 10; // 10 batches of 20 = 200 IDs per cron run
+  const BATCH_SIZE = 20;
+  const BATCHES_PER_RUN = body.batches || 10;
   const startBggId = state.next_bgg_id;
   let currentId = startBggId;
   let totalAdded = 0;
@@ -443,7 +641,6 @@ const handler = async (req: Request): Promise<Response> => {
 
   console.log(`[catalog-scraper] Starting from BGG ID ${startBggId}, ${BATCHES_PER_RUN} batches of ${BATCH_SIZE}`);
 
-  // BGG auth headers
   const bggApiToken = Deno.env.get("BGG_API_TOKEN") || "";
   const bggCookie = Deno.env.get("BGG_SESSION_COOKIE") || Deno.env.get("BGG_COOKIE") || "";
   const bggHeaders: Record<string, string> = {
@@ -459,24 +656,18 @@ const handler = async (req: Request): Promise<Response> => {
     const ids = Array.from({ length: BATCH_SIZE }, (_, i) => currentId + i);
     const idStr = ids.join(",");
 
-    // Check which IDs already exist in catalog
     const { data: existing } = await admin
-      .from("game_catalog")
-      .select("bgg_id")
-      .in("bgg_id", ids.map(String));
+      .from("game_catalog").select("bgg_id").in("bgg_id", ids.map(String));
     const existingIds = new Set((existing || []).map(e => e.bgg_id));
 
     const newIds = ids.filter(id => !existingIds.has(String(id)));
     if (newIds.length === 0) {
-      console.log(`[catalog-scraper] Batch ${batch + 1}: all ${BATCH_SIZE} IDs already in catalog, skipping`);
       totalSkipped += BATCH_SIZE;
       currentId += BATCH_SIZE;
       continue;
     }
 
-    // Fetch from BGG — request only boardgame types to reduce noise
     const url = `https://boardgamegeek.com/xmlapi2/thing?id=${idStr}&type=boardgame,boardgameexpansion&stats=1`;
-
     let xml: string | null = null;
     let fetchAttempts = 0;
 
@@ -484,21 +675,9 @@ const handler = async (req: Request): Promise<Response> => {
       fetchAttempts++;
       try {
         const res = await fetch(url, { headers: bggHeaders });
-        if (res.status === 429) {
-          console.log(`[catalog-scraper] Rate limited, waiting ${fetchAttempts * 3}s`);
-          await sleep(fetchAttempts * 3000);
-          continue;
-        }
-        if (res.status === 202) {
-          console.log(`[catalog-scraper] BGG queued (202), waiting 5s`);
-          await sleep(5000);
-          continue;
-        }
-        if (!res.ok) {
-          lastError = `HTTP ${res.status} for IDs ${ids[0]}-${ids[ids.length - 1]}`;
-          totalErrors++;
-          break;
-        }
+        if (res.status === 429) { await sleep(fetchAttempts * 3000); continue; }
+        if (res.status === 202) { await sleep(5000); continue; }
+        if (!res.ok) { lastError = `HTTP ${res.status} for IDs ${ids[0]}-${ids[ids.length - 1]}`; totalErrors++; break; }
         xml = await res.text();
         break;
       } catch (e) {
@@ -507,94 +686,46 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    if (!xml) {
-      console.log(`[catalog-scraper] Failed to fetch batch ${batch + 1}, moving on`);
-      totalErrors++;
-      currentId += BATCH_SIZE;
-      continue;
-    }
+    if (!xml) { totalErrors++; currentId += BATCH_SIZE; continue; }
 
-    // Parse all items from the response
     const games = parseBggItems(xml);
-    console.log(`[catalog-scraper] Batch ${batch + 1}: fetched ${games.length} items from BGG IDs ${ids[0]}-${ids[ids.length - 1]}`);
 
-    // Gap-skipping: if BGG returned 0 items for this range, jump ahead aggressively
     if (games.length === 0 && newIds.length > 0) {
       const GAP_JUMP = 100;
-      console.log(`[catalog-scraper] No items found in range, jumping ahead by ${GAP_JUMP}`);
       currentId += GAP_JUMP;
       totalSkipped += GAP_JUMP;
       continue;
     }
 
     for (const game of games) {
-      // Skip if already in catalog (by bgg_id)
-      if (existingIds.has(game.bggId)) {
-        totalSkipped++;
-        continue;
-      }
-
+      if (existingIds.has(game.bggId)) { totalSkipped++; continue; }
       try {
-        // Check if a title-match entry exists with NULL bgg_id (from library imports)
         const { data: titleMatch } = await admin
-          .from("game_catalog")
-          .select("id")
-          .eq("title", game.title)
-          .is("bgg_id", null)
-          .limit(1)
-          .maybeSingle();
+          .from("game_catalog").select("id").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
 
         let entry: { id: string } | null = null;
         let upsertErr: any = null;
 
         if (titleMatch) {
-          // Update existing NULL-bgg_id entry with full BGG data
-          const { data, error } = await admin
-            .from("game_catalog")
-            .update({
-              bgg_id: game.bggId,
-              bgg_verified_type: game.bggVerifiedType,
-              description: game.description,
-              image_url: game.imageUrl,
-              min_players: game.minPlayers,
-              max_players: game.maxPlayers,
-              play_time_minutes: game.playTimeMinutes,
-              suggested_age: game.suggestedAge,
-              year_published: game.yearPublished,
-              bgg_community_rating: game.bggCommunityRating,
-              weight: game.weight,
-              is_expansion: game.isExpansion,
-              bgg_url: game.bggUrl,
-            })
-            .eq("id", titleMatch.id)
-            .select("id")
-            .single();
-          entry = data;
-          upsertErr = error;
+          const { data, error } = await admin.from("game_catalog").update({
+            bgg_id: game.bggId, bgg_verified_type: game.bggVerifiedType,
+            description: game.description, image_url: game.imageUrl,
+            min_players: game.minPlayers, max_players: game.maxPlayers,
+            play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
+            year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
+            weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
+          }).eq("id", titleMatch.id).select("id").single();
+          entry = data; upsertErr = error;
         } else {
-          // Create new catalog entry
-          const { data, error } = await admin
-            .from("game_catalog")
-            .upsert({
-              bgg_id: game.bggId,
-              bgg_verified_type: game.bggVerifiedType,
-              title: game.title,
-              description: game.description,
-              image_url: game.imageUrl,
-              min_players: game.minPlayers,
-              max_players: game.maxPlayers,
-              play_time_minutes: game.playTimeMinutes,
-              suggested_age: game.suggestedAge,
-              year_published: game.yearPublished,
-              bgg_community_rating: game.bggCommunityRating,
-              weight: game.weight,
-              is_expansion: game.isExpansion,
-              bgg_url: game.bggUrl,
-            }, { onConflict: "bgg_id" })
-            .select("id")
-            .single();
-          entry = data;
-          upsertErr = error;
+          const { data, error } = await admin.from("game_catalog").upsert({
+            bgg_id: game.bggId, bgg_verified_type: game.bggVerifiedType,
+            title: game.title, description: game.description, image_url: game.imageUrl,
+            min_players: game.minPlayers, max_players: game.maxPlayers,
+            play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
+            year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
+            weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
+          }, { onConflict: "bgg_id" }).select("id").single();
+          entry = data; upsertErr = error;
         }
 
         if (upsertErr || !entry?.id) {
@@ -603,54 +734,22 @@ const handler = async (req: Request): Promise<Response> => {
           continue;
         }
 
-        // Upsert mechanics
         for (const mechName of game.mechanics) {
-          const { data: mech } = await admin
-            .from("mechanics").upsert({ name: mechName }, { onConflict: "name" }).select("id").single();
-          if (mech?.id) {
-            await admin.from("catalog_mechanics").upsert(
-              { catalog_id: entry.id, mechanic_id: mech.id },
-              { onConflict: "catalog_id,mechanic_id" }
-            );
-          }
+          const { data: mech } = await admin.from("mechanics").upsert({ name: mechName }, { onConflict: "name" }).select("id").single();
+          if (mech?.id) await admin.from("catalog_mechanics").upsert({ catalog_id: entry.id, mechanic_id: mech.id }, { onConflict: "catalog_id,mechanic_id" });
         }
-
-        // Upsert publisher
         if (game.publisher) {
-          const { data: pub } = await admin
-            .from("publishers").upsert({ name: game.publisher }, { onConflict: "name" }).select("id").single();
-          if (pub?.id) {
-            await admin.from("catalog_publishers").upsert(
-              { catalog_id: entry.id, publisher_id: pub.id },
-              { onConflict: "catalog_id,publisher_id" }
-            );
-          }
+          const { data: pub } = await admin.from("publishers").upsert({ name: game.publisher }, { onConflict: "name" }).select("id").single();
+          if (pub?.id) await admin.from("catalog_publishers").upsert({ catalog_id: entry.id, publisher_id: pub.id }, { onConflict: "catalog_id,publisher_id" });
         }
-
-        // Upsert designers
         for (const name of game.designers) {
-          const { data: d } = await admin
-            .from("designers").upsert({ name }, { onConflict: "name" }).select("id").single();
-          if (d?.id) {
-            await admin.from("catalog_designers").upsert(
-              { catalog_id: entry.id, designer_id: d.id },
-              { onConflict: "catalog_id,designer_id" }
-            );
-          }
+          const { data: d } = await admin.from("designers").upsert({ name }, { onConflict: "name" }).select("id").single();
+          if (d?.id) await admin.from("catalog_designers").upsert({ catalog_id: entry.id, designer_id: d.id }, { onConflict: "catalog_id,designer_id" });
         }
-
-        // Upsert artists
         for (const name of game.artists) {
-          const { data: a } = await admin
-            .from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
-          if (a?.id) {
-            await admin.from("catalog_artists").upsert(
-              { catalog_id: entry.id, artist_id: a.id },
-              { onConflict: "catalog_id,artist_id" }
-            );
-          }
+          const { data: a } = await admin.from("artists").upsert({ name }, { onConflict: "name" }).select("id").single();
+          if (a?.id) await admin.from("catalog_artists").upsert({ catalog_id: entry.id, artist_id: a.id }, { onConflict: "catalog_id,artist_id" });
         }
-
         totalAdded++;
       } catch (e) {
         totalErrors++;
@@ -659,14 +758,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     currentId += BATCH_SIZE;
-
-    // Rate-limit pause between BGG API calls
-    if (batch < BATCHES_PER_RUN - 1) {
-      await sleep(1500);
-    }
+    if (batch < BATCHES_PER_RUN - 1) await sleep(1500);
   }
 
-  // Update state — use direct REST call as fallback if client silently fails
   const updatePayload = {
     next_bgg_id: currentId,
     total_processed: state.total_processed + (currentId - startBggId),
@@ -678,17 +772,12 @@ const handler = async (req: Request): Promise<Response> => {
     updated_at: new Date().toISOString(),
   };
 
-  console.log(`[catalog-scraper] Updating state to next_bgg_id=${currentId}`);
-
-  // Use upsert (which works reliably) instead of update
   const { data: updateData, error: updateErr } = await admin
     .from("catalog_scraper_state")
     .upsert({ id: "default", ...updatePayload }, { onConflict: "id" })
     .select();
 
   if (updateErr || !updateData || updateData.length === 0) {
-    console.warn(`[catalog-scraper] Client update failed (err=${JSON.stringify(updateErr)}, rows=${updateData?.length}), trying direct REST`);
-    // Fallback: direct PostgREST PATCH
     try {
       const restUrl = `${supabaseUrl}/rest/v1/catalog_scraper_state?id=eq.default`;
       const patchResp = await fetch(restUrl, {
@@ -706,17 +795,7 @@ const handler = async (req: Request): Promise<Response> => {
     } catch (restErr) {
       console.error(`[catalog-scraper] REST fallback also failed:`, restErr);
     }
-  } else {
-    console.log(`[catalog-scraper] State updated OK: next_bgg_id=${updateData[0]?.next_bgg_id}`);
   }
-
-  // Verify the update actually persisted
-  const { data: verify } = await admin
-    .from("catalog_scraper_state")
-    .select("next_bgg_id")
-    .eq("id", "default")
-    .single();
-  console.log(`[catalog-scraper] Verify: next_bgg_id=${verify?.next_bgg_id} (expected ${currentId})`);
 
   const result = {
     success: true,

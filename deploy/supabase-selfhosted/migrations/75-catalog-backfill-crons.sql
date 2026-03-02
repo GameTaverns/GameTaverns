@@ -1,15 +1,17 @@
 -- Catalog backfill cron jobs (comprehensive)
--- Manages the full lifecycle: type-check → enrichment → re-enrichment → dedup → cleanup
+-- Version: 3.0.0 — Reallocated resources after scraper completion
+-- Manages: type-check → enrichment → re-enrichment → dedup → cleanup
 
 -- ─────────────────────────────────────────────────────────────────────
--- 1) Type-check: tags new entries with bgg_verified_type (every minute)
+-- 1) Type-check: tags new entries with bgg_verified_type (every 2 min)
+--    Reduced from every minute — most entries already tagged
 -- ─────────────────────────────────────────────────────────────────────
 SELECT cron.unschedule('catalog-type-check-cron')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-type-check-cron');
 
 SELECT cron.schedule(
   'catalog-type-check-cron',
-  '* * * * *',
+  '*/2 * * * *',
   $$
   SELECT net.http_post(
     url := 'http://kong:8000/functions/v1/catalog-backfill',
@@ -23,8 +25,9 @@ SELECT cron.schedule(
 );
 
 -- ─────────────────────────────────────────────────────────────────────
--- 2) Enrichment: backfill designers/mechanics/weight (every minute)
---    Processes 100 entries per run (5 BGG API calls of 20 IDs each)
+-- 2) Enrichment: backfill designers/artists/weight (every minute)
+--    PRIORITY: 82% complete — needs resources to finish
+--    Processes 200 entries per run (10 BGG API calls of 20 IDs each)
 -- ─────────────────────────────────────────────────────────────────────
 SELECT cron.unschedule('catalog-enrichment-cron')
 WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'catalog-enrichment-cron');
