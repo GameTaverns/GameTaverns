@@ -12,6 +12,7 @@ interface PushNotificationState {
   isRegistered: boolean;
   token: string | null;
   notifications: PushNotificationSchema[];
+  debugLog: string[];
 }
 
 /** Save or update the push token in the database */
@@ -63,7 +64,14 @@ export function usePushNotifications() {
     isRegistered: false,
     token: null,
     notifications: [],
+    debugLog: [],
   });
+
+  const addDebug = useCallback((msg: string) => {
+    const entry = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    console.log('PUSH_DEBUG:', entry);
+    setState(prev => ({ ...prev, debugLog: [...prev.debugLog.slice(-19), entry] }));
+  }, []);
 
   const isRegisteringRef = useRef(false);
   const isRequestingPermissionRef = useRef(false);
@@ -82,10 +90,12 @@ export function usePushNotifications() {
 
   // Check plugin availability on mount
   useEffect(() => {
-    if (isPushPluginAvailable()) {
+    const avail = isPushPluginAvailable();
+    addDebug(`Plugin available: ${avail}, platform: ${Capacitor.getPlatform()}`);
+    if (avail) {
       setState(prev => ({ ...prev, isSupported: true }));
     }
-  }, []);
+  }, [addDebug]);
 
   /**
    * Register with FCM/APNs with retry-with-backoff.
@@ -93,69 +103,62 @@ export function usePushNotifications() {
    * closes, so we retry up to 3 times with increasing delays.
    */
   const registerForPush = useCallback(async (): Promise<boolean> => {
-    if (!isPushPluginAvailable()) return false;
+    if (!isPushPluginAvailable()) { addDebug('register: plugin not available'); return false; }
     if (isRegisteringRef.current) {
-      console.log('Push registration already in progress, skipping');
+      addDebug('register: already in progress, skipping');
       return false;
     }
 
     try {
       const permissions = await PushNotifications.checkPermissions();
+      addDebug(`register: permissions.receive = ${permissions.receive}`);
       if (permissions.receive !== 'granted') {
-        console.log('Push permission not granted, skipping registration');
         return false;
       }
     } catch (e) {
-      console.warn('checkPermissions failed:', e);
+      addDebug(`register: checkPermissions error: ${e}`);
       return false;
     }
 
     isRegisteringRef.current = true;
-
     const MAX_RETRIES = 3;
-    const BACKOFF_MS = [1000, 2000, 4000]; // 1s, 2s, 4s
+    const BACKOFF_MS = [1000, 2000, 4000];
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        console.log(`Push register attempt ${attempt + 1}/${MAX_RETRIES}`);
+        addDebug(`register: attempt ${attempt + 1}/${MAX_RETRIES}`);
         await PushNotifications.register();
-        console.log('PushNotifications.register() succeeded');
+        addDebug('register: SUCCESS');
         isRegisteringRef.current = false;
         return true;
       } catch (registerError) {
-        console.warn(`PushNotifications.register() attempt ${attempt + 1} failed:`, registerError);
+        addDebug(`register: attempt ${attempt + 1} FAILED: ${registerError}`);
         if (attempt < MAX_RETRIES - 1) {
-          console.log(`Waiting ${BACKOFF_MS[attempt]}ms before retry...`);
           await wait(BACKOFF_MS[attempt]);
         }
       }
     }
 
-    console.warn('All push register attempts failed');
+    addDebug('register: ALL attempts failed');
     isRegisteringRef.current = false;
     return false;
-  }, []);
+  }, [addDebug]);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
-    if (!isPushPluginAvailable()) return false;
-
-    // Block appStateChange from triggering registration while OS dialog is up
+    if (!isPushPluginAvailable()) { addDebug('reqPerm: plugin not available'); return false; }
     isRequestingPermissionRef.current = true;
 
     try {
-      console.log('Requesting push notification permissions...');
+      addDebug('reqPerm: requesting permissions...');
       const permission = await PushNotifications.requestPermissions();
-      console.log('Push permission result:', permission.receive);
+      addDebug(`reqPerm: result = ${permission.receive}`);
 
       if (permission.receive === 'granted') {
-        // Much longer delay after OS dialog: Firebase needs time to fully
-        // reinitialize after the app comes back from the permission flow.
-        // 4 seconds has been tested to prevent crashes on slower devices.
-        console.log('Permission granted, waiting 4s for native bridge stabilization...');
+        addDebug('reqPerm: waiting 4s for stabilization...');
         await wait(4000);
         isRequestingPermissionRef.current = false;
-
         const result = await registerForPush();
+        addDebug(`reqPerm: registerForPush returned ${result}`);
         return result;
       }
 
@@ -163,10 +166,10 @@ export function usePushNotifications() {
       return false;
     } catch (error) {
       isRequestingPermissionRef.current = false;
-      console.warn('Error requesting push notification permission:', error);
+      addDebug(`reqPerm: ERROR: ${error}`);
       return false;
     }
-  }, [registerForPush]);
+  }, [registerForPush, addDebug]);
 
   // Setup listeners once
   useEffect(() => {
@@ -192,7 +195,7 @@ export function usePushNotifications() {
 
         // Registration success
         await PushNotifications.addListener('registration', async (token: Token) => {
-          console.log('Push registration success, token:', token.value?.substring(0, 20) + '...');
+          addDebug(`TOKEN RECEIVED: ${token.value?.substring(0, 20)}...`);
           setState(prev => ({
             ...prev,
             isRegistered: true,
@@ -201,20 +204,22 @@ export function usePushNotifications() {
 
           try {
             await MobileStorage.set('pushToken', token.value);
+            addDebug('Token stored locally');
           } catch (e) {
-            console.warn('Failed to store push token locally:', e);
+            addDebug(`Local store FAILED: ${e}`);
           }
 
           try {
             await upsertPushToken(token.value);
+            addDebug('Token upserted to DB');
           } catch (e) {
-            console.warn('Failed to save push token to database:', e);
+            addDebug(`DB upsert FAILED: ${e}`);
           }
         });
 
         // Registration error
         await PushNotifications.addListener('registrationError', (error) => {
-          console.error('Push registration error:', JSON.stringify(error));
+          addDebug(`REGISTRATION ERROR: ${JSON.stringify(error)}`);
           setState(prev => ({
             ...prev,
             isRegistered: false,
@@ -265,32 +270,32 @@ export function usePushNotifications() {
         try {
           const storedToken = await MobileStorage.get<string>('pushToken');
           if (storedToken) {
-            console.log('Found stored push token, marking as registered');
+            addDebug(`Found stored token: ${storedToken.substring(0, 20)}...`);
             setState(prev => ({
               ...prev,
               isRegistered: true,
               token: storedToken,
             }));
-            upsertPushToken(storedToken).catch(() => {});
+            upsertPushToken(storedToken).catch((e) => addDebug(`Re-upsert failed: ${e}`));
           } else {
-            // Only auto-register if permission was previously granted
+            addDebug('No stored token, checking permissions...');
             try {
               const perms = await PushNotifications.checkPermissions();
+              addDebug(`Init permissions: ${perms.receive}`);
               if (perms.receive === 'granted') {
-                console.log('Permission already granted, registering...');
-                await wait(1000); // Extra delay for safety
-                registerForPush().catch(() => {});
+                await wait(1000);
+                registerForPush().catch((e) => addDebug(`Auto-register failed: ${e}`));
               }
             } catch (e) {
-              console.warn('checkPermissions during init failed:', e);
+              addDebug(`Init checkPermissions error: ${e}`);
             }
           }
         } catch (e) {
-          console.warn('Failed to read stored push token:', e);
+          addDebug(`Read stored token error: ${e}`);
         }
 
       } catch (e) {
-        console.warn('PushNotifications listener setup failed:', e);
+        addDebug(`Listener setup FAILED: ${e}`);
         listenersSetupRef.current = false;
       }
     }, 3000); // 3s delay for initial setup (up from 2s)
@@ -305,7 +310,7 @@ export function usePushNotifications() {
         listenersSetupRef.current = false;
       }
     };
-  }, [registerForPush]);
+  }, [registerForPush, addDebug]);
 
   const clearNotifications = useCallback(() => {
     setState(prev => ({ ...prev, notifications: [] }));
