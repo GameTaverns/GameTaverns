@@ -141,6 +141,7 @@ workflows:
           agvtool new-marketing-version "$VERSION"
       - name: Build ipa for distribution
         script: |
+          mkdir -p /tmp/xcodebuild_logs
           set -o pipefail
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
