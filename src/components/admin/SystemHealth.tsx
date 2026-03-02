@@ -1278,8 +1278,8 @@ export function SystemHealth() {
               <FetchSpecificBggIds />
 
               <div className="text-xs text-cream/40">
-                Runs every 2 minutes via cron. Each run fetches 10 batches of 20 BGG IDs (10 API calls with ~1.5s delays between).
-                At this rate, ~144k IDs/day are scanned. Empty ID ranges are automatically skipped in jumps of 100.
+                Runs weekly (Sundays at 01:00 UTC) via cron sweep. Each sweep fetches 25 batches of 20 BGG IDs with ~1.5s delays between calls.
+                Also checks a forward buffer of 5,000 IDs for newly published games. Manual "Run Once" is available anytime.
               </div>
             </>
           )}
@@ -1416,7 +1416,7 @@ export function SystemHealth() {
               <div>
                 <CardTitle className="text-cream text-lg">Gallery Image Backfill</CardTitle>
                 <CardDescription className="text-cream/50">
-                  Fetches up to 5 BGG gallery images per game for catalog entries missing additional_images
+                  Fetches up to 5 BGG gallery images per game for catalog entries missing additional_images (100/batch via cron)
                 </CardDescription>
               </div>
             </div>
@@ -1485,7 +1485,7 @@ export function SystemHealth() {
                 </div>
 
                 <div className="text-xs text-cream/40">
-                  Runs every minute via cron (50 games/batch, ~300ms delay each). Fetches up to 5 images per game, prioritising gameplay &gt; components &gt; box art.
+                  Runs every minute via cron (100 games/batch, ~300ms delay each). Fetches up to 5 images per game, prioritising gameplay &gt; components &gt; box art.
                 </div>
               </>
             );
@@ -1570,7 +1570,7 @@ export function SystemHealth() {
                   <span>Has Rating: {s.has_rating.toLocaleString()}</span>
                   <span>{s.percent}% complete</span>
                   {s.remaining > 0 && (
-                    <span>~{Math.ceil(s.remaining / 100)} min remaining (100/batch via cron)</span>
+                    <span>~{Math.ceil(s.remaining / 200)} min remaining (200/batch via cron)</span>
                   )}
                 </div>
 
@@ -1608,8 +1608,9 @@ export function SystemHealth() {
                 </div>
 
                 <div className="text-xs text-cream/40">
-                  Runs every minute via cron (100 entries/batch, 5 BGG API calls of 20 IDs each).
-                  Enriches weight, community rating, designers, artists, and mechanics.
+                  Enrichment runs every minute (200/batch). Type-check runs every 2 min (200/batch).
+                  Re-enrichment runs every 10 min (40/batch). Dedup runs weekly (Sundays 02:00 UTC).
+                  Non-boardgame cleanup runs daily at 03:30 UTC.
                 </div>
               </>
             );
