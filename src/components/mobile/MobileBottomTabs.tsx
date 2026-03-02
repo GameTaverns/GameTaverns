@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { LayoutDashboard, Library, BookOpen, MessageSquare, Menu } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
@@ -22,8 +24,13 @@ export function MobileBottomTabs() {
   const { data: library } = useMyLibrary();
   const { data: dmUnreadCount = 0 } = useUnreadDMCount();
   const location = useLocation();
+  const [isMounted, setIsMounted] = useState(false);
 
-  if (!isAuthenticated) return null;
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isAuthenticated || !isMounted) return null;
 
   const libraryHref = library ? getLibraryUrl(library.slug, "/") : getPlatformUrl("/dashboard?tab=library");
 
@@ -57,7 +64,7 @@ export function MobileBottomTabs() {
 
   const currentPath = location.pathname;
 
-  return (
+  const tabsNav = (
     <nav className="mobile-bottom-tabs md:hidden" aria-label="Main navigation">
       {tabs.map((tab) => {
         const isActive = tab.match(currentPath);
@@ -101,4 +108,7 @@ export function MobileBottomTabs() {
       />
     </nav>
   );
+
+  return createPortal(tabsNav, document.body);
 }
+
