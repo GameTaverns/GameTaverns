@@ -406,6 +406,7 @@ function LibraryRoutes() {
       <Route path="/lists" element={<CuratedLists />} />
       <Route path="/lists/:listId" element={<CuratedListDetail />} />
       <Route path="/club/:slug" element={<ClubPage />} />
+      <Route path="/club/:slug/forum/:categorySlug" element={<ClubPage />} />
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
       <Route path="/picker" element={<SmartPicker />} />
       <Route path="/notifications" element={<Dashboard />} />

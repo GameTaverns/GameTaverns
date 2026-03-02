@@ -10,6 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Users, Clock, Weight, BookOpen, ChevronDown, ChevronUp, Menu, LayoutGrid, List, Loader2, BarChart3 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
@@ -67,6 +68,7 @@ export default function CatalogBrowse() {
   const [sortBy, setSortBy] = useState<string>("title");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [includeExpansions, setIncludeExpansions] = useState(false);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -84,13 +86,23 @@ export default function CatalogBrowse() {
   }, [searchTerm]);
 
   const showExpansions = sidebarFilter === "status" && sidebarValue === "expansions";
+  const isEntityFilter = sidebarFilter === "designer" || sidebarFilter === "artist" || sidebarFilter === "publisher";
+
+  // Reset includeExpansions when filter changes away from entity filters
+  useEffect(() => {
+    if (!isEntityFilter) setIncludeExpansions(false);
+  }, [isEntityFilter]);
 
   // Build query with all server-side filters
   const buildQuery = useCallback(async (pageParam: number) => {
     let query = supabase
       .from("game_catalog")
-      .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age", { count: pageParam === 0 ? "exact" : undefined })
-      .eq("is_expansion", showExpansions);
+      .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age", { count: pageParam === 0 ? "exact" : undefined });
+
+    // When an entity filter is active and includeExpansions is on, skip the is_expansion filter
+    if (!(isEntityFilter && includeExpansions)) {
+      query = query.eq("is_expansion", showExpansions);
+    }
 
     if (debouncedSearch) {
       query = query.ilike("title", `%${debouncedSearch}%`);
@@ -209,7 +221,7 @@ export default function CatalogBrowse() {
     const { data, error, count } = await query;
     if (error) throw error;
     return { games: data || [], total: count ?? undefined, page: pageParam };
-  }, [showExpansions, debouncedSearch, sidebarFilter, sidebarValue, showFilters, playerCount, maxTime, weightRange, sortBy]);
+  }, [showExpansions, debouncedSearch, sidebarFilter, sidebarValue, showFilters, playerCount, maxTime, weightRange, sortBy, isEntityFilter, includeExpansions]);
 
   // Infinite query
   const {
@@ -219,7 +231,7 @@ export default function CatalogBrowse() {
     isFetchingNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
-    queryKey: ["catalog-browse-infinite", debouncedSearch, sortBy, sidebarFilter, sidebarValue, showFilters, playerCount, maxTime, weightRange, showExpansions],
+    queryKey: ["catalog-browse-infinite", debouncedSearch, sortBy, sidebarFilter, sidebarValue, showFilters, playerCount, maxTime, weightRange, showExpansions, includeExpansions],
     queryFn: ({ pageParam = 0 }) => buildQuery(pageParam),
     getNextPageParam: (lastPage) => {
       if (lastPage.games.length < PAGE_SIZE) return undefined;
@@ -426,6 +438,15 @@ export default function CatalogBrowse() {
               <p className="text-muted-foreground">
                 {totalCount} games in collection
               </p>
+              {isEntityFilter && (
+                <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                  <Checkbox
+                    checked={includeExpansions}
+                    onCheckedChange={(checked) => setIncludeExpansions(checked === true)}
+                  />
+                  <span className="text-sm text-muted-foreground">Include expansions</span>
+                </label>
+              )}
             </div>
             <Link to="/catalog/analytics">
               <Button variant="outline" size="sm" className="gap-2">
