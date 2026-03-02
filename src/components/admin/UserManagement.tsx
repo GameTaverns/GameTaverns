@@ -313,19 +313,39 @@ export function UserManagement() {
   const reengagementMutation = useMutation({
     mutationFn: async ({ userId, userEmail, userName }: { userId: string; userEmail: string; userName: string }) => {
       if (isSelfHostedMode()) {
-        await apiClient.post("/admin/send-reengagement", { userId, userEmail, userName });
+        try {
+          await apiClient.post("/admin/send-reengagement", { userId, userEmail, userName });
+        } catch (err: any) {
+          // Check for opted-out response from the API proxy
+          const msg = err?.response?.data?.error || err?.message || "";
+          if (msg.toLowerCase().includes("unsubscribed") || msg.toLowerCase().includes("opted")) {
+            throw new Error("OPTED_OUT");
+          }
+          throw err;
+        }
         return { success: true };
       }
       const { data, error } = await supabase.functions.invoke("send-reengagement", {
         body: { userId, userEmail, userName },
       });
-      if (error) throw error;
+      if (error) {
+        // Edge function returns 400 with "unsubscribed" message when opted out
+        const errMsg = typeof error === "object" && "message" in error ? (error as any).message : String(error);
+        if (errMsg.toLowerCase().includes("unsubscribed") || errMsg.toLowerCase().includes("opted")) {
+          throw new Error("OPTED_OUT");
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
       toast.success("Re-engagement email sent!");
     },
     onError: (error) => {
+      if (error.message === "OPTED_OUT") {
+        toast.warning("This user has unsubscribed from marketing emails.");
+        return;
+      }
       console.error("Failed to send re-engagement email:", error);
       toast.error(error instanceof Error ? error.message : "Failed to send re-engagement email");
     },
