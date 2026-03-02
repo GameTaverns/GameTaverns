@@ -2699,6 +2699,7 @@ export type Database = {
           event_location: string | null
           id: string
           library_id: string
+          status: string
           title: string
           updated_at: string
         }
@@ -2711,6 +2712,7 @@ export type Database = {
           event_location?: string | null
           id?: string
           library_id: string
+          status?: string
           title: string
           updated_at?: string
         }
@@ -2723,6 +2725,7 @@ export type Database = {
           event_location?: string | null
           id?: string
           library_id?: string
+          status?: string
           title?: string
           updated_at?: string
         }

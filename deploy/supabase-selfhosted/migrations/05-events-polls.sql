@@ -14,10 +14,13 @@ CREATE TABLE IF NOT EXISTS public.library_events (
     event_date TIMESTAMPTZ NOT NULL,
     event_location TEXT,
     discord_thread_id TEXT,
+    status TEXT NOT NULL DEFAULT 'published',
     created_by UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS idx_library_events_status ON public.library_events(status);
 
 CREATE INDEX IF NOT EXISTS idx_library_events_library ON public.library_events(library_id);
 CREATE INDEX IF NOT EXISTS idx_library_events_date ON public.library_events(event_date);
