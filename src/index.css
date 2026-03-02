@@ -307,7 +307,7 @@
     background-color: hsl(var(--background));
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: 0 !important;
     width: 100%;
     margin: 0;
     padding-bottom: env(safe-area-inset-bottom);
@@ -317,6 +317,9 @@
     backdrop-filter: none;
     /* iOS safe area background extension */
     background-clip: padding-box;
+    /* Prevent floating during scroll momentum */
+    will-change: transform;
+    contain: layout style;
   }
   .mobile-bottom-tab {
     @apply flex flex-col items-center justify-center gap-0 py-1.5 px-1 flex-1 text-muted-foreground transition-colors;
