@@ -41,7 +41,8 @@ interface MobileAppShellProps {
 function MobileAppShellInner({ children }: MobileAppShellProps) {
   const { isNative, platform, isOnline } = useCapacitor();
   const { activeLibrary, isLoadingLibrary, selectLibrary } = useMobileLibrary();
-  const { isSupported: pushSupported, isRegistered, requestPermission } = usePushNotifications();
+  const { isSupported: pushSupported, isRegistered, requestPermission, debugLog, token } = usePushNotifications();
+  const [showPushDebug, setShowPushDebug] = useState(false);
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: myLibrary } = useMyLibrary();
   const navigate = useNavigate();
@@ -206,6 +207,31 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Temporary push debug overlay — tap 5 times on bottom-right to toggle */}
+      {isNative && (
+        <>
+          <div
+            className="fixed bottom-2 right-2 z-[9999] w-10 h-10 opacity-20"
+            onClick={() => setShowPushDebug(prev => !prev)}
+          />
+          {showPushDebug && (
+            <div className="fixed inset-x-2 top-12 bottom-24 z-[9999] bg-black/90 text-green-400 rounded-lg p-3 overflow-auto text-[10px] font-mono">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-white font-bold text-xs">Push Debug</span>
+                <button className="text-white text-xs px-2 py-1 bg-red-600 rounded" onClick={() => setShowPushDebug(false)}>Close</button>
+              </div>
+              <div className="mb-2 text-yellow-300">
+                supported: {String(pushSupported)} | registered: {String(isRegistered)} | token: {token ? token.substring(0, 25) + '...' : 'null'}
+              </div>
+              {debugLog.length === 0 && <div className="text-gray-500">No debug entries yet...</div>}
+              {debugLog.map((entry, i) => (
+                <div key={i} className="border-b border-green-900 py-0.5">{entry}</div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {children}
