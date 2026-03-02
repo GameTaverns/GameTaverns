@@ -74,7 +74,7 @@ Write-Host "      OK - cap sync complete."
 
 # ── Step 6: Upgrade Gradle wrapper to latest ─────────────────────────────────
 Write-Host ""
-Write-Host "[6/9] Upgrading Gradle wrapper to 9.1.0..."
+Write-Host "[6/10] Upgrading Gradle wrapper to 9.1.0..."
 $wrapperProps = "android\gradle\wrapper\gradle-wrapper.properties"
 if (Test-Path $wrapperProps) {
     $wContent = Get-Content $wrapperProps -Raw
@@ -94,13 +94,13 @@ if (Test-Path $wrapperProps) {
 
 # ── Step 7: Run the post-sync patcher ────────────────────────────────────────
 Write-Host ""
-Write-Host "[7/9] Running post-sync patcher..."
+Write-Host "[7/10] Running post-sync patcher..."
 node scripts/fix-proguard.cjs
 if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: fix-proguard.cjs failed."; exit 1 }
 
 # ── Step 7: Lock Gradle JDK in gradle.properties ─────────────────────────────
 Write-Host ""
-Write-Host "[8/9] Locking Gradle JDK..."
+Write-Host "[8/10] Locking Gradle JDK..."
 $gradleProps = "android\gradle.properties"
 
 if (Test-Path $gradleProps) {
@@ -136,7 +136,7 @@ if (Test-Path $gradleProps) {
 
 # ── Step 8: Validate no Lovable URLs leaked ───────────────────────────────────
 Write-Host ""
-Write-Host "[9/9] Scanning for Lovable URL leaks..."
+Write-Host "[9/10] Scanning for Lovable URL leaks..."
 
 $leakPatterns = @("lovableproject.com", "lovable.app", "hobby-shelf-spark", "ddfslywz")
 $leakFound = $false
@@ -163,6 +163,83 @@ if ($leakFound) {
     Write-Host "      Some Lovable URLs still present. Review output above."
 } else {
     Write-Host "      OK - No Lovable URL leaks detected."
+}
+
+# ── Step 10: Extract SHA fingerprints from keystore ──────────────────────────
+Write-Host ""
+Write-Host "[10/10] Extracting SHA certificate fingerprints..."
+
+$keystorePath = "gametaverns-release.keystore"
+$keystoreAlias = "gametaverns"
+
+# Check common locations
+$keystoreLocations = @(
+    (Join-Path $PSScriptRoot "..\$keystorePath"),
+    (Join-Path $PSScriptRoot "..\android\$keystorePath"),
+    (Join-Path ([Environment]::GetFolderPath("UserProfile")) ".android\$keystorePath"),
+    (Join-Path ([Environment]::GetFolderPath("UserProfile")) "$keystorePath")
+)
+
+$foundKeystore = $null
+foreach ($loc in $keystoreLocations) {
+    if (Test-Path $loc) {
+        $foundKeystore = (Resolve-Path $loc).Path
+        break
+    }
+}
+
+if ($foundKeystore) {
+    Write-Host "      Found keystore: $foundKeystore"
+    Write-Host ""
+    try {
+        $keytoolOutput = & keytool -list -v -keystore $foundKeystore -alias $keystoreAlias 2>&1
+        $sha1Line = ($keytoolOutput | Select-String "SHA1:") -replace "^\s*SHA1:\s*", ""
+        $sha256Line = ($keytoolOutput | Select-String "SHA256:") -replace "^\s*SHA256:\s*", ""
+
+        if ($sha1Line) {
+            Write-Host "      SHA-1  : $sha1Line"
+        } else {
+            Write-Host "      WARN - Could not extract SHA-1. Try running keytool manually:"
+            Write-Host "             keytool -list -v -keystore $foundKeystore -alias $keystoreAlias"
+        }
+        if ($sha256Line) {
+            Write-Host "      SHA-256: $sha256Line"
+        } else {
+            Write-Host "      WARN - Could not extract SHA-256."
+        }
+
+        Write-Host ""
+        Write-Host "      Add these fingerprints to Firebase Console:"
+        Write-Host "        Project Settings > Android app > SHA certificate fingerprints"
+    } catch {
+        Write-Host "      WARN - keytool failed: $_"
+        Write-Host "      Make sure keytool is in your PATH (included with JDK)."
+        Write-Host "      Manual command: keytool -list -v -keystore $foundKeystore -alias $keystoreAlias"
+    }
+} else {
+    Write-Host "      WARN - No keystore found. Searched:"
+    foreach ($loc in $keystoreLocations) {
+        Write-Host "               $loc"
+    }
+    Write-Host "      Fingerprints are needed for Firebase push notifications."
+    Write-Host "      If you have a keystore elsewhere, run:"
+    Write-Host "        keytool -list -v -keystore <path> -alias $keystoreAlias"
+
+    # Also try debug keystore as fallback
+    $debugKeystore = Join-Path ([Environment]::GetFolderPath("UserProfile")) ".android\debug.keystore"
+    if (Test-Path $debugKeystore) {
+        Write-Host ""
+        Write-Host "      Found DEBUG keystore — extracting debug fingerprints:"
+        try {
+            $debugOutput = & keytool -list -v -keystore $debugKeystore -alias androiddebugkey -storepass android 2>&1
+            $debugSha1 = ($debugOutput | Select-String "SHA1:") -replace "^\s*SHA1:\s*", ""
+            $debugSha256 = ($debugOutput | Select-String "SHA256:") -replace "^\s*SHA256:\s*", ""
+            if ($debugSha1) { Write-Host "      DEBUG SHA-1  : $debugSha1" }
+            if ($debugSha256) { Write-Host "      DEBUG SHA-256: $debugSha256" }
+        } catch {
+            Write-Host "      Could not read debug keystore: $_"
+        }
+    }
 }
 
 # ── Done ──────────────────────────────────────────────────────────────────────
