@@ -209,13 +209,13 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
         </div>
       )}
 
-      {/* Temporary push debug overlay — tap bottom-right corner to toggle */}
-      <>
-        <div
-          className="fixed bottom-2 right-2 z-[9999] w-16 h-16"
-          style={{ background: 'rgba(255,0,0,0.15)', borderRadius: 8 }}
-          onClick={() => setShowPushDebug(prev => !prev)}
-        />
+      {/* Push debug overlay — tap bottom-left corner to toggle (moved to avoid blocking UI) */}
+      {isNative && (
+        <>
+          <div
+            className="fixed bottom-16 left-1 z-[9998] w-10 h-10 opacity-0"
+            onClick={() => setShowPushDebug(prev => !prev)}
+          />
           {showPushDebug && (
             <div className="fixed inset-x-2 top-12 bottom-24 z-[9999] bg-black/90 text-green-400 rounded-lg p-3 overflow-auto text-[10px] font-mono">
               <div className="flex justify-between items-center mb-2">
@@ -231,7 +231,8 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
               ))}
             </div>
           )}
-      </>
+        </>
+      )}
 
       {children}
     </div>

@@ -155,29 +155,30 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={true}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
           className={cn(
-            "relative z-50",
+            "relative z-50 min-h-[44px] min-w-[44px]",
             variant === "dashboard" && "text-cream hover:text-white hover:bg-wood-medium/50"
           )}
           style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+          onClick={(e) => e.stopPropagation()}
         >
           <Bell className="h-5 w-5" />
           {totalUnread > 0 && (
             <Badge
               variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs pointer-events-none"
             >
               {totalUnread > 9 ? "9+" : totalUnread}
             </Badge>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-80 z-[10000]">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Inbox</span>
           <div className="flex items-center gap-2">
