@@ -80,7 +80,10 @@ export default function AdminLogin() {
       // If user has a native @gametaverns.com auth email, this returns null and we use the email directly
       let authEmail = email;
       
-      const { data: resolvedEmail } = await supabase.rpc("resolve_admin_email", { _admin_email: email });
+      const { data: resolvedEmail, error: rpcError } = await supabase.rpc("resolve_admin_email", { _admin_email: email });
+      if (rpcError) {
+        console.error("resolve_admin_email RPC error:", rpcError);
+      }
       if (resolvedEmail) {
         // This @gametaverns.com email is an alias — sign in with the real email
         authEmail = resolvedEmail;
