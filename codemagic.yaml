@@ -229,6 +229,27 @@ workflows:
             echo "ERROR: google-services.json not found in project root!"
             exit 1
           fi
+      - name: Verify Firebase Android wiring
+        script: |
+          set -e
+          FILE="android/app/google-services.json"
+          if [ ! -f "$FILE" ]; then
+            echo "ERROR: $FILE missing"
+            exit 1
+          fi
+
+          PACKAGE=$(grep -o '"package_name"[[:space:]]*:[[:space:]]*"[^"]*"' "$FILE" | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+          APP_ID=$(grep -o '"mobilesdk_app_id"[[:space:]]*:[[:space:]]*"[^"]*"' "$FILE" | head -1 | sed -E 's/.*"([^"]+)"$/\1/')
+
+          echo "Detected package_name: $PACKAGE"
+          echo "Detected mobilesdk_app_id: $APP_ID"
+
+          if [ "$PACKAGE" != "$PACKAGE_NAME" ]; then
+            echo "ERROR: google-services package_name ($PACKAGE) != expected PACKAGE_NAME ($PACKAGE_NAME)"
+            exit 1
+          fi
+
+          echo "✓ Firebase config package matches expected Android package"
       - name: Upgrade Gradle wrapper
         script: |
           WRAPPER_PROPS="android/gradle/wrapper/gradle-wrapper.properties"
