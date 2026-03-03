@@ -93,13 +93,18 @@ workflows:
             echo "✓ Added 'import Firebase' to AppDelegate"
           fi
 
-          # Add FirebaseApp.configure() in application(_:didFinishLaunchingWithOptions:)
+          # Add FirebaseApp.configure() before "return true" in didFinishLaunchingWithOptions
           if ! grep -q "FirebaseApp.configure()" "$APP_DELEGATE"; then
-            sed -i '' '/func application.*didFinishLaunchingWithOptions/,/return true/{
-              /return true/i\
-\        FirebaseApp.configure()
-            }' "$APP_DELEGATE"
-            echo "✓ Added FirebaseApp.configure() to AppDelegate"
+            LINE_NUM=$(grep -n "return true" "$APP_DELEGATE" | head -1 | cut -d: -f1)
+            if [ -n "$LINE_NUM" ]; then
+              head -n $((LINE_NUM - 1)) "$APP_DELEGATE" > /tmp/AppDelegate_fb.swift
+              echo "        FirebaseApp.configure()" >> /tmp/AppDelegate_fb.swift
+              tail -n +$LINE_NUM "$APP_DELEGATE" >> /tmp/AppDelegate_fb.swift
+              cp /tmp/AppDelegate_fb.swift "$APP_DELEGATE"
+              echo "✓ Added FirebaseApp.configure() to AppDelegate"
+            else
+              echo "WARNING: Could not find 'return true' in AppDelegate for Firebase init"
+            fi
           fi
 
           if grep -q "capacitorDidRegisterForRemoteNotifications" "$APP_DELEGATE"; then
