@@ -114,29 +114,7 @@ async function handler(req: Request): Promise<Response> {
       }
     }
 
-    if (!isInternalCall) {
-      // Validate user is admin via JWT
-      const supabaseAuth = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        anonKey,
-        { global: { headers: { Authorization: authHeader } } }
-      );
-      const { data: { user } } = await supabaseAuth.auth.getUser();
-      if (!user) {
-        return new Response(
-          JSON.stringify({ success: false, error: "Invalid authentication" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const { data: roleData } = await supabaseAdmin
-        .from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
-      if (!roleData) {
-        return new Response(
-          JSON.stringify({ success: false, error: "Admin access required" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
+    // (duplicate auth block removed)
 
     const body = await req.json().catch(() => ({}));
     const limit = Math.min(body.limit || 50, 200);
