@@ -247,6 +247,7 @@ export function useMyEvents(userId: string | undefined) {
         .select("*")
         .is("library_id", null)
         .eq("created_by_user_id", userId)
+        .neq("status", "cancelled")
         .order("event_date", { ascending: true });
 
       if (error) throw error;
