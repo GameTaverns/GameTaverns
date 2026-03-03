@@ -134,21 +134,23 @@ const GameDetail = () => {
   const basePath = isDemoMode ? "/demo/game" : "/game";
   const editPath = isDemoMode ? `/demo/edit/${game?.id}` : `/admin/edit/${game?.id}`;
 
-  // Fetch catalog additional_images when library game has none but has a catalog_id
+  // Fetch catalog data (additional_images + year_published) when library game has a catalog_id
   const catalogId = (game as any)?.catalog_id as string | undefined;
   const gameHasImages = (game?.additional_images?.length ?? 0) > 0;
-  const { data: catalogImages } = useQuery({
-    queryKey: ["catalog-images", catalogId],
+  const { data: catalogData } = useQuery({
+    queryKey: ["catalog-data", catalogId],
     queryFn: async () => {
       const { data } = await supabase
         .from("game_catalog")
-        .select("additional_images")
+        .select("additional_images, year_published")
         .eq("id", catalogId!)
         .single();
-      return data?.additional_images ?? [];
+      return data;
     },
-    enabled: !!catalogId && !gameHasImages && !isDemoMode,
+    enabled: !!catalogId && !isDemoMode,
   });
+  const catalogImages = (!gameHasImages && catalogData?.additional_images) ? catalogData.additional_images : [];
+  const yearPublished = catalogData?.year_published;
 
 
   if (isLoading) {
@@ -648,6 +650,16 @@ const GameDetail = () => {
                         </TableCell>
                         <TableCell className="text-foreground">
                           {game.publisher.name}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {yearPublished != null && (
+                      <TableRow>
+                        <TableCell className="font-medium text-muted-foreground">
+                          Year Published
+                        </TableCell>
+                        <TableCell className="text-foreground">
+                          {yearPublished}
                         </TableCell>
                       </TableRow>
                     )}
