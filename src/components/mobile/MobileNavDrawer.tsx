@@ -61,17 +61,17 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
       <TenantLink
         href={href}
         className={cn(
-          "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+          "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
           isActive
             ? "bg-primary/10 text-primary"
             : "text-foreground/80 hover:bg-muted hover:text-foreground"
         )}
         onClick={close}
       >
-        <Icon className="h-5 w-5 shrink-0" />
+        <Icon className="h-4 w-4 shrink-0" />
         <span className="flex-1">{label}</span>
         {badge != null && badge > 0 && (
-          <Badge variant="destructive" className="h-5 min-w-5 px-1 flex items-center justify-center text-xs">
+          <Badge variant="destructive" className="h-4 min-w-4 px-0.5 flex items-center justify-center text-[10px]">
             {badge > 9 ? "9+" : badge}
           </Badge>
         )}
@@ -94,14 +94,14 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
         )}
       </SheetTrigger>
 
-      <SheetContent side="right" className="w-72 p-0 flex h-[100dvh] flex-col bg-background">
+      <SheetContent side="right" className="w-56 p-0 flex h-[100dvh] flex-col bg-background">
         {/* Header — no manual close button; SheetContent provides its own */}
-        <div className="px-4 py-4 border-b">
-          <span className="font-display text-base font-bold">Menu</span>
+        <div className="px-3 py-3 border-b">
+          <span className="font-display text-sm font-bold">Menu</span>
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3 pb-24 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-1.5 py-2 pb-24 space-y-0.5">
           {isAuthenticated ? (
             <>
               <NavItem href={getPlatformUrl("/dashboard")} icon={LayoutDashboard} label="Dashboard" />
@@ -110,27 +110,27 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               {/* Library links */}
               {myLibraries.length > 0 && (
                 <>
-                  <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                   <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                     My Libraries
                   </div>
-                  {myLibraries.map((lib) => (
+                   {myLibraries.map((lib) => (
                     <TenantLink
                       key={lib.id}
                       href={getLibraryUrl(lib.slug, "/")}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
                         "text-foreground/80 hover:bg-muted hover:text-foreground"
                       )}
                       onClick={close}
                     >
-                      <Library className="h-5 w-5 shrink-0" />
+                      <Library className="h-4 w-4 shrink-0" />
                       <span className="flex-1 truncate">{lib.name}</span>
                     </TenantLink>
                   ))}
                 </>
               )}
 
-              <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Discover
               </div>
               <NavItem href={getPlatformUrl("/directory")} icon={Globe} label="Directory" />
@@ -138,7 +138,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               <NavItem href={getPlatformUrl("/achievements")} icon={Trophy} label="Achievements" />
               <NavItem href={getPlatformUrl("/lists")} icon={List} label="Curated Lists" />
 
-              <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Messages
               </div>
               <NavItem
@@ -148,7 +148,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                 badge={dmUnreadCount}
               />
 
-              <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Account
               </div>
               {profile?.username && (
@@ -159,7 +159,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                 />
               )}
 
-              <div className="px-4 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Support
               </div>
               <FeedbackNavItem onClose={close} />
@@ -167,9 +167,9 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               <NavItem href={getPlatformUrl("/legal")} icon={Scale} label="Legal" />
               <button
                 onClick={handleSignOut}
-                className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
+                className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
               >
-                <LogOut className="h-5 w-5 shrink-0" />
+                <LogOut className="h-4 w-4 shrink-0" />
                 <span>Sign Out</span>
               </button>
             </>

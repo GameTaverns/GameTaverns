@@ -48,6 +48,8 @@ function getBaseDomain(): string | null {
  */
 function isNativeApp(): boolean {
   if (typeof window === "undefined") return false;
+  // Check Capacitor bridge first (works even with hot-reload pointing to remote URL)
+  if ((window as any).Capacitor?.isNativePlatform?.()) return true;
   const h = window.location.hostname.toLowerCase();
   const p = window.location.protocol;
   return h === "localhost" || h === "127.0.0.1" || p === "capacitor:";
@@ -197,11 +199,7 @@ export function getLibraryUrl(slug: string, path: string = "/"): string {
 
   // On native Capacitor, we use HashRouter so subdomain URLs won't work.
   // Instead, encode as query params so react-router can handle them client-side.
-  const isNative =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1" ||
-      window.location.protocol === "capacitor:");
+  const isNative = isNativeApp();
 
   if (!isNative && baseDomain && isProductionDeployment()) {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
