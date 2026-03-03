@@ -142,6 +142,11 @@ function parseBggItems(xml: string) {
   return items;
 }
 
+/** Check if a description has already been AI-formatted (contains the format marker) */
+function isDescriptionFormatted(desc: string | null | undefined): boolean {
+  return !!desc && desc.includes("Quick Gameplay Overview");
+}
+
 interface ParsedGame {
   bggId: string;
   title: string;
@@ -326,12 +331,11 @@ const handler = async (req: Request): Promise<Response> => {
         try {
           // Check if already exists by bgg_id
           const { data: existing } = await admin
-            .from("game_catalog").select("id").eq("bgg_id", game.bggId).maybeSingle();
+            .from("game_catalog").select("id, description").eq("bgg_id", game.bggId).maybeSingle();
 
           if (existing) {
-            // Update it with fresh BGG data (force refresh)
-            await admin.from("game_catalog").update({
-              description: game.description,
+            // Update with fresh BGG data, but preserve AI-formatted descriptions
+            const updateData: Record<string, any> = {
               image_url: game.imageUrl,
               min_players: game.minPlayers,
               max_players: game.maxPlayers,
@@ -342,7 +346,12 @@ const handler = async (req: Request): Promise<Response> => {
               weight: game.weight,
               is_expansion: game.isExpansion,
               bgg_url: game.bggUrl,
-            }).eq("id", existing.id);
+            };
+            // Only overwrite description if not already AI-formatted
+            if (!isDescriptionFormatted(existing.description)) {
+              updateData.description = game.description;
+            }
+            await admin.from("game_catalog").update(updateData).eq("id", existing.id);
             results.push({ bgg_id: Number(game.bggId), title: game.title, status: "updated" });
             totalSkipped++;
             continue;
@@ -350,17 +359,21 @@ const handler = async (req: Request): Promise<Response> => {
 
           // Check for NULL-bgg_id title match
           const { data: titleMatch } = await admin
-            .from("game_catalog").select("id").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
+            .from("game_catalog").select("id, description").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
 
           let entryId: string | null = null;
           if (titleMatch) {
-            const { data } = await admin.from("game_catalog").update({
-              bgg_id: game.bggId, description: game.description, image_url: game.imageUrl,
+            const titleUpdateData: Record<string, any> = {
+              bgg_id: game.bggId, image_url: game.imageUrl,
               min_players: game.minPlayers, max_players: game.maxPlayers, play_time_minutes: game.playTimeMinutes,
               suggested_age: game.suggestedAge, year_published: game.yearPublished,
               bgg_community_rating: game.bggCommunityRating, weight: game.weight,
               is_expansion: game.isExpansion, bgg_url: game.bggUrl,
-            }).eq("id", titleMatch.id).select("id").single();
+            };
+            if (!isDescriptionFormatted(titleMatch.description)) {
+              titleUpdateData.description = game.description;
+            }
+            const { data } = await admin.from("game_catalog").update(titleUpdateData).eq("id", titleMatch.id).select("id").single();
             entryId = data?.id || null;
           } else {
             const { data } = await admin.from("game_catalog").upsert({
@@ -522,18 +535,22 @@ const handler = async (req: Request): Promise<Response> => {
         if (existingIds.has(game.bggId)) { totalSkipped++; continue; }
         try {
           const { data: titleMatch } = await admin
-            .from("game_catalog").select("id").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
+            .from("game_catalog").select("id, description").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
 
           let entry: { id: string } | null = null;
           if (titleMatch) {
-            const { data } = await admin.from("game_catalog").update({
+            const sweepUpdateData: Record<string, any> = {
               bgg_id: game.bggId, bgg_verified_type: game.bggVerifiedType,
-              description: game.description, image_url: game.imageUrl,
+              image_url: game.imageUrl,
               min_players: game.minPlayers, max_players: game.maxPlayers,
               play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
               year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
               weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
-            }).eq("id", titleMatch.id).select("id").single();
+            };
+            if (!isDescriptionFormatted(titleMatch.description)) {
+              sweepUpdateData.description = game.description;
+            }
+            const { data } = await admin.from("game_catalog").update(sweepUpdateData).eq("id", titleMatch.id).select("id").single();
             entry = data;
           } else {
             const { data } = await admin.from("game_catalog").upsert({
@@ -701,20 +718,24 @@ const handler = async (req: Request): Promise<Response> => {
       if (existingIds.has(game.bggId)) { totalSkipped++; continue; }
       try {
         const { data: titleMatch } = await admin
-          .from("game_catalog").select("id").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
+          .from("game_catalog").select("id, description").eq("title", game.title).is("bgg_id", null).limit(1).maybeSingle();
 
         let entry: { id: string } | null = null;
         let upsertErr: any = null;
 
         if (titleMatch) {
-          const { data, error } = await admin.from("game_catalog").update({
+          const typeCheckUpdateData: Record<string, any> = {
             bgg_id: game.bggId, bgg_verified_type: game.bggVerifiedType,
-            description: game.description, image_url: game.imageUrl,
+            image_url: game.imageUrl,
             min_players: game.minPlayers, max_players: game.maxPlayers,
             play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
             year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
             weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
-          }).eq("id", titleMatch.id).select("id").single();
+          };
+          if (!isDescriptionFormatted(titleMatch.description)) {
+            typeCheckUpdateData.description = game.description;
+          }
+          const { data, error } = await admin.from("game_catalog").update(typeCheckUpdateData).eq("id", titleMatch.id).select("id").single();
           entry = data; upsertErr = error;
         } else {
           const { data, error } = await admin.from("game_catalog").upsert({
