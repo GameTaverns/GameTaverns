@@ -526,7 +526,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen w-60 lg:w-72 wood-grain border-r border-sidebar-border transition-transform duration-300 lg:translate-x-0",
+        "fixed left-0 top-0 z-40 h-screen w-48 min-[400px]:w-60 lg:w-72 wood-grain border-r border-sidebar-border transition-transform duration-300 lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}
     >

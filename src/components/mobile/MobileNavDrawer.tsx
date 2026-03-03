@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Menu, Library, Globe, HelpCircle, BookOpen, MessageSquare,
@@ -32,7 +32,14 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const close = () => setOpen(false);
+  const close = useCallback(() => setOpen(false), []);
+
+  /** Navigate then close — avoids Sheet unmount racing with Link */
+  const navAndClose = useCallback((href: string) => {
+    navigate(href);
+    // Small delay so navigation commits before sheet unmounts
+    setTimeout(() => setOpen(false), 50);
+  }, [navigate]);
 
   const handleSignOut = async () => {
     close();
@@ -94,7 +101,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
         )}
       </SheetTrigger>
 
-      <SheetContent side="right" className="w-56 p-0 flex h-[100dvh] flex-col bg-background">
+      <SheetContent side="right" className="w-48 min-[400px]:w-56 p-0 flex h-[100dvh] flex-col bg-background">
         {/* Header — no manual close button; SheetContent provides its own */}
         <div className="px-3 py-3 border-b">
           <span className="font-display text-sm font-bold">Menu</span>
@@ -114,18 +121,17 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
                     My Libraries
                   </div>
                    {myLibraries.map((lib) => (
-                    <TenantLink
+                    <button
                       key={lib.id}
-                      href={getLibraryUrl(lib.slug, "/")}
+                      onClick={() => navAndClose(getLibraryUrl(lib.slug, "/"))}
                       className={cn(
-                        "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                        "flex w-full items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
                         "text-foreground/80 hover:bg-muted hover:text-foreground"
                       )}
-                      onClick={close}
                     >
                       <Library className="h-4 w-4 shrink-0" />
-                      <span className="flex-1 truncate">{lib.name}</span>
-                    </TenantLink>
+                      <span className="flex-1 truncate text-left">{lib.name}</span>
+                    </button>
                   ))}
                 </>
               )}
