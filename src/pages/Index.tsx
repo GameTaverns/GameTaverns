@@ -252,6 +252,20 @@ const Index = () => {
           case "playtime":
             result = result.filter((g) => g.play_time === filterValue);
             break;
+          case "year": {
+            const yearRanges: Record<string, [number, number]> = {
+              "2020s": [2020, 2029], "2010s": [2010, 2019], "2000s": [2000, 2009],
+              "1990s": [1990, 1999], "Classic": [0, 1989],
+            };
+            const range = yearRanges[filterValue];
+            if (range) {
+              result = result.filter((g) => {
+                const y = (g as any).year_published;
+                return y != null && y >= range[0] && y <= range[1];
+              });
+            }
+            break;
+          }
           case "mechanic":
             result = result.filter((g) =>
               g.mechanics.some((m) => m.name === filterValue)

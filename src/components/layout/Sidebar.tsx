@@ -422,7 +422,7 @@ function SidebarUpcomingEvents({ libraryId }: { libraryId: string }) {
 }
 
 export function Sidebar({ isOpen }: SidebarProps) {
-  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "type", "genre", "mechanic", "publisher", "designer", "artist"].includes(
+  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "year", "type", "genre", "mechanic", "publisher", "designer", "artist"].includes(
     new URLSearchParams(window.location.search).get("filter") || ""
   );
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(isAdvancedFilterActive);
@@ -781,6 +781,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
                   isActive={isActive}
                   onFilterClick={handleFilterClick}
                   defaultOpen={currentFilter === "type"}
+                />
+                {/* Year Published */}
+                <ChipFilterSection
+                  title="Year"
+                  icon={<Calendar className="h-3.5 w-3.5" />}
+                  options={["2020s", "2010s", "2000s", "1990s", "Classic"]}
+                  filterKey="year"
+                  isActive={isActive}
+                  onFilterClick={handleFilterClick}
+                  defaultOpen={currentFilter === "year"}
                 />
                 {/* Genre */}
                 <ChipFilterSection

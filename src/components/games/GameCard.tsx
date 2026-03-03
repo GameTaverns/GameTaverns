@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Users, Clock, DollarSign, Youtube, Copy, Play } from "lucide-react";
+import { Users, Clock, DollarSign, Youtube, Copy, Play, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,12 @@ export function GameCard({ game, priority = false }: GameCardProps) {
                   <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                   {game.play_time.replace(' Minutes', 'm').replace(' Hours', 'h')}
                 </span>
+                {(game as any).year_published != null && (
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                    {(game as any).year_published}
+                  </span>
+                )}
               </div>
 
               {/* Rating */}

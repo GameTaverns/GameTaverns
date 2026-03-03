@@ -150,7 +150,7 @@ const GameDetail = () => {
     enabled: !!catalogId && !isDemoMode,
   });
   const catalogImages = (!gameHasImages && catalogData?.additional_images) ? catalogData.additional_images : [];
-  const yearPublished = catalogData?.year_published;
+  const yearPublished = (game as any)?.year_published ?? catalogData?.year_published;
 
 
   if (isLoading) {
