@@ -223,7 +223,18 @@ workflows:
             echo "" >> /tmp/AppDelegate_patched.swift
             echo "    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {" >> /tmp/AppDelegate_patched.swift
             echo "      Messaging.messaging().apnsToken = deviceToken" >> /tmp/AppDelegate_patched.swift
-            echo "      NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)" >> /tmp/AppDelegate_patched.swift
+            echo "      Messaging.messaging().token { token, error in" >> /tmp/AppDelegate_patched.swift
+            echo "        if let error = error {" >> /tmp/AppDelegate_patched.swift
+            echo "          print(\"FCM token fetch error: \\(error)\")" >> /tmp/AppDelegate_patched.swift
+            echo "          NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)" >> /tmp/AppDelegate_patched.swift
+            echo "          return" >> /tmp/AppDelegate_patched.swift
+            echo "        }" >> /tmp/AppDelegate_patched.swift
+            echo "        if let token = token, !token.isEmpty {" >> /tmp/AppDelegate_patched.swift
+            echo "          NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: token)" >> /tmp/AppDelegate_patched.swift
+            echo "        } else {" >> /tmp/AppDelegate_patched.swift
+            echo "          NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)" >> /tmp/AppDelegate_patched.swift
+            echo "        }" >> /tmp/AppDelegate_patched.swift
+            echo "      }" >> /tmp/AppDelegate_patched.swift
             echo "    }" >> /tmp/AppDelegate_patched.swift
             echo "" >> /tmp/AppDelegate_patched.swift
             echo "    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {" >> /tmp/AppDelegate_patched.swift
