@@ -145,8 +145,6 @@
     scrollbar-gutter: stable;
     /* ~20% font size bump: 16px → 19px base */
     font-size: 119%;
-    /* Prevent iOS elastic overscroll from moving fixed elements (bottom tab bar) */
-    overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
   }
 

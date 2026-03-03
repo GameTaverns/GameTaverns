@@ -36,9 +36,13 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
 
   /** Navigate then close — avoids Sheet unmount racing with Link */
   const navAndClose = useCallback((href: string) => {
-    navigate(href);
-    // Small delay so navigation commits before sheet unmounts
-    setTimeout(() => setOpen(false), 50);
+    // Close first, then navigate after sheet animation starts
+    setOpen(false);
+    setTimeout(() => {
+      // Use replace + state key to force React Router to re-evaluate
+      // even if pathname hasn't changed (e.g. already on /)
+      navigate(href, { replace: true, state: { ts: Date.now() } });
+    }, 100);
   }, [navigate]);
 
   const handleSignOut = async () => {
