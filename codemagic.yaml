@@ -40,7 +40,9 @@ workflows:
       - name: Copy GoogleService-Info.plist
         script: |
           cp ios-config/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
-          echo "✓ GoogleService-Info.plist copied"
+          plutil -lint ios-config/GoogleService-Info.plist
+          plutil -lint ios/App/App/GoogleService-Info.plist
+          echo "✓ GoogleService-Info.plist copied and validated"
       - name: Add Push Notification entitlements
         script: |
           # Copy entitlements file
@@ -151,6 +153,8 @@ workflows:
           if [ $BUILD_EXIT -ne 0 ]; then
             echo "=== LAST 150 LINES OF BUILD LOG ==="
             tail -150 /tmp/xcodebuild_logs/build.log
+            echo "=== GREPPED XCODE ERRORS ==="
+            grep -n "error:" /tmp/xcodebuild_logs/build.log | tail -80 || true
             exit $BUILD_EXIT
           fi
     artifacts:
