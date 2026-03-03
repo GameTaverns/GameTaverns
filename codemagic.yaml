@@ -64,6 +64,51 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST" 2>/dev/null || true
           echo "✓ Background remote-notification mode enabled"
+      - name: Wire Capacitor push callbacks in AppDelegate
+        script: |
+          APP_DELEGATE="ios/App/App/AppDelegate.swift"
+          if [ ! -f "$APP_DELEGATE" ]; then
+            echo "ERROR: AppDelegate.swift not found at $APP_DELEGATE"
+            exit 1
+          fi
+
+          if grep -q "capacitorDidRegisterForRemoteNotifications" "$APP_DELEGATE"; then
+            echo "Push callbacks already present in AppDelegate.swift"
+          else
+            python3 - <<'PY'
+from pathlib import Path
+
+path = Path("ios/App/App/AppDelegate.swift")
+content = path.read_text()
+
+injection = '''
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+      NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+      NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+    }
+'''
+
+if "func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data)" not in content:
+    marker = "return true\n  }"
+    if marker in content:
+        content = content.replace(marker, marker + injection, 1)
+    else:
+        raise SystemExit("Could not find AppDelegate insertion point (return true / closing brace)")
+
+path.write_text(content)
+print("✓ Injected Capacitor push callbacks into AppDelegate.swift")
+PY
+          fi
+
+          echo "=== Verify AppDelegate push callbacks ==="
+          grep -n "didRegisterForRemoteNotificationsWithDeviceToken\|didFailToRegisterForRemoteNotificationsWithError\|capacitorDidRegisterForRemoteNotifications\|capacitorDidFailToRegisterForRemoteNotifications" "$APP_DELEGATE" || {
+            echo "ERROR: push callback verification failed"
+            exit 1
+          }
       - name: Inject privacy strings into Info.plist
         script: |
           PLIST="ios/App/App/Info.plist"
