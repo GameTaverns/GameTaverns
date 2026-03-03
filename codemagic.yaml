@@ -37,21 +37,37 @@ workflows:
       - name: Sync iOS platform
         script: |
           npx cap sync ios
-      - name: Add Firebase Messaging SDK to Podfile
+      - name: Add Firebase Messaging SDK via SPM
         script: |
-          PODFILE="ios/App/Podfile"
-          if grep -q "Firebase/Messaging" "$PODFILE"; then
-            echo "Firebase/Messaging already in Podfile"
-          else
-            # Insert Firebase/Messaging pod into the main target block
-            sed -i '' "/pod 'Capacitor'/a\\
-              pod 'Firebase/Messaging'" "$PODFILE"
-            echo "✓ Added Firebase/Messaging to Podfile"
+          # Capacitor 8 uses SPM, not CocoaPods. Add Firebase to the CapApp-SPM Package.swift
+          PACKAGE_SWIFT="ios/App/CapApp-SPM/Package.swift"
+          if [ ! -f "$PACKAGE_SWIFT" ]; then
+            echo "ERROR: $PACKAGE_SWIFT not found"
+            exit 1
           fi
-          echo "=== Podfile contents ==="
-          cat "$PODFILE"
-          cd ios/App && pod install --repo-update
-          echo "✓ Pod install completed with Firebase"
+
+          if grep -q "firebase-ios-sdk" "$PACKAGE_SWIFT"; then
+            echo "Firebase SDK already in Package.swift"
+          else
+            # Add firebase-ios-sdk dependency to the package
+            sed -i '' 's|dependencies: \[|dependencies: [\
+        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", from: "11.0.0"),|' "$PACKAGE_SWIFT"
+
+            # Add FirebaseMessaging as a target dependency
+            # Find the first .target( block and add FirebaseMessaging to its dependencies
+            sed -i '' '/.product(name: "Capacitor"/a\
+                .product(name: "FirebaseMessaging", package: "firebase-ios-sdk"),' "$PACKAGE_SWIFT"
+
+            echo "✓ Added Firebase Messaging SDK via SPM"
+          fi
+
+          echo "=== Package.swift contents ==="
+          cat "$PACKAGE_SWIFT"
+
+          # Resolve SPM packages
+          cd ios/App
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
+          echo "✓ SPM packages resolved with Firebase"
       - name: Copy GoogleService-Info.plist
         script: |
           cp ios-config/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
@@ -88,9 +104,9 @@ workflows:
           fi
 
           # Add Firebase import at top of file
-          if ! grep -q "import Firebase" "$APP_DELEGATE"; then
-            sed -i '' '1s/^/import Firebase\n/' "$APP_DELEGATE"
-            echo "✓ Added 'import Firebase' to AppDelegate"
+          if ! grep -q "import FirebaseMessaging" "$APP_DELEGATE"; then
+            sed -i '' '1s/^/import FirebaseCore\nimport FirebaseMessaging\n/' "$APP_DELEGATE"
+            echo "✓ Added Firebase imports to AppDelegate"
           fi
 
           # Add FirebaseApp.configure() before "return true" in didFinishLaunchingWithOptions
@@ -134,7 +150,7 @@ workflows:
           echo "=== Final AppDelegate.swift ==="
           cat "$APP_DELEGATE"
           echo "=== Verify AppDelegate push callbacks ==="
-          grep -n "FirebaseApp.configure\|capacitorDidRegisterForRemoteNotifications\|Messaging.messaging().apnsToken" "$APP_DELEGATE" || {
+          grep -n "FirebaseCore\|FirebaseMessaging\|FirebaseApp.configure\|capacitorDidRegisterForRemoteNotifications\|Messaging.messaging().apnsToken" "$APP_DELEGATE" || {
             echo "ERROR: push callback verification failed"
             exit 1
           }
