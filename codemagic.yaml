@@ -364,13 +364,25 @@ workflows:
             echo "ERROR: AAB not found at $AAB_PATH"
             exit 1
           fi
+
           jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
             -keystore "$CM_KEYSTORE_PATH" \
             -storepass "$CM_KEYSTORE_PASSWORD" \
             -keypass "$CM_KEY_PASSWORD" \
             "$AAB_PATH" "$CM_KEY_ALIAS"
+
           echo "Verifying AAB signature..."
           jarsigner -verify -verbose -certs "$AAB_PATH"
+
+          echo "=== SIGNER FINGERPRINTS FROM FINAL AAB ==="
+          keytool -printcert -jarfile "$AAB_PATH" | grep -E "SHA1:|SHA256:|SHA-1:|SHA-256:" || {
+            echo "ERROR: Could not extract signer fingerprints from final AAB"
+            exit 1
+          }
+
+          echo "=== FIREBASE API KEY INSIDE PACKAGED google-services.json ==="
+          grep -o '"current_key"[[:space:]]*:[[:space:]]*"[^"]*"' android/app/google-services.json | head -1 || true
+
           echo "AAB signed and verified."
     artifacts:
       - android/app/build/outputs/**/*.aab
