@@ -234,6 +234,29 @@ export function useUpdateEvent() {
 }
 
 /**
+ * Fetch standalone events created by the current user (library_id IS NULL)
+ */
+export function useMyEvents(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["my-events", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+
+      const { data, error } = await (supabase as any)
+        .from("library_events")
+        .select("*")
+        .is("library_id", null)
+        .eq("created_by_user_id", userId)
+        .order("event_date", { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!userId,
+  });
+}
+
+/**
  * Delete a standalone event
  */
 export function useDeleteEvent() {

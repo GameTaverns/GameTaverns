@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { format } from "date-fns";
-import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter, Plus, CalendarPlus } from "lucide-react";
+import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter, Plus, CalendarPlus, Lock, Eye } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePublicEventDirectory } from "@/hooks/useEventSchedule";
+import { useMyEvents } from "@/hooks/useLibraryEvents";
 import { useAuth } from "@/hooks/useAuth";
 import { CreateEventDialog } from "@/components/events/CreateEventDialog";
 import { Layout } from "@/components/layout/Layout";
@@ -40,7 +41,8 @@ const PUBLIC_EVENT_CREATE_DIALOG_KEY = "public_event_create_dialog_open";
 
 export default function PublicEventDirectory() {
   const { data: events = [], isLoading } = usePublicEventDirectory();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { data: myEvents = [], isLoading: myEventsLoading } = useMyEvents(user?.id);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -160,7 +162,29 @@ export default function PublicEventDirectory() {
           )}
         </div>
 
-        {/* Events List */}
+        {/* My Events Section */}
+        {isAuthenticated && (myEventsLoading || myEvents.length > 0) && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Lock className="h-4 w-4 text-muted-foreground" />
+              My Events
+            </h2>
+            {myEventsLoading ? (
+              <Skeleton className="h-28 w-full" />
+            ) : (
+              myEvents.map((event: any) => (
+                <EventDirectoryCard
+                  key={event.id}
+                  event={event}
+                  onClick={() => navigate(`/event/${event.id}`)}
+                  isPrivate={!event.is_public}
+                />
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Public Events */}
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 w-full" />)}
@@ -221,7 +245,7 @@ export default function PublicEventDirectory() {
   );
 }
 
-function EventDirectoryCard({ event, onClick }: { event: any; onClick: () => void }) {
+function EventDirectoryCard({ event, onClick, isPrivate }: { event: any; onClick: () => void; isPrivate?: boolean }) {
   const eventDate = new Date(event.event_date);
   const endDate = event.end_date ? new Date(event.end_date) : null;
   const isMultiDay = !!endDate;
@@ -255,6 +279,11 @@ function EventDirectoryCard({ event, onClick }: { event: any; onClick: () => voi
               </Badge>
               {!event.library_id && (
                 <Badge variant="secondary" className="text-[10px]">Community</Badge>
+              )}
+              {isPrivate && (
+                <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground">
+                  <Eye className="h-3 w-3" /> Private
+                </Badge>
               )}
             </div>
 
