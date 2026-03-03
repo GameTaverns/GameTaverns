@@ -86,12 +86,79 @@ workflows:
           cd ios/App
           xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
           echo "✓ SPM packages resolved with Firebase"
-      - name: Copy GoogleService-Info.plist
+      - name: Copy GoogleService-Info.plist and add to Xcode project
         script: |
           cp ios-config/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
-          plutil -lint ios-config/GoogleService-Info.plist
           plutil -lint ios/App/App/GoogleService-Info.plist
           echo "✓ GoogleService-Info.plist copied and validated"
+
+          # Add GoogleService-Info.plist to Xcode project resources so it's bundled in the .app
+          PBXPROJ="ios/App/App.xcodeproj/project.pbxproj"
+          if grep -q "GoogleService-Info.plist" "$PBXPROJ"; then
+            echo "GoogleService-Info.plist already in Xcode project"
+          else
+            python3 - "$PBXPROJ" << 'PYEOF'
+          import sys, uuid, re
+
+          path = sys.argv[1]
+          with open(path, "r") as f:
+              content = f.read()
+
+          # Generate unique IDs (24 hex chars)
+          file_ref_id = uuid.uuid4().hex[:24].upper()
+          build_file_id = uuid.uuid4().hex[:24].upper()
+
+          # Add PBXFileReference
+          file_ref_entry = f'\t\t{file_ref_id} /* GoogleService-Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; }};\n'
+          content = content.replace(
+              '/* End PBXFileReference section */',
+              file_ref_entry + '/* End PBXFileReference section */',
+              1
+          )
+
+          # Add PBXBuildFile
+          build_file_entry = f'\t\t{build_file_id} /* GoogleService-Info.plist in Resources */ = {{isa = PBXBuildFile; fileRef = {file_ref_id} /* GoogleService-Info.plist */; }};\n'
+          content = content.replace(
+              '/* End PBXBuildFile section */',
+              build_file_entry + '/* End PBXBuildFile section */',
+              1
+          )
+
+          # Add to PBXResourcesBuildPhase
+          # Find the resources build phase and add our file
+          resources_pattern = r'(files = \([^)]*)(\/\* End PBXResourcesBuildPhase|\)\;)'
+          # Simpler: find "/* Resources */" section and add to its files list
+          resource_line = f'\t\t\t\t{build_file_id} /* GoogleService-Info.plist in Resources */,\n'
+          # Insert into the first "Resources" build phase files list
+          content = content.replace(
+              '/* Resources */',
+              '/* Resources */',
+              1
+          )
+          # Find files = ( after Resources and add entry
+          idx = content.find('/* Resources */')
+          if idx != -1:
+              files_idx = content.find('files = (', idx)
+              if files_idx != -1:
+                  insert_pos = files_idx + len('files = (\n')
+                  content = content[:insert_pos] + resource_line + content[insert_pos:]
+
+          # Add to the App group children
+          # Find the App group and add the file reference
+          app_group_match = content.find('/* App */ = {\n\t\t\tisa = PBXGroup;')
+          if app_group_match != -1:
+              children_idx = content.find('children = (', app_group_match)
+              if children_idx != -1:
+                  insert_pos2 = children_idx + len('children = (\n')
+                  group_entry = f'\t\t\t\t{file_ref_id} /* GoogleService-Info.plist */,\n'
+                  content = content[:insert_pos2] + group_entry + content[insert_pos2:]
+
+          with open(path, "w") as f:
+              f.write(content)
+          print("Added GoogleService-Info.plist to Xcode project")
+          PYEOF
+            echo "✓ GoogleService-Info.plist added to Xcode project resources"
+          fi
       - name: Add Push Notification entitlements
         script: |
           # Copy entitlements file
@@ -128,14 +195,17 @@ workflows:
           fi
 
           # Add FirebaseApp.configure() before "return true" in didFinishLaunchingWithOptions
+          # Wrapped in guard to prevent crash if GoogleService-Info.plist is missing
           if ! grep -q "FirebaseApp.configure()" "$APP_DELEGATE"; then
             LINE_NUM=$(grep -n "return true" "$APP_DELEGATE" | head -1 | cut -d: -f1)
             if [ -n "$LINE_NUM" ]; then
               head -n $((LINE_NUM - 1)) "$APP_DELEGATE" > /tmp/AppDelegate_fb.swift
-              echo "        FirebaseApp.configure()" >> /tmp/AppDelegate_fb.swift
+              echo "        if let _ = Bundle.main.path(forResource: \"GoogleService-Info\", ofType: \"plist\") {" >> /tmp/AppDelegate_fb.swift
+              echo "            FirebaseApp.configure()" >> /tmp/AppDelegate_fb.swift
+              echo "        }" >> /tmp/AppDelegate_fb.swift
               tail -n +$LINE_NUM "$APP_DELEGATE" >> /tmp/AppDelegate_fb.swift
               cp /tmp/AppDelegate_fb.swift "$APP_DELEGATE"
-              echo "✓ Added FirebaseApp.configure() to AppDelegate"
+              echo "✓ Added FirebaseApp.configure() to AppDelegate (guarded)"
             else
               echo "WARNING: Could not find 'return true' in AppDelegate for Firebase init"
             fi
