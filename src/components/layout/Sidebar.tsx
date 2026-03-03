@@ -40,6 +40,7 @@ import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, GAME_TYPE_OPTIONS, PLAY_TIME_OPTIONS, GENRE_OPTIONS } from "@/types/game";
+import { YearFilterSection } from "@/components/filters/YearFilterSection";
 import { useMechanics, usePublishers, useDesigners, useArtists, useLibraryPublishers, useLibraryDesigners, useLibraryArtists } from "@/hooks/useGames";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -783,10 +784,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
                   defaultOpen={currentFilter === "type"}
                 />
                 {/* Year Published */}
-                <ChipFilterSection
-                  title="Year"
+                <YearFilterSection
                   icon={<Calendar className="h-3.5 w-3.5" />}
-                  options={["2020s", "2010s", "2000s", "1990s", "Classic"]}
                   filterKey="year"
                   isActive={isActive}
                   onFilterClick={handleFilterClick}

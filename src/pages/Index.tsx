@@ -13,6 +13,7 @@ import { SEO, collectionPageJsonLd } from "@/components/seo/SEO";
 import { QuadrantFilterButton } from "@/components/games/QuadrantFilterButton";
 import { useGames } from "@/hooks/useGames";
 import { DIFFICULTY_OPTIONS } from "@/types/game";
+import { parseYearFilterRange } from "@/components/filters/YearFilterSection";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useAuth } from "@/hooks/useAuth";
@@ -253,11 +254,7 @@ const Index = () => {
             result = result.filter((g) => g.play_time === filterValue);
             break;
           case "year": {
-            const yearRanges: Record<string, [number, number]> = {
-              "2020s": [2020, 2029], "2010s": [2010, 2019], "2000s": [2000, 2009],
-              "1990s": [1990, 1999], "Classic": [0, 1989],
-            };
-            const range = yearRanges[filterValue];
+            const range = parseYearFilterRange(filterValue);
             if (range) {
               result = result.filter((g) => {
                 const y = (g as any).year_published;

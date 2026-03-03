@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DIFFICULTY_OPTIONS, PLAY_TIME_OPTIONS } from "@/types/game";
+import { YearFilterSection } from "@/components/filters/YearFilterSection";
 import logoImage from "@/assets/logo.png";
 
 // Mechanic category groupings — same as library sidebar
@@ -264,10 +265,8 @@ export function CatalogSidebar({ designers, artists, mechanics, publishers, isOp
                 />
 
                 {/* Year Published */}
-                <ChipFilterSection
-                  title="Year"
+                <YearFilterSection
                   icon={<Calendar className="h-3.5 w-3.5" />}
-                  options={["2020s", "2010s", "2000s", "1990s", "Classic"]}
                   filterKey="year"
                   isActive={isActive}
                   onFilterClick={setFilter}

@@ -13,6 +13,7 @@ import { Search, Users, Clock, Weight, BookOpen, ChevronDown, ChevronUp, Menu, L
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { parseYearFilterRange } from "@/components/filters/YearFilterSection";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
 import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
 import { CatalogSidebar } from "@/components/catalog/CatalogSidebar";
@@ -201,11 +202,7 @@ export default function CatalogBrowse() {
     }
 
     if (sidebarFilter === "year" && sidebarValue) {
-      const yearRanges: Record<string, [number, number]> = {
-        "2020s": [2020, 2029], "2010s": [2010, 2019], "2000s": [2000, 2009],
-        "1990s": [1990, 1999], "Classic": [0, 1989],
-      };
-      const range = yearRanges[sidebarValue];
+      const range = parseYearFilterRange(sidebarValue);
       if (range) query = query.gte("year_published", range[0]).lte("year_published", range[1]);
     }
 
