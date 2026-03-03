@@ -200,6 +200,15 @@ export default function CatalogBrowse() {
       }
     }
 
+    if (sidebarFilter === "year" && sidebarValue) {
+      const yearRanges: Record<string, [number, number]> = {
+        "2020s": [2020, 2029], "2010s": [2010, 2019], "2000s": [2000, 2009],
+        "1990s": [1990, 1999], "Classic": [0, 1989],
+      };
+      const range = yearRanges[sidebarValue];
+      if (range) query = query.gte("year_published", range[0]).lte("year_published", range[1]);
+    }
+
     if (showFilters) {
       const count = playerCount[0];
       query = query.lte("min_players", count).gte("max_players", count);
