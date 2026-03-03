@@ -1,6 +1,6 @@
-// Shared AI client for edge functions - Perplexity is the PRIMARY AI provider
-// Priority: Perplexity (recommended) > Lovable AI (cloud fallback)
-// Note: OpenAI, Anthropic, Google are legacy options - Perplexity is preferred
+// Shared AI client for edge functions - Google Gemini is the PRIMARY AI provider
+// Priority: Google Gemini (primary) > Perplexity (web search fallback) > Lovable AI (cloud)
+// Note: OpenAI, Anthropic are legacy options
 
 export interface AIMessage {
   role: "system" | "user" | "assistant";
@@ -48,21 +48,10 @@ async function safeReadJson(response: Response): Promise<any> {
 
 /**
  * Get AI provider configuration
- * Priority: PERPLEXITY (primary) > Google Gemini (fallback) > Lovable (cloud) > OpenAI/Anthropic (legacy)
+ * Priority: Google Gemini (primary) > Perplexity (web search only) > Lovable (cloud) > OpenAI/Anthropic (legacy)
  */
 function getAIConfig(): { endpoint: string; apiKey: string; model: string; provider: string } | null {
-  // Check for Perplexity (PRIMARY - includes web search, best for game data)
-  const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
-  if (perplexityKey) {
-    return {
-      endpoint: "https://api.perplexity.ai/chat/completions",
-      apiKey: perplexityKey,
-      model: "sonar",
-      provider: "perplexity",
-    };
-  }
-
-  // Google AI / Gemini (FIRST FALLBACK - supports vision, good for descriptions & images)
+  // Google AI / Gemini (PRIMARY - fast, cheap, great for structured output)
   const googleKey = Deno.env.get("GOOGLE_AI_API_KEY");
   if (googleKey) {
     return {
@@ -70,6 +59,17 @@ function getAIConfig(): { endpoint: string; apiKey: string; model: string; provi
       apiKey: googleKey,
       model: "gemini-2.0-flash",
       provider: "google",
+    };
+  }
+
+  // Perplexity (FALLBACK - only useful when web search grounding is needed)
+  const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
+  if (perplexityKey) {
+    return {
+      endpoint: "https://api.perplexity.ai/chat/completions",
+      apiKey: perplexityKey,
+      model: "sonar",
+      provider: "perplexity",
     };
   }
 
@@ -120,8 +120,8 @@ export function isAIConfigured(): boolean {
  * Get AI provider name for logging
  */
 export function getAIProviderName(): string {
-  if (Deno.env.get("PERPLEXITY_API_KEY")) return "Perplexity (primary)";
-  if (Deno.env.get("GOOGLE_AI_API_KEY")) return "Google Gemini (fallback)";
+  if (Deno.env.get("GOOGLE_AI_API_KEY")) return "Google Gemini (primary)";
+  if (Deno.env.get("PERPLEXITY_API_KEY")) return "Perplexity (web search)";
   if (Deno.env.get("LOVABLE_API_KEY")) return "Lovable AI";
   if (Deno.env.get("OPENAI_API_KEY")) return "OpenAI (legacy)";
   if (Deno.env.get("ANTHROPIC_API_KEY")) return "Anthropic Claude (legacy)";
@@ -153,7 +153,7 @@ export async function aiComplete(options: AIRequestOptions): Promise<AIResponse>
   if (!config) {
     return {
       success: false,
-      error: "AI service not configured. Set PERPLEXITY_API_KEY or GOOGLE_AI_API_KEY.",
+      error: "AI service not configured. Set GOOGLE_AI_API_KEY or PERPLEXITY_API_KEY.",
     };
   }
 
