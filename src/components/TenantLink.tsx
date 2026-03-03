@@ -14,6 +14,8 @@ import { forwardRef } from "react";
 
 function isNativeEnvironment(): boolean {
   if (typeof window === "undefined") return false;
+  // Check Capacitor bridge first (works even with hot-reload pointing to remote URL)
+  if ((window as any).Capacitor?.isNativePlatform?.()) return true;
   const h = window.location.hostname.toLowerCase();
   const p = window.location.protocol;
   return h === "localhost" || h === "127.0.0.1" || p === "capacitor:";

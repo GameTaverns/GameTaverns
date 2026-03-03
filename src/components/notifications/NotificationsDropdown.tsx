@@ -165,7 +165,6 @@ export function NotificationsDropdown({ variant = "default", unreadMessageCount 
             variant === "dashboard" && "text-cream hover:text-white hover:bg-wood-medium/50"
           )}
           style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-          onClick={(e) => e.stopPropagation()}
         >
           <Bell className="h-5 w-5" />
           {totalUnread > 0 && (

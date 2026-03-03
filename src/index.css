@@ -145,6 +145,9 @@
     scrollbar-gutter: stable;
     /* ~20% font size bump: 16px → 19px base */
     font-size: 119%;
+    /* Prevent iOS elastic overscroll from moving fixed elements (bottom tab bar) */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
   }
 
   * {
@@ -305,6 +308,7 @@
     /* Prevent rubber-band scroll from moving fixed children */
     -webkit-overflow-scrolling: touch;
     overflow-y: auto;
+    overscroll-behavior-y: none;
     min-height: 100vh;
     min-height: 100dvh;
     /* Add bottom padding so content clears the fixed tab bar */
