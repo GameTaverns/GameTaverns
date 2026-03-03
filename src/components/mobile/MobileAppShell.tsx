@@ -8,6 +8,7 @@ import { WifiOff, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useNavigate, useLocation } from "react-router-dom";
+import { getNativeEffectivePath } from "@/lib/nativeRouting";
 
 // Error boundary to catch any crash inside the shell
 class MobileErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
@@ -146,14 +147,15 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   // Cap this at a short window: if navigate() fails, fall through to children.
   // IMPORTANT: Do NOT block platform paths (/dashboard, /catalog, /dm, etc.)
   const SHELL_PLATFORM_PATHS = [
-    '/dashboard', '/catalog', '/dm', '/docs', '/directory', '/achievements',
-    '/community', '/club', '/u/', '/lists', '/create-library',
-    '/login', '/signup', '/legal', '/privacy', '/terms', '/cookies',
-    '/features', '/press', '/install', '/notifications', '/grow', '/share-card',
-    '/picker',
+    '/dashboard', '/dashboard/editor', '/catalog', '/catalog/analytics', '/catalog/mechanics', '/catalog/mechanic/',
+    '/dm', '/docs', '/directory', '/achievements', '/community', '/club', '/u/', '/lists', '/create-library',
+    '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/setup-2fa',
+    '/legal', '/privacy', '/terms', '/cookies', '/features', '/press', '/install', '/notifications',
+    '/grow', '/share-card', '/picker', '/request-club', '/join-club', '/events', '/event/', '/embed', '/referrals',
   ];
+  const effectivePath = getNativeEffectivePath(location.pathname);
   const isOnPlatformPath = SHELL_PLATFORM_PATHS.some(
-    p => location.pathname === p || location.pathname.startsWith(p)
+    p => effectivePath === p || effectivePath.startsWith(p)
   );
   if (isNative && isAuthenticated && !activeLibrary && !isOnPlatformPath) {
     return (
@@ -166,8 +168,8 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   // Not authenticated and no library — show selector, unless the user is
   // navigating to an auth route (login, signup, forgot-password, reset-password),
   // OR is already authenticated (they'll be redirected to dashboard by the effect above).
-  const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password', '/legal', '/privacy', '/terms', '/cookies', '/docs', '/directory'];
-  const isAuthPath = AUTH_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p));
+  const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/setup-2fa', '/legal', '/privacy', '/terms', '/cookies', '/docs', '/directory'];
+  const isAuthPath = AUTH_PATHS.some(p => effectivePath === p || effectivePath.startsWith(p));
 
   if (isNative && !isAuthenticated && !activeLibrary && !isAuthPath) {
     const params = new URLSearchParams(location.search);
@@ -178,7 +180,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   }
 
   return (
-    <div className={`mobile-app-shell ${platform}`}>
+    <div className={`mobile-app-shell ${platform} ${isNative ? "native-mobile-shell" : ""}`}>
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-destructive text-destructive-foreground py-2 px-4 flex items-center justify-center gap-2 text-sm">
           <WifiOff className="h-4 w-4" />
@@ -215,7 +217,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
           <button
             type="button"
             className="fixed right-3 z-[9998] rounded-full border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-lg"
-            style={{ bottom: "calc(60px + env(safe-area-inset-bottom) + 12px)" }}
+            style={{ bottom: "calc(var(--mobile-tab-offset) + 12px)" }}
             onClick={() => setShowPushDebug((prev) => !prev)}
             aria-label="Toggle push debug panel"
           >

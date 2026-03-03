@@ -5,7 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate, useSearchParams, useLocation, useNavigate } from "react-router-dom";
-import { Capacitor } from "@capacitor/core";
+import { getNativeEffectivePath, isNativeRuntime } from "@/lib/nativeRouting";
 import { ThemeProvider } from "next-themes";
 import { ThemeApplicator } from "@/components/ThemeApplicator";
 import { TenantThemeApplicator } from "@/components/TenantThemeApplicator";
@@ -138,19 +138,6 @@ function isPlatformPath(pathname: string): boolean {
 }
 
 
-/**
- * Get the real active path for platform detection on native.
- * window.location.hash looks like '#/dashboard' or '#/dashboard?tenant=x'
- * Strip the leading '#' and any query string to get the pathname.
- */
-function getNativeEffectivePath(): string {
-  if (typeof window === 'undefined') return '/';
-  const hash = window.location.hash; // e.g. '#/dashboard?tenant=x'
-  if (!hash || !hash.startsWith('#')) return '/';
-  const withoutHash = hash.slice(1); // '/dashboard?tenant=x'
-  const qIndex = withoutHash.indexOf('?');
-  return qIndex >= 0 ? withoutHash.slice(0, qIndex) : withoutHash;
-}
 
 // Admin subdomain routes (admin.gametaverns.com)
 // Completely isolated — no tenant logic, no mobile shell, no main app code
@@ -178,25 +165,24 @@ function AppRoutes() {
 
   const isOnAdminSubdomain = isAdminSubdomain();
 
-  const effectivePath = isRunningNative()
-    ? (location.pathname !== '/' ? location.pathname : getNativeEffectivePath())
-    : location.pathname;
+  const nativeRuntime = isRunningNative();
+  const effectivePath = getNativeEffectivePath(location.pathname);
 
   const isOnPlatformPath = isPlatformPath(effectivePath);
-  const tenantSlug = searchParams.get("tenant") || (isRunningNative() && !isOnPlatformPath ? activeLibrary : null);
+  const tenantSlug = searchParams.get("tenant") || (nativeRuntime && !isOnPlatformPath ? activeLibrary : null);
 
   // Inject ?tenant= ONLY for library routes on native, never for platform routes.
   useEffect(() => {
     if (isOnAdminSubdomain) return;
-    if (!isRunningNative() || !activeLibrary) return;
+    if (!nativeRuntime || !activeLibrary) return;
     if (isOnPlatformPath) return;
     const currentTenant = new URLSearchParams(location.search).get("tenant");
     if (!currentTenant || currentTenant !== activeLibrary) {
       const newParams = new URLSearchParams(location.search);
       newParams.set("tenant", activeLibrary);
-      navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
+      navigate(`${effectivePath}?${newParams.toString()}`, { replace: true });
     }
-  }, [activeLibrary, location.search, location.pathname, navigate, isOnPlatformPath, isOnAdminSubdomain]);
+  }, [activeLibrary, location.search, navigate, isOnPlatformPath, isOnAdminSubdomain, nativeRuntime, effectivePath]);
 
   // Admin subdomain — render isolated admin routes, skip everything else
   if (isOnAdminSubdomain) {
@@ -428,16 +414,7 @@ function LibraryRoutes() {
 //   - iOS bundled IPA     → hostname is "localhost" (scheme: capacitor://)
 //   - Any web/Lovable URL → hostname is never "localhost"
 function isRunningNative(): boolean {
-  if (Capacitor.isNativePlatform()) return true;
-  // Only treat localhost as native if NOT running on a standard dev port (Vite/webpack).
-  // This prevents local web development from incorrectly routing through HashRouter.
-  if (typeof window !== 'undefined') {
-    const h = window.location.hostname.toLowerCase();
-    const p = window.location.port;
-    const isDevServer = ['5173', '5174', '3000', '3001', '4173', '8080'].includes(p);
-    if ((h === 'localhost' || h === '127.0.0.1') && !isDevServer) return true;
-  }
-  return false;
+  return isNativeRuntime();
 }
 const RouterComponent = isRunningNative() ? HashRouter : BrowserRouter;
 

@@ -82,6 +82,10 @@
     --forest: 142 35% 30%;
     --sienna: 25 45% 42%;
     --cream: 40 50% 96%;
+
+    /* Mobile native safe-area/navigation spacing */
+    --mobile-tab-height: 60px;
+    --mobile-tab-offset: calc(var(--mobile-tab-height) + env(safe-area-inset-bottom));
   }
 
   .dark {
@@ -283,7 +287,7 @@
   /* Sticky mobile action bar */
   .mobile-action-bar {
     @apply fixed z-40 border-t bg-background/95 backdrop-blur-sm px-4 py-3;
-    bottom: 60px; /* Clear the bottom tab bar on mobile */
+    bottom: var(--mobile-tab-offset); /* Clear the bottom tab bar on mobile */
     left: 0;
     right: 0;
     padding-bottom: 0.75rem;
@@ -304,13 +308,17 @@
     min-height: 100vh;
     min-height: 100dvh;
     /* Add bottom padding so content clears the fixed tab bar */
-    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+    padding-bottom: var(--mobile-tab-offset);
   }
 
   /* On desktop, no bottom padding needed */
   @media (min-width: 768px) {
     .mobile-app-shell {
       padding-bottom: 0;
+    }
+
+    .mobile-app-shell.native-mobile-shell {
+      padding-bottom: var(--mobile-tab-offset);
     }
   }
 
@@ -328,7 +336,7 @@
     top: auto !important;
     width: 100% !important;
     margin: 0 !important;
-    height: auto;
+    min-height: var(--mobile-tab-height);
     padding-bottom: env(safe-area-inset-bottom);
     /* DO NOT use transform on fixed elements — it breaks position:fixed in iOS WebKit */
     -webkit-backface-visibility: hidden;
@@ -350,6 +358,9 @@
   }
   .mobile-bottom-tab--active {
     @apply text-primary;
+  }
+  .native-mobile-tabs {
+    display: flex !important;
   }
 }
 

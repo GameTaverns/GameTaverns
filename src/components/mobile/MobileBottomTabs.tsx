@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { LayoutDashboard, Library, BookOpen, MessageSquare, Menu } from "lucide-react";
+import { getNativeEffectivePath, isNativeRuntime } from "@/lib/nativeRouting";
 import { TenantLink } from "@/components/TenantLink";
 import { getPlatformUrl, getLibraryUrl } from "@/hooks/useTenantUrl";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,8 @@ export function MobileBottomTabs() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const nativeRuntime = isNativeRuntime();
 
   if (!isAuthenticated || !isMounted) return null;
 
@@ -62,10 +65,10 @@ export function MobileBottomTabs() {
     },
   ];
 
-  const currentPath = location.pathname;
+  const currentPath = getNativeEffectivePath(location.pathname);
 
   const tabsNav = (
-    <nav className="mobile-bottom-tabs md:hidden" aria-label="Main navigation">
+    <nav className={cn("mobile-bottom-tabs", !nativeRuntime && "md:hidden", nativeRuntime && "native-mobile-tabs")} aria-label="Main navigation">
       {tabs.map((tab) => {
         const isActive = tab.match(currentPath);
         const Icon = tab.icon;
