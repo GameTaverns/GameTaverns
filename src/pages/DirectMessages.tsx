@@ -67,7 +67,7 @@ export default function DirectMessages() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 h-[calc(100vh-200px)] min-h-[500px]">
+        <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 h-[calc(100dvh-200px)] md:h-[calc(100vh-200px)] min-h-[500px]">
           {/* Sidebar */}
           <Card className="bg-wood-medium/30 border-wood-medium/50 overflow-hidden flex flex-col">
             <DMInbox
