@@ -30,6 +30,7 @@ interface ParsedEnrichment {
   description?: string;
   bggCommunityRating: number | null;
   weight: number | null;
+  yearPublished: number | null;
 }
 
 /** Parse multi-item BGG XML into enrichment data */
@@ -55,6 +56,8 @@ function parseBggXmlBatch(xml: string): ParsedEnrichment[] {
     const bggRating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
     const weightMatch = block.match(/<averageweight\s+value="([^"]+)"/);
     const weight = weightMatch ? parseFloat(weightMatch[1]) : null;
+    const yearMatch = block.match(/<yearpublished[^>]*value="([^"]+)"/);
+    const yearPublished = yearMatch ? parseInt(yearMatch[1]) || null : null;
 
     results.push({
       bggId,
@@ -67,6 +70,7 @@ function parseBggXmlBatch(xml: string): ParsedEnrichment[] {
       bggCommunityRating: bggRating && !isNaN(bggRating) && bggRating > 0
         ? Math.round(bggRating * 10) / 10 : null,
       weight: weight && !isNaN(weight) && weight > 0 ? Math.round(weight * 100) / 100 : null,
+      yearPublished,
     });
   }
   return results;
@@ -353,6 +357,7 @@ const handler = async (req: Request): Promise<Response> => {
           const catalogUpdate: Record<string, unknown> = { bgg_verified_type: item.itemType };
           if (item.bggCommunityRating !== null) catalogUpdate.bgg_community_rating = item.bggCommunityRating;
           if (item.weight !== null) catalogUpdate.weight = item.weight;
+          if (item.yearPublished !== null) catalogUpdate.year_published = item.yearPublished;
           if (item.description && !(entry.description && entry.description.includes("Quick Gameplay Overview"))) catalogUpdate.description = item.description;
           catalogUpdates.push(admin.from("game_catalog").update(catalogUpdate).eq("id", entry.id));
 
@@ -401,6 +406,86 @@ const handler = async (req: Request): Promise<Response> => {
         success: true, mode: "enrich", processed, designersAdded, artistsAdded,
         total: catalogEntries.length, hasMore,
         cached_designers: designerCache.size, cached_artists: artistCache.size,
+        errors: errors.slice(0, 20),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
+    // MODE: backfill-years — Fill year_published for catalog entries that have it missing
+    // =====================================================================
+    if (mode === "backfill-years") {
+      const BGG_BATCH_SIZE = 20;
+      const batchSize = Math.min(body.batch_size || 200, 500);
+
+      const { data: entries, error: fetchErr } = await admin
+        .from("game_catalog")
+        .select("id, bgg_id")
+        .not("bgg_id", "is", null)
+        .is("year_published", null)
+        .order("created_at", { ascending: true })
+        .limit(batchSize);
+
+      if (fetchErr) {
+        return new Response(JSON.stringify({ error: fetchErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!entries || entries.length === 0) {
+        return new Response(JSON.stringify({
+          success: true, mode: "backfill-years", processed: 0, message: "All entries have year_published", hasMore: false,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      console.log(`[catalog-backfill] backfill-years: ${entries.length} entries missing year_published`);
+
+      let updated = 0;
+      const errors: string[] = [];
+      const entryMap = new Map(entries.map(e => [e.bgg_id!, e.id]));
+      const allBggIds = entries.map(e => e.bgg_id!);
+
+      for (let i = 0; i < allBggIds.length; i += BGG_BATCH_SIZE) {
+        const chunk = allBggIds.slice(i, i + BGG_BATCH_SIZE);
+        const url = `https://boardgamegeek.com/xmlapi2/thing?id=${chunk.join(",")}&stats=1`;
+
+        let xml: string | null = null;
+        let attempts = 0;
+        while (attempts < 3 && !xml) {
+          attempts++;
+          try {
+            const res = await fetch(url, { headers: bggHeaders });
+            if (res.status === 429) { await sleep(attempts * 3000); continue; }
+            if (res.status === 202) { await sleep(3000); continue; }
+            if (res.ok) xml = await res.text();
+            else { errors.push(`BGG HTTP ${res.status}`); break; }
+          } catch (e) {
+            errors.push(`Fetch error: ${e instanceof Error ? e.message : String(e)}`);
+            if (attempts < 3) await sleep(2000);
+          }
+        }
+
+        if (!xml) continue;
+
+        const parsed = parseBggXmlBatch(xml);
+        const updates: Promise<any>[] = [];
+        for (const item of parsed) {
+          const catalogId = entryMap.get(item.bggId);
+          if (!catalogId || item.yearPublished === null) continue;
+          const updateObj: Record<string, unknown> = { year_published: item.yearPublished };
+          // Also backfill weight/rating if missing
+          if (item.weight !== null) updateObj.weight = item.weight;
+          if (item.bggCommunityRating !== null) updateObj.bgg_community_rating = item.bggCommunityRating;
+          updates.push(admin.from("game_catalog").update(updateObj).eq("id", catalogId));
+          updated++;
+        }
+        await Promise.all(updates);
+
+        if (i + BGG_BATCH_SIZE < allBggIds.length) await sleep(1000);
+      }
+
+      const hasMore = entries.length === batchSize;
+      return new Response(JSON.stringify({
+        success: true, mode: "backfill-years", updated, total: entries.length, hasMore,
         errors: errors.slice(0, 20),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
