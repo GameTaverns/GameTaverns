@@ -39,7 +39,6 @@ workflows:
           npx cap sync ios
       - name: Add Firebase Messaging SDK via SPM
         script: |
-          # Capacitor 8 uses SPM, not CocoaPods. Add Firebase to the CapApp-SPM Package.swift
           PACKAGE_SWIFT="ios/App/CapApp-SPM/Package.swift"
           if [ ! -f "$PACKAGE_SWIFT" ]; then
             echo "ERROR: $PACKAGE_SWIFT not found"
@@ -49,22 +48,41 @@ workflows:
           if grep -q "firebase-ios-sdk" "$PACKAGE_SWIFT"; then
             echo "Firebase SDK already in Package.swift"
           else
-            # Add firebase-ios-sdk dependency to the package
-            sed -i '' 's|dependencies: \[|dependencies: [\
-        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", from: "11.0.0"),|' "$PACKAGE_SWIFT"
-
-            # Add FirebaseMessaging as a target dependency
-            # Find the first .target( block and add FirebaseMessaging to its dependencies
-            sed -i '' '/.product(name: "Capacitor"/a\
-                .product(name: "FirebaseMessaging", package: "firebase-ios-sdk"),' "$PACKAGE_SWIFT"
-
+            python3 - "$PACKAGE_SWIFT" << 'PYEOF'
+          import sys
+          path = sys.argv[1]
+          with open(path, "r") as f:
+              content = f.read()
+          # Add firebase-ios-sdk package dependency
+          content = content.replace(
+              "dependencies: [",
+              'dependencies: [\n        .package(url: "https://github.com/firebase/firebase-ios-sdk.git", from: "11.0.0"),',
+              1
+          )
+          # Add FirebaseMessaging target dependency after Capacitor product
+          content = content.replace(
+              '.product(name: "Capacitor"',
+              '.product(name: "Capacitor"',
+              1
+          )
+          # Insert FirebaseMessaging after the line containing .product(name: "Capacitor"
+          lines = content.split("\n")
+          new_lines = []
+          for line in lines:
+              new_lines.append(line)
+              if '.product(name: "Capacitor"' in line:
+                  indent = "                "
+                  new_lines.append(indent + '.product(name: "FirebaseMessaging", package: "firebase-ios-sdk"),')
+          with open(path, "w") as f:
+              f.write("\n".join(new_lines))
+          print("Patched Package.swift with Firebase")
+          PYEOF
             echo "✓ Added Firebase Messaging SDK via SPM"
           fi
 
           echo "=== Package.swift contents ==="
           cat "$PACKAGE_SWIFT"
 
-          # Resolve SPM packages
           cd ios/App
           xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
           echo "✓ SPM packages resolved with Firebase"
