@@ -112,7 +112,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
     if (tenantFromUrl && tenantFromUrl !== activeLibrary) {
       selectLibrary(tenantFromUrl);
     }
-  }, [isNative, location.search, activeLibrary, selectLibrary]);
+  }, [isNative, location.search, location.state, activeLibrary, selectLibrary]);
 
   // After login on native, auto-select the user's primary library so that
   // tenant context is set without requiring the library selector.
