@@ -236,19 +236,23 @@ export function useUpdateEvent() {
 /**
  * Fetch standalone events created by the current user (library_id IS NULL)
  */
-export function useMyEvents(userId: string | undefined) {
+export function useMyEvents(userId: string | undefined, includeArchived: boolean = false) {
   return useQuery({
-    queryKey: ["my-events", userId],
+    queryKey: ["my-events", userId, includeArchived],
     queryFn: async () => {
       if (!userId) return [];
 
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from("library_events")
         .select("*")
         .is("library_id", null)
-        .eq("created_by_user_id", userId)
-        .neq("status", "cancelled")
-        .order("event_date", { ascending: true });
+        .eq("created_by_user_id", userId);
+
+      if (!includeArchived) {
+        query = query.neq("status", "cancelled");
+      }
+
+      const { data, error } = await query.order("event_date", { ascending: true });
 
       if (error) throw error;
       return data || [];

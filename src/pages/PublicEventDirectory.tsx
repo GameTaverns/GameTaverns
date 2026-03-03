@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { format } from "date-fns";
-import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter, Plus, CalendarPlus, Lock, Eye } from "lucide-react";
+import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter, Plus, CalendarPlus, Lock, Eye, Archive } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,7 +42,8 @@ const PUBLIC_EVENT_CREATE_DIALOG_KEY = "public_event_create_dialog_open";
 export default function PublicEventDirectory() {
   const { data: events = [], isLoading } = usePublicEventDirectory();
   const { isAuthenticated, user } = useAuth();
-  const { data: myEvents = [], isLoading: myEventsLoading } = useMyEvents(user?.id);
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: myEvents = [], isLoading: myEventsLoading } = useMyEvents(user?.id, showArchived);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -163,12 +164,23 @@ export default function PublicEventDirectory() {
         </div>
 
         {/* My Events Section */}
-        {isAuthenticated && (myEventsLoading || myEvents.length > 0) && (
+        {isAuthenticated && (myEventsLoading || myEvents.length > 0 || showArchived) && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Lock className="h-4 w-4 text-muted-foreground" />
-              My Events
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Lock className="h-4 w-4 text-muted-foreground" />
+                My Events
+              </h2>
+              <Button
+                variant={showArchived ? "secondary" : "ghost"}
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={() => setShowArchived(!showArchived)}
+              >
+                <Archive className="h-3.5 w-3.5" />
+                {showArchived ? "Hide Archived" : "Show Archived"}
+              </Button>
+            </div>
             {myEventsLoading ? (
               <Skeleton className="h-28 w-full" />
             ) : (
@@ -178,6 +190,7 @@ export default function PublicEventDirectory() {
                   event={event}
                   onClick={() => navigate(`/event/${event.id}`)}
                   isPrivate={!event.is_public}
+                  isCancelled={event.status === "cancelled"}
                 />
               ))
             )}
@@ -245,7 +258,7 @@ export default function PublicEventDirectory() {
   );
 }
 
-function EventDirectoryCard({ event, onClick, isPrivate }: { event: any; onClick: () => void; isPrivate?: boolean }) {
+function EventDirectoryCard({ event, onClick, isPrivate, isCancelled }: { event: any; onClick: () => void; isPrivate?: boolean; isCancelled?: boolean }) {
   const eventDate = new Date(event.event_date);
   const endDate = event.end_date ? new Date(event.end_date) : null;
   const isMultiDay = !!endDate;
@@ -257,7 +270,7 @@ function EventDirectoryCard({ event, onClick, isPrivate }: { event: any; onClick
   ].filter(Boolean);
 
   return (
-    <Card className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={onClick}>
+    <Card className={`cursor-pointer hover:bg-muted/30 transition-colors ${isCancelled ? "opacity-60" : ""}`} onClick={onClick}>
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
           {/* Date Block */}
@@ -284,6 +297,9 @@ function EventDirectoryCard({ event, onClick, isPrivate }: { event: any; onClick
                 <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground">
                   <Eye className="h-3 w-3" /> Private
                 </Badge>
+              )}
+              {isCancelled && (
+                <Badge variant="destructive" className="text-[10px]">Cancelled</Badge>
               )}
             </div>
 
