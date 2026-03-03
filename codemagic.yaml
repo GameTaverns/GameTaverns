@@ -223,7 +223,10 @@ workflows:
             -keystore "$CM_KEYSTORE_PATH" \
             -storepass "$CM_KEYSTORE_PASSWORD" \
             -alias "$CM_KEY_ALIAS" \
-            -keypass "$CM_KEY_PASSWORD" | grep -E "SHA1:|SHA256:"
+            -keypass "$CM_KEY_PASSWORD" | grep -E "SHA1:|SHA256:|SHA-1:|SHA-256:" || {
+              echo "ERROR: Could not parse SHA fingerprints from keytool output"
+              exit 1
+            }
       - name: Copy google-services.json
         script: |
           if [ -f "google-services.json" ]; then
