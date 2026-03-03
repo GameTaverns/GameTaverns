@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight } from "lucide-react";
+import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight, Calendar } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -523,6 +523,12 @@ const GameDetail = () => {
 
             {/* Categories as clickable badges */}
             <div className="flex flex-wrap gap-2 mb-6 max-w-[calc(100vw-2rem)] overflow-hidden">
+              {yearPublished != null && (
+                <Badge variant="outline" className="text-sm">
+                  <Calendar className="h-3.5 w-3.5 mr-1" />
+                  {yearPublished}
+                </Badge>
+              )}
               {allCategories.map((cat, idx) => {
                 const filterParams = new URLSearchParams();
                 filterParams.set("filter", cat.type);

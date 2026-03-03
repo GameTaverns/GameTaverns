@@ -16,6 +16,7 @@ import {
   Gauge,
   Clock,
   Puzzle,
+  Calendar,
   Building2,
   PenTool,
   Palette,
@@ -86,7 +87,7 @@ export function CatalogSidebar({ designers, artists, mechanics, publishers, isOp
   const activeFilter = searchParams.get("filter");
   const activeValue = searchParams.get("value");
 
-  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "mechanic", "publisher", "designer", "artist"].includes(activeFilter || "");
+  const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "year", "mechanic", "publisher", "designer", "artist"].includes(activeFilter || "");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(isAdvancedFilterActive);
 
   const setFilter = (filter: string, value: string) => {
@@ -260,6 +261,17 @@ export function CatalogSidebar({ designers, artists, mechanics, publishers, isOp
                   isActive={isActive}
                   onFilterClick={setFilter}
                   defaultOpen={activeFilter === "playtime"}
+                />
+
+                {/* Year Published */}
+                <ChipFilterSection
+                  title="Year"
+                  icon={<Calendar className="h-3.5 w-3.5" />}
+                  options={["2020s", "2010s", "2000s", "1990s", "Classic"]}
+                  filterKey="year"
+                  isActive={isActive}
+                  onFilterClick={setFilter}
+                  defaultOpen={activeFilter === "year"}
                 />
 
                 {/* Mechanics */}

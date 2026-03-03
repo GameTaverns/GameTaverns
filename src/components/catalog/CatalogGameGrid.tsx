@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Clock, Weight, BookOpen, PenTool, Plus, Loader2, Heart } from "lucide-react";
+import { Users, Clock, Weight, BookOpen, PenTool, Plus, Loader2, Heart, Calendar } from "lucide-react";
 import { decodeHtmlEntities } from "@/lib/utils";
 
 export interface CatalogGameItem {
@@ -71,6 +71,12 @@ export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, o
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                       {game.play_time_minutes}m
+                    </span>
+                  )}
+                  {game.year_published != null && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                      {game.year_published}
                     </span>
                   )}
                 </div>
