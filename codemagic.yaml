@@ -75,37 +75,28 @@ workflows:
           if grep -q "capacitorDidRegisterForRemoteNotifications" "$APP_DELEGATE"; then
             echo "Push callbacks already present in AppDelegate.swift"
           else
-            python3 - <<'PY'
-from pathlib import Path
-
-path = Path("ios/App/App/AppDelegate.swift")
-content = path.read_text()
-
-injection = '''
-
-    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-      NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
-    }
-
-    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-      NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
-    }
-'''
-
-if "func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data)" not in content:
-    marker = "return true\n  }"
-    if marker in content:
-        content = content.replace(marker, marker + injection, 1)
-    else:
-        raise SystemExit("Could not find AppDelegate insertion point (return true / closing brace)")
-
-path.write_text(content)
-print("✓ Injected Capacitor push callbacks into AppDelegate.swift")
-PY
+            LAST_BRACE=$(grep -n "^}" "$APP_DELEGATE" | tail -1 | cut -d: -f1)
+            if [ -z "$LAST_BRACE" ]; then
+              echo "ERROR: Could not find closing brace in AppDelegate.swift"
+              exit 1
+            fi
+            head -n $((LAST_BRACE - 1)) "$APP_DELEGATE" > /tmp/AppDelegate_patched.swift
+            echo "" >> /tmp/AppDelegate_patched.swift
+            echo "    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {" >> /tmp/AppDelegate_patched.swift
+            echo "      NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)" >> /tmp/AppDelegate_patched.swift
+            echo "    }" >> /tmp/AppDelegate_patched.swift
+            echo "" >> /tmp/AppDelegate_patched.swift
+            echo "    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {" >> /tmp/AppDelegate_patched.swift
+            echo "      NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)" >> /tmp/AppDelegate_patched.swift
+            echo "    }" >> /tmp/AppDelegate_patched.swift
+            echo "" >> /tmp/AppDelegate_patched.swift
+            tail -n +$LAST_BRACE "$APP_DELEGATE" >> /tmp/AppDelegate_patched.swift
+            cp /tmp/AppDelegate_patched.swift "$APP_DELEGATE"
+            echo "✓ Injected Capacitor push callbacks into AppDelegate.swift"
           fi
 
           echo "=== Verify AppDelegate push callbacks ==="
-          grep -n "didRegisterForRemoteNotificationsWithDeviceToken\|didFailToRegisterForRemoteNotificationsWithError\|capacitorDidRegisterForRemoteNotifications\|capacitorDidFailToRegisterForRemoteNotifications" "$APP_DELEGATE" || {
+          grep -n "capacitorDidRegisterForRemoteNotifications\|capacitorDidFailToRegisterForRemoteNotifications" "$APP_DELEGATE" || {
             echo "ERROR: push callback verification failed"
             exit 1
           }
