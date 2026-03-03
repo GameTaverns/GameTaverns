@@ -249,8 +249,19 @@ const handler = async (req: Request): Promise<Response> => {
       let artistsAdded = 0;
       const errors: string[] = [];
 
-      const entryMap = new Map<string, { id: string; title: string; bgg_id: string }>();
-      for (const entry of catalogEntries) entryMap.set(entry.bgg_id, entry);
+      const entryMap = new Map<string, { id: string; title: string; bgg_id: string; description?: string }>();
+      // Fetch descriptions for these entries so we can guard against overwriting formatted ones
+      const entryIds = catalogEntries.map((e: any) => e.id);
+      const descMap = new Map<string, string | null>();
+      for (let d = 0; d < entryIds.length; d += 200) {
+        const batch = entryIds.slice(d, d + 200);
+        const { data: descRows } = await admin.from("game_catalog").select("id, description").in("id", batch);
+        if (descRows) for (const r of descRows) descMap.set(r.id, r.description);
+      }
+      for (const entry of catalogEntries) {
+        (entry as any).description = descMap.get(entry.id) || null;
+        entryMap.set(entry.bgg_id, entry as any);
+      }
 
       const allBggIds = catalogEntries.map((e: any) => e.bgg_id);
       for (let i = 0; i < allBggIds.length; i += BGG_BATCH_SIZE) {
@@ -334,7 +345,7 @@ const handler = async (req: Request): Promise<Response> => {
           const catalogUpdate: Record<string, unknown> = { bgg_verified_type: item.itemType };
           if (item.bggCommunityRating !== null) catalogUpdate.bgg_community_rating = item.bggCommunityRating;
           if (item.weight !== null) catalogUpdate.weight = item.weight;
-          if (item.description) catalogUpdate.description = item.description;
+          if (item.description && !(entry.description && entry.description.includes("Quick Gameplay Overview"))) catalogUpdate.description = item.description;
           catalogUpdates.push(admin.from("game_catalog").update(catalogUpdate).eq("id", entry.id));
 
           for (const name of item.designers) {
