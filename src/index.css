@@ -325,6 +325,7 @@
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
+    top: auto !important;
     width: 100% !important;
     margin: 0 !important;
     height: auto;
@@ -334,8 +335,14 @@
     backface-visibility: hidden;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+    filter: none !important;
+    transform: none !important;
+    will-change: auto !important;
+    contain: layout style;
     /* iOS safe area background extension */
     background-clip: padding-box;
+    /* Force GPU compositing layer without transform */
+    -webkit-transform: translateZ(0);
   }
   .mobile-bottom-tab {
     @apply flex flex-col items-center justify-center gap-0 py-1.5 px-1 flex-1 text-muted-foreground transition-colors;
