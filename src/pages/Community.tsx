@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { 
   MessageSquare, 
@@ -407,6 +407,20 @@ function ClubCategorySection({ category, clubSlug }: { category: ClubForumCatego
 /** Library forum section for the platform community page */
 function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryId: string; libraryName: string; librarySlug: string }) {
   const { data: categories = [], isLoading } = useLibraryCategories(libraryId);
+  const navigate = useNavigate();
+
+  const navigateToLibraryForum = (path: string) => {
+    const href = getLibraryUrl(librarySlug, path);
+    if (href.startsWith("http://") || href.startsWith("https://") || href.startsWith("//")) {
+      window.location.assign(href);
+      return;
+    }
+
+    navigate(href, {
+      replace: true,
+      state: { ts: Date.now(), source: "community-memberships" },
+    });
+  };
 
   if (isLoading) {
     return <Skeleton className="h-40 w-full" />;
@@ -418,9 +432,13 @@ function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryI
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <LibraryIcon className="h-4 w-4 text-muted-foreground" />
-        <TenantLink href={getLibraryUrl(librarySlug, "/community")} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+        <button
+          type="button"
+          onClick={() => navigateToLibraryForum("/community")}
+          className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors text-left"
+        >
           {libraryName}
-        </TenantLink>
+        </button>
       </div>
       {categories.map((category) => {
         const Icon = ICON_MAP[category.icon] || MessageSquare;
@@ -449,10 +467,11 @@ function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryI
                   const SubIcon = ICON_MAP[sub.icon] || MessageSquare;
                   const subColor = COLOR_MAP[sub.color] || "text-blue-500";
                   return (
-                    <TenantLink
+                    <button
                       key={sub.id}
-                      href={getLibraryUrl(librarySlug, `/community/${sub.slug}`)}
-                      className="flex items-center gap-4 px-4 py-3 hover:bg-accent/40 transition-colors border-b border-border/50 last:border-b-0 group"
+                      type="button"
+                      onClick={() => navigateToLibraryForum(`/community/${sub.slug}`)}
+                      className="flex w-full items-center gap-4 px-4 py-3 hover:bg-accent/40 transition-colors border-b border-border/50 last:border-b-0 group text-left"
                     >
                       <div className="flex-shrink-0">
                         <SubIcon className={`h-5 w-5 ${subColor}`} />
@@ -467,17 +486,18 @@ function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryI
                           </p>
                         )}
                       </div>
-                    </TenantLink>
+                    </button>
                   );
                 })}
               </div>
             ) : (
-              <TenantLink
-                href={getLibraryUrl(librarySlug, `/community/${category.slug}`)}
-                className="block px-4 py-3 bg-card hover:bg-accent/40 transition-colors text-sm text-muted-foreground"
+              <button
+                type="button"
+                onClick={() => navigateToLibraryForum(`/community/${category.slug}`)}
+                className="block w-full px-4 py-3 bg-card hover:bg-accent/40 transition-colors text-sm text-muted-foreground text-left"
               >
                 Browse threads →
-              </TenantLink>
+              </button>
             )}
           </div>
         );

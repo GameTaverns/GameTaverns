@@ -301,16 +301,24 @@
     }
   }
 
-  /* iOS WebKit scroll hardening for native shell */
+  /* Native shell scroll behavior: iOS needs overscroll hardening, Android must keep normal scrolling */
   .mobile-app-shell {
-    /* Prevent rubber-band scroll from moving fixed children */
-    -webkit-overflow-scrolling: touch;
-    overflow-y: auto;
-    overscroll-behavior-y: none;
     min-height: 100vh;
     min-height: 100dvh;
     /* Add bottom padding so content clears the fixed tab bar */
     padding-bottom: var(--mobile-tab-offset);
+  }
+
+  .mobile-app-shell.ios {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+  }
+
+  .mobile-app-shell.android {
+    -webkit-overflow-scrolling: auto;
+    overflow-y: visible;
+    overscroll-behavior-y: auto;
   }
 
   /* On desktop, no bottom padding needed */

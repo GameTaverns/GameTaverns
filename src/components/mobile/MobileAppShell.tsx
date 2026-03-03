@@ -124,6 +124,13 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   // Redirect authenticated users to dashboard if no library selected
   useEffect(() => {
     if (!isNative || authLoading || isLoadingLibrary) return;
+
+    // When switching libraries via native query-param links (/?tenant=...&path=...)
+    // do not interrupt with a dashboard redirect.
+    const params = new URLSearchParams(location.search);
+    const hasPendingTenantNavigation = params.has('tenant') || params.has('path');
+    if (hasPendingTenantNavigation) return;
+
     if (isAuthenticated && !activeLibrary) {
       try {
         navigate("/dashboard", { replace: true });
@@ -131,7 +138,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
         console.warn("Navigation failed:", e);
       }
     }
-  }, [isNative, isAuthenticated, authLoading, activeLibrary, isLoadingLibrary, navigate]);
+  }, [isNative, isAuthenticated, authLoading, activeLibrary, isLoadingLibrary, location.search, navigate]);
 
   // Only show the initial loading splash while auth is still bootstrapping
   // (authLoading=true on first mount). Never block rendering after login completes.
