@@ -106,10 +106,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const token = authHeader.replace("Bearer ", "");
-    const isServiceRole = token === serviceKey;
+    const token = authHeader.replace("Bearer ", "").trim();
 
-    if (!isServiceRole) {
+    // Accept service role key, anon key, or anon-role JWTs as internal/cron calls
+    let isInternalCall = token === serviceKey || token === anonKey;
+    if (!isInternalCall) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        isInternalCall = payload.role === "anon" || payload.role === "service_role";
+      } catch { /* not a JWT */ }
+    }
+
+    if (!isInternalCall) {
       const supabaseUser = createClient(supabaseUrl, anonKey, {
         global: { headers: { Authorization: authHeader } },
       });
