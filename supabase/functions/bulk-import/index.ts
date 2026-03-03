@@ -598,89 +598,13 @@ async function fetchBGGXMLData(bggId: string): Promise<{
     }
   }
 
-  // Fallback: Use shared AI client (Perplexity primary) to generate description when BGG XML fails
+  // Return partial result from direct BGG XML — NO AI fallback.
+  // AI description generation has been removed to minimize API costs.
+  // Games not in the catalog will get raw BGG descriptions instead.
   if (partialResult && (!partialResult.description || partialResult.description.length < 50)) {
-    if (isAIConfigured()) {
-      try {
-        console.log(`[BulkImport] Using AI (${getAIProviderName()}) to generate description for BGG ID ${bggId}`);
-        const prompt = `You are a board game expert. Look up the board game with BoardGameGeek ID ${bggId} (https://boardgamegeek.com/boardgame/${bggId}). Provide a JSON object with these keys:
-- "description": A 2-3 sentence description of the game including its theme and core mechanics.
-- "min_players": minimum player count (number)
-- "max_players": maximum player count (number)  
-- "suggested_age": recommended age like "10+" (string)
-- "mechanics": array of game mechanic names (strings)
-
-Return ONLY the JSON object, no extra text.`;
-
-        const result = await aiComplete({
-          messages: [
-            { role: "system", content: "You are a board game encyclopedia. Return only valid JSON." },
-            { role: "user", content: prompt },
-          ],
-          max_tokens: 800,
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "game_metadata",
-                description: "Return board game metadata",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    description: { type: "string" },
-                    min_players: { type: "number" },
-                    max_players: { type: "number" },
-                    suggested_age: { type: "string" },
-                    mechanics: { type: "array", items: { type: "string" } },
-                  },
-                  required: ["description"],
-                  additionalProperties: false,
-                },
-              },
-            },
-          ],
-        });
-
-        if (result.success && result.toolCallArguments) {
-          const parsed = result.toolCallArguments as Record<string, unknown>;
-          if (parsed.description && typeof parsed.description === "string") {
-            console.log(`[BulkImport] AI generated description for ${bggId}: ${(parsed.description as string).length} chars`);
-            partialResult.description = parsed.description as string;
-            if (!partialResult.min_players && parsed.min_players) partialResult.min_players = parsed.min_players as number;
-            if (!partialResult.max_players && parsed.max_players) partialResult.max_players = parsed.max_players as number;
-            if (!partialResult.suggested_age && parsed.suggested_age) partialResult.suggested_age = parsed.suggested_age as string;
-            if ((!partialResult.mechanics || partialResult.mechanics.length === 0) && parsed.mechanics) {
-              partialResult.mechanics = parsed.mechanics as string[];
-            }
-          }
-        } else if (result.content && result.content.length > 50) {
-          // Fallback: try to parse raw content
-          const jsonMatch = result.content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            try {
-              const parsed = JSON.parse(jsonMatch[0]);
-              if (parsed.description) {
-                partialResult.description = parsed.description;
-                if (!partialResult.min_players && parsed.min_players) partialResult.min_players = parsed.min_players;
-                if (!partialResult.max_players && parsed.max_players) partialResult.max_players = parsed.max_players;
-                if (!partialResult.suggested_age && parsed.suggested_age) partialResult.suggested_age = parsed.suggested_age;
-                if ((!partialResult.mechanics || partialResult.mechanics.length === 0) && parsed.mechanics) {
-                  partialResult.mechanics = parsed.mechanics;
-                }
-              }
-            } catch { /* JSON parse failed */ }
-          }
-          if (!partialResult.description) {
-            partialResult.description = result.content.slice(0, 2000);
-          }
-        }
-      } catch (e) {
-        console.warn(`[BulkImport] AI fallback failed for ${bggId}:`, e);
-      }
-    }
+    console.log(`[BulkImport] BGG XML returned no/short description for ${bggId} — no AI fallback (catalog-first policy)`);
   }
 
-  // Return partial result from direct BGG XML + Gemini enrichment if we have one, otherwise minimal
   return partialResult || { bgg_id: bggId };
 }
 
@@ -2244,20 +2168,16 @@ export default async function handler(req: Request): Promise<Response> {
                  }
                }
             } else if (gameInput.bgg_id && enhance_with_bgg !== false) {
-              // FAST PATH: Use BGG XML API (default behavior)
-              // This is ~10x faster than Firecrawl+AI
-               console.log(`[BulkImport] Fetching BGG XML data for: ${gameInput.bgg_id}`);
-               let bggData: Awaited<ReturnType<typeof fetchBGGXMLData>> | null = null;
-               try {
-                 bggXmlAttempts++;
-                 bggData = await fetchBGGXMLData(gameInput.bgg_id);
-                 if (bggData?.image_url) bggXmlWithImage++;
-               } catch (e) {
-                 console.warn(`[BulkImport] BGG XML fetch failed for ${gameInput.bgg_id}:`, e);
-                 bggData = null;
-               }
+              // CATALOG-FIRST: If catalog already gave us a formatted description,
+              // skip BGG XML fetch for description and AI entirely.
+              // Only fetch BGG XML for missing metadata (players, difficulty, etc.)
+              const catalogAlreadyFormatted = catalogHit && gameData.description?.includes("Quick Gameplay Overview");
 
-              if (bggData) {
+              if (catalogAlreadyFormatted) {
+                // Catalog provided everything we need — only fetch BGG XML for
+                // metadata fields the catalog didn't provide (players, difficulty, etc.)
+                console.log(`[BulkImport] Catalog-first: skipping BGG XML + AI for "${gameData.title}" (catalog description applied)`);
+                
                 const isEmpty = (val: unknown): boolean => {
                   if (val === undefined || val === null) return true;
                   if (typeof val !== "string") return false;
@@ -2265,105 +2185,105 @@ export default async function handler(req: Request): Promise<Response> {
                   return v === "" || v.toLowerCase() === "null";
                 };
 
-                // Skip AI formatting if catalog already provided a formatted description
-                let formattedDescription = bggData.description;
-                const catalogAlreadyFormatted = catalogHit && gameData.description?.includes("Quick Gameplay Overview");
-                if (catalogAlreadyFormatted) {
-                  formattedDescription = gameData.description!;
-                  console.log(`[BulkImport] Skipping AI formatting — catalog description already applied for: ${gameInput.bgg_id}`);
-                } else if (bggData.description && bggData.description.length > 100 && isAIConfigured()) {
-                  console.log(`[BulkImport] Formatting description with AI for: ${gameInput.bgg_id}`);
+                // Only fetch BGG XML if we're missing critical metadata
+                const needsMetadata = !gameData.min_players || !gameData.max_players || isEmpty(gameData.difficulty) || isEmpty(gameData.play_time);
+                if (needsMetadata) {
+                  console.log(`[BulkImport] Fetching BGG XML for metadata only (no AI): ${gameInput.bgg_id}`);
                   try {
-                    const aiFormatted = await formatDescriptionWithAI(bggData.description, gameInput.bgg_id);
-                    if (aiFormatted) {
-                      formattedDescription = aiFormatted;
-                      console.log(`[BulkImport] AI formatted description: ${aiFormatted.length} chars`);
+                    bggXmlAttempts++;
+                    const bggData = await fetchBGGXMLData(gameInput.bgg_id);
+                    if (bggData) {
+                      if (bggData.image_url) bggXmlWithImage++;
+                      if (!gameData.image_url || hasLowQualityImage) {
+                        gameData.image_url = normalizeImageUrl(bggData.image_url) || gameData.image_url;
+                        if (bggData.image_url && !isLowQualityBggImageUrl(normalizeImageUrl(bggData.image_url))) {
+                          bggXmlBoxArtUrl = normalizeImageUrl(bggData.image_url);
+                        }
+                      }
+                      if (!gameData.min_players) gameData.min_players = bggData.min_players;
+                      if (!gameData.max_players) gameData.max_players = bggData.max_players;
+                      if (isEmpty(gameData.difficulty)) gameData.difficulty = bggData.difficulty;
+                      if (isEmpty(gameData.play_time)) gameData.play_time = bggData.play_time;
+                      if (isEmpty(gameData.suggested_age)) gameData.suggested_age = bggData.suggested_age;
+                      if (!gameData.mechanics?.length) gameData.mechanics = bggData.mechanics;
+                      if (isEmpty(gameData.publisher)) gameData.publisher = bggData.publisher;
+                      if (bggData.is_expansion && !gameData.is_expansion) gameData.is_expansion = bggData.is_expansion;
+                      if (!gameData.bgg_average_rating && bggData.bgg_average_rating) gameData.bgg_average_rating = bggData.bgg_average_rating;
                     }
                   } catch (e) {
-                    console.warn(`[BulkImport] AI formatting failed for ${gameInput.bgg_id}, using raw BGG description:`, e);
+                    console.warn(`[BulkImport] BGG XML metadata fetch failed for ${gameInput.bgg_id}:`, e);
                   }
                 }
 
-                const mergedDescription = !hasCsvDescription
-                  ? buildDescriptionWithNotes(formattedDescription, gameInput._csv_notes)
-                  : gameData.description;
-
-                 const shouldUseBggImage =
-                   isEmpty(gameData.image_url) ||
-                   (bggData.image_url && isLowQualityBggImageUrl(gameData.image_url));
-
-                 gameData = {
-                   ...gameData,
-                   bgg_id: gameData.bgg_id || bggData.bgg_id,
-                   image_url: shouldUseBggImage ? normalizeImageUrl(bggData.image_url) : gameData.image_url,
-                   description: isEmpty(mergedDescription) ? gameData.description : mergedDescription,
-                   difficulty: isEmpty(gameData.difficulty) ? bggData.difficulty : gameData.difficulty,
-                   play_time: isEmpty(gameData.play_time) ? bggData.play_time : gameData.play_time,
-                   min_players: gameData.min_players ?? bggData.min_players,
-                   max_players: gameData.max_players ?? bggData.max_players,
-                   suggested_age: isEmpty(gameData.suggested_age) ? bggData.suggested_age : gameData.suggested_age,
-                   mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
-                   publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
-                   // Override is_expansion from BGG if not already set (BGG is authoritative)
-                   is_expansion: gameData.is_expansion || bggData.is_expansion,
-                   bgg_average_rating: bggData.bgg_average_rating,
-                 };
-                 // Track BGG XML image as authoritative box art
-                 if (bggData.image_url && !isLowQualityBggImageUrl(normalizeImageUrl(bggData.image_url))) {
-                   bggXmlBoxArtUrl = normalizeImageUrl(bggData.image_url);
-                 }
-
-                // Ensure notes are appended after enrichment when CSV had notes.
+                // Append notes if CSV had them
                 if (!hasCsvDescription) {
-                  gameData.description = buildDescriptionWithNotes(formattedDescription, gameInput._csv_notes);
+                  gameData.description = buildDescriptionWithNotes(gameData.description, gameInput._csv_notes);
                 }
 
-                console.log(`[BulkImport] XML enriched "${gameData.title}": description=${(gameData.description?.length || 0)} chars, image=${!!gameData.image_url}`);
+                console.log(`[BulkImport] Catalog-first enriched "${gameData.title}": description=${(gameData.description?.length || 0)} chars, image=${!!gameData.image_url}`);
+              } else {
+                // NO catalog hit (or catalog description wasn't formatted) — use BGG XML
+                // but NO AI formatting. Just use the raw BGG description.
+                console.log(`[BulkImport] Fetching BGG XML data for: ${gameInput.bgg_id}`);
+                let bggData: Awaited<ReturnType<typeof fetchBGGXMLData>> | null = null;
+                try {
+                  bggXmlAttempts++;
+                  bggData = await fetchBGGXMLData(gameInput.bgg_id);
+                  if (bggData?.image_url) bggXmlWithImage++;
+                } catch (e) {
+                  console.warn(`[BulkImport] BGG XML fetch failed for ${gameInput.bgg_id}:`, e);
+                  bggData = null;
+                }
+
+                if (bggData) {
+                  const isEmpty = (val: unknown): boolean => {
+                    if (val === undefined || val === null) return true;
+                    if (typeof val !== "string") return false;
+                    const v = val.trim();
+                    return v === "" || v.toLowerCase() === "null";
+                  };
+
+                  // Use BGG XML description as-is — NO AI formatting
+                  const formattedDescription = bggData.description;
+
+                  const mergedDescription = !hasCsvDescription
+                    ? buildDescriptionWithNotes(formattedDescription, gameInput._csv_notes)
+                    : gameData.description;
+
+                  const shouldUseBggImage =
+                    isEmpty(gameData.image_url) ||
+                    (bggData.image_url && isLowQualityBggImageUrl(gameData.image_url));
+
+                  gameData = {
+                    ...gameData,
+                    bgg_id: gameData.bgg_id || bggData.bgg_id,
+                    image_url: shouldUseBggImage ? normalizeImageUrl(bggData.image_url) : gameData.image_url,
+                    description: isEmpty(mergedDescription) ? gameData.description : mergedDescription,
+                    difficulty: isEmpty(gameData.difficulty) ? bggData.difficulty : gameData.difficulty,
+                    play_time: isEmpty(gameData.play_time) ? bggData.play_time : gameData.play_time,
+                    min_players: gameData.min_players ?? bggData.min_players,
+                    max_players: gameData.max_players ?? bggData.max_players,
+                    suggested_age: isEmpty(gameData.suggested_age) ? bggData.suggested_age : gameData.suggested_age,
+                    mechanics: gameData.mechanics?.length ? gameData.mechanics : bggData.mechanics,
+                    publisher: isEmpty(gameData.publisher) ? bggData.publisher : gameData.publisher,
+                    is_expansion: gameData.is_expansion || bggData.is_expansion,
+                    bgg_average_rating: bggData.bgg_average_rating,
+                  };
+                  if (bggData.image_url && !isLowQualityBggImageUrl(normalizeImageUrl(bggData.image_url))) {
+                    bggXmlBoxArtUrl = normalizeImageUrl(bggData.image_url);
+                  }
+
+                  if (!hasCsvDescription) {
+                    gameData.description = buildDescriptionWithNotes(formattedDescription, gameInput._csv_notes);
+                  }
+
+                  console.log(`[BulkImport] XML enriched "${gameData.title}": description=${(gameData.description?.length || 0)} chars, image=${!!gameData.image_url}`);
+                }
               }
               
-               // SLOW PATH: Use AI for rich descriptions + BGG JSON API for gallery images
+              // Gallery images via BGG JSON API (no AI needed)
               {
-                const needsDescription = !gameData.description || gameData.description.length < 100;
                 const needsGalleryImages = !gameData.additional_images || gameData.additional_images.length === 0;
-                
-                // AI enrichment path (Firecrawl + AI for descriptions)
-                if (enhance_with_ai && firecrawlKey && (needsDescription || needsGalleryImages)) {
-                   console.log(`[BulkImport] AI enrichment for: ${gameInput.bgg_id} (desc=${needsDescription}, gallery=${needsGalleryImages})`);
-                   try {
-                     aiEnrichAttempts++;
-                     galleryAttempts += needsGalleryImages ? 1 : 0;
-                     const aiData = await fetchBGGData(gameInput.bgg_id, firecrawlKey, 3, needsGalleryImages);
-                     if (aiData?.description && aiData.description.length > (gameData.description?.length || 0)) {
-                       gameData.description = aiData.description;
-                       console.log(`[BulkImport] AI enhanced description: ${aiData.description.length} chars`);
-                     }
-                     if (aiData?.additional_images && aiData.additional_images.length > 0) {
-                       galleryWithImages++;
-                       gameData.additional_images = aiData.additional_images;
-                       console.log(`[BulkImport] Added ${aiData.additional_images.length} gallery images`);
-                       // Prefer box/cover art as primary image for game cards.
-                        if (!gameData.image_url || isLowQualityBggImageUrl(gameData.image_url)) {
-                          try {
-                            const detailed = await fetchBGGGalleryImages(gameInput.bgg_id, null, 5, true);
-                            const primary = detailed.boxArtUrl || aiData.additional_images[0];
-                            if (primary) {
-                              gameData.image_url = normalizeImageUrl(primary);
-                              // Remove primary from gallery if present
-                              gameData.additional_images = aiData.additional_images.filter((u) => u !== primary).slice(0, 8);
-                              console.log(`[BulkImport] Using ${detailed.boxArtUrl ? "box art" : "first gallery"} image as primary`);
-                            }
-                          } catch (e) {
-                            // Fallback to previous behavior
-                            gameData.image_url = normalizeImageUrl(aiData.additional_images[0]);
-                            gameData.additional_images = aiData.additional_images.slice(1);
-                            console.log(`[BulkImport] Using first gallery image as primary (detailed fetch failed)`);
-                          }
-                        }
-                     }
-                   } catch (e) {
-                     console.warn(`[BulkImport] AI enrichment failed for ${gameInput.bgg_id}:`, e);
-                   }
-                }
                 
                 // If we still need gallery images, fetch via BGG JSON API
                 if ((!gameData.additional_images || gameData.additional_images.length === 0) && gameInput.bgg_id) {
