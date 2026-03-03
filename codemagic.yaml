@@ -37,6 +37,21 @@ workflows:
       - name: Sync iOS platform
         script: |
           npx cap sync ios
+      - name: Add Firebase Messaging SDK to Podfile
+        script: |
+          PODFILE="ios/App/Podfile"
+          if grep -q "Firebase/Messaging" "$PODFILE"; then
+            echo "Firebase/Messaging already in Podfile"
+          else
+            # Insert Firebase/Messaging pod into the main target block
+            sed -i '' "/pod 'Capacitor'/a\\
+              pod 'Firebase/Messaging'" "$PODFILE"
+            echo "✓ Added Firebase/Messaging to Podfile"
+          fi
+          echo "=== Podfile contents ==="
+          cat "$PODFILE"
+          cd ios/App && pod install --repo-update
+          echo "✓ Pod install completed with Firebase"
       - name: Copy GoogleService-Info.plist
         script: |
           cp ios-config/GoogleService-Info.plist ios/App/App/GoogleService-Info.plist
@@ -72,6 +87,21 @@ workflows:
             exit 1
           fi
 
+          # Add Firebase import at top of file
+          if ! grep -q "import Firebase" "$APP_DELEGATE"; then
+            sed -i '' '1s/^/import Firebase\n/' "$APP_DELEGATE"
+            echo "✓ Added 'import Firebase' to AppDelegate"
+          fi
+
+          # Add FirebaseApp.configure() in application(_:didFinishLaunchingWithOptions:)
+          if ! grep -q "FirebaseApp.configure()" "$APP_DELEGATE"; then
+            sed -i '' '/func application.*didFinishLaunchingWithOptions/,/return true/{
+              /return true/i\
+\        FirebaseApp.configure()
+            }' "$APP_DELEGATE"
+            echo "✓ Added FirebaseApp.configure() to AppDelegate"
+          fi
+
           if grep -q "capacitorDidRegisterForRemoteNotifications" "$APP_DELEGATE"; then
             echo "Push callbacks already present in AppDelegate.swift"
           else
@@ -83,6 +113,7 @@ workflows:
             head -n $((LAST_BRACE - 1)) "$APP_DELEGATE" > /tmp/AppDelegate_patched.swift
             echo "" >> /tmp/AppDelegate_patched.swift
             echo "    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {" >> /tmp/AppDelegate_patched.swift
+            echo "      Messaging.messaging().apnsToken = deviceToken" >> /tmp/AppDelegate_patched.swift
             echo "      NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)" >> /tmp/AppDelegate_patched.swift
             echo "    }" >> /tmp/AppDelegate_patched.swift
             echo "" >> /tmp/AppDelegate_patched.swift
@@ -92,11 +123,13 @@ workflows:
             echo "" >> /tmp/AppDelegate_patched.swift
             tail -n +$LAST_BRACE "$APP_DELEGATE" >> /tmp/AppDelegate_patched.swift
             cp /tmp/AppDelegate_patched.swift "$APP_DELEGATE"
-            echo "✓ Injected Capacitor push callbacks into AppDelegate.swift"
+            echo "✓ Injected Capacitor push callbacks with Firebase token mapping into AppDelegate.swift"
           fi
 
+          echo "=== Final AppDelegate.swift ==="
+          cat "$APP_DELEGATE"
           echo "=== Verify AppDelegate push callbacks ==="
-          grep -n "capacitorDidRegisterForRemoteNotifications\|capacitorDidFailToRegisterForRemoteNotifications" "$APP_DELEGATE" || {
+          grep -n "FirebaseApp.configure\|capacitorDidRegisterForRemoteNotifications\|Messaging.messaging().apnsToken" "$APP_DELEGATE" || {
             echo "ERROR: push callback verification failed"
             exit 1
           }
