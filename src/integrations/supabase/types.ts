@@ -2389,6 +2389,7 @@ export type Database = {
           title: string
           updated_at: string | null
           upgraded_components: boolean | null
+          year_published: number | null
           youtube_videos: string[] | null
         }
         Insert: {
@@ -2430,6 +2431,7 @@ export type Database = {
           title: string
           updated_at?: string | null
           upgraded_components?: boolean | null
+          year_published?: number | null
           youtube_videos?: string[] | null
         }
         Update: {
@@ -2471,6 +2473,7 @@ export type Database = {
           title?: string
           updated_at?: string | null
           upgraded_components?: boolean | null
+          year_published?: number | null
           youtube_videos?: string[] | null
         }
         Relationships: [
