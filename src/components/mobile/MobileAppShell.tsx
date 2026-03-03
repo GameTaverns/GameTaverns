@@ -214,7 +214,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
         <>
           <button
             type="button"
-            className="fixed right-3 z-[9998] rounded-full border bg-card/95 px-3 py-1.5 text-xs font-medium text-foreground shadow-lg backdrop-blur-sm"
+            className="fixed right-3 z-[9998] rounded-full border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-lg"
             style={{ bottom: "calc(60px + env(safe-area-inset-bottom) + 12px)" }}
             onClick={() => setShowPushDebug((prev) => !prev)}
             aria-label="Toggle push debug panel"

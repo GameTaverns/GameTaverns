@@ -296,7 +296,24 @@
     }
   }
 
-  /* Bottom tab bar */
+  /* iOS WebKit scroll hardening for native shell */
+  .mobile-app-shell {
+    /* Prevent rubber-band scroll from moving fixed children */
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* Add bottom padding so content clears the fixed tab bar */
+    padding-bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+
+  /* On desktop, no bottom padding needed */
+  @media (min-width: 768px) {
+    .mobile-app-shell {
+      padding-bottom: 0;
+    }
+  }
+
   .mobile-bottom-tabs {
     position: fixed !important;
     z-index: 9999 !important;
@@ -305,21 +322,20 @@
     justify-content: space-around;
     border-top: 1px solid hsl(var(--border) / 0.5);
     background-color: hsl(var(--background));
-    left: 0;
-    right: 0;
+    left: 0 !important;
+    right: 0 !important;
     bottom: 0 !important;
-    width: 100%;
-    margin: 0;
+    width: 100% !important;
+    margin: 0 !important;
+    height: auto;
     padding-bottom: env(safe-area-inset-bottom);
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
+    /* DO NOT use transform on fixed elements — it breaks position:fixed in iOS WebKit */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     /* iOS safe area background extension */
     background-clip: padding-box;
-    /* Prevent floating during scroll momentum */
-    will-change: transform;
-    contain: layout style;
   }
   .mobile-bottom-tab {
     @apply flex flex-col items-center justify-center gap-0 py-1.5 px-1 flex-1 text-muted-foreground transition-colors;
