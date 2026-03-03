@@ -130,6 +130,10 @@ workflows:
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
+          echo "=== AVAILABLE CODE SIGN IDENTITIES ==="
+          security find-identity -v -p codesigning || true
+          echo "=== INSTALLED PROVISIONING PROFILES ==="
+          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles" || true
       - name: Increment build number and set version
         script: |
           cd ios/App
@@ -153,8 +157,25 @@ workflows:
           if [ $BUILD_EXIT -ne 0 ]; then
             echo "=== LAST 150 LINES OF BUILD LOG ==="
             tail -150 /tmp/xcodebuild_logs/build.log
-            echo "=== GREPPED XCODE ERRORS ==="
-            grep -n "error:" /tmp/xcodebuild_logs/build.log | tail -80 || true
+            echo "=== GREPPED XCODE ERRORS (build-ipa log) ==="
+            grep -n "error:" /tmp/xcodebuild_logs/build.log | tail -120 || true
+
+            echo "=== RE-RUNNING RAW XCODEBUILD FOR FULL DIAGNOSTICS ==="
+            xcodebuild \
+              -project "$XCODE_PROJECT" \
+              -scheme "$XCODE_SCHEME" \
+              -configuration Release \
+              -destination generic/platform=iOS \
+              -archivePath /tmp/xcodebuild_logs/App-debug.xcarchive \
+              archive \
+              COMPILER_INDEX_STORE_ENABLE=NO \
+              DEVELOPMENT_TEAM=8XRW572298 \
+              CODE_SIGN_IDENTITY="Apple Distribution" \
+              CODE_SIGN_STYLE=Manual \
+              2>&1 | tee /tmp/xcodebuild_logs/raw-xcodebuild.log || true
+
+            echo "=== GREPPED XCODE ERRORS (raw xcodebuild) ==="
+            grep -n "error:\|CodeSign\|Provisioning profile\|No signing certificate\|entitlements" /tmp/xcodebuild_logs/raw-xcodebuild.log | tail -200 || true
             exit $BUILD_EXIT
           fi
     artifacts:
