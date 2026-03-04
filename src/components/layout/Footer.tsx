@@ -145,6 +145,9 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
                   />
                   <span>Powered by BGG</span>
                 </a>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">
+                  Game images are property of their respective publishers.
+                </p>
               </div>
             )}
           </div>
