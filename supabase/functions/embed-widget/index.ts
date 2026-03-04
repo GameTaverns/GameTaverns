@@ -37,7 +37,9 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  if (!slug) {
+  const normalizedSlug = slug?.trim().toLowerCase();
+
+  if (!normalizedSlug) {
     return new Response("// Missing library slug", {
       headers: { ...corsHeaders, "Content-Type": "application/javascript" },
     });
@@ -63,31 +65,39 @@ export default async function handler(req: Request): Promise<Response> {
     let { data: library, error: libraryError } = await supabase
       .from("libraries")
       .select("id, name, slug, description, logo_url")
-      .eq("slug", slug)
+      .eq("slug", normalizedSlug)
       .maybeSingle();
 
     if (libraryError) {
       console.error("[embed-widget] libraries lookup error:", libraryError);
     }
 
-    // Fallback for stricter self-hosted policies: use public directory view
+    // Fallback for stricter self-hosted policies/views
     if (!library) {
       const { data: directoryLibrary, error: directoryError } = await supabase
         .from("library_directory")
-        .select("id, name, slug, description, logo_url")
-        .eq("slug", slug)
+        .select("*")
+        .eq("slug", normalizedSlug)
         .maybeSingle();
 
       if (directoryError) {
         console.error("[embed-widget] library_directory lookup error:", directoryError);
       }
 
-      library = directoryLibrary;
+      if (directoryLibrary) {
+        library = {
+          id: directoryLibrary.id,
+          name: directoryLibrary.name,
+          slug: directoryLibrary.slug,
+          description: directoryLibrary.description ?? null,
+          logo_url: directoryLibrary.logo_url ?? null,
+        };
+      }
     }
 
     if (!library) {
       return new Response(format === "js"
-        ? `console.warn("GameTaverns: Library '${slug}' not found");`
+        ? `console.warn("GameTaverns: Library '${normalizedSlug}' not found");`
         : "<p>Library not found</p>", {
         headers: { ...corsHeaders, "Content-Type": format === "js" ? "application/javascript" : "text/html" },
       });
