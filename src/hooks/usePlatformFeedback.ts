@@ -111,35 +111,15 @@ function extractNotifyThreadId(payload: unknown): string | null {
 async function ensureDiscordThreadId(feedbackId: string): Promise<string | null> {
   const { data: feedback, error } = await supabase
     .from("platform_feedback")
-    .select("id,type,sender_name,sender_email,message,screenshot_urls,discord_thread_id")
-    .eq("id", feedbackId)
-    .maybeSingle();
-
-  if (error || !feedback) return null;
-  if (feedback.discord_thread_id) return feedback.discord_thread_id;
-
-  const notifyResult = await invokeBackendFunction("notify-feedback", {
-    type: feedback.type,
-    sender_name: feedback.sender_name,
-    sender_email: feedback.sender_email,
-    message: feedback.message,
-    screenshot_urls: Array.isArray(feedback.screenshot_urls) ? feedback.screenshot_urls : [],
-    feedback_id: feedback.id,
-  });
-
-  if (!notifyResult.ok) return null;
-
-  // Prefer direct function response to avoid hard dependency on immediate DB persistence
-  const threadIdFromNotify = extractNotifyThreadId(notifyResult.data);
-  if (threadIdFromNotify) return threadIdFromNotify;
-
-  const { data: refreshed } = await supabase
-    .from("platform_feedback")
     .select("discord_thread_id")
     .eq("id", feedbackId)
     .maybeSingle();
 
-  return refreshed?.discord_thread_id ?? null;
+  if (error || !feedback) return null;
+
+  // Only return the existing thread ID — never re-invoke notify-feedback
+  // to avoid sending duplicate Discord posts and emails
+  return feedback.discord_thread_id ?? null;
 }
 
 export function usePlatformFeedback() {
