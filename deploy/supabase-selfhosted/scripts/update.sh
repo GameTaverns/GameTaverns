@@ -150,6 +150,7 @@ EXTERNAL_HANDLERS=(
   send-reengagement
   email-unsubscribe
   email-track
+  embed-widget
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   src="$FUNCTIONS_DIR/$handler"
