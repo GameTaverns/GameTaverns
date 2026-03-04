@@ -13,8 +13,8 @@
 **Fix:** For self-hosted, ensure ALL functions are routed through the `main` router. For standalone functions (rate-game, send-message), migrate to use `getCorsHeaders(req)` from `_shared/cors.ts`.
 
 ### 2. `dispatch_push_notification` DB Function — Hardcoded Cloud Key
-**Risk:** If GUC settings fail, push notifications fall back to Lovable Cloud URL/key instead of self-hosted  
-**Details:** The function in `public.dispatch_push_notification()` contains hardcoded Lovable Cloud anon key as fallback.  
+**Risk:** If GUC settings fail, push notifications fall back to hardcoded external URL/key instead of self-hosted  
+**Details:** The function in `public.dispatch_push_notification()` contains hardcoded external credentials as fallback. These should never be present in self-hosted deployments.  
 **Fix:** Remove the hardcoded fallbacks. If GUC settings aren't available, the function should fail silently rather than leaking to wrong infrastructure.
 
 ---
