@@ -23,8 +23,19 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const url = new URL(req.url);
-  const slug = url.searchParams.get("slug") || url.searchParams.get("library");
-  const format = url.searchParams.get("format") || "js"; // js | html
+  let slug = url.searchParams.get("slug") || url.searchParams.get("library");
+  let format = url.searchParams.get("format") || "js";
+
+  // Support POST with JSON body (used by supabase.functions.invoke)
+  if (req.method === "POST") {
+    try {
+      const body = await req.json();
+      slug = slug || body.slug || body.library;
+      format = body.format || format;
+    } catch {
+      // ignore parse errors, fall through to query params
+    }
+  }
 
   if (!slug) {
     return new Response("// Missing library slug", {

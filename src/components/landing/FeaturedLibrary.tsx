@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
-import { getSupabaseConfig } from "@/config/runtime";
+
 
 function useFeaturedLibrary() {
   return useQuery({
@@ -39,21 +39,22 @@ function useEmbeddedLibraryHtml(slug: string | undefined) {
     queryFn: async () => {
       if (!slug) return "";
 
-      const { url: apiUrl, anonKey } = getSupabaseConfig();
-      if (!apiUrl) throw new Error("Backend URL is not configured");
-
-      const endpoint = `${apiUrl.replace(/\/$/, "")}/functions/v1/embed-widget?slug=${encodeURIComponent(slug)}&format=html`;
-      const response = await fetch(endpoint, {
-        headers: {
-          apikey: anonKey,
-          Authorization: `Bearer ${anonKey}`,
-        },
+      // supabase.functions.invoke doesn't support GET with query params well,
+      // so we construct the URL manually using the Supabase client's configured URL.
+      // On cloud: this is the Supabase URL (e.g. https://xxx.supabase.co)
+      // On self-hosted: the client URL may be same-origin, but /functions/v1/ 
+      // is only routed by the Kong gateway. We need to use the functions invoke path.
+      const { data, error } = await supabase.functions.invoke("embed-widget", {
+        body: { slug, format: "html" },
       });
 
-      if (!response.ok) throw new Error("Failed to load embedded library preview");
+      if (error) throw error;
 
-      const html = await response.text();
-      if (html.includes("<div id=\"root\"></div>")) {
+      // The edge function returns HTML as text, but functions.invoke parses JSON by default.
+      // If data is a string, use it directly. If it's an object, it was JSON-parsed.
+      const html = typeof data === "string" ? data : "";
+      
+      if (!html || html.includes("<div id=\"root\"></div>")) {
         throw new Error("Received app shell instead of widget HTML");
       }
 
