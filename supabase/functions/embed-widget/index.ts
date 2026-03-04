@@ -61,6 +61,8 @@ export default async function handler(req: Request): Promise<Response> {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    console.log("[embed-widget] Looking up slug:", JSON.stringify(normalizedSlug), "supabaseUrl:", supabaseUrl.substring(0, 40));
+
     // Fetch library from base table first
     let { data: library, error: libraryError } = await supabase
       .from("libraries")
@@ -68,11 +70,9 @@ export default async function handler(req: Request): Promise<Response> {
       .eq("slug", normalizedSlug)
       .maybeSingle();
 
-    if (libraryError) {
-      console.error("[embed-widget] libraries lookup error:", libraryError);
-    }
+    console.log("[embed-widget] libraries result:", { found: !!library, error: libraryError?.message ?? null });
 
-    // Fallback for stricter self-hosted policies/views
+    // Fallback: try library_directory view
     if (!library) {
       const { data: directoryLibrary, error: directoryError } = await supabase
         .from("library_directory")
@@ -80,9 +80,7 @@ export default async function handler(req: Request): Promise<Response> {
         .eq("slug", normalizedSlug)
         .maybeSingle();
 
-      if (directoryError) {
-        console.error("[embed-widget] library_directory lookup error:", directoryError);
-      }
+      console.log("[embed-widget] library_directory result:", { found: !!directoryLibrary, error: directoryError?.message ?? null });
 
       if (directoryLibrary) {
         library = {
