@@ -241,6 +241,7 @@ export interface ForumThread {
   author?: {
     display_name: string | null;
     username?: string | null;
+    avatar_url?: string | null;
     featured_badge?: { name: string; icon: string | null; tier: number } | null;
     special_badges?: { id: string; badge_label: string; badge_color: string; badge_icon: string | null }[];
   };
@@ -258,6 +259,7 @@ export interface ForumReply {
   author?: {
     display_name: string | null;
     username?: string | null;
+    avatar_url?: string | null;
     featured_badge?: { name: string; icon: string | null; tier: number } | null;
     special_badges?: { id: string; badge_label: string; badge_color: string; badge_icon: string | null }[];
   };
@@ -384,6 +386,7 @@ export function useLibraryCategories(libraryId: string | undefined) {
 interface AuthorData {
   display_name: string | null;
   username?: string | null;
+  avatar_url?: string | null;
   featured_badge?: {
     name: string;
     icon: string | null;
@@ -399,7 +402,7 @@ async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorD
   const [profilesRes, specialBadgesRes] = await Promise.all([
     supabase
       .from("user_profiles")
-      .select(`user_id, display_name, username, featured_achievement:achievements(name, icon, tier)`)
+      .select(`user_id, display_name, username, avatar_url, featured_achievement:achievements(name, icon, tier)`)
       .in("user_id", authorIds),
     (supabase as any)
       .from("user_special_badges")
@@ -423,6 +426,7 @@ async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorD
       map.set(p.user_id, {
         display_name: p.display_name || "Unknown",
         username: (p as any).username || null,
+        avatar_url: (p as any).avatar_url || null,
         featured_badge: badge,
         special_badges: specialBadgesMap.get(p.user_id) ?? [],
       });

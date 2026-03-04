@@ -31,6 +31,7 @@ export function useThreadRepliesRealtime(threadId: string | undefined) {
             .select(`
               user_id, 
               display_name,
+              avatar_url,
               featured_achievement:achievements(name, icon, tier)
             `)
             .eq("user_id", newReply.author_id)
@@ -41,6 +42,7 @@ export function useThreadRepliesRealtime(threadId: string | undefined) {
             author: authorData
               ? {
                   display_name: authorData.display_name || "Unknown",
+                  avatar_url: (authorData as any).avatar_url || null,
                   featured_badge: authorData.featured_achievement as { name: string; icon: string | null; tier: number } | null,
                 }
               : { display_name: "Unknown" },
@@ -121,6 +123,7 @@ export function useCategoryThreadsRealtime(categoryId: string | undefined) {
             .select(`
               user_id, 
               display_name,
+              avatar_url,
               featured_achievement:achievements(name, icon, tier)
             `)
             .eq("user_id", newThread.author_id)
@@ -131,6 +134,7 @@ export function useCategoryThreadsRealtime(categoryId: string | undefined) {
             author: authorData
               ? {
                   display_name: authorData.display_name || "Unknown",
+                  avatar_url: (authorData as any).avatar_url || null,
                   featured_badge: authorData.featured_achievement as { name: string; icon: string | null; tier: number } | null,
                 }
               : { display_name: "Unknown" },

@@ -18,7 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextEditor, RichTextContent } from "@/components/community/RichTextEditor";
 import {
   DropdownMenu,
@@ -80,6 +80,7 @@ function ReplyCard({ reply }: { reply: ForumReply }) {
   return (
     <div className="flex gap-4 py-4 border-b last:border-0">
       <Avatar className="h-10 w-10 flex-shrink-0">
+        {reply.author?.avatar_url && <AvatarImage src={reply.author.avatar_url} alt={reply.author?.display_name || ""} />}
         <AvatarFallback>{initials}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
@@ -386,10 +387,12 @@ export default function ThreadDetail() {
           <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
             <div className="flex items-center gap-2">
               <Avatar className="h-6 w-6">
+                {thread.author?.avatar_url && <AvatarImage src={thread.author.avatar_url} alt={thread.author?.display_name || ""} />}
                 <AvatarFallback className="text-xs">{authorInitials}</AvatarFallback>
               </Avatar>
               <UserLink username={thread.author?.username} displayName={thread.author?.display_name} />
               <FeaturedBadge achievement={thread.author?.featured_badge ?? null} size="sm" />
+              <UserSpecialBadges badges={thread.author?.special_badges ?? []} size="xs" />
             </div>
             <span>•</span>
             <span>{formatDistanceToNow(new Date(thread.created_at), { addSuffix: true })}</span>
