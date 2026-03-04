@@ -16,6 +16,7 @@ import { usePlatformStats, formatStatNumber } from "@/hooks/usePlatformStats";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { Footer } from "@/components/layout/Footer";
+import { FeaturedLibrary } from "@/components/landing/FeaturedLibrary";
 import logoImage from "@/assets/logo.png";
 
 // Showcase screenshots
@@ -297,6 +298,21 @@ export default function Platform() {
           <FeatureHighlight icon={<Building2 className="h-5 w-5" />} title="Clubs" description="Connect libraries into a shared network with combined catalogs, shared events, and cross-library forums." />
           <FeatureHighlight icon={<Users className="h-5 w-5" />} title="Social Feed & Photos" description="Follow collectors, share game day photos with @mentions, and see activity from your community." />
           <FeatureHighlight icon={<Shield className="h-5 w-5" />} title="Privacy First" description="Toggle every feature on or off. Public or private. You're always in control." />
+        </div>
+      </section>
+
+      {/* ── Featured Library ── */}
+      <section className="bg-muted/30 border-y border-border/20">
+        <div className="container mx-auto px-4 py-20">
+          <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
+            See a Real Library in Action
+          </h2>
+          <p className="text-muted-foreground text-center mb-10 max-w-xl mx-auto">
+            This isn't a mockup — it's a live, populated library built on GameTaverns. Click through to explore it yourself.
+          </p>
+          <div className="max-w-5xl mx-auto">
+            <FeaturedLibrary />
+          </div>
         </div>
       </section>
 
