@@ -1468,6 +1468,7 @@ export type Database = {
           bgg_verified_type: string | null
           created_at: string
           description: string | null
+          enriched_at: string | null
           id: string
           image_url: string | null
           is_expansion: boolean
@@ -1490,6 +1491,7 @@ export type Database = {
           bgg_verified_type?: string | null
           created_at?: string
           description?: string | null
+          enriched_at?: string | null
           id?: string
           image_url?: string | null
           is_expansion?: boolean
@@ -1512,6 +1514,7 @@ export type Database = {
           bgg_verified_type?: string | null
           created_at?: string
           description?: string | null
+          enriched_at?: string | null
           id?: string
           image_url?: string | null
           is_expansion?: boolean

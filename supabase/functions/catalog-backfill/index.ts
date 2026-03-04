@@ -354,7 +354,10 @@ const handler = async (req: Request): Promise<Response> => {
           const entry = entryMap.get(item.bggId);
           if (!entry) continue;
 
-          const catalogUpdate: Record<string, unknown> = { bgg_verified_type: item.itemType };
+          const catalogUpdate: Record<string, unknown> = {
+            bgg_verified_type: item.itemType,
+            enriched_at: new Date().toISOString(),
+          };
           if (item.bggCommunityRating !== null) catalogUpdate.bgg_community_rating = item.bggCommunityRating;
           if (item.weight !== null) catalogUpdate.weight = item.weight;
           if (item.yearPublished !== null) catalogUpdate.year_published = item.yearPublished;
