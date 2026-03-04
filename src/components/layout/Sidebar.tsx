@@ -616,28 +616,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
               <span>Previously Owned</span>
             </button>
             {!isTenantMode && (
-              <>
-                <Link
-                  to="/directory"
-                  className={cn(
-                    "sidebar-link",
-                    location.pathname === "/directory" && "sidebar-link-active"
-                  )}
-                >
-                  <Globe className="h-5 w-5" />
-                  <span>Browse Libraries</span>
-                </Link>
-                <Link
-                  to="/near-me"
-                  className={cn(
-                    "sidebar-link",
-                    location.pathname === "/near-me" && "sidebar-link-active"
-                  )}
-                >
-                  <MapPin className="h-5 w-5" />
-                  <span>Near Me</span>
-                </Link>
-              </>
+              <Link
+                to="/directory"
+                className={cn(
+                  "sidebar-link",
+                  location.pathname === "/directory" && "sidebar-link-active"
+                )}
+              >
+                <Globe className="h-5 w-5" />
+                <span>Browse Libraries</span>
+              </Link>
             )}
           </nav>
 
