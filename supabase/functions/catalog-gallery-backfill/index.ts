@@ -127,8 +127,8 @@ async function handler(req: Request): Promise<Response> {
       .not("bgg_id", "is", null);
 
     if (!forceRefresh) {
-      // Only entries without gallery images
-      query = query.or("additional_images.is.null,additional_images.eq.{}");
+      // Only entries that haven't been checked yet (NULL = unchecked, [] = checked but no images found)
+      query = query.is("additional_images", null);
     }
 
     const { data: entries, error } = await query.limit(limit);
@@ -161,6 +161,11 @@ async function handler(req: Request): Promise<Response> {
         const images = await fetchBGGGalleryImages(entry.bgg_id, entry.image_url);
 
         if (images.length === 0) {
+          // Mark with empty array so this entry isn't re-selected next run
+          await supabaseAdmin
+            .from("game_catalog")
+            .update({ additional_images: [] })
+            .eq("id", entry.id);
           skipped++;
           results.push({ title: entry.title, bgg_id: entry.bgg_id, status: "no_images_found", count: 0 });
         } else {
@@ -194,7 +199,7 @@ async function handler(req: Request): Promise<Response> {
       .from("game_catalog")
       .select("id", { count: "exact", head: true })
       .not("bgg_id", "is", null)
-      .or("additional_images.is.null,additional_images.eq.{}");
+      .is("additional_images", null);
 
     return new Response(
       JSON.stringify({
