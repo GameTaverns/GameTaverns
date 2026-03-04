@@ -23,6 +23,7 @@ export const WIDGET_REGISTRY: WidgetDef[] = [
   { id: "random-picker", label: "Random Game Picker", icon: "Target", description: "Pick a random game from library" },
   { id: "create-library", label: "Create Another Library", icon: "Plus", description: "Create additional library slot" },
   { id: "growth-tools", label: "Share & Grow", icon: "Share2", description: "Stats cards, embed widgets, and referral tools" },
+  { id: "library-views", label: "Library Views", icon: "Eye", description: "See how many people are viewing your library" },
 
   // --- Community widgets ---
   { id: "forums", label: "Forums", icon: "MessageSquare", description: "Community forum threads" },
@@ -46,7 +47,7 @@ export const DEFAULT_LAYOUT = {
       label: "My Library",
       icon: "BookOpen",
       widgets: [
-        "import-progress", "onboarding", "lending", "messages", "borrowed",
+        "import-progress", "onboarding", "library-views", "lending", "messages", "borrowed",
         "shelf-of-shame", "events", "polls", "communities",
       ],
     },
