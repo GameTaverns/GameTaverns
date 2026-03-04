@@ -10,15 +10,22 @@ function useFeaturedLibrary() {
   return useQuery({
     queryKey: ["featured-library"],
     queryFn: async () => {
-      // Get the top discoverable library by game count
-      const { data: library, error } = await supabase
+      // Try to load the pinned featured library first, fall back to top by game count
+      const { data: pinned } = await supabase
+        .from("library_directory")
+        .select("*")
+        .eq("slug", "tzolaks-tavern")
+        .maybeSingle();
+
+      const library = pinned ?? (await supabase
         .from("library_directory")
         .select("*")
         .eq("is_discoverable", true)
         .order("game_count", { ascending: false })
         .limit(1)
-        .maybeSingle();
-      if (error) throw error;
+        .maybeSingle()).data;
+
+      if (!library) return null;
       if (!library?.id) return null;
 
       // Get some game covers from this library
