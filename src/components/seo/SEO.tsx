@@ -116,15 +116,43 @@ export function SEO({
 export function websiteJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: SITE_NAME,
-    url: SITE_URL,
-    description: DEFAULT_DESCRIPTION,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${SITE_URL}/catalog?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
+    "@graph": [
+      {
+        "@type": "WebSite",
+        name: SITE_NAME,
+        url: SITE_URL,
+        description: DEFAULT_DESCRIPTION,
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${SITE_URL}/catalog?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
+        },
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: SITE_NAME,
+        url: SITE_URL,
+        applicationCategory: "GameApplication",
+        operatingSystem: "Web, iOS, Android",
+        description: "Free board game collection manager with play logging, lending, game night polls, social features, and community tools. Import from BoardGameGeek.",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+        },
+        featureList: [
+          "Board game collection management",
+          "BoardGameGeek import",
+          "Play session logging & statistics",
+          "Game lending library",
+          "Game night polls",
+          "Social activity feed",
+          "Community forums",
+          "Achievement system",
+          "Near Me library map",
+        ],
+      },
+    ],
   };
 }
 
