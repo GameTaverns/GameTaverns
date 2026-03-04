@@ -4,6 +4,7 @@ import {
   Library, Users, Dice6, ArrowLeftRight, Calendar, MessageSquare,
   Trophy, Star, Upload, Zap, Shield, BarChart3, Building2,
   ChevronRight, CheckCircle2, Flame, Vote, Shuffle, BookOpen, RefreshCw,
+  MapPin,
 } from "lucide-react";
 import { SEO, websiteJsonLd } from "@/components/seo/SEO";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -16,6 +17,16 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { Footer } from "@/components/layout/Footer";
 import logoImage from "@/assets/logo.png";
+
+// Showcase screenshots
+import showcaseCollection from "@/assets/showcase/library-collection.jpg";
+import showcaseThemed from "@/assets/showcase/library-themed.jpg";
+import showcasePlayStats from "@/assets/showcase/play-stats.jpg";
+import showcaseGameDetail from "@/assets/showcase/game-detail.jpg";
+import showcasePoll from "@/assets/showcase/game-night-poll.jpg";
+import showcasePollResults from "@/assets/showcase/poll-results.jpg";
+import showcaseActivityFeed from "@/assets/showcase/activity-feed.jpg";
+import showcaseProfile from "@/assets/showcase/profile.jpg";
 
 export default function Platform() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -45,9 +56,10 @@ export default function Platform() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
       <SEO
-        title="GameTaverns — Board Game Library & Social Platform"
-        description="Create your free board game library. Track collections, log plays, share photos, follow fellow collectors, and build your gaming community — all in one social platform."
+        title="GameTaverns — Free Board Game Collection Manager & Community Platform"
+        description="Organize your board game collection, log plays, track stats, lend games, run game night polls, and connect with collectors worldwide. Import from BoardGameGeek in seconds. Free forever."
         noSuffix
+        canonical="https://gametaverns.com"
         jsonLd={websiteJsonLd()}
       />
 
@@ -59,6 +71,7 @@ export default function Platform() {
             <span className="font-display text-lg sm:text-2xl font-bold text-foreground truncate">
               GameTaverns
             </span>
+            <span className="hidden md:inline text-xs text-muted-foreground/60 ml-1 font-normal">Board Game Library Platform</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
             <Link to="/features" className="hidden sm:block">
@@ -69,6 +82,17 @@ export default function Platform() {
             <Link to="/directory" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 Explore Libraries
+              </Button>
+            </Link>
+            <Link to="/near-me" className="hidden sm:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1">
+                <MapPin className="h-3.5 w-3.5" />
+                Near Me
+              </Button>
+            </Link>
+            <Link to="/catalog" className="hidden md:block">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                Game Catalog
               </Button>
             </Link>
             <LanguageSwitcher />
@@ -102,18 +126,18 @@ export default function Platform() {
       <section className="relative container mx-auto px-4 pt-24 pb-20 text-center">
         <div className="inline-flex items-center gap-2 bg-secondary/10 text-secondary border border-secondary/20 rounded-full px-4 py-1.5 text-sm font-medium mb-8">
           <Flame className="h-3.5 w-3.5" />
-          Import from BGG in seconds
+          Free forever · Import from BGG in seconds
         </div>
         <h1 className="font-display text-4xl sm:text-6xl md:text-7xl font-bold text-foreground mb-6 leading-tight">
           Your Board Game Collection<br />
           <span className="text-secondary">Finally Has a Home</span>
         </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-4 leading-relaxed">
-          GameTaverns is the all-in-one platform for collectors, community libraries, and game groups.
-          Track your games, log plays, lend to friends, and build a community — all in one place.
+          The all-in-one platform for board game collectors, community libraries, and game groups.
+          Track your games, log plays, lend to friends, run game night polls, and build a community.
         </p>
         <p className="text-base text-muted-foreground/70 max-w-xl mx-auto mb-10">
-          Import from BoardGameGeek in seconds. Your library, your rules.
+          Import your entire BoardGameGeek collection in under 2 minutes. Your library, your rules.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
           <Button
@@ -205,38 +229,52 @@ export default function Platform() {
         {/* Showcase rows — alternating image/text */}
         <div className="space-y-20 max-w-5xl mx-auto mb-20">
           <ShowcaseRow
-            image="/presskit/library1-2.jpg"
-            alt="GameTaverns library view showing a board game collection"
+            image={showcaseCollection}
+            alt="GameTaverns library view showing a board game collection with box art, filters, and sorting"
             title="Beautiful Collection Management"
             description="Every game displayed with box art, player counts, and play time. Import from BGG in one click and keep everything organised with location tracking, condition grades, and expansion linking."
             reverse={false}
           />
           <ShowcaseRow
-            image="/presskit/playstats.jpg"
-            alt="Play statistics dashboard with charts and H-index"
-            title="Play Logging & Deep Stats"
-            description="Record every session with players, scores, and winners. See your H-index, win rates, monthly summaries, and trending games — all in beautiful charts."
+            image={showcaseThemed}
+            alt="A custom-themed board game library with unique branding and colors"
+            title="Your Library, Your Brand"
+            description="Each library gets its own theme, logo, and public URL. Whether you're a solo collector or community café, your library looks uniquely yours."
             reverse
           />
           <ShowcaseRow
-            image="/presskit/borrow1.jpg"
-            alt="Game lending and borrowing interface"
-            title="Lending Library Built In"
-            description="Borrow requests, due dates, condition check-in/out, waitlists, and borrower reputation ratings. Know who has your games at all times."
+            image={showcasePlayStats}
+            alt="Play statistics dashboard showing H-index, top mechanics, and most played games"
+            title="Play Logging & Deep Stats"
+            description="Record every session with players, scores, and winners. See your H-index, win rates, monthly summaries, top mechanics, and most-played games — all in beautiful dashboards."
             reverse={false}
           />
           <ShowcaseRow
-            image="/presskit/pollresults.jpg"
-            alt="Game night poll results showing votes"
-            title="Game Night Polls"
-            description="Share a link — anyone votes, no account needed. See live results as they come in. RSVP tracking and event details all in one place."
+            image={showcaseGameDetail}
+            alt="Detailed game page showing Flip 7 with description, mechanics, and play history"
+            title="Rich Game Pages"
+            description="Every game gets a detailed page with AI-generated overviews, mechanic tags, play history, documents, and community ratings. Link to BoardGameGeek with one click."
             reverse
           />
           <ShowcaseRow
-            image="/presskit/social-feed.jpg"
-            alt="Social activity feed showing followed users' game activity and photo posts"
+            image={showcasePoll}
+            alt="Game night poll letting users vote on what to play next"
+            title="Game Night Polls"
+            description="Create a poll from your collection, share a link — anyone votes, no account needed. See live results, RSVP tracking, and event details all in one place."
+            reverse={false}
+          />
+          <ShowcaseRow
+            image={showcaseActivityFeed}
+            alt="Social activity feed showing photo posts, game additions, and community interactions"
             title="Social Activity Feed"
-            description="Follow other collectors and see their activity in a real-time feed. Photo posts with @mentions, batched game additions, play sessions, and achievements — all in one place."
+            description="Follow other collectors and see their activity in a real-time feed. Photo posts with @mentions, batched game additions, play sessions, and achievements — all in one stream."
+            reverse
+          />
+          <ShowcaseRow
+            image={showcaseProfile}
+            alt="User profile page showing activity, photos, stats, achievements, and community badges"
+            title="Collector Profiles"
+            description="Every member gets a rich profile with activity history, photo gallery, play stats, achievements, and community connections. Follow your favorite collectors and see what they're playing."
             reverse={false}
           />
         </div>
@@ -290,18 +328,26 @@ export default function Platform() {
               Browse the Library Directory to find active game libraries, borrow games from your community, and connect with other enthusiasts.
             </p>
             <div className="space-y-3 mb-8">
-              {["Search by name or location", "Browse combined club catalogs", "Request to borrow games directly", "Follow libraries to see their activity"].map(b => (
+              {["Search by name or location", "Interactive map to find libraries near you", "Browse combined club catalogs", "Request to borrow games directly", "Follow libraries to see their activity"].map(b => (
                 <div key={b} className="flex items-center gap-3 text-sm text-muted-foreground">
                   <CheckCircle2 className="h-4 w-4 text-secondary shrink-0" />
                   {b}
                 </div>
               ))}
             </div>
-            <Link to="/directory">
-              <Button variant="outline" className="gap-2">
-                Browse the Directory <ChevronRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            <div className="flex gap-3">
+              <Link to="/directory">
+                <Button variant="outline" className="gap-2">
+                  Browse the Directory <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link to="/near-me">
+                <Button variant="outline" className="gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Find Near Me
+                </Button>
+              </Link>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {[
