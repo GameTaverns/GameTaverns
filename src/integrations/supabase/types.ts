@@ -2699,41 +2699,80 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          created_by_user_id: string | null
           description: string | null
           discord_thread_id: string | null
+          end_date: string | null
+          entry_fee: string | null
           event_date: string
           event_location: string | null
+          event_type: string | null
           id: string
+          is_public: boolean | null
+          latitude: number | null
           library_id: string
+          location_city: string | null
+          location_country: string | null
+          location_region: string | null
+          longitude: number | null
+          max_attendees: number | null
+          organizer_name: string | null
           status: string
           title: string
           updated_at: string
+          venue_name: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           description?: string | null
           discord_thread_id?: string | null
+          end_date?: string | null
+          entry_fee?: string | null
           event_date: string
           event_location?: string | null
+          event_type?: string | null
           id?: string
+          is_public?: boolean | null
+          latitude?: number | null
           library_id: string
+          location_city?: string | null
+          location_country?: string | null
+          location_region?: string | null
+          longitude?: number | null
+          max_attendees?: number | null
+          organizer_name?: string | null
           status?: string
           title: string
           updated_at?: string
+          venue_name?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          created_by_user_id?: string | null
           description?: string | null
           discord_thread_id?: string | null
+          end_date?: string | null
+          entry_fee?: string | null
           event_date?: string
           event_location?: string | null
+          event_type?: string | null
           id?: string
+          is_public?: boolean | null
+          latitude?: number | null
           library_id?: string
+          location_city?: string | null
+          location_country?: string | null
+          location_region?: string | null
+          longitude?: number | null
+          max_attendees?: number | null
+          organizer_name?: string | null
           status?: string
           title?: string
           updated_at?: string
+          venue_name?: string | null
         }
         Relationships: [
           {
@@ -2885,12 +2924,14 @@ export type Database = {
           id: string
           instagram_url: string | null
           is_discoverable: boolean
+          latitude: number | null
           lending_terms: string | null
           library_id: string
           location_city: string | null
           location_country: string | null
           location_region: string | null
           logo_url: string | null
+          longitude: number | null
           max_loans_per_borrower: number | null
           min_borrower_rating: number | null
           theme_accent_h: string | null
@@ -2972,12 +3013,14 @@ export type Database = {
           id?: string
           instagram_url?: string | null
           is_discoverable?: boolean
+          latitude?: number | null
           lending_terms?: string | null
           library_id: string
           location_city?: string | null
           location_country?: string | null
           location_region?: string | null
           logo_url?: string | null
+          longitude?: number | null
           max_loans_per_borrower?: number | null
           min_borrower_rating?: number | null
           theme_accent_h?: string | null
@@ -3059,12 +3102,14 @@ export type Database = {
           id?: string
           instagram_url?: string | null
           is_discoverable?: boolean
+          latitude?: number | null
           lending_terms?: string | null
           library_id?: string
           location_city?: string | null
           location_country?: string | null
           location_region?: string | null
           logo_url?: string | null
+          longitude?: number | null
           max_loans_per_borrower?: number | null
           min_borrower_rating?: number | null
           theme_accent_h?: string | null
@@ -4780,10 +4825,15 @@ export type Database = {
           event_location: string | null
           event_type: string | null
           id: string | null
+          latitude: number | null
           library_id: string | null
+          location_city: string | null
+          location_region: string | null
+          longitude: number | null
           poll_status: string | null
           share_token: string | null
           title: string | null
+          venue_name: string | null
         }
         Relationships: []
       }
@@ -4796,7 +4846,12 @@ export type Database = {
           game_count: number | null
           id: string | null
           is_discoverable: boolean | null
+          latitude: number | null
+          location_city: string | null
+          location_country: string | null
+          location_region: string | null
           logo_url: string | null
+          longitude: number | null
           member_count: number | null
           name: string | null
           slug: string | null

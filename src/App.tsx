@@ -95,6 +95,7 @@ const PublicEventDirectory = lazy(lazyRetry(() => import("./pages/PublicEventDir
 const ShareCard = lazy(lazyRetry(() => import("./pages/ShareCard")));
 const Grow = lazy(lazyRetry(() => import("./pages/Grow")));
 const EmbedWidget = lazy(lazyRetry(() => import("./pages/EmbedWidget")));
+const NearMe = lazy(lazyRetry(() => import("./pages/NearMe")));
 
 // Studio pages (studio.gametaverns.com)
 const StudioLogin = lazy(() => import("./pages/StudioLogin"));
@@ -336,6 +337,8 @@ function PlatformRoutes() {
       <Route path="/grow" element={<Grow />} />
       <Route path="/referrals" element={<Navigate to="/grow" replace />} />
       <Route path="/embed" element={<EmbedWidget />} />
+      <Route path="/near-me" element={<NearMe />} />
+      <Route path="/map" element={<Navigate to="/near-me" replace />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
