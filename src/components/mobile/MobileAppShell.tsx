@@ -158,7 +158,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
     '/dm', '/docs', '/directory', '/achievements', '/community', '/club', '/u/', '/lists', '/create-library',
     '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/setup-2fa',
     '/legal', '/privacy', '/terms', '/cookies', '/features', '/press', '/install', '/notifications',
-    '/grow', '/share-card', '/picker', '/request-club', '/join-club', '/events', '/event/', '/embed', '/referrals',
+    '/grow', '/share-card', '/picker', '/request-club', '/join-club', '/events', '/event/', '/embed', '/referrals', '/near-me',
   ];
   const effectivePath = getNativeEffectivePath(location.pathname);
   const isOnPlatformPath = SHELL_PLATFORM_PATHS.some(
@@ -175,7 +175,7 @@ function MobileAppShellInner({ children }: MobileAppShellProps) {
   // Not authenticated and no library — show selector, unless the user is
   // navigating to an auth route (login, signup, forgot-password, reset-password),
   // OR is already authenticated (they'll be redirected to dashboard by the effect above).
-  const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/setup-2fa', '/legal', '/privacy', '/terms', '/cookies', '/docs', '/directory'];
+  const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password', '/verify-email', '/setup-2fa', '/legal', '/privacy', '/terms', '/cookies', '/docs', '/directory', '/near-me'];
   const isAuthPath = AUTH_PATHS.some(p => effectivePath === p || effectivePath.startsWith(p));
 
   if (isNative && !isAuthenticated && !activeLibrary && !isAuthPath) {

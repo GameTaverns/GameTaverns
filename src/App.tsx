@@ -131,7 +131,7 @@ const PLATFORM_PATHS = [
   '/login', '/signup', '/forgot-password', '/reset-password', '/verify-email',
   '/admin', '/setup-2fa', '/install', '/features', '/picker', '/request-club',
   '/join-club', '/legal', '/privacy', '/terms', '/cookies', '/games-for-',
-  '/libraries/', '/share-card', '/grow', '/embed',
+  '/libraries/', '/share-card', '/grow', '/embed', '/near-me',
 ];
 
 function isPlatformPath(pathname: string): boolean {
