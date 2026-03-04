@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { getSupabaseConfig } from "@/config/runtime";
 
 function useFeaturedLibrary() {
   return useQuery({
@@ -38,9 +39,25 @@ function useEmbeddedLibraryHtml(slug: string | undefined) {
     queryFn: async () => {
       if (!slug) return "";
 
-      const response = await fetch(`/functions/v1/embed-widget?slug=${encodeURIComponent(slug)}&format=html`);
+      const { url: apiUrl, anonKey } = getSupabaseConfig();
+      if (!apiUrl) throw new Error("Backend URL is not configured");
+
+      const endpoint = `${apiUrl.replace(/\/$/, "")}/functions/v1/embed-widget?slug=${encodeURIComponent(slug)}&format=html`;
+      const response = await fetch(endpoint, {
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+        },
+      });
+
       if (!response.ok) throw new Error("Failed to load embedded library preview");
-      return response.text();
+
+      const html = await response.text();
+      if (html.includes("<div id=\"root\"></div>")) {
+        throw new Error("Received app shell instead of widget HTML");
+      }
+
+      return html;
     },
     enabled: !!slug,
     staleTime: 1000 * 60 * 5,
@@ -50,7 +67,7 @@ function useEmbeddedLibraryHtml(slug: string | undefined) {
 export function FeaturedLibrary() {
   const { data, isLoading } = useFeaturedLibrary();
   const slug = data?.library?.slug;
-  const { data: embedHtml, isLoading: isEmbedLoading } = useEmbeddedLibraryHtml(slug);
+  const { data: embedHtml, isLoading: isEmbedLoading, isError: isEmbedError } = useEmbeddedLibraryHtml(slug);
 
   if (isLoading) {
     return (
@@ -111,6 +128,16 @@ export function FeaturedLibrary() {
       <div className="bg-background p-3 sm:p-4">
         {isEmbedLoading ? (
           <Skeleton className="h-[520px] w-full rounded-xl" />
+        ) : isEmbedError ? (
+          <div className="h-[320px] rounded-xl border border-border/20 flex flex-col items-center justify-center gap-3 text-center px-6">
+            <p className="text-sm text-muted-foreground">Live preview couldn't load here, but the real library is available now.</p>
+            <a href={libraryUrl} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 gap-1.5">
+                Open Library
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </a>
+          </div>
         ) : (
           <div
             className="w-full overflow-hidden rounded-xl border border-border/20"
