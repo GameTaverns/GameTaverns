@@ -44,16 +44,46 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = (Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "").replace(/\/$/, "");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("ANON_KEY") || "";
+
+    if (!supabaseUrl || !serviceKey) {
+      console.error("[embed-widget] Missing runtime env", {
+        hasSupabaseUrl: !!supabaseUrl,
+        hasServiceKey: !!serviceKey,
+      });
+      return new Response("// Widget backend is not configured", {
+        headers: { ...corsHeaders, "Content-Type": "application/javascript" },
+      });
+    }
+
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Fetch library + games
-    const { data: library } = await supabase
+    // Fetch library from base table first
+    let { data: library, error: libraryError } = await supabase
       .from("libraries")
       .select("id, name, slug, description, logo_url")
       .eq("slug", slug)
       .maybeSingle();
+
+    if (libraryError) {
+      console.error("[embed-widget] libraries lookup error:", libraryError);
+    }
+
+    // Fallback for stricter self-hosted policies: use public directory view
+    if (!library) {
+      const { data: directoryLibrary, error: directoryError } = await supabase
+        .from("library_directory")
+        .select("id, name, slug, description, logo_url")
+        .eq("slug", slug)
+        .maybeSingle();
+
+      if (directoryError) {
+        console.error("[embed-widget] library_directory lookup error:", directoryError);
+      }
+
+      library = directoryLibrary;
+    }
 
     if (!library) {
       return new Response(format === "js"
