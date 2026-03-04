@@ -14,6 +14,7 @@ import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenant } from "@/contexts/TenantContext";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { useLibraryViewTracking } from "@/hooks/useLibraryViewTracking";
 import { getOptimalImageUrl, proxiedImageUrl, directImageUrl, isBggImage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +58,7 @@ const GameDetail = () => {
   const { isOwner: isLibraryOwner } = useTenant();
   const canViewAdminData = isAdmin || isLibraryOwner;
   const { playLogs, messaging, forSale, ratings, lending } = useFeatureFlags();
+  useLibraryViewTracking(library?.id, isLibraryOwner);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
   const [useProxyForImage, setUseProxyForImage] = useState<Record<string, boolean>>({});

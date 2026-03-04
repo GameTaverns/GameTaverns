@@ -21,6 +21,7 @@ import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useWishlist } from "@/hooks/useWishlist";
 import { supabase, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTenant } from "@/contexts/TenantContext";
+import { useLibraryViewTracking } from "@/hooks/useLibraryViewTracking";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
@@ -59,6 +60,8 @@ const Index = () => {
   const { isAuthenticated } = useAuth();
   const { buildUrl } = useTenantUrl();
   
+  // Track anonymous views on public library pages
+  useLibraryViewTracking(library?.id, isOwner);
   // Quadrant filter state
   const [quadrantFilter, setQuadrantFilter] = useState<{
     difficulty: number;

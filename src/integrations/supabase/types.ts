@@ -3180,6 +3180,55 @@ export type Database = {
           },
         ]
       }
+      library_views: {
+        Row: {
+          id: string
+          library_id: string
+          page_path: string | null
+          referrer: string | null
+          viewed_at: string
+          viewer_hash: string | null
+        }
+        Insert: {
+          id?: string
+          library_id: string
+          page_path?: string | null
+          referrer?: string | null
+          viewed_at?: string
+          viewer_hash?: string | null
+        }
+        Update: {
+          id?: string
+          library_id?: string
+          page_path?: string | null
+          referrer?: string | null
+          viewed_at?: string
+          viewer_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_views_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_views_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_views_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loan_waitlist: {
         Row: {
           created_at: string
@@ -4986,6 +5035,39 @@ export type Database = {
             foreignKeyName: "library_settings_library_id_fkey"
             columns: ["library_id"]
             isOneToOne: true
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_view_stats: {
+        Row: {
+          library_id: string | null
+          unique_viewers_30d: number | null
+          unique_viewers_7d: number | null
+          views_30d: number | null
+          views_7d: number | null
+          views_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_views_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_views_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_views_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
             referencedRelation: "library_directory"
             referencedColumns: ["id"]
           },
