@@ -384,12 +384,23 @@ export default function Directory() {
               Back to Dashboard
             </Link>
           )}
-          <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-            Library Directory
-          </h1>
-          <p className="text-muted-foreground">
-            Discover game libraries from the community, follow your favorites, and borrow games
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+                Library Directory
+              </h1>
+              <p className="text-muted-foreground">
+                Discover game libraries from the community, follow your favorites, and borrow games
+              </p>
+            </div>
+            <Link to="/near-me">
+              <Button variant="outline" className="gap-2 flex-shrink-0">
+                <MapPin className="h-4 w-4" />
+                <Map className="h-4 w-4" />
+                Map View
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Search bar */}
