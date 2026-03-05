@@ -92,6 +92,7 @@ function FeedbackDetailDialog({
       return saved === "reply" ? "reply" : "internal";
     } catch { return "internal"; }
   });
+  const [isSending, setIsSending] = useState(false);
 
   // Persist draft to sessionStorage
   const handleNoteContentChange = (value: string) => {
@@ -115,7 +116,7 @@ function FeedbackDetailDialog({
   const hasReplyEmail = !!feedback.sender_email?.trim();
 
   const handleAddNote = async () => {
-    if (!noteContent.trim() || !user) return;
+    if (!noteContent.trim() || !user || isSending) return;
 
     if (noteType === "reply" && !hasReplyEmail) {
       toast({
@@ -126,6 +127,7 @@ function FeedbackDetailDialog({
       return;
     }
 
+    setIsSending(true);
     try {
       await addNote.mutateAsync({
         feedback_id: feedback.id,
@@ -180,6 +182,8 @@ function FeedbackDetailDialog({
       }
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -367,9 +371,9 @@ function FeedbackDetailDialog({
               <Button
                 size="sm"
                 onClick={handleAddNote}
-                disabled={!noteContent.trim() || addNote.isPending || (noteType === "reply" && !hasReplyEmail)}
+                disabled={!noteContent.trim() || addNote.isPending || isSending || (noteType === "reply" && !hasReplyEmail)}
               >
-                {addNote.isPending
+                {addNote.isPending || isSending
                   ? "Sending..."
                   : noteType === "reply"
                     ? "Send Reply"
