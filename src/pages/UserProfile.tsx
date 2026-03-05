@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, ArrowLeft, BarChart3, Camera } from "lucide-react";
+import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, ArrowLeft, BarChart3, Camera, Globe, Building2 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -278,6 +278,30 @@ export default function UserProfile() {
               <p className="mt-4 text-sm leading-relaxed max-w-2xl" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>
                 {profile.bio}
               </p>
+            )}
+
+            {/* Website & Company */}
+            {((profile as any).website_url || (profile as any).company_name) && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>
+                {(profile as any).company_name && (
+                  <span className="flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5" />
+                    {(profile as any).company_name}
+                  </span>
+                )}
+                {(profile as any).website_url && (
+                  <a
+                    href={(profile as any).website_url.startsWith("http") ? (profile as any).website_url : `https://${(profile as any).website_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 hover:underline"
+                    style={hasTheme && profileAccent ? { color: profileAccent } : {}}
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    {(profile as any).website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                  </a>
+                )}
+              </div>
             )}
 
             <div className="mt-3 flex items-center gap-2 text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>
