@@ -1,13 +1,21 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/backend/client";
 
+let libraryViewsTableUnavailable = false;
+
+function isMissingRelationError(error: any): boolean {
+  const code = error?.code;
+  const message = String(error?.message || "").toLowerCase();
+  return code === "42P01" || message.includes("does not exist") || message.includes("not found");
+}
+
 /**
  * Records an anonymous view when someone visits a public library page.
  * Debounced: only records once per library per browser session.
  */
 export function useLibraryViewTracking(libraryId: string | undefined, isOwner: boolean) {
   useEffect(() => {
-    if (!libraryId || isOwner) return; // Don't count owner's own views
+    if (!libraryId || isOwner || libraryViewsTableUnavailable) return; // Don't count owner's own views
 
     const sessionKey = `lv_${libraryId}`;
     const alreadyViewed = sessionStorage.getItem(sessionKey);
@@ -25,8 +33,15 @@ export function useLibraryViewTracking(libraryId: string | undefined, isOwner: b
         page_path: window.location.pathname,
         referrer: document.referrer || null,
       })
-      .then(() => {
-        sessionStorage.setItem(sessionKey, "1");
+      .then(({ error }) => {
+        if (error && isMissingRelationError(error)) {
+          libraryViewsTableUnavailable = true;
+          sessionStorage.setItem(sessionKey, "1");
+          return;
+        }
+        if (!error) {
+          sessionStorage.setItem(sessionKey, "1");
+        }
       });
   }, [libraryId, isOwner]);
 }

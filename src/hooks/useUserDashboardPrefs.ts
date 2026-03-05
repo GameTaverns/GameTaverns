@@ -25,6 +25,14 @@ const EMPTY_PREFS: UserDashboardPrefs = {
   widgetSizes: {},
 };
 
+let dashboardPrefsDbUnavailable = false;
+
+function isMissingRelationError(error: any): boolean {
+  const code = error?.code;
+  const message = String(error?.message || "").toLowerCase();
+  return code === "42P01" || message.includes("does not exist") || message.includes("not found");
+}
+
 function loadPrefs(): UserDashboardPrefs {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -124,12 +132,16 @@ export const TAB_WIDGET_REGISTRY: Record<string, WidgetDef[]> = {
 };
 
 /** Debounced save to DB — avoids spamming during rapid customization */
-function useDebouncedDbSync(prefs: UserDashboardPrefs, userId: string | undefined) {
+function useDebouncedDbSync(
+  prefs: UserDashboardPrefs,
+  userId: string | undefined,
+  dbSyncEnabled: boolean
+) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<string>("");
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !dbSyncEnabled || dashboardPrefsDbUnavailable) return;
 
     const serialized = JSON.stringify(prefs);
     // Skip if nothing changed
@@ -152,11 +164,19 @@ function useDebouncedDbSync(prefs: UserDashboardPrefs, userId: string | undefine
           }, { onConflict: "user_id" });
 
         if (error) {
+          if (isMissingRelationError(error)) {
+            dashboardPrefsDbUnavailable = true;
+            return;
+          }
           console.warn("Failed to save dashboard prefs to DB:", error);
         } else {
           lastSavedRef.current = serialized;
         }
       } catch (e) {
+        if (isMissingRelationError(e)) {
+          dashboardPrefsDbUnavailable = true;
+          return;
+        }
         console.warn("Dashboard prefs DB sync error:", e);
       }
     }, 1500);
@@ -164,18 +184,19 @@ function useDebouncedDbSync(prefs: UserDashboardPrefs, userId: string | undefine
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [prefs, userId]);
+  }, [prefs, userId, dbSyncEnabled]);
 }
 
 export function useUserDashboardPrefs(isAdmin: boolean, isStaff: boolean = false) {
   const isAdminOrStaff = isAdmin || isStaff;
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<UserDashboardPrefs>(loadPrefs);
+  const [dbSyncEnabled, setDbSyncEnabled] = useState(!dashboardPrefsDbUnavailable);
   const dbLoadedRef = useRef(false);
 
   // On mount, load prefs from DB if user is logged in
   useEffect(() => {
-    if (!user?.id || dbLoadedRef.current) return;
+    if (!user?.id || dbLoadedRef.current || !dbSyncEnabled || dashboardPrefsDbUnavailable) return;
     dbLoadedRef.current = true;
 
     (async () => {
@@ -187,6 +208,11 @@ export function useUserDashboardPrefs(isAdmin: boolean, isStaff: boolean = false
           .maybeSingle();
 
         if (error) {
+          if (isMissingRelationError(error)) {
+            dashboardPrefsDbUnavailable = true;
+            setDbSyncEnabled(false);
+            return;
+          }
           console.warn("Failed to load dashboard prefs from DB:", error);
           return;
         }
@@ -202,7 +228,7 @@ export function useUserDashboardPrefs(isAdmin: boolean, isStaff: boolean = false
 
           if (!isEmpty) {
             // Upload local prefs to DB for cross-platform sync
-            await supabase
+            const { error: seedError } = await supabase
               .from("user_dashboard_prefs")
               .upsert({
                 user_id: user.id,
@@ -212,10 +238,14 @@ export function useUserDashboardPrefs(isAdmin: boolean, isStaff: boolean = false
                 hidden_widgets: localPrefs.hiddenWidgets as any,
                 widget_sizes: localPrefs.widgetSizes as any,
                 updated_at: new Date().toISOString(),
-              }, { onConflict: "user_id" })
-              .then(({ error: e }) => {
-                if (e) console.warn("Failed to seed DB prefs:", e);
-              });
+              }, { onConflict: "user_id" });
+
+            if (seedError && isMissingRelationError(seedError)) {
+              dashboardPrefsDbUnavailable = true;
+              setDbSyncEnabled(false);
+              return;
+            }
+            if (seedError) console.warn("Failed to seed DB prefs:", seedError);
           }
           return;
         }
@@ -240,13 +270,18 @@ export function useUserDashboardPrefs(isAdmin: boolean, isStaff: boolean = false
         }
         // else: local is newer — keep local, DB will be updated via debounced sync
       } catch (e) {
+        if (isMissingRelationError(e)) {
+          dashboardPrefsDbUnavailable = true;
+          setDbSyncEnabled(false);
+          return;
+        }
         console.warn("Dashboard prefs load error:", e);
       }
     })();
-  }, [user?.id]);
+  }, [user?.id, dbSyncEnabled]);
 
   // Debounced sync to DB whenever prefs change
-  useDebouncedDbSync(prefs, user?.id);
+  useDebouncedDbSync(prefs, user?.id, dbSyncEnabled);
 
   const update = useCallback((updater: (prev: UserDashboardPrefs) => UserDashboardPrefs) => {
     setPrefs(prev => {
@@ -323,17 +358,22 @@ export function useUserDashboardPrefs(isAdmin: boolean, isStaff: boolean = false
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(STORAGE_KEY + "-ts");
     setPrefs(EMPTY_PREFS);
-    // Also clear DB prefs
-    if (user?.id) {
+    // Also clear DB prefs when available
+    if (user?.id && dbSyncEnabled && !dashboardPrefsDbUnavailable) {
       supabase
         .from("user_dashboard_prefs")
         .delete()
         .eq("user_id", user.id)
         .then(({ error }) => {
+          if (error && isMissingRelationError(error)) {
+            dashboardPrefsDbUnavailable = true;
+            setDbSyncEnabled(false);
+            return;
+          }
           if (error) console.warn("Failed to clear DB prefs:", error);
         });
     }
-  }, [user?.id]);
+  }, [user?.id, dbSyncEnabled]);
 
   // ── Per-tab widget customization ──
 
