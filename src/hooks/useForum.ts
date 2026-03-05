@@ -403,8 +403,8 @@ async function fetchAuthorData(authorIds: string[]): Promise<Map<string, AuthorD
   if (authorIds.length === 0) return new Map();
 
   const [profilesRes, specialBadgesRes] = await Promise.all([
-    supabase
-      .from("user_profiles")
+    (supabase as any)
+      .from("public_user_profiles")
       .select(`user_id, display_name, username, avatar_url, featured_achievement:achievements(name, icon, tier)`)
       .in("user_id", authorIds),
     (supabase as any)
