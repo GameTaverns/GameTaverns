@@ -103,6 +103,7 @@ const ShareCard = lazy(lazyRetry(() => import("./pages/ShareCard")));
 const Grow = lazy(lazyRetry(() => import("./pages/Grow")));
 const EmbedWidget = lazy(lazyRetry(() => import("./pages/EmbedWidget")));
 const NearMe = lazy(lazyRetry(() => import("./pages/NearMe")));
+const ArchetypesPage = lazy(lazyRetry(() => import("./pages/ArchetypesPage")));
 
 // Studio pages (studio.gametaverns.com)
 const StudioLogin = lazy(() => import("./pages/StudioLogin"));
@@ -349,6 +350,7 @@ function PlatformRoutes() {
       {/* Growth pages */}
       <Route path="/share-card" element={<ShareCard />} />
       <Route path="/grow" element={<Grow />} />
+      <Route path="/archetypes" element={<Suspense fallback={<PageLoader />}><ArchetypesPage /></Suspense>} />
       <Route path="/referrals" element={<Navigate to="/grow" replace />} />
       <Route path="/embed" element={<EmbedWidget />} />
       <Route path="/near-me" element={<NearMe />} />

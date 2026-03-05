@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/backend/client";
 
 // ─── Gaming Personality Archetypes ───
 // Based on dominant mechanics/weight patterns
-const ARCHETYPES = [
+export const ARCHETYPES = [
   {
     id: "strategist",
     name: "The Grand Strategist",

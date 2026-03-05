@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, ArrowRight, Share2, Brain, Dices, BookX } from "lucide-react";
+import { Sparkles, ArrowRight, Share2, Brain, Dices, BookX, Info } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useCollectionIntelligence } from "@/hooks/useCollectionIntelligence";
 
 interface Props {
@@ -36,7 +37,12 @@ export function CollectionInsightsWidget({ libraryId }: Props) {
         <div className="flex items-center gap-3 p-3 rounded-xl bg-card/50 border border-border/50">
           <span className="text-3xl">{personality.archetype.emoji}</span>
           <div className="min-w-0">
-            <p className="font-bold text-sm text-foreground">{personality.archetype.name}</p>
+            <p className="font-bold text-sm text-foreground flex items-center gap-1.5">
+              {personality.archetype.name}
+              <Link to="/archetypes" className="text-muted-foreground hover:text-primary transition-colors" title="How is this determined?">
+                <Info className="h-3.5 w-3.5" />
+              </Link>
+            </p>
             <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
               {personality.archetype.description}
             </p>
