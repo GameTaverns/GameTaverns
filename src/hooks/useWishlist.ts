@@ -73,17 +73,17 @@ export function useWishlist() {
 
   // Fetch this guest's votes (only in non-demo mode)
   const { data: myVotes, isLoading: isLoadingVotes } = useQuery({
-    queryKey: ["wishlist-my-votes", guestIdentifier],
+    queryKey: ["wishlist-my-votes", guestIdentifier, library?.id],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("wishlist", {
-        body: { action: "list", guest_identifier: guestIdentifier },
+        body: { action: "list", guest_identifier: guestIdentifier, library_id: library?.id },
       });
       
       if (error) throw error;
       return new Set<string>(data?.votes || []);
     },
     staleTime: 30000,
-    enabled: !isDemoMode, // Disable query in demo mode
+    enabled: !isDemoMode && !!library?.id,
   });
 
   // Add vote mutation (only used in non-demo mode)
@@ -93,6 +93,7 @@ export function useWishlist() {
         body: {
           action: "add",
           game_id: gameId,
+          library_id: library?.id,
           guest_name: displayName || null,
           guest_identifier: guestIdentifier,
         },
@@ -112,6 +113,7 @@ export function useWishlist() {
         body: {
           action: "remove",
           game_id: gameId,
+          library_id: library?.id,
           guest_identifier: guestIdentifier,
         },
       });
@@ -133,7 +135,8 @@ export function useWishlist() {
           addDemoWishlistVote(gameId, displayName || undefined);
         }
       } else {
-        // Use Supabase edge function
+        if (!library?.id) return;
+        // Use backend function scoped to current library
         if (myVotes?.has(gameId)) {
           removeVoteMutation.mutate(gameId);
         } else {
@@ -141,7 +144,7 @@ export function useWishlist() {
         }
       }
     },
-    [isDemoMode, hasVotedForGame, removeDemoWishlistVote, addDemoWishlistVote, displayName, myVotes, addVoteMutation, removeVoteMutation]
+    [isDemoMode, hasVotedForGame, removeDemoWishlistVote, addDemoWishlistVote, displayName, myVotes, addVoteMutation, removeVoteMutation, library?.id]
   );
 
   const hasVoted = useCallback(
@@ -176,11 +179,15 @@ export function useWishlist() {
   };
 }
 
-// Hook for admin to see full wishlist details
+// Hook for admin to see wishlist details for current library only
 export function useWishlistAdmin() {
+  const { library } = useTenant();
+
   return useQuery({
-    queryKey: ["wishlist-admin"],
+    queryKey: ["wishlist-admin", library?.id],
     queryFn: async () => {
+      if (!library?.id) return [];
+
       const { data, error } = await supabase
         .from("game_wishlist")
         .select(`
@@ -188,13 +195,15 @@ export function useWishlistAdmin() {
           game_id,
           guest_name,
           created_at,
-          games:game_id (title, slug)
+          games:game_id!inner (title, slug, library_id)
         `)
+        .eq("games.library_id", library.id)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
       return data;
     },
     staleTime: 30000,
+    enabled: !!library?.id,
   });
 }
