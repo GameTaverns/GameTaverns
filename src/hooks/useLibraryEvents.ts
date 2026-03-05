@@ -158,11 +158,13 @@ export function useCreateEvent() {
       // Auto-create an event discussion thread in the library forum (best effort)
       if (input.library_id) {
         try {
-          const { data: categories } = await supabase
+          const { data: categories, error: catError } = await supabase
             .from("forum_categories")
             .select("id, slug, parent_category_id")
             .eq("library_id", input.library_id)
             .eq("is_archived", false);
+
+          console.log("[event-forum] categories found:", categories?.length, "error:", catError?.message);
 
           const preferredCategory =
             categories?.find((c: any) => c.slug === "events") ||
@@ -170,7 +172,11 @@ export function useCreateEvent() {
             categories?.find((c: any) => c.slug === "general") ||
             categories?.[0];
 
+          console.log("[event-forum] selected category:", preferredCategory?.id, preferredCategory?.slug);
+
           const authorId = input.created_by_user_id || data.created_by_user_id;
+          console.log("[event-forum] authorId:", authorId);
+
           if (preferredCategory?.id && authorId) {
             const when = new Date(input.event_date).toLocaleString();
             const where =
@@ -188,7 +194,7 @@ export function useCreateEvent() {
               "Use this thread for RSVPs, game picks, and planning details.",
             ].join("\n");
 
-            const { data: thread } = await supabase
+            const { data: thread, error: threadError } = await supabase
               .from("forum_threads")
               .insert({
                 category_id: preferredCategory.id,
@@ -199,10 +205,16 @@ export function useCreateEvent() {
               .select("id")
               .single();
 
+            console.log("[event-forum] thread created:", thread?.id, "error:", threadError?.message);
             forumThreadId = thread?.id ?? null;
+          } else {
+            console.warn("[event-forum] Skipped: no category or authorId", {
+              hasCat: !!preferredCategory?.id,
+              hasAuthor: !!authorId,
+            });
           }
-        } catch {
-          // Non-blocking: event creation should still succeed if forum thread creation fails
+        } catch (err) {
+          console.error("[event-forum] Failed to create forum thread:", err);
         }
       }
 

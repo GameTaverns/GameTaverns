@@ -231,7 +231,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !date) return;
+    if (!title.trim() || !date || createEvent.isPending || updateEvent.isPending) return;
     
     const [hours, minutes] = time.split(":").map(Number);
     const eventDate = new Date(date);
