@@ -1,882 +1,113 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  ExternalLink,
-  Settings,
-  LogOut,
-  Plus,
-  Library,
-  Shield,
-  Star,
-  Heart,
-  Mail,
-  ArrowRight,
-  Vote,
-  User,
-  BookOpen,
-  Trophy,
-  AlertTriangle,
-  Users,
-  Globe,
-  MessageSquare,
-  Target,
-  ArrowLeftRight,
-  Ticket,
-  BarChart3,
-  Calendar,
-  Shuffle,
-  HelpCircle,
-  ChevronDown,
-  Eye,
-  Gamepad2,
-  Flame,
-  ListOrdered,
-  Share2,
+  Gamepad2, BookOpen, Sparkles, Users, Mail, Settings,
+  Plus, Search, ArrowRight, Shield,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary, useMyLibraries, useMaxLibrariesPerUser, useUserProfile } from "@/hooks/useLibrary";
-import { useToast } from "@/hooks/use-toast";
+import { useMyLibrary, useMyLibraries, useUserProfile } from "@/hooks/useLibrary";
+import { useLending } from "@/hooks/useLending";
+import { useMyClubs } from "@/hooks/useClubs";
 import { supabase } from "@/integrations/backend/client";
-import { isSelfHostedSupabaseStack } from "@/config/runtime";
-import { HotnessLeaderboard } from "@/components/games/HotnessLeaderboard";
-
-import { DangerZone } from "@/components/settings/DangerZone";
+import { useQuery } from "@tanstack/react-query";
 import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
-import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
-import { CatalogDiscoveryCard } from "@/components/dashboard/CatalogDiscoveryCard";
+import { GuidedTour } from "@/components/dashboard/GuidedTour";
+import { Footer } from "@/components/layout/Footer";
+import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
 
-import { AccountSettings } from "@/components/settings/AccountSettings";
-import { ProfileThemeCustomizer } from "@/components/settings/ProfileThemeCustomizer";
-import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
-import { TwoFactorSettings } from "@/components/settings/TwoFactorSettings";
-
-function AccountSettingsTabs() {
-  const { t } = useTranslation();
+function HubCard({ to, icon: Icon, title, description, bullets, iconColor, badges }: {
+  to: string; icon: any; title: string; description: string; bullets: string[];
+  iconColor: string;
+  badges?: { label: string; variant: "default" | "secondary" | "destructive" | "outline" }[];
+}) {
   return (
-    <Tabs defaultValue="profile">
-      <TabsList className="mb-4">
-        <TabsTrigger value="profile">{t('settings.profile')}</TabsTrigger>
-        <TabsTrigger value="security">{t('settings.security')}</TabsTrigger>
-        <TabsTrigger value="appearance">{t('settings.appearance')}</TabsTrigger>
-      </TabsList>
-      <TabsContent value="profile">
-        <AccountSettings />
-      </TabsContent>
-      <TabsContent value="security">
-        <div className="space-y-6">
-          <ChangePasswordCard />
-          <TwoFactorSettings />
+    <Link to={to} className="block">
+      <div className="rounded-2xl border bg-card hover:shadow-lg hover:border-primary/30 transition-all p-5 cursor-pointer group h-full">
+        <div className="flex items-start justify-between mb-3">
+          <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
+            <Icon className="h-5 w-5" style={{ color: iconColor }} />
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
         </div>
-      </TabsContent>
-      <TabsContent value="appearance">
-        <ProfileThemeCustomizer />
-      </TabsContent>
-    </Tabs>
+        <h3 className="font-semibold text-foreground text-sm">{title}</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        <div className="mt-3 space-y-0.5">
+          {bullets.map(s => (
+            <p key={s} className="text-[11px] text-muted-foreground">• {s}</p>
+          ))}
+        </div>
+        {badges && badges.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {badges.map(b => <Badge key={b.label} variant={b.variant} className="text-[10px]">{b.label}</Badge>)}
+          </div>
+        )}
+      </div>
+    </Link>
   );
 }
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UpcomingEventsWidget } from "@/components/events/UpcomingEventsWidget";
-import { CreateEventDialog } from "@/components/events/CreateEventDialog";
-import { LendingDashboard } from "@/components/lending/LendingDashboard";
-import { AchievementsDisplay } from "@/components/achievements/AchievementsDisplay";
-import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
-import { useLending } from "@/hooks/useLending";
-import { useMyMemberships } from "@/hooks/useLibraryMembership";
-import { RandomGamePicker } from "@/components/games/RandomGamePicker";
-import { getLibraryUrl } from "@/hooks/useTenantUrl";
-import { TenantLink } from "@/components/TenantLink";
-import { Footer } from "@/components/layout/Footer";
-
-import { CommunityTab } from "@/components/community/CommunityTab";
-import { CommunityPollsList } from "@/components/polls/CommunityPollsList";
-import { SocialTab } from "@/components/social/SocialTab";
-import { AnalyticsTab } from "@/components/analytics/AnalyticsTab";
-import { CommunityMembersCard } from "@/components/community/CommunityMembersCard";
-import { ReferralPanel } from "@/components/referral/ReferralPanel";
-import { ChallengesManager } from "@/components/challenges/ChallengesManager";
-import { TradeCenter } from "@/components/trades/TradeCenter";
-import { useMyClubs } from "@/hooks/useClubs";
-import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
-import { CollectionInsightsWidget } from "@/components/dashboard/CollectionInsightsWidget";
-import { OnboardingWizard } from "@/components/dashboard/OnboardingWizard";
-import { useTotpStatus } from "@/hooks/useTotpStatus";
-import { useUserDashboardPrefs, TAB_WIDGET_REGISTRY } from "@/hooks/useUserDashboardPrefs";
-import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer";
-import { TabWidgetEditor } from "@/components/dashboard/TabWidgetEditor";
-
-import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
-import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidget";
-import { LibraryViewStatsCard } from "@/components/dashboard/LibraryViewStatsCard";
-import { useQuery } from "@tanstack/react-query";
-import { supabase as _supabase } from "@/integrations/backend/client";
-import { InfoPopover } from "@/components/ui/InfoPopover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ScrollArea } from "@/components/ui/scroll-area";
-
-// Admin panel imports
-import { lazy, Suspense } from "react";
-import { UserManagement } from "@/components/admin/UserManagement";
-import { LibraryManagement } from "@/components/admin/LibraryManagement";
-import { PlatformSettings } from "@/components/admin/PlatformSettings";
-import { PlatformAnalytics } from "@/components/admin/PlatformAnalytics";
-import { FeedbackManagement } from "@/components/admin/FeedbackManagement";
-import { ClubsManagement } from "@/components/admin/ClubsManagement";
-import { SystemHealth } from "@/components/admin/SystemHealth";
-import { PlatformRoadmap } from "@/components/admin/PlatformRoadmap";
-import { CatalogBrowseEmbed } from "@/components/catalog/CatalogBrowseEmbed";
-import { useUnreadFeedbackCount } from "@/hooks/usePlatformFeedback";
-import { usePendingClubs } from "@/hooks/useClubs";
-import { Activity, Database, MessageCircle, HeartPulse, Crown, Terminal, BookMarked, BadgeCheck, Clock } from "lucide-react";
-
-const SpecialBadgesManagement = lazy(() =>
-  import("@/components/admin/SpecialBadgesManagement").then(m => ({ default: m.SpecialBadgesManagement }))
-);
-const ServerManagement = lazy(() =>
-  import("@/components/admin/ServerManagement").then(m => ({ default: m.ServerManagement }))
-);
-const CronJobsMonitor = lazy(() =>
-  import("@/components/admin/CronJobsMonitor").then(m => ({ default: m.CronJobsMonitor }))
-);
-const AuditLogViewer = lazy(() =>
-  import("@/components/admin/AuditLogViewer").then(m => ({ default: m.AuditLogViewer }))
-);
-
-const DASHBOARD_CREATE_EVENT_DIALOG_KEY = "dashboard_create_event_dialog_open";
 
 export default function Dashboard() {
   const { t } = useTranslation();
-  const { user, signOut, isAuthenticated, isAdmin, isStaff, loading } = useAuth();
+  const { user, isAuthenticated, isAdmin, isStaff, loading } = useAuth();
   const { data: defaultLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
-  const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();
   const { data: profile } = useUserProfile();
-
-  const [activeLibraryId, setActiveLibraryId] = useState<string | null>(null);
-  const library = myLibraries.find((l) => l.id === activeLibraryId) ?? defaultLibrary ?? null;
-
-  useEffect(() => {
-    if (!activeLibraryId && defaultLibrary) {
-      setActiveLibraryId(defaultLibrary.id);
-    }
-  }, [defaultLibrary, activeLibraryId]);
-
-  const { status: totpStatus } = useTotpStatus();
   const { myLentLoans, myBorrowedLoans } = useLending();
-  const { data: myMemberships = [] } = useMyMemberships();
   const { data: myClubs = [] } = useMyClubs();
-  const pendingLoanRequests = myLentLoans.filter((l) => l.status === "requested").length;
-  const dashPrefs = useUserDashboardPrefs(isAdmin, isStaff);
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [showCreateEvent, setShowCreateEventRaw] = useState(() => {
-    try {
-      return sessionStorage.getItem(DASHBOARD_CREATE_EVENT_DIALOG_KEY) === "true";
-    } catch {
-      return false;
-    }
-  });
-  const setShowCreateEvent = useCallback((open: boolean) => {
-    setShowCreateEventRaw(open);
-    try {
-      sessionStorage.setItem(DASHBOARD_CREATE_EVENT_DIALOG_KEY, String(open));
-    } catch {
-      // Ignore storage errors
-    }
-  }, []);
-  const [editEvent, setEditEvent] = useState<import("@/hooks/useLibraryEvents").CalendarEvent | null>(null);
 
-  // Onboarding checklist data
-  const { data: gameCountData } = useQuery({
-    queryKey: ["onboarding-game-count", library?.id],
+  const pendingLoanRequests = myLentLoans.filter(l => l.status === "requested").length;
+  const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
+  const library = defaultLibrary;
+
+  // Game count
+  const { data: gameCount } = useQuery({
+    queryKey: ["hub-game-count", library?.id],
     queryFn: async () => {
-      if (!library?.id) return { count: 0 };
-      const { count } = await _supabase.from("games").select("id", { count: "exact", head: true }).eq("library_id", library.id);
-      return { count: count ?? 0 };
-    },
-    enabled: !!library?.id,
-    staleTime: 60000,
-  });
-  const { data: playCountData } = useQuery({
-    queryKey: ["onboarding-play-count", library?.id],
-    queryFn: async () => {
-      if (!library?.id) return { count: 0 };
-      const { data: gameIds } = await _supabase.from("games").select("id").eq("library_id", library.id);
-      if (!gameIds?.length) return { count: 0 };
-      const ids = gameIds.map((g: any) => g.id);
-      const { count } = await _supabase.from("game_sessions").select("id", { count: "exact", head: true }).in("game_id", ids);
-      return { count: count ?? 0 };
-    },
-    enabled: !!library?.id,
-    staleTime: 60000,
-  });
-  const { data: memberCountData } = useQuery({
-    queryKey: ["onboarding-member-count", library?.id],
-    queryFn: async () => {
-      if (!library?.id) return { count: 0 };
-      const { count } = await _supabase.from("library_members").select("id", { count: "exact", head: true }).eq("library_id", library.id);
-      return { count: count ?? 0 };
-    },
-    enabled: !!library?.id,
-    staleTime: 60000,
-  });
-  const { data: eventCountData } = useQuery({
-    queryKey: ["onboarding-event-count", library?.id],
-    queryFn: async () => {
-      if (!library?.id) return { count: 0 };
-      const { count } = await _supabase.from("library_events").select("id", { count: "exact", head: true }).eq("library_id", library.id);
-      return { count: count ?? 0 };
+      if (!library?.id) return 0;
+      const { count } = await supabase.from("games").select("id", { count: "exact", head: true }).eq("library_id", library.id);
+      return count ?? 0;
     },
     enabled: !!library?.id,
     staleTime: 60000,
   });
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabFromUrl = searchParams.get("tab");
-  const STORAGE_KEY = "dashboard_active_tab";
-
-  // Resolve initial tab: URL param > localStorage > "library"
-  const [activeTab, setActiveTab] = useState(() => {
-    if (tabFromUrl) return tabFromUrl;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return stored;
-    } catch {}
-    return "library";
+  // Unread DMs
+  const { data: unreadDMs = 0 } = useQuery({
+    queryKey: ["hub-unread-dms", user?.id],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("direct_messages")
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_id", user!.id)
+        .is("read_at", null)
+        .eq("deleted_by_recipient", false);
+      return count ?? 0;
+    },
+    enabled: !!user?.id,
+    staleTime: 30000,
   });
-
-  // Admin badge counts
-  const { data: unreadFeedbackCount } = useUnreadFeedbackCount();
-  const { data: pendingClubs } = usePendingClubs();
 
   useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [tabFromUrl]);
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    try { localStorage.setItem(STORAGE_KEY, value); } catch {}
-    const newParams = new URLSearchParams(searchParams);
-    if (value === "library") {
-      newParams.delete("tab");
-    } else {
-      newParams.set("tab", value);
-    }
-    setSearchParams(newParams, { replace: true });
-  };
-
-  // If active tab is hidden, fall back to first visible tab
-  useEffect(() => {
-    const visibleIds = dashPrefs.visibleTabs.map(t => t.id);
-    if (visibleIds.length > 0 && !visibleIds.includes(activeTab)) {
-      handleTabChange(visibleIds[0]);
-    }
-  }, [dashPrefs.visibleTabs, activeTab]);
-
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      navigate("/login");
-    }
+    if (!loading && !isAuthenticated) navigate("/login");
   }, [isAuthenticated, loading, navigate]);
-
-  // Legacy tab redirects
-  const legacyTabMap: Record<string, string> = { overview: "library", more: "personal", settings: "personal", lending: "library" };
-  if (tabFromUrl && legacyTabMap[tabFromUrl]) {
-    handleTabChange(legacyTabMap[tabFromUrl]);
-  }
 
   if (loading && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-cream">{t('common.loading')}</div>
+        <div className="animate-pulse text-foreground">{t('common.loading')}</div>
       </div>
     );
   }
 
   if (!isAuthenticated) return null;
 
-  const gamesUrl = library ? getLibraryUrl(library.slug, "/games") : null;
-  const settingsUrl = library ? getLibraryUrl(library.slug, "/settings") : null;
-  const libraryUrl = library ? getLibraryUrl(library.slug, "/") : null;
-  const statsUrl = library ? getLibraryUrl(library.slug, "/stats") : null;
-  const activeBorrowedLoans = myBorrowedLoans.filter(l => ['requested', 'approved', 'active'].includes(l.status));
-
-  // Uniform card class for consistency
-  const cardClass = "bg-wood-medium/30 border-wood-medium/50 text-cream";
-  const btnPrimary = "bg-secondary text-secondary-foreground hover:bg-secondary/90 text-xs h-7 gap-1.5";
-  const btnOutline = "border-secondary/50 text-cream hover:bg-wood-medium/50 text-xs h-7 gap-1.5";
-
-  // ── Build widget maps per tab ──
-
-  const libraryWidgets: Record<string, React.ReactNode> = library ? {
-    "onboarding": (
-      <OnboardingWizard
-        librarySlug={library.slug}
-        gameCount={gameCountData?.count ?? 0}
-        playCount={playCountData?.count ?? 0}
-        memberCount={memberCountData?.count ?? 0}
-        hasCustomTheme={false}
-        hasEvents={(eventCountData?.count ?? 0) > 0}
-        has2FA={totpStatus?.isEnabled ?? false}
-      />
-    ),
-    "trending": (
-      <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Flame className="h-4 w-4 text-orange-400" />
-              {t('dashboard.trendingThisMonth')}
-            </CardTitle>
-          </div>
-          <CardDescription className="text-cream/60 text-xs">{t('dashboard.trendingDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <HotnessLeaderboard libraryId={library.id} tenantSlug={library.slug} limit={10} />
-        </CardContent>
-      </Card>
-    ),
-    "games": (
-      <Card className={cardClass}>
-        <CardHeader className="pb-2 px-4 pt-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <Gamepad2 className="h-4 w-4 text-secondary" />
-            {t('dashboard.myGames')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.myGamesDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <div className="flex flex-col gap-1.5">
-            <TenantLink href={getLibraryUrl(library.slug, "/games")}>
-              <Button size="sm" className={`w-full ${btnPrimary}`}>
-                <Plus className="h-3 w-3" /> {t('dashboard.addGames')}
-              </Button>
-            </TenantLink>
-            <TenantLink href={getLibraryUrl(library.slug, "/manage")}>
-              <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                <Settings className="h-3 w-3" /> {t('dashboard.manageCollection')}
-              </Button>
-            </TenantLink>
-            <TenantLink href={libraryUrl!}>
-              <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                <Eye className="h-3 w-3" /> {t('dashboard.viewPublicPage')}
-              </Button>
-            </TenantLink>
-          </div>
-        </CardContent>
-      </Card>
-    ),
-    "events": (
-      <Card className={cardClass}>
-        <CardHeader className="pb-2 px-4 pt-4">
-          <CardTitle className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-secondary" />
-              {t('dashboard.events')}
-            </span>
-            <Button size="sm" className={btnPrimary} onClick={() => setShowCreateEvent(true)}>
-              <Plus className="h-3 w-3" /> {t('common.create')}
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <UpcomingEventsWidget
-            libraryId={library.id}
-            isOwner={true}
-            onCreateEvent={() => setShowCreateEvent(true)}
-            onEditEvent={(event) => setEditEvent(event)}
-          />
-        </CardContent>
-      </Card>
-    ),
-    "polls": (
-      <Card className={`${cardClass} overflow-hidden`}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <Vote className="h-4 w-4 text-secondary" />
-             {t('dashboard.polls')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.pollsDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <TenantLink href={getLibraryUrl(library.slug, "/community?tab=polls")}>
-            <Button variant="outline" size="sm" className={`w-full text-xs ${btnOutline}`}>
-              <Vote className="h-3 w-3 mr-1.5" />
-              {t('dashboard.viewManagePolls')}
-            </Button>
-          </TenantLink>
-        </CardContent>
-      </Card>
-    ),
-    "community-link": (
-      <Card className={`${cardClass} overflow-hidden`}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <MessageSquare className="h-4 w-4 text-secondary" />
-             {t('dashboard.community')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.communityDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <TenantLink href={getLibraryUrl(library.slug, "/community")}>
-            <Button variant="outline" size="sm" className={`w-full text-xs ${btnOutline}`}>
-              <MessageSquare className="h-3 w-3 mr-1.5" />
-              {t('dashboard.goToCommunityPage')}
-            </Button>
-          </TenantLink>
-        </CardContent>
-      </Card>
-    ),
-    "lending": (
-      <Card className={cardClass}>
-        <CardHeader className="pb-2 px-4 pt-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <BookOpen className="h-4 w-4 text-secondary" />
-             {t('dashboard.lending')}
-            {pendingLoanRequests > 0 && (
-               <Badge variant="destructive" className="text-[10px]">{pendingLoanRequests} {t('dashboard.pending')}</Badge>
-             )}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.lendingDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <LendingDashboard libraryId={library.id} />
-        </CardContent>
-      </Card>
-    ),
-    "ratings-wishlist": (
-      <Card className={cardClass}>
-        <CardHeader className="pb-2 px-4 pt-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <Star className="h-4 w-4 text-secondary" />
-             {t('dashboard.ratingsWishlist')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.ratingsWishlistDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <div className="flex flex-col gap-1.5">
-            <TenantLink href={getLibraryUrl(library.slug, "/settings?tab=ratings")}>
-              <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                <Star className="h-3.5 w-3.5" /> {t('dashboard.viewRatings')}
-              </Button>
-            </TenantLink>
-            <TenantLink href={getLibraryUrl(library.slug, "/settings?tab=want-to-play")}>
-              <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-                <Heart className="h-3.5 w-3.5" /> {t('dashboard.wantToPlay')}
-              </Button>
-            </TenantLink>
-          </div>
-        </CardContent>
-      </Card>
-    ),
-    "shelf-of-shame": <ShelfOfShameWidget libraryId={library.id} />,
-    "collection-dna": <CollectionInsightsWidget libraryId={library.id} />,
-    "random-picker": (
-      <Card className={cardClass}>
-        <CardHeader className="pb-2 px-4 pt-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <Shuffle className="h-4 w-4 text-secondary" />
-             {t('dashboard.randomPicker')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.randomPickerDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <RandomGamePicker libraryId={library.id} librarySlug={library.slug} />
-        </CardContent>
-      </Card>
-    ),
-    "settings": (
-      <Card className={cardClass}>
-        <CardHeader className="pb-2 px-4 pt-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <Settings className="h-4 w-4 text-secondary" />
-             {t('dashboard.librarySettings')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.librarySettingsDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <TenantLink href={settingsUrl!}>
-            <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-              <Settings className="h-3.5 w-3.5" /> {t('dashboard.manageSettings')}
-            </Button>
-          </TenantLink>
-        </CardContent>
-      </Card>
-    ),
-    "create-library": myLibraries.length < maxLibraries ? (
-      <Card className={`${cardClass} border-dashed`}>
-        <CardContent className="py-4 px-4 flex items-center justify-between">
-          <div>
-            <p className="font-medium text-sm">{t('dashboard.createAnotherLibrary')}</p>
-            <p className="text-xs text-cream/60">{myLibraries.length}/{maxLibraries} {t('dashboard.used')}</p>
-          </div>
-          <Link to="/create-library">
-            <Button size="sm" className={btnPrimary}>
-              <Plus className="h-3.5 w-3.5" /> Create
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
-    ) : null,
-    "curated-lists": (
-      <Card className={cardClass}>
-        <CardHeader className="pb-2 px-4 pt-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <ListOrdered className="h-4 w-4 text-secondary" />
-              {t('dashboard.curatedLists')}
-            </CardTitle>
-            <Link to="/lists">
-              <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
-                {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
-          </div>
-          <CardDescription className="text-cream/60 text-xs">{t('dashboard.curatedListsDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <Link to="/lists">
-            <Button size="sm" className={`w-full ${btnPrimary}`}>
-              <ListOrdered className="h-3.5 w-3.5" /> {t('dashboard.browseCreateLists')}
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
-    ),
-    "growth-tools": (
-      <Card className={cardClass}>
-        <CardHeader className="pb-2 px-4 pt-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <Share2 className="h-4 w-4 text-secondary" />
-             {t('dashboard.shareGrow')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.shareGrowDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <Link to="/grow">
-            <Button size="sm" className={`w-full ${btnPrimary}`}>
-              <Share2 className="h-3 w-3" /> {t('dashboard.openGrowthHub')}
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
-    ),
-    "library-views": (
-      <LibraryViewStatsCard libraryId={library.id} className={cardClass} />
-    ),
-    "import-progress": (
-      <ImportProgressWidget libraryIds={myLibraries.map(l => l.id)} />
-    ),
-  } : {};
-
-  const communityWidgets: Record<string, React.ReactNode> = {
-    "forums": (
-      <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <MessageSquare className="h-4 w-4 text-secondary" />
-                {t('dashboard.forums')}
-              </CardTitle>
-              <InfoPopover title="Community Forums" description="Engage with the broader GameTaverns community. Library and club forums are accessible from their respective pages." className="text-cream/40 hover:text-cream/70" />
-            </div>
-            <Link to="/community">
-              <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
-                {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 pb-4"><CommunityTab /></CardContent>
-      </Card>
-    ),
-    "polls": (
-      <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Vote className="h-4 w-4 text-secondary" />
-              {t('dashboard.polls')}
-            </CardTitle>
-            <Link to="/community?tab=polls">
-              <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
-                {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <CommunityPollsList />
-        </CardContent>
-      </Card>
-    ),
-    "clubs": (
-      <Card className={cardClass}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Users className="h-4 w-4 text-secondary" />
-              {t('dashboard.myClubs')}
-              {myClubs.length > 0 && <Badge variant="secondary" className="text-[10px]">{myClubs.length}</Badge>}
-            </CardTitle>
-            <div className="flex gap-1.5">
-              <Link to="/join-club">
-                <Button variant="outline" size="sm" className={`text-cream ${btnOutline}`}>
-                  <Ticket className="h-3 w-3" /> {t('dashboard.join')}
-                </Button>
-              </Link>
-              <Link to="/request-club">
-                <Button size="sm" className={btnPrimary}>
-                  <Plus className="h-3 w-3" /> {t('dashboard.request')}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          {myClubs.length === 0 ? (
-            <div className="text-center py-4">
-              <Users className="h-8 w-8 mx-auto text-cream/30 mb-2" />
-              <p className="text-cream/60 text-xs">{t('dashboard.noClubs')}</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {myClubs.map((club) => (
-                <div key={club.id} className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20">
-                  <div className="min-w-0 mr-2">
-                    <div className="text-xs font-medium truncate">{club.name}</div>
-                    <Badge variant={club.status === 'approved' ? 'secondary' : 'outline'} className="text-[10px] mt-0.5">{club.status}</Badge>
-                  </div>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <Link to={`/club/${club.slug}`}>
-                      <Button variant="secondary" size="sm" className="gap-1 h-6 text-[10px] px-2">
-                        <ExternalLink className="h-2.5 w-2.5" /> View
-                      </Button>
-                    </Link>
-                    {club.owner_id === user?.id && (
-                      <Link to={`/club/${club.slug}/manage`}>
-                        <Button variant="outline" size="sm" className="gap-1 h-6 text-cream border-wood-medium/50 px-2">
-                          <Settings className="h-2.5 w-2.5" />
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    ),
-    "communities": (
-      <Card className={cardClass}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <Globe className="h-4 w-4 text-secondary" />
-             {t('dashboard.myCommunities')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.myCommunitiesDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          {(() => {
-            const ownedEntries = myLibraries.map((lib) => ({
-              key: `owned-${lib.id}`, name: lib.name, slug: lib.slug, role: 'owner' as const,
-            }));
-            const memberEntries = myMemberships
-              .filter((m) => !myLibraries.some((lib) => lib.id === m.library?.id))
-              .map((m) => ({
-                key: `member-${m.id}`, name: m.library?.name ?? 'Unknown', slug: m.library?.slug, role: m.role as string,
-              }));
-            const allEntries = [...ownedEntries, ...memberEntries];
-            if (allEntries.length === 0) {
-              return (
-                <Link to="/directory">
-                  <Button size="sm" className={`w-full ${btnPrimary}`}>
-                    <Users className="h-3.5 w-3.5" /> {t('dashboard.browseCommunities')}
-                  </Button>
-                </Link>
-              );
-            }
-            return (
-              <div className="space-y-1.5">
-                {allEntries.map((entry) => (
-                  <a key={entry.key} href={entry.slug ? getLibraryUrl(entry.slug, "/") : "#"} className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors">
-                    <span className="text-xs font-medium truncate">{entry.name}</span>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {entry.role === 'owner' && <Badge variant="secondary" className="text-[10px]">{t('dashboard.owner')}</Badge>}
-                      {entry.role === 'admin' && <Badge className="text-[10px] bg-blue-600">{t('dashboard.admin')}</Badge>}
-                      {entry.role === 'moderator' && <Badge variant="outline" className="text-[10px]">{t('dashboard.moderator')}</Badge>}
-                      {entry.role === 'member' && <Badge variant="outline" className="text-[10px]">{t('dashboard.member')}</Badge>}
-                      <ArrowRight className="h-3 w-3 text-cream/60" />
-                    </div>
-                  </a>
-                ))}
-              </div>
-            );
-          })()}
-        </CardContent>
-      </Card>
-    ),
-    "members": <CommunityMembersCard />,
-    "trades": (
-      <Card className={cardClass}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <ArrowLeftRight className="h-4 w-4 text-secondary" />
-             {t('dashboard.trading')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.tradingDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          {isSelfHostedSupabaseStack() ? (
-            <TradeCenter />
-          ) : (
-            <div className="text-center py-4">
-              <ArrowLeftRight className="h-8 w-8 mx-auto text-cream/30 mb-2" />
-              <p className="text-cream/60 text-xs">{t('dashboard.selfHostedOnly')}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    ),
-    "challenges": library && isSelfHostedSupabaseStack() ? (
-      <Card className={cardClass}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <Target className="h-4 w-4 text-secondary" />
-             {t('dashboard.challenges')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.challengesDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4"><ChallengesManager libraryId={library.id} canManage={true} /></CardContent>
-      </Card>
-    ) : null,
-  };
-
-  const personalWidgets: Record<string, React.ReactNode> = {
-    "profile": profile?.username ? (
-      <Card className={cardClass}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <User className="h-4 w-4 text-secondary" />
-             {t('dashboard.myProfile')}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.myProfileDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <Link to={`/u/${profile.username}`}>
-            <Button variant="outline" size="sm" className={`w-full ${btnOutline}`}>
-              <Eye className="h-3.5 w-3.5" /> {t('dashboard.viewProfile')}
-              <ArrowRight className="h-3 w-3 ml-auto" />
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
-    ) : null,
-    "account-settings": (
-      <Card className={`${cardClass} md:col-span-2 lg:col-span-3`}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <Settings className="h-4 w-4 text-secondary" />
-             {t('dashboard.accountSettings')}
-           </CardTitle>
-           <CardDescription className="text-cream/70 text-xs">{t('dashboard.accountSettingsDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          <AccountSettingsTabs />
-        </CardContent>
-      </Card>
-    ),
-    "achievements": (
-      <Card className={cardClass}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-sm">
-               <Trophy className="h-4 w-4 text-secondary" />
-               {t('dashboard.achievements')}
-            </CardTitle>
-            <Link to="/achievements">
-              <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 -mr-2 text-xs h-7 gap-1">
-                {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="px-4 pb-4"><AchievementsDisplay compact /></CardContent>
-      </Card>
-    ),
-    "borrowed-games": (
-      <Card className={cardClass}>
-        <CardHeader className="px-4 pt-4 pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-             <BookOpen className="h-4 w-4 text-secondary" />
-             {t('dashboard.borrowedGames')}
-            {activeBorrowedLoans.length > 0 && <Badge variant="secondary" className="ml-auto text-[10px]">{activeBorrowedLoans.length}</Badge>}
-           </CardTitle>
-           <CardDescription className="text-cream/60 text-xs">{t('dashboard.borrowedGamesDesc')}</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          {activeBorrowedLoans.length === 0 ? (
-            <p className="text-xs text-cream/60 text-center py-2">{t('dashboard.noActiveBorrows')}</p>
-          ) : (
-            <div className="space-y-1.5">
-              {activeBorrowedLoans.slice(0, 5).map((loan) => (
-                <div key={loan.id} className="flex flex-col p-2 rounded-lg bg-wood-medium/20">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium truncate">{loan.game?.title || "Unknown Game"}</span>
-                    <Badge variant="outline" className="text-[10px]">{loan.status}</Badge>
-                  </div>
-                  {loan.library?.name && (
-                    <span className="text-[10px] text-cream/60 mt-0.5">{t('dashboard.from')}: {loan.library.name}</span>
-                  )}
-                </div>
-              ))}
-              {activeBorrowedLoans.length > 5 && (
-                <p className="text-[10px] text-cream/60 text-center pt-1">+{activeBorrowedLoans.length - 5} more</p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    ),
-  };
-
-  // Helper to render a tab with widget editor
-  const renderWidgetTab = (tabId: string, widgets: Record<string, React.ReactNode>, contentClass?: string) => {
-    const registry = TAB_WIDGET_REGISTRY[tabId] ?? [];
-    const visibleIds = dashPrefs.getVisibleWidgets(tabId);
-    const hiddenDefs = dashPrefs.getHiddenWidgets(tabId);
-
-    return (
-      <TabWidgetEditor
-        tabId={tabId}
-        widgets={widgets}
-        visibleWidgetIds={visibleIds}
-        hiddenWidgets={hiddenDefs}
-        registry={registry}
-        onToggleWidget={(wid) => dashPrefs.toggleWidget(tabId, wid)}
-        onMoveWidget={(wid, dir) => dashPrefs.moveWidget(tabId, wid, dir)}
-        onResetTab={() => dashPrefs.resetTabWidgets(tabId)}
-        getWidgetSize={(wid) => dashPrefs.getWidgetSize(tabId, wid)}
-        onSetWidgetSize={(wid, span) => dashPrefs.setWidgetSize(tabId, wid, span)}
-        contentClassName={contentClass}
-      />
-    );
-  };
+  const displayName = profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0] || "Player";
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
@@ -884,172 +115,129 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 pt-3">
         <TwoFactorBanner />
       </div>
-
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-6 max-w-6xl">
-        <div className="flex items-center justify-between mb-5">
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-cream">
-            {t('dashboard.welcomeBack', { name: profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0] })}
+      <main className="container mx-auto px-4 py-6 max-w-5xl">
+        {/* Greeting */}
+        <div className="mb-6">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
+            {t('dashboard.welcomeBack', { name: displayName })}
           </h1>
-          <DashboardCustomizer
-            visibleTabs={dashPrefs.visibleTabs}
-            hiddenTabDefs={dashPrefs.hiddenTabDefs}
-            toggleTab={dashPrefs.toggleTab}
-            moveTab={dashPrefs.moveTab}
-            resetPrefs={dashPrefs.resetPrefs}
-          />
+          <p className="text-sm text-muted-foreground">Your board game command center</p>
         </div>
 
-        {/* ===== TABS ===== */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <div className="flex items-center justify-center mb-6">
-            <TabsList className="bg-wood-dark/60 border border-wood-medium/40 h-auto flex-wrap gap-1 p-1 overflow-x-auto no-scrollbar">
-              {dashPrefs.visibleTabs.map(tab => {
-                const isDanger = tab.id === "danger";
-                const tabIcon = tab.id === "library" ? <Library className="h-3.5 w-3.5" />
-                  : tab.id === "community" ? <Users className="h-3.5 w-3.5" />
-                  : tab.id === "social" ? <Globe className="h-3.5 w-3.5" />
-                  : tab.id === "personal" ? <User className="h-3.5 w-3.5" />
-                  : tab.id === "referrals" ? <Users className="h-3.5 w-3.5" />
-                  : tab.id === "analytics" ? <BarChart3 className="h-3.5 w-3.5" />
-                  : tab.id === "danger" ? <AlertTriangle className="h-3.5 w-3.5" />
-                  : tab.id === "admin" ? <Shield className="h-3.5 w-3.5" />
-                  : null;
-                return (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className={cn(
-                      "gap-1.5 text-xs text-cream/70 data-[state=inactive]:hover:bg-wood-medium/40",
-                      isDanger
-                        ? "data-[state=active]:bg-red-700 data-[state=active]:text-white"
-                        : "data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
-                    )}
-                  >
-                    {tabIcon}
-                    {tab.label}
-                    {tab.id === "library" && pendingLoanRequests > 0 && (
-                      <Badge variant="destructive" className="text-[10px] ml-1 px-1">{pendingLoanRequests}</Badge>
-                    )}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </div>
+        {/* Quick Actions */}
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-6">
+          <Link to="/dashboard/collection">
+            <Button size="sm" className="gap-1.5 text-xs">
+              <Plus className="h-3.5 w-3.5" /> Add Game
+            </Button>
+          </Link>
+          <Link to="/catalog">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <Search className="h-3.5 w-3.5" /> Game Catalog
+            </Button>
+          </Link>
+          <Link to="/dashboard/lending">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <BookOpen className="h-3.5 w-3.5" /> Lending
+            </Button>
+          </Link>
+        </div>
 
-          {/* ==================== LIBRARY TAB ==================== */}
-          <TabsContent value="library" forceMount className={activeTab !== "library" ? "hidden" : ""}>
-            {/* Library Switcher */}
-            {myLibraries.length > 1 && (
-              <div className="flex items-center gap-2 flex-wrap mb-4">
-                <span className="text-xs text-cream/70 font-medium">{t('dashboard.activeLibrary')}</span>
-                {myLibraries.map((lib) => (
-                  <Button
-                    key={lib.id}
-                    size="sm"
-                    variant={lib.id === library?.id ? "default" : "outline"}
-                    className={`text-xs h-7 ${
-                      lib.id === library?.id
-                        ? "bg-secondary text-secondary-foreground"
-                        : "border-secondary/50 text-cream hover:bg-wood-medium/50"
-                    }`}
-                    onClick={() => setActiveLibraryId(lib.id)}
-                  >
-                    {lib.name}
-                  </Button>
-                ))}
-              </div>
-            )}
-
-            {!library ? (
-              <Card className={cardClass}>
-                <CardContent className="py-8 text-center">
-                   <Library className="h-10 w-10 mx-auto text-cream/30 mb-3" />
-                   <p className="text-sm text-cream/70 mb-4">{t('dashboard.noLibrary')}</p>
-                  <Link to="/create-library">
-                    <Button className={btnPrimary}>
-                      <Plus className="h-3.5 w-3.5" /> {t('dashboard.createLibrary')}
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                <CatalogDiscoveryCard />
-                {renderWidgetTab("library", libraryWidgets)}
-              </>
-            )}
-          </TabsContent>
-
-          {/* ==================== COMMUNITY TAB ==================== */}
-          <TabsContent value="community" forceMount className={activeTab !== "community" ? "hidden" : ""}>
-            {renderWidgetTab("community", communityWidgets)}
-          </TabsContent>
-
-          {/* ==================== SOCIAL TAB ==================== */}
-          <TabsContent value="social" forceMount className={activeTab !== "social" ? "hidden" : ""}>
-            <SocialTab currentUserId={user?.id} />
-          </TabsContent>
-
-          {/* ==================== PERSONAL TAB ==================== */}
-          <TabsContent value="personal" forceMount className={activeTab !== "personal" ? "hidden" : ""}>
-            {renderWidgetTab("personal", personalWidgets)}
-          </TabsContent>
-
-          {/* ==================== REFERRALS TAB ==================== */}
-          <TabsContent value="referrals" forceMount className={activeTab !== "referrals" ? "hidden" : ""}>
-            <div className="max-w-2xl">
-              <div className="mb-6">
-                <h2 className="font-display text-xl font-bold mb-1">{t('dashboard.inviteEarnBadges')}</h2>
-                <p className="text-muted-foreground text-sm">{t('dashboard.inviteDesc')}</p>
-              </div>
-              <ReferralPanel />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="analytics" forceMount className={activeTab !== "analytics" ? "hidden" : ""}>
-            {library ? (
-              <AnalyticsTab isAdmin={isAdmin} libraryId={library.id} libraryName={library.name} />
-            ) : (
-              <Card className={cardClass}>
-                <CardContent className="py-8 text-center">
-                  <BarChart3 className="h-10 w-10 mx-auto text-cream/30 mb-3" />
-                  <p className="text-sm text-cream/60">{t('dashboard.createAnalytics')}</p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* ==================== DANGER ZONE TAB ==================== */}
-          <TabsContent value="danger" forceMount className={activeTab !== "danger" ? "hidden" : ""}>
-            <Card className="bg-red-950/60 border-red-700/50 text-cream">
-              <CardHeader className="px-4 pt-4 pb-2">
-                <CardTitle className="flex items-center gap-2 text-sm text-red-400">
-                   <AlertTriangle className="h-4 w-4" />
-                   {t('dashboard.dangerZone')}
-                </CardTitle>
-                 <CardDescription className="text-red-300/70 text-xs">{t('dashboard.dangerZoneDesc')}</CardDescription>
-              </CardHeader>
-              <CardContent className="px-4 pb-4"><DangerZone /></CardContent>
-            </Card>
-          </TabsContent>
-
-        </Tabs>
-
-        {/* Create/Edit Event Dialog */}
-        {library && (
-          <CreateEventDialog
-            open={showCreateEvent || !!editEvent}
-            onOpenChange={(open) => {
-              if (open) return;
-              setShowCreateEvent(false);
-              setEditEvent(null);
-            }}
-            libraryId={library.id}
-            editEvent={editEvent}
+        {/* Hub Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <HubCard
+            to="/dashboard/collection"
+            icon={Gamepad2}
+            title="My Collection"
+            description={library ? `${gameCount ?? 0} games · ${myLibraries.length} ${myLibraries.length === 1 ? 'library' : 'libraries'}` : "No library yet"}
+            bullets={[
+              "Browse, filter & manage your library",
+              "Import from BGG · Add manually",
+              "Shelf of shame · Random picker",
+            ]}
+            iconColor="hsl(var(--primary))"
+            badges={!library ? [{ label: "Create Library", variant: "default" }] : undefined}
           />
-        )}
+          <HubCard
+            to="/dashboard/lending"
+            icon={BookOpen}
+            title="Lending & Loans"
+            description={`${pendingLoanRequests} pending · ${activeBorrowedLoans.length} borrowed`}
+            bullets={[
+              pendingLoanRequests > 0 ? `${pendingLoanRequests} loan requests waiting` : "No pending requests",
+              activeBorrowedLoans.length > 0 ? `${activeBorrowedLoans.length} games currently borrowed` : "Nothing borrowed right now",
+              "Cross-library trading hub",
+            ]}
+            iconColor="hsl(24, 80%, 50%)"
+            badges={pendingLoanRequests > 0 ? [{ label: `${pendingLoanRequests} pending`, variant: "destructive" }] : undefined}
+          />
+          <HubCard
+            to="/dashboard/insights"
+            icon={Sparkles}
+            title="Insights & Analytics"
+            description="Collection DNA, stats & achievements"
+            bullets={[
+              "Your collector personality & rarity scores",
+              "Play stats, value tracking & trends",
+              "Shareable cards & achievements",
+            ]}
+            iconColor="hsl(262, 80%, 55%)"
+          />
+          <HubCard
+            to="/dashboard/community"
+            icon={Users}
+            title="Community & Events"
+            description={`${myClubs.length} clubs · Forums · Events`}
+            bullets={[
+              myClubs.length > 0 ? `${myClubs.length} club${myClubs.length > 1 ? 's' : ''} joined` : "Join or create a club",
+              "Forums, polls & group challenges",
+              "Events & RSVP management",
+            ]}
+            iconColor="hsl(200, 70%, 50%)"
+          />
+          <HubCard
+            to="/dashboard/messages"
+            icon={Mail}
+            title="Messages & Social"
+            description={unreadDMs > 0 ? `${unreadDMs} unread messages` : "All caught up"}
+            bullets={[
+              unreadDMs > 0 ? `${unreadDMs} unread direct messages` : "No unread messages",
+              "Game inquiries from visitors",
+              "Activity feed & social updates",
+            ]}
+            iconColor="hsl(340, 65%, 50%)"
+            badges={unreadDMs > 0 ? [{ label: `${unreadDMs} unread`, variant: "destructive" }] : undefined}
+          />
+          <HubCard
+            to="/dashboard/settings"
+            icon={Settings}
+            title="Settings & Account"
+            description="Profile, security & preferences"
+            bullets={[
+              "Profile, display name & bio",
+              "Password, 2FA & appearance",
+              "Referrals · Growth tools · Danger zone",
+            ]}
+            iconColor="hsl(var(--muted-foreground))"
+          />
+          {(isAdmin || isStaff) && (
+            <HubCard
+              to="/studio"
+              icon={Shield}
+              title="Admin Panel"
+              description="Platform management"
+              bullets={[
+                "User & library management",
+                "Platform settings & analytics",
+                "System health & audit logs",
+              ]}
+              iconColor="hsl(var(--destructive))"
+              badges={[{ label: "Staff", variant: "secondary" }]}
+            />
+          )}
+        </div>
       </main>
 
       <Footer />

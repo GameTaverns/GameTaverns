@@ -47,6 +47,12 @@ const Features = lazy(lazyRetry(() => import("./pages/Features")));
 const Press = lazy(lazyRetry(() => import("./pages/Press")));
 const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
 const DashboardMockupsPage = lazy(() => import("./components/dashboard/DashboardMockups").then(m => ({ default: m.DashboardMockups })));
+const CollectionPage = lazy(lazyRetry(() => import("./pages/dashboard/CollectionPage")));
+const LendingPage = lazy(lazyRetry(() => import("./pages/dashboard/LendingPage")));
+const InsightsPage = lazy(lazyRetry(() => import("./pages/dashboard/InsightsPage")));
+const CommunityEventsPage = lazy(lazyRetry(() => import("./pages/dashboard/CommunityEventsPage")));
+const MessagesPage = lazy(lazyRetry(() => import("./pages/dashboard/MessagesPage")));
+const SettingsPage = lazy(lazyRetry(() => import("./pages/dashboard/SettingsPage")));
 const CreateLibrary = lazy(lazyRetry(() => import("./pages/CreateLibrary")));
 const Signup = lazy(lazyRetry(() => import("./pages/Signup")));
 const ForgotPassword = lazy(lazyRetry(() => import("./pages/ForgotPassword")));
@@ -288,6 +294,12 @@ function PlatformRoutes() {
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/editor" element={<DashboardEditor />} />
+      <Route path="/dashboard/collection" element={<Suspense fallback={<PageLoader />}><CollectionPage /></Suspense>} />
+      <Route path="/dashboard/lending" element={<Suspense fallback={<PageLoader />}><LendingPage /></Suspense>} />
+      <Route path="/dashboard/insights" element={<Suspense fallback={<PageLoader />}><InsightsPage /></Suspense>} />
+      <Route path="/dashboard/community" element={<Suspense fallback={<PageLoader />}><CommunityEventsPage /></Suspense>} />
+      <Route path="/dashboard/messages" element={<Suspense fallback={<PageLoader />}><MessagesPage /></Suspense>} />
+      <Route path="/dashboard/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
       <Route path="/dashboard/mockups" element={<Suspense fallback={<PageLoader />}><DashboardMockupsPage /></Suspense>} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />
@@ -388,6 +400,12 @@ function LibraryRoutes() {
       {/* Platform routes accessible from library context (native: always in tenant mode) */}
       <Route path="/directory" element={<Directory />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard/collection" element={<Suspense fallback={<PageLoader />}><CollectionPage /></Suspense>} />
+      <Route path="/dashboard/lending" element={<Suspense fallback={<PageLoader />}><LendingPage /></Suspense>} />
+      <Route path="/dashboard/insights" element={<Suspense fallback={<PageLoader />}><InsightsPage /></Suspense>} />
+      <Route path="/dashboard/community" element={<Suspense fallback={<PageLoader />}><CommunityEventsPage /></Suspense>} />
+      <Route path="/dashboard/messages" element={<Suspense fallback={<PageLoader />}><MessagesPage /></Suspense>} />
+      <Route path="/dashboard/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
       <Route path="/catalog" element={<CatalogBrowse />} />
       <Route path="/catalog/:slug" element={<CatalogGameDetail />} />
       <Route path="/dm" element={<DirectMessages />} />
