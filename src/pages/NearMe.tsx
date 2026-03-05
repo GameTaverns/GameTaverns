@@ -1,5 +1,5 @@
-import { useState, useMemo, lazy, Suspense } from "react";
-import { MapPin, Navigation, Search, Library, Calendar, Loader2 } from "lucide-react";
+import { useState, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
+import { MapPin, Navigation, Search, Library, Calendar, Loader2, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { Layout } from "@/components/layout/Layout";
@@ -17,6 +17,32 @@ import {
 } from "@/hooks/useNearbyMap";
 
 const NearMeMap = lazy(() => import("@/components/near-me/NearMeMap"));
+
+// Error boundary to catch react-leaflet minification crashes
+class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("Map failed to load:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30 rounded-lg gap-2 p-4 text-center">
+          <AlertTriangle className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm font-medium text-muted-foreground">Map could not load</p>
+          <p className="text-xs text-muted-foreground">Browse the list below to find libraries and events near you.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function NearMe() {
   const navigate = useNavigate();
@@ -147,14 +173,16 @@ export default function NearMe() {
           {isLoading ? (
             <Skeleton className="w-full h-full" />
           ) : (
-            <Suspense fallback={<Skeleton className="w-full h-full" />}>
-              <NearMeMap
-                location={location}
-                tab={tab}
-                nearbyLibraries={nearbyLibraries}
-                nearbyEvents={nearbyEvents}
-              />
-            </Suspense>
+            <MapErrorBoundary>
+              <Suspense fallback={<Skeleton className="w-full h-full" />}>
+                <NearMeMap
+                  location={location}
+                  tab={tab}
+                  nearbyLibraries={nearbyLibraries}
+                  nearbyEvents={nearbyEvents}
+                />
+              </Suspense>
+            </MapErrorBoundary>
           )}
         </div>
 
