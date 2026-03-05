@@ -184,21 +184,33 @@ echo ""
 echo "Waiting for services to stabilize..."
 sleep 15
 
-# Resume paused import jobs
-if [ "$PAUSED_COUNT" -gt 0 ] 2>/dev/null; then
-    echo ""
-    echo "Resuming paused import jobs..."
-    # Source .env to get keys for the resume call
-    set -a; source "$ENV_FILE"; set +a
-    RESUME_URL="${API_EXTERNAL_URL:-http://kong:8000}/functions/v1/resume-imports"
-    SERVICE_KEY="${SERVICE_ROLE_KEY:-}"
-    if [ -n "$SERVICE_KEY" ]; then
-        RESUME_RESULT=$(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T functions \
-          sh -c "wget -q -O - --header='Content-Type: application/json' --header='Authorization: Bearer ${SERVICE_KEY}' --post-data='{}' 'http://localhost:8000/resume-imports'" 2>/dev/null || echo '{"error":"resume call failed"}')
-        echo -e "${GREEN}Resume result: ${RESUME_RESULT}${NC}"
+# Resume paused import jobs (including jobs that were already paused before this update)
+echo ""
+echo "Resuming paused import jobs..."
+# Source .env to get keys for the resume call
+set -a; source "$ENV_FILE"; set +a
+SERVICE_KEY="${SERVICE_ROLE_KEY:-}"
+KONG_PORT="${KONG_HTTP_PORT:-8000}"
+RESUME_ENDPOINT="http://127.0.0.1:${KONG_PORT}/functions/v1/resume-imports"
+
+if [ -n "$SERVICE_KEY" ]; then
+    if command -v curl >/dev/null 2>&1; then
+        RESUME_RESULT=$(curl -sS --max-time 45 -X POST \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer ${SERVICE_KEY}" \
+          -d '{}' "$RESUME_ENDPOINT" 2>/dev/null || echo '{"error":"resume call failed"}')
+    elif command -v wget >/dev/null 2>&1; then
+        RESUME_RESULT=$(wget -q -O - \
+          --header="Content-Type: application/json" \
+          --header="Authorization: Bearer ${SERVICE_KEY}" \
+          --post-data='{}' "$RESUME_ENDPOINT" 2>/dev/null || echo '{"error":"resume call failed"}')
     else
-        echo -e "${YELLOW}No SERVICE_ROLE_KEY found — manually resume imports if needed${NC}"
+        RESUME_RESULT='{"error":"Neither curl nor wget is available on host"}'
     fi
+
+    echo -e "${GREEN}Resume result: ${RESUME_RESULT}${NC}"
+else
+    echo -e "${YELLOW}No SERVICE_ROLE_KEY found — manually resume imports if needed${NC}"
 fi
 
 # Check status
