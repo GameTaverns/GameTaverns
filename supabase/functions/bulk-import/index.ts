@@ -1402,62 +1402,76 @@ export default async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    // Use getUser() for compatibility with both Cloud and self-hosted Supabase
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !userData?.user) {
-      console.error("[BulkImport] Auth error:", userError?.message);
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid authentication" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const userId = userData.user.id;
-
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check if user is either a global admin, owns a library, or is a co-owner
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
+    // Check if this is a service_role call (internal, e.g. from resume-imports)
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const serviceRoleKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+    const isServiceRoleCall = serviceRoleKey && token === serviceRoleKey;
 
-    // Check owned libraries
-    const { data: ownedLibraryRows } = await supabaseAdmin
-      .from("libraries")
-      .select("id")
-      .eq("owner_id", userId)
-      .order("created_at", { ascending: true })
-      .limit(1);
+    let userId: string;
 
-    const libraryData = ownedLibraryRows?.[0] || null;
-
-    // Also check co-ownership
-    const { data: coOwnedRows } = await supabaseAdmin
-      .from("library_members")
-      .select("library_id")
-      .eq("user_id", userId)
-      .eq("role", "co_owner")
-      .limit(1);
-
-    const coOwnedLibrary = coOwnedRows?.[0] || null;
-
-    if (!roleData && !libraryData && !coOwnedLibrary) {
-      return new Response(
-        JSON.stringify({ success: false, error: "You must own a library to import games" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    if (isServiceRoleCall) {
+      // Service-to-service call — trust the library_id in the body
+      // We'll resolve the library owner below after parsing the body
+      console.log("[BulkImport] Service-role call detected (internal resume)");
+      userId = ""; // Will be resolved from library_id
+    } else {
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
       );
+
+      // Use getUser() for compatibility with both Cloud and self-hosted Supabase
+      const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+      if (userError || !userData?.user) {
+        console.error("[BulkImport] Auth error:", userError?.message);
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid authentication" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      userId = userData.user.id;
+
+      // Check if user is either a global admin, owns a library, or is a co-owner
+      const { data: roleData } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      // Check owned libraries
+      const { data: ownedLibraryRows } = await supabaseAdmin
+        .from("libraries")
+        .select("id")
+        .eq("owner_id", userId)
+        .order("created_at", { ascending: true })
+        .limit(1);
+
+      const libraryData = ownedLibraryRows?.[0] || null;
+
+      // Also check co-ownership
+      const { data: coOwnedRows } = await supabaseAdmin
+        .from("library_members")
+        .select("library_id")
+        .eq("user_id", userId)
+        .eq("role", "co_owner")
+        .limit(1);
+
+      const coOwnedLibrary = coOwnedRows?.[0] || null;
+
+      if (!roleData && !libraryData && !coOwnedLibrary) {
+        return new Response(
+          JSON.stringify({ success: false, error: "You must own a library to import games" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Defensive JSON parsing - handle empty/truncated request bodies
@@ -1481,12 +1495,29 @@ export default async function handler(req: Request): Promise<Response> {
     }
     const { mode, library_id, csv_data, bgg_username, bgg_links, enhance_with_bgg, enhance_with_ai, default_options } = body;
 
-    const targetLibraryId = library_id || libraryData?.id || coOwnedLibrary?.library_id;
+    const targetLibraryId = library_id || (!isServiceRoleCall ? undefined : undefined);
     if (!targetLibraryId) {
       return new Response(
         JSON.stringify({ success: false, error: "No library specified and user has no library" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // For service-role calls (e.g. resume-imports), resolve the library owner as userId
+    if (isServiceRoleCall && !userId) {
+      const { data: libRow } = await supabaseAdmin
+        .from("libraries")
+        .select("owner_id")
+        .eq("id", targetLibraryId)
+        .single();
+      if (!libRow?.owner_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Library not found for service-role resume" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      userId = libRow.owner_id;
+      console.log(`[BulkImport] Resolved library owner: ${userId}`);
     }
 
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
