@@ -1,39 +1,8 @@
 import { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { format } from "date-fns";
 import type { UserLocation, MapLibrary, MapEvent } from "@/hooks/useNearbyMap";
-
-// Fix Leaflet default marker icons
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
-
-const libraryIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-  className: "hue-rotate-[200deg] saturate-150",
-});
-
-const eventIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-  className: "hue-rotate-[120deg] saturate-150",
-});
 
 interface NearMeMapProps {
   location: UserLocation;
@@ -47,61 +16,77 @@ function escapeHtml(value: string) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
 
 export default function NearMeMap({ location, tab, nearbyLibraries, nearbyEvents }: NearMeMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
 
+  // Initialize map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const initialZoom = location.source === "default" ? 4 : 10;
-    const map = L.map(containerRef.current, {
-      center: [location.lat, location.lng],
+    const initialZoom = location.source === "default" ? 3 : 9;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          },
+        },
+        layers: [
+          {
+            id: "osm",
+            type: "raster",
+            source: "osm",
+          },
+        ],
+      },
+      center: [location.lng, location.lat],
       zoom: initialZoom,
-      scrollWheelZoom: true,
     });
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
-
-    const markersLayer = L.layerGroup().addTo(map);
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
 
     mapRef.current = map;
-    markersLayerRef.current = markersLayer;
-
-    setTimeout(() => map.invalidateSize(), 0);
 
     return () => {
       map.remove();
       mapRef.current = null;
-      markersLayerRef.current = null;
+      markersRef.current = [];
     };
   }, [location.lat, location.lng, location.source]);
 
+  // Update center when location changes
   useEffect(() => {
     if (!mapRef.current) return;
-    const nextZoom = location.source === "default" ? 4 : 10;
-    mapRef.current.setView([location.lat, location.lng], nextZoom);
+    const nextZoom = location.source === "default" ? 3 : 9;
+    mapRef.current.flyTo({ center: [location.lng, location.lat], zoom: nextZoom });
   }, [location.lat, location.lng, location.source]);
 
+  // Update markers
   useEffect(() => {
-    const markersLayer = markersLayerRef.current;
-    if (!markersLayer) return;
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
-    markersLayer.clearLayers();
+    const map = mapRef.current;
+    if (!map) return;
 
     if (tab === "libraries") {
       nearbyLibraries.forEach((lib) => {
         const cityRegion = [lib.location_city, lib.location_region].filter(Boolean).join(", ");
         const distanceText = lib.distance != null ? `<p style="color:#888;font-size:11px;margin:0 0 4px">${lib.distance.toFixed(1)} miles away</p>` : "";
 
-        const popup = `
+        const popup = new maplibregl.Popup({ offset: 25, maxWidth: "240px" }).setHTML(`
           <div style="font-size:13px;min-width:180px">
             <p style="font-weight:600;margin:0 0 4px">${escapeHtml(lib.name)}</p>
             ${cityRegion ? `<p style="color:#888;font-size:11px;margin:0 0 2px">${escapeHtml(cityRegion)}</p>` : ""}
@@ -111,9 +96,23 @@ export default function NearMeMap({ location, tab, nearbyLibraries, nearbyEvents
               View Library
             </a>
           </div>
-        `;
+        `);
 
-        L.marker([lib.latitude, lib.longitude], { icon: libraryIcon }).bindPopup(popup).addTo(markersLayer);
+        const el = document.createElement("div");
+        el.style.width = "24px";
+        el.style.height = "24px";
+        el.style.borderRadius = "50%";
+        el.style.backgroundColor = "#3b82f6";
+        el.style.border = "3px solid #fff";
+        el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
+        el.style.cursor = "pointer";
+
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([lib.longitude, lib.latitude])
+          .setPopup(popup)
+          .addTo(map);
+
+        markersRef.current.push(marker);
       });
     } else {
       nearbyEvents.forEach((evt) => {
@@ -121,20 +120,33 @@ export default function NearMeMap({ location, tab, nearbyLibraries, nearbyEvents
         const venueCity = [evt.venue_name, evt.location_city].filter(Boolean).join(", ");
         const distanceText = evt.distance != null ? `<p style="color:#888;font-size:11px;margin:0">${evt.distance.toFixed(1)} miles away</p>` : "";
 
-        const popup = `
+        const popup = new maplibregl.Popup({ offset: 25, maxWidth: "240px" }).setHTML(`
           <div style="font-size:13px;min-width:180px">
             <p style="font-weight:600;margin:0 0 4px">${escapeHtml(evt.title)}</p>
             <p style="color:#888;font-size:11px;margin:0 0 2px">${escapeHtml(eventDateText)}</p>
             ${venueCity ? `<p style="font-size:11px;margin:0 0 2px">${escapeHtml(venueCity)}</p>` : ""}
             ${distanceText}
           </div>
-        `;
+        `);
 
-        L.marker([evt.latitude, evt.longitude], { icon: eventIcon }).bindPopup(popup).addTo(markersLayer);
+        const el = document.createElement("div");
+        el.style.width = "24px";
+        el.style.height = "24px";
+        el.style.borderRadius = "50%";
+        el.style.backgroundColor = "#10b981";
+        el.style.border = "3px solid #fff";
+        el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
+        el.style.cursor = "pointer";
+
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([evt.longitude, evt.latitude])
+          .setPopup(popup)
+          .addTo(map);
+
+        markersRef.current.push(marker);
       });
     }
   }, [tab, nearbyLibraries, nearbyEvents]);
 
   return <div ref={containerRef} style={{ height: "100%", width: "100%" }} />;
 }
-
