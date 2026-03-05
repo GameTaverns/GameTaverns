@@ -151,6 +151,8 @@ EXTERNAL_HANDLERS=(
   email-unsubscribe
   email-track
   embed-widget
+  pbf-turn-nudge
+  pbf-daily-challenge
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   src="$FUNCTIONS_DIR/$handler"
