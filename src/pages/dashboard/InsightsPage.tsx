@@ -51,7 +51,7 @@ export default function InsightsPage() {
               <Sparkles className="h-4 w-4 text-secondary" />
               Collection DNA & Insights
             </h2>
-            <CollectionInsightsWidget libraryId={library.id} />
+            <CollectionInsightsWidget libraryId={library.id} hideNavLinks />
           </section>
         )}
 
