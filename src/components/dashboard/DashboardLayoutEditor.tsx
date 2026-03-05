@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useRef } from "react";
 import {
   Pencil, X, RotateCcw, EyeOff, GripVertical,
   BookOpen, Mail, Users, Trophy, Star, Vote, Calendar,
-  Target, Upload, Gamepad2, Plus, MessageSquare, Activity
+  Target, Upload, Gamepad2, Plus, MessageSquare, Activity, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ export const WIDGET_REGISTRY: WidgetConfig[] = [
   { id: "borrowed", label: "My Borrowed Games", icon: BookOpen, defaultVisible: true },
   { id: "communities", label: "My Communities", icon: Users, defaultVisible: true },
   { id: "achievements", label: "Achievements", icon: Trophy, defaultVisible: true },
+  { id: "collection-dna", label: "Collection DNA", icon: Sparkles, defaultVisible: true },
   { id: "shelf-of-shame", label: "Shelf of Shame", icon: Gamepad2, defaultVisible: true },
   { id: "events", label: "Events", icon: Calendar, defaultVisible: true },
   { id: "polls", label: "Game Polls", icon: Vote, defaultVisible: true },
