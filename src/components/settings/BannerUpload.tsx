@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
-import { ImageIcon, Link, Loader2, X, Upload, Palette } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { ImageIcon, Link, Loader2, X, Upload, Palette, Move } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import {
   Popover,
   PopoverContent,
@@ -25,9 +26,10 @@ const GRADIENT_PRESETS = [
 
 interface BannerUploadProps {
   currentBannerUrl: string | null;
+  currentPositionY?: number;
 }
 
-export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
+export function BannerUpload({ currentBannerUrl, currentPositionY = 50 }: BannerUploadProps) {
   const { user } = useAuth();
   const updateProfile = useUpdateUserProfile();
   const { toast } = useToast();
@@ -37,6 +39,10 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [positionY, setPositionY] = useState(currentPositionY);
+  const [showReposition, setShowReposition] = useState(false);
+
+  const isImageBanner = currentBannerUrl && !currentBannerUrl.startsWith("__gradient__");
 
   const saveBannerUrl = async (url: string | null) => {
     try {
@@ -47,6 +53,15 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
       toast({ title: "Save failed", description: error.message || "Could not save banner", variant: "destructive" });
     }
   };
+
+  const savePosition = useCallback(async (y: number) => {
+    setPositionY(y);
+    try {
+      await updateProfile.mutateAsync({ banner_position_y: y } as any);
+    } catch {
+      // silent — position save is non-critical
+    }
+  }, [updateProfile]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,9 +82,9 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
       if (!userId) throw new Error("Not authenticated");
 
       const ext = file.name.split('.').pop() || 'jpg';
-      const filePath = `${userId}/banner.${ext}`;
+      // Use timestamp to bust cache on replacement
+      const filePath = `${userId}/banner-${Date.now()}.${ext}`;
 
-      // Get session token for self-hosted storage auth
       const { data: { session } } = await supabase.auth.getSession();
       const config = (window as any).__RUNTIME_CONFIG__;
       const storageUrl = config?.supabaseUrl || import.meta.env.VITE_SUPABASE_URL || '';
@@ -77,7 +92,6 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
       const token = session?.access_token || anonKey;
 
       if (storageUrl && token) {
-        // Self-hosted: use direct fetch with proper auth
         const uploadEndpoint = `${storageUrl}/storage/v1/object/avatars/${filePath}`;
         const res = await fetch(uploadEndpoint, {
           method: 'POST',
@@ -96,7 +110,6 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
         const publicUrl = `${storageUrl}/storage/v1/object/public/avatars/${filePath}`;
         await saveBannerUrl(publicUrl);
       } else {
-        // Cloud fallback
         const { error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(filePath, file, { upsert: true, contentType: file.type });
@@ -104,6 +117,8 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
         await saveBannerUrl(publicUrl);
       }
+      // Reset position to center for new image
+      await savePosition(50);
     } catch (error: any) {
       toast({ title: "Upload failed", description: error.message || "Could not upload banner", variant: "destructive" });
     } finally {
@@ -123,6 +138,7 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
       await saveBannerUrl(urlInput.trim());
       setUrlInput("");
       setShowUrlInput(false);
+      await savePosition(50);
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to update banner", variant: "destructive" });
     } finally {
@@ -130,8 +146,10 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
     }
   };
 
-  const bannerStyle = currentBannerUrl
-    ? { backgroundImage: `url(${currentBannerUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+  const bannerStyle: React.CSSProperties = currentBannerUrl
+    ? currentBannerUrl.startsWith("__gradient__")
+      ? { background: currentBannerUrl.replace("__gradient__", "") }
+      : { backgroundImage: `url(${currentBannerUrl})`, backgroundSize: "cover", backgroundPosition: `center ${positionY}%` }
     : { background: "linear-gradient(135deg, hsl(var(--primary)/0.3), hsl(var(--accent)/0.2))" };
 
   return (
@@ -202,6 +220,44 @@ export function BannerUpload({ currentBannerUrl }: BannerUploadProps) {
                 <Button size="sm" className="h-8 px-2" onClick={handleUrlSubmit} disabled={isUploading || !urlInput.trim()}>
                   {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Set"}
                 </Button>
+              </div>
+            )}
+
+            {/* Reposition slider — only for image banners */}
+            {isImageBanner && (
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                onClick={() => setShowReposition(!showReposition)}
+              >
+                <Move className="h-4 w-4" />
+                Reposition
+              </Button>
+            )}
+
+            {showReposition && isImageBanner && (
+              <div className="space-y-2 px-1">
+                <div
+                  className="h-20 rounded-md overflow-hidden border border-border"
+                  style={{
+                    backgroundImage: `url(${currentBannerUrl})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: `center ${positionY}%`,
+                  }}
+                />
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">Top</span>
+                  <Slider
+                    value={[positionY]}
+                    min={0}
+                    max={100}
+                    step={1}
+                    onValueChange={([v]) => setPositionY(v)}
+                    onValueCommit={([v]) => savePosition(v)}
+                    className="flex-1"
+                  />
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">Bottom</span>
+                </div>
               </div>
             )}
 
