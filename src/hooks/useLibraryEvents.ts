@@ -152,12 +152,67 @@ export function useCreateEvent() {
         .single();
 
       if (error) throw error;
-      return data;
+
+      let forumThreadId: string | null = null;
+
+      // Auto-create an event discussion thread in the library forum (best effort)
+      if (input.library_id) {
+        try {
+          const { data: categories } = await supabase
+            .from("forum_categories")
+            .select("id, slug, parent_category_id")
+            .eq("library_id", input.library_id)
+            .eq("is_archived", false);
+
+          const preferredCategory =
+            categories?.find((c: any) => c.slug === "events") ||
+            categories?.find((c: any) => c.slug === "general" && c.parent_category_id) ||
+            categories?.find((c: any) => c.slug === "general") ||
+            categories?.[0];
+
+          const authorId = input.created_by_user_id || data.created_by_user_id;
+          if (preferredCategory?.id && authorId) {
+            const when = new Date(input.event_date).toLocaleString();
+            const where =
+              input.venue_name ||
+              input.event_location ||
+              [input.location_city, input.location_region].filter(Boolean).join(", ") ||
+              "TBD";
+
+            const threadContent = [
+              `We're getting ready for **${input.title}**!`,
+              "",
+              `**When:** ${when}`,
+              `**Where:** ${where}`,
+              "",
+              "Use this thread for RSVPs, game picks, and planning details.",
+            ].join("\n");
+
+            const { data: thread } = await supabase
+              .from("forum_threads")
+              .insert({
+                category_id: preferredCategory.id,
+                title: `Event Discussion: ${input.title}`.slice(0, 200),
+                content: threadContent,
+                author_id: authorId,
+              })
+              .select("id")
+              .single();
+
+            forumThreadId = thread?.id ?? null;
+          }
+        } catch {
+          // Non-blocking: event creation should still succeed if forum thread creation fails
+        }
+      }
+
+      return { event: data, forumThreadId };
     },
-    onSuccess: (data, variables) => {
+    onSuccess: ({ event, forumThreadId }, variables) => {
       if (variables.library_id) {
         queryClient.invalidateQueries({ queryKey: ["library-events", variables.library_id] });
         queryClient.invalidateQueries({ queryKey: ["library-all-events", variables.library_id] });
+        queryClient.invalidateQueries({ queryKey: ["forum-threads"] });
       }
       queryClient.invalidateQueries({ queryKey: ["public-event-directory"] });
       queryClient.invalidateQueries({ queryKey: ["my-events"] });
@@ -165,7 +220,7 @@ export function useCreateEvent() {
       // Send Discord notification for library events
       if (variables.library_id) {
         discord.notifyEventCreated(variables.library_id, {
-          id: data.id,
+          id: event.id,
           title: variables.title,
           description: variables.description,
           event_date: variables.event_date,
@@ -175,9 +230,11 @@ export function useCreateEvent() {
       
       toast({
         title: "Event created",
-        description: variables.library_id 
-          ? "Your event has been added to the calendar."
-          : "Your community event is now live in the directory.",
+        description: forumThreadId
+          ? "Your event is live and a discussion thread was created automatically."
+          : variables.library_id 
+            ? "Your event has been added to the calendar."
+            : "Your community event is now live in the directory.",
       });
     },
     onError: (error: Error) => {
