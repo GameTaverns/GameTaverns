@@ -22,10 +22,13 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   // Verify service_role auth
-  const authHeader = req.headers.get("Authorization");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const serviceRoleKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "").trim();
   
-  if (!authHeader?.includes(serviceRoleKey) || !serviceRoleKey) {
+  console.log(`[ResumeImports] Auth debug: header present=${!!authHeader}, token length=${token.length}, env key length=${serviceRoleKey.length}, match=${token === serviceRoleKey}`);
+  
+  if (!serviceRoleKey || token !== serviceRoleKey) {
     return new Response(
       JSON.stringify({ error: "Unauthorized — requires service_role key" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
