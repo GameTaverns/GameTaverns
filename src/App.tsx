@@ -46,6 +46,7 @@ const Platform = lazy(lazyRetry(() => import("./pages/Platform")));
 const Features = lazy(lazyRetry(() => import("./pages/Features")));
 const Press = lazy(lazyRetry(() => import("./pages/Press")));
 const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
+const DashboardMockupsPage = lazy(() => import("./components/dashboard/DashboardMockups").then(m => ({ default: m.DashboardMockups })));
 const CreateLibrary = lazy(lazyRetry(() => import("./pages/CreateLibrary")));
 const Signup = lazy(lazyRetry(() => import("./pages/Signup")));
 const ForgotPassword = lazy(lazyRetry(() => import("./pages/ForgotPassword")));
@@ -287,6 +288,7 @@ function PlatformRoutes() {
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dashboard/editor" element={<DashboardEditor />} />
+      <Route path="/dashboard/mockups" element={<Suspense fallback={<PageLoader />}><DashboardMockupsPage /></Suspense>} />
       <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/create-library" element={<CreateLibrary />} />
       <Route path="/setup-2fa" element={<Setup2FA />} />
