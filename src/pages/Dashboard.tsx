@@ -151,11 +151,13 @@ export default function Dashboard() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
                 {myLibraries.map((lib) => (
-                  <DropdownMenuItem key={lib.id} asChild>
-                    <TenantLink href={getLibraryUrl(lib.slug, "/")} className="cursor-pointer">
-                      <Library className="h-3.5 w-3.5 mr-2" />
-                      {lib.name}
-                    </TenantLink>
+                  <DropdownMenuItem
+                    key={lib.id}
+                    onSelect={() => navigate(getLibraryUrl(lib.slug, "/"))}
+                    className="cursor-pointer"
+                  >
+                    <Library className="h-3.5 w-3.5 mr-2" />
+                    {lib.name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
