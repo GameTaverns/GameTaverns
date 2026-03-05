@@ -1,7 +1,8 @@
-import { DollarSign, PieChart } from "lucide-react";
+import { DollarSign, PieChart, Sparkles } from "lucide-react";
 import { LibraryAnalyticsDashboard } from "@/components/analytics/LibraryAnalyticsDashboard";
 import { CollectionValueDashboard } from "@/components/analytics/CollectionValueDashboard";
 import { CollectionBreakdownCharts } from "@/components/analytics/CollectionBreakdownCharts";
+import { CollectionInsightsCard } from "@/components/analytics/CollectionInsightsCard";
 import { TopNineGrid } from "@/components/analytics/TopNineGrid";
 import { MonthlySummaryCard } from "@/components/analytics/MonthlySummaryCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,10 +24,25 @@ export function AnalyticsTab({ isAdmin, libraryId, libraryName }: AnalyticsTabPr
 
   return (
     <div className="space-y-6">
-      <TopNineGrid libraryId={libraryId} libraryName={libraryName} />
+      {/* ── Shareables Section ── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-bold text-foreground">Shareable Insights</h2>
+          <span className="text-xs text-muted-foreground">— Save & share these cards!</span>
+        </div>
 
-      <MonthlySummaryCard libraryId={libraryId} libraryName={libraryName} />
+        {/* Collection DNA - the hero shareable */}
+        <CollectionInsightsCard libraryId={libraryId} libraryName={libraryName} />
+      </div>
 
+      {/* Top 9 + Monthly Summary side by side on large screens */}
+      <div className="grid gap-6 xl:grid-cols-2">
+        <TopNineGrid libraryId={libraryId} libraryName={libraryName} />
+        <MonthlySummaryCard libraryId={libraryId} libraryName={libraryName} />
+      </div>
+
+      {/* ── Deep Analytics ── */}
       <LibraryAnalyticsDashboard libraryId={libraryId} />
 
       <div className="grid gap-6 xl:grid-cols-2">

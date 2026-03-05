@@ -104,6 +104,7 @@ import { ChallengesManager } from "@/components/challenges/ChallengesManager";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { useMyClubs } from "@/hooks/useClubs";
 import { ShelfOfShameWidget } from "@/components/dashboard/ShelfOfShameWidget";
+import { CollectionInsightsWidget } from "@/components/dashboard/CollectionInsightsWidget";
 import { OnboardingWizard } from "@/components/dashboard/OnboardingWizard";
 import { useTotpStatus } from "@/hooks/useTotpStatus";
 import { useUserDashboardPrefs, TAB_WIDGET_REGISTRY } from "@/hooks/useUserDashboardPrefs";
@@ -482,6 +483,7 @@ export default function Dashboard() {
       </Card>
     ),
     "shelf-of-shame": <ShelfOfShameWidget libraryId={library.id} />,
+    "collection-dna": <CollectionInsightsWidget libraryId={library.id} />,
     "random-picker": (
       <Card className={cardClass}>
         <CardHeader className="pb-2 px-4 pt-4">
