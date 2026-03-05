@@ -64,12 +64,10 @@ const handler = async (req: Request): Promise<Response> => {
       '<body style="margin:0;padding:0;background:#e8dcc8;font-family:Georgia,\'Times New Roman\',serif;">',
       '<div style="max-width:560px;margin:0 auto;padding:24px;">',
       '<div style="background:#f5eed9;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(60,40,20,0.15);border:1px solid #d4c4a0;">',
-      // Header with logo
       '<div style="background:#3d2b1f;padding:24px 32px;text-align:center;">',
       `<img src="${logoUrl}" alt="GameTaverns" style="max-height:48px;margin-bottom:8px;" />`,
       '<p style="margin:0;color:#e8d9b0;font-size:13px;font-family:Georgia,serif;">Staff Response</p>',
       '</div>',
-      // Body
       '<div style="padding:32px;">',
       `<p style="margin:0 0 16px;font-size:15px;color:#3d2b1f;">Hi ${recipientLabel},</p>`,
       '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
@@ -84,7 +82,9 @@ const handler = async (req: Request): Promise<Response> => {
       '</body></html>',
     ].join("");
 
-    await client.send({
+    // Wrap send in a timeout to prevent indefinite hang
+    const SEND_TIMEOUT_MS = 30_000;
+    const sendPromise = client.send({
       from: SMTP_FROM,
       to: to_email,
       subject: subject || "Re: Your feedback — Game Taverns",
@@ -92,7 +92,13 @@ const handler = async (req: Request): Promise<Response> => {
       html: htmlBody,
     });
 
-    await client.close();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("SMTP send timed out after 30s")), SEND_TIMEOUT_MS)
+    );
+
+    await Promise.race([sendPromise, timeoutPromise]);
+
+    try { await client.close(); } catch { /* ignore close errors */ }
 
     return new Response(
       JSON.stringify({ success: true }),
