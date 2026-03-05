@@ -78,7 +78,9 @@ const Login = () => {
           description: error.message,
           variant: "destructive",
         });
+        setIsLoading(false);
         setHasCheckedAuth(false);
+        setAuthGate("idle");
         if (!isNative) {
           setSigninTurnstileToken("pending");
         }
@@ -213,7 +215,7 @@ const Login = () => {
 
     try {
       const { error } = await signUp(signupEmail, password, {
-        username: signupUsername.toLowerCase() || undefined,
+        username: signupUsername || undefined,
         displayName: signupDisplayName || signupEmail.split("@")[0],
         referralCode,
       });
@@ -365,7 +367,7 @@ const Login = () => {
                   <Input
                     id="signup-username"
                     value={signupUsername}
-                    onChange={(e) => setSignupUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    onChange={(e) => setSignupUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
                     placeholder={t('login.usernamePlaceholder')}
                     maxLength={30}
                     className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"

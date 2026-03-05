@@ -121,7 +121,7 @@ export function AccountSettings() {
     try {
       await updateProfile.mutateAsync({
         display_name: displayName.trim() || null,
-        username: username.trim().toLowerCase() || null,
+        username: username.trim() || null,
         bio: bio.trim() || null,
         website_url: websiteUrl.trim() || null,
         company_name: companyName.trim() || null,
