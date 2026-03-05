@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, AtSign, FileText, Loader2 } from "lucide-react";
+import { User, Mail, AtSign, FileText, Loader2, Globe, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,8 @@ export function AccountSettings() {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
@@ -36,6 +38,8 @@ export function AccountSettings() {
       setDisplayName(profile.display_name || "");
       setUsername(profile.username || "");
       setBio(profile.bio || "");
+      setWebsiteUrl((profile as any).website_url || "");
+      setCompanyName((profile as any).company_name || "");
     }
   }, [profile]);
 
@@ -119,6 +123,8 @@ export function AccountSettings() {
         display_name: displayName.trim() || null,
         username: username.trim().toLowerCase() || null,
         bio: bio.trim() || null,
+        website_url: websiteUrl.trim() || null,
+        company_name: companyName.trim() || null,
       });
 
       toast({
@@ -244,6 +250,43 @@ export function AccountSettings() {
             />
             <p className="text-xs text-muted-foreground">
               {bio.length}/500 characters
+            </p>
+          </div>
+
+          {/* Website URL */}
+          <div className="space-y-2">
+            <Label htmlFor="websiteUrl" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              Website
+            </Label>
+            <Input
+              id="websiteUrl"
+              type="url"
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              placeholder="https://yoursite.com"
+              maxLength={200}
+            />
+            <p className="text-xs text-muted-foreground">
+              Your personal or professional website
+            </p>
+          </div>
+
+          {/* Company / Studio */}
+          <div className="space-y-2">
+            <Label htmlFor="companyName" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Company / Studio
+            </Label>
+            <Input
+              id="companyName"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="Publisher, design studio, café, etc."
+              maxLength={100}
+            />
+            <p className="text-xs text-muted-foreground">
+              Shown on your public profile
             </p>
           </div>
 

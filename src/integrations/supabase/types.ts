@@ -4190,6 +4190,7 @@ export type Database = {
           banner_gradient: string | null
           banner_url: string | null
           bio: string | null
+          company_name: string | null
           created_at: string
           discord_user_id: string | null
           display_name: string | null
@@ -4210,6 +4211,7 @@ export type Database = {
           updated_at: string
           user_id: string
           username: string | null
+          website_url: string | null
         }
         Insert: {
           admin_email?: string | null
@@ -4217,6 +4219,7 @@ export type Database = {
           banner_gradient?: string | null
           banner_url?: string | null
           bio?: string | null
+          company_name?: string | null
           created_at?: string
           discord_user_id?: string | null
           display_name?: string | null
@@ -4237,6 +4240,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           username?: string | null
+          website_url?: string | null
         }
         Update: {
           admin_email?: string | null
@@ -4244,6 +4248,7 @@ export type Database = {
           banner_gradient?: string | null
           banner_url?: string | null
           bio?: string | null
+          company_name?: string | null
           created_at?: string
           discord_user_id?: string | null
           display_name?: string | null
@@ -4264,6 +4269,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+          website_url?: string | null
         }
         Relationships: [
           {
@@ -5179,6 +5185,7 @@ export type Database = {
           banner_gradient: string | null
           banner_url: string | null
           bio: string | null
+          company_name: string | null
           display_name: string | null
           expansions_owned: number | null
           featured_achievement_id: string | null
@@ -5198,6 +5205,7 @@ export type Database = {
           sessions_logged: number | null
           user_id: string | null
           username: string | null
+          website_url: string | null
         }
         Relationships: [
           {
@@ -5227,9 +5235,11 @@ export type Database = {
       user_profiles_minimal: {
         Row: {
           avatar_url: string | null
+          company_name: string | null
           display_name: string | null
           user_id: string | null
           username: string | null
+          website_url: string | null
         }
         Relationships: []
       }
