@@ -4,9 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, Trash2, Search, RefreshCw, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -42,27 +40,24 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   unknown: { label: "Unknown", color: "bg-muted text-muted-foreground border-muted" },
 };
 
+const INFO_CATEGORIES = new Set(["wishlist_skip", "already_exists"]);
+
 export function ImportErrorsPanel() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("errors");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: errors, isLoading, refetch } = useQuery({
-    queryKey: ["import-item-errors", categoryFilter],
+    queryKey: ["import-item-errors"],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("import_item_errors" as any)
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(500);
 
-      if (categoryFilter && categoryFilter !== "all") {
-        query = query.eq("error_category", categoryFilter);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as unknown as ImportItemError[];
     },
@@ -93,6 +88,17 @@ export function ImportErrorsPanel() {
   });
 
   const filtered = (errors || []).filter((e) => {
+    const matchesCategory =
+      categoryFilter === "all"
+        ? true
+        : categoryFilter === "errors"
+          ? !INFO_CATEGORIES.has(e.error_category)
+          : categoryFilter === "info"
+            ? INFO_CATEGORIES.has(e.error_category)
+            : e.error_category === categoryFilter;
+
+    if (!matchesCategory) return false;
+
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -107,6 +113,9 @@ export function ImportErrorsPanel() {
     return acc;
   }, {});
 
+  const infoCount = (errors || []).filter((e) => INFO_CATEGORIES.has(e.error_category)).length;
+  const errorCount = (errors?.length || 0) - infoCount;
+
   return (
     <div className="space-y-4">
       <Card className="border-wood-medium/30 bg-wood-dark/40">
@@ -117,9 +126,9 @@ export function ImportErrorsPanel() {
                 <AlertTriangle className="h-5 w-5 text-destructive" />
               </div>
               <div>
-                <CardTitle className="text-base font-bold text-cream">Import Item Errors</CardTitle>
+                <CardTitle className="text-base font-bold text-cream">Import Item Log</CardTitle>
                 <CardDescription className="text-cream/50">
-                  Individual games that failed during bulk imports
+                  Failures and informational skips from bulk imports
                 </CardDescription>
               </div>
             </div>
@@ -162,7 +171,21 @@ export function ImportErrorsPanel() {
             <div className="flex flex-wrap gap-2">
               <Badge
                 variant="outline"
-                className={`text-xs cursor-pointer ${categoryFilter === "all" ? "bg-secondary/20 text-secondary border-secondary/40" : "border-wood-medium/30 text-cream/50"}`}
+                className={`text-xs cursor-pointer ${categoryFilter === "errors" ? "bg-destructive/15 text-destructive border-destructive/30" : "border-wood-medium/30 text-cream/50"}`}
+                onClick={() => setCategoryFilter("errors")}
+              >
+                Errors ({errorCount})
+              </Badge>
+              <Badge
+                variant="outline"
+                className={`text-xs cursor-pointer ${categoryFilter === "info" ? "bg-secondary/20 text-secondary border-secondary/40" : "border-wood-medium/30 text-cream/50"}`}
+                onClick={() => setCategoryFilter("info")}
+              >
+                Info ({infoCount})
+              </Badge>
+              <Badge
+                variant="outline"
+                className={`text-xs cursor-pointer ${categoryFilter === "all" ? "bg-accent/20 text-accent border-accent/40" : "border-wood-medium/30 text-cream/50"}`}
                 onClick={() => setCategoryFilter("all")}
               >
                 All ({errors?.length || 0})
@@ -202,7 +225,7 @@ export function ImportErrorsPanel() {
               {errors?.length === 0 ? "No import errors recorded yet. Errors from future imports will appear here." : "No matches for your search."}
             </div>
           ) : (
-            <ScrollArea className="max-h-[500px]">
+            <div className="h-[500px] overflow-y-auto pr-2">
               <div className="space-y-2">
                 {filtered.map((err) => {
                   const catConfig = CATEGORY_LABELS[err.error_category] || CATEGORY_LABELS.unknown;
@@ -265,7 +288,7 @@ export function ImportErrorsPanel() {
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t border-wood-medium/20 space-y-2">
                           <div>
-                            <p className="text-[11px] font-medium text-cream/50 uppercase tracking-wider mb-1">Full Error</p>
+                            <p className="text-[11px] font-medium text-cream/50 uppercase tracking-wider mb-1">Details</p>
                             <p className="text-xs text-cream/70">{err.error_reason}</p>
                           </div>
                           {err.raw_input && (
@@ -285,7 +308,7 @@ export function ImportErrorsPanel() {
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>

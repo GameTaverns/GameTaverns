@@ -10,6 +10,7 @@ const corsHeaders = {
 interface WishlistRequest {
   action: "add" | "remove" | "list";
   game_id?: string;
+  library_id?: string;
   guest_name?: string;
   guest_identifier: string;
 }
@@ -27,7 +28,15 @@ export default async function handler(req: Request): Promise<Response> {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body: WishlistRequest = await req.json();
-    const { action, game_id, guest_name, guest_identifier } = body;
+    const { action, game_id, library_id, guest_name, guest_identifier } = body;
+
+    // Validate tenant/library scope
+    if (!library_id || !/^[0-9a-f-]{36}$/i.test(library_id)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid library ID" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Validate guest_identifier
     if (!guest_identifier || guest_identifier.length < 8 || guest_identifier.length > 64) {
@@ -38,7 +47,7 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     // Validate guest_name if provided (max 50 chars, no HTML)
-    const sanitizedName = guest_name 
+    const sanitizedName = guest_name
       ? guest_name.trim().slice(0, 50).replace(/<[^>]*>/g, '')
       : null;
 
@@ -47,6 +56,21 @@ export default async function handler(req: Request): Promise<Response> {
         return new Response(
           JSON.stringify({ error: "Invalid game ID" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: game, error: gameError } = await supabase
+        .from("games")
+        .select("id")
+        .eq("id", game_id)
+        .eq("library_id", library_id)
+        .maybeSingle();
+
+      if (gameError) throw gameError;
+      if (!game) {
+        return new Response(
+          JSON.stringify({ error: "Game not found in this library" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -117,6 +141,21 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
+      const { data: game, error: gameError } = await supabase
+        .from("games")
+        .select("id")
+        .eq("id", game_id)
+        .eq("library_id", library_id)
+        .maybeSingle();
+
+      if (gameError) throw gameError;
+      if (!game) {
+        return new Response(
+          JSON.stringify({ error: "Game not found in this library" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const { error } = await supabase
         .from("game_wishlist")
         .delete()
@@ -132,11 +171,12 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (action === "list") {
-      // Get all votes for this guest
+      // Get all votes for this guest scoped to current library
       const { data, error } = await supabase
         .from("game_wishlist")
-        .select("game_id")
-        .eq("guest_identifier", guest_identifier);
+        .select("game_id, games!inner(library_id)")
+        .eq("guest_identifier", guest_identifier)
+        .eq("games.library_id", library_id);
 
       if (error) throw error;
 
