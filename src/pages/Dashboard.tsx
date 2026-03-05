@@ -134,16 +134,16 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex gap-1.5 mb-6 overflow-x-auto">
+        <div className="flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4">
           <Link to="/dashboard/collection" className="contents">
-            <Button size="sm" className="gap-1.5 text-xs h-8 w-full">
+            <Button size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <Plus className="h-3.5 w-3.5" /> Add Game
             </Button>
           </Link>
           {myLibraries.length > 1 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
                   <Library className="h-3.5 w-3.5" /> Library <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -160,50 +160,50 @@ export default function Dashboard() {
             </DropdownMenu>
           ) : library ? (
             <Link to={`/lib/${library.slug}`} className="contents">
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
                 <Library className="h-3.5 w-3.5" /> Library
               </Button>
             </Link>
           ) : null}
           <Link to="/catalog" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <Search className="h-3.5 w-3.5" /> Catalog
             </Button>
           </Link>
           <Link to="/directory" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <Globe className="h-3.5 w-3.5" /> Directory
             </Button>
           </Link>
           <Link to="/events" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <Calendar className="h-3.5 w-3.5" /> Events
             </Button>
           </Link>
           <Link to="/dashboard/lending" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <BookOpen className="h-3.5 w-3.5" /> Lending
             </Button>
           </Link>
           <Link to="/dashboard/insights" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <ClipboardList className="h-3.5 w-3.5" /> Log Play
             </Button>
           </Link>
           <Link to="/dashboard/collection" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <Dice5 className="h-3.5 w-3.5" /> Random
             </Button>
           </Link>
           {profile?.username && (
             <Link to={`/u/${profile.username}`} className="contents">
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
                 <User className="h-3.5 w-3.5" /> Profile
               </Button>
             </Link>
           )}
           <Link to="/docs" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 w-full">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <HelpCircle className="h-3.5 w-3.5" /> Help
             </Button>
           </Link>
