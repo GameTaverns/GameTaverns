@@ -131,6 +131,61 @@ export type Database = {
         }
         Relationships: []
       }
+      archetype_snapshots: {
+        Row: {
+          confidence: number
+          created_at: string
+          id: string
+          library_id: string
+          primary_archetype: string
+          secondary_archetype: string | null
+          snapshot_month: string
+          source: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          id?: string
+          library_id: string
+          primary_archetype: string
+          secondary_archetype?: string | null
+          snapshot_month: string
+          source?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          id?: string
+          library_id?: string
+          primary_archetype?: string
+          secondary_archetype?: string | null
+          snapshot_month?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "archetype_snapshots_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archetype_snapshots_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "archetype_snapshots_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artists: {
         Row: {
           created_at: string | null

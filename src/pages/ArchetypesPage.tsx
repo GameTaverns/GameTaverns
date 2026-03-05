@@ -2,7 +2,7 @@ import { ARCHETYPES } from "@/hooks/useCollectionIntelligence";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Brain, Sparkles, Scale } from "lucide-react";
+import { ArrowLeft, Brain, Sparkles, Scale, Gamepad2, Library } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ArchetypesPage() {
@@ -22,8 +22,8 @@ export default function ArchetypesPage() {
           </div>
           <p className="text-muted-foreground max-w-2xl leading-relaxed">
             Your Gaming Personality is determined by analyzing the <strong>mechanics</strong> of every game in your collection
-            and matching them against archetype trigger lists. Collections with heavier average weight get a scoring bonus
-            for strategy-oriented archetypes. If no strong match is found, you default to <strong>The Curator</strong>.
+            and matching them against archetype trigger lists. The result is <strong>play-weighted</strong> — games you actually play
+            count more than shelf decorations.
           </p>
         </div>
 
@@ -35,15 +35,54 @@ export default function ArchetypesPage() {
             </h2>
             <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
               <li>We scan every base game in your library and look up its <strong>mechanics</strong> from the catalog.</li>
-              <li>Each archetype has a list of <strong>trigger mechanics</strong>. Every match adds to that archetype's score.</li>
+              <li>Each archetype has <strong>weighted trigger mechanics</strong>. Definitive triggers (⭐⭐⭐) score 3×, strong triggers (⭐⭐) score 2×, and standard triggers score 1×.</li>
               <li>If an archetype requires a minimum collection weight (complexity), a <strong>1.3× bonus</strong> is applied when your collection meets the threshold.</li>
-              <li>The highest-scoring archetype becomes your <strong>primary personality</strong>. The runner-up appears as your <strong>secondary</strong> ("with a dash of…").</li>
-              <li>A <strong>confidence score</strong> (0–100%) indicates how strongly your collection aligns with the result.</li>
+              <li>
+                <strong>Play-log weighting:</strong> Games you've actually played get boosted (1 play = 2×, 10 plays = 3.5×).
+                Unplayed games receive a <strong>0.5× penalty</strong>.
+              </li>
+              <li>The highest-scoring archetype becomes your <strong>primary personality</strong>. The runner-up appears as your <strong>secondary</strong>.</li>
             </ol>
           </CardContent>
         </Card>
 
+        {/* Shelf vs Play explanation */}
+        <Card className="mb-8 border-border/50">
+          <CardContent className="p-5 space-y-3">
+            <h2 className="font-bold text-foreground flex items-center gap-2">
+              <Gamepad2 className="h-5 w-5 text-primary" /> Shelf vs. Play Style
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Your Collection DNA shows three perspectives:
+            </p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div className="p-3 rounded-lg bg-card border border-border/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <Library className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-sm text-foreground">Shelf</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Based purely on what you own. Every game counts equally.</p>
+              </div>
+              <div className="p-3 rounded-lg bg-card border border-border/50">
+                <div className="flex items-center gap-2 mb-1">
+                  <Gamepad2 className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-sm text-foreground">Play Style</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Based only on games with logged sessions. Reflects what you actually enjoy.</p>
+              </div>
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-sm text-foreground">Blended</span>
+                </div>
+                <p className="text-xs text-muted-foreground">The primary result. Played games boosted, unplayed games penalized. Best of both worlds.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Archetype cards */}
+        <h2 className="text-xl font-bold text-foreground mb-4">All {ARCHETYPES.length} Archetypes</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {ARCHETYPES.map((arch) => (
             <Card key={arch.id} className="overflow-hidden border-border/50 hover:border-primary/30 transition-colors">
@@ -61,9 +100,15 @@ export default function ArchetypesPage() {
                   <div className="space-y-1.5">
                     <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Trigger Mechanics</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {arch.triggers.map((t) => (
-                        <Badge key={t} variant="secondary" className="text-[11px] font-normal">
-                          {t}
+                      {arch.triggers.map((trigger) => (
+                        <Badge
+                          key={trigger.mechanic}
+                          variant={trigger.weight >= 3 ? "default" : "secondary"}
+                          className={`text-[11px] font-normal ${trigger.weight >= 3 ? "bg-primary/20 text-primary border-primary/30" : trigger.weight >= 2 ? "bg-accent/50" : ""}`}
+                        >
+                          {trigger.mechanic}
+                          {trigger.weight >= 3 && " ⭐"}
+                          {trigger.weight === 2 && " ★"}
                         </Badge>
                       ))}
                     </div>
@@ -86,9 +131,18 @@ export default function ArchetypesPage() {
           ))}
         </div>
 
+        {/* Legend */}
+        <div className="mt-6 p-4 rounded-lg bg-card/50 border border-border/30">
+          <p className="text-xs text-muted-foreground">
+            <strong>⭐ Definitive trigger</strong> (3× score) &nbsp;·&nbsp;
+            <strong>★ Strong trigger</strong> (2× score) &nbsp;·&nbsp;
+            <strong>Standard trigger</strong> (1× score)
+          </p>
+        </div>
+
         {/* Footer note */}
         <p className="text-center text-xs text-muted-foreground mt-8">
-          Your personality updates automatically as you add or remove games from your collection.
+          Your personality updates automatically as you add games or log play sessions. Monthly snapshots track how your personality evolves over time.
         </p>
       </div>
     </div>
