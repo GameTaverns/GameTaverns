@@ -1,5 +1,5 @@
 import { useState, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
-import { MapPin, Navigation, Search, Library, Calendar, Loader2, AlertTriangle } from "lucide-react";
+import { MapPin, Navigation, Search, Library, Calendar, Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { Layout } from "@/components/layout/Layout";
@@ -93,6 +93,10 @@ export default function NearMe() {
       <div className="container max-w-6xl mx-auto py-6 px-4 space-y-5">
         {/* Header */}
         <div className="space-y-1">
+          <Button variant="ghost" size="sm" className="gap-1.5 -ml-2 mb-1" onClick={() => navigate("/directory")}>
+            <ArrowLeft className="h-4 w-4" />
+            Back to Directory
+          </Button>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <MapPin className="h-6 w-6 text-primary" />
             Near Me
