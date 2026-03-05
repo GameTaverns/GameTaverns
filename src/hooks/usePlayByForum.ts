@@ -14,6 +14,7 @@ export interface PbfGame {
   current_player_index: number;
   turn_time_limit_hours: number | null;
   turn_started_at: string;
+  winner_user_id: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -317,7 +318,7 @@ export function useSubmitMove() {
   });
 }
 
-// Update game status
+// Update game status (with optional winner for ELO)
 export function useUpdatePbfStatus() {
   const queryClient = useQueryClient();
 
@@ -325,13 +326,18 @@ export function useUpdatePbfStatus() {
     mutationFn: async ({
       pbfGameId,
       status,
+      winnerUserId,
     }: {
       pbfGameId: string;
       status: "active" | "paused" | "completed" | "abandoned";
+      winnerUserId?: string;
     }) => {
+      const updateData: Record<string, any> = { status };
+      if (winnerUserId) updateData.winner_user_id = winnerUserId;
+
       const { data, error } = await supabase
         .from("pbf_games")
-        .update({ status })
+        .update(updateData)
         .eq("id", pbfGameId)
         .select()
         .single();
@@ -341,6 +347,7 @@ export function useUpdatePbfStatus() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["pbf-game"] });
+      queryClient.invalidateQueries({ queryKey: ["pbf-players"] });
       toast.success(`Game ${data.status === "completed" ? "completed" : data.status === "paused" ? "paused" : data.status === "active" ? "resumed" : "ended"}!`);
     },
   });
