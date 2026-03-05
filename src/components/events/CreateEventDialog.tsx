@@ -263,7 +263,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
     } else {
       await createEvent.mutateAsync({
         library_id: libraryId || undefined,
-        created_by_user_id: isStandalone ? user?.id : undefined,
+        created_by_user_id: user?.id,
         title: title.trim(),
         description: description.trim() || undefined,
         event_date: eventDate.toISOString(),
