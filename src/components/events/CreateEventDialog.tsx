@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, MapPin, Clock, Globe, Lock, Building2 } from "lucide-react";
+import { CalendarIcon, MapPin, Clock, Globe, Lock, Building2, Library } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -31,6 +31,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useCreateEvent, useUpdateEvent, CalendarEvent } from "@/hooks/useLibraryEvents";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyLibraries } from "@/hooks/useLibrary";
 
 const EVENT_TYPES = [
   { value: "game_night", label: "Game Night" },
@@ -101,9 +102,16 @@ function clearDraft(draftKey: string) {
   }
 }
 
-export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: CreateEventDialogProps) {
+export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId, editEvent }: CreateEventDialogProps) {
   const { user } = useAuth();
+  const { data: myLibraries } = useMyLibraries();
   const [activeTab, setActiveTab] = useState("basics");
+  
+  // Event scope: "general" or a library ID
+  const [eventScope, setEventScope] = useState<string>(propLibraryId || "general");
+  
+  // Derived: the effective library ID based on scope selection
+  const libraryId = propLibraryId || (eventScope !== "general" ? eventScope : undefined);
   
   // Basic fields
   const [title, setTitle] = useState("");
@@ -114,7 +122,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [endTime, setEndTime] = useState("");
   const [location, setLocation] = useState("");
-  const [isPublic, setIsPublic] = useState(!libraryId); // Default public for standalone
+  const [isPublic, setIsPublic] = useState(!propLibraryId); // Default public for standalone
   const [maxAttendees, setMaxAttendees] = useState("");
   
   // Venue & Logistics
@@ -136,6 +144,13 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
   const isEditMode = !!editEvent;
   const isStandalone = !libraryId;
   const draftKey = getDraftKey(libraryId);
+  
+  // When the prop changes, sync the scope
+  useEffect(() => {
+    if (propLibraryId) {
+      setEventScope(propLibraryId);
+    }
+  }, [propLibraryId]);
   
   useEffect(() => {
     if (!open) return;
@@ -323,6 +338,43 @@ export function CreateEventDialog({ open, onOpenChange, libraryId, editEvent }: 
             </TabsList>
             
             <TabsContent value="basics" className="space-y-4 mt-0">
+              {/* Event Scope - only show when not locked to a specific library */}
+              {!isEditMode && !propLibraryId && myLibraries && myLibraries.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Event Scope</Label>
+                  <Select value={eventScope} onValueChange={(val) => {
+                    setEventScope(val);
+                    // Auto-set visibility based on scope
+                    setIsPublic(val === "general");
+                  }}>
+                    <SelectTrigger>
+                      <div className="flex items-center gap-2">
+                        {eventScope === "general" 
+                          ? <Globe className="h-4 w-4 text-primary" />
+                          : <Library className="h-4 w-4 text-muted-foreground" />
+                        }
+                        <SelectValue />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">
+                        <span className="flex items-center gap-2">General (Community Event)</span>
+                      </SelectItem>
+                      {myLibraries.map((lib: any) => (
+                        <SelectItem key={lib.id} value={lib.id}>
+                          <span className="flex items-center gap-2">{lib.name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {eventScope === "general" 
+                      ? "A standalone community event, not tied to any library." 
+                      : "This event will appear in the selected library and create a forum discussion."}
+                  </p>
+                </div>
+              )}
+
               {/* Event Type */}
               {!isEditMode && (
                 <div className="space-y-2">
