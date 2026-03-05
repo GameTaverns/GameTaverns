@@ -86,7 +86,8 @@ BEGIN
       ('General Discussion', 'general', 'Chat about anything board game related', 'MessageSquare', 'blue', 2, true, NEW.id, general_id),
       ('Looking for Group', 'lfg', 'Find other players for game sessions', 'Users', 'green', 3, true, NEW.id, general_id),
       ('Introduce Yourself', 'introductions', 'Say hello and tell us about yourself', 'UserPlus', 'cyan', 4, true, NEW.id, general_id),
-      ('Events', 'events', 'Event announcements and discussions', 'Calendar', 'rose', 5, true, NEW.id, general_id)
+      ('Events', 'events', 'Event announcements and discussions', 'Calendar', 'rose', 5, true, NEW.id, general_id),
+      ('Play by Forum', 'play-by-forum', 'Asynchronous play-by-forum games', 'Gamepad2', 'indigo', 6, true, NEW.id, general_id)
     ON CONFLICT DO NOTHING;
 
     INSERT INTO public.forum_categories (name, slug, description, icon, color, display_order, is_system, club_id)

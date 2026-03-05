@@ -1309,6 +1309,7 @@ export type Database = {
           is_pinned: boolean | null
           last_reply_at: string | null
           reply_count: number | null
+          thread_type: string
           title: string
           updated_at: string | null
           view_count: number | null
@@ -1323,6 +1324,7 @@ export type Database = {
           is_pinned?: boolean | null
           last_reply_at?: string | null
           reply_count?: number | null
+          thread_type?: string
           title: string
           updated_at?: string | null
           view_count?: number | null
@@ -1337,6 +1339,7 @@ export type Database = {
           is_pinned?: boolean | null
           last_reply_at?: string | null
           reply_count?: number | null
+          thread_type?: string
           title?: string
           updated_at?: string | null
           view_count?: number | null
@@ -3517,6 +3520,156 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      pbf_game_players: {
+        Row: {
+          display_name: string | null
+          id: string
+          joined_at: string
+          pbf_game_id: string
+          player_order: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          display_name?: string | null
+          id?: string
+          joined_at?: string
+          pbf_game_id: string
+          player_order?: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          display_name?: string | null
+          id?: string
+          joined_at?: string
+          pbf_game_id?: string
+          player_order?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pbf_game_players_pbf_game_id_fkey"
+            columns: ["pbf_game_id"]
+            isOneToOne: false
+            referencedRelation: "pbf_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pbf_games: {
+        Row: {
+          created_at: string
+          created_by: string
+          current_player_index: number
+          game_id: string | null
+          game_image_url: string | null
+          game_title: string
+          id: string
+          status: string
+          thread_id: string
+          turn_started_at: string | null
+          turn_time_limit_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          current_player_index?: number
+          game_id?: string | null
+          game_image_url?: string | null
+          game_title: string
+          id?: string
+          status?: string
+          thread_id: string
+          turn_started_at?: string | null
+          turn_time_limit_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          current_player_index?: number
+          game_id?: string | null
+          game_image_url?: string | null
+          game_title?: string
+          id?: string
+          status?: string
+          thread_id?: string
+          turn_started_at?: string | null
+          turn_time_limit_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pbf_games_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "pbf_games_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pbf_games_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pbf_games_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: true
+            referencedRelation: "forum_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pbf_moves: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          move_number: number
+          move_text: string
+          pbf_game_id: string
+          player_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          move_number: number
+          move_text: string
+          pbf_game_id: string
+          player_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          move_number?: number
+          move_text?: string
+          pbf_game_id?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pbf_moves_pbf_game_id_fkey"
+            columns: ["pbf_game_id"]
+            isOneToOne: false
+            referencedRelation: "pbf_games"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       photo_likes: {
         Row: {
