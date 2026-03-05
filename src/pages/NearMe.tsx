@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useMapLibraries,
@@ -161,103 +160,115 @@ export default function NearMe() {
           </p>
         )}
 
-        {/* Tabs */}
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
-          <TabsList>
-            <TabsTrigger value="libraries" className="gap-1.5">
-              <Library className="h-4 w-4" />
-              Libraries ({nearbyLibraries.length})
-            </TabsTrigger>
-            <TabsTrigger value="events" className="gap-1.5">
-              <Calendar className="h-4 w-4" />
-              Events ({nearbyEvents.length})
-            </TabsTrigger>
-          </TabsList>
+        {/* Section Switcher */}
+        <div className="inline-flex rounded-md border border-border bg-muted p-1">
+          <Button
+            type="button"
+            size="sm"
+            variant={tab === "libraries" ? "default" : "ghost"}
+            className="gap-1.5"
+            onClick={() => setTab("libraries")}
+          >
+            <Library className="h-4 w-4" />
+            Libraries ({nearbyLibraries.length})
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={tab === "events" ? "default" : "ghost"}
+            className="gap-1.5"
+            onClick={() => setTab("events")}
+          >
+            <Calendar className="h-4 w-4" />
+            Events ({nearbyEvents.length})
+          </Button>
+        </div>
 
-          {/* Map */}
-          <div className="mt-4 rounded-lg overflow-hidden border border-border" style={{ height: 420 }}>
-            {isLoading ? (
-              <Skeleton className="w-full h-full" />
-            ) : (
-              <MapContainer
-                center={[location.lat, location.lng]}
-                zoom={location.source === "default" ? 4 : 10}
-                style={{ height: "100%", width: "100%" }}
-                scrollWheelZoom
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <RecenterMap lat={location.lat} lng={location.lng} />
+        {/* Map */}
+        <div className="mt-4 rounded-lg overflow-hidden border border-border" style={{ height: 420 }}>
+          {isLoading ? (
+            <Skeleton className="w-full h-full" />
+          ) : (
+            <MapContainer
+              center={[location.lat, location.lng]}
+              zoom={location.source === "default" ? 4 : 10}
+              style={{ height: "100%", width: "100%" }}
+              scrollWheelZoom
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <RecenterMap lat={location.lat} lng={location.lng} />
 
-                {tab === "libraries" &&
-                  nearbyLibraries.map((lib) => (
-                    <Marker
-                      key={lib.id}
-                      position={[lib.latitude, lib.longitude]}
-                      icon={libraryIcon}
-                    >
-                      <Popup>
-                        <div className="text-sm space-y-1 min-w-[180px]">
-                          <p className="font-semibold">{lib.name}</p>
-                          {lib.location_city && (
-                            <p className="text-muted-foreground text-xs">
-                              {[lib.location_city, lib.location_region].filter(Boolean).join(", ")}
-                            </p>
-                          )}
-                          <p className="text-xs">{lib.game_count} games</p>
-                          {"distance" in lib && (
-                            <p className="text-xs text-muted-foreground">
-                              {(lib as any).distance.toFixed(1)} miles away
-                            </p>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full mt-1 text-xs"
-                            onClick={() => navigate(`/${lib.slug}`)}
-                          >
-                            View Library
-                          </Button>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
-
-                {tab === "events" &&
-                  nearbyEvents.map((evt) => (
-                    <Marker
-                      key={evt.id}
-                      position={[evt.latitude, evt.longitude]}
-                      icon={eventIcon}
-                    >
-                      <Popup>
-                        <div className="text-sm space-y-1 min-w-[180px]">
-                          <p className="font-semibold">{evt.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(evt.event_date), "EEE, MMM d 'at' h:mm a")}
+              {tab === "libraries" &&
+                nearbyLibraries.map((lib) => (
+                  <Marker
+                    key={lib.id}
+                    position={[lib.latitude, lib.longitude]}
+                    icon={libraryIcon}
+                  >
+                    <Popup>
+                      <div className="text-sm space-y-1 min-w-[180px]">
+                        <p className="font-semibold">{lib.name}</p>
+                        {lib.location_city && (
+                          <p className="text-muted-foreground text-xs">
+                            {[lib.location_city, lib.location_region].filter(Boolean).join(", ")}
                           </p>
-                          {(evt.venue_name || evt.location_city) && (
-                            <p className="text-xs">
-                              {[evt.venue_name, evt.location_city].filter(Boolean).join(", ")}
-                            </p>
-                          )}
-                          {"distance" in evt && (
-                            <p className="text-xs text-muted-foreground">
-                              {(evt as any).distance.toFixed(1)} miles away
-                            </p>
-                          )}
-                        </div>
-                      </Popup>
-                    </Marker>
-                  ))}
-              </MapContainer>
-            )}
-          </div>
+                        )}
+                        <p className="text-xs">{lib.game_count} games</p>
+                        {"distance" in lib && (
+                          <p className="text-xs text-muted-foreground">
+                            {(lib as any).distance.toFixed(1)} miles away
+                          </p>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full mt-1 text-xs"
+                          onClick={() => navigate(`/${lib.slug}`)}
+                        >
+                          View Library
+                        </Button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
 
-          {/* List */}
-          <TabsContent value="libraries" className="mt-4 space-y-3">
+              {tab === "events" &&
+                nearbyEvents.map((evt) => (
+                  <Marker
+                    key={evt.id}
+                    position={[evt.latitude, evt.longitude]}
+                    icon={eventIcon}
+                  >
+                    <Popup>
+                      <div className="text-sm space-y-1 min-w-[180px]">
+                        <p className="font-semibold">{evt.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(evt.event_date), "EEE, MMM d 'at' h:mm a")}
+                        </p>
+                        {(evt.venue_name || evt.location_city) && (
+                          <p className="text-xs">
+                            {[evt.venue_name, evt.location_city].filter(Boolean).join(", ")}
+                          </p>
+                        )}
+                        {"distance" in evt && (
+                          <p className="text-xs text-muted-foreground">
+                            {(evt as any).distance.toFixed(1)} miles away
+                          </p>
+                        )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+            </MapContainer>
+          )}
+        </div>
+
+        {/* List */}
+        {tab === "libraries" ? (
+          <div className="mt-4 space-y-3">
             {nearbyLibraries.length === 0 ? (
               <Card>
                 <CardContent className="py-10 text-center text-muted-foreground">
@@ -310,9 +321,9 @@ export default function NearMe() {
                 </Card>
               ))
             )}
-          </TabsContent>
-
-          <TabsContent value="events" className="mt-4 space-y-3">
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
             {nearbyEvents.length === 0 ? (
               <Card>
                 <CardContent className="py-10 text-center text-muted-foreground">
@@ -373,8 +384,8 @@ export default function NearMe() {
                 </Card>
               ))
             )}
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
       </div>
     </Layout>
   );
