@@ -5,9 +5,10 @@ import { BookOpen, ArrowLeftRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary } from "@/hooks/useLibrary";
+import { useActiveLibrary } from "@/hooks/useActiveLibrary";
 import { useLending } from "@/hooks/useLending";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
+import { LibrarySwitcher } from "@/components/dashboard/LibrarySwitcher";
 import { LendingDashboard } from "@/components/lending/LendingDashboard";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { isSelfHostedSupabaseStack } from "@/config/runtime";
@@ -17,7 +18,7 @@ const cardClass = "bg-wood-medium/30 border-wood-medium/50 text-cream";
 export default function LendingPage() {
   const { t } = useTranslation();
   const { user, isAuthenticated, loading } = useAuth();
-  const { data: library } = useMyLibrary();
+  const { library, myLibraries, activeLibraryId, setActiveLibraryId } = useActiveLibrary();
   const { myLentLoans, myBorrowedLoans } = useLending();
   const navigate = useNavigate();
 
@@ -33,10 +34,17 @@ export default function LendingPage() {
   return (
     <SpokePageLayout
       title="Lending & Loans"
-      description={`${pendingLoanRequests} pending requests · ${activeBorrowedLoans.length} borrowed`}
+      description={library ? `${library.name} · ${pendingLoanRequests} pending requests · ${activeBorrowedLoans.length} borrowed` : `${pendingLoanRequests} pending requests · ${activeBorrowedLoans.length} borrowed`}
       icon={BookOpen}
       iconColor="hsl(24, 80%, 50%)"
     >
+      {/* Library Switcher */}
+      <LibrarySwitcher
+        libraries={myLibraries}
+        activeLibraryId={activeLibraryId}
+        onSwitch={setActiveLibraryId}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Lending Dashboard */}
         {library && (
