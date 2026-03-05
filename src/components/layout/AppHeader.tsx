@@ -4,6 +4,7 @@ import {
   Menu,
   BookOpen,
   MessageSquare,
+  LayoutDashboard,
 } from "lucide-react";
 
 import { useTranslation } from "react-i18next";
@@ -79,6 +80,16 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
             {/* Icons visible on all sizes on desktop; hidden on mobile (handled by drawer) */}
             {isAuthenticated && (
               <>
+                {/* Dashboard link — always visible for authenticated users */}
+                <TenantLink
+                  href={getPlatformUrl("/dashboard")}
+                  className="hidden md:inline-flex relative text-cream hover:text-white transition-colors"
+                >
+                  <Button variant="ghost" size="icon" className="relative text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8">
+                    <LayoutDashboard className="h-5 w-5" />
+                  </Button>
+                </TenantLink>
+
                 {/* Direct Messages icon — desktop only; drawer handles mobile */}
                 <TenantLink
                   href={getPlatformUrl("/dm")}
