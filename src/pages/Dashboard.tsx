@@ -134,7 +134,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-6">
+        <div className="flex gap-1.5 mb-6 overflow-x-auto">
           <Link to="/dashboard/collection" className="contents">
             <Button size="sm" className="gap-1.5 text-xs h-8 w-full">
               <Plus className="h-3.5 w-3.5" /> Add Game
