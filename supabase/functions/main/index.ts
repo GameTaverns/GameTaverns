@@ -75,6 +75,8 @@ const EXTERNAL_IMPORTERS: Record<string, () => Promise<{ default: (req: Request)
   "email-unsubscribe":          () => import("./email-unsubscribe/index.ts"),
   "email-track":                () => import("./email-track/index.ts"),
   "embed-widget":               () => import("./embed-widget/index.ts"),
+  "pbf-turn-nudge":             () => import("./pbf-turn-nudge/index.ts"),
+  "pbf-daily-challenge":        () => import("./pbf-daily-challenge/index.ts"),
 };
 
 // All handlers are now external imports - no inlined handlers remaining
