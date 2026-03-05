@@ -339,7 +339,7 @@ export function CreateEventDialog({ open, onOpenChange, libraryId: propLibraryId
             
             <TabsContent value="basics" className="space-y-4 mt-0">
               {/* Event Scope - only show when not locked to a specific library */}
-              {!isEditMode && !propLibraryId && myLibraries && myLibraries.length > 0 && (
+              {!isEditMode && myLibraries && myLibraries.length > 0 && (
                 <div className="space-y-2">
                   <Label>Event Scope</Label>
                   <Select value={eventScope} onValueChange={(val) => {

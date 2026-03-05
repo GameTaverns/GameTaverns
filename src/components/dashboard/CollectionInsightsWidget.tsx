@@ -31,9 +31,11 @@ export function CollectionInsightsWidget({ libraryId }: Props) {
             <Sparkles className="h-5 w-5 text-primary" />
             Your Collection DNA
           </CardTitle>
-          <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground hover:text-foreground">
-            Full Insights <ArrowRight className="h-3 w-3" />
-          </Button>
+          <Link to="/dashboard/insights">
+            <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground hover:text-foreground">
+              Full Insights <ArrowRight className="h-3 w-3" />
+            </Button>
+          </Link>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -112,10 +114,12 @@ export function CollectionInsightsWidget({ libraryId }: Props) {
         )}
 
         {/* CTA */}
-        <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
-          <Share2 className="h-3.5 w-3.5" />
-          View & Share Your Full Collection DNA
-        </Button>
+        <Link to="/dashboard/insights">
+          <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+            <Share2 className="h-3.5 w-3.5" />
+            View & Share Your Full Collection DNA
+          </Button>
+        </Link>
       </CardContent>
     </Card>
   );

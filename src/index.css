@@ -254,10 +254,10 @@
   }
 
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-2.5 text-sidebar-foreground/80 
+    @apply flex items-center gap-2.5 px-3 py-2 text-sm text-sidebar-foreground/80 
            hover:text-sidebar-foreground hover:bg-sidebar-accent 
            rounded-lg transition-colors font-body;
-    min-height: 44px; /* Touch-friendly minimum */
+    min-height: 40px; /* Touch-friendly minimum */
   }
 
   .sidebar-link-active {
