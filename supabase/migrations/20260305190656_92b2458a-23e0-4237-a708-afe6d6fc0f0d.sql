@@ -1,0 +1,1 @@
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS banner_position_y INTEGER NOT NULL DEFAULT 50;

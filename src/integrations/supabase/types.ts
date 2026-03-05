@@ -4399,6 +4399,7 @@ export type Database = {
           admin_email: string | null
           avatar_url: string | null
           banner_gradient: string | null
+          banner_position_y: number
           banner_url: string | null
           bio: string | null
           company_name: string | null
@@ -4428,6 +4429,7 @@ export type Database = {
           admin_email?: string | null
           avatar_url?: string | null
           banner_gradient?: string | null
+          banner_position_y?: number
           banner_url?: string | null
           bio?: string | null
           company_name?: string | null
@@ -4457,6 +4459,7 @@ export type Database = {
           admin_email?: string | null
           avatar_url?: string | null
           banner_gradient?: string | null
+          banner_position_y?: number
           banner_url?: string | null
           bio?: string | null
           company_name?: string | null

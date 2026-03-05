@@ -125,10 +125,11 @@ export default function UserProfile() {
     .slice(0, 2);
 
   const isGradient = profile.banner_url?.startsWith("__gradient__");
+  const bannerPosY = (profile as any).banner_position_y ?? 50;
   const bannerStyle = profile.banner_url
     ? isGradient
       ? { background: profile.banner_url.replace("__gradient__", "") }
-      : { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+      : { backgroundImage: `url(${profile.banner_url})`, backgroundSize: "cover", backgroundPosition: `center ${bannerPosY}%` }
     : {};
 
   // Profile theme — scoped CSS variables + direct styles applied to profile elements

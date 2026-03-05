@@ -172,6 +172,7 @@ export function AccountSettings() {
           {/* Banner */}
           <BannerUpload
             currentBannerUrl={(profile as any)?.banner_url || null}
+            currentPositionY={(profile as any)?.banner_position_y ?? 50}
           />
 
           {/* Email (read-only) */}
