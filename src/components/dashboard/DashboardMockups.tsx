@@ -1,323 +1,21 @@
 import { useState } from "react";
-import { 
-  Gamepad2, BarChart3, Users, Calendar, Settings, ArrowRight, 
+import {
+  Gamepad2, BarChart3, Users, Calendar, Settings, ArrowRight,
   Sparkles, BookOpen, Heart, Vote, Star, Plus, Eye, MessageSquare,
   Trophy, Target, Share2, TrendingUp, Flame, Bell, Search,
-  Shuffle, ArrowLeftRight, Diamond, Brain, Dices
+  Shuffle, ArrowLeftRight, Diamond, Brain, Dices, AlertTriangle,
+  User, Shield, Mail, Megaphone, Library, Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-// ─── Hub & Spoke Layout ───
-function HubAndSpokeMockup() {
-  return (
-    <div className="space-y-6">
-      {/* Clean greeting header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Welcome back, Player</h1>
-          <p className="text-sm text-muted-foreground">Your board game command center</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-            <Bell className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-            <span className="text-xs font-bold text-primary">P</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick action strip */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        <QuickAction icon={Plus} label="Add Game" accent />
-        <QuickAction icon={Dices} label="Log Play" />
-        <QuickAction icon={Shuffle} label="Random Pick" />
-        <QuickAction icon={Search} label="Browse Catalog" />
-      </div>
-
-      {/* Hub cards — 6 clear entry points */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <HubCard
-          icon={Gamepad2}
-          title="My Collection"
-          description="142 games · 23 expansions"
-          stats={["3 new this month", "12 unplayed"]}
-          color="hsl(var(--primary))"
-          badges={[{ label: "2 for sale", variant: "secondary" as const }]}
-        />
-        <HubCard
-          icon={Sparkles}
-          title="Insights & Shareables"
-          description="Your Collection DNA & stats"
-          stats={["🏰 Grand Strategist", "💎 5 unique games"]}
-          color="hsl(262, 80%, 55%)"
-          badges={[{ label: "New!", variant: "default" as const }]}
-        />
-        <HubCard
-          icon={BarChart3}
-          title="Play Analytics"
-          description="47 sessions logged"
-          stats={["12 this month", "Win rate: 38%"]}
-          color="hsl(142, 60%, 45%)"
-        />
-        <HubCard
-          icon={Users}
-          title="Community"
-          description="The Dice Knights · 8 members"
-          stats={["3 pending loans", "2 unread messages"]}
-          color="hsl(200, 70%, 50%)"
-          badges={[{ label: "3 pending", variant: "destructive" as const }]}
-        />
-        <HubCard
-          icon={Calendar}
-          title="Events"
-          description="Next: Game Night · Sat 7pm"
-          stats={["2 upcoming", "1 poll active"]}
-          color="hsl(340, 65%, 50%)"
-        />
-        <HubCard
-          icon={Settings}
-          title="Settings"
-          description="Library, account & theme"
-          stats={["Library: The Dice Knights"]}
-          color="hsl(var(--muted-foreground))"
-        />
-      </div>
-
-      {/* Optional: Recent activity stream (minimal) */}
-      <div className="rounded-xl border bg-card p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-          <Flame className="h-4 w-4 text-orange-400" />
-          Recent Activity
-        </h3>
-        <div className="space-y-2">
-          <ActivityLine emoji="🎲" text="Logged a play of Brass: Birmingham" time="2h ago" />
-          <ActivityLine emoji="📦" text="Added Ark Nova to collection" time="1d ago" />
-          <ActivityLine emoji="🤝" text="Jake requested to borrow Pandemic" time="2d ago" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Smart Home + Insights ───
-function SmartHomeMockup() {
-  const [insightsOpen, setInsightsOpen] = useState(false);
-
-  if (insightsOpen) {
-    return (
-      <div className="space-y-6">
-        {/* Insights page header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <button onClick={() => setInsightsOpen(false)} className="text-xs text-muted-foreground hover:text-foreground mb-1 flex items-center gap-1">
-              ← Back to Dashboard
-            </button>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
-              Collection Insights
-            </h1>
-            <p className="text-sm text-muted-foreground">Deep dive into your collection intelligence</p>
-          </div>
-          <Button size="sm" variant="outline" className="gap-1.5">
-            <Share2 className="h-3.5 w-3.5" /> Share All
-          </Button>
-        </div>
-
-        {/* Full insights layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Collection DNA card preview */}
-          <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 p-5 border">
-            <p className="text-xs font-bold text-muted-foreground tracking-wider mb-2">GAMING PERSONALITY</p>
-            <div className="text-center py-4">
-              <span className="text-5xl">🏰</span>
-              <h3 className="text-xl font-extrabold mt-2">The Grand Strategist</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[250px] mx-auto">Deep strategy and resource management define your play style</p>
-            </div>
-            <div className="flex justify-center gap-2 mt-2">
-              <Button size="sm" variant="outline" className="text-xs gap-1"><Share2 className="h-3 w-3" /> Share Card</Button>
-              <Button size="sm" variant="outline" className="text-xs gap-1"><Eye className="h-3 w-3" /> Preview</Button>
-            </div>
-          </div>
-
-          {/* Rarity */}
-          <div className="rounded-2xl border bg-card p-5">
-            <p className="text-xs font-bold text-muted-foreground tracking-wider mb-3">COLLECTION RARITY</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-muted/50 p-3 text-center">
-                <span className="text-3xl">💎</span>
-                <p className="text-2xl font-black mt-1">5</p>
-                <p className="text-[10px] text-muted-foreground">Games only you own</p>
-              </div>
-              <div className="rounded-xl bg-muted/50 p-3 text-center">
-                <span className="text-3xl">✨</span>
-                <p className="text-2xl font-black mt-1">12</p>
-                <p className="text-[10px] text-muted-foreground">Rare (≤3 owners)</p>
-              </div>
-            </div>
-            <div className="mt-3 space-y-1">
-              <RareLine emoji="💎" title="Oath: Chronicles of Empire" tag="Only you!" />
-              <RareLine emoji="💎" title="Pax Pamir 2E (KS Deluxe)" tag="Only you!" />
-              <RareLine emoji="✨" title="Food Chain Magnate" tag="2 owners" />
-            </div>
-          </div>
-
-          {/* Mechanic DNA */}
-          <div className="rounded-2xl border bg-card p-5">
-            <p className="text-xs font-bold text-muted-foreground tracking-wider mb-3">MECHANIC DNA</p>
-            <div className="space-y-2">
-              <MechanicBar name="Worker Placement" pct={72} />
-              <MechanicBar name="Engine Building" pct={58} />
-              <MechanicBar name="Area Control" pct={45} />
-              <MechanicBar name="Hand Management" pct={38} />
-              <MechanicBar name="Deck Building" pct={31} />
-            </div>
-          </div>
-
-          {/* Play stats */}
-          <div className="rounded-2xl border bg-card p-5">
-            <p className="text-xs font-bold text-muted-foreground tracking-wider mb-3">PLAY INTELLIGENCE</p>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <StatBlock value="47" label="Total Plays" />
-              <StatBlock value="38%" label="Win Rate" />
-              <StatBlock value="1,247" label="ELO Rating" />
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-center">
-              <StatBlock value="2.8h" label="Avg Duration" />
-              <StatBlock value="3.4" label="Avg Players" />
-            </div>
-          </div>
-
-          {/* Shelf of Shame */}
-          <div className="rounded-2xl border bg-card p-5 lg:col-span-2">
-            <p className="text-xs font-bold text-muted-foreground tracking-wider mb-3">SHELF OF SHAME TRACKER</p>
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <p className="text-4xl font-black text-amber-500">18%</p>
-                <p className="text-xs text-muted-foreground">26 of 142 unplayed</p>
-              </div>
-              <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full bg-amber-500" style={{ width: "18%" }} />
-              </div>
-              <Button size="sm" variant="outline" className="text-xs gap-1 flex-shrink-0">
-                <Share2 className="h-3 w-3" /> Share
-              </Button>
-            </div>
-          </div>
-
-          {/* Monthly / Top 9 shareables */}
-          <div className="rounded-2xl border bg-card p-5 lg:col-span-2">
-            <p className="text-xs font-bold text-muted-foreground tracking-wider mb-3">SHAREABLE CARDS</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <ShareableThumb label="Collection DNA" emoji="🧬" />
-              <ShareableThumb label="Monthly Summary" emoji="📊" />
-              <ShareableThumb label="Top 9 Grid" emoji="🏆" />
-              <ShareableThumb label="Year in Review" emoji="📅" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Smart greeting */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Welcome back, Player</h1>
-          <p className="text-sm text-muted-foreground">3 things need your attention</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-            <Bell className="h-4 w-4 text-muted-foreground" />
-            <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive text-[8px] text-white flex items-center justify-center font-bold">3</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Action items — smart, contextual */}
-      <div className="space-y-2">
-        <ActionItem icon={ArrowLeftRight} text="Jake wants to borrow Pandemic" action="Review" urgent />
-        <ActionItem icon={Trophy} text="You unlocked 'Shelf Explorer' achievement!" action="View" />
-        <ActionItem icon={Calendar} text="Game Night is Saturday at 7pm" action="RSVP" />
-      </div>
-
-      {/* Quick actions */}
-      <div className="flex gap-2">
-        <QuickAction icon={Plus} label="Add Game" accent />
-        <QuickAction icon={Dices} label="Log Play" />
-        <QuickAction icon={Shuffle} label="Random Pick" />
-      </div>
-
-      {/* Compact stats row */}
-      <div className="grid grid-cols-4 gap-2">
-        <MiniStat value="142" label="Games" icon={Gamepad2} />
-        <MiniStat value="47" label="Plays" icon={BarChart3} />
-        <MiniStat value="38%" label="Win Rate" icon={Trophy} />
-        <MiniStat value="18%" label="Unplayed" icon={Target} />
-      </div>
-
-      {/* Insights CTA — the bridge to the dedicated page */}
-      <button
-        onClick={() => setInsightsOpen(true)}
-        className="w-full rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors p-4 text-left group"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold text-foreground text-sm">Collection Insights</p>
-              <p className="text-xs text-muted-foreground">DNA · Rarity · Shareables · Analytics</p>
-            </div>
-          </div>
-          <ArrowRight className="h-4 w-4 text-primary group-hover:translate-x-0.5 transition-transform" />
-        </div>
-        <div className="flex gap-3 mt-3">
-          <Badge variant="secondary" className="text-[10px]">🏰 Grand Strategist</Badge>
-          <Badge variant="secondary" className="text-[10px]">💎 5 unique games</Badge>
-          <Badge variant="secondary" className="text-[10px]">🧬 72% Worker Placement</Badge>
-        </div>
-      </button>
-
-      {/* Two-column: community + events */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="rounded-xl border bg-card p-4">
-          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <Users className="h-4 w-4 text-primary" /> Community
-          </h3>
-          <div className="space-y-2 text-sm">
-            <p className="text-muted-foreground text-xs">The Dice Knights · 8 members</p>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="text-xs flex-1">Forum</Button>
-              <Button size="sm" variant="outline" className="text-xs flex-1">Members</Button>
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-            <Calendar className="h-4 w-4 text-primary" /> Upcoming
-          </h3>
-          <div className="space-y-1.5">
-            <EventLine title="Game Night" date="Sat, Mar 8" />
-            <EventLine title="Tournament" date="Mar 15" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Shared sub-components ───
 
 function QuickAction({ icon: Icon, label, accent }: { icon: any; label: string; accent?: boolean }) {
   return (
     <button className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex-shrink-0 ${
-      accent 
-        ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+      accent
+        ? "bg-primary text-primary-foreground hover:bg-primary/90"
         : "bg-muted hover:bg-muted/80 text-foreground"
     }`}>
       <Icon className="h-3.5 w-3.5" />
@@ -326,8 +24,9 @@ function QuickAction({ icon: Icon, label, accent }: { icon: any; label: string; 
   );
 }
 
-function HubCard({ icon: Icon, title, description, stats, color, badges }: {
-  icon: any; title: string; description: string; stats: string[]; color: string; badges?: { label: string; variant: "default" | "secondary" | "destructive" }[];
+function HubCard({ icon: Icon, title, description, bullets, color, badges }: {
+  icon: any; title: string; description: string; bullets: string[]; color: string;
+  badges?: { label: string; variant: "default" | "secondary" | "destructive" | "outline" }[];
 }) {
   return (
     <div className="rounded-2xl border bg-card hover:shadow-md transition-shadow p-5 cursor-pointer group">
@@ -340,12 +39,12 @@ function HubCard({ icon: Icon, title, description, stats, color, badges }: {
       <h3 className="font-semibold text-foreground text-sm">{title}</h3>
       <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       <div className="mt-3 space-y-0.5">
-        {stats.map(s => (
+        {bullets.map(s => (
           <p key={s} className="text-[11px] text-muted-foreground">• {s}</p>
         ))}
       </div>
       {badges && badges.length > 0 && (
-        <div className="flex gap-1.5 mt-2">
+        <div className="flex flex-wrap gap-1.5 mt-2">
           {badges.map(b => <Badge key={b.label} variant={b.variant} className="text-[10px]">{b.label}</Badge>)}
         </div>
       )}
@@ -363,112 +62,388 @@ function ActivityLine({ emoji, text, time }: { emoji: string; text: string; time
   );
 }
 
-function ActionItem({ icon: Icon, text, action, urgent }: { icon: any; text: string; action: string; urgent?: boolean }) {
+function GreetingHeader() {
   return (
-    <div className={`flex items-center gap-3 rounded-xl border p-3 ${urgent ? "border-destructive/30 bg-destructive/5" : "bg-card"}`}>
-      <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${urgent ? "bg-destructive/10" : "bg-muted"}`}>
-        <Icon className={`h-4 w-4 ${urgent ? "text-destructive" : "text-muted-foreground"}`} />
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Welcome back, Player</h1>
+        <p className="text-sm text-muted-foreground">Your board game command center</p>
       </div>
-      <span className="text-xs text-foreground flex-1">{text}</span>
-      <Button size="sm" variant={urgent ? "destructive" : "outline"} className="text-xs h-7 px-3">{action}</Button>
-    </div>
-  );
-}
-
-function MiniStat({ value, label, icon: Icon }: { value: string; label: string; icon: any }) {
-  return (
-    <div className="rounded-xl border bg-card p-3 text-center">
-      <Icon className="h-3.5 w-3.5 text-muted-foreground mx-auto mb-1" />
-      <p className="text-lg font-bold text-foreground leading-none">{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
-    </div>
-  );
-}
-
-function EventLine({ title, date }: { title: string; date: string }) {
-  return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-foreground">{title}</span>
-      <span className="text-muted-foreground">{date}</span>
-    </div>
-  );
-}
-
-function MechanicBar({ name, pct }: { name: string; pct: number }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs w-[120px] truncate text-right text-muted-foreground">{name}</span>
-      <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
-        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+      <div className="flex items-center gap-2">
+        <div className="relative h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+          <Bell className="h-4 w-4 text-muted-foreground" />
+          <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-destructive text-[8px] text-primary-foreground flex items-center justify-center font-bold">3</span>
+        </div>
+        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+          <span className="text-xs font-bold text-primary">P</span>
+        </div>
       </div>
-      <span className="text-xs font-bold w-[32px] text-right tabular-nums">{pct}%</span>
     </div>
   );
 }
 
-function StatBlock({ value, label }: { value: string; label: string }) {
+function QuickActionsStrip() {
   return (
-    <div>
-      <p className="text-xl font-black text-foreground">{value}</p>
-      <p className="text-[10px] text-muted-foreground">{label}</p>
+    <div className="flex gap-2 overflow-x-auto pb-1">
+      <QuickAction icon={Plus} label="Add Game" accent />
+      <QuickAction icon={Dices} label="Log Play" />
+      <QuickAction icon={Shuffle} label="Random Pick" />
+      <QuickAction icon={Search} label="Browse Catalog" />
     </div>
   );
 }
 
-function RareLine({ emoji, title, tag }: { emoji: string; title: string; tag: string }) {
+function RecentActivity() {
   return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <span>{emoji}</span>
-      <span className="text-foreground truncate flex-1">{title}</span>
-      <span className="text-primary font-semibold flex-shrink-0">{tag}</span>
+    <div className="rounded-xl border bg-card p-4">
+      <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+        <Flame className="h-4 w-4 text-orange-400" />
+        Recent Activity
+      </h3>
+      <div className="space-y-2">
+        <ActivityLine emoji="🎲" text="Logged a play of Brass: Birmingham" time="2h ago" />
+        <ActivityLine emoji="📦" text="Added Ark Nova to collection" time="1d ago" />
+        <ActivityLine emoji="🤝" text="Jake requested to borrow Pandemic" time="2d ago" />
+      </div>
     </div>
   );
 }
 
-function ShareableThumb({ label, emoji }: { label: string; emoji: string }) {
+// ─── 6-Card Hub (Tight) ───
+function Hub6Cards() {
   return (
-    <div className="rounded-xl border bg-muted/50 p-3 text-center hover:bg-muted transition-colors cursor-pointer">
-      <span className="text-2xl">{emoji}</span>
-      <p className="text-[10px] font-medium text-foreground mt-1">{label}</p>
-      <p className="text-[9px] text-muted-foreground">Tap to generate</p>
+    <div className="space-y-6">
+      <GreetingHeader />
+      <QuickActionsStrip />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <HubCard
+          icon={Gamepad2}
+          title="My Collection"
+          description="142 games · 23 expansions"
+          bullets={["Browse, filter & manage your library", "Import from BGG · Add manually", "3 new this month · 12 unplayed"]}
+          color="hsl(var(--primary))"
+          badges={[{ label: "2 for sale", variant: "secondary" }]}
+        />
+        <HubCard
+          icon={Sparkles}
+          title="Insights & Analytics"
+          description="Collection DNA, rarity, play stats"
+          bullets={["🏰 Grand Strategist personality", "💎 5 unique games · Rarity scores", "Shareable cards · Monthly summary"]}
+          color="hsl(262, 80%, 55%)"
+          badges={[{ label: "New: Rarity!", variant: "default" }]}
+        />
+        <HubCard
+          icon={BookOpen}
+          title="Lending & Loans"
+          description="Borrow, lend, and trade games"
+          bullets={["3 pending loan requests", "Cross-library trading", "Borrower ratings & history"]}
+          color="hsl(24, 80%, 50%)"
+          badges={[{ label: "3 pending", variant: "destructive" }]}
+        />
+        <HubCard
+          icon={Users}
+          title="Community & Social"
+          description="Forums, clubs, messages, challenges"
+          bullets={["The Dice Knights · 8 members", "2 unread messages", "Forums · Clubs · Group challenges"]}
+          color="hsl(200, 70%, 50%)"
+          badges={[{ label: "2 unread", variant: "destructive" }]}
+        />
+        <HubCard
+          icon={Calendar}
+          title="Events & Polls"
+          description="Game nights, tournaments, voting"
+          bullets={["Next: Game Night · Sat 7pm", "1 active poll · 2 upcoming events", "RSVP management"]}
+          color="hsl(340, 65%, 50%)"
+        />
+        <HubCard
+          icon={Settings}
+          title="Settings & Account"
+          description="Profile, library config, preferences"
+          bullets={["Profile & display name", "Library settings & theme", "Growth tools · Danger zone"]}
+          color="hsl(var(--muted-foreground))"
+        />
+      </div>
+
+      <RecentActivity />
+    </div>
+  );
+}
+
+// ─── 7-Card Hub (Balanced) ───
+function Hub7Cards() {
+  return (
+    <div className="space-y-6">
+      <GreetingHeader />
+      <QuickActionsStrip />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <HubCard
+          icon={Gamepad2}
+          title="My Collection"
+          description="142 games · 23 expansions"
+          bullets={["Browse, filter & manage games", "Import from BGG · Add manually", "Shelf of shame tracker"]}
+          color="hsl(var(--primary))"
+          badges={[{ label: "12 unplayed", variant: "secondary" }]}
+        />
+        <HubCard
+          icon={BookOpen}
+          title="Lending & Loans"
+          description="Borrow, lend, and trade"
+          bullets={["3 pending loan requests", "Cross-library trading hub", "Borrower ratings"]}
+          color="hsl(24, 80%, 50%)"
+          badges={[{ label: "3 pending", variant: "destructive" }]}
+        />
+        <HubCard
+          icon={Sparkles}
+          title="Insights & DNA"
+          description="Personality, rarity, shareables"
+          bullets={["🏰 Grand Strategist", "💎 5 unique games", "Shareable cards & exports"]}
+          color="hsl(262, 80%, 55%)"
+          badges={[{ label: "New!", variant: "default" }]}
+        />
+        <HubCard
+          icon={BarChart3}
+          title="Analytics"
+          description="Play stats, value tracking"
+          bullets={["47 plays logged · 38% win rate", "Collection value: $2,840", "Monthly summary reports"]}
+          color="hsl(142, 60%, 45%)"
+        />
+        <HubCard
+          icon={Users}
+          title="Community & Forums"
+          description="Clubs, forums, challenges"
+          bullets={["The Dice Knights · 8 members", "3 active forum threads", "Group challenges"]}
+          color="hsl(200, 70%, 50%)"
+        />
+        <HubCard
+          icon={Mail}
+          title="Messages & Social"
+          description="DMs, inquiries, notifications"
+          bullets={["2 unread messages", "1 game inquiry", "Activity feed"]}
+          color="hsl(340, 65%, 50%)"
+          badges={[{ label: "2 unread", variant: "destructive" }]}
+        />
+        <HubCard
+          icon={Settings}
+          title="Settings & Account"
+          description="Profile, library, preferences"
+          bullets={["Profile & display name", "Library config & theme", "Danger zone · Growth tools"]}
+          color="hsl(var(--muted-foreground))"
+        />
+      </div>
+
+      <RecentActivity />
+    </div>
+  );
+}
+
+// ─── 8+ Card Hub (Nothing Hidden) ───
+function Hub8Cards() {
+  return (
+    <div className="space-y-6">
+      <GreetingHeader />
+      <QuickActionsStrip />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <HubCard
+          icon={Gamepad2}
+          title="My Collection"
+          description="142 games · 23 expansions"
+          bullets={["Browse & manage full library", "Import · Add · Filter"]}
+          color="hsl(var(--primary))"
+        />
+        <HubCard
+          icon={BookOpen}
+          title="Lending"
+          description="Loans & borrowing"
+          bullets={["3 pending requests", "Borrower ratings"]}
+          color="hsl(24, 80%, 50%)"
+          badges={[{ label: "3 pending", variant: "destructive" }]}
+        />
+        <HubCard
+          icon={Sparkles}
+          title="Insights"
+          description="DNA, rarity, shareables"
+          bullets={["🏰 Grand Strategist", "💎 5 unique games"]}
+          color="hsl(262, 80%, 55%)"
+          badges={[{ label: "New!", variant: "default" }]}
+        />
+        <HubCard
+          icon={BarChart3}
+          title="Analytics"
+          description="Plays, stats, value"
+          bullets={["47 plays · 38% win rate", "Collection value tracking"]}
+          color="hsl(142, 60%, 45%)"
+        />
+        <HubCard
+          icon={MessageSquare}
+          title="Forums"
+          description="Community discussions"
+          bullets={["3 active threads", "Create & reply"]}
+          color="hsl(200, 70%, 50%)"
+        />
+        <HubCard
+          icon={Users}
+          title="Clubs & Members"
+          description="Groups & communities"
+          bullets={["The Dice Knights", "8 members · Invite codes"]}
+          color="hsl(210, 60%, 45%)"
+        />
+        <HubCard
+          icon={Mail}
+          title="Messages"
+          description="DMs & inquiries"
+          bullets={["2 unread messages", "Game inquiries"]}
+          color="hsl(340, 65%, 50%)"
+          badges={[{ label: "2 unread", variant: "destructive" }]}
+        />
+        <HubCard
+          icon={Calendar}
+          title="Events"
+          description="Game nights & polls"
+          bullets={["Sat 7pm Game Night", "1 active poll"]}
+          color="hsl(280, 60%, 50%)"
+        />
+        <HubCard
+          icon={ArrowLeftRight}
+          title="Trading"
+          description="Cross-library trades"
+          bullets={["Trade center", "Browse offers"]}
+          color="hsl(160, 60%, 40%)"
+        />
+        <HubCard
+          icon={Trophy}
+          title="Achievements"
+          description="Badges & milestones"
+          bullets={["12 unlocked", "3 in progress"]}
+          color="hsl(45, 80%, 50%)"
+        />
+        <HubCard
+          icon={Share2}
+          title="Growth Tools"
+          description="Share & grow your library"
+          bullets={["Embed widgets", "Referral links"]}
+          color="hsl(170, 60%, 45%)"
+        />
+        <HubCard
+          icon={Settings}
+          title="Settings"
+          description="Account & preferences"
+          bullets={["Profile · Theme", "Danger zone"]}
+          color="hsl(var(--muted-foreground))"
+        />
+      </div>
+
+      <RecentActivity />
     </div>
   );
 }
 
 // ─── Main toggle wrapper ───
+type MockupMode = "hub6" | "hub7" | "hub8";
+
+const MODES: { key: MockupMode; label: string; description: string }[] = [
+  { key: "hub6", label: "6 Cards (Tight)", description: "Features grouped into 6 clear categories. Least visual clutter, but some features are nested deeper (e.g. forums inside Community)." },
+  { key: "hub7", label: "7 Cards (Balanced)", description: "Splits Analytics from Insights and Messages from Community. Good middle ground — everything is 1 click away." },
+  { key: "hub8", label: "8+ Cards (Max Visibility)", description: "Every major feature gets its own card. Nothing is hidden, but denser grid. Uses 4-column layout on desktop." },
+];
+
 export function DashboardMockups() {
-  const [mode, setMode] = useState<"hub" | "smart">("hub");
+  const [mode, setMode] = useState<MockupMode>("hub6");
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6">
-      {/* Toggle between mockups */}
-      <div className="flex items-center gap-2 mb-6 p-1 rounded-xl bg-muted w-fit">
-        <button
-          onClick={() => setMode("hub")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            mode === "hub" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          🏠 Hub & Spoke
-        </button>
-        <button
-          onClick={() => setMode("smart")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            mode === "smart" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          🧠 Smart Home + Insights
-        </button>
+    <div className="max-w-5xl mx-auto p-4 sm:p-6">
+      {/* Mode selector */}
+      <div className="mb-6">
+        <h2 className="text-lg font-bold text-foreground mb-1">Hub & Spoke Mockups</h2>
+        <p className="text-xs text-muted-foreground mb-4">Each card links to a dedicated page. Compare 3 density levels to find the right balance.</p>
+
+        <div className="flex items-center gap-2 p-1 rounded-xl bg-muted w-fit flex-wrap">
+          {MODES.map(m => (
+            <button
+              key={m.key}
+              onClick={() => setMode(m.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                mode === m.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="text-xs text-muted-foreground mb-4 italic">
-        {mode === "hub" 
-          ? "Dashboard as a clean hub — each card leads to a dedicated page. No tabs, no clutter."
-          : "Minimal action-oriented home. All intelligence lives on a dedicated Insights page (click the Insights card to preview it)."
-        }
+      {/* Description of current mode */}
+      <div className="text-xs text-muted-foreground mb-4 italic p-3 rounded-lg bg-muted/50 border">
+        {MODES.find(m => m.key === mode)?.description}
       </div>
 
-      {mode === "hub" ? <HubAndSpokeMockup /> : <SmartHomeMockup />}
+      {/* Feature coverage checklist */}
+      <FeatureCoverage mode={mode} />
+
+      {/* Mockup */}
+      {mode === "hub6" && <Hub6Cards />}
+      {mode === "hub7" && <Hub7Cards />}
+      {mode === "hub8" && <Hub8Cards />}
     </div>
+  );
+}
+
+// Shows which features live where in each layout
+function FeatureCoverage({ mode }: { mode: MockupMode }) {
+  const features = [
+    "Full Library", "Lending/Loans", "Insights/DNA", "Analytics", "Forums",
+    "Clubs", "Messages/DMs", "Events", "Polls", "Trading",
+    "Achievements", "Growth Tools", "Profile/Account", "Danger Zone",
+  ];
+
+  const mapping: Record<MockupMode, Record<string, string>> = {
+    hub6: {
+      "Full Library": "My Collection", "Lending/Loans": "Lending & Loans",
+      "Insights/DNA": "Insights & Analytics", "Analytics": "Insights & Analytics",
+      "Forums": "Community & Social", "Clubs": "Community & Social",
+      "Messages/DMs": "Community & Social", "Events": "Events & Polls",
+      "Polls": "Events & Polls", "Trading": "Lending & Loans",
+      "Achievements": "Insights & Analytics", "Growth Tools": "Settings & Account",
+      "Profile/Account": "Settings & Account", "Danger Zone": "Settings & Account",
+    },
+    hub7: {
+      "Full Library": "My Collection", "Lending/Loans": "Lending & Loans",
+      "Insights/DNA": "Insights & DNA", "Analytics": "Analytics",
+      "Forums": "Community & Forums", "Clubs": "Community & Forums",
+      "Messages/DMs": "Messages & Social", "Events": "Community & Forums",
+      "Polls": "Community & Forums", "Trading": "Lending & Loans",
+      "Achievements": "Insights & DNA", "Growth Tools": "Settings & Account",
+      "Profile/Account": "Settings & Account", "Danger Zone": "Settings & Account",
+    },
+    hub8: {
+      "Full Library": "My Collection", "Lending/Loans": "Lending",
+      "Insights/DNA": "Insights", "Analytics": "Analytics",
+      "Forums": "Forums", "Clubs": "Clubs & Members",
+      "Messages/DMs": "Messages", "Events": "Events",
+      "Polls": "Events", "Trading": "Trading",
+      "Achievements": "Achievements", "Growth Tools": "Growth Tools",
+      "Profile/Account": "Settings", "Danger Zone": "Settings",
+    },
+  };
+
+  const map = mapping[mode];
+
+  return (
+    <details className="mb-6 text-xs">
+      <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium">
+        📋 Feature coverage map — where does everything live?
+      </summary>
+      <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 p-3 rounded-lg bg-muted/30 border">
+        {features.map(f => (
+          <div key={f} className="flex items-center gap-1.5">
+            <span className="text-green-500">✓</span>
+            <span className="text-foreground">{f}</span>
+            <span className="text-muted-foreground">→ {map[f]}</span>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
