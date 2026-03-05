@@ -61,7 +61,7 @@ export function GlobalFeedbackButton() {
 
   return (
     <>
-      {/* Discord link */}
+      {/* Discord link — desktop only */}
       <a
         href="https://discord.gg/jTqgCPX8DD"
         target="_blank"
@@ -75,19 +75,19 @@ export function GlobalFeedbackButton() {
         <span className="text-sm font-medium">Discord</span>
       </a>
 
-      {/* Feedback button */}
+      {/* Feedback button — desktop: full label, mobile: icon-only above bottom nav */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={() => setOpen(true)}
-            className="fixed bottom-6 left-6 z-50 hidden md:flex h-auto items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-4 py-3 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="fixed z-50 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bottom-[76px] right-4 h-12 w-12 flex items-center justify-center md:bottom-6 md:left-6 md:right-auto md:h-auto md:w-auto md:px-4 md:py-3 md:gap-2"
             aria-label="Send feedback"
           >
             <MessageSquarePlus className="h-5 w-5" />
-            <span className="text-sm font-medium">Feedback</span>
+            <span className="hidden md:inline text-sm font-medium">Feedback</span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right">Send Feedback</TooltipContent>
+        <TooltipContent side="right" className="hidden md:block">Send Feedback</TooltipContent>
       </Tooltip>
       <FeedbackFormDialog open={open} onOpenChange={setOpen} />
     </>

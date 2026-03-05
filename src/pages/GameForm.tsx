@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { loadDraft, clearDraft, useGameFormAutosave } from "@/hooks/useGameFormPersistence";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { ArrowLeft, Loader2, Save, Trash2 } from "lucide-react";
@@ -166,6 +167,74 @@ const GameForm = () => {
       : parentGameOptions.slice(0, 50),
     [parentGameOptions, parentGameSearch]
   );
+
+  // --- Draft persistence for new games ---
+  // Load draft on mount (only for new games)
+  useEffect(() => {
+    if (isEditing) return;
+    const draft = loadDraft();
+    if (!draft) return;
+    if (draft.title) setTitle(draft.title);
+    if (draft.description) setDescription(draft.description);
+    if (draft.imageUrl) setImageUrl(draft.imageUrl);
+    if (draft.difficulty) setDifficulty(draft.difficulty as any);
+    if (draft.gameType) setGameType(draft.gameType as any);
+    if (draft.genre) setGenre(draft.genre);
+    if (draft.playTime) setPlayTime(draft.playTime as any);
+    if (draft.minPlayers) setMinPlayers(draft.minPlayers);
+    if (draft.maxPlayers) setMaxPlayers(draft.maxPlayers);
+    if (draft.suggestedAge) setSuggestedAge(draft.suggestedAge);
+    if (draft.publisherId) setPublisherId(draft.publisherId);
+    if (draft.selectedMechanics?.length) setSelectedMechanics(draft.selectedMechanics);
+    if (draft.bggUrl) setBggUrl(draft.bggUrl);
+    if (draft.isComingSoon) setIsComingSoon(draft.isComingSoon);
+    if (draft.isForSale) setIsForSale(draft.isForSale);
+    if (draft.salePrice) setSalePrice(draft.salePrice);
+    if (draft.saleCondition) setSaleCondition(draft.saleCondition as any);
+    if (draft.isExpansion) setIsExpansion(draft.isExpansion);
+    if (draft.parentGameId) setParentGameId(draft.parentGameId);
+    if (draft.inBaseGameBox) setInBaseGameBox(draft.inBaseGameBox);
+    if (draft.locationRoom) setLocationRoom(draft.locationRoom);
+    if (draft.locationShelf) setLocationShelf(draft.locationShelf);
+    if (draft.locationMisc) setLocationMisc(draft.locationMisc);
+    if (draft.purchasePrice) setPurchasePrice(draft.purchasePrice);
+    if (draft.purchaseDate) setPurchaseDate(draft.purchaseDate);
+    if (draft.currentValue) setCurrentValue(draft.currentValue);
+    if (draft.sleeved) setSleeved(draft.sleeved);
+    if (draft.upgradedComponents) setUpgradedComponents(draft.upgradedComponents);
+    if (draft.crowdfunded) setCrowdfunded(draft.crowdfunded);
+    if (draft.inserts) setInserts(draft.inserts);
+    if (draft.isUnplayed) setIsUnplayed(draft.isUnplayed);
+    if (draft.selectedDesigners?.length) setSelectedDesigners(draft.selectedDesigners);
+    if (draft.selectedArtists?.length) setSelectedArtists(draft.selectedArtists);
+    if (draft.youtubeVideos?.length) setYoutubeVideos(draft.youtubeVideos);
+    if (draft.copiesOwned > 1) setCopiesOwned(draft.copiesOwned);
+  }, [isEditing]);
+
+  const getFormState = useCallback(() => ({
+    title, description, imageUrl, difficulty, gameType, genre, playTime,
+    minPlayers, maxPlayers, suggestedAge, publisherId, selectedMechanics,
+    bggUrl, isComingSoon, isForSale, salePrice, saleCondition, isExpansion,
+    parentGameId, inBaseGameBox, locationRoom, locationShelf, locationMisc,
+    purchasePrice, purchaseDate, currentValue, sleeved, upgradedComponents,
+    crowdfunded, inserts, isUnplayed, selectedDesigners, selectedArtists,
+    youtubeVideos, copiesOwned,
+  }), [
+    title, description, imageUrl, difficulty, gameType, genre, playTime,
+    minPlayers, maxPlayers, suggestedAge, publisherId, selectedMechanics,
+    bggUrl, isComingSoon, isForSale, salePrice, saleCondition, isExpansion,
+    parentGameId, inBaseGameBox, locationRoom, locationShelf, locationMisc,
+    purchasePrice, purchaseDate, currentValue, sleeved, upgradedComponents,
+    crowdfunded, inserts, isUnplayed, selectedDesigners, selectedArtists,
+    youtubeVideos, copiesOwned,
+  ]);
+
+  const triggerAutosave = useGameFormAutosave(isEditing, getFormState);
+
+  // Trigger autosave whenever form state changes
+  useEffect(() => {
+    triggerAutosave();
+  }, [getFormState, triggerAutosave]);
 
   // Load existing game data
   useEffect(() => {
@@ -370,6 +439,7 @@ const GameForm = () => {
         });
         toast({ title: "Game created!" });
       }
+      clearDraft();
       navigate(buildUrl("/manage"));
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
