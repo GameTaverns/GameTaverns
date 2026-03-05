@@ -238,6 +238,7 @@ export interface ForumThread {
   view_count: number;
   reply_count: number;
   last_reply_at: string | null;
+  thread_type: "discussion" | "play_by_forum";
   created_at: string;
   updated_at: string;
   author?: {

@@ -11,7 +11,8 @@ import {
   Reply,
   MoreVertical,
   Trash2,
-  FolderInput
+  FolderInput,
+  Gamepad2
 } from "lucide-react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,6 +72,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { FeaturedBadge } from "@/components/achievements/FeaturedBadge";
 import { UserLink } from "@/components/social/UserLink";
 import { UserSpecialBadges } from "@/components/social/SpecialBadge";
+import { usePbfGame, usePbfPlayers, usePbfMoves, usePbfMovesRealtime } from "@/hooks/usePlayByForum";
+import { PbfGameHeader } from "@/components/pbf/PbfGameHeader";
+import { PbfMoveLog } from "@/components/pbf/PbfMoveLog";
+import { PbfSubmitMove } from "@/components/pbf/PbfSubmitMove";
 
 function ReplyCard({ reply }: { reply: ForumReply }) {
   const initials = reply.author?.display_name
@@ -250,6 +255,13 @@ export default function ThreadDetail() {
   const { data: thread, isLoading: threadLoading } = useThread(threadId);
   const { data: replies = [], isLoading: repliesLoading } = useThreadReplies(threadId);
   
+  // PBF data (only fetches if thread is PBF type)
+  const isPbfThread = thread?.thread_type === "play_by_forum";
+  const { data: pbfGame } = usePbfGame(isPbfThread ? threadId : undefined);
+  const { data: pbfPlayers = [] } = usePbfPlayers(pbfGame?.id);
+  const { data: pbfMoves = [] } = usePbfMoves(pbfGame?.id);
+  usePbfMovesRealtime(pbfGame?.id);
+  
   // Subscribe to realtime reply updates
   useThreadRepliesRealtime(threadId);
   
@@ -321,6 +333,12 @@ export default function ThreadDetail() {
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-2 flex-wrap">
+              {isPbfThread && (
+                <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-700 border-indigo-500/30">
+                  <Gamepad2 className="h-3 w-3 mr-1" />
+                  Play by Forum
+                </Badge>
+              )}
               {thread.is_pinned && (
                 <Badge variant="secondary">
                   <Pin className="h-3 w-3 mr-1" />
@@ -444,6 +462,15 @@ export default function ThreadDetail() {
             <RichTextContent html={thread.content} />
           </CardContent>
         </Card>
+
+        {/* PBF Game Section */}
+        {isPbfThread && pbfGame && (
+          <div className="space-y-4">
+            <PbfGameHeader game={pbfGame} players={pbfPlayers} />
+            <PbfMoveLog moves={pbfMoves} />
+            <PbfSubmitMove game={pbfGame} players={pbfPlayers} />
+          </div>
+        )}
 
         {/* Replies */}
         <div className="space-y-4">
