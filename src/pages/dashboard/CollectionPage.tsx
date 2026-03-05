@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -7,9 +7,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary, useMyLibraries, useMaxLibrariesPerUser } from "@/hooks/useLibrary";
+import { useActiveLibrary } from "@/hooks/useActiveLibrary";
+import { useMaxLibrariesPerUser } from "@/hooks/useLibrary";
 import { useLibraryViewStats } from "@/hooks/useLibraryViewStats";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
+import { LibrarySwitcher } from "@/components/dashboard/LibrarySwitcher";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { ImportProgressWidget } from "@/components/dashboard/ImportProgressWidget";
@@ -23,13 +25,9 @@ import { supabase } from "@/integrations/backend/client";
 export default function CollectionPage() {
   const { t } = useTranslation();
   const { user, isAuthenticated, loading } = useAuth();
-  const { data: defaultLibrary } = useMyLibrary();
-  const { data: myLibraries = [] } = useMyLibraries();
+  const { library, myLibraries, activeLibraryId, setActiveLibraryId } = useActiveLibrary();
   const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();
   const navigate = useNavigate();
-
-  const [activeLibraryId, setActiveLibraryId] = useState<string | null>(null);
-  const library = myLibraries.find((l) => l.id === activeLibraryId) ?? defaultLibrary ?? null;
 
   const { data: viewStats } = useLibraryViewStats(library?.id ?? "");
   const { data: gameCount } = useQuery({
@@ -45,10 +43,6 @@ export default function CollectionPage() {
     enabled: !!library?.id,
     staleTime: 60000,
   });
-
-  useEffect(() => {
-    if (!activeLibraryId && defaultLibrary) setActiveLibraryId(defaultLibrary.id);
-  }, [defaultLibrary, activeLibraryId]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) navigate("/login");
@@ -85,22 +79,11 @@ export default function CollectionPage() {
       iconColor="hsl(var(--primary))"
     >
       {/* Library Switcher */}
-      {myLibraries.length > 1 && (
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          <span className="text-xs text-muted-foreground font-medium">{t('dashboard.activeLibrary')}</span>
-          {myLibraries.map((lib) => (
-            <Button
-              key={lib.id}
-              size="sm"
-              variant={lib.id === library.id ? "default" : "outline"}
-              className="text-xs h-7"
-              onClick={() => setActiveLibraryId(lib.id)}
-            >
-              {lib.name}
-            </Button>
-          ))}
-        </div>
-      )}
+      <LibrarySwitcher
+        libraries={myLibraries}
+        activeLibraryId={activeLibraryId}
+        onSwitch={setActiveLibraryId}
+      />
 
       {/* Dismissible catalog tip */}
       <CatalogDiscoveryCard />

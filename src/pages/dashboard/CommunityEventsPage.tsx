@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
+import { useActiveLibrary } from "@/hooks/useActiveLibrary";
 import { useMyClubs } from "@/hooks/useClubs";
 import { useMyMemberships } from "@/hooks/useLibraryMembership";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
+import { LibrarySwitcher } from "@/components/dashboard/LibrarySwitcher";
 import { CommunityTab } from "@/components/community/CommunityTab";
 import { CommunityPollsList } from "@/components/polls/CommunityPollsList";
 import { UpcomingEventsWidget } from "@/components/events/UpcomingEventsWidget";
@@ -30,8 +31,7 @@ const btnOutline = "border-secondary/50 text-cream hover:bg-wood-medium/50 text-
 export default function CommunityEventsPage() {
   const { t } = useTranslation();
   const { user, isAuthenticated, loading } = useAuth();
-  const { data: library } = useMyLibrary();
-  const { data: myLibraries = [] } = useMyLibraries();
+  const { library, myLibraries, activeLibraryId, setActiveLibraryId } = useActiveLibrary();
   const { data: myClubs = [] } = useMyClubs();
   const { data: myMemberships = [] } = useMyMemberships();
   const navigate = useNavigate();
@@ -48,11 +48,18 @@ export default function CommunityEventsPage() {
   return (
     <SpokePageLayout
       title="Community & Events"
-      description="Forums, clubs, events, polls & challenges"
+      description={library ? `${library.name} — Forums, clubs, events, polls & challenges` : "Forums, clubs, events, polls & challenges"}
       icon={Users}
       iconColor="hsl(200, 70%, 50%)"
     >
       <div className="space-y-6">
+        {/* Library Switcher */}
+        <LibrarySwitcher
+          libraries={myLibraries}
+          activeLibraryId={activeLibraryId}
+          onSwitch={setActiveLibraryId}
+        />
+
         {/* Forums */}
         <Card className={`${cardClass} overflow-hidden`}>
           <CardHeader className="px-4 pt-4 pb-2">

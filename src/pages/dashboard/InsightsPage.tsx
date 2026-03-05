@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Sparkles, Trophy, Star, Heart, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
+import { useActiveLibrary } from "@/hooks/useActiveLibrary";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
+import { LibrarySwitcher } from "@/components/dashboard/LibrarySwitcher";
 import { CollectionInsightsWidget } from "@/components/dashboard/CollectionInsightsWidget";
 import { AnalyticsTab } from "@/components/analytics/AnalyticsTab";
 import { AchievementsDisplay } from "@/components/achievements/AchievementsDisplay";
@@ -19,16 +20,8 @@ const btnOutline = "border-secondary/50 text-cream hover:bg-wood-medium/50 text-
 export default function InsightsPage() {
   const { t } = useTranslation();
   const { user, isAuthenticated, isAdmin, loading } = useAuth();
-  const { data: defaultLibrary } = useMyLibrary();
-  const { data: myLibraries = [] } = useMyLibraries();
+  const { library, myLibraries, activeLibraryId, setActiveLibraryId } = useActiveLibrary();
   const navigate = useNavigate();
-
-  const [activeLibraryId, setActiveLibraryId] = useState<string | null>(null);
-  const library = myLibraries.find((l) => l.id === activeLibraryId) ?? defaultLibrary ?? null;
-
-  useEffect(() => {
-    if (!activeLibraryId && defaultLibrary) setActiveLibraryId(defaultLibrary.id);
-  }, [defaultLibrary, activeLibraryId]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) navigate("/login");
@@ -45,22 +38,11 @@ export default function InsightsPage() {
     >
       <div className="space-y-6">
         {/* Library Switcher */}
-        {myLibraries.length > 1 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground font-medium">Library:</span>
-            {myLibraries.map((lib) => (
-              <Button
-                key={lib.id}
-                size="sm"
-                variant={lib.id === library?.id ? "default" : "outline"}
-                className="text-xs h-7"
-                onClick={() => setActiveLibraryId(lib.id)}
-              >
-                {lib.name}
-              </Button>
-            ))}
-          </div>
-        )}
+        <LibrarySwitcher
+          libraries={myLibraries}
+          activeLibraryId={activeLibraryId}
+          onSwitch={setActiveLibraryId}
+        />
 
         {/* Collection DNA */}
         {library && (
