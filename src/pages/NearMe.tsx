@@ -18,7 +18,7 @@ import {
 
 const NearMeMap = lazy(() => import("@/components/near-me/NearMeMap"));
 
-// Error boundary to catch react-leaflet minification crashes
+// Error boundary to catch map initialization crashes
 class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
