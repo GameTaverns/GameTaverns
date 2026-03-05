@@ -6,6 +6,8 @@ import {
   Plus, Search, ArrowRight, Shield, Library, Globe,
   Calendar, User, HelpCircle, Dice5, ClipboardList, ChevronDown,
 } from "lucide-react";
+import { TenantLink } from "@/components/TenantLink";
+import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -150,20 +152,20 @@ export default function Dashboard() {
               <DropdownMenuContent align="start" className="w-48">
                 {myLibraries.map((lib) => (
                   <DropdownMenuItem key={lib.id} asChild>
-                    <Link to={`/lib/${lib.slug}`} className="cursor-pointer">
+                    <TenantLink href={getLibraryUrl(lib.slug, "/")} className="cursor-pointer">
                       <Library className="h-3.5 w-3.5 mr-2" />
                       {lib.name}
-                    </Link>
+                    </TenantLink>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : library ? (
-            <Link to={`/lib/${library.slug}`} className="contents">
+            <TenantLink href={getLibraryUrl(library.slug, "/")} className="contents">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
                 <Library className="h-3.5 w-3.5" /> Library
               </Button>
-            </Link>
+            </TenantLink>
           ) : null}
           <Link to="/catalog" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
