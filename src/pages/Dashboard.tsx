@@ -222,21 +222,6 @@ export default function Dashboard() {
             ]}
             iconColor="hsl(var(--muted-foreground))"
           />
-          {(isAdmin || isStaff) && (
-            <HubCard
-              to="/studio"
-              icon={Shield}
-              title="Admin Panel"
-              description="Platform management"
-              bullets={[
-                "User & library management",
-                "Platform settings & analytics",
-                "System health & audit logs",
-              ]}
-              iconColor="hsl(var(--destructive))"
-              badges={[{ label: "Staff", variant: "secondary" }]}
-            />
-          )}
         </div>
       </main>
 
