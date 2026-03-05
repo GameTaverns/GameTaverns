@@ -44,6 +44,7 @@ const TenantLink = forwardRef<HTMLAnchorElement, TenantLinkProps>(
     if (shouldUseRouterLink) {
       return (
         <Link
+          ref={ref as any}
           to={href}
           className={className}
           onClick={onClick as any}
