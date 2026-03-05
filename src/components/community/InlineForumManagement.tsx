@@ -110,9 +110,12 @@ export function InlineForumManagement({ scope, libraryId, clubId, categories, is
   const [icon, setIcon] = useState<ForumIconValue>("MessageSquare");
   const [color, setColor] = useState<ForumColorValue>("blue");
   const [displayOrder, setDisplayOrder] = useState("0");
+  const [parentCategoryId, setParentCategoryId] = useState<string>("none");
 
   const createCategory = useCreateForumCategory();
 
+  // Top-level categories only (potential parents)
+  const topLevelCategories = categories.filter((c) => !c.parent_category_id && !c.is_archived);
   const activeCategories = categories.filter((c) => !c.is_archived).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
   const archivedCategories = categories.filter((c) => c.is_archived);
 
@@ -125,6 +128,7 @@ export function InlineForumManagement({ scope, libraryId, clubId, categories, is
         scope,
         libraryId: scope === "library" ? libraryId : undefined,
         clubId: scope === "club" ? clubId : undefined,
+        parentCategoryId: parentCategoryId !== "none" ? parentCategoryId : null,
         name: trimmed,
         description: description.trim() || null,
         icon,
@@ -136,6 +140,7 @@ export function InlineForumManagement({ scope, libraryId, clubId, categories, is
           setName("");
           setDescription("");
           setDisplayOrder("0");
+          setParentCategoryId("none");
         },
       }
     );
@@ -173,6 +178,23 @@ export function InlineForumManagement({ scope, libraryId, clubId, categories, is
                 className="h-8 text-sm bg-wood-dark/60 border-wood-medium/40"
                 disabled={createCategory.isPending}
               />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs text-cream/60">Parent Category</Label>
+              <Select value={parentCategoryId} onValueChange={setParentCategoryId} disabled={createCategory.isPending}>
+                <SelectTrigger className="h-8 text-sm bg-wood-dark/60 border-wood-medium/40">
+                  <SelectValue placeholder="None (top-level)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None (top-level)</SelectItem>
+                  {topLevelCategories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1">

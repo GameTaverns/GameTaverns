@@ -74,6 +74,7 @@ export type CreateForumCategoryInput = {
   scope: "site" | "library" | "club";
   libraryId?: string | null;
   clubId?: string | null;
+  parentCategoryId?: string | null;
   name: string;
   description: string | null;
   icon: string;
@@ -98,6 +99,7 @@ export function useCreateForumCategory() {
         .insert({
           library_id: input.scope === "library" ? input.libraryId : null,
           club_id: input.scope === "club" ? input.clubId : null,
+          parent_category_id: input.parentCategoryId ?? null,
           name: input.name,
           slug,
           description: input.description,
