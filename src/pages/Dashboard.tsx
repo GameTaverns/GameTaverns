@@ -4,11 +4,17 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Gamepad2, BookOpen, Sparkles, Users, Mail, Settings,
   Plus, Search, ArrowRight, Shield, Library, Globe,
-  Calendar, User, HelpCircle, Dice5, ClipboardList,
+  Calendar, User, HelpCircle, Dice5, ClipboardList, ChevronDown,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries, useUserProfile } from "@/hooks/useLibrary";
 import { useLending } from "@/hooks/useLending";
@@ -111,14 +117,14 @@ export default function Dashboard() {
   const displayName = profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0] || "Player";
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background">
+    <div className="min-h-screen overflow-x-hidden bg-background flex flex-col">
       <AnnouncementBanner />
       <div className="container mx-auto px-4 pt-3">
         <TwoFactorBanner />
       </div>
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-6 max-w-5xl">
+      <main className="container mx-auto px-4 py-6 max-w-5xl flex-1">
         {/* Greeting */}
         <div className="mb-6">
           <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
@@ -128,59 +134,77 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex flex-wrap gap-2 pb-1 mb-6">
+        <div className="flex flex-wrap gap-1.5 pb-1 mb-6">
           <Link to="/dashboard/collection">
-            <Button size="sm" className="gap-1.5 text-xs">
-              <Plus className="h-3.5 w-3.5" /> Add Game
+            <Button size="sm" className="gap-1 text-[11px] h-7 px-2">
+              <Plus className="h-3 w-3" /> Add Game
             </Button>
           </Link>
-          {library && (
+          {myLibraries.length > 1 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+                  <Library className="h-3 w-3" /> Library <ChevronDown className="h-2.5 w-2.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                {myLibraries.map((lib) => (
+                  <DropdownMenuItem key={lib.id} asChild>
+                    <Link to={`/lib/${lib.slug}`} className="cursor-pointer">
+                      <Library className="h-3.5 w-3.5 mr-2" />
+                      {lib.name}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : library ? (
             <Link to={`/lib/${library.slug}`}>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                <Library className="h-3.5 w-3.5" /> My Library
+              <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+                <Library className="h-3 w-3" /> Library
               </Button>
             </Link>
-          )}
+          ) : null}
           <Link to="/catalog">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Search className="h-3.5 w-3.5" /> Catalog
+            <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+              <Search className="h-3 w-3" /> Catalog
             </Button>
           </Link>
           <Link to="/directory">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Globe className="h-3.5 w-3.5" /> Directory
+            <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+              <Globe className="h-3 w-3" /> Directory
             </Button>
           </Link>
           <Link to="/events">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Calendar className="h-3.5 w-3.5" /> Events
+            <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+              <Calendar className="h-3 w-3" /> Events
             </Button>
           </Link>
           <Link to="/dashboard/lending">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <BookOpen className="h-3.5 w-3.5" /> Lending
+            <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+              <BookOpen className="h-3 w-3" /> Lending
             </Button>
           </Link>
           <Link to="/dashboard/insights">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <ClipboardList className="h-3.5 w-3.5" /> Log Play
+            <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+              <ClipboardList className="h-3 w-3" /> Log Play
             </Button>
           </Link>
           <Link to="/dashboard/collection">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Dice5 className="h-3.5 w-3.5" /> Random Picker
+            <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+              <Dice5 className="h-3 w-3" /> Random
             </Button>
           </Link>
           {profile?.username && (
             <Link to={`/u/${profile.username}`}>
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                <User className="h-3.5 w-3.5" /> Profile
+              <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+                <User className="h-3 w-3" /> Profile
               </Button>
             </Link>
           )}
           <Link to="/docs">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <HelpCircle className="h-3.5 w-3.5" /> Help
+            <Button variant="outline" size="sm" className="gap-1 text-[11px] h-7 px-2">
+              <HelpCircle className="h-3 w-3" /> Help
             </Button>
           </Link>
         </div>
