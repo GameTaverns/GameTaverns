@@ -82,10 +82,18 @@ export interface GamingPersonality {
   confidence: number; // 0-100 how strong the match
 }
 
+export interface RareGame {
+  title: string;
+  ownerCount: number; // how many libraries own this
+}
+
 export interface CollectionRarity {
   uniqueGamesCount: number; // games only in this library
   rareGamesCount: number;   // games in <= 3 libraries
   totalLibrariesOnPlatform: number;
+  rarityPercentile: number; // 0-100: how unique your collection is vs avg
+  uniqueGames: RareGame[];  // list of unique/rare titles
+  rareGames: RareGame[];
 }
 
 export interface CollectionIntelligence {
@@ -103,6 +111,7 @@ export interface CollectionIntelligence {
   oldestGame: { title: string; year: number } | null;
   newestGame: { title: string; year: number } | null;
   decadeSpread: { decade: string; count: number }[];
+  rarity: CollectionRarity | null;
 }
 
 export function useCollectionIntelligence(libraryId: string | null) {
@@ -232,6 +241,74 @@ export function useCollectionIntelligence(libraryId: string | null) {
       const oldestGame = withYears.length > 0 ? { title: withYears[0].title, year: withYears[0].year_published! } : null;
       const newestGame = withYears.length > 0 ? { title: withYears[withYears.length - 1].title, year: withYears[withYears.length - 1].year_published! } : null;
 
+      // 11. Rarity score — find how many other libraries own the same catalog games
+      let rarity: CollectionRarity | null = null;
+      const catalogIds = baseGames.map(g => g.catalog_id).filter((c): c is string => !!c);
+
+      if (catalogIds.length > 0) {
+        // Count how many libraries own each catalog_id
+        const RARITY_BATCH = 50;
+        const ownershipMap = new Map<string, number>();
+        const titleMap = new Map<string, string>();
+
+        // Map catalog_id -> title from our games
+        baseGames.forEach(g => {
+          if (g.catalog_id) titleMap.set(g.catalog_id, g.title);
+        });
+
+        for (let i = 0; i < catalogIds.length; i += RARITY_BATCH) {
+          const batch = catalogIds.slice(i, i + RARITY_BATCH);
+          const { data: ownerData } = await supabase
+            .from("games")
+            .select("catalog_id, library_id")
+            .in("catalog_id", batch)
+            .eq("ownership_status", "owned");
+
+          if (ownerData) {
+            // Count distinct libraries per catalog_id
+            const libSets = new Map<string, Set<string>>();
+            ownerData.forEach((row: any) => {
+              if (!row.catalog_id) return;
+              if (!libSets.has(row.catalog_id)) libSets.set(row.catalog_id, new Set());
+              libSets.get(row.catalog_id)!.add(row.library_id);
+            });
+            libSets.forEach((libs, catId) => ownershipMap.set(catId, libs.size));
+          }
+        }
+
+        // Get total library count
+        const { count: totalLibs } = await supabase
+          .from("libraries")
+          .select("id", { count: "exact", head: true });
+
+        const uniqueGames: RareGame[] = [];
+        const rareGames: RareGame[] = [];
+
+        catalogIds.forEach(catId => {
+          const ownerCount = ownershipMap.get(catId) || 1;
+          const title = titleMap.get(catId) || "Unknown";
+          if (ownerCount === 1) {
+            uniqueGames.push({ title, ownerCount });
+          } else if (ownerCount <= 3) {
+            rareGames.push({ title, ownerCount });
+          }
+        });
+
+        // Rarity percentile: what % of your collection is rare/unique
+        const rarityPercentile = catalogIds.length > 0
+          ? Math.round(((uniqueGames.length + rareGames.length) / catalogIds.length) * 100)
+          : 0;
+
+        rarity = {
+          uniqueGamesCount: uniqueGames.length,
+          rareGamesCount: rareGames.length,
+          totalLibrariesOnPlatform: totalLibs || 0,
+          rarityPercentile,
+          uniqueGames: uniqueGames.slice(0, 5),
+          rareGames: rareGames.sort((a, b) => a.ownerCount - b.ownerCount).slice(0, 5),
+        };
+      }
+
       return {
         personality: { archetype: primary, secondaryArchetype: secondary, confidence },
         mechanicDNA: mechanicDNA.slice(0, 12),
@@ -247,6 +324,7 @@ export function useCollectionIntelligence(libraryId: string | null) {
         oldestGame,
         newestGame,
         decadeSpread,
+        rarity,
       };
     },
     enabled: !!libraryId,

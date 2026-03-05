@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/backend/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, Share2, Sparkles, Brain, Users, Calendar, Dices } from "lucide-react";
+import { Download, Share2, Sparkles, Brain, Users, Calendar, Dices, Diamond } from "lucide-react";
 import { toPng } from "html-to-image";
 import logoImage from "@/assets/logo.png";
 import { useCollectionIntelligence, type CollectionIntelligence } from "@/hooks/useCollectionIntelligence";
@@ -149,7 +149,7 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
     );
   }
 
-  const { personality, mechanicDNA, avgWeight, weightLabel, shelfOfShamePercent, shelfOfShameCount, totalGames, totalExpansions, sweetSpotPlayers, decadeSpread } = intelligence;
+  const { personality, mechanicDNA, avgWeight, weightLabel, shelfOfShamePercent, shelfOfShameCount, totalGames, totalExpansions, sweetSpotPlayers, decadeSpread, rarity } = intelligence;
   const topMechanics = mechanicDNA.slice(0, 8);
   const maxMechanicPct = topMechanics.length > 0 ? Math.max(...topMechanics.map(m => m.percentage)) : 1;
 
@@ -289,7 +289,60 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
             </div>
           </div>
 
-          {/* Library name + Watermark */}
+          {/* Rarity & Uniqueness */}
+          {rarity && (rarity.uniqueGamesCount > 0 || rarity.rareGamesCount > 0) && (
+            <div className="px-4 py-2">
+              <p className="text-[9px] font-bold tracking-widest uppercase mb-2" style={{ color: theme.textMuted }}>
+                COLLECTION RARITY
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl p-2.5" style={{ backgroundColor: theme.card }}>
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="text-sm">💎</span>
+                    <p className="text-[8px] font-bold tracking-wider" style={{ color: theme.textMuted }}>UNIQUE TO YOU</p>
+                  </div>
+                  <span className="text-2xl font-black leading-none" style={{ color: theme.accent }}>
+                    {rarity.uniqueGamesCount}
+                  </span>
+                  <p className="text-[8px] mt-0.5" style={{ color: theme.textSub }}>
+                    {rarity.uniqueGamesCount === 1 ? "game nobody else has" : "games nobody else has"}
+                  </p>
+                </div>
+                <div className="rounded-xl p-2.5" style={{ backgroundColor: theme.card }}>
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="text-sm">✨</span>
+                    <p className="text-[8px] font-bold tracking-wider" style={{ color: theme.textMuted }}>RARE FINDS</p>
+                  </div>
+                  <span className="text-2xl font-black leading-none" style={{ color: theme.accent }}>
+                    {rarity.rareGamesCount}
+                  </span>
+                  <p className="text-[8px] mt-0.5" style={{ color: theme.textSub }}>
+                    owned by ≤3 collectors
+                  </p>
+                </div>
+              </div>
+              {/* Rare game names */}
+              {(rarity.uniqueGames.length > 0 || rarity.rareGames.length > 0) && (
+                <div className="mt-2 space-y-0.5">
+                  {rarity.uniqueGames.slice(0, 3).map(g => (
+                    <div key={g.title} className="flex items-center gap-1.5">
+                      <span className="text-[8px]">💎</span>
+                      <span className="text-[9px] truncate" style={{ color: theme.text }}>{g.title}</span>
+                      <span className="text-[8px] ml-auto flex-shrink-0 font-bold" style={{ color: theme.accent }}>Only you!</span>
+                    </div>
+                  ))}
+                  {rarity.rareGames.slice(0, 2).map(g => (
+                    <div key={g.title} className="flex items-center gap-1.5">
+                      <span className="text-[8px]">✨</span>
+                      <span className="text-[9px] truncate" style={{ color: theme.text }}>{g.title}</span>
+                      <span className="text-[8px] ml-auto flex-shrink-0" style={{ color: theme.textSub }}>{g.ownerCount} owners</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between px-4 py-3">
             <div>
               <p className="text-xs font-bold" style={{ color: theme.accent }}>
