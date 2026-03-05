@@ -340,17 +340,80 @@ function Hub8Cards() {
   );
 }
 
+// ─── 6-Card Hybrid (Best of both) ───
+function Hub6Hybrid() {
+  return (
+    <div className="space-y-6">
+      <GreetingHeader />
+      <QuickActionsStrip />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <HubCard
+          icon={Gamepad2}
+          title="My Collection"
+          description="142 games · 23 expansions"
+          bullets={["Browse, filter & manage your library", "Import from BGG · Add manually", "Shelf of shame · 12 unplayed"]}
+          color="hsl(var(--primary))"
+          badges={[{ label: "3 new this month", variant: "secondary" }]}
+        />
+        <HubCard
+          icon={BookOpen}
+          title="Lending & Loans"
+          description="Borrow, lend, and trade"
+          bullets={["3 pending loan requests", "Cross-library trading hub", "Borrower ratings & history"]}
+          color="hsl(24, 80%, 50%)"
+          badges={[{ label: "3 pending", variant: "destructive" }]}
+        />
+        <HubCard
+          icon={Sparkles}
+          title="Insights & Analytics"
+          description="DNA, rarity, play stats, value"
+          bullets={["🏰 Grand Strategist personality", "47 plays · 38% win rate · $2,840 value", "💎 5 unique games · Shareable cards"]}
+          color="hsl(262, 80%, 55%)"
+          badges={[{ label: "New: Rarity!", variant: "default" }]}
+        />
+        <HubCard
+          icon={Users}
+          title="Community & Events"
+          description="Forums, clubs, events, polls"
+          bullets={["The Dice Knights · 8 members", "Next: Game Night · Sat 7pm", "3 active threads · 1 poll open"]}
+          color="hsl(200, 70%, 50%)"
+          badges={[{ label: "1 event soon", variant: "secondary" }]}
+        />
+        <HubCard
+          icon={Mail}
+          title="Messages & Social"
+          description="DMs, inquiries, notifications"
+          bullets={["2 unread messages", "1 game inquiry from visitor", "Activity feed & social updates"]}
+          color="hsl(340, 65%, 50%)"
+          badges={[{ label: "2 unread", variant: "destructive" }]}
+        />
+        <HubCard
+          icon={Settings}
+          title="Settings & Account"
+          description="Profile, library config, preferences"
+          bullets={["Profile & display name", "Library settings & theme", "Growth tools · Danger zone"]}
+          color="hsl(var(--muted-foreground))"
+        />
+      </div>
+
+      <RecentActivity />
+    </div>
+  );
+}
+
 // ─── Main toggle wrapper ───
-type MockupMode = "hub6" | "hub7" | "hub8";
+type MockupMode = "hub6" | "hub6hybrid" | "hub7" | "hub8";
 
 const MODES: { key: MockupMode; label: string; description: string }[] = [
-  { key: "hub6", label: "6 Cards (Tight)", description: "Features grouped into 6 clear categories. Least visual clutter, but some features are nested deeper (e.g. forums inside Community)." },
+  { key: "hub6hybrid", label: "⭐ 6 Cards (Hybrid)", description: "Best of both: 6-card clean layout with the 7-card's smarter grouping. Messages split from Community, Events merged into Community, Insights & Analytics combined." },
+  { key: "hub6", label: "6 Cards (Original)", description: "Features grouped into 6 clear categories. Least visual clutter, but some features are nested deeper (e.g. forums inside Community)." },
   { key: "hub7", label: "7 Cards (Balanced)", description: "Splits Analytics from Insights and Messages from Community. Good middle ground — everything is 1 click away." },
   { key: "hub8", label: "8+ Cards (Max Visibility)", description: "Every major feature gets its own card. Nothing is hidden, but denser grid. Uses 4-column layout on desktop." },
 ];
 
 export function DashboardMockups() {
-  const [mode, setMode] = useState<MockupMode>("hub6");
+  const [mode, setMode] = useState<MockupMode>("hub6hybrid");
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6">
@@ -383,6 +446,7 @@ export function DashboardMockups() {
       <FeatureCoverage mode={mode} />
 
       {/* Mockup */}
+      {mode === "hub6hybrid" && <Hub6Hybrid />}
       {mode === "hub6" && <Hub6Cards />}
       {mode === "hub7" && <Hub7Cards />}
       {mode === "hub8" && <Hub8Cards />}
@@ -399,6 +463,15 @@ function FeatureCoverage({ mode }: { mode: MockupMode }) {
   ];
 
   const mapping: Record<MockupMode, Record<string, string>> = {
+    hub6hybrid: {
+      "Full Library": "My Collection", "Lending/Loans": "Lending & Loans",
+      "Insights/DNA": "Insights & Analytics", "Analytics": "Insights & Analytics",
+      "Forums": "Community & Events", "Clubs": "Community & Events",
+      "Messages/DMs": "Messages & Social", "Events": "Community & Events",
+      "Polls": "Community & Events", "Trading": "Lending & Loans",
+      "Achievements": "Insights & Analytics", "Growth Tools": "Settings & Account",
+      "Profile/Account": "Settings & Account", "Danger Zone": "Settings & Account",
+    },
     hub6: {
       "Full Library": "My Collection", "Lending/Loans": "Lending & Loans",
       "Insights/DNA": "Insights & Analytics", "Analytics": "Insights & Analytics",
