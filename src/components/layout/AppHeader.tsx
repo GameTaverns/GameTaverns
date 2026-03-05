@@ -1,16 +1,9 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   LogOut,
-  Library,
-  Globe,
-  HelpCircle,
-  ChevronDown,
-  Mail,
   Menu,
   BookOpen,
-  User,
   MessageSquare,
-  Calendar,
 } from "lucide-react";
 
 import { useTranslation } from "react-i18next";
@@ -20,19 +13,11 @@ import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { useMyLibrary, useMyLibraries, useUserProfile } from "@/hooks/useLibrary";
 import { useUnreadDMCount } from "@/hooks/useDirectMessages";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
-import { getLibraryUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
+import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
-import { useTenant } from "@/contexts/TenantContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface AppHeaderProps {
   onMenuClick?: () => void;
@@ -42,20 +27,9 @@ interface AppHeaderProps {
 export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProps) {
   const { t } = useTranslation();
   const { signOut, isAuthenticated } = useAuth();
-  const { tenantSlug } = useTenant();
-  const { data: defaultLibrary } = useMyLibrary();
-  const { data: myLibraries = [] } = useMyLibraries();
   const { data: dmUnreadCount = 0 } = useUnreadDMCount();
-  const { data: profile } = useUserProfile();
-  const library = defaultLibrary ?? null;
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
-  const isCatalogPage = location.pathname.startsWith("/catalog");
-  const isProfilePage = location.pathname.startsWith("/u/");
-  const isListsPage = location.pathname.startsWith("/lists");
-  const isDirectoryPage = location.pathname.startsWith("/directory");
-  const isEventsPage = location.pathname.startsWith("/events") || location.pathname.startsWith("/event/");
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -66,8 +40,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
     }
   };
 
-  const libraryUrl = library ? getLibraryUrl(library.slug, "/") : null;
-  const isSubdomain = !!tenantSlug;
 
   return (
     <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm sticky top-0 z-30">
@@ -97,122 +69,6 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
             {/* Desktop nav links — hidden on small screens */}
             {isAuthenticated && (
               <>
-                {/* Help */}
-                <TenantLink
-                  href={getPlatformUrl("/docs")}
-                  className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                >
-                  <HelpCircle className="h-3.5 w-3.5" />
-                  <span>{t('nav.help')}</span>
-                </TenantLink>
-
-                {/* Directory / Dashboard toggle */}
-                {isDirectoryPage ? (
-                  <TenantLink
-                    href={getPlatformUrl("/dashboard")}
-                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <span>{t('nav.dashboard')}</span>
-                  </TenantLink>
-                ) : (
-                  <TenantLink
-                    href={getPlatformUrl("/directory")}
-                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <Globe className="h-3.5 w-3.5" />
-                    <span>{t('nav.directory')}</span>
-                  </TenantLink>
-                )}
-
-                {/* Events / Dashboard toggle */}
-                {isEventsPage ? (
-                  <TenantLink
-                    href={getPlatformUrl("/dashboard")}
-                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <span>{t('nav.dashboard')}</span>
-                  </TenantLink>
-                ) : (
-                  <TenantLink
-                    href={getPlatformUrl("/events")}
-                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>Events</span>
-                  </TenantLink>
-                )}
-
-                {/* Catalog / Dashboard toggle */}
-                {isCatalogPage ? (
-                  <TenantLink
-                    href={getPlatformUrl("/dashboard")}
-                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <span>{t('nav.dashboard')}</span>
-                  </TenantLink>
-                ) : (
-                  <TenantLink
-                    href={getPlatformUrl("/catalog")}
-                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <BookOpen className="h-3.5 w-3.5" />
-                    <span>{t('nav.catalog')}</span>
-                  </TenantLink>
-                )}
-
-                {/* My Library / Dashboard on subdomain */}
-                {isSubdomain ? (
-                  <TenantLink
-                    href={getPlatformUrl("/dashboard")}
-                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <Library className="h-3.5 w-3.5" />
-                    <span>{t('nav.dashboard')}</span>
-                  </TenantLink>
-                ) : myLibraries.length > 1 ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream hover:bg-transparent h-auto text-xs"
-                      >
-                        <Library className="h-3.5 w-3.5" />
-                        <span>{t('nav.myLibrary')}</span>
-                        <ChevronDown className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      {myLibraries.map((lib) => (
-                        <DropdownMenuItem key={lib.id} asChild>
-                          <TenantLink href={getLibraryUrl(lib.slug, "/")} className="cursor-pointer">
-                            <Library className="h-3.5 w-3.5 mr-2" />
-                            {lib.name}
-                          </TenantLink>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : library ? (
-                  <TenantLink
-                    href={libraryUrl!}
-                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <Library className="h-3.5 w-3.5" />
-                    <span>{t('nav.myLibrary')}</span>
-                  </TenantLink>
-                ) : null}
-
-                {/* Profile link */}
-                {!isProfilePage && !isListsPage && profile?.username && (
-                  <TenantLink
-                    href={getPlatformUrl(`/u/${profile.username}`)}
-                    className="hidden md:flex items-center gap-1 px-2 py-1 text-cream/70 hover:text-cream transition-colors text-xs"
-                  >
-                    <User className="h-3.5 w-3.5" />
-                    <span>{profile.display_name || profile.username}</span>
-                  </TenantLink>
-                )}
-
                 <div className="h-4 w-px bg-wood-medium/40 hidden md:block" />
               </>
             )}
