@@ -88,15 +88,22 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      const dataUrl = await toPng(cardRef.current, {
+      const el = cardRef.current;
+      const origWidth = el.style.width;
+      el.style.width = "480px";
+      const dataUrl = await toPng(el, {
         backgroundColor: theme.bgHex,
         pixelRatio: 2,
         cacheBust: true,
+        width: 480,
       });
+      el.style.width = origWidth;
       const link = document.createElement("a");
       link.download = `collection-dna-${libraryName || "library"}.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (err) {
       console.error("Export failed:", err);
     } finally {
@@ -108,11 +115,16 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
     if (!cardRef.current) return;
     setExporting(true);
     try {
-      const dataUrl = await toPng(cardRef.current, {
+      const el = cardRef.current;
+      const origWidth = el.style.width;
+      el.style.width = "480px";
+      const dataUrl = await toPng(el, {
         backgroundColor: theme.bgHex,
         pixelRatio: 2,
         cacheBust: true,
+        width: 480,
       });
+      el.style.width = origWidth;
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `collection-dna.png`, { type: "image/png" });
 
@@ -202,7 +214,7 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
       <CardContent>
         <div
           ref={cardRef}
-          className="max-w-lg mx-auto rounded-2xl overflow-hidden"
+          className="w-[480px] max-w-full mx-auto rounded-2xl overflow-hidden"
           style={{ backgroundColor: theme.bg }}
         >
           {/* Hero: Gaming Personality */}
