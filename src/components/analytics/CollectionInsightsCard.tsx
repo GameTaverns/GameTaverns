@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, Share2, Sparkles, Brain, Users, Calendar, Dices, Diamond } from "lucide-react";
-import { toPng } from "html-to-image";
+import { toBlob } from "html-to-image";
 import logoImage from "@/assets/logo.png";
 import { useCollectionIntelligence, type CollectionIntelligence } from "@/hooks/useCollectionIntelligence";
+import { toast } from "@/hooks/use-toast";
 
 interface Props {
   libraryId: string;
@@ -84,88 +85,75 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
     };
   }, [bg]);
 
+  const captureCardBlob = useCallback(async () => {
+    if (!cardRef.current) return null;
+    return toBlob(cardRef.current, {
+      backgroundColor: theme.bgHex,
+      pixelRatio: 2,
+      cacheBust: true,
+      style: {
+        width: "480px",
+        maxWidth: "none",
+        margin: "0",
+      },
+    });
+  }, [theme.bgHex]);
+
+  const downloadBlob = useCallback((blob: Blob, fileName: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = fileName;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, []);
+
   const handleExport = useCallback(async () => {
-    if (!cardRef.current) return;
     setExporting(true);
     try {
-      const el = cardRef.current;
-      const origWidth = el.style.width;
-      el.style.width = "480px";
-      const dataUrl = await toPng(el, {
-        backgroundColor: theme.bgHex,
-        pixelRatio: 2,
-        cacheBust: true,
-        width: 480,
-      });
-      el.style.width = origWidth;
-      const link = document.createElement("a");
-      link.download = `collection-dna-${libraryName || "library"}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const blob = await captureCardBlob();
+      if (!blob) throw new Error("Could not capture image");
+      downloadBlob(blob, `collection-dna-${libraryName || "library"}.png`);
+      toast({ title: "Image downloaded" });
     } catch (err) {
       console.error("Export failed:", err);
+      toast({ title: "Download failed", description: "Please try again." });
     } finally {
       setExporting(false);
     }
-  }, [libraryName, theme.bgHex]);
+  }, [captureCardBlob, downloadBlob, libraryName]);
 
   const handleShare = useCallback(async () => {
-    if (!cardRef.current) return;
     setExporting(true);
     try {
-      const el = cardRef.current;
-      const origWidth = el.style.width;
-      el.style.width = "480px";
-      const dataUrl = await toPng(el, {
-        backgroundColor: theme.bgHex,
-        pixelRatio: 2,
-        cacheBust: true,
-        width: 480,
-      });
-      el.style.width = origWidth;
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], `collection-dna.png`, { type: "image/png" });
+      const blob = await captureCardBlob();
+      if (!blob) throw new Error("Could not capture image");
+      const file = new File([blob], "collection-dna.png", { type: "image/png" });
 
-      // Try native share with files first
-      if (navigator.share) {
-        try {
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ title: `My Collection DNA — ${libraryName}`, files: [file] });
-            return;
-          }
-        } catch (shareErr) {
-          if ((shareErr as Error).name === "AbortError") return;
-          console.warn("Native share failed, falling back:", shareErr);
-        }
-      }
-
-      // Fallback: copy image to clipboard if supported
-      try {
-        const pngBlob = new Blob([await blob.arrayBuffer()], { type: "image/png" });
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
-        // Use a simple alert since we don't have toast imported here
-        const event = new CustomEvent("toast", { detail: { title: "Image copied to clipboard!" } });
-        window.dispatchEvent(event);
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: `My Collection DNA — ${libraryName || "My Library"}`, files: [file] });
         return;
-      } catch {
-        // Clipboard not supported, fall through to download
       }
 
-      // Final fallback: download
-      const link = document.createElement("a");
-      link.download = `collection-dna-${libraryName || "library"}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (window.ClipboardItem && navigator.clipboard?.write) {
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        toast({ title: "Image copied", description: "Paste it anywhere to share." });
+        return;
+      }
+
+      downloadBlob(blob, `collection-dna-${libraryName || "library"}.png`);
+      toast({ title: "Desktop fallback used", description: "Native image sharing isn’t available here, so we downloaded it." });
     } catch (err) {
-      if ((err as Error).name !== "AbortError") console.error("Share failed:", err);
+      if ((err as Error).name !== "AbortError") {
+        console.error("Share failed:", err);
+        toast({ title: "Share failed", description: "Please try again." });
+      }
     } finally {
       setExporting(false);
     }
-  }, [libraryName, theme.bgHex]);
+  }, [captureCardBlob, downloadBlob, libraryName]);
 
   if (isLoading) {
     return (
