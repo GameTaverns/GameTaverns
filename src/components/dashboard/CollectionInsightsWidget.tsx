@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, ArrowRight, Share2, Brain, Dices, BookX, Info } from "lucide-react";
+import { Sparkles, ArrowRight, Share2, Brain, Dices, BookX, Info, Library, Gamepad2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCollectionIntelligence } from "@/hooks/useCollectionIntelligence";
 
@@ -13,8 +13,12 @@ export function CollectionInsightsWidget({ libraryId }: Props) {
 
   if (isLoading || !intelligence) return null;
 
-  const { personality, mechanicDNA, totalGames, shelfOfShamePercent, weightLabel, avgWeight } = intelligence;
+  const { personality, personalitySplit, mechanicDNA, totalGames, shelfOfShamePercent, weightLabel, avgWeight } = intelligence;
   const topMechanics = mechanicDNA.slice(0, 3);
+
+  const shelfArch = personalitySplit.shelf.archetype;
+  const playArch = personalitySplit.play?.archetype;
+  const showSplit = personalitySplit.hasPlayData && playArch && shelfArch.id !== playArch.id;
 
   return (
     <Card className="bg-gradient-to-br from-primary/10 via-background to-accent/5 border-primary/20 overflow-hidden relative">
@@ -48,6 +52,26 @@ export function CollectionInsightsWidget({ libraryId }: Props) {
             </p>
           </div>
         </div>
+
+        {/* Shelf vs Play split */}
+        {showSplit && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/30">
+              <Library className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Your Shelf</p>
+                <p className="text-xs font-semibold text-foreground truncate">{shelfArch.emoji} {shelfArch.name}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-card/50 border border-border/30">
+              <Gamepad2 className="h-3.5 w-3.5 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">You Play</p>
+                <p className="text-xs font-semibold text-foreground truncate">{playArch!.emoji} {playArch!.name}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick stats */}
         <div className="grid grid-cols-3 gap-2">
