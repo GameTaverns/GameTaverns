@@ -115,14 +115,39 @@ export function CollectionInsightsCard({ libraryId, libraryName }: Props) {
       });
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `collection-dna.png`, { type: "image/png" });
-      if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({ title: `My Collection DNA — ${libraryName}`, files: [file] });
-      } else {
-        const link = document.createElement("a");
-        link.download = file.name;
-        link.href = dataUrl;
-        link.click();
+
+      // Try native share with files first
+      if (navigator.share) {
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ title: `My Collection DNA — ${libraryName}`, files: [file] });
+            return;
+          }
+        } catch (shareErr) {
+          if ((shareErr as Error).name === "AbortError") return;
+          console.warn("Native share failed, falling back:", shareErr);
+        }
       }
+
+      // Fallback: copy image to clipboard if supported
+      try {
+        const pngBlob = new Blob([await blob.arrayBuffer()], { type: "image/png" });
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
+        // Use a simple alert since we don't have toast imported here
+        const event = new CustomEvent("toast", { detail: { title: "Image copied to clipboard!" } });
+        window.dispatchEvent(event);
+        return;
+      } catch {
+        // Clipboard not supported, fall through to download
+      }
+
+      // Final fallback: download
+      const link = document.createElement("a");
+      link.download = `collection-dna-${libraryName || "library"}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (err) {
       if ((err as Error).name !== "AbortError") console.error("Share failed:", err);
     } finally {
