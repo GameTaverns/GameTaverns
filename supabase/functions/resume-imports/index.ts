@@ -188,6 +188,7 @@ const handler = async (req: Request): Promise<Response> => {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${serviceRoleKey}`,
+          "apikey": serviceRoleKey,
         },
         body: JSON.stringify(triggerPayload),
       });
