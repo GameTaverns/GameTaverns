@@ -2,8 +2,6 @@ import { useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import type { UserLocation, MapLibrary, MapEvent } from "@/hooks/useNearbyMap";
 
@@ -52,9 +50,13 @@ interface NearMeMapProps {
   nearbyEvents: (MapEvent & { distance?: number })[];
 }
 
+/*
+ * IMPORTANT: No Radix UI / shadcn components inside Popup!
+ * Leaflet renders popups outside React's DOM tree, which causes
+ * "r is not a function" crashes with Radix in production builds.
+ * Use only plain HTML elements + inline styles here.
+ */
 export default function NearMeMap({ location, tab, nearbyLibraries, nearbyEvents }: NearMeMapProps) {
-  const navigate = useNavigate();
-
   return (
     <MapContainer
       center={[location.lat, location.lng]}
@@ -72,20 +74,23 @@ export default function NearMeMap({ location, tab, nearbyLibraries, nearbyEvents
         nearbyLibraries.map((lib) => (
           <Marker key={lib.id} position={[lib.latitude, lib.longitude]} icon={libraryIcon}>
             <Popup>
-              <div className="text-sm space-y-1 min-w-[180px]">
-                <p className="font-semibold">{lib.name}</p>
+              <div style={{ fontSize: 13, minWidth: 180 }}>
+                <p style={{ fontWeight: 600, margin: "0 0 4px" }}>{lib.name}</p>
                 {lib.location_city && (
-                  <p className="text-muted-foreground text-xs">
+                  <p style={{ color: "#888", fontSize: 11, margin: "0 0 2px" }}>
                     {[lib.location_city, lib.location_region].filter(Boolean).join(", ")}
                   </p>
                 )}
-                <p className="text-xs">{lib.game_count} games</p>
+                <p style={{ fontSize: 11, margin: "0 0 4px" }}>{lib.game_count} games</p>
                 {lib.distance != null && (
-                  <p className="text-xs text-muted-foreground">{lib.distance.toFixed(1)} miles away</p>
+                  <p style={{ color: "#888", fontSize: 11, margin: "0 0 4px" }}>{lib.distance.toFixed(1)} miles away</p>
                 )}
-                <Button size="sm" variant="outline" className="w-full mt-1 text-xs" onClick={() => navigate(`/${lib.slug}`)}>
+                <a
+                  href={`/${lib.slug}`}
+                  style={{ display: "block", textAlign: "center", padding: "4px 8px", border: "1px solid #ccc", borderRadius: 4, fontSize: 11, textDecoration: "none", color: "inherit", marginTop: 4 }}
+                >
                   View Library
-                </Button>
+                </a>
               </div>
             </Popup>
           </Marker>
@@ -95,18 +100,18 @@ export default function NearMeMap({ location, tab, nearbyLibraries, nearbyEvents
         nearbyEvents.map((evt) => (
           <Marker key={evt.id} position={[evt.latitude, evt.longitude]} icon={eventIcon}>
             <Popup>
-              <div className="text-sm space-y-1 min-w-[180px]">
-                <p className="font-semibold">{evt.title}</p>
-                <p className="text-xs text-muted-foreground">
+              <div style={{ fontSize: 13, minWidth: 180 }}>
+                <p style={{ fontWeight: 600, margin: "0 0 4px" }}>{evt.title}</p>
+                <p style={{ color: "#888", fontSize: 11, margin: "0 0 2px" }}>
                   {format(new Date(evt.event_date), "EEE, MMM d 'at' h:mm a")}
                 </p>
                 {(evt.venue_name || evt.location_city) && (
-                  <p className="text-xs">
+                  <p style={{ fontSize: 11, margin: "0 0 2px" }}>
                     {[evt.venue_name, evt.location_city].filter(Boolean).join(", ")}
                   </p>
                 )}
                 {evt.distance != null && (
-                  <p className="text-xs text-muted-foreground">{evt.distance.toFixed(1)} miles away</p>
+                  <p style={{ color: "#888", fontSize: 11, margin: 0 }}>{evt.distance.toFixed(1)} miles away</p>
                 )}
               </div>
             </Popup>
