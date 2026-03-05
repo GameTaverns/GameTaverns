@@ -41,6 +41,9 @@ const ImportErrorsPanel = lazy(() =>
 const EmailEngagementAnalytics = lazy(() =>
   import("@/components/admin/EmailEngagementAnalytics").then(m => ({ default: m.EmailEngagementAnalytics }))
 );
+const AccountLockoutManager = lazy(() =>
+  import("@/components/admin/AccountLockoutManager").then(m => ({ default: m.AccountLockoutManager }))
+);
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: ReactNode }) {
@@ -395,7 +398,12 @@ export default function PlatformAdmin() {
                 </TabErrorBoundary>
               </TabsContent>
 
-              <TabsContent value="security" className="mt-6">
+              <TabsContent value="security" className="mt-6 space-y-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading lockout manager…</div>}>
+                    <AccountLockoutManager />
+                  </Suspense>
+                </TabErrorBoundary>
                 <TabErrorBoundary>
                   <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading security logs…</div>}>
                     <AuditLogViewer />
