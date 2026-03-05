@@ -135,7 +135,7 @@ export default function Signup() {
           body: JSON.stringify({
             email,
             password,
-            username: username.toLowerCase() || undefined,
+            username: username || undefined,
             displayName: displayName || email.split("@")[0],
             redirectUrl: window.location.origin,
             recaptcha_token: turnstileToken,
@@ -190,7 +190,7 @@ export default function Signup() {
               <Input
                 id="username"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
                 placeholder={t('signup.usernamePlaceholder')}
                 maxLength={30}
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
