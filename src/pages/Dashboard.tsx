@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Gamepad2, BookOpen, Sparkles, Users, Mail, Settings,
-  Plus, Search, ArrowRight, Shield,
+  Plus, Search, ArrowRight, Shield, Library, Globe,
+  Calendar, User, HelpCircle, Dice5, ClipboardList,
 } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Badge } from "@/components/ui/badge";
@@ -34,16 +35,16 @@ function HubCard({ to, icon: Icon, title, description, bullets, iconColor, badge
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
         </div>
-        <h3 className="font-semibold text-foreground text-sm">{title}</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        <h3 className="font-semibold text-foreground text-base">{title}</h3>
+        <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
         <div className="mt-3 space-y-0.5">
           {bullets.map(s => (
-            <p key={s} className="text-[11px] text-muted-foreground">• {s}</p>
+            <p key={s} className="text-xs text-muted-foreground">• {s}</p>
           ))}
         </div>
         {badges && badges.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
-            {badges.map(b => <Badge key={b.label} variant={b.variant} className="text-[10px]">{b.label}</Badge>)}
+            {badges.map(b => <Badge key={b.label} variant={b.variant} className="text-xs">{b.label}</Badge>)}
           </div>
         )}
       </div>
@@ -127,20 +128,59 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-6">
+        <div className="flex flex-wrap gap-2 pb-1 mb-6">
           <Link to="/dashboard/collection">
             <Button size="sm" className="gap-1.5 text-xs">
               <Plus className="h-3.5 w-3.5" /> Add Game
             </Button>
           </Link>
+          {library && (
+            <Link to={`/lib/${library.slug}`}>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <Library className="h-3.5 w-3.5" /> My Library
+              </Button>
+            </Link>
+          )}
           <Link to="/catalog">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Search className="h-3.5 w-3.5" /> Game Catalog
+              <Search className="h-3.5 w-3.5" /> Catalog
+            </Button>
+          </Link>
+          <Link to="/directory">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <Globe className="h-3.5 w-3.5" /> Directory
+            </Button>
+          </Link>
+          <Link to="/events">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <Calendar className="h-3.5 w-3.5" /> Events
             </Button>
           </Link>
           <Link to="/dashboard/lending">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs">
               <BookOpen className="h-3.5 w-3.5" /> Lending
+            </Button>
+          </Link>
+          <Link to="/dashboard/insights">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <ClipboardList className="h-3.5 w-3.5" /> Log Play
+            </Button>
+          </Link>
+          <Link to="/dashboard/collection">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <Dice5 className="h-3.5 w-3.5" /> Random Picker
+            </Button>
+          </Link>
+          {profile?.username && (
+            <Link to={`/u/${profile.username}`}>
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                <User className="h-3.5 w-3.5" /> Profile
+              </Button>
+            </Link>
+          )}
+          <Link to="/docs">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <HelpCircle className="h-3.5 w-3.5" /> Help
             </Button>
           </Link>
         </div>
