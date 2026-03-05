@@ -3573,6 +3573,7 @@ export type Database = {
           turn_started_at: string | null
           turn_time_limit_hours: number | null
           updated_at: string
+          winner_user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -3587,6 +3588,7 @@ export type Database = {
           turn_started_at?: string | null
           turn_time_limit_hours?: number | null
           updated_at?: string
+          winner_user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -3601,6 +3603,7 @@ export type Database = {
           turn_started_at?: string | null
           turn_time_limit_hours?: number | null
           updated_at?: string
+          winner_user_id?: string | null
         }
         Relationships: [
           {
