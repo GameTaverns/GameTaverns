@@ -52,8 +52,16 @@ export default function EventDetailPage() {
   const navigate = useNavigate();
   const { data: event, isLoading } = useEventDetail(eventId);
   const updateEvent = useUpdateEventDetail();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin, isStaff } = useAuth();
   const [activeTab, setActiveTab] = useState("details");
+
+  // Permission: only event creator, admin, or staff can edit/manage
+  const canManageEvent = !!(event && user && (
+    user.id === event.created_by ||
+    user.id === event.created_by_user_id ||
+    isAdmin ||
+    isStaff
+  ));
 
   const eventDate = event ? new Date(event.event_date) : null;
   const isMultiDay = !!event?.end_date;
