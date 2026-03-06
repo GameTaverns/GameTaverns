@@ -266,11 +266,6 @@ export default function ClubDashboard() {
             <TabsTrigger value="events" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <Calendar className="h-4 w-4" /> Events
             </TabsTrigger>
-            {lendingSettings?.lending_enabled && (
-              <TabsTrigger value="lending" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                <BookOpen className="h-4 w-4" /> Lending Desk
-              </TabsTrigger>
-            )}
             <TabsTrigger value="settings" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <Settings className="h-4 w-4" /> Settings
             </TabsTrigger>
