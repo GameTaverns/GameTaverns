@@ -9,15 +9,19 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search, BookOpen, RotateCcw, Clock, AlertTriangle,
-  Users, Package, ChevronDown, ChevronUp,
+  Users, Package, ChevronDown, ChevronUp, ScanBarcode,
 } from "lucide-react";
 import { useClubLoans, useClubLendingSettings } from "@/hooks/useClubLending";
 import { useClubGameSearch } from "@/hooks/useClubs";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useBarcodeLookup } from "@/hooks/useBarcodeScanner";
 import { ClubCheckoutDialog } from "./ClubCheckoutDialog";
 import { ClubReturnDialog } from "./ClubReturnDialog";
+import { BarcodeScannerDialog } from "./BarcodeScannerDialog";
+import { BarcodeLinkDialog } from "./BarcodeLinkDialog";
 import type { ClubLoan } from "@/hooks/useClubLending";
 import { format, formatDistanceToNow } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface ClubLendingDeskProps {
   clubId: string;
