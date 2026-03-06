@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
-  Calendar, Loader2, ExternalLink, AlertTriangle, BarChart3, Camera
+  Calendar, Loader2, ExternalLink, AlertTriangle, BarChart3, Camera, BookOpen
 } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { format } from "date-fns";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 import { ClubLogoUpload } from "@/components/clubs/ClubLogoUpload";
+import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
+import { useClubLendingSettings, useUpdateClubLendingSettings } from "@/hooks/useClubLending";
 
 const CLUB_EVENT_DIALOG_KEY = "club_dashboard_event_dialog_open";
 const CLUB_EVENT_TITLE_KEY = "club_dashboard_event_title";
@@ -52,6 +54,8 @@ export default function ClubDashboard() {
   const { data: libraries = [] } = useClubLibraries(club?.id || null);
   const { data: inviteCodes = [] } = useClubInviteCodes(club?.id || null);
   const { data: events = [] } = useClubEvents(club?.id || null);
+  const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
+  const updateLendingSettings = useUpdateClubLendingSettings();
 
   const generateCode = useGenerateInviteCode();
   const removeLibrary = useRemoveClubLibrary();
@@ -262,6 +266,11 @@ export default function ClubDashboard() {
             <TabsTrigger value="events" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <Calendar className="h-4 w-4" /> Events
             </TabsTrigger>
+            {lendingSettings?.lending_enabled && (
+              <TabsTrigger value="lending" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
+                <BookOpen className="h-4 w-4" /> Lending Desk
+              </TabsTrigger>
+            )}
             <TabsTrigger value="settings" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <Settings className="h-4 w-4" /> Settings
             </TabsTrigger>
@@ -424,6 +433,13 @@ export default function ClubDashboard() {
             </div>
           </TabsContent>
 
+          {/* Lending Desk */}
+          {lendingSettings?.lending_enabled && user && (
+            <TabsContent value="lending">
+              <ClubLendingDesk clubId={club.id} staffUserId={user.id} />
+            </TabsContent>
+          )}
+
           {/* Settings */}
           <TabsContent value="settings" className="space-y-6">
             {/* Logo Upload */}
@@ -462,6 +478,78 @@ export default function ClubDashboard() {
                   </div>
                   <Switch checked={club.is_public} onCheckedChange={handleTogglePublic} />
                 </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-cream">Convention Lending</Label>
+                    <p className="text-xs text-cream/60">Enable the lending desk for this club</p>
+                  </div>
+                  <Switch
+                    checked={lendingSettings?.lending_enabled ?? false}
+                    onCheckedChange={(checked) =>
+                      updateLendingSettings.mutate({
+                        club_id: club.id,
+                        lending_enabled: checked,
+                      })
+                    }
+                  />
+                </div>
+                {lendingSettings?.lending_enabled && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-cream">Max Concurrent Loans</Label>
+                        <p className="text-xs text-cream/60">Per borrower</p>
+                      </div>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="20"
+                        className="w-20 bg-wood-dark/50 border-wood-medium/50 text-cream"
+                        value={lendingSettings.max_concurrent_loans}
+                        onChange={(e) =>
+                          updateLendingSettings.mutate({
+                            club_id: club.id,
+                            max_concurrent_loans: parseInt(e.target.value, 10) || 3,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-cream">Default Duration (hours)</Label>
+                        <p className="text-xs text-cream/60">How long each checkout lasts</p>
+                      </div>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="168"
+                        className="w-20 bg-wood-dark/50 border-wood-medium/50 text-cream"
+                        value={lendingSettings.default_duration_hours}
+                        onChange={(e) =>
+                          updateLendingSettings.mutate({
+                            club_id: club.id,
+                            default_duration_hours: parseInt(e.target.value, 10) || 4,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-cream">Require Contact Info</Label>
+                        <p className="text-xs text-cream/60">Borrowers must provide contact details</p>
+                      </div>
+                      <Switch
+                        checked={lendingSettings.require_contact_info}
+                        onCheckedChange={(checked) =>
+                          updateLendingSettings.mutate({
+                            club_id: club.id,
+                            require_contact_info: checked,
+                          })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
