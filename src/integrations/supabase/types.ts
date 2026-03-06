@@ -5284,6 +5284,8 @@ export type Database = {
       library_calendar_events: {
         Row: {
           created_at: string | null
+          created_by: string | null
+          created_by_user_id: string | null
           description: string | null
           event_date: string | null
           event_location: string | null
