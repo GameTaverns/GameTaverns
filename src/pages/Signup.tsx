@@ -238,6 +238,7 @@ export default function Signup() {
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />
+              <PasswordStrengthIndicator password={password} />
             </div>
             
             <div className="space-y-2">
