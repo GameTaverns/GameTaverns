@@ -356,6 +356,7 @@ export function useClubGameSearch(clubId: string | null, query: string) {
         .select("id, title, image_url, min_players, max_players, play_time, library_id, bgg_id, copies_owned, is_expansion")
         .in("library_id", libIds)
         .eq("is_expansion", false)
+        .eq("is_coming_soon", false)
         .order("title")
         .limit(500);
 
