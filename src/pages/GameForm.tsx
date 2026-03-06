@@ -94,6 +94,7 @@ const GameForm = () => {
   const [selectedMechanics, setSelectedMechanics] = useState<string[]>([]);
   const [originalMechanics, setOriginalMechanics] = useState<string[]>([]); // Track original for comparison
   const [bggUrl, setBggUrl] = useState("");
+  const [upc, setUpc] = useState("");
   const [isComingSoon, setIsComingSoon] = useState(false);
   const [isForSale, setIsForSale] = useState(false);
   const [salePrice, setSalePrice] = useState<string>("");
