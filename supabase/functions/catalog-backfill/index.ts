@@ -604,14 +604,9 @@ const handler = async (req: Request): Promise<Response> => {
       const BGG_BATCH_SIZE = 20;
       const batchSize = Math.min(body.batch_size || 100, 200);
 
-      // Find entries that are enriched but missing designers
-      const { data: incompleteEntries, error: incErr } = await admin
-        .from("game_catalog")
-        .select("id, bgg_id, title")
-        .not("bgg_id", "is", null)
-        .not("enriched_at", "is", null)
-        .order("created_at", { ascending: true })
-        .limit(batchSize);
+      // Find entries that are enriched but missing designers using efficient SQL
+      const { data: catalogEntries, error: incErr } = await admin
+        .rpc("get_missing_designer_entries", { p_limit: batchSize });
 
       if (incErr) {
         return new Response(JSON.stringify({ error: incErr.message }), {
@@ -619,16 +614,7 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      // Filter to only those actually missing designers (can't do NOT EXISTS via PostgREST)
-      const entryIds = (incompleteEntries || []).map((e: any) => e.id);
-      const hasDesignerSet = new Set<string>();
-      for (let d = 0; d < entryIds.length; d += 200) {
-        const batch = entryIds.slice(d, d + 200);
-        const { data: existing } = await admin.from("catalog_designers").select("catalog_id").in("catalog_id", batch);
-        if (existing) for (const r of existing) hasDesignerSet.add(r.catalog_id);
-      }
-
-      const catalogEntries = (incompleteEntries || []).filter((e: any) => !hasDesignerSet.has(e.id));
+      const entryIds = (catalogEntries || []).map((e: any) => e.id);
 
       if (catalogEntries.length === 0) {
         return new Response(JSON.stringify({
