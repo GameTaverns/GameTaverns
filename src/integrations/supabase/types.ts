@@ -1757,6 +1757,7 @@ export type Database = {
           slug: string | null
           suggested_age: string | null
           title: string
+          upc: string | null
           updated_at: string
           weight: number | null
           year_published: number | null
@@ -1780,6 +1781,7 @@ export type Database = {
           slug?: string | null
           suggested_age?: string | null
           title: string
+          upc?: string | null
           updated_at?: string
           weight?: number | null
           year_published?: number | null
@@ -1803,6 +1805,7 @@ export type Database = {
           slug?: string | null
           suggested_age?: string | null
           title?: string
+          upc?: string | null
           updated_at?: string
           weight?: number | null
           year_published?: number | null
@@ -2668,6 +2671,7 @@ export type Database = {
           slug: string | null
           suggested_age: string | null
           title: string
+          upc: string | null
           updated_at: string | null
           upgraded_components: boolean | null
           year_published: number | null
@@ -2710,6 +2714,7 @@ export type Database = {
           slug?: string | null
           suggested_age?: string | null
           title: string
+          upc?: string | null
           updated_at?: string | null
           upgraded_components?: boolean | null
           year_published?: number | null
@@ -2752,6 +2757,7 @@ export type Database = {
           slug?: string | null
           suggested_age?: string | null
           title?: string
+          upc?: string | null
           updated_at?: string | null
           upgraded_components?: boolean | null
           year_published?: number | null
