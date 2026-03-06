@@ -25,7 +25,6 @@ import {
   Clock,
   BookOpen,
   ExternalLink,
-  ArrowLeft,
   MapPin,
   Filter,
   X,

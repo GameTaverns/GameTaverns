@@ -12,8 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Search, Users, ArrowLeft, ArrowRight, Building2, Globe, Plus, Ticket,
+  Search, Users, ArrowRight, Building2, Globe, Plus, Ticket,
 } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import type { Club } from "@/hooks/useClubs";
 
 function ClubCard({ club }: { club: Club }) {
