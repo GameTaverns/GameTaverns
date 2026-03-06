@@ -89,7 +89,7 @@ export function AccountLockoutManager() {
   };
 
   return (
-    <Card className="bg-wood-medium/30 border-wood-medium/50 overflow-hidden">
+    <Card className="bg-wood-medium/30 border-wood-medium/50">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <ShieldAlert className="h-4 w-4" />
@@ -101,8 +101,8 @@ export function AccountLockoutManager() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search */}
-        <form onSubmit={checkLockout} className="flex gap-2">
-          <div className="relative flex-1">
+        <form onSubmit={checkLockout} className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative w-full min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={email}
@@ -112,7 +112,7 @@ export function AccountLockoutManager() {
               type="email"
             />
           </div>
-          <Button type="submit" size="sm" disabled={loading || !email.trim()}>
+          <Button type="submit" size="sm" disabled={loading || !email.trim()} className="w-full sm:w-auto">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Check"}
           </Button>
         </form>
