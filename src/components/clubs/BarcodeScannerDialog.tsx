@@ -93,6 +93,16 @@ export function BarcodeScannerDialog({
           const result = numeric.length >= 8 ? numeric : raw;
           if (!result) return;
 
+          // Require 3 consecutive reads of the same code to confirm
+          const prev = consecutiveReadsRef.current;
+          if (prev.code === result) {
+            prev.count++;
+          } else {
+            consecutiveReadsRef.current = { code: result, count: 1 };
+          }
+
+          if (consecutiveReadsRef.current.count < 3) return;
+
           hasScannedRef.current = true;
           onScan(result);
           stopScanner();
