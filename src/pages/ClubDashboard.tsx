@@ -284,7 +284,22 @@ export default function ClubDashboard() {
                         Joined {format(new Date(cl.joined_at), "MMM d, yyyy")}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={cl.is_visible ?? false}
+                          onCheckedChange={(checked) =>
+                            toggleVisibility.mutate({
+                              id: cl.id,
+                              club_id: club.id,
+                              is_visible: checked,
+                            })
+                          }
+                        />
+                        <span className="text-xs text-cream/50">
+                          {cl.is_visible ? "Visible" : "Hidden"}
+                        </span>
+                      </div>
                       {cl.library?.slug && (
                         <TenantLink href={getLibraryUrl(cl.library.slug, "/")}>
                           <Button variant="ghost" size="sm" className="text-cream/70">
