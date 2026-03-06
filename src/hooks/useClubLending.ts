@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 // ── Types ──
@@ -122,6 +123,37 @@ export function useClubLoans(clubId: string | null, statusFilter?: string) {
   });
 }
 
+// ── Realtime subscription for live sync across devices ──
+export function useClubLoansRealtime(clubId: string | null) {
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (!clubId) return;
+
+    const channel = supabase
+      .channel(`club-loans-${clubId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "club_loans",
+          filter: `club_id=eq.${clubId}`,
+        },
+        () => {
+          // Invalidate all club loan queries to refetch
+          qc.invalidateQueries({ queryKey: ["club-loans", clubId] });
+          qc.invalidateQueries({ queryKey: ["club-game-search"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clubId, qc]);
+}
+
 export function useCheckoutGame() {
   const qc = useQueryClient();
   return useMutation({
@@ -224,4 +256,78 @@ export function useGameActiveLoanCount(clubId: string | null, gameId: string | n
     },
     enabled: !!clubId && !!gameId,
   });
+}
+
+// ── Check if user is a club lending staff (owner or member library owner) ──
+export function useIsClubLendingStaff(clubId: string | null, userId: string | undefined) {
+  return useQuery({
+    queryKey: ["club-lending-staff", clubId, userId],
+    queryFn: async () => {
+      if (!clubId || !userId) return false;
+
+      // Check if user is club owner
+      const { data: club } = await supabase
+        .from("clubs")
+        .select("owner_id")
+        .eq("id", clubId)
+        .maybeSingle();
+      if (club?.owner_id === userId) return true;
+
+      // Check if user owns any library that's a member of this club
+      const { data: clubLibs } = await supabase
+        .from("club_libraries")
+        .select("library_id")
+        .eq("club_id", clubId);
+      if (!clubLibs || clubLibs.length === 0) return false;
+
+      const libIds = clubLibs.map((cl: any) => cl.library_id);
+      const { data: ownedLibs } = await supabase
+        .from("libraries")
+        .select("id")
+        .in("id", libIds)
+        .eq("owner_id", userId);
+
+      return (ownedLibs && ownedLibs.length > 0) || false;
+    },
+    enabled: !!clubId && !!userId,
+  });
+}
+
+// ── Recent borrowers for quick-fill autocomplete ──
+const RECENT_BORROWERS_KEY = "club-lending-recent-borrowers";
+const MAX_RECENT = 20;
+
+export interface RecentBorrower {
+  name: string;
+  contact: string;
+  lastUsed: number;
+}
+
+export function getRecentBorrowers(clubId: string): RecentBorrower[] {
+  try {
+    const raw = localStorage.getItem(`${RECENT_BORROWERS_KEY}-${clubId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveRecentBorrower(clubId: string, name: string, contact: string) {
+  try {
+    const existing = getRecentBorrowers(clubId);
+    // Remove existing entry with same name (case-insensitive)
+    const filtered = existing.filter(
+      (b) => b.name.toLowerCase() !== name.toLowerCase()
+    );
+    // Add to front
+    filtered.unshift({ name, contact, lastUsed: Date.now() });
+    // Trim to max
+    const trimmed = filtered.slice(0, MAX_RECENT);
+    localStorage.setItem(
+      `${RECENT_BORROWERS_KEY}-${clubId}`,
+      JSON.stringify(trimmed)
+    );
+  } catch {
+    // storage full — ignore
+  }
 }
