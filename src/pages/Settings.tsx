@@ -664,10 +664,13 @@ const Settings = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
+    // Import inline to avoid circular deps in this large file
+    const { validatePassword } = await import("@/lib/password-validation");
+    const validation = validatePassword(newPassword);
+    if (!validation.valid) {
       toast({
-        title: "Password too short",
-        description: "Password must be at least 6 characters.",
+        title: "Password does not meet requirements",
+        description: validation.errors[0],
         variant: "destructive",
       });
       return;
@@ -675,11 +678,30 @@ const Settings = () => {
 
     setIsUpdatingPassword(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
+      // Check password reuse
+      const { data: reuseData, error: reuseError } = await supabase.functions.invoke('check-password-reuse', {
+        body: { userId: user.id, password: newPassword, action: 'check' },
+      });
+      if (reuseError) throw reuseError;
+      if (reuseData?.reused) {
+        toast({ title: "Password previously used", description: reuseData.error, variant: "destructive" });
+        return;
+      }
+      if (reuseData?.policyError) {
+        toast({ title: "Password does not meet requirements", description: reuseData.error, variant: "destructive" });
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+
+      // Store the new password hash
+      await supabase.functions.invoke('check-password-reuse', {
+        body: { userId: user.id, password: newPassword, action: 'store' },
+      });
 
       toast({
         title: "Password updated",
