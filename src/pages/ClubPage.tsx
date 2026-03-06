@@ -32,11 +32,16 @@ export default function ClubPage() {
   const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [switchingLibraryId, setSwitchingLibraryId] = useState<string | null>(null);
+  const [newLibraryId, setNewLibraryId] = useState("");
   const debouncedQuery = useDebounce(searchQuery, 300);
   const { data: games = [], isLoading: searchLoading } = useClubGameSearch(
     club?.id || null,
     debouncedQuery
   );
+  const { data: myLibraries = [] } = useMyLibraries();
+  const switchLibrary = useSwitchClubLibrary();
+  const { toast } = useToast();
 
   if (isLoading) {
     return (
