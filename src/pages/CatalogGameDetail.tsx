@@ -87,7 +87,7 @@ export default function CatalogGameDetail() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
-
+  const [catalogTab, setCatalogTab] = usePersistedTab("catalog-detail-tab", "description");
   const { data: game, isLoading } = useQuery({
     queryKey: ["catalog-game", slug],
     queryFn: async (): Promise<CatalogGameFull | null> => {

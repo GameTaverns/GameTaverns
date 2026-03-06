@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const { user, isAuthenticated, loading } = useAuth();
   const { data: profile } = useUserProfile();
   const navigate = useNavigate();
+  const [settingsTab, setSettingsTab] = usePersistedTab("settings-tab", "profile");
 
   useEffect(() => {
     if (!loading && !isAuthenticated) navigate("/login");
