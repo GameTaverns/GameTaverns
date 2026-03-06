@@ -151,6 +151,15 @@ export default function ClubPage() {
               <BarChart3 className="h-4 w-4" />
               Analytics
             </TabsTrigger>
+            {showLendingDesk && (
+              <TabsTrigger
+                value="lending"
+                className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+              >
+                <BookOpen className="h-4 w-4" />
+                Lending Desk
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* ── Analytics ── */}
