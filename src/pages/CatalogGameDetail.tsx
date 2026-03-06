@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart } from "lucide-react";
