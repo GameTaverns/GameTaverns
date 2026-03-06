@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
-  Calendar, Loader2, ExternalLink, AlertTriangle, BarChart3, Camera
+  Calendar, Loader2, ExternalLink, AlertTriangle, BarChart3, Camera, BookOpen
 } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
 import { Button } from "@/components/ui/button";
