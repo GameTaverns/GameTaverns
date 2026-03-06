@@ -23,12 +23,7 @@ export default function Achievements() {
           
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <TenantLink href={getPlatformUrl("/dashboard")}>
-              <Button variant="outline" className="gap-2 border-wood-medium/50 text-cream hover:bg-wood-medium/30">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </Button>
-            </TenantLink>
+            <BackLink fallback="/dashboard" className="text-cream/70 hover:text-cream mb-0" />
           </div>
         </div>
       </header>
