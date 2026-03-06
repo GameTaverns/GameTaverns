@@ -318,6 +318,18 @@ export function useRemoveClubLibrary() {
   });
 }
 
+export function useSwitchClubLibrary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { club_id: string; old_library_id: string; new_library_id: string }) =>
+      invokeClubs({ action: "switch_library", ...params }),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["club-libraries", vars.club_id] });
+      qc.invalidateQueries({ queryKey: ["club-game-search"] });
+    },
+  });
+}
+
 export function useUpdateClub() {
   const qc = useQueryClient();
   return useMutation({
