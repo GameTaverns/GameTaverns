@@ -148,6 +148,7 @@ export function ClubCheckoutDialog({
     setSelectedCopyId("");
     setDurationHours(defaultDurationHours.toString());
     setShowSuggestions(false);
+    clearCheckoutDraft();
   };
 
   const selectSuggestion = (borrower: { name: string; contact: string }) => {
