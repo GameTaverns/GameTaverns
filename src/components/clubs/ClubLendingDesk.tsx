@@ -67,7 +67,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
   };
 
   // Effect-like: react to barcode match changes
-  useMemo(() => {
+  useEffect(() => {
     if (!scannedBarcode || barcodeLoading) return;
     if (barcodeMatch?.game) {
       setCheckoutGame({
