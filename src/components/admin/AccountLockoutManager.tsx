@@ -121,22 +121,22 @@ export function AccountLockoutManager() {
         {status && (
           <div className="space-y-3">
             {/* Status badge */}
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col gap-3 p-3 rounded-lg border bg-card sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 min-w-0">
                 {status.isLocked ? (
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
                 ) : (
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
                 )}
-                <div>
-                  <p className="text-sm font-medium">{status.email}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{status.email}</p>
                   <p className="text-xs text-muted-foreground">
                     {status.recentFailures} failed attempt{status.recentFailures !== 1 ? "s" : ""} in last 15 min
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant={status.isLocked ? "destructive" : "outline"}>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 w-full sm:w-auto">
+                <Badge variant={status.isLocked ? "destructive" : "outline"} className="w-fit">
                   {status.isLocked ? "LOCKED" : "Not Locked"}
                 </Badge>
                 {status.isLocked && (
@@ -145,7 +145,7 @@ export function AccountLockoutManager() {
                     variant="outline"
                     onClick={clearLockout}
                     disabled={clearing}
-                    className="gap-1.5"
+                    className="gap-1.5 w-full sm:w-auto"
                   >
                     {clearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
                     Clear Lockout
