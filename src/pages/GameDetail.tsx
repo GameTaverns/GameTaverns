@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight, Calendar } from "lucide-react";
+import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight, Calendar, BookOpen } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -551,8 +551,17 @@ const GameDetail = () => {
               })}
             </div>
 
-            {/* BGG Link + Purchase Links */}
+            {/* Catalog Link + BGG Link + Purchase Links */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-6">
+              {(game as any).catalog_id && (
+                <Link
+                  to={`/catalog/${(game as any).catalog_slug || (game as any).catalog_id}`}
+                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  View in Catalog
+                </Link>
+              )}
               {game.bgg_url && (
                 <a
                   href={game.bgg_url}
