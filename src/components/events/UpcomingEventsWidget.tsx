@@ -30,12 +30,16 @@ interface UpcomingEventsWidgetProps {
 function EventItem({ 
   event, 
   isOwner, 
+  currentUserId,
+  isAdminOrStaff,
   onEdit, 
   onDelete,
   onViewDetail,
 }: { 
   event: CalendarEvent; 
   isOwner: boolean;
+  currentUserId?: string;
+  isAdminOrStaff?: boolean;
   onEdit?: (event: CalendarEvent) => void;
   onDelete?: (event: CalendarEvent) => void;
   onViewDetail?: (event: CalendarEvent) => void;
@@ -45,6 +49,12 @@ function EventItem({
   const isEventToday = isToday(eventDate);
   const isPastEvent = isPast(eventDate);
   
+  // Check if current user can manage this specific event
+  const isEventCreator = !!(currentUserId && (
+    currentUserId === event.created_by || currentUserId === event.created_by_user_id
+  ));
+  const canManage = isEventCreator || isOwner || !!isAdminOrStaff;
+  
   // Build poll URL if it's a poll event
   const pollUrl = event.event_type === "poll" && event.share_token 
     ? buildUrl(`/poll/${event.share_token}`)
@@ -52,7 +62,7 @@ function EventItem({
   
   // Handle both Cloud ("standalone") and self-hosted ("event") naming
   const isStandaloneEvent = event.event_type === "standalone" || event.event_type === "event";
-  
+
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group">
       {/* Date Badge */}
