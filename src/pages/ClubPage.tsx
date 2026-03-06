@@ -25,6 +25,7 @@ export default function ClubPage() {
   const { data: clubLibraries = [] } = useClubLibraries(club?.id || null);
   const visibleLibraries = clubLibraries.filter((cl: any) => cl.is_visible);
   const { data: clubEvents = [] } = useClubEvents(club?.id || null);
+  const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedQuery = useDebounce(searchQuery, 300);
