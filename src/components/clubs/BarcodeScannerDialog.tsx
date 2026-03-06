@@ -68,6 +68,9 @@ export function BarcodeScannerDialog({
       const scanner = new Html5Qrcode(scanRegionId, {
         verbose: false,
         formatsToSupport,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true,
+        },
       });
       scannerRef.current = scanner;
 
@@ -80,9 +83,6 @@ export function BarcodeScannerDialog({
             height: Math.floor(Math.max(140, Math.min(viewfinderHeight * 0.42, 220))),
           }),
           disableFlip: false,
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true,
-          },
         },
         (decodedText) => {
           if (hasScannedRef.current) return;
