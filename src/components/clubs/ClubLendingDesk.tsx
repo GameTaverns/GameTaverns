@@ -138,15 +138,26 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
               Quick Checkout
             </h3>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search a game title to check out..."
-              className="pl-10 h-12 text-base bg-background border-border"
-              value={gameSearch}
-              onChange={(e) => setGameSearch(e.target.value)}
-              autoFocus
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search a game title to check out..."
+                className="pl-10 h-12 text-base bg-background border-border"
+                value={gameSearch}
+                onChange={(e) => setGameSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-12 gap-2 px-4 border-secondary/50 hover:bg-secondary/10"
+              onClick={() => setShowScanner(true)}
+            >
+              <ScanBarcode className="h-5 w-5" />
+              <span className="hidden sm:inline">Scan</span>
+            </Button>
           </div>
           {debouncedGameSearch && searchResults.length > 0 && (
             <div className="mt-3 max-h-64 overflow-y-auto space-y-1 rounded-lg border border-border bg-background p-1">
