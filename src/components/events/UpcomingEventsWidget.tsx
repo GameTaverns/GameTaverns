@@ -112,7 +112,7 @@ function EventItem({
         )}
         
         {/* Owner Actions for standalone events */}
-        {isOwner && isStandaloneEvent && (
+        {canManage && isStandaloneEvent && (
           <div className="flex items-center gap-1 mt-2">
             <Button 
               variant="ghost" 
