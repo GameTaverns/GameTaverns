@@ -5,7 +5,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Camera, Keyboard, Loader2, AlertCircle, ScanBarcode } from "lucide-react";
+import { Camera, Keyboard, Loader2, AlertCircle, ScanBarcode, Check, X } from "lucide-react";
 
 interface BarcodeScannerDialogProps {
   open: boolean;
@@ -26,10 +26,9 @@ export function BarcodeScannerDialog({
   const [manualCode, setManualCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
   const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const hasScannedRef = useRef(false);
-  const consecutiveReadsRef = useRef<{ code: string; count: number }>({ code: "", count: 0 });
   const scanRegionId = useId().replace(/:/g, "");
 
   const stopScanner = useCallback(async () => {
@@ -50,9 +49,9 @@ export function BarcodeScannerDialog({
 
     setError(null);
     setScanning(true);
+    setPendingCode(null);
 
     try {
-      // Dynamic import to avoid SSR issues
       const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
 
       const formatsToSupport = [
@@ -86,27 +85,14 @@ export function BarcodeScannerDialog({
           disableFlip: false,
         },
         (decodedText) => {
-          if (hasScannedRef.current) return;
-
           const raw = decodedText?.trim?.() || "";
           const numeric = raw.replace(/[^0-9]/g, "");
           const result = numeric.length >= 8 ? numeric : raw;
           if (!result) return;
 
-          // Require 3 consecutive reads of the same code to confirm
-          const prev = consecutiveReadsRef.current;
-          if (prev.code === result) {
-            prev.count++;
-          } else {
-            consecutiveReadsRef.current = { code: result, count: 1 };
-          }
-
-          if (consecutiveReadsRef.current.count < 3) return;
-
-          hasScannedRef.current = true;
-          onScan(result);
-          stopScanner();
-          onOpenChange(false);
+          // Pause scanning and show preview for confirmation
+          setPendingCode(result);
+          scanner.pause(true);
         },
         () => {
           // Scan failure (expected while no barcode is in frame yet)
@@ -130,13 +116,32 @@ export function BarcodeScannerDialog({
     }
   }, [onScan, onOpenChange, stopScanner, scanRegionId]);
 
-  useEffect(() => {
-    if (open) {
-      hasScannedRef.current = false;
+  const handleConfirm = useCallback(() => {
+    if (pendingCode) {
+      onScan(pendingCode);
+      setPendingCode(null);
+      stopScanner();
+      onOpenChange(false);
     }
+  }, [pendingCode, onScan, stopScanner, onOpenChange]);
 
+  const handleReject = useCallback(() => {
+    setPendingCode(null);
+    // Resume scanning
+    if (scannerRef.current) {
+      try {
+        scannerRef.current.resume();
+      } catch {
+        // If resume fails, restart
+        stopScanner().then(() => {
+          setTimeout(startScanner, 300);
+        });
+      }
+    }
+  }, [stopScanner, startScanner]);
+
+  useEffect(() => {
     if (open && mode === "camera") {
-      // Small delay for DOM to mount
       const timeout = setTimeout(startScanner, 300);
       return () => {
         clearTimeout(timeout);
@@ -148,7 +153,6 @@ export function BarcodeScannerDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopScanner();
@@ -166,10 +170,10 @@ export function BarcodeScannerDialog({
 
   const handleClose = (isOpen: boolean) => {
     if (!isOpen) {
-      hasScannedRef.current = false;
       stopScanner();
       setManualCode("");
       setError(null);
+      setPendingCode(null);
     }
     onOpenChange(isOpen);
   };
@@ -190,7 +194,7 @@ export function BarcodeScannerDialog({
           <Button
             size="sm"
             variant={mode === "camera" ? "default" : "outline"}
-            onClick={() => setMode("camera")}
+            onClick={() => { setPendingCode(null); setMode("camera"); }}
             className="gap-1.5 flex-1"
           >
             <Camera className="h-4 w-4" />
@@ -199,7 +203,7 @@ export function BarcodeScannerDialog({
           <Button
             size="sm"
             variant={mode === "manual" ? "default" : "outline"}
-            onClick={() => setMode("manual")}
+            onClick={() => { setPendingCode(null); setMode("manual"); }}
             className="gap-1.5 flex-1"
           >
             <Keyboard className="h-4 w-4" />
@@ -221,9 +225,8 @@ export function BarcodeScannerDialog({
               className="relative rounded-lg overflow-hidden bg-muted aspect-[2/1]"
             >
               <div id={scanRegionId} className="w-full h-full" />
-              {scanning && (
+              {scanning && !pendingCode && (
                 <div className="absolute inset-0 pointer-events-none">
-                  {/* Scanning line animation */}
                   <div className="absolute inset-x-4 top-1/2 h-0.5 bg-primary/80 animate-pulse" />
                 </div>
               )}
@@ -233,9 +236,39 @@ export function BarcodeScannerDialog({
                 </div>
               )}
             </div>
-            <p className="text-xs text-muted-foreground text-center">
-              Hold the barcode steady within the frame
-            </p>
+
+            {/* Pending code confirmation */}
+            {pendingCode ? (
+              <div className="border border-primary/30 bg-primary/5 rounded-lg p-4 space-y-3">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Scanned barcode</p>
+                  <p className="font-mono text-xl tracking-widest font-semibold text-foreground">
+                    {pendingCode}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleReject}
+                    className="flex-1 gap-1.5"
+                  >
+                    <X className="h-4 w-4" />
+                    Rescan
+                  </Button>
+                  <Button
+                    onClick={handleConfirm}
+                    className="flex-1 gap-1.5"
+                  >
+                    <Check className="h-4 w-4" />
+                    Use This Code
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center">
+                Hold the barcode steady within the frame
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
