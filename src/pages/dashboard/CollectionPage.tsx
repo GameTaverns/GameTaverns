@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Gamepad2, Plus, Settings, Eye, Shuffle, Flame, ListOrdered,
-  Library, ArrowRight, BookOpen, Upload,
+  Library, ArrowRight, BookOpen, Upload, QrCode,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -140,6 +140,11 @@ export default function CollectionPage() {
               <BookOpen className="h-3.5 w-3.5" /> Browse Catalog
             </Button>
           </Link>
+          <TenantLink href={getLibraryUrl(library.slug, "/catalog-print")}>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <QrCode className="h-3.5 w-3.5" /> QR Print Cards
+            </Button>
+          </TenantLink>
         </div>
       </div>
 
