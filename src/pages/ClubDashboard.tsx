@@ -36,7 +36,7 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { format } from "date-fns";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 import { ClubLogoUpload } from "@/components/clubs/ClubLogoUpload";
-import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
+
 import { useClubLendingSettings, useUpdateClubLendingSettings } from "@/hooks/useClubLending";
 
 const CLUB_EVENT_DIALOG_KEY = "club_dashboard_event_dialog_open";
