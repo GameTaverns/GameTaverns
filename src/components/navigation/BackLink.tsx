@@ -18,7 +18,8 @@ export function BackLink({ fallback = "/dashboard", label = "Back", className }:
   const navigate = useNavigate();
 
   const handleClick = () => {
-    if (window.history.length > 1) {
+    // Use history length > 2 because the initial page load counts as 1
+    if (window.history.length > 2) {
       navigate(-1);
     } else {
       navigate(fallback);
