@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart } from "lucide-react";
@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { ManagePurchaseLinks } from "@/components/catalog/ManagePurchaseLinks";
+import { CatalogUpcEditor } from "@/components/catalog/CatalogUpcEditor";
 import { GameImage } from "@/components/games/GameImage";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
@@ -92,7 +93,7 @@ export default function CatalogGameDetail() {
       // Try slug first, then id
       let query = supabase
         .from("game_catalog")
-        .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age, parent_catalog_id")
+        .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age, parent_catalog_id, upc")
         .eq("slug", slug!)
         .maybeSingle();
 
@@ -101,7 +102,7 @@ export default function CatalogGameDetail() {
       if (!data) {
         const byId = await supabase
           .from("game_catalog")
-          .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age, parent_catalog_id")
+          .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age, parent_catalog_id, upc")
           .eq("id", slug!)
           .maybeSingle();
         data = byId.data;
@@ -586,8 +587,9 @@ export default function CatalogGameDetail() {
 
             {/* Admin: Manage Purchase Links */}
             {isAdmin && (
-              <div className="mt-6">
+              <div className="mt-6 space-y-6">
                 <ManagePurchaseLinks catalogId={game.id} gameTitle={game.title} />
+                <CatalogUpcEditor catalogId={game.id} currentUpc={(game as any).upc || null} />
               </div>
             )}
           </div>

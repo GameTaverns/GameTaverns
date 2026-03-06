@@ -94,6 +94,7 @@ const GameForm = () => {
   const [selectedMechanics, setSelectedMechanics] = useState<string[]>([]);
   const [originalMechanics, setOriginalMechanics] = useState<string[]>([]); // Track original for comparison
   const [bggUrl, setBggUrl] = useState("");
+  const [upc, setUpc] = useState("");
   const [isComingSoon, setIsComingSoon] = useState(false);
   const [isForSale, setIsForSale] = useState(false);
   const [salePrice, setSalePrice] = useState<string>("");
@@ -260,6 +261,7 @@ const GameForm = () => {
       setSelectedArtists(artistIds);
       setOriginalArtists(artistIds);
       setBggUrl(existingGame.bgg_url || "");
+      setUpc((existingGame as any).upc || "");
       setIsComingSoon(existingGame.is_coming_soon);
       setIsForSale(existingGame.is_for_sale);
       setSalePrice(existingGame.sale_price?.toString() || "");
@@ -384,6 +386,7 @@ const GameForm = () => {
       publisher_id: publisherId || null,
       bgg_id: null,
       bgg_url: bggUrl.trim() || null,
+      upc: upc.trim() || null,
       is_coming_soon: isComingSoon,
       is_for_sale: isForSale,
       sale_price: isForSale && salePrice ? parseFloat(salePrice) : null,
@@ -628,6 +631,20 @@ const GameForm = () => {
                     onChange={(e) => setBggUrl(e.target.value)}
                     placeholder="https://boardgamegeek.com/boardgame/..."
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="upc">UPC / EAN Barcode</Label>
+                  <Input
+                    id="upc"
+                    value={upc}
+                    onChange={(e) => setUpc(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="e.g. 681706711003"
+                    maxLength={14}
+                    inputMode="numeric"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The barcode number on the game box. Used for instant lookup when scanning at lending events.
+                  </p>
                 </div>
               </div>
 
