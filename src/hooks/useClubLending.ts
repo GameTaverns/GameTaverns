@@ -129,6 +129,7 @@ export function useCheckoutGame() {
       club_id: string;
       game_id: string;
       library_id: string;
+      copy_id?: string;
       borrower_user_id?: string;
       guest_name?: string;
       guest_contact?: string;
@@ -141,6 +142,7 @@ export function useCheckoutGame() {
         club_id: params.club_id,
         game_id: params.game_id,
         library_id: params.library_id,
+        copy_id: params.copy_id || null,
         borrower_user_id: params.borrower_user_id || null,
         guest_name: params.guest_name || null,
         guest_contact: params.guest_contact || null,
