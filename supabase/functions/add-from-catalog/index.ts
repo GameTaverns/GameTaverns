@@ -209,6 +209,7 @@ export default async function handler(req: Request): Promise<Response> {
       publisher_id: publishers[0]?.id || null,
       bgg_id: catalog.bgg_id,
       bgg_url: catalog.bgg_url,
+      upc: catalog.upc || null,
       is_expansion: catalog.is_expansion,
       parent_game_id: parentGameId,
       catalog_id: catalog.id,
