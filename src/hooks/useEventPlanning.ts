@@ -90,6 +90,7 @@ export interface EventDetail {
   parking_info: string | null;
   status: string;
   discord_thread_id: string | null;
+  created_by_user_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
