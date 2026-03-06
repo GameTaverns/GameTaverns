@@ -1183,7 +1183,7 @@ const Settings = () => {
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="••••••••"
-                          minLength={6}
+                          minLength={8}
                           required
                         />
                       </div>
@@ -1195,7 +1195,7 @@ const Settings = () => {
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="••••••••"
-                          minLength={6}
+                          minLength={8}
                           required
                         />
                       </div>
