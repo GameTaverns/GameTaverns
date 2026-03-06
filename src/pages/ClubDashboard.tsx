@@ -59,6 +59,7 @@ export default function ClubDashboard() {
   const createEvent = useCreateClubEvent();
   const deleteEvent = useDeleteClubEvent();
   const deleteClub = useDeleteClub();
+  const toggleVisibility = useToggleClubLibraryVisibility();
 
   const [showEventDialog, setShowEventDialogRaw] = useState(() => {
     try {
