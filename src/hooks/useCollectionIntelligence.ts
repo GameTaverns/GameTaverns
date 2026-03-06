@@ -102,6 +102,14 @@ export const ARCHETYPES = [
     triggers: [t("Action Drafting", 3), t("Market", 2), t("Income", 2), t("Variable Phase Order", 2), t("Rondel", 3), t("Action Points")],
     minWeight: 3.5,
   },
+  {
+    id: "cozygamer",
+    name: "The Cozy Gamer",
+    emoji: "☕",
+    description: "You gravitate toward gentle, relaxing games with beautiful art and low-stress gameplay. Game night is about warmth, not war.",
+    triggers: [t("Pattern Building", 2), t("Tile Placement", 2), t("Set Collection", 2), t("Drafting"), t("Hand Management"), t("Solo / Cooperative Mode"), t("Cooperative Game"), t("Grid Coverage", 2), t("Layering")],
+    minWeight: 0,
+  },
 ] as const;
 
 export type ArchetypeId = typeof ARCHETYPES[number]["id"];
