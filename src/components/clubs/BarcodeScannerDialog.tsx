@@ -29,6 +29,7 @@ export function BarcodeScannerDialog({
   const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasScannedRef = useRef(false);
+  const consecutiveReadsRef = useRef<{ code: string; count: number }>({ code: "", count: 0 });
   const scanRegionId = useId().replace(/:/g, "");
 
   const stopScanner = useCallback(async () => {
