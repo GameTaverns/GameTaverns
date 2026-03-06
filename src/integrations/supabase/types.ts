@@ -5099,6 +5099,7 @@ export type Database = {
           additional_images: string[] | null
           bgg_id: string | null
           bgg_url: string | null
+          catalog_id: string | null
           copies_owned: number | null
           created_at: string | null
           crowdfunded: boolean | null
@@ -5127,6 +5128,7 @@ export type Database = {
           slug: string | null
           suggested_age: string | null
           title: string | null
+          upc: string | null
           updated_at: string | null
           upgraded_components: boolean | null
           youtube_videos: string[] | null
@@ -5135,6 +5137,7 @@ export type Database = {
           additional_images?: string[] | null
           bgg_id?: string | null
           bgg_url?: string | null
+          catalog_id?: string | null
           copies_owned?: number | null
           created_at?: string | null
           crowdfunded?: boolean | null
@@ -5163,6 +5166,7 @@ export type Database = {
           slug?: string | null
           suggested_age?: string | null
           title?: string | null
+          upc?: string | null
           updated_at?: string | null
           upgraded_components?: boolean | null
           youtube_videos?: string[] | null
@@ -5171,6 +5175,7 @@ export type Database = {
           additional_images?: string[] | null
           bgg_id?: string | null
           bgg_url?: string | null
+          catalog_id?: string | null
           copies_owned?: number | null
           created_at?: string | null
           crowdfunded?: boolean | null
@@ -5199,11 +5204,26 @@ export type Database = {
           slug?: string | null
           suggested_age?: string | null
           title?: string | null
+          upc?: string | null
           updated_at?: string | null
           upgraded_components?: boolean | null
           youtube_videos?: string[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "games_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "games_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "games_library_id_fkey"
             columns: ["library_id"]
