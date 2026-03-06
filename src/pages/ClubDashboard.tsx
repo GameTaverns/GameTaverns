@@ -478,6 +478,78 @@ export default function ClubDashboard() {
                   </div>
                   <Switch checked={club.is_public} onCheckedChange={handleTogglePublic} />
                 </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-cream">Convention Lending</Label>
+                    <p className="text-xs text-cream/60">Enable the lending desk for this club</p>
+                  </div>
+                  <Switch
+                    checked={lendingSettings?.lending_enabled ?? false}
+                    onCheckedChange={(checked) =>
+                      updateLendingSettings.mutate({
+                        club_id: club.id,
+                        lending_enabled: checked,
+                      })
+                    }
+                  />
+                </div>
+                {lendingSettings?.lending_enabled && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-cream">Max Concurrent Loans</Label>
+                        <p className="text-xs text-cream/60">Per borrower</p>
+                      </div>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="20"
+                        className="w-20 bg-wood-dark/50 border-wood-medium/50 text-cream"
+                        value={lendingSettings.max_concurrent_loans}
+                        onChange={(e) =>
+                          updateLendingSettings.mutate({
+                            club_id: club.id,
+                            max_concurrent_loans: parseInt(e.target.value, 10) || 3,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-cream">Default Duration (hours)</Label>
+                        <p className="text-xs text-cream/60">How long each checkout lasts</p>
+                      </div>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="168"
+                        className="w-20 bg-wood-dark/50 border-wood-medium/50 text-cream"
+                        value={lendingSettings.default_duration_hours}
+                        onChange={(e) =>
+                          updateLendingSettings.mutate({
+                            club_id: club.id,
+                            default_duration_hours: parseInt(e.target.value, 10) || 4,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-cream">Require Contact Info</Label>
+                        <p className="text-xs text-cream/60">Borrowers must provide contact details</p>
+                      </div>
+                      <Switch
+                        checked={lendingSettings.require_contact_info}
+                        onCheckedChange={(checked) =>
+                          updateLendingSettings.mutate({
+                            club_id: club.id,
+                            require_contact_info: checked,
+                          })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
