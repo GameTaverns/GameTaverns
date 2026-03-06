@@ -5,7 +5,8 @@ import { ReferralPanel } from "@/components/referral/ReferralPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Share2, Users, Gift, ChevronRight, ChevronLeft, ImageIcon } from "lucide-react";
+import { Share2, Users, Gift, ChevronRight, ImageIcon } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import { REFERRAL_TIERS, FOUNDING_MEMBER_BADGE } from "@/hooks/useReferral";
 
 export default function Grow() {
