@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, ArrowLeft, BarChart3 } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, ArrowLeft, BarChart3, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,8 @@ import { TenantLink } from "@/components/TenantLink";
 import { useAuth } from "@/hooks/useAuth";
 import { ClubForumCard } from "@/components/community/ClubForumCard";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
+import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
+import { useClubLendingSettings } from "@/hooks/useClubLending";
 
 import { format } from "date-fns";
 

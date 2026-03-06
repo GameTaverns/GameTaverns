@@ -1,19 +1,23 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, BookOpen, RotateCcw, Clock, AlertTriangle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Search, BookOpen, RotateCcw, Clock, AlertTriangle,
+  Users, Package, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { useClubLoans, useClubLendingSettings } from "@/hooks/useClubLending";
 import { useClubGameSearch } from "@/hooks/useClubs";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ClubCheckoutDialog } from "./ClubCheckoutDialog";
 import { ClubReturnDialog } from "./ClubReturnDialog";
 import type { ClubLoan } from "@/hooks/useClubLending";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 
 interface ClubLendingDeskProps {
   clubId: string;
@@ -21,179 +25,240 @@ interface ClubLendingDeskProps {
 }
 
 export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
-  const [statusFilter, setStatusFilter] = useState("checked_out");
   const [gameSearch, setGameSearch] = useState("");
-  const debouncedSearch = useDebounce(gameSearch, 300);
+  const [loanSearch, setLoanSearch] = useState("");
+  const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
+  const debouncedGameSearch = useDebounce(gameSearch, 300);
 
   const { data: settings } = useClubLendingSettings(clubId);
-  const { data: loans = [], isLoading: loansLoading } = useClubLoans(clubId, statusFilter);
-  const { data: searchResults = [] } = useClubGameSearch(clubId, debouncedSearch);
+  const { data: activeLoans = [], isLoading: activeLoading } = useClubLoans(clubId, "checked_out");
+  const { data: returnedLoans = [] } = useClubLoans(clubId, "returned");
+  const { data: searchResults = [] } = useClubGameSearch(clubId, debouncedGameSearch);
 
   const [checkoutGame, setCheckoutGame] = useState<any>(null);
   const [returnLoan, setReturnLoan] = useState<ClubLoan | null>(null);
 
-  const activeCount = loans.filter((l) => l.status === "checked_out").length;
-
   const isOverdue = (loan: ClubLoan) =>
     loan.status === "checked_out" && loan.due_at && new Date(loan.due_at) < new Date();
 
+  const overdueLoans = useMemo(() => activeLoans.filter(isOverdue), [activeLoans]);
+  const onTimeLoans = useMemo(
+    () => activeLoans.filter((l) => !isOverdue(l)),
+    [activeLoans]
+  );
+
+  // Filter active loans by borrower name search
+  const filteredActive = useMemo(() => {
+    if (!loanSearch.trim()) return activeLoans;
+    const q = loanSearch.toLowerCase();
+    return activeLoans.filter(
+      (l) =>
+        (l.guest_name && l.guest_name.toLowerCase().includes(q)) ||
+        (l.borrower_profile?.display_name &&
+          l.borrower_profile.display_name.toLowerCase().includes(q)) ||
+        (l.game?.title && l.game.title.toLowerCase().includes(q))
+    );
+  }, [activeLoans, loanSearch]);
+
+  const uniqueBorrowers = useMemo(() => {
+    const set = new Set<string>();
+    activeLoans.forEach((l) => {
+      set.add(l.guest_name || l.borrower_profile?.display_name || "Unknown");
+    });
+    return set.size;
+  }, [activeLoans]);
+
   return (
     <div className="space-y-6">
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-          <CardContent className="p-4 text-center">
-            <BookOpen className="h-5 w-5 mx-auto mb-1 text-secondary" />
-            <p className="text-2xl font-display font-bold">
-              {statusFilter === "checked_out" ? loans.length : activeCount}
-            </p>
-            <p className="text-xs text-cream/60">Active Loans</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
-          <CardContent className="p-4 text-center">
-            <AlertTriangle className="h-5 w-5 mx-auto mb-1 text-amber-400" />
-            <p className="text-2xl font-display font-bold">
-              {loans.filter(isOverdue).length}
-            </p>
-            <p className="text-xs text-cream/60">Overdue</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream col-span-2">
-          <CardContent className="p-4">
-            <p className="text-xs text-cream/60 mb-2">Quick Checkout</p>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-cream/50" />
-              <Input
-                placeholder="Search games to check out..."
-                className="pl-10 bg-wood-dark/50 border-wood-medium/50 text-cream placeholder:text-cream/40"
-                value={gameSearch}
-                onChange={(e) => setGameSearch(e.target.value)}
-              />
-            </div>
-            {debouncedSearch && searchResults.length > 0 && (
-              <div className="mt-2 max-h-48 overflow-y-auto space-y-1 rounded-md border border-wood-medium/40 bg-wood-dark/80 p-1">
-                {searchResults.slice(0, 10).map((game: any) => (
-                  <button
-                    key={game.id}
-                    className="w-full flex items-center gap-3 p-2 rounded hover:bg-wood-medium/40 text-left"
-                    onClick={() => {
-                      setCheckoutGame(game);
-                      setGameSearch("");
-                    }}
-                  >
-                    {game.image_url && (
-                      <img
-                        src={game.image_url}
-                        alt=""
-                        className="h-8 w-8 rounded object-cover shrink-0"
-                      />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm text-cream truncate">{game.title}</p>
-                      <p className="text-xs text-cream/50">{game.library_name}</p>
-                    </div>
-                    <Button size="sm" variant="secondary" className="ml-auto shrink-0">
-                      <BookOpen className="h-3 w-3 mr-1" /> Checkout
-                    </Button>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* ── Header Stats Row ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          icon={<BookOpen className="h-5 w-5 text-secondary" />}
+          value={activeLoans.length}
+          label="Checked Out"
+        />
+        <StatCard
+          icon={<AlertTriangle className="h-5 w-5 text-amber-400" />}
+          value={overdueLoans.length}
+          label="Overdue"
+          highlight={overdueLoans.length > 0}
+        />
+        <StatCard
+          icon={<Users className="h-5 w-5 text-blue-400" />}
+          value={uniqueBorrowers}
+          label="Active Borrowers"
+        />
+        <StatCard
+          icon={<Package className="h-5 w-5 text-green-400" />}
+          value={returnedLoans.length}
+          label="Returned Today"
+        />
       </div>
 
-      {/* Loan List */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-lg text-cream">Loan Records</h3>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40 bg-wood-dark/50 border-wood-medium/50 text-cream">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="checked_out">Active</SelectItem>
-              <SelectItem value="returned">Returned</SelectItem>
-              <SelectItem value="all">All</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {loansLoading ? (
-          <p className="text-cream/50 text-center py-8">Loading...</p>
-        ) : loans.length === 0 ? (
-          <p className="text-cream/50 text-center py-8">
-            No {statusFilter === "all" ? "" : statusFilter.replace("_", " ")} loans.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {loans.map((loan) => (
-              <Card
-                key={loan.id}
-                className={`border text-cream ${
-                  isOverdue(loan)
-                    ? "bg-red-950/30 border-red-500/40"
-                    : "bg-wood-medium/30 border-wood-medium/50"
-                }`}
-              >
-                <CardContent className="flex items-center gap-4 p-4">
-                  {loan.game?.image_url && (
+      {/* ── Quick Checkout Search ── */}
+      <Card className="bg-secondary/10 border-secondary/30">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <BookOpen className="h-5 w-5 text-secondary shrink-0" />
+            <h3 className="font-display text-lg text-foreground font-semibold">
+              Quick Checkout
+            </h3>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search a game title to check out..."
+              className="pl-10 h-12 text-base bg-background border-border"
+              value={gameSearch}
+              onChange={(e) => setGameSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          {debouncedGameSearch && searchResults.length > 0 && (
+            <div className="mt-3 max-h-64 overflow-y-auto space-y-1 rounded-lg border border-border bg-background p-1">
+              {searchResults.slice(0, 12).map((game: any) => (
+                <button
+                  key={game.id}
+                  className="w-full flex items-center gap-3 p-3 rounded-md hover:bg-accent/50 text-left transition-colors"
+                  onClick={() => {
+                    setCheckoutGame(game);
+                    setGameSearch("");
+                  }}
+                >
+                  {game.image_url && (
                     <img
-                      src={loan.game.image_url}
+                      src={game.image_url}
                       alt=""
-                      className="h-12 w-12 rounded object-cover shrink-0"
+                      className="h-10 w-10 rounded object-cover shrink-0"
                     />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-display font-semibold truncate">
-                      {loan.game?.title || "Unknown Game"}
+                    <p className="font-medium text-foreground truncate">
+                      {game.title}
                     </p>
-                    <p className="text-sm text-cream/60">
-                      → {loan.guest_name || loan.borrower_profile?.display_name || "Unknown"}
-                      {loan.guest_contact && ` (${loan.guest_contact})`}
+                    <p className="text-xs text-muted-foreground">
+                      {game.library_name} · {game.owner_name}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-cream/40">
-                        Out: {format(new Date(loan.checked_out_at), "MMM d, h:mm a")}
-                      </span>
-                      {loan.due_at && (
-                        <span className="text-xs text-cream/40">
-                          · Due: {format(new Date(loan.due_at), "MMM d, h:mm a")}
-                        </span>
-                      )}
-                      {loan.condition_out && (
-                        <Badge variant="outline" className="text-xs">
-                          {loan.condition_out}
-                        </Badge>
-                      )}
-                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {isOverdue(loan) && (
-                      <Badge variant="destructive" className="gap-1">
-                        <Clock className="h-3 w-3" /> Overdue
-                      </Badge>
-                    )}
-                    {loan.status === "checked_out" ? (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setReturnLoan(loan)}
-                        className="gap-1"
-                      >
-                        <RotateCcw className="h-3 w-3" /> Return
-                      </Button>
-                    ) : (
-                      <Badge variant="secondary">Returned</Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  <Button size="sm" className="shrink-0 gap-1.5">
+                    <BookOpen className="h-3.5 w-3.5" />
+                    Check Out
+                  </Button>
+                </button>
+              ))}
+            </div>
+          )}
+          {debouncedGameSearch && searchResults.length === 0 && (
+            <p className="mt-3 text-sm text-muted-foreground text-center py-4">
+              No games found matching "{debouncedGameSearch}"
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Active Loans ── */}
+      <Tabs defaultValue="active" className="w-full">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <TabsList className="bg-muted/50">
+            <TabsTrigger value="active" className="gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              Active ({activeLoans.length})
+            </TabsTrigger>
+            <TabsTrigger value="returned" className="gap-1.5">
+              <RotateCcw className="h-3.5 w-3.5" />
+              Returned ({returnedLoans.length})
+            </TabsTrigger>
+          </TabsList>
+          <div className="relative max-w-xs flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Filter by name or game..."
+              className="pl-9 h-9 text-sm bg-background"
+              value={loanSearch}
+              onChange={(e) => setLoanSearch(e.target.value)}
+            />
           </div>
-        )}
-      </div>
+        </div>
+
+        <TabsContent value="active" className="mt-0">
+          {/* Overdue section first */}
+          {overdueLoans.length > 0 && !loanSearch && (
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold text-destructive flex items-center gap-1.5 mb-2">
+                <AlertTriangle className="h-4 w-4" />
+                Overdue ({overdueLoans.length})
+              </h4>
+              <div className="space-y-2">
+                {overdueLoans.map((loan) => (
+                  <LoanCard
+                    key={loan.id}
+                    loan={loan}
+                    isOverdue
+                    expanded={expandedLoanId === loan.id}
+                    onToggleExpand={() =>
+                      setExpandedLoanId(expandedLoanId === loan.id ? null : loan.id)
+                    }
+                    onReturn={() => setReturnLoan(loan)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* On-time loans */}
+          {activeLoading ? (
+            <p className="text-muted-foreground text-center py-8">Loading...</p>
+          ) : (loanSearch ? filteredActive : onTimeLoans).length === 0 ? (
+            <div className="text-center py-12">
+              <BookOpen className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-muted-foreground">
+                {loanSearch
+                  ? "No loans match your search"
+                  : "No active checkouts — use Quick Checkout above to get started"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(loanSearch ? filteredActive.filter((l) => !isOverdue(l)) : onTimeLoans).map(
+                (loan) => (
+                  <LoanCard
+                    key={loan.id}
+                    loan={loan}
+                    isOverdue={false}
+                    expanded={expandedLoanId === loan.id}
+                    onToggleExpand={() =>
+                      setExpandedLoanId(expandedLoanId === loan.id ? null : loan.id)
+                    }
+                    onReturn={() => setReturnLoan(loan)}
+                  />
+                )
+              )}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="returned" className="mt-0">
+          {returnedLoans.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No returned loans yet
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {returnedLoans.map((loan) => (
+                <LoanCard
+                  key={loan.id}
+                  loan={loan}
+                  isOverdue={false}
+                  expanded={expandedLoanId === loan.id}
+                  onToggleExpand={() =>
+                    setExpandedLoanId(expandedLoanId === loan.id ? null : loan.id)
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       {checkoutGame && settings && (
@@ -216,5 +281,203 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
         />
       )}
     </div>
+  );
+}
+
+// ── Sub-components ──
+
+function StatCard({
+  icon,
+  value,
+  label,
+  highlight,
+}: {
+  icon: React.ReactNode;
+  value: number;
+  label: string;
+  highlight?: boolean;
+}) {
+  return (
+    <Card
+      className={`border ${
+        highlight
+          ? "bg-destructive/10 border-destructive/30"
+          : "bg-card border-border"
+      }`}
+    >
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className="shrink-0">{icon}</div>
+        <div>
+          <p className="text-2xl font-display font-bold text-foreground">
+            {value}
+          </p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoanCard({
+  loan,
+  isOverdue,
+  expanded,
+  onToggleExpand,
+  onReturn,
+}: {
+  loan: ClubLoan;
+  isOverdue: boolean;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onReturn?: () => void;
+}) {
+  const borrowerLabel =
+    loan.guest_name || loan.borrower_profile?.display_name || "Unknown";
+  const gameTitle = loan.game?.title || "Unknown Game";
+  const isReturned = loan.status === "returned";
+
+  const timeInfo = isReturned
+    ? loan.returned_at
+      ? `Returned ${formatDistanceToNow(new Date(loan.returned_at), { addSuffix: true })}`
+      : "Returned"
+    : loan.due_at
+      ? isOverdue
+        ? `Overdue by ${formatDistanceToNow(new Date(loan.due_at))}`
+        : `Due ${formatDistanceToNow(new Date(loan.due_at), { addSuffix: true })}`
+      : "No due date";
+
+  return (
+    <Card
+      className={`border transition-colors ${
+        isOverdue
+          ? "bg-destructive/5 border-destructive/30"
+          : isReturned
+            ? "bg-muted/30 border-border"
+            : "bg-card border-border"
+      }`}
+    >
+      <CardContent className="p-0">
+        {/* Main row */}
+        <div className="flex items-center gap-3 p-3 sm:p-4">
+          {loan.game?.image_url ? (
+            <img
+              src={loan.game.image_url}
+              alt=""
+              className="h-12 w-12 rounded-lg object-cover shrink-0"
+            />
+          ) : (
+            <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0">
+              <Package className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
+
+          <div className="min-w-0 flex-1">
+            <p className="font-display font-semibold text-foreground truncate">
+              {gameTitle}
+            </p>
+            <p className="text-sm text-muted-foreground truncate">
+              → {borrowerLabel}
+              {loan.guest_contact && (
+                <span className="text-xs ml-1 opacity-70">
+                  ({loan.guest_contact})
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Time badge */}
+            <Badge
+              variant={isOverdue ? "destructive" : isReturned ? "secondary" : "outline"}
+              className="hidden sm:flex gap-1 text-xs"
+            >
+              <Clock className="h-3 w-3" />
+              {timeInfo}
+            </Badge>
+
+            {/* Return button */}
+            {!isReturned && onReturn && (
+              <Button
+                size="sm"
+                onClick={onReturn}
+                className="gap-1.5"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Return
+              </Button>
+            )}
+
+            {/* Expand toggle */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={onToggleExpand}
+            >
+              {expanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile time badge */}
+        <div className="sm:hidden px-3 pb-2">
+          <Badge
+            variant={isOverdue ? "destructive" : isReturned ? "secondary" : "outline"}
+            className="gap-1 text-xs"
+          >
+            <Clock className="h-3 w-3" />
+            {timeInfo}
+          </Badge>
+        </div>
+
+        {/* Expanded details */}
+        {expanded && (
+          <div className="border-t border-border px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Checked Out</p>
+              <p className="text-foreground">
+                {format(new Date(loan.checked_out_at), "MMM d, h:mm a")}
+              </p>
+            </div>
+            {loan.due_at && (
+              <div>
+                <p className="text-xs text-muted-foreground">Due</p>
+                <p className="text-foreground">
+                  {format(new Date(loan.due_at), "MMM d, h:mm a")}
+                </p>
+              </div>
+            )}
+            {loan.condition_out && (
+              <div>
+                <p className="text-xs text-muted-foreground">Condition Out</p>
+                <p className="text-foreground">{loan.condition_out}</p>
+              </div>
+            )}
+            {loan.condition_in && (
+              <div>
+                <p className="text-xs text-muted-foreground">Condition In</p>
+                <p className="text-foreground">{loan.condition_in}</p>
+              </div>
+            )}
+            {loan.notes && (
+              <div className="col-span-2 sm:col-span-4">
+                <p className="text-xs text-muted-foreground">Notes</p>
+                <p className="text-foreground">{loan.notes}</p>
+              </div>
+            )}
+            {loan.library && (
+              <div>
+                <p className="text-xs text-muted-foreground">From Library</p>
+                <p className="text-foreground">{loan.library.name}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
