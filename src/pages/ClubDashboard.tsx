@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { format } from "date-fns";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
+import { ClubLogoUpload } from "@/components/clubs/ClubLogoUpload";
 
 const CLUB_EVENT_DIALOG_KEY = "club_dashboard_event_dialog_open";
 const CLUB_EVENT_TITLE_KEY = "club_dashboard_event_title";
