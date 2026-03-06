@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { Layout } from "@/components/layout/Layout";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -50,6 +51,7 @@ export default function CuratedListsPage() {
   const { data: publicLists = [], isLoading } = useCuratedLists(library?.id);
   const { data: myLists = [] } = useMyLists();
   const { data: wishlistItems = [] } = useMyWantList();
+  const [listsTab, setListsTab] = usePersistedTab("curated-lists-tab", "community");
 
   const listUrl = (id: string) => {
     const path = `/lists/${id}`;
@@ -73,7 +75,7 @@ export default function CuratedListsPage() {
           {isAuthenticated && <CreateListButton libraryId={library?.id} />}
         </div>
 
-        <Tabs defaultValue="community">
+        <Tabs value={listsTab} onValueChange={setListsTab}>
           <TabsList>
             <TabsTrigger value="community">Community</TabsTrigger>
             {isAuthenticated && <TabsTrigger value="mine">My Lists</TabsTrigger>}

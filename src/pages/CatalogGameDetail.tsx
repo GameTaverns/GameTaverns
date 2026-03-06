@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart } from "lucide-react";
@@ -86,7 +87,7 @@ export default function CatalogGameDetail() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
-
+  const [catalogTab, setCatalogTab] = usePersistedTab("catalog-detail-tab", "description");
   const { data: game, isLoading } = useQuery({
     queryKey: ["catalog-game", slug],
     queryFn: async (): Promise<CatalogGameFull | null> => {
@@ -433,7 +434,7 @@ export default function CatalogGameDetail() {
             </div>
 
             {/* Tabs */}
-            <Tabs defaultValue="description" className="w-full">
+            <Tabs value={catalogTab} onValueChange={setCatalogTab} className="w-full">
               <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
                 <TabsTrigger value="description">Description</TabsTrigger>
                 <TabsTrigger value="info">Info</TabsTrigger>

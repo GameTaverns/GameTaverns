@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Settings as SettingsIcon, Eye, ArrowRight, Share2, AlertTriangle, User } from "lucide-react";
@@ -24,6 +25,7 @@ export default function SettingsPage() {
   const { user, isAuthenticated, loading } = useAuth();
   const { data: profile } = useUserProfile();
   const navigate = useNavigate();
+  const [settingsTab, setSettingsTab] = usePersistedTab("settings-tab", "profile");
 
   useEffect(() => {
     if (!loading && !isAuthenticated) navigate("/login");
@@ -70,7 +72,7 @@ export default function SettingsPage() {
             <CardDescription className="text-cream/70 text-xs">{t('dashboard.accountSettingsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <Tabs defaultValue="profile">
+            <Tabs value={settingsTab} onValueChange={setSettingsTab}>
               <TabsList className="mb-4">
                 <TabsTrigger value="profile">{t('settings.profile')}</TabsTrigger>
                 <TabsTrigger value="security">{t('settings.security')}</TabsTrigger>

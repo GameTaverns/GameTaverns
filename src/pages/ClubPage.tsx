@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDash
 import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
 import { useClubLendingSettings } from "@/hooks/useClubLending";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 
 import { format } from "date-fns";
 
@@ -30,6 +31,16 @@ export default function ClubPage() {
   const visibleLibraries = clubLibraries;
   const { data: clubEvents = [] } = useClubEvents(club?.id || null);
   const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
+
+  const [activeTab, setActiveTab] = usePersistedTab(
+    `club-tab-${slug}`,
+    categorySlug ? "forums" : "catalog"
+  );
+
+  // If navigated with a categorySlug, force forums tab
+  useEffect(() => {
+    if (categorySlug) setActiveTab("forums");
+  }, [categorySlug, setActiveTab]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [switchingLibraryId, setSwitchingLibraryId] = useState<string | null>(null);
@@ -113,7 +124,7 @@ export default function ClubPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue={categorySlug ? "forums" : "catalog"} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6 bg-wood-dark/60 border border-wood-medium/40">
             <TabsTrigger
               value="catalog"

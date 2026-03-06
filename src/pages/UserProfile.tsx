@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2 } from "lucide-react";
 import { BackLink } from "@/components/navigation/BackLink";
@@ -68,6 +69,7 @@ export default function UserProfile() {
   const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [isSharedCommunity, setIsSharedCommunity] = useState(false);
+  const [profileTab, setProfileTab] = usePersistedTab(`profile-tab-${username}`, "activity");
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id));
   }, []);
@@ -308,7 +310,7 @@ export default function UserProfile() {
         </Card>
 
         {/* Tabbed content: Activity + Achievements + Communities + Feedback */}
-        <Tabs defaultValue="activity">
+        <Tabs value={profileTab} onValueChange={setProfileTab}>
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : {}}>
             <TabsTrigger value="activity" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Activity className="h-3.5 w-3.5" />Activity

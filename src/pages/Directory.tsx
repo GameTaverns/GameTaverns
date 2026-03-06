@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { Link } from "react-router-dom";
 import { SEO } from "@/components/seo/SEO";
 import { Layout } from "@/components/layout/Layout";
@@ -41,6 +42,7 @@ export default function Directory() {
   const [filterRegion, setFilterRegion] = useState<string>("all");
   const [filterCountry, setFilterCountry] = useState<string>("all");
   const [filterCity, setFilterCity] = useState<string>("all");
+  const [dirTab, setDirTab] = usePersistedTab("directory-tab", "all");
 
   const {
     libraries,
@@ -413,7 +415,7 @@ export default function Directory() {
           <FilterSidebar />
 
           <div className="flex-1 min-w-0">
-            <Tabs defaultValue="all" className="space-y-6">
+            <Tabs value={dirTab} onValueChange={setDirTab} className="space-y-6">
               <TabsList>
                 <TabsTrigger value="all">All Libraries</TabsTrigger>
                 <TabsTrigger value="popular" className="gap-1">

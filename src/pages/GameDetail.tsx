@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight, Calendar, BookOpen } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
@@ -60,6 +61,7 @@ const GameDetail = () => {
   const { playLogs, messaging, forSale, ratings, lending } = useFeatureFlags();
   useLibraryViewTracking(library?.id, isLibraryOwner);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [gameDetailTab, setGameDetailTab] = usePersistedTab("game-detail-tab", "description");
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
   const [useProxyForImage, setUseProxyForImage] = useState<Record<string, boolean>>({});
   
@@ -568,7 +570,7 @@ const GameDetail = () => {
             </div>
 
             {/* Tabs for Description and Additional Info */}
-            <Tabs defaultValue="description" className="w-full">
+            <Tabs value={gameDetailTab} onValueChange={setGameDetailTab} className="w-full">
               <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4 max-w-[calc(100vw-2rem)] overflow-x-auto">
                 <TabsTrigger value="description">{t('game.description')}</TabsTrigger>
                 <TabsTrigger value="info">{t('game.info')}</TabsTrigger>
