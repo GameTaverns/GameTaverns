@@ -273,6 +273,33 @@ async function handler(req: Request): Promise<Response> {
       });
     }
 
+    // Enforce password policy: 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol
+    if (password.length < 8) {
+      return new Response(JSON.stringify({ error: "Password must be at least 8 characters" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!/[A-Z]/.test(password)) {
+      return new Response(JSON.stringify({ error: "Password must contain at least one uppercase letter" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!/[a-z]/.test(password)) {
+      return new Response(JSON.stringify({ error: "Password must contain at least one lowercase letter" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!/[0-9]/.test(password)) {
+      return new Response(JSON.stringify({ error: "Password must contain at least one number" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      return new Response(JSON.stringify({ error: "Password must contain at least one special character" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Validate username format if provided
     if (username) {
       if (username.length < 3 || username.length > 30) {
