@@ -153,6 +153,7 @@ EXTERNAL_HANDLERS=(
   embed-widget
   pbf-turn-nudge
   pbf-daily-challenge
+  check-password-reuse
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   src="$FUNCTIONS_DIR/$handler"
