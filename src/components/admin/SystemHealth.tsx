@@ -442,6 +442,7 @@ export function SystemHealth() {
     has_artists: number;
     has_rating: number;
     remaining: number;
+    missing_designers: number;
     percent: number;
   }
 
@@ -462,6 +463,7 @@ export function SystemHealth() {
         has_artists: s?.has_artists || 0,
         has_rating: s?.has_rating || 0,
         remaining,
+        missing_designers: s?.missing_designers || 0,
         percent: totalWithBgg ? Math.round((enrichedCount / totalWithBgg) * 100) : 0,
       };
     },
@@ -601,6 +603,16 @@ export function SystemHealth() {
       }
       if (data.mode === "refresh-bgg-ratings") {
         toast.success(`BGG ratings refreshed: ${data.updated || 0} updated, ${data.remaining || 0} remaining`);
+        return;
+      }
+      if (data.mode === "fix-missing") {
+        toast.success(`Fix missing complete: ${data.processed} re-enriched, ${data.designersAdded} designers added, ${data.artistsAdded} artists added (checked ${data.checked})`);
+        console.log("[catalog-backfill fix-missing]", data);
+        if (data.errors?.length) {
+          console.warn("[fix-missing errors]", data.errors);
+          toast.warning(`Fix-missing warnings: ${data.errors.slice(0, 3).join(" | ")}`, { duration: 15000 });
+        }
+        queryClient.invalidateQueries({ queryKey: ["catalog-backfill-status"] });
         return;
       }
       if (data.mode === "sync-ratings") {
@@ -1555,6 +1567,12 @@ export function SystemHealth() {
                     <div className="text-lg font-bold text-cream">{s.has_artists.toLocaleString()}</div>
                     <div className="text-xs text-cream/50">Have Artists</div>
                   </div>
+                  {s.missing_designers > 0 && (
+                    <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/40 text-center">
+                      <div className="text-lg font-bold text-orange-400">{s.missing_designers.toLocaleString()}</div>
+                      <div className="text-xs text-cream/50">Missing Designers</div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Progress bar */}
@@ -1573,6 +1591,13 @@ export function SystemHealth() {
                     <span>~{Math.ceil(s.remaining / 200)} min remaining (200/batch via cron)</span>
                   )}
                 </div>
+
+                {/* Warning if missing designers */}
+                {s.missing_designers > 0 && (
+                  <div className="text-xs text-orange-400 p-2 rounded bg-orange-500/10 border border-orange-500/30">
+                    ⚠️ {s.missing_designers.toLocaleString()} entries are enriched but missing designers/artists. Use "Fix Missing Designers" to re-fetch from BGG.
+                  </div>
+                )}
 
                 {/* Warning if 0% */}
                 {s.percent === 0 && s.total_with_bgg > 0 && (
@@ -1604,6 +1629,15 @@ export function SystemHealth() {
                     disabled={backfillMutation.isPending}
                   >
                     <Zap className="h-3.5 w-3.5 mr-1" /> Test BGG
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs border-orange-500/40 text-orange-300 hover:bg-orange-500/10"
+                    onClick={() => backfillMutation.mutate("fix-missing")}
+                    disabled={backfillMutation.isPending}
+                  >
+                    <Zap className="h-3.5 w-3.5 mr-1" /> Fix Missing Designers
                   </Button>
                 </div>
 
