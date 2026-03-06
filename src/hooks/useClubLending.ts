@@ -17,6 +17,7 @@ export interface ClubLoan {
   club_id: string;
   game_id: string;
   library_id: string;
+  copy_id: string | null;
   borrower_user_id: string | null;
   guest_name: string | null;
   guest_contact: string | null;
@@ -33,6 +34,7 @@ export interface ClubLoan {
   // Joined fields
   game?: { id: string; title: string; image_url: string | null; slug: string | null };
   library?: { id: string; name: string; slug: string };
+  copy?: { id: string; copy_number: number; copy_label: string | null; condition: string | null } | null;
   borrower_profile?: { display_name: string | null; username: string | null } | null;
 }
 
