@@ -258,6 +258,7 @@ export default function ResetPassword() {
                   className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                   required
                 />
+                <PasswordStrengthIndicator password={password} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="text-cream/80">{t('resetPassword.confirmPassword')}</Label>
