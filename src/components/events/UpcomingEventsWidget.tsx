@@ -164,6 +164,7 @@ export function UpcomingEventsWidget({
   onCreateEvent,
   onEditEvent,
 }: UpcomingEventsWidgetProps) {
+  const { user, isAdmin, isStaff } = useAuth();
   const { data: events, isLoading } = useUpcomingEvents(libraryId);
   const deleteEvent = useDeleteEvent();
   const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
