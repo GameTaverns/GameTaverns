@@ -146,7 +146,8 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        {/* Edit + Status / Actions Menu */}
+        {/* Edit + Status / Actions Menu — only for event creator/admin/staff */}
+        {canManageEvent && (
         <div className="flex items-center gap-2">
         <EditEventDialog event={event} />
         <DropdownMenu>
@@ -185,6 +186,7 @@ export default function EventDetailPage() {
           </DropdownMenuContent>
         </DropdownMenu>
         </div>
+        )}
       </div>
 
       {/* Quick Info Bar */}
