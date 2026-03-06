@@ -5573,6 +5573,14 @@ export type Database = {
           schedule: string
         }[]
       }
+      get_missing_designer_entries: {
+        Args: { p_limit?: number }
+        Returns: {
+          bgg_id: string
+          id: string
+          title: string
+        }[]
+      }
       get_or_create_referral_code: {
         Args: { _user_id: string }
         Returns: string
