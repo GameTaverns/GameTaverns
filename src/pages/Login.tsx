@@ -184,10 +184,12 @@ const Login = () => {
       return;
     }
 
-    if (password.length < 6) {
+    const { validatePassword } = await import("@/lib/password-validation");
+    const validation = validatePassword(password);
+    if (!validation.valid) {
       toast({
         title: t('errors.passwordTooShort'),
-        description: t('errors.passwordTooShortDesc'),
+        description: validation.errors[0],
         variant: "destructive",
       });
       return;
