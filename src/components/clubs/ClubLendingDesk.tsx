@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useClubLoans, useClubLendingSettings, useClubLoansRealtime } from "@/hooks/useClubLending";
 import { useClubGameSearch } from "@/hooks/useClubs";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useBarcodeLookup } from "@/hooks/useBarcodeScanner";
 import { ClubCheckoutDialog } from "./ClubCheckoutDialog";
