@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useClub, useClubLibraries, useClubGameSearch, useClubEvents } from "@/hooks/useClubs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useClub, useClubLibraries, useClubGameSearch, useClubEvents, useSwitchClubLibrary } from "@/hooks/useClubs";
+import { useMyLibraries } from "@/hooks/useLibrary";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
@@ -16,6 +18,7 @@ import { BackLink } from "@/components/navigation/BackLink";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
 import { useClubLendingSettings } from "@/hooks/useClubLending";
+import { useToast } from "@/hooks/use-toast";
 
 import { format } from "date-fns";
 
@@ -29,11 +32,16 @@ export default function ClubPage() {
   const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [switchingLibraryId, setSwitchingLibraryId] = useState<string | null>(null);
+  const [newLibraryId, setNewLibraryId] = useState("");
   const debouncedQuery = useDebounce(searchQuery, 300);
   const { data: games = [], isLoading: searchLoading } = useClubGameSearch(
     club?.id || null,
     debouncedQuery
   );
+  const { data: myLibraries = [] } = useMyLibraries();
+  const switchLibrary = useSwitchClubLibrary();
+  const { toast } = useToast();
 
   if (isLoading) {
     return (
@@ -249,35 +257,109 @@ export default function ClubPage() {
           {/* ── Member Libraries ── */}
           <TabsContent value="libraries">
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {visibleLibraries.map((cl: any) => (
-                <Card
-                  key={cl.id}
-                  className="bg-wood-medium/30 border-wood-medium/50 text-cream"
-                >
-                  <CardHeader>
-                    <CardTitle className="text-lg font-display">
-                      {cl.library?.name || "Unknown Library"}
-                    </CardTitle>
-                    <CardDescription className="text-cream/60">
-                      Joined {format(new Date(cl.joined_at), "MMM d, yyyy")}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {cl.library?.slug && (
-                      <TenantLink href={getLibraryUrl(cl.library.slug, "/")}>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="gap-2"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Visit Library
-                        </Button>
-                      </TenantLink>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+              {visibleLibraries.map((cl: any) => {
+                const isMyLibrary = user && cl.library?.owner_id === user.id;
+                const otherLibraries = myLibraries.filter(
+                  (l) => l.id !== cl.library_id && !visibleLibraries.some((vl: any) => vl.library_id === l.id)
+                );
+                const isSwitching = switchingLibraryId === cl.library_id;
+
+                return (
+                  <Card
+                    key={cl.id}
+                    className="bg-wood-medium/30 border-wood-medium/50 text-cream"
+                  >
+                    <CardHeader>
+                      <CardTitle className="text-lg font-display flex items-center gap-2">
+                        {cl.library?.name || "Unknown Library"}
+                        {isMyLibrary && (
+                          <Badge variant="outline" className="text-xs text-cream/60">You</Badge>
+                        )}
+                      </CardTitle>
+                      <CardDescription className="text-cream/60">
+                        Joined {format(new Date(cl.joined_at), "MMM d, yyyy")}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {cl.library?.slug && (
+                        <TenantLink href={getLibraryUrl(cl.library.slug, "/")}>
+                          <Button variant="secondary" size="sm" className="gap-2">
+                            <ExternalLink className="h-4 w-4" />
+                            Visit Library
+                          </Button>
+                        </TenantLink>
+                      )}
+
+                      {/* Switch library option for own library */}
+                      {isMyLibrary && otherLibraries.length > 0 && (
+                        <div className="pt-2 border-t border-wood-medium/30">
+                          {isSwitching ? (
+                            <div className="space-y-2">
+                              <p className="text-xs text-cream/60">Switch to a different library:</p>
+                              <Select value={newLibraryId} onValueChange={setNewLibraryId}>
+                                <SelectTrigger className="bg-wood-medium/50 border-border/50 text-cream text-sm h-9">
+                                  <SelectValue placeholder="Select library..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {otherLibraries.map((lib) => (
+                                    <SelectItem key={lib.id} value={lib.id}>
+                                      {lib.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  disabled={!newLibraryId || switchLibrary.isPending}
+                                  onClick={async () => {
+                                    try {
+                                      await switchLibrary.mutateAsync({
+                                        club_id: club.id,
+                                        old_library_id: cl.library_id,
+                                        new_library_id: newLibraryId,
+                                      });
+                                      toast({ title: "Library switched!", description: "Your club library has been updated." });
+                                      setSwitchingLibraryId(null);
+                                      setNewLibraryId("");
+                                    } catch (e: any) {
+                                      toast({ title: "Switch failed", description: e.message, variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  {switchLibrary.isPending ? "Switching..." : "Confirm"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-cream/60"
+                                  onClick={() => {
+                                    setSwitchingLibraryId(null);
+                                    setNewLibraryId("");
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-1.5 text-cream/60 hover:text-cream text-xs"
+                              onClick={() => setSwitchingLibraryId(cl.library_id)}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                              Switch Library
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </TabsContent>
 
