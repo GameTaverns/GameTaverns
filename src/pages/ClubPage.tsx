@@ -31,6 +31,7 @@ export default function ClubPage() {
   const visibleLibraries = clubLibraries;
   const { data: clubEvents = [] } = useClubEvents(club?.id || null);
   const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
+  const { data: isLendingStaff = false } = useIsClubLendingStaff(club?.id || null, user?.id);
 
   const [activeTab, setActiveTab] = usePersistedTab(
     `club-tab-${slug}`,
@@ -80,7 +81,6 @@ export default function ClubPage() {
   );
 
   const isOwner = !!user && club.owner_id === user.id;
-  const { data: isLendingStaff = false } = useIsClubLendingStaff(club.id, user?.id);
   const showLendingDesk = (isOwner || isLendingStaff) && lendingSettings?.lending_enabled;
   const gamesByTitle = new Map<string, typeof games>();
   for (const game of games) {
