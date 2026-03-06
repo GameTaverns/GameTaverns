@@ -814,18 +814,21 @@ export type Database = {
         Row: {
           club_id: string
           id: string
+          is_visible: boolean
           joined_at: string
           library_id: string
         }
         Insert: {
           club_id: string
           id?: string
+          is_visible?: boolean
           joined_at?: string
           library_id: string
         }
         Update: {
           club_id?: string
           id?: string
+          is_visible?: boolean
           joined_at?: string
           library_id?: string
         }
