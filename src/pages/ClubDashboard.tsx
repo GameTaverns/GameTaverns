@@ -54,6 +54,8 @@ export default function ClubDashboard() {
   const { data: libraries = [] } = useClubLibraries(club?.id || null);
   const { data: inviteCodes = [] } = useClubInviteCodes(club?.id || null);
   const { data: events = [] } = useClubEvents(club?.id || null);
+  const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
+  const updateLendingSettings = useUpdateClubLendingSettings();
 
   const generateCode = useGenerateInviteCode();
   const removeLibrary = useRemoveClubLibrary();
