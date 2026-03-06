@@ -93,9 +93,9 @@ export default function ClubPage() {
                 <p className="text-cream/70 mt-1">{club.description}</p>
               )}
               <div className="flex items-center gap-3 mt-2">
-                <Badge variant="secondary" className="gap-1">
+                 <Badge variant="secondary" className="gap-1">
                   <Users className="h-3 w-3" />
-                  {clubLibraries.length} {clubLibraries.length === 1 ? "library" : "libraries"}
+                  {visibleLibraries.length} {visibleLibraries.length === 1 ? "library" : "libraries"}
                 </Badge>
                 {club.is_public && (
                   <Badge variant="outline" className="text-cream/70">Public</Badge>
