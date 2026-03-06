@@ -551,7 +551,7 @@ const GameDetail = () => {
               })}
             </div>
 
-            {/* Catalog Link + BGG Link + Purchase Links */}
+            {/* Catalog Link + Purchase Links */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-6">
               {(game as any).catalog_id && (
                 <Link
@@ -561,17 +561,6 @@ const GameDetail = () => {
                   <BookOpen className="h-4 w-4" />
                   View in Catalog
                 </Link>
-              )}
-              {game.bgg_url && (
-                <a
-                  href={game.bgg_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  {t('game.viewOnBGG')}
-                </a>
               )}
               {(game as any).catalog_id && (
                 <PurchaseLinks catalogId={(game as any).catalog_id} />
