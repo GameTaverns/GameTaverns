@@ -176,6 +176,22 @@ export function useClubLibraries(clubId: string | null) {
   });
 }
 
+export function useToggleClubLibraryVisibility() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, club_id, is_visible }: { id: string; club_id: string; is_visible: boolean }) => {
+      const { error } = await supabase
+        .from("club_libraries")
+        .update({ is_visible })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["club-libraries", vars.club_id] });
+    },
+  });
+}
+
 // ── Club Invite Codes ──
 export function useClubInviteCodes(clubId: string | null) {
   return useQuery({
