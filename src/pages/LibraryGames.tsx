@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Upload, Tag, Building, Loader2, RefreshCw, Star } from "lucide-react";
+import { Plus, Upload, Tag, Building, Loader2, RefreshCw, Star } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
