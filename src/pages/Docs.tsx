@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/accordion";
 import {
   BookOpen, Gamepad2, BarChart3, UserCircle, MessageSquare,
-  Users, Settings, HelpCircle, Shield, Search, ArrowLeft,
+  Users, Settings, HelpCircle, Shield, Search,
   Sparkles, Globe, Calendar, BookMarked, Mail, Dice5,
   ClipboardList, Library, TrendingUp, Heart, Star, RefreshCw,
   Copy, Vote, Building2, Target, Download, Palette, DollarSign,
