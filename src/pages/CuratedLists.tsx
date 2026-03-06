@@ -38,7 +38,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ListOrdered, Heart, Plus, Trash2, ArrowRight, Lock, Globe, Gift, X } from "lucide-react";
+import { ListOrdered, Heart, Plus, Trash2, ArrowRight, Lock, Globe, Gift } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { format } from "date-fns";
