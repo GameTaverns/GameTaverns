@@ -90,7 +90,7 @@ export function useClubLoans(clubId: string | null, statusFilter?: string) {
         .order("checked_out_at", { ascending: false });
 
       if (statusFilter && statusFilter !== "all") {
-        query = query.eq("status", statusFilter);
+        query = query.eq("status", statusFilter as "checked_out" | "returned" | "overdue");
       }
 
       const { data, error } = await query.limit(500);
