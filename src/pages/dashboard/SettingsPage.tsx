@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Settings as SettingsIcon, Eye, ArrowRight, Share2, AlertTriangle, User } from "lucide-react";
