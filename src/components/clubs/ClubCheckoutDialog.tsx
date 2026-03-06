@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -26,17 +26,48 @@ interface ClubCheckoutDialogProps {
 }
 
 const CONDITION_OPTIONS = ["New", "Like New", "Good", "Fair", "Poor"];
+const CHECKOUT_DRAFT_KEY = "club-checkout-draft";
+
+interface CheckoutDraft {
+  guestName: string;
+  guestContact: string;
+  conditionOut: string;
+  notes: string;
+  durationHours: string;
+  selectedCopyId: string;
+  gameId: string;
+}
+
+function loadCheckoutDraft(gameId: string): CheckoutDraft | null {
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_DRAFT_KEY);
+    if (!raw) return null;
+    const draft: CheckoutDraft = JSON.parse(raw);
+    // Only restore if it's for the same game
+    return draft.gameId === gameId ? draft : null;
+  } catch { return null; }
+}
+
+function saveCheckoutDraft(draft: CheckoutDraft) {
+  try { sessionStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(draft)); } catch {}
+}
+
+function clearCheckoutDraft() {
+  sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
+}
 
 export function ClubCheckoutDialog({
   open, onOpenChange, clubId, game, staffUserId, defaultDurationHours, requireContact,
   onCheckoutComplete,
 }: ClubCheckoutDialogProps) {
-  const [guestName, setGuestName] = useState("");
-  const [guestContact, setGuestContact] = useState("");
-  const [conditionOut, setConditionOut] = useState("");
-  const [notes, setNotes] = useState("");
-  const [durationHours, setDurationHours] = useState(defaultDurationHours.toString());
-  const [selectedCopyId, setSelectedCopyId] = useState("");
+  const draft = useMemo(() => loadCheckoutDraft(game.id), [game.id]);
+
+  const [guestName, setGuestName] = useState(draft?.guestName ?? "");
+  const [guestContact, setGuestContact] = useState(draft?.guestContact ?? "");
+  const [conditionOut, setConditionOut] = useState(draft?.conditionOut ?? "");
+  const [notes, setNotes] = useState(draft?.notes ?? "");
+  const [durationHours, setDurationHours] = useState(draft?.durationHours ?? defaultDurationHours.toString());
+  const [selectedCopyId, setSelectedCopyId] = useState(draft?.selectedCopyId ?? "");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,6 +75,19 @@ export function ClubCheckoutDialog({
   const { data: copies = [] } = useClubGameCopies(game.id);
   const { toast } = useToast();
   const hasMultipleCopies = (game.copies_owned ?? 1) > 1 || copies.length > 1;
+
+  // Auto-save draft on changes (debounced)
+  const saveDraftDebounced = useCallback(() => {
+    saveCheckoutDraft({
+      guestName, guestContact, conditionOut, notes, durationHours, selectedCopyId, gameId: game.id,
+    });
+  }, [guestName, guestContact, conditionOut, notes, durationHours, selectedCopyId, game.id]);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(saveDraftDebounced, 300);
+    return () => clearTimeout(timer);
+  }, [saveDraftDebounced, open]);
 
   // Recent borrowers for quick-fill
   const recentBorrowers = useMemo(() => getRecentBorrowers(clubId), [clubId, open]);
@@ -104,6 +148,7 @@ export function ClubCheckoutDialog({
     setSelectedCopyId("");
     setDurationHours(defaultDurationHours.toString());
     setShowSuggestions(false);
+    clearCheckoutDraft();
   };
 
   const selectSuggestion = (borrower: { name: string; contact: string }) => {
