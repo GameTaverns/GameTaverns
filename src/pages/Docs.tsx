@@ -21,6 +21,7 @@ import {
   ArrowLeftRight, Bell, Server, MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BackLink } from "@/components/navigation/BackLink";
 
 /* ── Helpers ── */
 
