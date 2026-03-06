@@ -406,6 +406,30 @@ export default function ClubDashboard() {
 
           {/* Settings */}
           <TabsContent value="settings" className="space-y-6">
+            {/* Logo Upload */}
+            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream max-w-lg">
+              <CardHeader>
+                <CardTitle className="font-display">Club Logo</CardTitle>
+                <CardDescription className="text-cream/60">
+                  Upload a logo that represents your club
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ClubLogoUpload
+                  clubId={club.id}
+                  currentLogoUrl={club.logo_url}
+                  clubName={club.name}
+                  onUploaded={async (url) => {
+                    try {
+                      await updateClub.mutateAsync({ club_id: club.id, logo_url: url });
+                    } catch (e: any) {
+                      toast({ title: "Error", description: e.message, variant: "destructive" });
+                    }
+                  }}
+                />
+              </CardContent>
+            </Card>
+
             <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream max-w-lg">
               <CardHeader>
                 <CardTitle className="font-display">Club Settings</CardTitle>
