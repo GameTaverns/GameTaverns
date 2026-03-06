@@ -54,6 +54,8 @@ export default function EventDetailPage() {
   const { data: event, isLoading } = useEventDetail(eventId);
   const updateEvent = useUpdateEventDetail();
   const { user, isAuthenticated, isAdmin, isStaff } = useAuth();
+  const { data: registrations = [] } = useEventRegistrations(eventId);
+  const registrationCount = registrations.filter(r => r.status === "registered").length;
   const [activeTab, setActiveTab] = useState("details");
 
   // Permission: only event creator, admin, or staff can edit/manage
