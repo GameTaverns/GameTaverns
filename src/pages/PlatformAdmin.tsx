@@ -195,7 +195,7 @@ export default function PlatformAdmin() {
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-2 sm:px-4 py-8 overflow-x-hidden">
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-display font-bold text-cream mb-2">
             {t('admin.siteAdmin')}

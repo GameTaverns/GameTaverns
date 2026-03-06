@@ -89,7 +89,7 @@ export function AccountLockoutManager() {
   };
 
   return (
-    <Card className="bg-wood-medium/30 border-wood-medium/50">
+    <Card className="bg-wood-medium/30 border-wood-medium/50 overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <ShieldAlert className="h-4 w-4" />
