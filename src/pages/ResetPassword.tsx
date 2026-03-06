@@ -108,14 +108,32 @@ export default function ResetPassword() {
       if (isSelfHostedMode()) {
         await apiClient.post('/auth/reset-password', { token, newPassword: password });
       } else if (token) {
+        // verify-reset-token handles reuse check internally
         const { data, error } = await supabase.functions.invoke('verify-reset-token', {
           body: { token, action: 'reset', newPassword: password },
         });
         if (error) throw error;
         if (!data?.success) throw new Error(data?.error || 'Failed to reset password');
       } else {
+        // Direct session-based password change - check reuse first
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: reuseData, error: reuseError } = await supabase.functions.invoke('check-password-reuse', {
+            body: { userId: user.id, password, action: 'check' },
+          });
+          if (reuseError) throw reuseError;
+          if (reuseData?.reused) throw new Error(reuseData.error);
+        }
+
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
+
+        // Store the new password hash
+        if (user) {
+          await supabase.functions.invoke('check-password-reuse', {
+            body: { userId: user.id, password, action: 'store' },
+          });
+        }
       }
 
       setIsSuccess(true);

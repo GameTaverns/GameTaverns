@@ -6,6 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function hashPasswordForReuse(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const salted = encoder.encode(`gt_pw_reuse_salt_v1:${password}`);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", salted);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 interface VerifyTokenRequest {
   token: string;
   newPassword?: string;
@@ -70,6 +78,23 @@ export default async function handler(req: Request): Promise<Response> {
         );
       }
 
+      // Check password reuse (last 20 passwords)
+      const passwordHash = await hashPasswordForReuse(newPassword);
+      const { data: history } = await supabase
+        .from("password_history")
+        .select("password_hash")
+        .eq("user_id", tokenData.user_id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      const isReused = (history || []).some((h: any) => h.password_hash === passwordHash);
+      if (isReused) {
+        return new Response(
+          JSON.stringify({ error: "This password has been used recently. Please choose a different password. You cannot reuse any of your last 20 passwords." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // Update user password using admin API
       const { error: updateError } = await supabase.auth.admin.updateUserById(
         tokenData.user_id,
@@ -83,6 +108,11 @@ export default async function handler(req: Request): Promise<Response> {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // Store the new password hash
+      await supabase
+        .from("password_history")
+        .insert({ user_id: tokenData.user_id, password_hash: passwordHash });
 
       // Mark token as used
       await supabase

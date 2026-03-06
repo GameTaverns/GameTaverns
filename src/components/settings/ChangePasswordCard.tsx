@@ -28,8 +28,28 @@ export function ChangePasswordCard() {
 
     setIsUpdating(true);
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Check password reuse
+      const { data: reuseData, error: reuseError } = await supabase.functions.invoke('check-password-reuse', {
+        body: { userId: user.id, password: newPassword, action: 'check' },
+      });
+      if (reuseError) throw reuseError;
+      if (reuseData?.reused) {
+        toast({ title: "Password previously used", description: reuseData.error, variant: "destructive" });
+        return;
+      }
+
+      // Update password
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+
+      // Store the new password hash
+      await supabase.functions.invoke('check-password-reuse', {
+        body: { userId: user.id, password: newPassword, action: 'store' },
+      });
 
       toast({ title: "Password updated", description: "Your password has been changed successfully." });
       setNewPassword("");
@@ -74,6 +94,7 @@ export function ChangePasswordCard() {
               minLength={8}
             />
           </div>
+          <p className="text-xs text-muted-foreground">You cannot reuse any of your last 20 passwords.</p>
           <Button type="submit" disabled={isUpdating || !newPassword || !confirmPassword} className="w-full sm:w-auto">
             {isUpdating ? (
               <>
