@@ -86,7 +86,7 @@ export function useClubLoans(clubId: string | null, statusFilter?: string) {
       let query = supabase
         .from("club_loans")
         .select(
-          "*, game:games(id, title, image_url, slug), library:libraries(id, name, slug)"
+          "*, game:games(id, title, image_url, slug), library:libraries(id, name, slug), copy:game_copies(id, copy_number, copy_label, condition)"
         )
         .eq("club_id", clubId)
         .order("checked_out_at", { ascending: false });
