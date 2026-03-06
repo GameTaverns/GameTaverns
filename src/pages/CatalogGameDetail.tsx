@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { WhoHasThis } from "@/components/catalog/WhoHasThis";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { ManagePurchaseLinks } from "@/components/catalog/ManagePurchaseLinks";
+import { CatalogUpcEditor } from "@/components/catalog/CatalogUpcEditor";
 import { GameImage } from "@/components/games/GameImage";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyLibrary, useMyLibraries } from "@/hooks/useLibrary";
