@@ -112,6 +112,30 @@ export function ClubCheckoutDialog({
             />
           </div>
 
+          {/* Copy selector (only shown when multiple copies exist) */}
+          {hasMultipleCopies && copies.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Package className="h-3.5 w-3.5" />
+                Which Copy?
+              </Label>
+              <Select value={selectedCopyId} onValueChange={setSelectedCopyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a copy (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {copies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      Copy #{c.copy_number}
+                      {c.copy_label ? ` — ${c.copy_label}` : ""}
+                      {c.condition ? ` (${c.condition})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Condition */}
           <div className="space-y-2">
             <Label>Condition at Checkout</Label>

@@ -189,6 +189,24 @@ export function useReturnGame() {
   });
 }
 
+// ── Copies for a game (for club checkout copy picker) ──
+export function useClubGameCopies(gameId: string | null) {
+  return useQuery({
+    queryKey: ["club-game-copies", gameId],
+    queryFn: async () => {
+      if (!gameId) return [];
+      const { data, error } = await supabase
+        .from("game_copies")
+        .select("id, copy_number, copy_label, condition, notes")
+        .eq("game_id", gameId)
+        .order("copy_number");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!gameId,
+  });
+}
+
 // ── Active loan count for a game ──
 export function useGameActiveLoanCount(clubId: string | null, gameId: string | null) {
   return useQuery({
