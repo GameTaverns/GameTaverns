@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, ArrowLeft, BarChart3 } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, ArrowLeft, BarChart3, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,8 @@ import { TenantLink } from "@/components/TenantLink";
 import { useAuth } from "@/hooks/useAuth";
 import { ClubForumCard } from "@/components/community/ClubForumCard";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
+import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
+import { useClubLendingSettings } from "@/hooks/useClubLending";
 
 import { format } from "date-fns";
 
@@ -23,6 +25,7 @@ export default function ClubPage() {
   const { data: clubLibraries = [] } = useClubLibraries(club?.id || null);
   const visibleLibraries = clubLibraries.filter((cl: any) => cl.is_visible);
   const { data: clubEvents = [] } = useClubEvents(club?.id || null);
+  const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedQuery = useDebounce(searchQuery, 300);
@@ -57,8 +60,7 @@ export default function ClubPage() {
   );
 
   const isOwner = !!user && club.owner_id === user.id;
-
-  // Group games by title for the "who owns it" view
+  const showLendingDesk = isOwner && lendingSettings?.lending_enabled;
   const gamesByTitle = new Map<string, typeof games>();
   for (const game of games) {
     const key = game.bgg_id || game.title.toLowerCase();
@@ -149,6 +151,15 @@ export default function ClubPage() {
               <BarChart3 className="h-4 w-4" />
               Analytics
             </TabsTrigger>
+            {showLendingDesk && (
+              <TabsTrigger
+                value="lending"
+                className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground"
+              >
+                <BookOpen className="h-4 w-4" />
+                Lending Desk
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* ── Analytics ── */}
@@ -329,6 +340,12 @@ export default function ClubPage() {
               activeCategorySlug={categorySlug}
             />
           </TabsContent>
+          {/* ── Lending Desk ── */}
+          {showLendingDesk && user && (
+            <TabsContent value="lending">
+              <ClubLendingDesk clubId={club.id} staffUserId={user.id} />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>

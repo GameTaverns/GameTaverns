@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
-  Calendar, Loader2, ExternalLink, AlertTriangle, BarChart3, Camera, BookOpen
+  Calendar, Loader2, ExternalLink, AlertTriangle, BarChart3, Camera
 } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { format } from "date-fns";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 import { ClubLogoUpload } from "@/components/clubs/ClubLogoUpload";
-import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
+
 import { useClubLendingSettings, useUpdateClubLendingSettings } from "@/hooks/useClubLending";
 
 const CLUB_EVENT_DIALOG_KEY = "club_dashboard_event_dialog_open";
@@ -266,11 +266,6 @@ export default function ClubDashboard() {
             <TabsTrigger value="events" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <Calendar className="h-4 w-4" /> Events
             </TabsTrigger>
-            {lendingSettings?.lending_enabled && (
-              <TabsTrigger value="lending" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
-                <BookOpen className="h-4 w-4" /> Lending Desk
-              </TabsTrigger>
-            )}
             <TabsTrigger value="settings" className="gap-2 text-cream/70 data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground">
               <Settings className="h-4 w-4" /> Settings
             </TabsTrigger>
@@ -433,12 +428,6 @@ export default function ClubDashboard() {
             </div>
           </TabsContent>
 
-          {/* Lending Desk */}
-          {lendingSettings?.lending_enabled && user && (
-            <TabsContent value="lending">
-              <ClubLendingDesk clubId={club.id} staffUserId={user.id} />
-            </TabsContent>
-          )}
 
           {/* Settings */}
           <TabsContent value="settings" className="space-y-6">
