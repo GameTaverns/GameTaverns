@@ -17,7 +17,7 @@ import { ClubForumCard } from "@/components/community/ClubForumCard";
 import { BackLink } from "@/components/navigation/BackLink";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
-import { useClubLendingSettings } from "@/hooks/useClubLending";
+import { useClubLendingSettings, useIsClubLendingStaff } from "@/hooks/useClubLending";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 
