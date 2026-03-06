@@ -10,15 +10,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
-import { useCheckoutGame } from "@/hooks/useClubLending";
+import { Loader2, Package } from "lucide-react";
+import { useCheckoutGame, useClubGameCopies } from "@/hooks/useClubLending";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClubCheckoutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clubId: string;
-  game: { id: string; title: string; library_id: string; image_url?: string | null };
+  game: { id: string; title: string; library_id: string; image_url?: string | null; copies_owned?: number };
   staffUserId: string;
   defaultDurationHours: number;
   requireContact: boolean;
@@ -35,9 +35,12 @@ export function ClubCheckoutDialog({
   const [conditionOut, setConditionOut] = useState("");
   const [notes, setNotes] = useState("");
   const [durationHours, setDurationHours] = useState(defaultDurationHours.toString());
+  const [selectedCopyId, setSelectedCopyId] = useState("");
 
   const checkout = useCheckoutGame();
+  const { data: copies = [] } = useClubGameCopies(game.id);
   const { toast } = useToast();
+  const hasMultipleCopies = (game.copies_owned ?? 1) > 1 || copies.length > 1;
 
   const canSubmit =
     guestName.trim().length > 0 &&
