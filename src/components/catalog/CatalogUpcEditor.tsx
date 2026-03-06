@@ -89,7 +89,7 @@ export function CatalogUpcEditor({ catalogId, currentUpc }: CatalogUpcEditorProp
       <BarcodeScannerDialog
         open={showScanner}
         onOpenChange={setShowScanner}
-        onScanned={handleBarcodeScanned}
+        onScan={handleBarcodeScanned}
         title="Scan UPC Barcode"
         description="Point your camera at the game's UPC/EAN barcode, or type it manually."
       />
