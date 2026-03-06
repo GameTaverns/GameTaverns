@@ -1643,8 +1643,8 @@ export function SystemHealth() {
 
                 <div className="text-xs text-cream/40">
                   Enrichment runs every minute (200/batch). Type-check runs every 2 min (200/batch).
-                  Re-enrichment runs every 10 min (40/batch). Dedup runs weekly (Sundays 02:00 UTC).
-                  Non-boardgame cleanup runs daily at 03:30 UTC.
+                  Re-enrichment runs every 10 min (40/batch). Fix-missing runs every 5 min (100/batch).
+                  Dedup runs weekly (Sundays 02:00 UTC). Non-boardgame cleanup runs daily at 03:30 UTC.
                 </div>
               </>
             );
