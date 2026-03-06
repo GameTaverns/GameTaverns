@@ -62,24 +62,26 @@ export function AccountLockoutManager() {
     }
   };
 
-  const clearLockout = async () => {
-    if (!status) return;
+  const clearLockout = async (targetEmail?: string) => {
+    const emailToClear = (targetEmail || status?.email || "").trim().toLowerCase();
+    if (!emailToClear) return;
+
     setClearing(true);
 
     try {
       const { error } = await supabase
         .from("login_attempts")
         .delete()
-        .eq("email", status.email)
+        .eq("email", emailToClear)
         .eq("success", false);
 
       if (error) throw error;
 
-      toast.success(`Lockout cleared for ${status.email}`);
+      toast.success(`Lockout cleared for ${emailToClear}`);
       setStatus((prev) =>
-        prev
+        prev && prev.email === emailToClear
           ? { ...prev, isLocked: false, recentFailures: 0, attempts: prev.attempts.filter((a) => a.success) }
-          : null
+          : prev
       );
     } catch (err: any) {
       toast.error("Failed to clear lockout", { description: err.message });
@@ -115,6 +117,16 @@ export function AccountLockoutManager() {
           <Button type="submit" size="sm" disabled={loading || !email.trim()} className="w-full sm:w-auto">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Check"}
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={clearing || !email.trim()}
+            onClick={() => clearLockout(email)}
+            className="w-full sm:w-auto"
+          >
+            {clearing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Clear Lockout"}
+          </Button>
         </form>
 
         {/* Results */}
@@ -145,7 +157,7 @@ export function AccountLockoutManager() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={clearLockout}
+                    onClick={() => clearLockout()}
                     disabled={clearing || !status.attempts.some((a) => !a.success)}
                     className="gap-1.5 h-8 px-2 text-[11px] w-fit"
                   >
