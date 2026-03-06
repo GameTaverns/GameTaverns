@@ -386,6 +386,7 @@ const GameForm = () => {
       publisher_id: publisherId || null,
       bgg_id: null,
       bgg_url: bggUrl.trim() || null,
+      upc: upc.trim() || null,
       is_coming_soon: isComingSoon,
       is_for_sale: isForSale,
       sale_price: isForSale && salePrice ? parseFloat(salePrice) : null,
