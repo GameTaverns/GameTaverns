@@ -261,6 +261,7 @@ const GameForm = () => {
       setSelectedArtists(artistIds);
       setOriginalArtists(artistIds);
       setBggUrl(existingGame.bgg_url || "");
+      setUpc((existingGame as any).upc || "");
       setIsComingSoon(existingGame.is_coming_soon);
       setIsForSale(existingGame.is_for_sale);
       setSalePrice(existingGame.sale_price?.toString() || "");
