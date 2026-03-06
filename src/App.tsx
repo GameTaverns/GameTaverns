@@ -421,6 +421,7 @@ function LibraryRoutes() {
       <Route path="/club/:slug" element={<ClubPage />} />
       <Route path="/club/:slug/forum/:categorySlug" element={<ClubPage />} />
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
+      <Route path="/clubs" element={<Suspense fallback={<PageLoader />}><ClubsDirectory /></Suspense>} />
       <Route path="/picker" element={<SmartPicker />} />
       <Route path="/notifications" element={<Dashboard />} />
       <Route path="/grow" element={<Dashboard />} />
