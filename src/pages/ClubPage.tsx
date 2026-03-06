@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, ArrowLeft, BarChart3, BookOpen } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
