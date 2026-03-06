@@ -975,6 +975,7 @@ export type Database = {
           club_id: string
           condition_in: string | null
           condition_out: string | null
+          copy_id: string | null
           created_at: string
           due_at: string | null
           game_id: string
@@ -994,6 +995,7 @@ export type Database = {
           club_id: string
           condition_in?: string | null
           condition_out?: string | null
+          copy_id?: string | null
           created_at?: string
           due_at?: string | null
           game_id: string
@@ -1013,6 +1015,7 @@ export type Database = {
           club_id?: string
           condition_in?: string | null
           condition_out?: string | null
+          copy_id?: string | null
           created_at?: string
           due_at?: string | null
           game_id?: string
@@ -1031,6 +1034,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_loans_copy_id_fkey"
+            columns: ["copy_id"]
+            isOneToOne: false
+            referencedRelation: "game_copies"
             referencedColumns: ["id"]
           },
           {

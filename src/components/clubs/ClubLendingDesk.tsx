@@ -445,6 +445,11 @@ function LoanCard({
           <div className="min-w-0 flex-1">
             <p className="font-display font-semibold text-foreground truncate">
               {gameTitle}
+              {loan.copy && (
+                <span className="text-xs font-normal text-muted-foreground ml-1.5">
+                  (Copy #{loan.copy.copy_number}{loan.copy.copy_label ? ` — ${loan.copy.copy_label}` : ""})
+                </span>
+              )}
             </p>
             <p className="text-sm text-muted-foreground truncate">
               → {borrowerLabel}

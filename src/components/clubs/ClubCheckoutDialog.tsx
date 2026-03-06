@@ -10,15 +10,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
-import { useCheckoutGame } from "@/hooks/useClubLending";
+import { Loader2, Package } from "lucide-react";
+import { useCheckoutGame, useClubGameCopies } from "@/hooks/useClubLending";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClubCheckoutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clubId: string;
-  game: { id: string; title: string; library_id: string; image_url?: string | null };
+  game: { id: string; title: string; library_id: string; image_url?: string | null; copies_owned?: number };
   staffUserId: string;
   defaultDurationHours: number;
   requireContact: boolean;
@@ -35,9 +35,12 @@ export function ClubCheckoutDialog({
   const [conditionOut, setConditionOut] = useState("");
   const [notes, setNotes] = useState("");
   const [durationHours, setDurationHours] = useState(defaultDurationHours.toString());
+  const [selectedCopyId, setSelectedCopyId] = useState("");
 
   const checkout = useCheckoutGame();
+  const { data: copies = [] } = useClubGameCopies(game.id);
   const { toast } = useToast();
+  const hasMultipleCopies = (game.copies_owned ?? 1) > 1 || copies.length > 1;
 
   const canSubmit =
     guestName.trim().length > 0 &&
@@ -52,6 +55,7 @@ export function ClubCheckoutDialog({
         club_id: clubId,
         game_id: game.id,
         library_id: game.library_id,
+        copy_id: selectedCopyId || undefined,
         guest_name: guestName.trim(),
         guest_contact: guestContact.trim() || undefined,
         condition_out: conditionOut || undefined,
@@ -72,6 +76,7 @@ export function ClubCheckoutDialog({
     setGuestContact("");
     setConditionOut("");
     setNotes("");
+    setSelectedCopyId("");
     setDurationHours(defaultDurationHours.toString());
   };
 
@@ -106,6 +111,30 @@ export function ClubCheckoutDialog({
               placeholder="Phone, email, or badge #"
             />
           </div>
+
+          {/* Copy selector (only shown when multiple copies exist) */}
+          {hasMultipleCopies && copies.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Package className="h-3.5 w-3.5" />
+                Which Copy?
+              </Label>
+              <Select value={selectedCopyId} onValueChange={setSelectedCopyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a copy (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {copies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      Copy #{c.copy_number}
+                      {c.copy_label ? ` — ${c.copy_label}` : ""}
+                      {c.condition ? ` (${c.condition})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Condition */}
           <div className="space-y-2">

@@ -17,6 +17,7 @@ export interface ClubLoan {
   club_id: string;
   game_id: string;
   library_id: string;
+  copy_id: string | null;
   borrower_user_id: string | null;
   guest_name: string | null;
   guest_contact: string | null;
@@ -33,6 +34,7 @@ export interface ClubLoan {
   // Joined fields
   game?: { id: string; title: string; image_url: string | null; slug: string | null };
   library?: { id: string; name: string; slug: string };
+  copy?: { id: string; copy_number: number; copy_label: string | null; condition: string | null } | null;
   borrower_profile?: { display_name: string | null; username: string | null } | null;
 }
 
@@ -84,7 +86,7 @@ export function useClubLoans(clubId: string | null, statusFilter?: string) {
       let query = supabase
         .from("club_loans")
         .select(
-          "*, game:games(id, title, image_url, slug), library:libraries(id, name, slug)"
+          "*, game:games(id, title, image_url, slug), library:libraries(id, name, slug), copy:game_copies(id, copy_number, copy_label, condition)"
         )
         .eq("club_id", clubId)
         .order("checked_out_at", { ascending: false });
@@ -127,6 +129,7 @@ export function useCheckoutGame() {
       club_id: string;
       game_id: string;
       library_id: string;
+      copy_id?: string;
       borrower_user_id?: string;
       guest_name?: string;
       guest_contact?: string;
@@ -139,6 +142,7 @@ export function useCheckoutGame() {
         club_id: params.club_id,
         game_id: params.game_id,
         library_id: params.library_id,
+        copy_id: params.copy_id || null,
         borrower_user_id: params.borrower_user_id || null,
         guest_name: params.guest_name || null,
         guest_contact: params.guest_contact || null,
@@ -182,6 +186,24 @@ export function useReturnGame() {
       qc.invalidateQueries({ queryKey: ["club-loans", vars.club_id] });
       qc.invalidateQueries({ queryKey: ["club-game-search"] });
     },
+  });
+}
+
+// ── Copies for a game (for club checkout copy picker) ──
+export function useClubGameCopies(gameId: string | null) {
+  return useQuery({
+    queryKey: ["club-game-copies", gameId],
+    queryFn: async () => {
+      if (!gameId) return [];
+      const { data, error } = await supabase
+        .from("game_copies")
+        .select("id, copy_number, copy_label, condition, notes")
+        .eq("game_id", gameId)
+        .order("copy_number");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!gameId,
   });
 }
 

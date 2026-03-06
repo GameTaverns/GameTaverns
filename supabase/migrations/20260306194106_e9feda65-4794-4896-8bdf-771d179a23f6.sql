@@ -1,0 +1,1 @@
+ALTER TABLE public.club_loans ADD COLUMN IF NOT EXISTS copy_id UUID REFERENCES public.game_copies(id) ON DELETE SET NULL;
