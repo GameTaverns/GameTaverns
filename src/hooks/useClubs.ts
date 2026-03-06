@@ -318,6 +318,17 @@ export function useRemoveClubLibrary() {
   });
 }
 
+export function useAddClubLibrary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { club_id: string; library_id: string }) =>
+      invokeClubs({ action: "add_library", ...params }),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["club-libraries", vars.club_id] });
+    },
+  });
+}
+
 export function useSwitchClubLibrary() {
   const qc = useQueryClient();
   return useMutation({
