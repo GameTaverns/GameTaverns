@@ -586,8 +586,9 @@ export default function CatalogGameDetail() {
 
             {/* Admin: Manage Purchase Links */}
             {isAdmin && (
-              <div className="mt-6">
+              <div className="mt-6 space-y-6">
                 <ManagePurchaseLinks catalogId={game.id} gameTitle={game.title} />
+                <CatalogUpcEditor catalogId={game.id} currentUpc={(game as any).upc || null} />
               </div>
             )}
           </div>
