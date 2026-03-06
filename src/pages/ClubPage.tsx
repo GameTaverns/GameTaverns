@@ -12,6 +12,7 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { useAuth } from "@/hooks/useAuth";
 import { ClubForumCard } from "@/components/community/ClubForumCard";
+import { BackLink } from "@/components/navigation/BackLink";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
 import { useClubLendingSettings } from "@/hooks/useClubLending";
