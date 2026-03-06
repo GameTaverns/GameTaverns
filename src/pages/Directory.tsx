@@ -491,6 +491,21 @@ export default function Directory() {
             </Tabs>
           </div>
         </div>
+
+        {/* Link to Clubs Directory */}
+        <div className="mt-12 border-t border-border/50 pt-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-lg text-foreground mb-1">Looking for clubs?</h2>
+              <p className="text-sm text-muted-foreground">Browse the Club Directory for cross-library communities with shared events and catalogs</p>
+            </div>
+            <Link to="/clubs">
+              <Button variant="outline" className="gap-2">
+                <Building2 className="h-4 w-4" /> Club Directory
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     </Layout>
   );

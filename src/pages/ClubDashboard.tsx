@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
-  Calendar, Loader2, ExternalLink, AlertTriangle, BarChart3
+  Calendar, Loader2, ExternalLink, AlertTriangle, BarChart3, Camera
 } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { format } from "date-fns";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
+import { ClubLogoUpload } from "@/components/clubs/ClubLogoUpload";
 
 const CLUB_EVENT_DIALOG_KEY = "club_dashboard_event_dialog_open";
 const CLUB_EVENT_TITLE_KEY = "club_dashboard_event_title";
@@ -219,6 +220,9 @@ export default function ClubDashboard() {
             <Link to="/dashboard?tab=clubs" className="text-cream/70 hover:text-cream">
               <ArrowLeft className="h-5 w-5" />
             </Link>
+            {club.logo_url && (
+              <img src={club.logo_url} alt={club.name} className="h-10 w-10 rounded-lg object-cover" />
+            )}
             <h1 className="font-display text-2xl font-bold text-cream">
               {club.name} — Management
             </h1>
@@ -405,6 +409,30 @@ export default function ClubDashboard() {
 
           {/* Settings */}
           <TabsContent value="settings" className="space-y-6">
+            {/* Logo Upload */}
+            <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream max-w-lg">
+              <CardHeader>
+                <CardTitle className="font-display">Club Logo</CardTitle>
+                <CardDescription className="text-cream/60">
+                  Upload a logo that represents your club
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ClubLogoUpload
+                  clubId={club.id}
+                  currentLogoUrl={club.logo_url}
+                  clubName={club.name}
+                  onUploaded={async (url) => {
+                    try {
+                      await updateClub.mutateAsync({ club_id: club.id, logo_url: url });
+                    } catch (e: any) {
+                      toast({ title: "Error", description: e.message, variant: "destructive" });
+                    }
+                  }}
+                />
+              </CardContent>
+            </Card>
+
             <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream max-w-lg">
               <CardHeader>
                 <CardTitle className="font-display">Club Settings</CardTitle>

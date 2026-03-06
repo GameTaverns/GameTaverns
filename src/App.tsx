@@ -68,6 +68,7 @@ const ClubPage = lazy(lazyRetry(() => import("./pages/ClubPage")));
 const ClubDashboard = lazy(lazyRetry(() => import("./pages/ClubDashboard")));
 const RequestClub = lazy(lazyRetry(() => import("./pages/RequestClub")));
 const JoinClub = lazy(lazyRetry(() => import("./pages/JoinClub")));
+const ClubsDirectory = lazy(lazyRetry(() => import("./pages/ClubsDirectory")));
 
 // Library admin pages
 const LibrarySettings = lazy(lazyRetry(() => import("./pages/LibrarySettings")));
@@ -319,6 +320,7 @@ function PlatformRoutes() {
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
       <Route path="/request-club" element={<RequestClub />} />
       <Route path="/join-club" element={<JoinClub />} />
+      <Route path="/clubs" element={<Suspense fallback={<PageLoader />}><ClubsDirectory /></Suspense>} />
       <Route path="/picker" element={<SmartPicker />} />
       <Route path="/catalog" element={<CatalogBrowse />} />
       <Route path="/catalog/analytics" element={<CatalogAnalytics />} />
@@ -419,6 +421,7 @@ function LibraryRoutes() {
       <Route path="/club/:slug" element={<ClubPage />} />
       <Route path="/club/:slug/forum/:categorySlug" element={<ClubPage />} />
       <Route path="/club/:slug/manage" element={<ClubDashboard />} />
+      <Route path="/clubs" element={<Suspense fallback={<PageLoader />}><ClubsDirectory /></Suspense>} />
       <Route path="/picker" element={<SmartPicker />} />
       <Route path="/notifications" element={<Dashboard />} />
       <Route path="/grow" element={<Dashboard />} />
