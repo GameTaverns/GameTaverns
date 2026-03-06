@@ -4,11 +4,13 @@ import { CheckCircle, Loader2 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordStrengthIndicator } from "@/components/ui/password-strength-indicator";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTranslation } from "react-i18next";
+import { validatePassword, PASSWORD_REQUIREMENTS_TEXT } from "@/lib/password-validation";
 
 export default function ResetPassword() {
   const { t } = useTranslation();
