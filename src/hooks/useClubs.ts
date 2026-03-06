@@ -345,8 +345,7 @@ export function useClubGameSearch(clubId: string | null, query: string) {
       const { data: clubLibs } = await supabase
         .from("club_libraries")
         .select("library_id")
-        .eq("club_id", clubId)
-        .eq("is_visible", true);
+        .eq("club_id", clubId);
 
       if (!clubLibs || clubLibs.length === 0) return [];
       const libIds = clubLibs.map((cl: any) => cl.library_id);
