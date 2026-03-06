@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useId } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -28,6 +28,8 @@ export function BarcodeScannerDialog({
   const [scanning, setScanning] = useState(false);
   const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasScannedRef = useRef(false);
+  const scanRegionId = useId().replace(/:/g, "");
 
   const stopScanner = useCallback(async () => {
     if (scannerRef.current) {
@@ -63,28 +65,40 @@ export function BarcodeScannerDialog({
         Html5QrcodeSupportedFormats.QR_CODE,
       ];
 
-      const scanner = new Html5Qrcode("barcode-scanner-region", {
+      const scanner = new Html5Qrcode(scanRegionId, {
         verbose: false,
         formatsToSupport,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true,
+        },
       });
       scannerRef.current = scanner;
 
       await scanner.start(
-        { facingMode: "environment" },
+        { facingMode: { ideal: "environment" } },
         {
-          fps: 15,
-          qrbox: { width: 300, height: 150 },
-          aspectRatio: 2.0,
+          fps: 10,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => ({
+            width: Math.floor(viewfinderWidth * 0.92),
+            height: Math.floor(Math.max(140, Math.min(viewfinderHeight * 0.42, 220))),
+          }),
           disableFlip: false,
         },
         (decodedText) => {
-          // Success
-          onScan(decodedText.trim());
+          if (hasScannedRef.current) return;
+
+          const raw = decodedText?.trim?.() || "";
+          const numeric = raw.replace(/[^0-9]/g, "");
+          const result = numeric.length >= 8 ? numeric : raw;
+          if (!result) return;
+
+          hasScannedRef.current = true;
+          onScan(result);
           stopScanner();
           onOpenChange(false);
         },
         () => {
-          // Scan failure (expected, just means no barcode in frame yet)
+          // Scan failure (expected while no barcode is in frame yet)
         }
       );
     } catch (err: any) {
@@ -99,13 +113,17 @@ export function BarcodeScannerDialog({
         setError("No camera found. Use manual entry instead.");
         setMode("manual");
       } else {
-        setError("Could not start camera. Try manual entry.");
+        setError("Could not read barcode from camera. Try moving farther back, improving light, or use manual entry.");
         setMode("manual");
       }
     }
-  }, [onScan, onOpenChange, stopScanner]);
+  }, [onScan, onOpenChange, stopScanner, scanRegionId]);
 
   useEffect(() => {
+    if (open) {
+      hasScannedRef.current = false;
+    }
+
     if (open && mode === "camera") {
       // Small delay for DOM to mount
       const timeout = setTimeout(startScanner, 300);
@@ -137,6 +155,7 @@ export function BarcodeScannerDialog({
 
   const handleClose = (isOpen: boolean) => {
     if (!isOpen) {
+      hasScannedRef.current = false;
       stopScanner();
       setManualCode("");
       setError(null);
@@ -190,7 +209,7 @@ export function BarcodeScannerDialog({
               ref={containerRef}
               className="relative rounded-lg overflow-hidden bg-muted aspect-[2/1]"
             >
-              <div id="barcode-scanner-region" className="w-full h-full" />
+              <div id={scanRegionId} className="w-full h-full" />
               {scanning && (
                 <div className="absolute inset-0 pointer-events-none">
                   {/* Scanning line animation */}
