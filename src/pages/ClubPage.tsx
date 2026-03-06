@@ -60,8 +60,7 @@ export default function ClubPage() {
   );
 
   const isOwner = !!user && club.owner_id === user.id;
-
-  // Group games by title for the "who owns it" view
+  const showLendingDesk = isOwner && lendingSettings?.lending_enabled;
   const gamesByTitle = new Map<string, typeof games>();
   for (const game of games) {
     const key = game.bgg_id || game.title.toLowerCase();
