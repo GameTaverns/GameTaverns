@@ -28,6 +28,7 @@ import {
   useClub, useClubLibraries, useClubInviteCodes, useClubEvents,
   useGenerateInviteCode, useRemoveClubLibrary, useUpdateClub,
   useCreateClubEvent, useDeleteClubEvent, useDeleteClub,
+  useToggleClubLibraryVisibility,
 } from "@/hooks/useClubs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
