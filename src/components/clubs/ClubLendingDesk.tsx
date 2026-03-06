@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +9,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search, BookOpen, RotateCcw, Clock, AlertTriangle,
-  Users, Package, ChevronDown, ChevronUp, ScanBarcode,
+  Users, Package, ChevronDown, ChevronUp, ScanBarcode, Wifi,
 } from "lucide-react";
-import { useClubLoans, useClubLendingSettings } from "@/hooks/useClubLending";
+import { useClubLoans, useClubLendingSettings, useClubLoansRealtime } from "@/hooks/useClubLending";
 import { useClubGameSearch } from "@/hooks/useClubs";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useBarcodeLookup } from "@/hooks/useBarcodeScanner";
@@ -37,6 +37,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
   const [showBarcodeLink, setShowBarcodeLink] = useState(false);
   const [pendingBarcode, setPendingBarcode] = useState("");
   const debouncedGameSearch = useDebounce(gameSearch, 300);
+  const gameSearchRef = useRef<HTMLInputElement>(null);
 
   const { data: settings } = useClubLendingSettings(clubId);
   const { data: activeLoans = [], isLoading: activeLoading } = useClubLoans(clubId, "checked_out");
@@ -44,9 +45,21 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
   const { data: searchResults = [] } = useClubGameSearch(clubId, debouncedGameSearch);
   const { data: barcodeMatch, isLoading: barcodeLoading } = useBarcodeLookup(scannedBarcode);
 
+  // ── Realtime sync across staff devices ──
+  useClubLoansRealtime(clubId);
+
   const [checkoutGame, setCheckoutGame] = useState<any>(null);
   const [returnLoan, setReturnLoan] = useState<ClubLoan | null>(null);
   const { toast } = useToast();
+
+  // Build active loan counts per game for availability badges
+  const loanCountByGameId = useMemo(() => {
+    const map = new Map<string, number>();
+    activeLoans.forEach((l) => {
+      map.set(l.game_id, (map.get(l.game_id) || 0) + 1);
+    });
+    return map;
+  }, [activeLoans]);
 
   // When barcode lookup resolves, either checkout the game or prompt linking
   const handleBarcodeScan = (barcode: string) => {
@@ -57,7 +70,6 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
   useMemo(() => {
     if (!scannedBarcode || barcodeLoading) return;
     if (barcodeMatch?.game) {
-      // Found a linked game — go straight to checkout
       setCheckoutGame({
         ...barcodeMatch.game,
         library_id: barcodeMatch.game.library_id,
@@ -65,12 +77,17 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
       toast({ title: "Game found!", description: `Barcode matched: ${barcodeMatch.game.title}` });
       setScannedBarcode(null);
     } else if (barcodeMatch === null && scannedBarcode) {
-      // Unknown barcode — show link dialog
       setPendingBarcode(scannedBarcode);
       setShowBarcodeLink(true);
       setScannedBarcode(null);
     }
   }, [barcodeMatch, barcodeLoading, scannedBarcode]);
+
+  // After checkout: clear game, re-focus search
+  const handleCheckoutComplete = useCallback(() => {
+    setGameSearch("");
+    setTimeout(() => gameSearchRef.current?.focus(), 150);
+  }, []);
 
   const isOverdue = (loan: ClubLoan) =>
     loan.status === "checked_out" && loan.due_at && new Date(loan.due_at) < new Date();
@@ -90,7 +107,8 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
         (l.guest_name && l.guest_name.toLowerCase().includes(q)) ||
         (l.borrower_profile?.display_name &&
           l.borrower_profile.display_name.toLowerCase().includes(q)) ||
-        (l.game?.title && l.game.title.toLowerCase().includes(q))
+        (l.game?.title && l.game.title.toLowerCase().includes(q)) ||
+        (l.guest_contact && l.guest_contact.toLowerCase().includes(q))
     );
   }, [activeLoans, loanSearch]);
 
@@ -105,7 +123,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
   return (
     <div className="space-y-6">
       {/* ── Header Stats Row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <StatCard
           icon={<BookOpen className="h-5 w-5 text-secondary" />}
           value={activeLoans.length}
@@ -127,6 +145,12 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
           value={returnedLoans.length}
           label="Returned Today"
         />
+        <StatCard
+          icon={<Wifi className="h-5 w-5 text-emerald-400" />}
+          value={"Live"}
+          label="Synced"
+          isText
+        />
       </div>
 
       {/* ── Quick Checkout Search ── */}
@@ -142,6 +166,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                ref={gameSearchRef}
                 placeholder="Search a game title to check out..."
                 className="pl-10 h-12 text-base bg-background border-border"
                 value={gameSearch}
@@ -161,36 +186,65 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
           </div>
           {debouncedGameSearch && searchResults.length > 0 && (
             <div className="mt-3 max-h-64 overflow-y-auto space-y-1 rounded-lg border border-border bg-background p-1">
-              {searchResults.slice(0, 12).map((game: any) => (
-                <button
-                  key={game.id}
-                  className="w-full flex items-center gap-3 p-3 rounded-md hover:bg-accent/50 text-left transition-colors"
-                  onClick={() => {
-                    setCheckoutGame(game);
-                    setGameSearch("");
-                  }}
-                >
-                  {game.image_url && (
-                    <img
-                      src={game.image_url}
-                      alt=""
-                      className="h-10 w-10 rounded object-cover shrink-0"
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground truncate">
-                      {game.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {game.library_name} · {game.owner_name}
-                    </p>
-                  </div>
-                  <Button size="sm" className="shrink-0 gap-1.5">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    Check Out
-                  </Button>
-                </button>
-              ))}
+              {searchResults.slice(0, 12).map((game: any) => {
+                const activeCount = loanCountByGameId.get(game.id) || 0;
+                const totalCopies = game.copies_owned || 1;
+                const available = totalCopies - activeCount;
+                const isAvailable = available > 0;
+
+                return (
+                  <button
+                    key={game.id}
+                    className={`w-full flex items-center gap-3 p-3 rounded-md text-left transition-colors ${
+                      isAvailable
+                        ? "hover:bg-accent/50"
+                        : "opacity-50 cursor-not-allowed"
+                    }`}
+                    onClick={() => {
+                      if (!isAvailable) {
+                        toast({
+                          title: "All copies checked out",
+                          description: `All ${totalCopies} ${totalCopies === 1 ? 'copy' : 'copies'} of ${game.title} are currently out.`,
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setCheckoutGame(game);
+                      setGameSearch("");
+                    }}
+                  >
+                    {game.image_url && (
+                      <img
+                        src={game.image_url}
+                        alt=""
+                        className="h-10 w-10 rounded object-cover shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground truncate">
+                        {game.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {game.library_name} · {game.owner_name}
+                      </p>
+                    </div>
+                    {/* Availability badge */}
+                    <Badge
+                      variant={isAvailable ? "secondary" : "destructive"}
+                      className="shrink-0 text-xs gap-1"
+                    >
+                      <Package className="h-3 w-3" />
+                      {available}/{totalCopies}
+                    </Badge>
+                    {isAvailable && (
+                      <Button size="sm" className="shrink-0 gap-1.5">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        Check Out
+                      </Button>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
           {debouncedGameSearch && searchResults.length === 0 && (
@@ -201,7 +255,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
         </CardContent>
       </Card>
 
-      {/* ── Active Loans ── */}
+      {/* ── Active Loans & Returns ── */}
       <Tabs defaultValue="active" className="w-full">
         <div className="flex items-center justify-between gap-4 mb-4">
           <TabsList className="bg-muted/50">
@@ -217,7 +271,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
           <div className="relative max-w-xs flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Filter by name or game..."
+              placeholder="Find by name, badge #, or game..."
               className="pl-9 h-9 text-sm bg-background"
               value={loanSearch}
               onChange={(e) => setLoanSearch(e.target.value)}
@@ -250,7 +304,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
             </div>
           )}
 
-          {/* On-time loans */}
+          {/* On-time loans (or filtered results) */}
           {activeLoading ? (
             <p className="text-muted-foreground text-center py-8">Loading...</p>
           ) : (loanSearch ? filteredActive : onTimeLoans).length === 0 ? (
@@ -315,6 +369,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
           staffUserId={staffUserId}
           defaultDurationHours={settings.default_duration_hours}
           requireContact={settings.require_contact_info}
+          onCheckoutComplete={handleCheckoutComplete}
         />
       )}
 
@@ -362,11 +417,13 @@ function StatCard({
   value,
   label,
   highlight,
+  isText,
 }: {
   icon: React.ReactNode;
-  value: number;
+  value: number | string;
   label: string;
   highlight?: boolean;
+  isText?: boolean;
 }) {
   return (
     <Card
@@ -379,7 +436,7 @@ function StatCard({
       <CardContent className="p-4 flex items-center gap-3">
         <div className="shrink-0">{icon}</div>
         <div>
-          <p className="text-2xl font-display font-bold text-foreground">
+          <p className={`font-display font-bold text-foreground ${isText ? "text-sm" : "text-2xl"}`}>
             {value}
           </p>
           <p className="text-xs text-muted-foreground">{label}</p>
@@ -485,8 +542,8 @@ function LoanCard({
 
             {/* Expand toggle */}
             <Button
-              size="icon"
               variant="ghost"
+              size="icon"
               className="h-8 w-8"
               onClick={onToggleExpand}
             >
@@ -499,58 +556,47 @@ function LoanCard({
           </div>
         </div>
 
-        {/* Mobile time badge */}
-        <div className="sm:hidden px-3 pb-2">
-          <Badge
-            variant={isOverdue ? "destructive" : isReturned ? "secondary" : "outline"}
-            className="gap-1 text-xs"
-          >
-            <Clock className="h-3 w-3" />
-            {timeInfo}
-          </Badge>
-        </div>
-
         {/* Expanded details */}
         {expanded && (
-          <div className="border-t border-border px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground">Checked Out</p>
-              <p className="text-foreground">
-                {format(new Date(loan.checked_out_at), "MMM d, h:mm a")}
-              </p>
-            </div>
+          <div className="px-4 pb-4 pt-0 border-t border-border mt-0 text-sm text-muted-foreground space-y-1">
+            <p>
+              <strong>Checked out:</strong>{" "}
+              {format(new Date(loan.checked_out_at), "MMM d, h:mm a")}
+            </p>
             {loan.due_at && (
-              <div>
-                <p className="text-xs text-muted-foreground">Due</p>
-                <p className="text-foreground">
-                  {format(new Date(loan.due_at), "MMM d, h:mm a")}
-                </p>
-              </div>
+              <p>
+                <strong>Due:</strong>{" "}
+                {format(new Date(loan.due_at), "MMM d, h:mm a")}
+              </p>
             )}
             {loan.condition_out && (
-              <div>
-                <p className="text-xs text-muted-foreground">Condition Out</p>
-                <p className="text-foreground">{loan.condition_out}</p>
-              </div>
+              <p>
+                <strong>Condition out:</strong> {loan.condition_out}
+              </p>
             )}
             {loan.condition_in && (
-              <div>
-                <p className="text-xs text-muted-foreground">Condition In</p>
-                <p className="text-foreground">{loan.condition_in}</p>
-              </div>
+              <p>
+                <strong>Condition in:</strong> {loan.condition_in}
+              </p>
             )}
             {loan.notes && (
-              <div className="col-span-2 sm:col-span-4">
-                <p className="text-xs text-muted-foreground">Notes</p>
-                <p className="text-foreground">{loan.notes}</p>
-              </div>
+              <p>
+                <strong>Notes:</strong> {loan.notes}
+              </p>
             )}
-            {loan.library && (
-              <div>
-                <p className="text-xs text-muted-foreground">From Library</p>
-                <p className="text-foreground">{loan.library.name}</p>
-              </div>
+            {loan.returned_at && (
+              <p>
+                <strong>Returned:</strong>{" "}
+                {format(new Date(loan.returned_at), "MMM d, h:mm a")}
+              </p>
             )}
+            {/* Mobile time info */}
+            <p className="sm:hidden">
+              <strong>Status:</strong>{" "}
+              <span className={isOverdue ? "text-destructive" : ""}>
+                {timeInfo}
+              </span>
+            </p>
           </div>
         )}
       </CardContent>
