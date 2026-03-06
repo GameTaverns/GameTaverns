@@ -209,7 +209,7 @@ export function BarcodeScannerDialog({
               ref={containerRef}
               className="relative rounded-lg overflow-hidden bg-muted aspect-[2/1]"
             >
-              <div id="barcode-scanner-region" className="w-full h-full" />
+              <div id={scanRegionId} className="w-full h-full" />
               {scanning && (
                 <div className="absolute inset-0 pointer-events-none">
                   {/* Scanning line animation */}
