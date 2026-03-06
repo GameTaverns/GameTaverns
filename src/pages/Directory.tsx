@@ -414,7 +414,7 @@ export default function Directory() {
           <FilterSidebar />
 
           <div className="flex-1 min-w-0">
-            <Tabs defaultValue="all" className="space-y-6">
+            <Tabs value={dirTab} onValueChange={setDirTab} className="space-y-6">
               <TabsList>
                 <TabsTrigger value="all">All Libraries</TabsTrigger>
                 <TabsTrigger value="popular" className="gap-1">

@@ -309,7 +309,7 @@ export default function UserProfile() {
         </Card>
 
         {/* Tabbed content: Activity + Achievements + Communities + Feedback */}
-        <Tabs defaultValue="activity">
+        <Tabs value={profileTab} onValueChange={setProfileTab}>
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : {}}>
             <TabsTrigger value="activity" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Activity className="h-3.5 w-3.5" />Activity

@@ -74,7 +74,7 @@ export default function CuratedListsPage() {
           {isAuthenticated && <CreateListButton libraryId={library?.id} />}
         </div>
 
-        <Tabs defaultValue="community">
+        <Tabs value={listsTab} onValueChange={setListsTab}>
           <TabsList>
             <TabsTrigger value="community">Community</TabsTrigger>
             {isAuthenticated && <TabsTrigger value="mine">My Lists</TabsTrigger>}

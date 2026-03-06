@@ -71,7 +71,7 @@ export default function SettingsPage() {
             <CardDescription className="text-cream/70 text-xs">{t('dashboard.accountSettingsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <Tabs defaultValue="profile">
+            <Tabs value={settingsTab} onValueChange={setSettingsTab}>
               <TabsList className="mb-4">
                 <TabsTrigger value="profile">{t('settings.profile')}</TabsTrigger>
                 <TabsTrigger value="security">{t('settings.security')}</TabsTrigger>
