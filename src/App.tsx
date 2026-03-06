@@ -68,6 +68,7 @@ const ClubPage = lazy(lazyRetry(() => import("./pages/ClubPage")));
 const ClubDashboard = lazy(lazyRetry(() => import("./pages/ClubDashboard")));
 const RequestClub = lazy(lazyRetry(() => import("./pages/RequestClub")));
 const JoinClub = lazy(lazyRetry(() => import("./pages/JoinClub")));
+const ClubsDirectory = lazy(lazyRetry(() => import("./pages/ClubsDirectory")));
 
 // Library admin pages
 const LibrarySettings = lazy(lazyRetry(() => import("./pages/LibrarySettings")));
