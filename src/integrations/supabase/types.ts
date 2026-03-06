@@ -309,6 +309,72 @@ export type Database = {
           },
         ]
       }
+      catalog_barcodes: {
+        Row: {
+          barcode: string
+          barcode_type: string
+          catalog_id: string | null
+          created_at: string
+          created_by: string
+          game_id: string | null
+          id: string
+        }
+        Insert: {
+          barcode: string
+          barcode_type?: string
+          catalog_id?: string | null
+          created_at?: string
+          created_by: string
+          game_id?: string | null
+          id?: string
+        }
+        Update: {
+          barcode?: string
+          barcode_type?: string
+          catalog_id?: string | null
+          created_at?: string
+          created_by?: string
+          game_id?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_barcodes_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "catalog_barcodes_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_barcodes_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "catalog_barcodes_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_barcodes_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_corrections: {
         Row: {
           catalog_id: string
