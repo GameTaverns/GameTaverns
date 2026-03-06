@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useEventDetail, useUpdateEventDetail } from "@/hooks/useEventPlanning";
+import { useEventRegistrations } from "@/hooks/useEventRegistrations";
 import { EventGamesTab } from "@/components/events/planning/EventGamesTab";
 import { EventSuppliesTab } from "@/components/events/planning/EventSuppliesTab";
 import { EventTablesTab } from "@/components/events/planning/EventTablesTab";
@@ -53,6 +54,8 @@ export default function EventDetailPage() {
   const { data: event, isLoading } = useEventDetail(eventId);
   const updateEvent = useUpdateEventDetail();
   const { user, isAuthenticated, isAdmin, isStaff } = useAuth();
+  const { data: registrations = [] } = useEventRegistrations(eventId);
+  const registrationCount = registrations.filter(r => r.status === "registered").length;
   const [activeTab, setActiveTab] = useState("details");
 
   // Permission: only event creator, admin, or staff can edit/manage
@@ -227,6 +230,7 @@ export default function EventDetailPage() {
           eventTitle={event.title}
           maxAttendees={event.max_attendees}
           isPublic={event.is_public}
+          registrationCount={registrationCount}
         />
       )}
 
