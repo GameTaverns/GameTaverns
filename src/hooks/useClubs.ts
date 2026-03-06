@@ -24,7 +24,6 @@ export interface ClubLibrary {
   club_id: string;
   library_id: string;
   joined_at: string;
-  is_visible: boolean;
   library?: { id: string; name: string; slug: string; owner_id: string };
 }
 
@@ -176,21 +175,6 @@ export function useClubLibraries(clubId: string | null) {
   });
 }
 
-export function useToggleClubLibraryVisibility() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, club_id, is_visible }: { id: string; club_id: string; is_visible: boolean }) => {
-      const { error } = await supabase
-        .from("club_libraries")
-        .update({ is_visible })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ["club-libraries", vars.club_id] });
-    },
-  });
-}
 
 // ── Club Invite Codes ──
 export function useClubInviteCodes(clubId: string | null) {
@@ -361,8 +345,7 @@ export function useClubGameSearch(clubId: string | null, query: string) {
       const { data: clubLibs } = await supabase
         .from("club_libraries")
         .select("library_id")
-        .eq("club_id", clubId)
-        .eq("is_visible", true);
+        .eq("club_id", clubId);
 
       if (!clubLibs || clubLibs.length === 0) return [];
       const libIds = clubLibs.map((cl: any) => cl.library_id);

@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS public.club_libraries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     club_id UUID NOT NULL REFERENCES public.clubs(id) ON DELETE CASCADE,
     library_id UUID NOT NULL REFERENCES public.libraries(id) ON DELETE CASCADE,
-    is_visible BOOLEAN NOT NULL DEFAULT true,
     joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(club_id, library_id)
 );

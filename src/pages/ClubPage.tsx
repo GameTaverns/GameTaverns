@@ -24,7 +24,7 @@ export default function ClubPage() {
   const { user } = useAuth();
   const { data: club, isLoading } = useClub(slug || null);
   const { data: clubLibraries = [] } = useClubLibraries(club?.id || null);
-  const visibleLibraries = clubLibraries.filter((cl: any) => cl.is_visible);
+  const visibleLibraries = clubLibraries;
   const { data: clubEvents = [] } = useClubEvents(club?.id || null);
   const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
 
