@@ -8,13 +8,25 @@ const corsHeaders = {
 const MAX_HISTORY = 20;
 
 /**
+ * Validate password meets policy:
+ * - 8+ characters
+ * - At least 1 uppercase, 1 lowercase, 1 number, 1 special character
+ */
+function validatePassword(password: string): { valid: boolean; error?: string } {
+  if (!password || password.length < 8) return { valid: false, error: "Password must be at least 8 characters" };
+  if (!/[A-Z]/.test(password)) return { valid: false, error: "Password must contain at least one uppercase letter" };
+  if (!/[a-z]/.test(password)) return { valid: false, error: "Password must contain at least one lowercase letter" };
+  if (!/[0-9]/.test(password)) return { valid: false, error: "Password must contain at least one number" };
+  if (!/[^A-Za-z0-9]/.test(password)) return { valid: false, error: "Password must contain at least one special character" };
+  return { valid: true };
+}
+
+/**
  * Hash a password using SHA-256 with a static salt prefix.
- * We don't need bcrypt here because we're only comparing hashes for reuse detection,
- * not storing them for authentication. The actual auth password is handled by Supabase Auth.
+ * Only used for reuse detection, not for authentication.
  */
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  // Use a static application-level salt to prevent rainbow table attacks
   const salted = encoder.encode(`gt_pw_reuse_salt_v1:${password}`);
   const hashBuffer = await crypto.subtle.digest("SHA-256", salted);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -53,6 +65,17 @@ export default async function handler(req: Request): Promise<Response> {
         JSON.stringify({ error: "Missing required fields: userId, password, action" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Enforce password policy on check and check_and_store actions
+    if (action === "check" || action === "check_and_store") {
+      const policyCheck = validatePassword(password);
+      if (!policyCheck.valid) {
+        return new Response(
+          JSON.stringify({ reused: false, policyError: true, error: policyCheck.error }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const passwordHash = await hashPassword(password);

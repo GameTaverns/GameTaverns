@@ -4,11 +4,13 @@ import { CheckCircle, Loader2 } from "lucide-react";
 import logoImage from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordStrengthIndicator } from "@/components/ui/password-strength-indicator";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTranslation } from "react-i18next";
+import { validatePassword, PASSWORD_REQUIREMENTS_TEXT } from "@/lib/password-validation";
 
 export default function ResetPassword() {
   const { t } = useTranslation();
@@ -93,10 +95,11 @@ export default function ResetPassword() {
       return;
     }
 
-    if (password.length < 6) {
+    const validation = validatePassword(password);
+    if (!validation.valid) {
       toast({
         title: t('errors.passwordTooShort'),
-        description: t('errors.passwordTooShortDesc'),
+        description: validation.errors[0],
         variant: "destructive",
       });
       return;
@@ -255,6 +258,7 @@ export default function ResetPassword() {
                   className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                   required
                 />
+                <PasswordStrengthIndicator password={password} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="text-cream/80">{t('resetPassword.confirmPassword')}</Label>

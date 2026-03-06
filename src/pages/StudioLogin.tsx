@@ -68,8 +68,10 @@ export default function StudioLogin() {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
     }
-    if (password.length < 6) {
-      toast({ title: "Password too short", description: "Minimum 6 characters", variant: "destructive" });
+    const { validatePassword } = await import("@/lib/password-validation");
+    const validation = validatePassword(password);
+    if (!validation.valid) {
+      toast({ title: "Password does not meet requirements", description: validation.errors[0], variant: "destructive" });
       return;
     }
     setIsLoading(true);

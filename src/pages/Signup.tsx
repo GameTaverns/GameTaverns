@@ -9,9 +9,11 @@ import logoImage from "@/assets/logo.png";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PasswordStrengthIndicator } from "@/components/ui/password-strength-indicator";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 import { useTranslation } from "react-i18next";
+import { validatePassword, PASSWORD_REQUIREMENTS_TEXT } from "@/lib/password-validation";
 // IMPORTANT: we do NOT call supabase.auth.signUp() here. We use a backend function
 // that creates the user directly (email confirmation is disabled on self-hosted).
 
@@ -52,10 +54,11 @@ export default function Signup() {
       return;
     }
     
-    if (password.length < 6) {
+    const validation = validatePassword(password);
+    if (!validation.valid) {
       toast({
         title: t('errors.passwordTooShort'),
-        description: t('errors.passwordTooShortDesc'),
+        description: validation.errors[0],
         variant: "destructive",
       });
       return;
@@ -235,6 +238,7 @@ export default function Signup() {
                 className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                 required
               />
+              <PasswordStrengthIndicator password={password} />
             </div>
             
             <div className="space-y-2">

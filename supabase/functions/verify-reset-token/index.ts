@@ -71,9 +71,34 @@ export default async function handler(req: Request): Promise<Response> {
     }
 
     if (action === 'reset') {
-      if (!newPassword || newPassword.length < 6) {
+      if (!newPassword || newPassword.length < 8) {
         return new Response(
-          JSON.stringify({ error: "Password must be at least 6 characters" }),
+          JSON.stringify({ error: "Password must be at least 8 characters" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // Enforce password policy
+      if (!/[A-Z]/.test(newPassword)) {
+        return new Response(
+          JSON.stringify({ error: "Password must contain at least one uppercase letter" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!/[a-z]/.test(newPassword)) {
+        return new Response(
+          JSON.stringify({ error: "Password must contain at least one lowercase letter" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!/[0-9]/.test(newPassword)) {
+        return new Response(
+          JSON.stringify({ error: "Password must contain at least one number" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!/[^A-Za-z0-9]/.test(newPassword)) {
+        return new Response(
+          JSON.stringify({ error: "Password must contain at least one special character" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
