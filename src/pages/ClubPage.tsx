@@ -124,7 +124,7 @@ export default function ClubPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue={categorySlug ? "forums" : "catalog"} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6 bg-wood-dark/60 border border-wood-medium/40">
             <TabsTrigger
               value="catalog"
