@@ -21,6 +21,11 @@ CREATE POLICY "Admins can view login attempts"
   ON public.login_attempts FOR SELECT
   USING (public.has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "Admins can delete login attempts" ON public.login_attempts;
+CREATE POLICY "Admins can delete login attempts"
+  ON public.login_attempts FOR DELETE
+  USING (public.has_role(auth.uid(), 'admin'));
+
 CREATE INDEX IF NOT EXISTS idx_login_attempts_email_created
   ON public.login_attempts (email, created_at DESC);
 
