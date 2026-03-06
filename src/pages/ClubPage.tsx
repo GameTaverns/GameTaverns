@@ -242,7 +242,7 @@ export default function ClubPage() {
           {/* ── Member Libraries ── */}
           <TabsContent value="libraries">
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {clubLibraries.map((cl: any) => (
+              {visibleLibraries.map((cl: any) => (
                 <Card
                   key={cl.id}
                   className="bg-wood-medium/30 border-wood-medium/50 text-cream"
