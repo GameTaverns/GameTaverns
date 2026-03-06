@@ -29,6 +29,7 @@ export function BarcodeScannerDialog({
   const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasScannedRef = useRef(false);
+  const consecutiveReadsRef = useRef<{ code: string; count: number }>({ code: "", count: 0 });
   const scanRegionId = useId().replace(/:/g, "");
 
   const stopScanner = useCallback(async () => {
@@ -91,6 +92,16 @@ export function BarcodeScannerDialog({
           const numeric = raw.replace(/[^0-9]/g, "");
           const result = numeric.length >= 8 ? numeric : raw;
           if (!result) return;
+
+          // Require 3 consecutive reads of the same code to confirm
+          const prev = consecutiveReadsRef.current;
+          if (prev.code === result) {
+            prev.count++;
+          } else {
+            consecutiveReadsRef.current = { code: result, count: 1 };
+          }
+
+          if (consecutiveReadsRef.current.count < 3) return;
 
           hasScannedRef.current = true;
           onScan(result);
