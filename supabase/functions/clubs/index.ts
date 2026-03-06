@@ -340,8 +340,7 @@ export default async function handler(req: Request): Promise<Response> {
         const { data: clubLibs } = await supabase
           .from("club_libraries")
           .select("library_id")
-          .eq("club_id", searchClubId)
-          .eq("is_visible", true);
+          .eq("club_id", searchClubId);
 
         if (!clubLibs || clubLibs.length === 0)
           return json({ games: [] });
