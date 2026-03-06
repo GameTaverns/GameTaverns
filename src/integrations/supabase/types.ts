@@ -810,6 +810,47 @@ export type Database = {
           },
         ]
       }
+      club_lending_settings: {
+        Row: {
+          club_id: string
+          created_at: string
+          default_duration_hours: number
+          id: string
+          lending_enabled: boolean
+          max_concurrent_loans: number
+          require_contact_info: boolean
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          default_duration_hours?: number
+          id?: string
+          lending_enabled?: boolean
+          max_concurrent_loans?: number
+          require_contact_info?: boolean
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          default_duration_hours?: number
+          id?: string
+          lending_enabled?: boolean
+          max_concurrent_loans?: number
+          require_contact_info?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_lending_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_libraries: {
         Row: {
           club_id: string
@@ -856,6 +897,116 @@ export type Database = {
           },
           {
             foreignKeyName: "club_libraries_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_loans: {
+        Row: {
+          borrower_user_id: string | null
+          checked_out_at: string
+          checked_out_by: string
+          club_id: string
+          condition_in: string | null
+          condition_out: string | null
+          created_at: string
+          due_at: string | null
+          game_id: string
+          guest_contact: string | null
+          guest_name: string | null
+          id: string
+          library_id: string
+          notes: string | null
+          returned_at: string | null
+          status: Database["public"]["Enums"]["club_loan_status"]
+          updated_at: string
+        }
+        Insert: {
+          borrower_user_id?: string | null
+          checked_out_at?: string
+          checked_out_by: string
+          club_id: string
+          condition_in?: string | null
+          condition_out?: string | null
+          created_at?: string
+          due_at?: string | null
+          game_id: string
+          guest_contact?: string | null
+          guest_name?: string | null
+          id?: string
+          library_id: string
+          notes?: string | null
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["club_loan_status"]
+          updated_at?: string
+        }
+        Update: {
+          borrower_user_id?: string | null
+          checked_out_at?: string
+          checked_out_by?: string
+          club_id?: string
+          condition_in?: string | null
+          condition_out?: string | null
+          created_at?: string
+          due_at?: string | null
+          game_id?: string
+          guest_contact?: string | null
+          guest_name?: string | null
+          id?: string
+          library_id?: string
+          notes?: string | null
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["club_loan_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_loans_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_loans_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "club_loans_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_loans_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_loans_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_loans_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_loans_library_id_fkey"
             columns: ["library_id"]
             isOneToOne: false
             referencedRelation: "library_directory"
@@ -5664,6 +5815,7 @@ export type Database = {
         | "contributor"
         | "lender"
       app_role: "admin" | "moderator" | "user" | "owner" | "staff"
+      club_loan_status: "checked_out" | "returned" | "overdue"
       difficulty_level:
         | "1 - Light"
         | "2 - Medium Light"
@@ -5840,6 +5992,7 @@ export const Constants = {
         "lender",
       ],
       app_role: ["admin", "moderator", "user", "owner", "staff"],
+      club_loan_status: ["checked_out", "returned", "overdue"],
       difficulty_level: [
         "1 - Light",
         "2 - Medium Light",
