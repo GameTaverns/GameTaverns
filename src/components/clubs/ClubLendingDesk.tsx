@@ -30,6 +30,7 @@ interface ClubLendingDeskProps {
 }
 
 export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
+  const [lendingTab, setLendingTab] = usePersistedTab(`club-lending-tab-${clubId}`, "active");
   const [gameSearch, setGameSearch] = useState("");
   const [loanSearch, setLoanSearch] = useState("");
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
