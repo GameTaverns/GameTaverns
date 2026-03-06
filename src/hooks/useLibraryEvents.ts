@@ -14,6 +14,8 @@ export interface CalendarEvent {
   share_token: string | null;
   poll_status: string | null;
   created_at: string;
+  created_by?: string | null;
+  created_by_user_id?: string | null;
   // New planning fields from updated view
   event_category?: string;
   end_date?: string | null;

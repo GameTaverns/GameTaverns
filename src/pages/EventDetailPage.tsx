@@ -52,8 +52,16 @@ export default function EventDetailPage() {
   const navigate = useNavigate();
   const { data: event, isLoading } = useEventDetail(eventId);
   const updateEvent = useUpdateEventDetail();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin, isStaff } = useAuth();
   const [activeTab, setActiveTab] = useState("details");
+
+  // Permission: only event creator, admin, or staff can edit/manage
+  const canManageEvent = !!(event && user && (
+    user.id === event.created_by ||
+    user.id === event.created_by_user_id ||
+    isAdmin ||
+    isStaff
+  ));
 
   const eventDate = event ? new Date(event.event_date) : null;
   const isMultiDay = !!event?.end_date;
@@ -138,7 +146,8 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        {/* Edit + Status / Actions Menu */}
+        {/* Edit + Status / Actions Menu — only for event creator/admin/staff */}
+        {canManageEvent && (
         <div className="flex items-center gap-2">
         <EditEventDialog event={event} />
         <DropdownMenu>
@@ -177,6 +186,7 @@ export default function EventDetailPage() {
           </DropdownMenuContent>
         </DropdownMenu>
         </div>
+        )}
       </div>
 
       {/* Quick Info Bar */}
