@@ -142,18 +142,20 @@ export function AccountLockoutManager() {
                     {status.isLocked ? "LOCKED" : "Not Locked"}
                   </Badge>
 
-                  {status.attempts.some((a) => !a.success) && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={clearLockout}
-                      disabled={clearing}
-                      className="gap-1.5 h-8 px-2 text-[11px] w-fit"
-                    >
-                      {clearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
-                      {status.isLocked ? "Clear Lockout" : "Clear Failed Attempts"}
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={clearLockout}
+                    disabled={clearing || !status.attempts.some((a) => !a.success)}
+                    className="gap-1.5 h-8 px-2 text-[11px] w-fit"
+                  >
+                    {clearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
+                    {status.attempts.some((a) => !a.success)
+                      ? status.isLocked
+                        ? "Clear Lockout"
+                        : "Clear Failed Attempts"
+                      : "No Failed Attempts"}
+                  </Button>
                 </div>
               </div>
             </div>
