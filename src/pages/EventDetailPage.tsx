@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useEventDetail, useUpdateEventDetail } from "@/hooks/useEventPlanning";
+import { useEventRegistrations } from "@/hooks/useEventRegistrations";
 import { EventGamesTab } from "@/components/events/planning/EventGamesTab";
 import { EventSuppliesTab } from "@/components/events/planning/EventSuppliesTab";
 import { EventTablesTab } from "@/components/events/planning/EventTablesTab";
