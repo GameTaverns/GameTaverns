@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useClub, useClubLibraries, useClubGameSearch, useClubEvents } from "@/hooks/useClubs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useClub, useClubLibraries, useClubGameSearch, useClubEvents, useSwitchClubLibrary } from "@/hooks/useClubs";
+import { useMyLibraries } from "@/hooks/useLibrary";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
@@ -16,6 +18,7 @@ import { BackLink } from "@/components/navigation/BackLink";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
 import { useClubLendingSettings } from "@/hooks/useClubLending";
+import { useToast } from "@/hooks/use-toast";
 
 import { format } from "date-fns";
 
