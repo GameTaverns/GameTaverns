@@ -76,6 +76,7 @@ export function ClubCheckoutDialog({
     setGuestContact("");
     setConditionOut("");
     setNotes("");
+    setSelectedCopyId("");
     setDurationHours(defaultDurationHours.toString());
   };
 
