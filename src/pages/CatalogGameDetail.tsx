@@ -427,11 +427,6 @@ export default function CatalogGameDetail() {
                 </Button>
               )}
 
-              {game.bgg_url && (
-                <a href={game.bgg_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium">
-                  <ExternalLink className="h-4 w-4" /> View on BoardGameGeek
-                </a>
-              )}
 
               {/* Purchase Links */}
               <PurchaseLinks catalogId={game.id} />
