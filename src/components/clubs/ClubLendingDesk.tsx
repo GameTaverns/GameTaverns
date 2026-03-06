@@ -325,6 +325,32 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
           loan={returnLoan}
         />
       )}
+
+      {/* Barcode Scanner */}
+      <BarcodeScannerDialog
+        open={showScanner}
+        onOpenChange={setShowScanner}
+        onScan={handleBarcodeScan}
+        title="Scan Game Barcode"
+        description="Point your camera at the UPC/EAN barcode on the game box, or type it manually."
+      />
+
+      {/* Barcode Link (for unknown barcodes) */}
+      {pendingBarcode && (
+        <BarcodeLinkDialog
+          open={showBarcodeLink}
+          onOpenChange={(open) => {
+            setShowBarcodeLink(open);
+            if (!open) setPendingBarcode("");
+          }}
+          barcode={pendingBarcode}
+          clubId={clubId}
+          userId={staffUserId}
+          onLinked={(game) => {
+            setCheckoutGame(game);
+          }}
+        />
+      )}
     </div>
   );
 }
