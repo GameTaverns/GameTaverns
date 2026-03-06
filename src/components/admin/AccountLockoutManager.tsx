@@ -93,7 +93,7 @@ export function AccountLockoutManager() {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <ShieldAlert className="h-4 w-4" />
-          Account Lockout Manager
+          Account Lockout Manager v2
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           Check if an account is locked (5 failed attempts in 15 min) and manually clear the lockout.
