@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ArrowLeft, Tag, Loader2, Plus } from "lucide-react";
+import { Tag, Loader2, Plus } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
