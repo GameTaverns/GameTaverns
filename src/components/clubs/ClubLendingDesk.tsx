@@ -32,15 +32,45 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
   const [gameSearch, setGameSearch] = useState("");
   const [loanSearch, setLoanSearch] = useState("");
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
+  const [showBarcodeLink, setShowBarcodeLink] = useState(false);
+  const [pendingBarcode, setPendingBarcode] = useState("");
   const debouncedGameSearch = useDebounce(gameSearch, 300);
 
   const { data: settings } = useClubLendingSettings(clubId);
   const { data: activeLoans = [], isLoading: activeLoading } = useClubLoans(clubId, "checked_out");
   const { data: returnedLoans = [] } = useClubLoans(clubId, "returned");
   const { data: searchResults = [] } = useClubGameSearch(clubId, debouncedGameSearch);
+  const { data: barcodeMatch, isLoading: barcodeLoading } = useBarcodeLookup(scannedBarcode);
 
   const [checkoutGame, setCheckoutGame] = useState<any>(null);
   const [returnLoan, setReturnLoan] = useState<ClubLoan | null>(null);
+  const { toast } = useToast();
+
+  // When barcode lookup resolves, either checkout the game or prompt linking
+  const handleBarcodeScan = (barcode: string) => {
+    setScannedBarcode(barcode);
+  };
+
+  // Effect-like: react to barcode match changes
+  useMemo(() => {
+    if (!scannedBarcode || barcodeLoading) return;
+    if (barcodeMatch?.game) {
+      // Found a linked game — go straight to checkout
+      setCheckoutGame({
+        ...barcodeMatch.game,
+        library_id: barcodeMatch.game.library_id,
+      });
+      toast({ title: "Game found!", description: `Barcode matched: ${barcodeMatch.game.title}` });
+      setScannedBarcode(null);
+    } else if (barcodeMatch === null && scannedBarcode) {
+      // Unknown barcode — show link dialog
+      setPendingBarcode(scannedBarcode);
+      setShowBarcodeLink(true);
+      setScannedBarcode(null);
+    }
+  }, [barcodeMatch, barcodeLoading, scannedBarcode]);
 
   const isOverdue = (loan: ClubLoan) =>
     loan.status === "checked_out" && loan.due_at && new Date(loan.due_at) < new Date();
