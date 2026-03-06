@@ -19,6 +19,7 @@ import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDash
 import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
 import { useClubLendingSettings } from "@/hooks/useClubLending";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 
 import { format } from "date-fns";
 
