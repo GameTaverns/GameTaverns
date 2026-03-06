@@ -230,6 +230,7 @@ export default function EventDetailPage() {
           eventTitle={event.title}
           maxAttendees={event.max_attendees}
           isPublic={event.is_public}
+          registrationCount={registrationCount}
         />
       )}
 
