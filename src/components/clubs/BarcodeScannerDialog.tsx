@@ -155,6 +155,7 @@ export function BarcodeScannerDialog({
 
   const handleClose = (isOpen: boolean) => {
     if (!isOpen) {
+      hasScannedRef.current = false;
       stopScanner();
       setManualCode("");
       setError(null);
