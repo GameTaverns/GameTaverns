@@ -281,6 +281,38 @@ export default function ClubDashboard() {
 
           {/* Members */}
           <TabsContent value="members">
+            {/* Add owner's other libraries */}
+            {(() => {
+              const clubLibIds = new Set(libraries.map((cl: any) => cl.library_id));
+              const availableLibs = myLibraries.filter((l) => !clubLibIds.has(l.id));
+              if (availableLibs.length === 0) return null;
+              return (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-cream/60">Add your library:</span>
+                    {availableLibs.map((lib) => (
+                      <Button
+                        key={lib.id}
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-xs"
+                        disabled={addLibrary.isPending}
+                        onClick={async () => {
+                          try {
+                            await addLibrary.mutateAsync({ club_id: club.id, library_id: lib.id });
+                            toast({ title: "Library added!", description: `${lib.name} has been added to the club.` });
+                          } catch (e: any) {
+                            toast({ title: "Failed to add library", description: e.message, variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5" /> {lib.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="space-y-3">
               {libraries.map((cl: any) => (
                 <Card key={cl.id} className="bg-wood-medium/30 border-wood-medium/50 text-cream">
@@ -302,7 +334,7 @@ export default function ClubDashboard() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-400 hover:text-red-300"
+                        className="text-destructive hover:text-destructive/80"
                         onClick={() => handleRemoveLibrary(cl.library_id)}
                       >
                         <Trash2 className="h-4 w-4" />
