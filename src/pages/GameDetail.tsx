@@ -709,6 +709,16 @@ const GameDetail = () => {
                         {(game as any).copies_owned ?? 1}
                       </TableCell>
                     </TableRow>
+                    {(game as any).upc && (
+                      <TableRow>
+                        <TableCell className="font-medium text-muted-foreground">
+                          UPC / Barcode
+                        </TableCell>
+                        <TableCell className="text-foreground font-mono text-sm">
+                          {(game as any).upc}
+                        </TableCell>
+                      </TableRow>
+                    )}
                     <TableRow>
                       <TableCell className="font-medium text-muted-foreground">
                         {t('game.sleeved')}
