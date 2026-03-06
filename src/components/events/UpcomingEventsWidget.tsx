@@ -235,6 +235,8 @@ export function UpcomingEventsWidget({
                   key={event.id} 
                   event={event} 
                   isOwner={isOwner}
+                  currentUserId={user?.id}
+                  isAdminOrStaff={isAdmin || isStaff}
                   onEdit={onEditEvent}
                   onDelete={setEventToDelete}
                   onViewDetail={(e) => navigate(`/event/${e.id}`)}
