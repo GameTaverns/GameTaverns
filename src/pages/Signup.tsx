@@ -54,10 +54,11 @@ export default function Signup() {
       return;
     }
     
-    if (password.length < 6) {
+    const validation = validatePassword(password);
+    if (!validation.valid) {
       toast({
         title: t('errors.passwordTooShort'),
-        description: t('errors.passwordTooShortDesc'),
+        description: validation.errors[0],
         variant: "destructive",
       });
       return;
