@@ -60,10 +60,12 @@ export default function ClubDashboard() {
 
   const generateCode = useGenerateInviteCode();
   const removeLibrary = useRemoveClubLibrary();
+  const addLibrary = useAddClubLibrary();
   const updateClub = useUpdateClub();
   const createEvent = useCreateClubEvent();
   const deleteEvent = useDeleteClubEvent();
   const deleteClub = useDeleteClub();
+  const { data: myLibraries = [] } = useMyLibraries();
   const [dashTab, setDashTab] = usePersistedTab(`club-dash-${slug}`, "analytics");
 
   const [showEventDialog, setShowEventDialogRaw] = useState(() => {
