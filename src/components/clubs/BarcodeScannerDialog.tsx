@@ -120,6 +120,10 @@ export function BarcodeScannerDialog({
   }, [onScan, onOpenChange, stopScanner, scanRegionId]);
 
   useEffect(() => {
+    if (open) {
+      hasScannedRef.current = false;
+    }
+
     if (open && mode === "camera") {
       // Small delay for DOM to mount
       const timeout = setTimeout(startScanner, 300);
