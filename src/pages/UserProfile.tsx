@@ -69,6 +69,7 @@ export default function UserProfile() {
   const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [isSharedCommunity, setIsSharedCommunity] = useState(false);
+  const [profileTab, setProfileTab] = usePersistedTab(`profile-tab-${username}`, "activity");
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id));
   }, []);

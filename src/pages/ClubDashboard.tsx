@@ -63,7 +63,7 @@ export default function ClubDashboard() {
   const createEvent = useCreateClubEvent();
   const deleteEvent = useDeleteClubEvent();
   const deleteClub = useDeleteClub();
-  
+  const [dashTab, setDashTab] = usePersistedTab(`club-dash-${slug}`, "analytics");
 
   const [showEventDialog, setShowEventDialogRaw] = useState(() => {
     try {

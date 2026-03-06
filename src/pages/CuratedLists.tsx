@@ -51,6 +51,7 @@ export default function CuratedListsPage() {
   const { data: publicLists = [], isLoading } = useCuratedLists(library?.id);
   const { data: myLists = [] } = useMyLists();
   const { data: wishlistItems = [] } = useMyWantList();
+  const [listsTab, setListsTab] = usePersistedTab("curated-lists-tab", "community");
 
   const listUrl = (id: string) => {
     const path = `/lists/${id}`;

@@ -61,6 +61,7 @@ const GameDetail = () => {
   const { playLogs, messaging, forSale, ratings, lending } = useFeatureFlags();
   useLibraryViewTracking(library?.id, isLibraryOwner);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [gameDetailTab, setGameDetailTab] = usePersistedTab("game-detail-tab", "description");
   const [brokenImageUrls, setBrokenImageUrls] = useState<string[]>([]);
   const [useProxyForImage, setUseProxyForImage] = useState<Record<string, boolean>>({});
   
