@@ -121,37 +121,35 @@ export function AccountLockoutManager() {
         {status && (
           <div className="space-y-3">
             {/* Status badge */}
-            <div className="flex flex-col gap-3 p-3 rounded-lg border bg-card sm:flex-row sm:items-center sm:justify-between">
+            <div className="p-3 rounded-lg border bg-card space-y-3">
               <div className="flex items-center gap-3 min-w-0">
                 {status.isLocked ? (
                   <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
                 ) : (
                   <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{status.email}</p>
                   <p className="text-xs text-muted-foreground">
                     {status.recentFailures} failed attempt{status.recentFailures !== 1 ? "s" : ""} in last 15 min
                   </p>
                 </div>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 w-full sm:w-auto">
-                <Badge variant={status.isLocked ? "destructive" : "outline"} className="w-fit">
+                <Badge variant={status.isLocked ? "destructive" : "outline"} className="shrink-0">
                   {status.isLocked ? "LOCKED" : "Not Locked"}
                 </Badge>
-                {status.attempts.some((a) => !a.success) && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={clearLockout}
-                    disabled={clearing}
-                    className="gap-1.5 w-full sm:w-auto"
-                  >
-                    {clearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
-                    {status.isLocked ? "Clear Lockout" : "Clear Failed Attempts"}
-                  </Button>
-                )}
               </div>
+              {status.attempts.some((a) => !a.success) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={clearLockout}
+                  disabled={clearing}
+                  className="gap-1.5 w-full"
+                >
+                  {clearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
+                  {status.isLocked ? "Clear Lockout" : "Clear Failed Attempts"}
+                </Button>
+              )}
             </div>
 
             {/* Recent attempts */}
