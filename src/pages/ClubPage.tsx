@@ -340,6 +340,12 @@ export default function ClubPage() {
               activeCategorySlug={categorySlug}
             />
           </TabsContent>
+          {/* ── Lending Desk ── */}
+          {showLendingDesk && user && (
+            <TabsContent value="lending">
+              <ClubLendingDesk clubId={club.id} staffUserId={user.id} />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
