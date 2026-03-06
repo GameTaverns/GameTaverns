@@ -169,7 +169,7 @@ export default function ClubPage() {
                 />
               </div>
               <p className="text-cream/50 text-sm mt-2">
-                {games.length} games across {clubLibraries.length} libraries
+                {games.length} games across {visibleLibraries.length} libraries
               </p>
             </div>
 
