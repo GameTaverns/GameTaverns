@@ -428,12 +428,6 @@ export default function ClubDashboard() {
             </div>
           </TabsContent>
 
-          {/* Lending Desk */}
-          {lendingSettings?.lending_enabled && user && (
-            <TabsContent value="lending">
-              <ClubLendingDesk clubId={club.id} staffUserId={user.id} />
-            </TabsContent>
-          )}
 
           {/* Settings */}
           <TabsContent value="settings" className="space-y-6">
