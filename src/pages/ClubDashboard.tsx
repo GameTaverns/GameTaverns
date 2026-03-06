@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Settings, Users, Ticket, Copy, Trash2, Plus,
