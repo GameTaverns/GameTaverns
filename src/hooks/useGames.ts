@@ -384,14 +384,40 @@ export function useGame(slugOrId: string | undefined) {
         .from("game_designers")
         .select("designer:designers(id, name)")
         .eq("game_id", game.id);
-      const designers = gameDesigners?.map((gd: any) => gd.designer).filter(Boolean) || [];
+      let designers = gameDesigners?.map((gd: any) => gd.designer).filter(Boolean) || [];
 
       // Fetch artists
       const { data: gameArtists } = await supabase
         .from("game_artists")
         .select("artist:artists(id, name)")
         .eq("game_id", game.id);
-      const artists = gameArtists?.map((ga: any) => ga.artist).filter(Boolean) || [];
+      let artists = gameArtists?.map((ga: any) => ga.artist).filter(Boolean) || [];
+
+      // Fall back to catalog data if game-level designers/artists/publisher are empty
+      const catalogId = game.catalog_id;
+      if (catalogId && (designers.length === 0 || artists.length === 0 || !game.publisher)) {
+        const [catDesigners, catArtists, catPublishers] = await Promise.all([
+          designers.length === 0
+            ? supabase.from("catalog_designers").select("designer:designers(id, name)").eq("catalog_id", catalogId)
+            : Promise.resolve({ data: null }),
+          artists.length === 0
+            ? supabase.from("catalog_artists").select("artist:artists(id, name)").eq("catalog_id", catalogId)
+            : Promise.resolve({ data: null }),
+          !game.publisher
+            ? supabase.from("catalog_publishers").select("publisher:publishers(id, name)").eq("catalog_id", catalogId).limit(1)
+            : Promise.resolve({ data: null }),
+        ]);
+
+        if (catDesigners.data && designers.length === 0) {
+          designers = catDesigners.data.map((cd: any) => cd.designer).filter(Boolean);
+        }
+        if (catArtists.data && artists.length === 0) {
+          artists = catArtists.data.map((ca: any) => ca.artist).filter(Boolean);
+        }
+        if (catPublishers.data && catPublishers.data.length > 0 && !game.publisher) {
+          game.publisher = catPublishers.data[0]?.publisher || null;
+        }
+      }
 
       return {
         ...game,
