@@ -393,10 +393,10 @@ export function useGame(slugOrId: string | undefined) {
         .eq("game_id", game.id);
       let artists = gameArtists?.map((ga: any) => ga.artist).filter(Boolean) || [];
 
-      // Fall back to catalog data if game-level designers/artists/publisher are empty
+      // Fall back to catalog data if game-level designers/artists/publisher/upc are empty
       const catalogId = game.catalog_id;
-      if (catalogId && (designers.length === 0 || artists.length === 0 || !game.publisher)) {
-        const [catDesigners, catArtists, catPublishers] = await Promise.all([
+      if (catalogId && (designers.length === 0 || artists.length === 0 || !game.publisher || !game.upc)) {
+        const [catDesigners, catArtists, catPublishers, catUpc] = await Promise.all([
           designers.length === 0
             ? supabase.from("catalog_designers").select("designer:designers(id, name)").eq("catalog_id", catalogId)
             : Promise.resolve({ data: null }),
@@ -405,6 +405,9 @@ export function useGame(slugOrId: string | undefined) {
             : Promise.resolve({ data: null }),
           !game.publisher
             ? supabase.from("catalog_publishers").select("publisher:publishers(id, name)").eq("catalog_id", catalogId).limit(1)
+            : Promise.resolve({ data: null }),
+          !game.upc
+            ? supabase.from("game_catalog").select("upc, slug").eq("id", catalogId).maybeSingle()
             : Promise.resolve({ data: null }),
         ]);
 
@@ -416,6 +419,12 @@ export function useGame(slugOrId: string | undefined) {
         }
         if (catPublishers.data && catPublishers.data.length > 0 && !game.publisher) {
           game.publisher = catPublishers.data[0]?.publisher || null;
+        }
+        if (catUpc.data?.upc && !game.upc) {
+          game.upc = catUpc.data.upc;
+        }
+        if (catUpc.data?.slug) {
+          game.catalog_slug = catUpc.data.slug;
         }
       }
 
