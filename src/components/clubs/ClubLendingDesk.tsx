@@ -257,7 +257,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
       </Card>
 
       {/* ── Active Loans & Returns ── */}
-      <Tabs defaultValue="active" className="w-full">
+      <Tabs value={lendingTab} onValueChange={setLendingTab} className="w-full">
         <div className="flex items-center justify-between gap-4 mb-4">
           <TabsList className="bg-muted/50">
             <TabsTrigger value="active" className="gap-1.5">
