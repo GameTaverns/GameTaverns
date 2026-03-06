@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Package } from "lucide-react";
-import { useCheckoutGame, useClubGameCopies } from "@/hooks/useClubLending";
+import { Loader2, Package, UserCheck } from "lucide-react";
+import { useCheckoutGame, useClubGameCopies, getRecentBorrowers, saveRecentBorrower } from "@/hooks/useClubLending";
 import { useToast } from "@/hooks/use-toast";
 
 interface ClubCheckoutDialogProps {
@@ -22,25 +21,46 @@ interface ClubCheckoutDialogProps {
   staffUserId: string;
   defaultDurationHours: number;
   requireContact: boolean;
+  /** Called after successful checkout so parent can re-focus search */
+  onCheckoutComplete?: () => void;
 }
 
 const CONDITION_OPTIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 
 export function ClubCheckoutDialog({
   open, onOpenChange, clubId, game, staffUserId, defaultDurationHours, requireContact,
+  onCheckoutComplete,
 }: ClubCheckoutDialogProps) {
-  const [borrowerType, setBorrowerType] = useState<"guest">("guest");
   const [guestName, setGuestName] = useState("");
   const [guestContact, setGuestContact] = useState("");
   const [conditionOut, setConditionOut] = useState("");
   const [notes, setNotes] = useState("");
   const [durationHours, setDurationHours] = useState(defaultDurationHours.toString());
   const [selectedCopyId, setSelectedCopyId] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const checkout = useCheckoutGame();
   const { data: copies = [] } = useClubGameCopies(game.id);
   const { toast } = useToast();
   const hasMultipleCopies = (game.copies_owned ?? 1) > 1 || copies.length > 1;
+
+  // Recent borrowers for quick-fill
+  const recentBorrowers = useMemo(() => getRecentBorrowers(clubId), [clubId, open]);
+  const filteredSuggestions = useMemo(() => {
+    if (!guestName.trim()) return recentBorrowers.slice(0, 5);
+    const q = guestName.toLowerCase();
+    return recentBorrowers
+      .filter((b) => b.name.toLowerCase().includes(q))
+      .slice(0, 5);
+  }, [guestName, recentBorrowers]);
+
+  // Auto-focus name input when dialog opens
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => nameInputRef.current?.focus(), 100);
+    }
+  }, [open]);
 
   const canSubmit =
     guestName.trim().length > 0 &&
@@ -63,9 +83,14 @@ export function ClubCheckoutDialog({
         due_at: dueAt.toISOString(),
         checked_out_by: staffUserId,
       });
-      toast({ title: "Game checked out!", description: `${game.title} → ${guestName}` });
+
+      // Save to recent borrowers
+      saveRecentBorrower(clubId, guestName.trim(), guestContact.trim());
+
+      toast({ title: "✅ Checked out!", description: `${game.title} → ${guestName.trim()}` });
       onOpenChange(false);
       resetForm();
+      onCheckoutComplete?.();
     } catch (e: any) {
       toast({ title: "Checkout failed", description: e.message, variant: "destructive" });
     }
@@ -78,6 +103,13 @@ export function ClubCheckoutDialog({
     setNotes("");
     setSelectedCopyId("");
     setDurationHours(defaultDurationHours.toString());
+    setShowSuggestions(false);
+  };
+
+  const selectSuggestion = (borrower: { name: string; contact: string }) => {
+    setGuestName(borrower.name);
+    setGuestContact(borrower.contact);
+    setShowSuggestions(false);
   };
 
   return (
@@ -91,14 +123,44 @@ export function ClubCheckoutDialog({
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Borrower Info */}
-          <div className="space-y-2">
+          {/* Borrower Name with autocomplete */}
+          <div className="space-y-2 relative">
             <Label>Borrower Name *</Label>
             <Input
+              ref={nameInputRef}
               value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
+              onChange={(e) => {
+                setGuestName(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
               placeholder="Enter borrower's name"
+              autoComplete="off"
             />
+            {/* Quick-fill suggestions */}
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                {filteredSuggestions.map((b, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectSuggestion(b);
+                    }}
+                  >
+                    <UserCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="font-medium text-foreground">{b.name}</span>
+                    {b.contact && (
+                      <span className="text-muted-foreground text-xs ml-auto truncate max-w-[120px]">
+                        {b.contact}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
