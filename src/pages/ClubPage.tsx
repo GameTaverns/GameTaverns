@@ -31,6 +31,7 @@ export default function ClubPage() {
   const visibleLibraries = clubLibraries;
   const { data: clubEvents = [] } = useClubEvents(club?.id || null);
   const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
+  const { data: isLendingStaff = false } = useIsClubLendingStaff(club?.id || null, user?.id);
 
   const [activeTab, setActiveTab] = usePersistedTab(
     `club-tab-${slug}`,
