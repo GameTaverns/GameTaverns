@@ -11,7 +11,73 @@ const router = Router();
 // All routes require admin
 router.use(authMiddleware, adminMiddleware);
 
-// List users with profile data
+const lockoutEmailSchema = z.string().trim().email().transform((value) => value.toLowerCase());
+
+// Get lockout status + recent attempts for a specific email
+router.get('/lockouts', async (req: Request, res: Response) => {
+  try {
+    const email = lockoutEmailSchema.parse(req.query.email);
+
+    const attemptsResult = await pool.query(
+      `SELECT id, created_at, success
+       FROM login_attempts
+       WHERE lower(email) = $1
+         AND created_at >= NOW() - INTERVAL '24 hours'
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [email]
+    );
+
+    const recentFailuresResult = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM login_attempts
+       WHERE lower(email) = $1
+         AND success = false
+         AND created_at > NOW() - INTERVAL '15 minutes'`,
+      [email]
+    );
+
+    const recentFailures = recentFailuresResult.rows[0]?.count ?? 0;
+
+    res.json({
+      email,
+      isLocked: recentFailures >= 5,
+      recentFailures,
+      lastAttemptAt: attemptsResult.rows[0]?.created_at ?? null,
+      attempts: attemptsResult.rows,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Valid email is required' });
+      return;
+    }
+    console.error('Get lockout status error:', error);
+    res.status(500).json({ error: 'Failed to fetch lockout status' });
+  }
+});
+
+// Clear failed login attempts (unlock account)
+router.delete('/lockouts', async (req: Request, res: Response) => {
+  try {
+    const email = lockoutEmailSchema.parse(req.query.email);
+
+    const deleteResult = await pool.query(
+      `DELETE FROM login_attempts
+       WHERE lower(email) = $1
+         AND success = false`,
+      [email]
+    );
+
+    res.json({ success: true, clearedCount: deleteResult.rowCount ?? 0 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Valid email is required' });
+      return;
+    }
+    console.error('Clear lockout error:', error);
+    res.status(500).json({ error: 'Failed to clear lockout' });
+  }
+});
 router.get('/users', async (req: Request, res: Response) => {
   try {
     // Use user_profiles as the base and LEFT JOIN users to catch all accounts

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, ShieldAlert, Unlock, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { apiClient, isSelfHostedMode, supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,12 @@ export function AccountLockoutManager() {
     setStatus(null);
 
     try {
+      if (isSelfHostedMode()) {
+        const data = await apiClient.get<LockoutStatus>(`/api/admin/lockouts?email=${encodeURIComponent(trimmed)}`);
+        setStatus(data);
+        return;
+      }
+
       // Get recent attempts (last 24h)
       const { data: attempts, error } = await supabase
         .from("login_attempts")
@@ -69,15 +75,39 @@ export function AccountLockoutManager() {
     setClearing(true);
 
     try {
-      const { error } = await supabase
+      if (isSelfHostedMode()) {
+        const result = await apiClient.delete<{ success: boolean; clearedCount: number }>(
+          `/api/admin/lockouts?email=${encodeURIComponent(emailToClear)}`
+        );
+
+        if (!result.clearedCount) {
+          toast.info(`No failed attempts found for ${emailToClear}`);
+        } else {
+          toast.success(`Cleared ${result.clearedCount} failed attempts for ${emailToClear}`);
+        }
+
+        setStatus((prev) =>
+          prev && prev.email === emailToClear
+            ? { ...prev, isLocked: false, recentFailures: 0, attempts: prev.attempts.filter((a) => a.success) }
+            : prev
+        );
+        return;
+      }
+
+      const { error, count } = await supabase
         .from("login_attempts")
-        .delete()
+        .delete({ count: "exact" })
         .eq("email", emailToClear)
         .eq("success", false);
 
       if (error) throw error;
 
-      toast.success(`Lockout cleared for ${emailToClear}`);
+      if (!count) {
+        toast.info(`No failed attempts found for ${emailToClear}`);
+      } else {
+        toast.success(`Cleared ${count} failed attempts for ${emailToClear}`);
+      }
+
       setStatus((prev) =>
         prev && prev.email === emailToClear
           ? { ...prev, isLocked: false, recentFailures: 0, attempts: prev.attempts.filter((a) => a.success) }
