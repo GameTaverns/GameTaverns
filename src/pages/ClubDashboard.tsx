@@ -27,9 +27,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   useClub, useClubLibraries, useClubInviteCodes, useClubEvents,
-  useGenerateInviteCode, useRemoveClubLibrary, useUpdateClub,
+  useGenerateInviteCode, useRemoveClubLibrary, useAddClubLibrary, useUpdateClub,
   useCreateClubEvent, useDeleteClubEvent, useDeleteClub,
 } from "@/hooks/useClubs";
+import { useMyLibraries } from "@/hooks/useLibrary";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
