@@ -81,7 +81,6 @@ export default function ClubPage() {
   );
 
   const isOwner = !!user && club.owner_id === user.id;
-  const { data: isLendingStaff = false } = useIsClubLendingStaff(club.id, user?.id);
   const showLendingDesk = (isOwner || isLendingStaff) && lendingSettings?.lending_enabled;
   const gamesByTitle = new Map<string, typeof games>();
   for (const game of games) {
