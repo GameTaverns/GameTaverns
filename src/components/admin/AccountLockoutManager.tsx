@@ -139,7 +139,7 @@ export function AccountLockoutManager() {
                 <Badge variant={status.isLocked ? "destructive" : "outline"} className="w-fit">
                   {status.isLocked ? "LOCKED" : "Not Locked"}
                 </Badge>
-                {status.isLocked && (
+                {status.attempts.some((a) => !a.success) && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -148,7 +148,7 @@ export function AccountLockoutManager() {
                     className="gap-1.5 w-full sm:w-auto"
                   >
                     {clearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
-                    Clear Lockout
+                    {status.isLocked ? "Clear Lockout" : "Clear Failed Attempts"}
                   </Button>
                 )}
               </div>
