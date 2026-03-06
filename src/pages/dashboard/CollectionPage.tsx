@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Gamepad2, Plus, Settings, Eye, Shuffle, Flame, ListOrdered,
-  Library, ArrowRight, BookOpen, Upload,
+  Library, ArrowRight, BookOpen, Upload, QrCode,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
