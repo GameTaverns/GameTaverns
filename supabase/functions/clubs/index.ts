@@ -293,6 +293,58 @@ export default async function handler(req: Request): Promise<Response> {
         return json({ success: true });
       }
 
+      // ── Switch library in club ──
+      case "switch_library": {
+        const { club_id: swClubId, old_library_id, new_library_id } = body;
+        if (!swClubId || !old_library_id || !new_library_id)
+          return json({ error: "club_id, old_library_id, and new_library_id required" }, 400);
+
+        // Verify user owns the old library
+        const { data: ownsOld } = await supabase
+          .from("libraries")
+          .select("id")
+          .eq("id", old_library_id)
+          .eq("owner_id", user.id)
+          .maybeSingle();
+        if (!ownsOld) return json({ error: "You don't own the current library" }, 403);
+
+        // Verify user owns the new library
+        const { data: ownsNew } = await supabase
+          .from("libraries")
+          .select("id")
+          .eq("id", new_library_id)
+          .eq("owner_id", user.id)
+          .maybeSingle();
+        if (!ownsNew) return json({ error: "You don't own the new library" }, 403);
+
+        // Verify old library is in the club
+        const { data: membership } = await supabase
+          .from("club_libraries")
+          .select("id")
+          .eq("club_id", swClubId)
+          .eq("library_id", old_library_id)
+          .maybeSingle();
+        if (!membership) return json({ error: "Current library not in this club" }, 404);
+
+        // Check new library isn't already in the club
+        const { data: alreadyIn } = await supabase
+          .from("club_libraries")
+          .select("id")
+          .eq("club_id", swClubId)
+          .eq("library_id", new_library_id)
+          .maybeSingle();
+        if (alreadyIn) return json({ error: "New library is already in this club" }, 400);
+
+        // Swap: update the membership row
+        const { error: swError } = await supabase
+          .from("club_libraries")
+          .update({ library_id: new_library_id })
+          .eq("id", membership.id);
+        if (swError) throw swError;
+
+        return json({ success: true });
+      }
+
       // ── Update club ──
       case "update_club": {
         const { club_id: updClubId, ...updates } = body;
