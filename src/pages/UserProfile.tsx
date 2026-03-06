@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, ArrowLeft, BarChart3, Camera, Globe, Building2 } from "lucide-react";
+import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2 } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -182,15 +183,7 @@ export default function UserProfile() {
 
       {isAuthenticated && (
         <div className="container mx-auto px-4 pt-4 max-w-4xl">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/dashboard")}
-            className="gap-1.5 text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Button>
+          <BackLink fallback="/dashboard" />
         </div>
       )}
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">

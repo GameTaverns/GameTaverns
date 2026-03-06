@@ -25,7 +25,6 @@ import {
   Clock,
   BookOpen,
   ExternalLink,
-  ArrowLeft,
   MapPin,
   Filter,
   X,
@@ -34,6 +33,7 @@ import {
   Building2,
 } from "lucide-react";
 import type { LibraryDirectoryEntry } from "@/hooks/useLibraryDirectory";
+import { BackLink } from "@/components/navigation/BackLink";
 
 export default function Directory() {
   const { user } = useAuth();
@@ -376,13 +376,7 @@ export default function Directory() {
         {/* Header */}
         <div className="mb-8">
           {user && (
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </Link>
+            <BackLink fallback="/dashboard" />
           )}
           <div className="flex items-start justify-between gap-4">
             <div>

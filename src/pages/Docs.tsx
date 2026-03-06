@@ -14,13 +14,14 @@ import {
 } from "@/components/ui/accordion";
 import {
   BookOpen, Gamepad2, BarChart3, UserCircle, MessageSquare,
-  Users, Settings, HelpCircle, Shield, Search, ArrowLeft,
+  Users, Settings, HelpCircle, Shield, Search,
   Sparkles, Globe, Calendar, BookMarked, Mail, Dice5,
   ClipboardList, Library, TrendingUp, Heart, Star, RefreshCw,
   Copy, Vote, Building2, Target, Download, Palette, DollarSign,
   ArrowLeftRight, Bell, Server, MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BackLink } from "@/components/navigation/BackLink";
 
 /* ── Helpers ── */
 
@@ -107,9 +108,7 @@ export default function Docs() {
       <main className="container mx-auto px-4 py-6 max-w-5xl flex-1">
         {/* Header */}
         <div className="mb-6">
-          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-3">
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
-          </Link>
+          <BackLink fallback="/dashboard" className="mb-3" />
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">Help & Documentation</h1>
           <p className="text-muted-foreground mt-1">Everything you need to know about GameTaverns</p>
         </div>

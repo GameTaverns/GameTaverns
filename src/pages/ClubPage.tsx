@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Search, Users, Calendar, ExternalLink, MessageSquare, ArrowLeft, BarChart3, BookOpen } from "lucide-react";
+import { Search, Users, Calendar, ExternalLink, MessageSquare, BarChart3, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { useAuth } from "@/hooks/useAuth";
 import { ClubForumCard } from "@/components/community/ClubForumCard";
+import { BackLink } from "@/components/navigation/BackLink";
 import { ClubAnalyticsDashboard } from "@/components/analytics/ClubAnalyticsDashboard";
 import { ClubLendingDesk } from "@/components/clubs/ClubLendingDesk";
 import { useClubLendingSettings } from "@/hooks/useClubLending";
@@ -73,12 +74,7 @@ export default function ClubPage() {
       {/* Header */}
       <header className="border-b border-wood-medium/50 bg-wood-dark/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-6">
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-2 text-cream/70 hover:text-cream mb-4 text-sm"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
-          </Link>
+          <BackLink fallback="/clubs" className="text-cream/70 hover:text-cream" />
           <div className="flex items-center gap-4">
             {club.logo_url && (
               <img

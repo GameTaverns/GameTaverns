@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare, Users, RefreshCw, ChevronDown } from "lucide-react";
+import { Palette, Settings, ToggleRight, Image, Loader2, Star, Heart, MessageSquare, Users, RefreshCw, ChevronDown } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import { InfoPopover } from "@/components/ui/InfoPopover";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -119,12 +120,7 @@ export default function LibrarySettings() {
   return (
     <Layout>
       <div className="max-w-5xl mx-auto">
-        <TenantLink href={getPlatformUrl("/dashboard?tab=library")}>
-          <Button variant="ghost" className="mb-6 -ml-2">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
-        </TenantLink>
+        <BackLink fallback="/dashboard" />
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <div className="space-y-2">

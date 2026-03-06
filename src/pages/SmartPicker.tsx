@@ -11,7 +11,8 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Dices, Users, Clock, Weight, BookX, Shuffle, Filter, Sparkles, ArrowLeft } from "lucide-react";
+import { Dices, Users, Clock, Weight, BookX, Shuffle, Filter, Sparkles } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { GameImage } from "@/components/games/GameImage";
@@ -175,10 +176,7 @@ export default function SmartPicker() {
     <Layout>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-4">
-          <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
+          <BackLink fallback="/dashboard" />
         </div>
         <div className="text-center mb-8">
           <h1 className="font-display text-4xl font-bold mb-2">Smart Game Picker</h1>

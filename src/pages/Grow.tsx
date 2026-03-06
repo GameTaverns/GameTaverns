@@ -5,7 +5,8 @@ import { ReferralPanel } from "@/components/referral/ReferralPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Share2, Users, Gift, ChevronRight, ChevronLeft, ImageIcon } from "lucide-react";
+import { Share2, Users, Gift, ChevronRight, ImageIcon } from "lucide-react";
+import { BackLink } from "@/components/navigation/BackLink";
 import { REFERRAL_TIERS, FOUNDING_MEMBER_BADGE } from "@/hooks/useReferral";
 
 export default function Grow() {
@@ -18,10 +19,7 @@ export default function Grow() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Back to dashboard */}
         {isAuthenticated && (
-          <Link to="/dashboard" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-            <ChevronLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
+          <BackLink fallback="/dashboard" />
         )}
 
         {/* Hero */}

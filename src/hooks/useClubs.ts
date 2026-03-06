@@ -356,12 +356,57 @@ export function useClubGameSearch(clubId: string | null, query: string) {
     queryKey: ["club-game-search", clubId, query],
     queryFn: async () => {
       if (!clubId) return [];
-      const result = await invokeClubs({
-        action: "search_games",
-        club_id: clubId,
-        query: query || undefined,
-      });
-      return (result?.games || []) as ClubGame[];
+
+      // Get visible library IDs in this club
+      const { data: clubLibs } = await supabase
+        .from("club_libraries")
+        .select("library_id")
+        .eq("club_id", clubId)
+        .eq("is_visible", true);
+
+      if (!clubLibs || clubLibs.length === 0) return [];
+      const libIds = clubLibs.map((cl: any) => cl.library_id);
+
+      // Query games directly (works on both Cloud and self-hosted)
+      let gamesQuery = supabase
+        .from("games")
+        .select("id, title, image_url, min_players, max_players, play_time, library_id, bgg_id, copies_owned, is_expansion")
+        .in("library_id", libIds)
+        .eq("is_expansion", false)
+        .order("title")
+        .limit(500);
+
+      if (query) {
+        gamesQuery = gamesQuery.ilike("title", `%${query}%`);
+      }
+
+      const { data: games, error: gamesError } = await gamesQuery;
+      if (gamesError) throw gamesError;
+
+      // Fetch library details for attribution
+      const { data: libs } = await supabase
+        .from("libraries")
+        .select("id, name, slug, owner_id")
+        .in("id", libIds);
+
+      const libMap = new Map((libs || []).map((l: any) => [l.id, l]));
+      const ownerIds = [...new Set((libs || []).map((l: any) => l.owner_id).filter(Boolean))];
+
+      const { data: profiles } = ownerIds.length > 0
+        ? await supabase.from("user_profiles").select("user_id, display_name, username").in("user_id", ownerIds)
+        : { data: [] };
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
+      return (games || []).map((g: any) => {
+        const lib = libMap.get(g.library_id) || ({} as any);
+        const owner = lib.owner_id ? profileMap.get(lib.owner_id) : null;
+        return {
+          ...g,
+          library_name: lib.name || "Unknown",
+          library_slug: lib.slug || "",
+          owner_name: owner?.display_name || owner?.username || "Unknown",
+        };
+      }) as ClubGame[];
     },
     enabled: !!clubId,
   });
