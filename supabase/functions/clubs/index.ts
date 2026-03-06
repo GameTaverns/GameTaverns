@@ -265,6 +265,47 @@ export default async function handler(req: Request): Promise<Response> {
         return json({ ...membership, club_name: undefined });
       }
 
+      // ── Add library to club (club owner only) ──
+      case "add_library": {
+        const { club_id: addClubId, library_id: addLibId } = body;
+        if (!addClubId || !addLibId)
+          return json({ error: "club_id and library_id required" }, 400);
+
+        // Must be club owner
+        const { data: isAddOwner } = await supabase.rpc("is_club_owner", {
+          _user_id: user.id,
+          _club_id: addClubId,
+        });
+        if (!isAddOwner) return json({ error: "Not club owner" }, 403);
+
+        // Verify user owns the library
+        const { data: ownsAddLib } = await supabase
+          .from("libraries")
+          .select("id")
+          .eq("id", addLibId)
+          .eq("owner_id", user.id)
+          .maybeSingle();
+        if (!ownsAddLib) return json({ error: "You don't own this library" }, 403);
+
+        // Check not already in the club
+        const { data: alreadyAdded } = await supabase
+          .from("club_libraries")
+          .select("id")
+          .eq("club_id", addClubId)
+          .eq("library_id", addLibId)
+          .maybeSingle();
+        if (alreadyAdded)
+          return json({ error: "Library is already in this club" }, 400);
+
+        const { data: addResult, error: addErr } = await supabase
+          .from("club_libraries")
+          .insert({ club_id: addClubId, library_id: addLibId })
+          .select()
+          .single();
+        if (addErr) throw addErr;
+        return json(addResult);
+      }
+
       // ── Remove library from club ──
       case "remove_library": {
         const { club_id: rmClubId, library_id: rmLibId } = body;
