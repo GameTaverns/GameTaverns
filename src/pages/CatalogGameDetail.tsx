@@ -102,7 +102,7 @@ export default function CatalogGameDetail() {
       if (!data) {
         const byId = await supabase
           .from("game_catalog")
-          .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age, parent_catalog_id")
+          .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age, parent_catalog_id, upc")
           .eq("id", slug!)
           .maybeSingle();
         data = byId.data;
