@@ -336,11 +336,12 @@ export default async function handler(req: Request): Promise<Response> {
         if (!searchClubId)
           return json({ error: "club_id required" }, 400);
 
-        // Get all library IDs in this club
+        // Get only visible library IDs in this club
         const { data: clubLibs } = await supabase
           .from("club_libraries")
           .select("library_id")
-          .eq("club_id", searchClubId);
+          .eq("club_id", searchClubId)
+          .eq("is_visible", true);
 
         if (!clubLibs || clubLibs.length === 0)
           return json({ games: [] });

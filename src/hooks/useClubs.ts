@@ -24,6 +24,7 @@ export interface ClubLibrary {
   club_id: string;
   library_id: string;
   joined_at: string;
+  is_visible: boolean;
   library?: { id: string; name: string; slug: string; owner_id: string };
 }
 
