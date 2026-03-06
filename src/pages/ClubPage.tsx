@@ -32,6 +32,16 @@ export default function ClubPage() {
   const { data: clubEvents = [] } = useClubEvents(club?.id || null);
   const { data: lendingSettings } = useClubLendingSettings(club?.id || null);
 
+  const [activeTab, setActiveTab] = usePersistedTab(
+    `club-tab-${slug}`,
+    categorySlug ? "forums" : "catalog"
+  );
+
+  // If navigated with a categorySlug, force forums tab
+  useEffect(() => {
+    if (categorySlug) setActiveTab("forums");
+  }, [categorySlug, setActiveTab]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [switchingLibraryId, setSwitchingLibraryId] = useState<string | null>(null);
   const [newLibraryId, setNewLibraryId] = useState("");
