@@ -55,6 +55,7 @@ export function ClubCheckoutDialog({
         club_id: clubId,
         game_id: game.id,
         library_id: game.library_id,
+        copy_id: selectedCopyId || undefined,
         guest_name: guestName.trim(),
         guest_contact: guestContact.trim() || undefined,
         condition_out: conditionOut || undefined,
