@@ -45,6 +45,12 @@ AS $$
       SELECT count(*) FROM game_catalog gc
       WHERE gc.bgg_id IS NOT NULL
         AND gc.enriched_at IS NULL
+    ),
+    'missing_designers', (
+      SELECT count(*) FROM game_catalog gc
+      WHERE gc.bgg_id IS NOT NULL
+        AND gc.enriched_at IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM catalog_designers cd WHERE cd.catalog_id = gc.id)
     )
   );
 $$;

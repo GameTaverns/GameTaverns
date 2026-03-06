@@ -597,6 +597,211 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // =====================================================================
+    // MODE: fix-missing — Re-enrich entries that were marked enriched but are
+    // missing designers/artists (caused by BGG 401 errors during initial enrichment)
+    // =====================================================================
+    if (mode === "fix-missing") {
+      const BGG_BATCH_SIZE = 20;
+      const batchSize = Math.min(body.batch_size || 100, 200);
+
+      // Find entries that are enriched but missing designers
+      const { data: incompleteEntries, error: incErr } = await admin
+        .from("game_catalog")
+        .select("id, bgg_id, title")
+        .not("bgg_id", "is", null)
+        .not("enriched_at", "is", null)
+        .order("created_at", { ascending: true })
+        .limit(batchSize);
+
+      if (incErr) {
+        return new Response(JSON.stringify({ error: incErr.message }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Filter to only those actually missing designers (can't do NOT EXISTS via PostgREST)
+      const entryIds = (incompleteEntries || []).map((e: any) => e.id);
+      const hasDesignerSet = new Set<string>();
+      for (let d = 0; d < entryIds.length; d += 200) {
+        const batch = entryIds.slice(d, d + 200);
+        const { data: existing } = await admin.from("catalog_designers").select("catalog_id").in("catalog_id", batch);
+        if (existing) for (const r of existing) hasDesignerSet.add(r.catalog_id);
+      }
+
+      const catalogEntries = (incompleteEntries || []).filter((e: any) => !hasDesignerSet.has(e.id));
+
+      if (catalogEntries.length === 0) {
+        return new Response(JSON.stringify({
+          success: true, mode: "fix-missing", processed: 0,
+          message: "No incomplete entries found", hasMore: false,
+          checked: entryIds.length,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      console.log(`[catalog-backfill] fix-missing: ${catalogEntries.length} entries missing designers (checked ${entryIds.length})`);
+
+      // Re-use the same enrichment logic as "enrich" mode
+      const designerCache = new Map<string, string>();
+      const artistCache = new Map<string, string>();
+      let dOffset = 0;
+      const D_PAGE = 1000;
+      while (true) {
+        const { data: dPage } = await admin.from("designers").select("id, name").range(dOffset, dOffset + D_PAGE - 1);
+        if (!dPage || dPage.length === 0) break;
+        for (const d of dPage) designerCache.set(d.name, d.id);
+        if (dPage.length < D_PAGE) break;
+        dOffset += D_PAGE;
+      }
+      let aOffset = 0;
+      while (true) {
+        const { data: aPage } = await admin.from("artists").select("id, name").range(aOffset, aOffset + D_PAGE - 1);
+        if (!aPage || aPage.length === 0) break;
+        for (const a of aPage) artistCache.set(a.name, a.id);
+        if (aPage.length < D_PAGE) break;
+        aOffset += D_PAGE;
+      }
+
+      console.log(`[catalog-backfill] fix-missing: Cached ${designerCache.size} designers, ${artistCache.size} artists`);
+
+      let processed = 0;
+      let designersAdded = 0;
+      let artistsAdded = 0;
+      let bggErrors = 0;
+      const errors: string[] = [];
+
+      const entryMap = new Map<string, { id: string; title: string; bgg_id: string }>();
+      for (const entry of catalogEntries) entryMap.set(entry.bgg_id, entry as any);
+
+      const allBggIds = catalogEntries.map((e: any) => e.bgg_id);
+      for (let i = 0; i < allBggIds.length; i += BGG_BATCH_SIZE) {
+        const chunk = allBggIds.slice(i, i + BGG_BATCH_SIZE);
+        const url = `https://boardgamegeek.com/xmlapi2/thing?id=${chunk.join(",")}&stats=1`;
+
+        let xml: string | null = null;
+        let fetchAttempts = 0;
+        while (fetchAttempts < 3 && !xml) {
+          fetchAttempts++;
+          try {
+            const res = await fetch(url, { headers: bggHeaders });
+            if (res.status === 429) { await sleep(fetchAttempts * 3000); continue; }
+            if (res.status === 202) { await sleep(3000); continue; }
+            if (res.status === 401) {
+              errors.push(`BGG 401 Unauthorized — check BGG_API_TOKEN and BGG_SESSION_COOKIE`);
+              bggErrors++;
+              break;
+            }
+            if (res.ok) xml = await res.text();
+            else { errors.push(`BGG HTTP ${res.status} for chunk ${chunk[0]}`); bggErrors++; break; }
+          } catch (e) {
+            errors.push(`Fetch error: ${e instanceof Error ? e.message : String(e)}`);
+            if (fetchAttempts < 3) await sleep(2000);
+          }
+        }
+
+        // If we're getting auth errors, stop immediately
+        if (bggErrors >= 2) {
+          errors.push("Stopping: too many BGG auth errors");
+          break;
+        }
+
+        if (!xml) continue;
+
+        const parsed = parseBggXmlBatch(xml);
+
+        const newDesignerNames = new Set<string>();
+        const newArtistNames = new Set<string>();
+        for (const item of parsed) {
+          for (const n of item.designers) if (!designerCache.has(n)) newDesignerNames.add(n);
+          for (const n of item.artists) if (!artistCache.has(n)) newArtistNames.add(n);
+        }
+
+        if (newDesignerNames.size > 0) {
+          const rows = [...newDesignerNames].map(name => ({ name }));
+          for (let j = 0; j < rows.length; j += 500) {
+            const subBatch = rows.slice(j, j + 500);
+            const { data: inserted } = await admin.from("designers")
+              .upsert(subBatch, { onConflict: "name", ignoreDuplicates: true })
+              .select("id, name");
+            if (inserted) for (const d of inserted) designerCache.set(d.name, d.id);
+          }
+          const missing = [...newDesignerNames].filter(n => !designerCache.has(n));
+          if (missing.length > 0) {
+            const { data: existing } = await admin.from("designers").select("id, name").in("name", missing);
+            if (existing) for (const d of existing) designerCache.set(d.name, d.id);
+          }
+        }
+
+        if (newArtistNames.size > 0) {
+          const rows = [...newArtistNames].map(name => ({ name }));
+          for (let j = 0; j < rows.length; j += 500) {
+            const subBatch = rows.slice(j, j + 500);
+            const { data: inserted } = await admin.from("artists")
+              .upsert(subBatch, { onConflict: "name", ignoreDuplicates: true })
+              .select("id, name");
+            if (inserted) for (const a of inserted) artistCache.set(a.name, a.id);
+          }
+          const missing = [...newArtistNames].filter(n => !artistCache.has(n));
+          if (missing.length > 0) {
+            const { data: existing } = await admin.from("artists").select("id, name").in("name", missing);
+            if (existing) for (const a of existing) artistCache.set(a.name, a.id);
+          }
+        }
+
+        const allDesignerJunctions: { catalog_id: string; designer_id: string }[] = [];
+        const allArtistJunctions: { catalog_id: string; artist_id: string }[] = [];
+
+        for (const item of parsed) {
+          const entry = entryMap.get(item.bggId);
+          if (!entry) continue;
+
+          // Also update rating/weight if we got better data
+          const updates: Record<string, unknown> = { enriched_at: new Date().toISOString() };
+          if (item.bggCommunityRating !== null) updates.bgg_community_rating = item.bggCommunityRating;
+          if (item.weight !== null) updates.weight = item.weight;
+          await admin.from("game_catalog").update(updates).eq("id", entry.id);
+
+          for (const name of item.designers) {
+            const dId = designerCache.get(name);
+            if (dId) allDesignerJunctions.push({ catalog_id: entry.id, designer_id: dId });
+          }
+          for (const name of item.artists) {
+            const aId = artistCache.get(name);
+            if (aId) allArtistJunctions.push({ catalog_id: entry.id, artist_id: aId });
+          }
+          processed++;
+        }
+
+        if (allDesignerJunctions.length > 0) {
+          for (let j = 0; j < allDesignerJunctions.length; j += 500) {
+            const batch = allDesignerJunctions.slice(j, j + 500);
+            const { error: dErr } = await admin.from("catalog_designers")
+              .upsert(batch, { onConflict: "catalog_id,designer_id" });
+            if (dErr) errors.push(`designer junctions: ${dErr.message}`);
+            else designersAdded += batch.length;
+          }
+        }
+
+        if (allArtistJunctions.length > 0) {
+          for (let j = 0; j < allArtistJunctions.length; j += 500) {
+            const batch = allArtistJunctions.slice(j, j + 500);
+            const { error: aErr } = await admin.from("catalog_artists")
+              .upsert(batch, { onConflict: "catalog_id,artist_id" });
+            if (aErr) errors.push(`artist junctions: ${aErr.message}`);
+            else artistsAdded += batch.length;
+          }
+        }
+
+        if (i + BGG_BATCH_SIZE < allBggIds.length) await sleep(1000);
+      }
+
+      return new Response(JSON.stringify({
+        success: true, mode: "fix-missing", processed, designersAdded, artistsAdded,
+        checked: entryIds.length, hasMore: catalogEntries.length === batchSize,
+        errors: errors.slice(0, 20),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // =====================================================================
     // MODE: re-enrich — Monthly refresh of BGG ratings/weight for existing entries
     // Processes entries that haven't been updated in 30+ days
     // =====================================================================
