@@ -247,7 +247,7 @@ export default function UserProfile() {
                         variant="outline"
                         className="gap-1.5"
                         onClick={() => {
-                          window.location.href = `/dm/${profile.user_id}`;
+                          navigate(`/dm/${profile.user_id}`);
                         }}
                       >
                         <MessageSquare className="h-3.5 w-3.5" />
