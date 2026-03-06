@@ -24,6 +24,7 @@ export interface ClubLibrary {
   club_id: string;
   library_id: string;
   joined_at: string;
+  is_visible: boolean;
   library?: { id: string; name: string; slug: string; owner_id: string };
 }
 
@@ -172,6 +173,22 @@ export function useClubLibraries(clubId: string | null) {
       return (data || []) as any[];
     },
     enabled: !!clubId,
+  });
+}
+
+export function useToggleClubLibraryVisibility() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, club_id, is_visible }: { id: string; club_id: string; is_visible: boolean }) => {
+      const { error } = await supabase
+        .from("club_libraries")
+        .update({ is_visible })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["club-libraries", vars.club_id] });
+    },
   });
 }
 

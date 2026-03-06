@@ -21,6 +21,7 @@ export default function ClubPage() {
   const { user } = useAuth();
   const { data: club, isLoading } = useClub(slug || null);
   const { data: clubLibraries = [] } = useClubLibraries(club?.id || null);
+  const visibleLibraries = clubLibraries.filter((cl: any) => cl.is_visible);
   const { data: clubEvents = [] } = useClubEvents(club?.id || null);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,9 +93,9 @@ export default function ClubPage() {
                 <p className="text-cream/70 mt-1">{club.description}</p>
               )}
               <div className="flex items-center gap-3 mt-2">
-                <Badge variant="secondary" className="gap-1">
+                 <Badge variant="secondary" className="gap-1">
                   <Users className="h-3 w-3" />
-                  {clubLibraries.length} {clubLibraries.length === 1 ? "library" : "libraries"}
+                  {visibleLibraries.length} {visibleLibraries.length === 1 ? "library" : "libraries"}
                 </Badge>
                 {club.is_public && (
                   <Badge variant="outline" className="text-cream/70">Public</Badge>
@@ -168,7 +169,7 @@ export default function ClubPage() {
                 />
               </div>
               <p className="text-cream/50 text-sm mt-2">
-                {games.length} games across {clubLibraries.length} libraries
+                {games.length} games across {visibleLibraries.length} libraries
               </p>
             </div>
 
@@ -241,7 +242,7 @@ export default function ClubPage() {
           {/* ── Member Libraries ── */}
           <TabsContent value="libraries">
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {clubLibraries.map((cl: any) => (
+              {visibleLibraries.map((cl: any) => (
                 <Card
                   key={cl.id}
                   className="bg-wood-medium/30 border-wood-medium/50 text-cream"
