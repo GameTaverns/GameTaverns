@@ -182,15 +182,7 @@ export default function UserProfile() {
 
       {isAuthenticated && (
         <div className="container mx-auto px-4 pt-4 max-w-4xl">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/dashboard")}
-            className="gap-1.5 text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Button>
+          <BackLink fallback="/dashboard" />
         </div>
       )}
       <main className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
