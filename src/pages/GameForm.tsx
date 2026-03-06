@@ -632,6 +632,20 @@ const GameForm = () => {
                     placeholder="https://boardgamegeek.com/boardgame/..."
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="upc">UPC / EAN Barcode</Label>
+                  <Input
+                    id="upc"
+                    value={upc}
+                    onChange={(e) => setUpc(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="e.g. 681706711003"
+                    maxLength={14}
+                    inputMode="numeric"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The barcode number on the game box. Used for instant lookup when scanning at lending events.
+                  </p>
+                </div>
               </div>
 
               {/* Expansion Toggle */}

@@ -41,12 +41,23 @@ export function BarcodeLinkDialog({
 
   const handleLink = async (game: any) => {
     try {
+      // Save barcode mapping
       await saveBarcode.mutateAsync({
         barcode,
         barcode_type: barcode.length === 13 ? "EAN-13" : "UPC-A",
         game_id: game.id,
         created_by: userId,
       });
+      // Also save the UPC directly on the game record for future direct lookups
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        await supabase
+          .from("games")
+          .update({ upc: barcode } as any)
+          .eq("id", game.id);
+      } catch {
+        // Non-critical: barcode mapping already saved
+      }
       toast({
         title: "Barcode linked!",
         description: `${barcode} → ${game.title}. Future scans will find it instantly.`,
