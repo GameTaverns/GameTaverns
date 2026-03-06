@@ -220,6 +220,9 @@ export default function ClubDashboard() {
             <Link to="/dashboard?tab=clubs" className="text-cream/70 hover:text-cream">
               <ArrowLeft className="h-5 w-5" />
             </Link>
+            {club.logo_url && (
+              <img src={club.logo_url} alt={club.name} className="h-10 w-10 rounded-lg object-cover" />
+            )}
             <h1 className="font-display text-2xl font-bold text-cream">
               {club.name} — Management
             </h1>
