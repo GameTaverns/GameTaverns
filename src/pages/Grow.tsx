@@ -16,7 +16,7 @@ export default function Grow() {
 
   return (
     <Layout hideSidebar>
-      <SEO title="Grow Your Community" description="Share GameTaverns with your gaming group, earn badges, and get tools to spread the word." />
+      <SEO title={t('grow.title')} description={t('grow.seoDesc')} />
 
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Back to dashboard */}
