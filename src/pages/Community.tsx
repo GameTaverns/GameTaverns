@@ -509,6 +509,7 @@ function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryI
 }
 
 function ForumHome() {
+  const { t } = useTranslation();
   const { library, isTenantMode, isOwner } = useTenant();
   const { isAdmin } = useAuth();
   const { data: myClubs = [] } = useMyClubs();
