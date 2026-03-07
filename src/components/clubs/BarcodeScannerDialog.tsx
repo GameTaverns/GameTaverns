@@ -44,6 +44,8 @@ export function BarcodeScannerDialog({
     setScanning(false);
   }, []);
 
+  const retryCountRef = useRef(0);
+
   const startScanner = useCallback(async () => {
     if (!containerRef.current || scannerRef.current) return;
 
@@ -90,7 +92,6 @@ export function BarcodeScannerDialog({
           const result = numeric.length >= 8 ? numeric : raw;
           if (!result) return;
 
-          // Pause scanning and show preview for confirmation
           setPendingCode(result);
           scanner.pause(true);
         },
@@ -98,20 +99,31 @@ export function BarcodeScannerDialog({
           // Scan failure (expected while no barcode is in frame yet)
         }
       );
+      // Success — reset retry count
+      retryCountRef.current = 0;
     } catch (err: any) {
+      const errStr = err?.toString?.() || "";
       setScanning(false);
-      if (
-        err?.toString?.()?.includes("NotAllowedError") ||
-        err?.toString?.()?.includes("Permission")
-      ) {
-        setError("Camera access denied. Please allow camera access or use manual entry.");
+      scannerRef.current = null;
+
+      if (errStr.includes("NotAllowedError") || errStr.includes("Permission")) {
+        setError("Camera access denied. Please allow camera access in your browser settings, then try again.");
         setMode("manual");
-      } else if (err?.toString?.()?.includes("NotFoundError")) {
+      } else if (errStr.includes("NotFoundError")) {
         setError("No camera found. Use manual entry instead.");
         setMode("manual");
+      } else if (retryCountRef.current < 2) {
+        // Auto-retry up to 2 times for transient failures (common on Brave/Samsung)
+        retryCountRef.current++;
+        console.warn(`[BarcodeScanner] Attempt ${retryCountRef.current} failed, retrying...`, errStr);
+        setTimeout(() => {
+          startScanner();
+        }, 800);
       } else {
-        setError("Could not read barcode from camera. Try moving farther back, improving light, or use manual entry.");
+        console.error("[BarcodeScanner] All attempts failed:", errStr);
+        setError("Could not start camera. Try closing other apps using the camera, or use manual entry.");
         setMode("manual");
+        retryCountRef.current = 0;
       }
     }
   }, [onScan, onOpenChange, stopScanner, scanRegionId]);
