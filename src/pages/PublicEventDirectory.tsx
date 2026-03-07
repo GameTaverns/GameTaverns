@@ -209,11 +209,11 @@ export default function PublicEventDirectory() {
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               <Globe className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="text-sm font-medium">No events found</p>
+              <p className="text-sm font-medium">{t('events.noEventsFound')}</p>
               <p className="text-xs mt-1">
                 {search || typeFilter !== "all" || cityFilter
-                  ? "Try adjusting your filters"
-                  : "Check back later or create your own event!"}
+                  ? t('events.adjustFilters')
+                  : t('events.checkBackLater')}
               </p>
               {isAuthenticated && (
                 <Button size="sm" variant="outline" className="mt-4" onClick={() => setShowCreateDialog(true)}>
