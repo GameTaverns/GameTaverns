@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Bell, Check, CheckCheck, BookOpen, Trophy, Calendar,
   MessageSquare, Heart, Mail, UserPlus, UserCheck,
