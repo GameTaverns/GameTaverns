@@ -128,6 +128,7 @@ export const TAB_WIDGET_REGISTRY: Record<string, WidgetDef[]> = {
     { id: "seo", label: "SEO Pages", icon: "Globe" },
     { id: "import-errors", label: "Import Errors", icon: "AlertTriangle" },
     { id: "email-analytics", label: "Email Analytics", icon: "Mail" },
+    { id: "accessibility", label: "Accessibility", icon: "Shield" },
   ],
 };
 

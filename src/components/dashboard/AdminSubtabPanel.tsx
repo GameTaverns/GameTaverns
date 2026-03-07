@@ -137,6 +137,11 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
         <EmailEngagementAnalytics />
       </Suspense>
     ),
+    accessibility: (
+      <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading accessibility audit…</div>}>
+        <AccessibilityAudit />
+      </Suspense>
+    ),
   };
 
   const badgeCounts: Record<string, number> = {};
