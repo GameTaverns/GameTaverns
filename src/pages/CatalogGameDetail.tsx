@@ -231,8 +231,8 @@ export default function CatalogGameDetail() {
           <span className="text-foreground line-clamp-1 max-w-[200px]">{game.title}</span>
         </nav>
 
-        <Button variant="ghost" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back
+         <Button variant="ghost" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
+           <ArrowLeft className="h-4 w-4 mr-2" /> {t('common.back')}
         </Button>
 
         {/* Parent game link for expansions */}
