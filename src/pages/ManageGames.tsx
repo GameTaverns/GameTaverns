@@ -43,8 +43,8 @@ export default function ManageGames() {
     return (
       <Layout hideSidebar>
         <div className="text-center py-16">
-          <h1 className="text-2xl font-display font-bold mb-4">Sign in required</h1>
-          <p className="text-muted-foreground mb-6">Please sign in on the main site to manage this library.</p>
+          <h1 className="text-2xl font-display font-bold mb-4">{t('manageGames.signInRequired')}</h1>
+          <p className="text-muted-foreground mb-6">{t('manageGames.signInMessage')}</p>
           <TenantLink href={getMainPlatformUrl("/login")}><Button>Sign In</Button></TenantLink>
         </div>
       </Layout>
