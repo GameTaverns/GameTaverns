@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/backend/client";
 import { useQuery } from "@tanstack/react-query";
 
 export default function RequestClub() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
