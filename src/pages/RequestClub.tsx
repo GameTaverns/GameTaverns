@@ -122,7 +122,7 @@ export default function RequestClub() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slug" className="text-cream/80">Club URL</Label>
+              <Label htmlFor="slug" className="text-cream/80">{t('requestClub.clubUrl')}</Label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <Input
