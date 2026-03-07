@@ -55,8 +55,8 @@ export default function ManageGames() {
     return (
       <Layout hideSidebar>
         <div className="text-center py-16">
-          <h1 className="text-2xl font-display font-bold mb-4">Library Not Found</h1>
-          <p className="text-muted-foreground mb-6">The library you're looking for doesn't exist or is not active.</p>
+          <h1 className="text-2xl font-display font-bold mb-4">{t('manageGames.libraryNotFound')}</h1>
+          <p className="text-muted-foreground mb-6">{t('manageGames.libraryNotFoundDesc')}</p>
           <TenantLink href={getMainPlatformUrl("/dashboard")}><Button>Go to Dashboard</Button></TenantLink>
         </div>
       </Layout>
