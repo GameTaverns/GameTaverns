@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Library, Users, Dice6, ArrowLeftRight, Calendar, MessageSquare,
@@ -30,6 +31,7 @@ import showcaseActivityFeed from "@/assets/showcase/activity-feed.jpg";
 import showcaseProfile from "@/assets/showcase/profile.jpg";
 
 export default function Platform() {
+  const { t } = useTranslation();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: myLibrary } = useMyLibrary();
   const { data: stats, isLoading: statsLoading } = usePlatformStats();
@@ -72,28 +74,28 @@ export default function Platform() {
             <span className="font-display text-lg sm:text-2xl font-bold text-foreground truncate">
               GameTaverns
             </span>
-            <span className="hidden md:inline text-xs text-muted-foreground/60 ml-1 font-normal">Board Game Library Platform</span>
+            <span className="hidden md:inline text-xs text-muted-foreground/60 ml-1 font-normal">{t('platform.tagline')}</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
             <Link to="/features" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Features
+                {t('platform.features')}
               </Button>
             </Link>
             <Link to="/directory" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Explore Libraries
+                {t('platform.exploreLibraries')}
               </Button>
             </Link>
             <Link to="/near-me" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1">
                 <MapPin className="h-3.5 w-3.5" />
-                Near Me
+                {t('platform.nearMe')}
               </Button>
             </Link>
             <Link to="/catalog" className="hidden md:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Game Catalog
+                {t('platform.gameCatalog')}
               </Button>
             </Link>
             <LanguageSwitcher />
@@ -101,21 +103,21 @@ export default function Platform() {
             {isAuthenticated ? (
               <>
                 <Link to="/dashboard">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Dashboard</Button>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">{t('nav.dashboard')}</Button>
                 </Link>
                 {myLibrary && (
                   <TenantLink href={getLibraryUrl(myLibrary.slug, "/")}>
-                    <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">My Library</Button>
+                    <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">{t('nav.myLibrary')}</Button>
                   </TenantLink>
                 )}
               </>
             ) : (
               <>
                 <Link to="/login">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Sign In</Button>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">{t('nav.signIn')}</Button>
                 </Link>
-                <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90" onClick={handleGetStarted}>
-                  Get Started
+                 <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90" onClick={handleGetStarted}>
+                   {t('platform.getStarted')}
                 </Button>
               </>
             )}
@@ -128,14 +130,14 @@ export default function Platform() {
         <div className="container mx-auto px-4 pt-10 pb-6 text-center">
           <div className="inline-flex items-center gap-2 bg-secondary/10 text-secondary border border-secondary/20 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
             <Flame className="h-3.5 w-3.5" />
-            See a Real Library in Action
+            {t('platform.seeRealLibrary')}
           </div>
-          <h1 className="font-display text-3xl sm:text-5xl md:text-6xl font-bold text-foreground mb-3 leading-tight">
-            Your Board Game Collection<br />
-            <span className="text-secondary">Finally Has a Home</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6 leading-relaxed">
-            This isn't a mockup — explore a real, live library built on GameTaverns.
+           <h1 className="font-display text-3xl sm:text-5xl md:text-6xl font-bold text-foreground mb-3 leading-tight">
+             {t('platform.heroTitle')}<br />
+             <span className="text-secondary">{t('platform.heroHighlight')}</span>
+           </h1>
+           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6 leading-relaxed">
+             {t('platform.heroSubtitle')}
           </p>
         </div>
         <div className="container mx-auto px-4 pb-8">
@@ -150,20 +152,20 @@ export default function Platform() {
               className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-10 py-6"
               onClick={handleGetStarted}
             >
-              {authLoading ? "Loading..." : isAuthenticated ? (myLibrary ? "Go to My Library" : "Create Your Library") : "Create Your Library"}
+              {authLoading ? t('common.loading') : isAuthenticated ? (myLibrary ? t('platform.goToMyLibrary') : t('platform.createYourLibrary')) : t('platform.createYourLibrary')}
             </Button>
             <Link to="/features">
               <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                See All Features
+                {t('platform.seeAllFeatures')}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </Link>
           </div>
           {/* Stats bar */}
           <div className="inline-flex flex-wrap justify-center gap-8 sm:gap-16 bg-muted/50 border border-border/30 rounded-2xl px-10 py-6">
-            <Stat label="Libraries Created" value={statsLoading ? "..." : formatStatNumber(stats?.librariesCount || 0)} />
-            <Stat label="Games Cataloged" value={statsLoading ? "..." : formatStatNumber(stats?.gamesCount || 0)} />
-            <Stat label="Plays Logged" value={statsLoading ? "..." : formatStatNumber(stats?.playsCount || 0)} />
+             <Stat label={t('platform.librariesCreated')} value={statsLoading ? "..." : formatStatNumber(stats?.librariesCount || 0)} />
+             <Stat label={t('platform.gamesCataloged')} value={statsLoading ? "..." : formatStatNumber(stats?.gamesCount || 0)} />
+             <Stat label={t('platform.playsLogged')} value={statsLoading ? "..." : formatStatNumber(stats?.playsCount || 0)} />
           </div>
         </div>
       </section>
@@ -171,12 +173,12 @@ export default function Platform() {
       {/* ── Who is it for ── */}
       <section className="bg-muted/30 border-y border-border/20">
         <div className="container mx-auto px-4 py-20">
-          <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
-            Built for Every Kind of Board Gamer
-          </h2>
-          <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
-            Whether you're a solo collector, a game group, or running a community library — GameTaverns scales to fit.
-          </p>
+           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
+             {t('platform.builtForEveryGamer')}
+           </h2>
+           <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
+             {t('platform.builtForEveryGamerDesc')}
+           </p>
           <div className="grid md:grid-cols-3 gap-6">
             <AudienceCard
               icon={<BookOpen className="h-7 w-7" />}
@@ -431,7 +433,7 @@ export default function Platform() {
               className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-10 py-6"
               onClick={handleGetStarted}
             >
-              {isAuthenticated ? "Go to My Library" : "Create Your Library"}
+              {isAuthenticated ? t('platform.goToMyLibrary') : t('platform.createYourLibrary')}
             </Button>
             <Link to="/features">
               <Button size="lg" variant="outline" className="text-lg px-8 py-6">

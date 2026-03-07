@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { 
@@ -49,6 +50,7 @@ const EVENT_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructiv
 };
 
 export default function EventDetailPage() {
+  const { t } = useTranslation();
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const { data: event, isLoading } = useEventDetail(eventId);

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { 
@@ -249,6 +250,7 @@ function MoveThreadDialog({
 }
 
 export default function ThreadDetail() {
+  const { t } = useTranslation();
   const { threadId } = useParams();
   const navigate = useNavigate();
   const { isAdmin } = useAuth();

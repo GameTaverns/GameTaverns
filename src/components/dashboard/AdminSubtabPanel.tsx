@@ -7,6 +7,7 @@ import {
   Shield, Activity, Users, Database, Settings, MessageSquare,
   Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Globe,
   Pencil, Eye, EyeOff, ChevronUp, ChevronDown, RotateCcw, X, AlertTriangle, Mail,
+  Accessibility,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -41,10 +42,13 @@ const ImportErrorsPanel = lazy(() =>
 const EmailEngagementAnalytics = lazy(() =>
   import("@/components/admin/EmailEngagementAnalytics").then(m => ({ default: m.EmailEngagementAnalytics }))
 );
+const AccessibilityAudit = lazy(() =>
+  import("@/components/admin/AccessibilityAudit").then(m => ({ default: m.AccessibilityAudit }))
+);
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
-  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail,
+  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail, Accessibility,
 };
 
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
@@ -132,6 +136,11 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
     "email-analytics": (
       <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading email analytics…</div>}>
         <EmailEngagementAnalytics />
+      </Suspense>
+    ),
+    accessibility: (
+      <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading accessibility audit…</div>}>
+        <AccessibilityAudit />
       </Suspense>
     ),
   };

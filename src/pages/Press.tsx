@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
   Library, Users, Dice6, ArrowLeftRight, Calendar, MessageSquare,
