@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { Link } from "react-router-dom";
 import { SEO } from "@/components/seo/SEO";
@@ -37,6 +38,7 @@ import type { LibraryDirectoryEntry } from "@/hooks/useLibraryDirectory";
 import { BackLink } from "@/components/navigation/BackLink";
 
 export default function Directory() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRegion, setFilterRegion] = useState<string>("all");
@@ -132,11 +134,11 @@ export default function Directory() {
                 onClick={() => toggleFollow(library.id)}
                 className="gap-1 shrink-0"
               >
-                {following ? (
-                  <><HeartOff className="h-4 w-4" />Unfollow</>
-                ) : (
-                  <><Heart className="h-4 w-4" />Follow</>
-                )}
+                 {following ? (
+                   <><HeartOff className="h-4 w-4" />{t('directory.unfollow')}</>
+                 ) : (
+                   <><Heart className="h-4 w-4" />{t('directory.follow')}</>
+                 )}
               </Button>
             )}
           </div>
@@ -149,14 +151,14 @@ export default function Directory() {
           )}
 
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Gamepad2 className="h-4 w-4" />
-              {library.game_count} games
-            </span>
-            <span className="flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              {library.follower_count} followers
-            </span>
+             <span className="flex items-center gap-1">
+               <Gamepad2 className="h-4 w-4" />
+               {t('directory.games', { count: library.game_count })}
+             </span>
+             <span className="flex items-center gap-1">
+               <Users className="h-4 w-4" />
+               {t('directory.followers', { count: library.follower_count })}
+             </span>
           </div>
 
           {locationStr && (
@@ -169,8 +171,8 @@ export default function Directory() {
           <div className="flex items-center gap-2 flex-wrap">
             {library.allow_lending && (
               <Badge variant="secondary" className="text-xs">
-                <BookOpen className="h-3 w-3 mr-1" />
-                Lending Available
+                 <BookOpen className="h-3 w-3 mr-1" />
+                 {t('directory.lendingAvailable')}
               </Badge>
             )}
           </div>
@@ -179,8 +181,8 @@ export default function Directory() {
             <TenantLink
               href={getLibraryUrl(library.slug, "/")}
               className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-            >
-              Visit Library
+             >
+               {t('directory.visitLibrary')}
               <ExternalLink className="h-3 w-3" />
             </TenantLink>
             {user && (
@@ -230,7 +232,7 @@ export default function Directory() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
             <Filter className="h-3.5 w-3.5" />
-            Filters
+             {t('directory.filtersLabel')}
             {activeFilterCount > 0 && (
               <Badge variant="default" className="text-xs h-5 px-1.5">
                 {activeFilterCount}
@@ -240,7 +242,7 @@ export default function Directory() {
           {hasLocationFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground">
               <X className="h-3 w-3" />
-              Clear
+              {t('directory.clear')}
             </Button>
           )}
         </div>
@@ -252,7 +254,7 @@ export default function Directory() {
           <div className="space-y-1.5">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
               <Globe className="h-3 w-3" />
-              Country
+               {t('directory.country')}
             </h3>
             <div className="space-y-0.5">
               <button
@@ -263,7 +265,7 @@ export default function Directory() {
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
-                All Countries
+                {t('directory.allCountries')}
               </button>
               {countries.map((c) => (
                 <button
@@ -289,7 +291,7 @@ export default function Directory() {
             <div className="space-y-1.5">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                 <Map className="h-3 w-3" />
-                State / Region
+               {t('directory.stateRegion')}
               </h3>
               <div className="space-y-0.5">
                 <button
@@ -300,7 +302,7 @@ export default function Directory() {
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
-                  All Regions
+                  {t('directory.allRegions')}
                 </button>
                 {regions.map((r) => (
                   <button
@@ -327,7 +329,7 @@ export default function Directory() {
             <div className="space-y-1.5">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                 <Building2 className="h-3 w-3" />
-                City
+               {t('directory.city')}
               </h3>
               <div className="space-y-0.5">
                 <button
@@ -338,7 +340,7 @@ export default function Directory() {
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
-                  All Cities
+                  {t('directory.allCities')}
                 </button>
                 {cities.map((c) => (
                   <button
@@ -360,7 +362,7 @@ export default function Directory() {
 
         {countries.length === 0 && regions.length === 0 && !isLoading && (
           <p className="text-sm text-muted-foreground italic">
-            No location data available yet.
+            {t('directory.noLocationData')}
           </p>
         )}
       </div>
@@ -370,8 +372,8 @@ export default function Directory() {
   return (
     <Layout hideSidebar>
       <SEO
-        title="Library Directory"
-        description="Discover board game libraries near you. Browse collections, follow your favorite libraries, and find games to borrow from the GameTaverns community."
+         title={t('directory.title')}
+         description={t('directory.description')}
         canonical="https://hobby-shelf-spark.lovable.app/directory"
       />
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -382,18 +384,18 @@ export default function Directory() {
           )}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-                Library Directory
-              </h1>
-              <p className="text-muted-foreground">
-                Discover game libraries from the community, follow your favorites, and borrow games
-              </p>
+               <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+                 {t('directory.title')}
+               </h1>
+               <p className="text-muted-foreground">
+                 {t('directory.description')}
+               </p>
             </div>
             <Link to="/near-me">
               <Button variant="outline" className="gap-2 flex-shrink-0">
-                <MapPin className="h-4 w-4" />
-                <Map className="h-4 w-4" />
-                Map View
+                 <MapPin className="h-4 w-4" />
+                 <Map className="h-4 w-4" />
+                 {t('directory.mapView')}
               </Button>
             </Link>
           </div>
@@ -403,7 +405,7 @@ export default function Directory() {
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search libraries..."
+            placeholder={t('directory.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -417,16 +419,16 @@ export default function Directory() {
           <div className="flex-1 min-w-0">
             <Tabs value={dirTab} onValueChange={setDirTab} className="space-y-6">
               <TabsList>
-                <TabsTrigger value="all">All Libraries</TabsTrigger>
-                <TabsTrigger value="popular" className="gap-1">
-                  <TrendingUp className="h-4 w-4" />Popular
-                </TabsTrigger>
-                <TabsTrigger value="newest" className="gap-1">
-                  <Clock className="h-4 w-4" />Newest
-                </TabsTrigger>
-                <TabsTrigger value="lending" className="gap-1">
-                  <BookOpen className="h-4 w-4" />With Lending
-                </TabsTrigger>
+                 <TabsTrigger value="all">{t('directory.allLibraries')}</TabsTrigger>
+                 <TabsTrigger value="popular" className="gap-1">
+                   <TrendingUp className="h-4 w-4" />{t('directory.popular')}
+                 </TabsTrigger>
+                 <TabsTrigger value="newest" className="gap-1">
+                   <Clock className="h-4 w-4" />{t('directory.newest')}
+                 </TabsTrigger>
+                 <TabsTrigger value="lending" className="gap-1">
+                   <BookOpen className="h-4 w-4" />{t('directory.withLending')}
+                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="all">
@@ -435,10 +437,10 @@ export default function Directory() {
                 ) : filteredLibraries.length === 0 ? (
                   <div className="text-center py-12">
                     <Gamepad2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No libraries found</h3>
-                    <p className="text-muted-foreground">
-                      {searchQuery || hasLocationFilters ? "Try adjusting your search or filters" : "No public libraries available yet"}
-                    </p>
+                     <h3 className="text-lg font-semibold mb-2">{t('directory.noLibrariesFound')}</h3>
+                     <p className="text-muted-foreground">
+                       {searchQuery || hasLocationFilters ? t('directory.adjustSearch') : t('directory.noPublicLibraries')}
+                     </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -473,8 +475,8 @@ export default function Directory() {
                 {isLoading ? <LoadingSkeleton /> : applyLocationFilter(lendingLibraries).length === 0 ? (
                   <div className="text-center py-12">
                     <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No lending libraries</h3>
-                    <p className="text-muted-foreground">No libraries have enabled game lending yet</p>
+                     <h3 className="text-lg font-semibold mb-2">{t('directory.noLendingLibraries')}</h3>
+                     <p className="text-muted-foreground">{t('directory.noLendingDesc')}</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -492,13 +494,13 @@ export default function Directory() {
         <div className="mt-12 border-t border-border/50 pt-8">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-display text-lg text-foreground mb-1">Looking for clubs?</h2>
-              <p className="text-sm text-muted-foreground">Browse the Club Directory for cross-library communities with shared events and catalogs</p>
-            </div>
-            <Link to="/clubs">
-              <Button variant="outline" className="gap-2">
-                <Building2 className="h-4 w-4" /> Club Directory
-              </Button>
+               <h2 className="font-display text-lg text-foreground mb-1">{t('directory.lookingForClubs')}</h2>
+               <p className="text-sm text-muted-foreground">{t('directory.clubDirectoryDesc')}</p>
+             </div>
+             <Link to="/clubs">
+               <Button variant="outline" className="gap-2">
+                 <Building2 className="h-4 w-4" /> {t('directory.clubDirectory')}
+               </Button>
             </Link>
           </div>
         </div>

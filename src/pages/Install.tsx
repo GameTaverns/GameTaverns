@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, Smartphone, Monitor, Share, Plus, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,6 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function InstallPage() {
+  const { t } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -50,22 +52,22 @@ export default function InstallPage() {
       <div className="max-w-md w-full space-y-6">
         <div className="text-center space-y-4">
           <img src={logoImage} alt="GameTaverns" className="h-16 w-auto mx-auto" />
-          <h1 className="font-display text-3xl font-bold text-foreground">
-            Install GameTaverns
-          </h1>
-          <p className="text-muted-foreground">
-            Add GameTaverns to your home screen for the best experience — offline access, fast loading, and native app feel.
-          </p>
+           <h1 className="font-display text-3xl font-bold text-foreground">
+             {t('install.title')}
+           </h1>
+           <p className="text-muted-foreground">
+             {t('install.description')}
+           </p>
         </div>
 
         {isInstalled ? (
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="py-8 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-primary mx-auto" />
-              <h2 className="font-display text-xl font-semibold">Already Installed!</h2>
-              <p className="text-muted-foreground text-sm">
-                GameTaverns is installed on this device. Open it from your home screen.
-              </p>
+               <h2 className="font-display text-xl font-semibold">{t('install.alreadyInstalled')}</h2>
+               <p className="text-muted-foreground text-sm">
+                 {t('install.alreadyInstalledDesc')}
+               </p>
             </CardContent>
           </Card>
         ) : deferredPrompt ? (
@@ -73,41 +75,41 @@ export default function InstallPage() {
             <CardContent className="py-6 space-y-4">
               <Button onClick={handleInstall} className="w-full gap-2" size="lg">
                 <Download className="h-5 w-5" />
-                Install Now
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                No app store needed — installs directly from your browser
-              </p>
+                 {t('install.installNow')}
+               </Button>
+               <p className="text-xs text-muted-foreground text-center">
+                 {t('install.noAppStore')}
+               </p>
             </CardContent>
           </Card>
         ) : isIOS ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Install on iPhone / iPad</CardTitle>
-              <CardDescription>Follow these steps in Safari:</CardDescription>
+               <CardTitle className="text-lg">{t('install.installIOS')}</CardTitle>
+               <CardDescription>{t('install.followSteps')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">1</div>
                 <div>
-                  <p className="font-medium text-sm">Tap the Share button</p>
-                  <p className="text-xs text-muted-foreground">The square with an arrow at the bottom of Safari</p>
+                   <p className="font-medium text-sm">{t('install.tapShare')}</p>
+                   <p className="text-xs text-muted-foreground">{t('install.shareDesc')}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">2</div>
                 <div>
-                  <p className="font-medium text-sm">Scroll down and tap "Add to Home Screen"</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    Look for the <Plus className="h-3 w-3" /> icon
-                  </p>
+                   <p className="font-medium text-sm">{t('install.tapAddHome')}</p>
+                   <p className="text-xs text-muted-foreground flex items-center gap-1">
+                     {t('install.lookForIcon')} <Plus className="h-3 w-3" />
+                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">3</div>
                 <div>
-                  <p className="font-medium text-sm">Tap "Add"</p>
-                  <p className="text-xs text-muted-foreground">GameTaverns will appear on your home screen</p>
+                   <p className="font-medium text-sm">{t('install.tapAdd')}</p>
+                   <p className="text-xs text-muted-foreground">{t('install.tapAddDesc')}</p>
                 </div>
               </div>
             </CardContent>
@@ -115,13 +117,13 @@ export default function InstallPage() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Install on your device</CardTitle>
-              <CardDescription>Use your browser's menu to install</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Look for "Install app", "Add to Home Screen", or a <Download className="h-4 w-4 inline" /> icon in your browser's menu or address bar.
-              </p>
+               <CardTitle className="text-lg">{t('install.installDevice')}</CardTitle>
+               <CardDescription>{t('install.useMenu')}</CardDescription>
+             </CardHeader>
+             <CardContent className="space-y-3">
+               <p className="text-sm text-muted-foreground">
+                 {t('install.lookForInstall')}
+               </p>
             </CardContent>
           </Card>
         )}
@@ -130,21 +132,21 @@ export default function InstallPage() {
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="p-3 rounded-lg bg-card border space-y-1">
             <Smartphone className="h-5 w-5 mx-auto text-primary" />
-            <p className="text-xs font-medium">Works Offline</p>
-          </div>
-          <div className="p-3 rounded-lg bg-card border space-y-1">
-            <Monitor className="h-5 w-5 mx-auto text-primary" />
-            <p className="text-xs font-medium">Fast Loading</p>
-          </div>
-          <div className="p-3 rounded-lg bg-card border space-y-1">
-            <Share className="h-5 w-5 mx-auto text-primary" />
-            <p className="text-xs font-medium">No App Store</p>
-          </div>
+             <p className="text-xs font-medium">{t('install.worksOffline')}</p>
+           </div>
+           <div className="p-3 rounded-lg bg-card border space-y-1">
+             <Monitor className="h-5 w-5 mx-auto text-primary" />
+             <p className="text-xs font-medium">{t('install.fastLoading')}</p>
+           </div>
+           <div className="p-3 rounded-lg bg-card border space-y-1">
+             <Share className="h-5 w-5 mx-auto text-primary" />
+             <p className="text-xs font-medium">{t('install.noAppStoreShort')}</p>
+           </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
           <a href="/" className="underline hover:text-foreground transition-colors">
-            Continue in browser instead
+            {t('install.continueInBrowser')}
           </a>
         </p>
       </div>

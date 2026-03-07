@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout/Layout";
 import { SEO } from "@/components/seo/SEO";
 import { ReferralPanel } from "@/components/referral/ReferralPanel";
@@ -10,11 +11,12 @@ import { BackLink } from "@/components/navigation/BackLink";
 import { REFERRAL_TIERS, FOUNDING_MEMBER_BADGE } from "@/hooks/useReferral";
 
 export default function Grow() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
 
   return (
     <Layout hideSidebar>
-      <SEO title="Grow Your Community" description="Share GameTaverns with your gaming group, earn badges, and get tools to spread the word." />
+      <SEO title={t('grow.title')} description={t('grow.seoDesc')} />
 
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Back to dashboard */}
@@ -26,15 +28,15 @@ export default function Grow() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
             <Gift className="h-3.5 w-3.5" />
-            Growth Hub
-          </div>
-          <h1 className="font-display text-4xl sm:text-5xl font-bold mb-3">
-            Grow Your Community
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Share GameTaverns with your gaming group. Every friend who signs up earns you progress toward exclusive badges.
-          </p>
-        </div>
+             {t('grow.growthHub')}
+           </div>
+           <h1 className="font-display text-4xl sm:text-5xl font-bold mb-3">
+             {t('grow.heading')}
+           </h1>
+           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+             {t('grow.description')}
+           </p>
+         </div>
 
         {/* Tiers overview (public) */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
@@ -43,7 +45,7 @@ export default function Grow() {
               <CardContent className="pt-6 pb-5">
                 <div className="text-3xl mb-2">{tier.emoji}</div>
                 <h3 className="font-display font-bold text-sm mb-1">{tier.label}</h3>
-                <p className="text-xs text-muted-foreground">{tier.threshold} referral{tier.threshold !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground">{tier.threshold} {tier.threshold !== 1 ? t('grow.referrals') : t('grow.referral')}</p>
               </CardContent>
             </Card>
           ))}
@@ -70,14 +72,14 @@ export default function Grow() {
                 <CardContent className="py-5">
                   <h3 className="font-display font-bold text-sm mb-2 flex items-center gap-2">
                     <ImageIcon className="h-4 w-4 text-primary" />
-                    Share Your Stats
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Download a shareable stats card to post on social media.
-                  </p>
-                  <Link to="/share-card">
-                    <Button variant="outline" size="sm" className="w-full gap-1">
-                      Create Stats Card <ChevronRight className="h-3 w-3" />
+                     {t('grow.shareYourStats')}
+                   </h3>
+                   <p className="text-xs text-muted-foreground mb-3">
+                     {t('grow.shareStatsDesc')}
+                   </p>
+                   <Link to="/share-card">
+                     <Button variant="outline" size="sm" className="w-full gap-1">
+                       {t('grow.createStatsCard')} <ChevronRight className="h-3 w-3" />
                     </Button>
                   </Link>
                 </CardContent>
@@ -87,15 +89,15 @@ export default function Grow() {
                 <CardContent className="py-5">
                   <h3 className="font-display font-bold text-sm mb-2 flex items-center gap-2">
                     <Share2 className="h-4 w-4 text-primary" />
-                    Embed Your Library
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Add an embeddable widget to your blog or Discord.
-                  </p>
-                  <Link to="/embed">
-                    <Button variant="outline" size="sm" className="w-full gap-1">
-                      Get Embed Code <ChevronRight className="h-3 w-3" />
-                    </Button>
+                     {t('grow.embedLibrary')}
+                   </h3>
+                   <p className="text-xs text-muted-foreground mb-3">
+                     {t('grow.embedDesc')}
+                   </p>
+                   <Link to="/embed">
+                     <Button variant="outline" size="sm" className="w-full gap-1">
+                       {t('grow.getEmbedCode')} <ChevronRight className="h-3 w-3" />
+                     </Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -103,12 +105,12 @@ export default function Grow() {
           </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">Sign up to get your referral link and start earning badges.</p>
-            <Link to="/signup">
-              <Button size="lg" className="gap-2">
-                <Users className="h-4 w-4" />
-                Create Your Account
-              </Button>
+             <p className="text-muted-foreground mb-4">{t('grow.signUpToGet')}</p>
+             <Link to="/signup">
+               <Button size="lg" className="gap-2">
+                 <Users className="h-4 w-4" />
+                 {t('grow.createAccount')}
+               </Button>
             </Link>
           </div>
         )}

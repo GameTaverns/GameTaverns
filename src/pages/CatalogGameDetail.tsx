@@ -76,6 +76,7 @@ function sanitizeBggImageUrl(url: string): string | null {
 const LOW_QUALITY_BGG_VARIANTS = /__(geeklistimagebar|geeklistimage|square|mt|geeklistimagebar@2x|geeklistimage@2x)|__square@2x/i;
 
 export default function CatalogGameDetail() {
+  const { t } = useTranslation();
   const { slug } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, isAdmin } = useAuth();
@@ -165,23 +166,23 @@ export default function CatalogGameDetail() {
       <Layout>
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <span className="text-6xl mb-4">🎲</span>
-          <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Game not found</h2>
-          <p className="text-muted-foreground mb-4">This game doesn't exist in the catalog.</p>
-          <Button onClick={() => navigate("/catalog")}>Back to Catalog</Button>
+           <h2 className="font-display text-2xl font-semibold text-foreground mb-2">{t('catalog.gameNotFound')}</h2>
+           <p className="text-muted-foreground mb-4">{t('catalog.gameNotInCatalog')}</p>
+           <Button onClick={() => navigate("/catalog")}>{t('catalog.backToCatalog')}</Button>
         </div>
       </Layout>
     );
   }
 
-  const playerRange = game.min_players != null && game.max_players != null
-    ? game.min_players === game.max_players
-      ? `${game.min_players} player${game.min_players !== 1 ? "s" : ""}`
-      : `${game.min_players}–${game.max_players} players`
-    : null;
+   const playerRange = game.min_players != null && game.max_players != null
+     ? game.min_players === game.max_players
+       ? `${game.min_players} ${game.min_players !== 1 ? t('catalog.playerPlural') : t('catalog.player')}`
+       : `${game.min_players}–${game.max_players} ${t('catalog.playerPlural')}`
+     : null;
 
-  const weightLabel = game.weight != null
-    ? game.weight <= 1.5 ? "Light" : game.weight <= 2.5 ? "Medium Light" : game.weight <= 3.5 ? "Medium" : game.weight <= 4.25 ? "Medium Heavy" : "Heavy"
-    : null;
+   const weightLabel = game.weight != null
+     ? game.weight <= 1.5 ? t('catalog.light') : game.weight <= 2.5 ? t('catalog.mediumLight') : game.weight <= 3.5 ? t('catalog.medium') : game.weight <= 4.25 ? t('catalog.mediumHeavy') : t('catalog.heavy')
+     : null;
 
   const allCategories = [
     ...(game.mechanics.map(m => ({ label: m, type: "mechanic" }))),
@@ -189,7 +190,7 @@ export default function CatalogGameDetail() {
   ];
 
   const DescriptionContent = ({ content }: { content: string | null }) => {
-    if (!content) return <p className="text-muted-foreground italic">No description available.</p>;
+    if (!content) return <p className="text-muted-foreground italic">{t('catalog.noDescription')}</p>;
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
@@ -213,9 +214,9 @@ export default function CatalogGameDetail() {
       <div className="max-w-6xl mx-auto">
         {/* Breadcrumb nav */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground mb-4 flex-wrap">
-          <Link to="/" className="hover:text-foreground">Home</Link>
-          <ArrowLeft className="h-3 w-3 rotate-180" />
-          <Link to="/catalog" className="hover:text-foreground">Catalog</Link>
+           <Link to="/" className="hover:text-foreground">{t('catalog.home')}</Link>
+           <ArrowLeft className="h-3 w-3 rotate-180" />
+           <Link to="/catalog" className="hover:text-foreground">{t('nav.catalog')}</Link>
           {game.mechanics.length > 0 && (
             <>
               <ArrowLeft className="h-3 w-3 rotate-180" />
@@ -231,15 +232,15 @@ export default function CatalogGameDetail() {
           <span className="text-foreground line-clamp-1 max-w-[200px]">{game.title}</span>
         </nav>
 
-        <Button variant="ghost" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back
+         <Button variant="ghost" className="mb-4 -ml-2" onClick={() => navigate(-1)}>
+           <ArrowLeft className="h-4 w-4 mr-2" /> {t('common.back')}
         </Button>
 
         {/* Parent game link for expansions */}
         {game.is_expansion && game.parent && (
           <div className="mb-4">
             <Link to={`/catalog/${game.parent.slug || game.parent.id}`} className="text-sm text-primary hover:underline flex items-center gap-1">
-              <ArrowLeft className="h-3 w-3" /> Expansion of: {game.parent.title}
+              <ArrowLeft className="h-3 w-3" /> {t('catalog.expansionOf', { title: game.parent.title })}
             </Link>
           </div>
         )}
@@ -347,8 +348,8 @@ export default function CatalogGameDetail() {
               {playerRange && (
                 <Badge variant="outline"><Users className="h-3.5 w-3.5 mr-1" />{playerRange}</Badge>
               )}
-              {game.play_time_minutes != null && (
-                <Badge variant="outline"><Clock className="h-3.5 w-3.5 mr-1" />{game.play_time_minutes} min</Badge>
+               {game.play_time_minutes != null && (
+                 <Badge variant="outline"><Clock className="h-3.5 w-3.5 mr-1" />{game.play_time_minutes} {t('common.min')}</Badge>
               )}
               {game.weight != null && (
                 <Badge variant="outline"><Weight className="h-3.5 w-3.5 mr-1" />{game.weight.toFixed(1)} – {weightLabel}</Badge>
@@ -362,7 +363,7 @@ export default function CatalogGameDetail() {
               {game.community_rating != null && (
                 <Badge className="bg-primary/20 text-primary border-primary/30">GT ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})</Badge>
               )}
-              {game.is_expansion && <Badge variant="default">Expansion</Badge>}
+              {game.is_expansion && <Badge variant="default">{t('catalog.expansion')}</Badge>}
             </div>
 
             {/* Categories as clickable badges */}
@@ -396,7 +397,7 @@ export default function CatalogGameDetail() {
                   ) : (
                     <Plus className="h-4 w-4" />
                   )}
-                  Add to My Library
+                  {t('catalog.addToMyLibrary')}
                 </Button>
               )}
 
@@ -408,13 +409,13 @@ export default function CatalogGameDetail() {
                     addWant.mutate(
                       { bgg_id: game.bgg_id!, game_title: game.title },
                       {
-                        onSuccess: () => toast({ title: "Added to Wishlist", description: `"${game.title}" added to your Wishlist.` }),
+                        onSuccess: () => toast({ title: t('catalog.addedToWishlist'), description: t('catalog.addedToWishlistDesc', { title: game.title }) }),
                         onError: (err: any) => {
                           const isDuplicate = err?.code === "23505" || err?.message?.includes("duplicate");
-                          toast({
-                            title: isDuplicate ? "Already on Wishlist" : "Error",
-                            description: isDuplicate ? `"${game.title}" is already on your Wishlist.` : "Failed to add to Wishlist.",
-                            variant: isDuplicate ? "default" : "destructive",
+                           toast({
+                             title: isDuplicate ? t('catalog.alreadyOnWishlist') : t('common.error'),
+                             description: isDuplicate ? t('catalog.alreadyOnWishlistDesc', { title: game.title }) : t('catalog.failedToAddWishlist'),
+                             variant: isDuplicate ? "default" : "destructive",
                           });
                         },
                       }
@@ -423,8 +424,8 @@ export default function CatalogGameDetail() {
                   disabled={addWant.isPending}
                   className="gap-2"
                 >
-                  {addWant.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className="h-4 w-4" />}
-                  Add to Wishlist
+                   {addWant.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className="h-4 w-4" />}
+                   {t('catalog.addToWishlist')}
                 </Button>
               )}
 
@@ -436,56 +437,56 @@ export default function CatalogGameDetail() {
             {/* Tabs */}
             <Tabs value={catalogTab} onValueChange={setCatalogTab} className="w-full">
               <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
-                <TabsTrigger value="description">Description</TabsTrigger>
-                <TabsTrigger value="info">Info</TabsTrigger>
-                <TabsTrigger value="videos">Videos</TabsTrigger>
+                 <TabsTrigger value="description">{t('catalog.description')}</TabsTrigger>
+                 <TabsTrigger value="info">{t('catalog.info')}</TabsTrigger>
+                 <TabsTrigger value="videos">{t('catalog.videos')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="description" className="mt-0">
-                <div className="prose prose-sm max-w-none">
-                  <h2 className="font-display text-xl font-semibold mb-4 text-foreground">Description</h2>
+                 <div className="prose prose-sm max-w-none">
+                   <h2 className="font-display text-xl font-semibold mb-4 text-foreground">{t('catalog.description')}</h2>
                   <DescriptionContent content={game.description} />
                 </div>
               </TabsContent>
 
               <TabsContent value="info" className="mt-0">
-                <h2 className="font-display text-xl font-semibold mb-4 text-foreground">Additional Information</h2>
-                <Table>
-                  <TableBody>
-                    {game.play_time_minutes != null && (
-                      <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Play Time</TableCell>
-                        <TableCell className="text-foreground">{game.play_time_minutes} minutes</TableCell>
+                 <h2 className="font-display text-xl font-semibold mb-4 text-foreground">{t('catalog.additionalInfo')}</h2>
+                 <Table>
+                   <TableBody>
+                     {game.play_time_minutes != null && (
+                       <TableRow>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.playTime')}</TableCell>
+                         <TableCell className="text-foreground">{t('catalog.minutes', { count: game.play_time_minutes })}</TableCell>
                       </TableRow>
                     )}
                     {playerRange && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Players</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.players')}</TableCell>
                         <TableCell className="text-foreground">{playerRange}</TableCell>
                       </TableRow>
                     )}
                     {game.suggested_age && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Suggested Age</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.suggestedAge')}</TableCell>
                         <TableCell className="text-foreground">{game.suggested_age}</TableCell>
                       </TableRow>
                     )}
                     {game.weight != null && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Weight</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.weight')}</TableCell>
                         <TableCell className="text-foreground">{game.weight.toFixed(2)} / 5 – {weightLabel}</TableCell>
                       </TableRow>
                     )}
                     {game.publishers.length > 0 && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Publisher{game.publishers.length > 1 ? "s" : ""}</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{game.publishers.length > 1 ? t('catalog.publishers') : t('catalog.publisher')}</TableCell>
                         <TableCell className="text-foreground">{game.publishers.join(", ")}</TableCell>
                       </TableRow>
                     )}
                     {game.designers.length > 0 && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          <span className="flex items-center gap-1"><PenTool className="h-3.5 w-3.5" /> Designer{game.designers.length > 1 ? "s" : ""}</span>
+                          <span className="flex items-center gap-1"><PenTool className="h-3.5 w-3.5" /> {game.designers.length > 1 ? t('catalog.designers') : t('catalog.designer')}</span>
                         </TableCell>
                         <TableCell className="text-foreground">
                           <div className="flex flex-wrap gap-1">
@@ -501,7 +502,7 @@ export default function CatalogGameDetail() {
                     {game.artists.length > 0 && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          <span className="flex items-center gap-1"><Palette className="h-3.5 w-3.5" /> Artist{game.artists.length > 1 ? "s" : ""}</span>
+                          <span className="flex items-center gap-1"><Palette className="h-3.5 w-3.5" /> {game.artists.length > 1 ? t('catalog.artists') : t('catalog.artist')}</span>
                         </TableCell>
                         <TableCell className="text-foreground">
                           <div className="flex flex-wrap gap-1">
@@ -516,7 +517,7 @@ export default function CatalogGameDetail() {
                     )}
                     {game.mechanics.length > 0 && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Mechanics</TableCell>
+                        <TableCell className="font-medium text-muted-foreground">{t('catalog.mechanics')}</TableCell>
                         <TableCell className="text-foreground">
                           <div className="flex flex-wrap gap-1">
                             {game.mechanics.map(m => (
@@ -530,14 +531,14 @@ export default function CatalogGameDetail() {
                     )}
                     {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">BGG Rating</TableCell>
+                        <TableCell className="font-medium text-muted-foreground">{t('catalog.bggRating')}</TableCell>
                         <TableCell className="text-foreground">★ {game.bgg_community_rating.toFixed(1)} / 10</TableCell>
                       </TableRow>
                     )}
                     {game.community_rating != null && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">GameTaverns Rating</TableCell>
-                        <TableCell className="text-foreground">★ {game.community_rating.toFixed(1)} / 5 ({game.community_rating_count} ratings)</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.gtRating')}</TableCell>
+                         <TableCell className="text-foreground">★ {game.community_rating.toFixed(1)} / 5 ({t('catalog.ratings', { count: game.community_rating_count })})</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -545,15 +546,15 @@ export default function CatalogGameDetail() {
               </TabsContent>
 
               <TabsContent value="videos" className="mt-0">
-                <p className="text-muted-foreground text-sm">Community videos coming soon.</p>
+                <p className="text-muted-foreground text-sm">{t('catalog.videosComingSoon')}</p>
               </TabsContent>
             </Tabs>
 
             {/* Expansions */}
             {game.expansions.length > 0 && (
               <div className="mt-8">
-                <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
-                  Expansions ({game.expansions.length})
+                 <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
+                   {t('catalog.expansions', { count: game.expansions.length })}
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {game.expansions.map(exp => (

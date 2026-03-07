@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/backend/client";
@@ -50,6 +51,7 @@ interface CatalogGame {
 const PAGE_SIZE = 30;
 
 export default function CatalogBrowse() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const { data: myLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
@@ -380,14 +382,14 @@ export default function CatalogBrowse() {
       { bgg_id: game.bgg_id, game_title: game.title },
       {
         onSuccess: () => {
-          toast({ title: "Added to Wishlist", description: `"${game.title}" added to your Wishlist.` });
+          toast({ title: t('catalog.addedToWishlist'), description: t('catalog.addedToWishlistDesc', { title: game.title }) });
           setWantingGameId(null);
         },
         onError: (err: any) => {
           const isDuplicate = err?.code === "23505" || err?.message?.includes("duplicate");
           toast({
-            title: isDuplicate ? "Already on Wishlist" : "Error",
-            description: isDuplicate ? `"${game.title}" is already on your Wishlist.` : "Failed to add to Wishlist.",
+            title: isDuplicate ? t('catalog.alreadyOnWishlist') : t('common.error'),
+            description: isDuplicate ? t('catalog.alreadyOnWishlistDesc', { title: game.title }) : t('catalog.failedToAddWishlist'),
             variant: isDuplicate ? "default" : "destructive",
           });
           setWantingGameId(null);
@@ -440,9 +442,9 @@ export default function CatalogBrowse() {
           {/* Header */}
           <div className="mb-8 flex items-start justify-between">
             <div>
-              <h1 className="font-display text-3xl font-bold">GameTaverns Library</h1>
+              <h1 className="font-display text-3xl font-bold">{t('catalog.title')}</h1>
               <p className="text-muted-foreground">
-                {totalCount} games in collection
+                {t('catalog.gamesInCollection', { count: totalCount })}
               </p>
               {isEntityFilter && (
                 <label className="flex items-center gap-2 mt-2 cursor-pointer">
@@ -450,14 +452,14 @@ export default function CatalogBrowse() {
                     checked={includeExpansions}
                     onCheckedChange={(checked) => setIncludeExpansions(checked === true)}
                   />
-                  <span className="text-sm text-muted-foreground">Include expansions</span>
+                  <span className="text-sm text-muted-foreground">{t('catalog.includeExpansions')}</span>
                 </label>
               )}
             </div>
             <Link to="/catalog/analytics">
               <Button variant="outline" size="sm" className="gap-2">
                 <BarChart3 className="h-4 w-4" />
-                Analytics
+                {t('catalog.analytics')}
               </Button>
             </Link>
           </div>
@@ -468,7 +470,7 @@ export default function CatalogBrowse() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search games, designers, or artists..."
+              placeholder={t('catalog.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-10"
@@ -482,11 +484,11 @@ export default function CatalogBrowse() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="title">Title</SelectItem>
-                <SelectItem value="rating">BGG Rated</SelectItem>
-                <SelectItem value="community">Community Rated</SelectItem>
-                <SelectItem value="weight">Lightest First</SelectItem>
-                <SelectItem value="year">Newest First</SelectItem>
+                 <SelectItem value="title">{t('catalog.sortTitle')}</SelectItem>
+                 <SelectItem value="rating">{t('catalog.sortRating')}</SelectItem>
+                 <SelectItem value="community">{t('catalog.sortCommunity')}</SelectItem>
+                 <SelectItem value="weight">{t('catalog.sortWeight')}</SelectItem>
+                 <SelectItem value="year">{t('catalog.sortYear')}</SelectItem>
               </SelectContent>
             </Select>
 
@@ -518,7 +520,7 @@ export default function CatalogBrowse() {
               className="gap-2"
             >
               {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              <span className="hidden sm:inline">Filters</span>
+              <span className="hidden sm:inline">{t('catalog.filters')}</span>
             </Button>
           </div>
 
@@ -526,20 +528,20 @@ export default function CatalogBrowse() {
               <Card>
                 <CardContent className="pt-4 grid sm:grid-cols-3 gap-6">
                   <div className="space-y-3">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <Users className="h-4 w-4" /> Players: {playerCount[0]}
+                     <Label className="flex items-center gap-2 text-sm font-medium">
+                       <Users className="h-4 w-4" /> {t('catalog.players')}: {playerCount[0]}
                     </Label>
                     <Slider value={playerCount} onValueChange={setPlayerCount} min={1} max={10} step={1} />
                   </div>
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2 text-sm font-medium">
-                      <Clock className="h-4 w-4" /> Max Time: {maxTime[0]} min
+                      <Clock className="h-4 w-4" /> {t('catalog.maxTime')}: {maxTime[0]} {t('common.min')}
                     </Label>
                     <Slider value={maxTime} onValueChange={setMaxTime} min={15} max={240} step={15} />
                   </div>
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2 text-sm font-medium">
-                      <Weight className="h-4 w-4" /> Complexity: {weightRange[0].toFixed(1)} – {weightRange[1].toFixed(1)}
+                      <Weight className="h-4 w-4" /> {t('catalog.complexity')}: {weightRange[0].toFixed(1)} – {weightRange[1].toFixed(1)}
                     </Label>
                     <Slider value={weightRange} onValueChange={setWeightRange} min={1} max={5} step={0.5} />
                   </div>
@@ -593,8 +595,8 @@ export default function CatalogBrowse() {
           {catalogGames.length === 0 && !isLoading && (
             <div className="text-center py-12">
               <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="font-display text-xl mb-2">No games found</h3>
-              <p className="text-muted-foreground">Try adjusting your search or filters</p>
+               <h3 className="font-display text-xl mb-2">{t('catalog.noGamesFound')}</h3>
+               <p className="text-muted-foreground">{t('catalog.adjustSearchFilters')}</p>
             </div>
           )}
         </div>
