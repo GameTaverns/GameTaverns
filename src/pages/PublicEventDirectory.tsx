@@ -119,7 +119,7 @@ export default function PublicEventDirectory() {
           {isAuthenticated && (
             <Button onClick={() => setShowCreateDialog(true)} size="sm" className="gap-1.5">
               <CalendarPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Create Event</span>
+              <span className="hidden sm:inline">{t('events.createEvent')}</span>
             </Button>
           )}
         </div>
