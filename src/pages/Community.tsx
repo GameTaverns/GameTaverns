@@ -623,6 +623,7 @@ function ForumHome() {
 }
 
 export default function Community() {
+  const { t } = useTranslation();
   const { categorySlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "forums";
