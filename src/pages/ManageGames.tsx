@@ -107,8 +107,8 @@ export default function ManageGames() {
           <TabsContent value="collection">
             <Card>
               <CardHeader>
-                <CardTitle>Full Collection</CardTitle>
-                <CardDescription>View, edit, and manage all games in your library</CardDescription>
+                <CardTitle>{t('manageGames.fullCollection')}</CardTitle>
+                <CardDescription>{t('manageGames.fullCollectionDesc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <GameCollectionTable />

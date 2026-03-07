@@ -260,13 +260,13 @@ export default function NotificationsPage() {
 
         {/* Notification list */}
         {isLoading ? (
-          <div className="text-center py-12 text-cream/50">Loading notifications...</div>
+          <div className="text-center py-12 text-cream/50">{t('notifications.loadingNotifications')}</div>
         ) : filtered.length === 0 ? (
           <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
             <CardContent className="py-12 text-center">
               <Bell className="h-12 w-12 mx-auto text-cream/20 mb-4" />
               <p className="text-cream/50">
-                {filter === "all" ? "No notifications yet" : `No ${filter} notifications`}
+                {filter === "all" ? t('notifications.noNotifications') : t('notifications.noFilteredNotifications', { filter })}
               </p>
             </CardContent>
           </Card>
