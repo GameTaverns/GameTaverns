@@ -7,6 +7,7 @@ import {
   Shield, Activity, Users, Database, Settings, MessageSquare,
   Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Globe,
   Pencil, Eye, EyeOff, ChevronUp, ChevronDown, RotateCcw, X, AlertTriangle, Mail,
+  Accessibility,
 } from "lucide-react";
 import { useState } from "react";
 
