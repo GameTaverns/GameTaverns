@@ -217,7 +217,7 @@ export default function PublicEventDirectory() {
               </p>
               {isAuthenticated && (
                 <Button size="sm" variant="outline" className="mt-4" onClick={() => setShowCreateDialog(true)}>
-                  <CalendarPlus className="h-4 w-4 mr-1" /> Create Event
+                  <CalendarPlus className="h-4 w-4 mr-1" /> {t('events.createEvent')}
                 </Button>
               )}
             </CardContent>
