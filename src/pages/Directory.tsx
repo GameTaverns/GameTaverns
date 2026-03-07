@@ -384,12 +384,12 @@ export default function Directory() {
           )}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-                Library Directory
-              </h1>
-              <p className="text-muted-foreground">
-                Discover game libraries from the community, follow your favorites, and borrow games
-              </p>
+               <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+                 {t('directory.title')}
+               </h1>
+               <p className="text-muted-foreground">
+                 {t('directory.description')}
+               </p>
             </div>
             <Link to="/near-me">
               <Button variant="outline" className="gap-2 flex-shrink-0">
