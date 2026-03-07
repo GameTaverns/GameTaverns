@@ -11,6 +11,7 @@ import { validatePassword, PASSWORD_REQUIREMENTS_TEXT } from "@/lib/password-val
 
 export function ChangePasswordCard() {
   const { toast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -34,6 +35,16 @@ export function ChangePasswordCard() {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      // Verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
+        password: currentPassword,
+      });
+      if (signInError) {
+        toast({ title: "Current password is incorrect", description: "Please enter your correct current password.", variant: "destructive" });
+        return;
+      }
 
       // Check password reuse + policy (server-side validation)
       const { data: reuseData, error: reuseError } = await supabase.functions.invoke('check-password-reuse', {
@@ -59,6 +70,7 @@ export function ChangePasswordCard() {
       });
 
       toast({ title: "Password updated", description: "Your password has been changed successfully." });
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
@@ -79,6 +91,16 @@ export function ChangePasswordCard() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="current-password">Current Password</Label>
+            <PasswordInput
+              id="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              required
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="new-password">New Password</Label>
             <PasswordInput
@@ -101,7 +123,7 @@ export function ChangePasswordCard() {
             />
           </div>
           <p className="text-xs text-muted-foreground">{PASSWORD_REQUIREMENTS_TEXT} You cannot reuse any of your last 20 passwords.</p>
-          <Button type="submit" disabled={isUpdating || !newPassword || !confirmPassword || !validatePassword(newPassword).valid} className="w-full sm:w-auto">
+          <Button type="submit" disabled={isUpdating || !currentPassword || !newPassword || !confirmPassword || !validatePassword(newPassword).valid} className="w-full sm:w-auto">
             {isUpdating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
