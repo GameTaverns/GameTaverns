@@ -79,7 +79,7 @@ export default function Platform() {
           <nav className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
             <Link to="/features" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Features
+                {t('platform.features')}
               </Button>
             </Link>
             <Link to="/directory" className="hidden sm:block">
