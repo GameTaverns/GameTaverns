@@ -233,7 +233,7 @@ export default function NotificationsPage() {
               onClick={() => markAllAsRead.mutate()}
               className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5 text-xs"
             >
-              <CheckCheck className="h-3.5 w-3.5" /> Mark all read
+              <CheckCheck className="h-3.5 w-3.5" /> {t('notifications.markAllRead')}
             </Button>
           )}
         </div>
