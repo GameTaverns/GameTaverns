@@ -110,7 +110,7 @@ export default function RequestClub() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-cream/80">Club Name</Label>
+              <Label htmlFor="name" className="text-cream/80">{t('requestClub.clubName')}</Label>
               <Input
                 id="name"
                 value={name}
