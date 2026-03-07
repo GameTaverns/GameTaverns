@@ -11,6 +11,7 @@ import { BackLink } from "@/components/navigation/BackLink";
 import { REFERRAL_TIERS, FOUNDING_MEMBER_BADGE } from "@/hooks/useReferral";
 
 export default function Grow() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
 
   return (
