@@ -305,8 +305,8 @@ export default function UserProfile() {
             <div className="mt-3 flex items-center gap-2 text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>
               <Calendar className="h-3 w-3" />
               {profile.member_since && !isNaN(new Date(profile.member_since).getTime())
-                ? `Member since ${format(new Date(profile.member_since), "MMMM yyyy")}`
-                : "Member"}
+                ? t('profile.memberSince', { date: format(new Date(profile.member_since), "MMMM yyyy") })
+                : t('profile.member')}
             </div>
           </CardContent>
         </Card>
