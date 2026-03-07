@@ -433,7 +433,7 @@ export default function Platform() {
               className="bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-10 py-6"
               onClick={handleGetStarted}
             >
-              {isAuthenticated ? "Go to My Library" : "Create Your Library"}
+              {isAuthenticated ? t('platform.goToMyLibrary') : t('platform.createYourLibrary')}
             </Button>
             <Link to="/features">
               <Button size="lg" variant="outline" className="text-lg px-8 py-6">
