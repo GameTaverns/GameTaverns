@@ -45,10 +45,12 @@ export function BarcodeScannerDialog({
   }, []);
 
   const retryCountRef = useRef(0);
+  const startInProgressRef = useRef(false);
 
   const startScanner = useCallback(async () => {
-    if (!containerRef.current || scannerRef.current) return;
+    if (!containerRef.current || scannerRef.current || startInProgressRef.current) return;
 
+    startInProgressRef.current = true;
     setError(null);
     setScanning(true);
     setPendingCode(null);
@@ -67,38 +69,77 @@ export function BarcodeScannerDialog({
         Html5QrcodeSupportedFormats.QR_CODE,
       ];
 
-      const scanner = new Html5Qrcode(scanRegionId, {
-        verbose: false,
-        formatsToSupport,
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true,
-        },
-      });
-      scannerRef.current = scanner;
+      const scannerConfig = {
+        fps: 10,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => ({
+          width: Math.floor(viewfinderWidth * 0.92),
+          height: Math.floor(Math.max(140, Math.min(viewfinderHeight * 0.42, 220))),
+        }),
+        disableFlip: false,
+      };
 
-      await scanner.start(
+      const scannerCallbacks: Parameters<InstanceType<typeof Html5Qrcode>["start"]>[2] = (decodedText) => {
+        const raw = decodedText?.trim?.() || "";
+        const numeric = raw.replace(/[^0-9]/g, "");
+        const result = numeric.length >= 8 ? numeric : raw;
+        if (!result) return;
+
+        setPendingCode(result);
+        scannerRef.current?.pause(true);
+      };
+
+      const cameraCandidates: Array<string | MediaTrackConstraints> = [
         { facingMode: { ideal: "environment" } },
-        {
-          fps: 10,
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => ({
-            width: Math.floor(viewfinderWidth * 0.92),
-            height: Math.floor(Math.max(140, Math.min(viewfinderHeight * 0.42, 220))),
-          }),
-          disableFlip: false,
-        },
-        (decodedText) => {
-          const raw = decodedText?.trim?.() || "";
-          const numeric = raw.replace(/[^0-9]/g, "");
-          const result = numeric.length >= 8 ? numeric : raw;
-          if (!result) return;
+      ];
 
-          setPendingCode(result);
-          scanner.pause(true);
-        },
-        () => {
-          // Scan failure (expected while no barcode is in frame yet)
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (Array.isArray(cameras) && cameras.length > 0) {
+          cameraCandidates.push(cameras[0].id);
         }
-      );
+      } catch {
+        // ignore camera enumeration failure and continue with facingMode fallbacks
+      }
+
+      cameraCandidates.push({ facingMode: "user" });
+
+      let started = false;
+      let lastStartError: unknown = null;
+
+      for (const cameraConfig of cameraCandidates) {
+        const scanner = new Html5Qrcode(scanRegionId, {
+          verbose: false,
+          formatsToSupport,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
+        });
+
+        scannerRef.current = scanner;
+
+        try {
+          await scanner.start(cameraConfig, scannerConfig, scannerCallbacks, () => {
+            // Expected while no barcode is in frame yet
+          });
+          started = true;
+          break;
+        } catch (cameraErr) {
+          lastStartError = cameraErr;
+          try {
+            await scanner.clear();
+          } catch {
+            // ignore
+          }
+          if (scannerRef.current === scanner) {
+            scannerRef.current = null;
+          }
+        }
+      }
+
+      if (!started) {
+        throw lastStartError ?? new Error("No available camera configuration");
+      }
+
       // Success — reset retry count
       retryCountRef.current = 0;
     } catch (err: any) {
@@ -112,21 +153,22 @@ export function BarcodeScannerDialog({
       } else if (errStr.includes("NotFoundError")) {
         setError("No camera found. Use manual entry instead.");
         setMode("manual");
-      } else if (retryCountRef.current < 2) {
-        // Auto-retry up to 2 times for transient failures (common on Brave/Samsung)
+      } else if (retryCountRef.current < 1) {
+        // Auto-retry once for transient startup failures
         retryCountRef.current++;
-        console.warn(`[BarcodeScanner] Attempt ${retryCountRef.current} failed, retrying...`, errStr);
         setTimeout(() => {
+          startInProgressRef.current = false;
           startScanner();
-        }, 800);
+        }, 900);
+        return;
       } else {
-        console.error("[BarcodeScanner] All attempts failed:", errStr);
-        setError("Could not start camera. Try closing other apps using the camera, or use manual entry.");
-        setMode("manual");
+        setError("Could not start camera. Try closing other apps using the camera, then tap Camera again or use manual entry.");
         retryCountRef.current = 0;
       }
+    } finally {
+      startInProgressRef.current = false;
     }
-  }, [onScan, onOpenChange, stopScanner, scanRegionId]);
+  }, [scanRegionId]);
 
   const handleConfirm = useCallback(() => {
     if (pendingCode) {
