@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { MessageSquarePlus, ImagePlus, X } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -45,11 +46,11 @@ const feedbackSchema = z.object({
 
 type FeedbackFormValues = z.infer<typeof feedbackSchema>;
 
-const feedbackTypeLabels: Record<FeedbackType, string> = {
-  feedback: "General Feedback",
-  bug: "Bug Report",
-  feature_request: "Feature Request",
-  badge_request: "Badge Request",
+const FEEDBACK_TYPE_KEYS: Record<FeedbackType, string> = {
+  feedback: "feedbackDialog.generalFeedback",
+  bug: "feedbackDialog.bugReport",
+  feature_request: "feedbackDialog.featureRequest",
+  badge_request: "feedbackDialog.badgeRequest",
 };
 
 const MAX_SCREENSHOTS = 4;
@@ -57,6 +58,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 export function GlobalFeedbackButton() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -67,13 +69,13 @@ export function GlobalFeedbackButton() {
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 left-[150px] z-50 hidden md:flex h-auto items-center gap-2 rounded-full bg-[#5865F2] text-white shadow-lg px-4 py-3 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        aria-label="Join our Discord (opens in a new tab)"
+        aria-label={`Discord (${t('common.opensInNewTab', { defaultValue: 'opens in a new tab' })})`}
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
         </svg>
         <span className="text-sm font-medium">Discord</span>
-        <span className="sr-only">(opens in a new tab)</span>
+        <span className="sr-only">({t('common.opensInNewTab', { defaultValue: 'opens in a new tab' })})</span>
       </a>
 
       {/* Feedback button — desktop: full label, mobile: icon-only above bottom nav */}
@@ -82,13 +84,13 @@ export function GlobalFeedbackButton() {
           <button
             onClick={() => setOpen(true)}
             className="fixed z-50 rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bottom-[76px] right-4 h-12 w-12 flex items-center justify-center md:bottom-6 md:left-6 md:right-auto md:h-auto md:w-auto md:px-4 md:py-3 md:gap-2"
-            aria-label="Send feedback"
+            aria-label={t('feedbackDialog.sendFeedback')}
           >
             <MessageSquarePlus className="h-5 w-5" />
-            <span className="hidden md:inline text-sm font-medium">Feedback</span>
+            <span className="hidden md:inline text-sm font-medium">{t('feedbackDialog.buttonLabel')}</span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right" className="hidden md:block">Send Feedback</TooltipContent>
+        <TooltipContent side="right" className="hidden md:block">{t('feedbackDialog.sendFeedback')}</TooltipContent>
       </Tooltip>
       <FeedbackFormDialog open={open} onOpenChange={setOpen} />
     </>
@@ -96,13 +98,14 @@ export function GlobalFeedbackButton() {
 }
 
 export function FeedbackDialog() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button variant="outline" size="sm" className="gap-2" onClick={() => setOpen(true)}>
         <MessageSquarePlus className="h-4 w-4" />
-        Feedback
+        {t('feedbackDialog.buttonLabel')}
       </Button>
       <FeedbackFormDialog open={open} onOpenChange={setOpen} />
     </>
@@ -110,6 +113,7 @@ export function FeedbackDialog() {
 }
 
 function ScreenshotUpload({ files, onChange }: { files: File[]; onChange: (files: File[]) => void }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = (selected: FileList | null) => {
@@ -135,7 +139,7 @@ function ScreenshotUpload({ files, onChange }: { files: File[]; onChange: (files
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium">Screenshots (optional, max {MAX_SCREENSHOTS})</label>
+      <label className="text-sm font-medium">{t('feedbackDialog.screenshots', { max: MAX_SCREENSHOTS })}</label>
       <div className="flex flex-wrap gap-2">
         {files.map((file, i) => (
           <div key={i} className="relative group h-16 w-16 rounded-md overflow-hidden border border-border">
@@ -178,6 +182,7 @@ function ScreenshotUpload({ files, onChange }: { files: File[]; onChange: (files
 }
 
 export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { t } = useTranslation();
   const submitFeedback = useSubmitFeedback();
   const [screenshots, setScreenshots] = useState<File[]>([]);
 
@@ -201,16 +206,16 @@ export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOp
         screenshots: screenshots.length > 0 ? screenshots : undefined,
       });
       toast({
-        title: "Feedback submitted",
-        description: "Thank you for your feedback! We'll review it soon.",
+        title: t('feedbackDialog.successTitle'),
+        description: t('feedbackDialog.successDesc'),
       });
       form.reset();
       setScreenshots([]);
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to submit feedback. Please try again.",
+        title: t('feedbackDialog.errorTitle'),
+        description: t('feedbackDialog.errorDesc'),
         variant: "destructive",
       });
     }
@@ -220,9 +225,9 @@ export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOp
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Send Feedback</DialogTitle>
+          <DialogTitle>{t('feedbackDialog.dialogTitle')}</DialogTitle>
           <DialogDescription>
-            Share your thoughts, report a bug, or suggest a new feature.
+            {t('feedbackDialog.dialogDesc')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -232,17 +237,17 @@ export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOp
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Type</FormLabel>
+                  <FormLabel>{t('feedbackDialog.typeLabel')}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select feedback type" />
+                        <SelectValue placeholder={t('feedbackDialog.typePlaceholder')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {Object.entries(feedbackTypeLabels).map(([value, label]) => (
+                      {(Object.keys(FEEDBACK_TYPE_KEYS) as FeedbackType[]).map((value) => (
                         <SelectItem key={value} value={value}>
-                          {label}
+                          {t(FEEDBACK_TYPE_KEYS[value])}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -256,7 +261,7 @@ export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOp
               name="sender_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Your Name</FormLabel>
+                  <FormLabel>{t('feedbackDialog.yourName')}</FormLabel>
                   <FormControl>
                     <Input placeholder="John Doe" {...field} />
                   </FormControl>
@@ -269,7 +274,7 @@ export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOp
               name="sender_email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t('feedbackDialog.email')}</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="you@example.com" {...field} />
                   </FormControl>
@@ -282,10 +287,10 @@ export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOp
               name="message"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Message</FormLabel>
+                  <FormLabel>{t('feedbackDialog.message')}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Tell us what's on your mind..."
+                      placeholder={t('feedbackDialog.messagePlaceholder')}
                       className="min-h-[120px]"
                       {...field}
                     />
@@ -301,10 +306,10 @@ export function FeedbackFormDialog({ open, onOpenChange }: { open: boolean; onOp
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Cancel
+                {t('feedbackDialog.cancel')}
               </Button>
               <Button type="submit" disabled={submitFeedback.isPending}>
-                {submitFeedback.isPending ? "Sending..." : "Send Feedback"}
+                {submitFeedback.isPending ? t('feedbackDialog.sending') : t('feedbackDialog.sendButton')}
               </Button>
             </div>
           </form>

@@ -36,7 +36,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
                   href="https://discord.gg/jTqgCPX8DD"
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Discord
+                  {t('footer.discord')}
                 </ExternalLink>
               </li>
             </ul>

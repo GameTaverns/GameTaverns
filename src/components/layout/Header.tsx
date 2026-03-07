@@ -1,4 +1,5 @@
 import { Link, useSearchParams, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Menu, X, FlaskConical, User, Globe, ArrowLeft, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -61,6 +62,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }: HeaderProps) {
+  const { t } = useTranslation();
   const { data: settings } = useSiteSettings();
   const { isDemoMode } = useDemoMode();
   const { demoMode: demoModeEnabled } = useFeatureFlags();
@@ -178,14 +180,14 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
               href="/"
               className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
-              Home
+              {t('nav.home')}
             </a>
           )}
           
           {/* Home link - shown outside tenant context OR in demo mode */}
           {(!tenantSlug || isDemoMode) && (
             <Link to={homeUrl} className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
-              Home
+              {t('nav.home')}
             </Link>
           )}
           
@@ -197,7 +199,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
                 className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Back to Dashboard</span>
+                <span>{t('nav.backToDashboard')}</span>
               </Link>
             ) : (
               <Link
@@ -205,7 +207,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
                 className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <Globe className="h-4 w-4" />
-                <span>Browse Libraries</span>
+                <span>{t('nav.browseLibraries')}</span>
               </Link>
             )
           )}
@@ -218,7 +220,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
                 className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Dashboard</span>
+                <span>{t('nav.dashboard')}</span>
               </Link>
             ) : (
               <Link
@@ -226,7 +228,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
                 className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <BookOpen className="h-4 w-4" />
-                <span>Catalog</span>
+                <span>{t('nav.catalog')}</span>
               </Link>
             )
           )}
@@ -237,7 +239,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
               href={getPlatformUrl("/dashboard")}
               className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
-              Dashboard
+              {t('nav.dashboard')}
             </TenantLink>
           )}
           
@@ -247,7 +249,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
               href={getPlatformUrl("/login")}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
-              Sign In
+              {t('nav.signIn')}
             </TenantLink>
           )}
           
