@@ -129,7 +129,7 @@ export default function RequestClub() {
                     id="slug"
                     value={slug}
                     onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="awesome-bgc"
+                    placeholder={t('requestClub.clubUrlPlaceholder')}
                     className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground pr-10"
                     required
                   />
