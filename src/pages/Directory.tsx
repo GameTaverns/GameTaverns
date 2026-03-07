@@ -419,16 +419,16 @@ export default function Directory() {
           <div className="flex-1 min-w-0">
             <Tabs value={dirTab} onValueChange={setDirTab} className="space-y-6">
               <TabsList>
-                <TabsTrigger value="all">All Libraries</TabsTrigger>
-                <TabsTrigger value="popular" className="gap-1">
-                  <TrendingUp className="h-4 w-4" />Popular
-                </TabsTrigger>
-                <TabsTrigger value="newest" className="gap-1">
-                  <Clock className="h-4 w-4" />Newest
-                </TabsTrigger>
-                <TabsTrigger value="lending" className="gap-1">
-                  <BookOpen className="h-4 w-4" />With Lending
-                </TabsTrigger>
+                 <TabsTrigger value="all">{t('directory.allLibraries')}</TabsTrigger>
+                 <TabsTrigger value="popular" className="gap-1">
+                   <TrendingUp className="h-4 w-4" />{t('directory.popular')}
+                 </TabsTrigger>
+                 <TabsTrigger value="newest" className="gap-1">
+                   <Clock className="h-4 w-4" />{t('directory.newest')}
+                 </TabsTrigger>
+                 <TabsTrigger value="lending" className="gap-1">
+                   <BookOpen className="h-4 w-4" />{t('directory.withLending')}
+                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="all">
