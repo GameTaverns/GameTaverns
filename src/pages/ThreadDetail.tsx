@@ -250,6 +250,7 @@ function MoveThreadDialog({
 }
 
 export default function ThreadDetail() {
+  const { t } = useTranslation();
   const { threadId } = useParams();
   const navigate = useNavigate();
   const { isAdmin } = useAuth();

@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 
 export default function CreateLibrary() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const { data: myLibraries = [], isLoading: librariesLoading } = useMyLibraries();
   const { data: maxLibraries = 1 } = useMaxLibrariesPerUser();

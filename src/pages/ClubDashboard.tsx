@@ -48,6 +48,7 @@ const CLUB_EVENT_LOCATION_KEY = "club_dashboard_event_location";
 const CLUB_EVENT_DESC_KEY = "club_dashboard_event_desc";
 
 export default function ClubDashboard() {
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
