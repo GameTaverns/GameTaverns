@@ -460,7 +460,7 @@ export default function CatalogGameDetail() {
                     )}
                     {playerRange && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Players</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.players')}</TableCell>
                         <TableCell className="text-foreground">{playerRange}</TableCell>
                       </TableRow>
                     )}
