@@ -330,7 +330,7 @@ export default function UserProfile() {
               <Trophy className="h-3.5 w-3.5" />{t('profile.achievements')}
             </TabsTrigger>
             <TabsTrigger value="communities" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-              <Users className="h-3.5 w-3.5" />Communities
+              <Users className="h-3.5 w-3.5" />{t('profile.communities')}
             </TabsTrigger>
             {isSharedCommunity && (
               <TabsTrigger value="feedback" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
