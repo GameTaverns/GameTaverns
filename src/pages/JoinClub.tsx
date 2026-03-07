@@ -58,16 +58,12 @@ export default function JoinClub() {
         </CardHeader>
         <CardContent>
           {librariesLoading ? (
-            <div className="text-center text-cream/60 py-4">Loading...</div>
+            <div className="text-center text-cream/60 py-4">{t('common.loading')}</div>
           ) : myLibraries.length === 0 ? (
             <div className="text-center space-y-4">
-              <p className="text-cream/70">
-                You need a library before you can join a club.
-              </p>
+              <p className="text-cream/70">{t('joinClub.needLibrary')}</p>
               <Link to="/create-library">
-                <Button className="bg-secondary text-secondary-foreground">
-                  Create a Library First
-                </Button>
+                <Button className="bg-secondary text-secondary-foreground">{t('joinClub.createLibraryFirst')}</Button>
               </Link>
             </div>
           ) : (
