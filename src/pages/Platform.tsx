@@ -84,7 +84,7 @@ export default function Platform() {
             </Link>
             <Link to="/directory" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Explore Libraries
+                {t('platform.exploreLibraries')}
               </Button>
             </Link>
             <Link to="/near-me" className="hidden sm:block">
