@@ -664,7 +664,7 @@ export default function Community() {
             }`}
           >
             <Vote className="h-4 w-4" />
-            Polls
+            {t('community.polls')}
           </button>
         </div>
 
