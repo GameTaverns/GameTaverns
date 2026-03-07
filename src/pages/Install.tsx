@@ -75,11 +75,11 @@ export default function InstallPage() {
             <CardContent className="py-6 space-y-4">
               <Button onClick={handleInstall} className="w-full gap-2" size="lg">
                 <Download className="h-5 w-5" />
-                Install Now
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                No app store needed — installs directly from your browser
-              </p>
+                 {t('install.installNow')}
+               </Button>
+               <p className="text-xs text-muted-foreground text-center">
+                 {t('install.noAppStore')}
+               </p>
             </CardContent>
           </Card>
         ) : isIOS ? (
