@@ -68,10 +68,10 @@ export default function CuratedListsPage() {
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground flex items-center gap-2">
               <ListOrdered className="h-7 w-7 text-primary" />
-              Curated Lists
+              {t('lists.title')}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Ranked game lists crafted by the community — vote for your favourites.
+              {t('lists.subtitle')}
             </p>
           </div>
           {isAuthenticated && <CreateListButton libraryId={library?.id} />}
