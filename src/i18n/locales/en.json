@@ -310,7 +310,11 @@
     "requestAClub": "Request a Club",
     "lookingForLibraries": "Looking for individual libraries?",
     "browseLibraryDirectory": "Browse the Library Directory to find game collections near you",
-    "libraryDirectory": "Library Directory"
+    "libraryDirectory": "Library Directory",
+    "allClubs": "All Clubs",
+    "nearMe": "Near Me",
+    "nearMeTitle": "Clubs Near You",
+    "nearMeDesc": "Club location data is based on member libraries. As libraries add their locations, nearby clubs will appear here."
   },
   "settings": {
     "profile": "Profile",
@@ -673,6 +677,8 @@
     "lookingForClubs": "Looking for clubs?",
     "clubDirectoryDesc": "Browse the Club Directory for cross-library communities with shared events and catalogs",
     "clubDirectory": "Club Directory",
+    "librariesTab": "Libraries",
+    "clubsTab": "Clubs",
     "games": "{{count}} games",
     "followers": "{{count}} followers",
     "follow": "Follow",
