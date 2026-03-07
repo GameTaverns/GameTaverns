@@ -284,9 +284,9 @@ function CreateListButton({ libraryId }: { libraryId?: string }) {
             <Textarea id="list-desc" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={t('lists.listDescPlaceholder')} rows={3} maxLength={500} />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleCreate} disabled={!title.trim() || createList.isPending}>
-              {createList.isPending ? "Creating..." : "Create"}
+              {createList.isPending ? t('lists.creating') : t('lists.create')}
             </Button>
           </div>
         </div>
