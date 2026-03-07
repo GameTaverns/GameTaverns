@@ -362,7 +362,7 @@ export default function Directory() {
 
         {countries.length === 0 && regions.length === 0 && !isLoading && (
           <p className="text-sm text-muted-foreground italic">
-            No location data available yet.
+            {t('directory.noLocationData')}
           </p>
         )}
       </div>
