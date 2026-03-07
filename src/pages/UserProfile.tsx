@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Trophy, Dices, BookOpen, Users, Calendar, Star, Activity, Shield, MessageSquare, HandCoins, BarChart3, Camera, Globe, Building2 } from "lucide-react";
@@ -52,6 +53,7 @@ const TIER_NAMES: Record<number, string> = {
 };
 
 export default function UserProfile() {
+  const { t } = useTranslation();
   const { username } = useParams<{ username: string }>();
   const { data: profile, isLoading, error } = usePublicProfile(username);
   const { data: communities } = usePublicProfileCommunities(profile?.user_id);
@@ -106,13 +108,13 @@ export default function UserProfile() {
         <AppHeader />
         <main className="container mx-auto px-4 py-16 text-center">
           <Dices className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="font-display text-3xl font-bold text-cream mb-2">Adventurer Not Found</h1>
+          <h1 className="font-display text-3xl font-bold text-cream mb-2">{t('profile.notFound')}</h1>
           <p className="text-muted-foreground mb-6">
-            No tavern-goer with that name could be found.
+            {t('profile.notFoundDesc')}
           </p>
           <a href="/">
             <Button variant="outline" className="border-wood-medium/50 text-cream hover:bg-wood-medium/30">
-              Browse Libraries
+              {t('profile.browseLibraries')}
             </Button>
           </a>
         </main>
@@ -251,7 +253,7 @@ export default function UserProfile() {
                         }}
                       >
                         <MessageSquare className="h-3.5 w-3.5" />
-                        Message
+                        {t('profile.message')}
                       </Button>
                     )}
                   </div>
@@ -261,11 +263,11 @@ export default function UserProfile() {
               <div className="flex gap-6 text-center text-sm">
                 <div>
                   <div className="font-bold" style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}>{followCounts?.followers ?? 0}</div>
-                  <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>Followers</div>
+                  <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>{t('profile.followers')}</div>
                 </div>
                 <div>
                   <div className="font-bold" style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}>{followCounts?.following ?? 0}</div>
-                  <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>Following</div>
+                  <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>{t('profile.following')}</div>
                 </div>
               </div>
             </div>
@@ -303,8 +305,8 @@ export default function UserProfile() {
             <div className="mt-3 flex items-center gap-2 text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>
               <Calendar className="h-3 w-3" />
               {profile.member_since && !isNaN(new Date(profile.member_since).getTime())
-                ? `Member since ${format(new Date(profile.member_since), "MMMM yyyy")}`
-                : "Member"}
+                ? t('profile.memberSince', { date: format(new Date(profile.member_since), "MMMM yyyy") })
+                : t('profile.member')}
             </div>
           </CardContent>
         </Card>
@@ -313,26 +315,26 @@ export default function UserProfile() {
         <Tabs value={profileTab} onValueChange={setProfileTab}>
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap" style={hasTheme && profileBgColor ? { backgroundColor: profileBgColor } : {}}>
             <TabsTrigger value="activity" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-              <Activity className="h-3.5 w-3.5" />Activity
+              <Activity className="h-3.5 w-3.5" />{t('profile.activity')}
             </TabsTrigger>
             <TabsTrigger value="photos" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-              <Camera className="h-3.5 w-3.5" />Photos
+              <Camera className="h-3.5 w-3.5" />{t('profile.photos')}
               {userPhotos.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">{userPhotos.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-              <BarChart3 className="h-3.5 w-3.5" />Stats
+              <BarChart3 className="h-3.5 w-3.5" />{t('profile.stats')}
             </TabsTrigger>
             <TabsTrigger value="achievements" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-              <Trophy className="h-3.5 w-3.5" />Achievements
+              <Trophy className="h-3.5 w-3.5" />{t('profile.achievements')}
             </TabsTrigger>
             <TabsTrigger value="communities" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-              <Users className="h-3.5 w-3.5" />Communities
+              <Users className="h-3.5 w-3.5" />{t('profile.communities')}
             </TabsTrigger>
             {isSharedCommunity && (
               <TabsTrigger value="feedback" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-                <HandCoins className="h-3.5 w-3.5" />Feedback
+                <HandCoins className="h-3.5 w-3.5" />{t('profile.feedback')}
                 {feedback && feedback.totalCount > 0 && (
                   <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">{feedback.totalCount}</Badge>
                 )}
@@ -346,14 +348,14 @@ export default function UserProfile() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-display flex items-center gap-2">
                   <Activity className="h-4 w-4 text-primary" />
-                  Recent Activity
+                  {t('profile.recentActivity')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ActivityFilterBar hiddenTypes={hiddenTypes} toggle={toggle} availableFilters={availableFilters} />
                 {filteredActivity.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    {groupedActivity.length === 0 ? "No activity yet." : "No matching activity."}
+                    {groupedActivity.length === 0 ? t('profile.noActivity') : t('profile.noMatchingActivity')}
                   </p>
                 ) : (
                   <div className="space-y-3">
@@ -377,7 +379,7 @@ export default function UserProfile() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-display flex items-center gap-2">
                     <Camera className="h-4 w-4 text-primary" />
-                    Photos
+                    {t('profile.photos')}
                   </CardTitle>
                   {currentUserId === profile.user_id && <PhotoUploadButton />}
                 </div>
@@ -404,12 +406,12 @@ export default function UserProfile() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-display flex items-center gap-2">
                   <Trophy className="h-4 w-4 text-primary" />
-                  Achievements
+                  {t('profile.achievements')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {!achievements || achievements.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No achievements earned yet.</p>
+                  <p className="text-sm text-muted-foreground">{t('profile.noAchievements')}</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     {achievements.map((ua: any) => (
@@ -428,7 +430,7 @@ export default function UserProfile() {
                 {achievements && achievements.length > 0 && (
                   <div className="mt-3 text-xs text-muted-foreground">
                     <Star className="h-3 w-3 inline mr-1" />
-                    {profile.achievement_points} total points
+                    {t('profile.totalPoints', { points: profile.achievement_points })}
                   </div>
                 )}
               </CardContent>
@@ -441,12 +443,12 @@ export default function UserProfile() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-display flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
-                  Communities
+                  {t('profile.communities')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {!communities || communities.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Not a member of any communities or clubs.</p>
+                  <p className="text-sm text-muted-foreground">{t('profile.noCommunities')}</p>
                 ) : (
                   <div className="space-y-2">
                     {communities.map((c) => (

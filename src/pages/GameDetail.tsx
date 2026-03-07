@@ -561,7 +561,7 @@ const GameDetail = () => {
                   className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
                 >
                   <BookOpen className="h-4 w-4" />
-                  View in Catalog
+                  {t('profile.viewInCatalog', 'View in Catalog')}
                 </Link>
               )}
               {(game as any).catalog_id && (
@@ -664,7 +664,7 @@ const GameDetail = () => {
                     {yearPublished != null && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Year Published
+                          {t('profile.yearPublished', 'Year Published')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {yearPublished}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { 
@@ -173,6 +174,7 @@ function ThreadRow({ thread }: { thread: ForumThread }) {
 }
 
 function CategoryView({ categorySlug }: { categorySlug: string }) {
+  const { t } = useTranslation();
   const { library, isTenantMode } = useTenant();
   
   const { data: siteCategories = [], isLoading: siteCategoriesLoading } = useSiteWideCategories();
@@ -203,11 +205,11 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
     return (
       <div className="text-center py-12">
         <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Category not found</h2>
+        <h2 className="text-xl font-semibold mb-2">{t('community.categoryNotFound')}</h2>
         <Link to="/community">
           <Button variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Forums
+            {t('community.backToForums')}
           </Button>
         </Link>
       </div>
@@ -244,7 +246,7 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
           </div>
           <Button onClick={() => setShowCreateThread(true)} size="sm">
             <Plus className="h-4 w-4 mr-1" />
-            New Thread
+            {t('community.newThread')}
           </Button>
         </div>
       </div>
@@ -262,7 +264,7 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
       {category.children && category.children.length > 0 && (
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
-            Subcategories
+            {t('community.subcategories')}
           </div>
           <div className="bg-card">
             {category.children.map((sub) => (
@@ -283,12 +285,12 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
         <div className="space-y-2">
           {pinnedThreads.length > 0 && (
             <>
-              <div className="text-sm font-medium text-muted-foreground px-1">Pinned</div>
+              <div className="text-sm font-medium text-muted-foreground px-1">{t('community.pinned')}</div>
               {pinnedThreads.map((thread) => (
                 <ThreadRow key={thread.id} thread={thread} />
               ))}
               {regularThreads.length > 0 && (
-                <div className="text-sm font-medium text-muted-foreground px-1 pt-4">Discussions</div>
+                <div className="text-sm font-medium text-muted-foreground px-1 pt-4">{t('community.discussions')}</div>
               )}
             </>
           )}
@@ -299,11 +301,11 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
       ) : (
         <div className="text-center py-12 border border-dashed rounded-lg">
           <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">No discussions yet</h3>
-          <p className="text-muted-foreground mb-4">Be the first to start a conversation!</p>
+          <h3 className="text-lg font-medium mb-2">{t('community.noDiscussionsYet')}</h3>
+          <p className="text-muted-foreground mb-4">{t('community.beFirstToConverse')}</p>
           <Button onClick={() => setShowCreateThread(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Start Discussion
+            {t('community.startDiscussion')}
           </Button>
         </div>
       )}
@@ -507,6 +509,7 @@ function LibraryForumSection({ libraryId, libraryName, librarySlug }: { libraryI
 }
 
 function ForumHome() {
+  const { t } = useTranslation();
   const { library, isTenantMode, isOwner } = useTenant();
   const { isAdmin } = useAuth();
   const { data: myClubs = [] } = useMyClubs();
@@ -528,10 +531,10 @@ function ForumHome() {
   const categories = isTenantMode ? libraryCategories : siteCategories;
   const categoriesLoading = isTenantMode ? libraryCategoriesLoading : siteCategoriesLoading;
   
-  const forumTitle = isTenantMode && library ? `${library.name} Forums` : "Community Forums";
+  const forumTitle = isTenantMode && library ? t('community.libraryForums', { name: library.name }) : t('community.communityForums');
   const forumDescription = isTenantMode 
-    ? "Discuss games, share tips, and connect with fellow members"
-    : "Discuss board games, find players, and connect with the community";
+    ? t('community.forumDescLibrary')
+    : t('community.forumDescSite');
 
   // Show manage button for site admins (site-wide) or library owners (library forums)
   const canManage = isTenantMode ? isOwner : isAdmin;
@@ -546,7 +549,7 @@ function ForumHome() {
           <TenantLink href={getPlatformUrl("/dashboard?tab=community")}>
             <Button variant="ghost" className="-ml-2">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              {t('community.backToDashboard')}
             </Button>
           </TenantLink>
           <div className="px-1">
@@ -572,11 +575,11 @@ function ForumHome() {
       ) : categories.length === 0 ? (
         <div className="text-center py-12 border border-dashed rounded-lg">
           <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">No forum categories yet</h3>
+          <h3 className="text-lg font-medium mb-2">{t('community.noCategories')}</h3>
           <p className="text-muted-foreground">
             {isTenantMode 
-              ? "The library owner hasn't set up any forum categories yet."
-              : "No categories have been created."}
+              ? t('community.noCategoriesLibrary')
+              : t('community.noCategoriesSite')}
           </p>
         </div>
       ) : (
@@ -591,7 +594,7 @@ function ForumHome() {
       {!isTenantMode && librariesWithForums.length > 0 && (
         <div className="space-y-6">
           <div className="border-t border-border pt-6">
-            <h2 className="text-xl font-bold font-display mb-4">My Library Forums</h2>
+            <h2 className="text-xl font-bold font-display mb-4">{t('community.myLibraryForums')}</h2>
           </div>
           {librariesWithForums.map((membership) => (
             <LibraryForumSection
@@ -608,7 +611,7 @@ function ForumHome() {
       {activeClubs.length > 0 && (
         <div className="space-y-6">
           <div className="border-t border-border pt-6">
-            <h2 className="text-xl font-bold font-display mb-4">Club Forums</h2>
+            <h2 className="text-xl font-bold font-display mb-4">{t('community.clubForums')}</h2>
           </div>
           {activeClubs.map((club) => (
             <ClubForumSection key={club.id} clubId={club.id} clubName={club.name} clubSlug={club.slug} />
@@ -620,6 +623,7 @@ function ForumHome() {
 }
 
 export default function Community() {
+  const { t } = useTranslation();
   const { categorySlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "forums";
@@ -649,7 +653,7 @@ export default function Community() {
             }`}
           >
             <MessageSquare className="h-4 w-4" />
-            Forums
+            {t('community.forums')}
           </button>
           <button
             onClick={() => setSearchParams({ tab: "polls" })}
@@ -660,7 +664,7 @@ export default function Community() {
             }`}
           >
             <Vote className="h-4 w-4" />
-            Polls
+            {t('community.polls')}
           </button>
         </div>
 
