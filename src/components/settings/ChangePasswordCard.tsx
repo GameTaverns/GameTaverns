@@ -92,6 +92,16 @@ export function ChangePasswordCard() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
+            <Label htmlFor="current-password">Current Password</Label>
+            <PasswordInput
+              id="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              required
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="new-password">New Password</Label>
             <PasswordInput
               id="new-password"
