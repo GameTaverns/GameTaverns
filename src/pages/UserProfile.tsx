@@ -379,7 +379,7 @@ export default function UserProfile() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-display flex items-center gap-2">
                     <Camera className="h-4 w-4 text-primary" />
-                    Photos
+                    {t('profile.photos')}
                   </CardTitle>
                   {currentUserId === profile.user_id && <PhotoUploadButton />}
                 </div>
