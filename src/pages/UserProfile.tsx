@@ -411,7 +411,7 @@ export default function UserProfile() {
               </CardHeader>
               <CardContent>
                 {!achievements || achievements.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No achievements earned yet.</p>
+                  <p className="text-sm text-muted-foreground">{t('profile.noAchievements')}</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     {achievements.map((ua: any) => (
