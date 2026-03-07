@@ -276,8 +276,8 @@ function CreateListButton({ libraryId }: { libraryId?: string }) {
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="list-title">Title</Label>
-            <Input id="list-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Best Gateway Games" maxLength={100} />
+            <Label htmlFor="list-title">{t('lists.listTitle')}</Label>
+            <Input id="list-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('lists.listTitlePlaceholder')} maxLength={100} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="list-desc">Description (optional)</Label>
