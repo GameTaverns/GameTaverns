@@ -189,7 +189,7 @@ export default function CatalogGameDetail() {
   ];
 
   const DescriptionContent = ({ content }: { content: string | null }) => {
-    if (!content) return <p className="text-muted-foreground italic">No description available.</p>;
+    if (!content) return <p className="text-muted-foreground italic">{t('catalog.noDescription')}</p>;
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
