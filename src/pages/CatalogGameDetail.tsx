@@ -76,6 +76,7 @@ function sanitizeBggImageUrl(url: string): string | null {
 const LOW_QUALITY_BGG_VARIANTS = /__(geeklistimagebar|geeklistimage|square|mt|geeklistimagebar@2x|geeklistimage@2x)|__square@2x/i;
 
 export default function CatalogGameDetail() {
+  const { t } = useTranslation();
   const { slug } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, isAdmin } = useAuth();
