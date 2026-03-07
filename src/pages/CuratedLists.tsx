@@ -256,7 +256,7 @@ function CreateListButton({ libraryId }: { libraryId?: string }) {
     if (!title.trim()) return;
     try {
       const list = await createList.mutateAsync({ title: title.trim(), description: desc.trim() || undefined, library_id: libraryId });
-      toast({ title: "List created!" });
+      toast({ title: t('lists.listCreated') });
       setOpen(false);
       const path = `/lists/${list.id}`;
       navigate(tenantSlug ? getLibraryUrl(tenantSlug, path) : path);
