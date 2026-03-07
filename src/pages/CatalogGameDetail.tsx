@@ -396,7 +396,7 @@ export default function CatalogGameDetail() {
                   ) : (
                     <Plus className="h-4 w-4" />
                   )}
-                  Add to My Library
+                  {t('catalog.addToMyLibrary')}
                 </Button>
               )}
 
