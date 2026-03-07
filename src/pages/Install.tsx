@@ -92,8 +92,8 @@ export default function InstallPage() {
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">1</div>
                 <div>
-                  <p className="font-medium text-sm">Tap the Share button</p>
-                  <p className="text-xs text-muted-foreground">The square with an arrow at the bottom of Safari</p>
+                   <p className="font-medium text-sm">{t('install.tapShare')}</p>
+                   <p className="text-xs text-muted-foreground">{t('install.shareDesc')}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
