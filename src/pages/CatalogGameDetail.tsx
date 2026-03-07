@@ -485,7 +485,7 @@ export default function CatalogGameDetail() {
                     {game.designers.length > 0 && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          <span className="flex items-center gap-1"><PenTool className="h-3.5 w-3.5" /> Designer{game.designers.length > 1 ? "s" : ""}</span>
+                          <span className="flex items-center gap-1"><PenTool className="h-3.5 w-3.5" /> {game.designers.length > 1 ? t('catalog.designers') : t('catalog.designer')}</span>
                         </TableCell>
                         <TableCell className="text-foreground">
                           <div className="flex flex-wrap gap-1">
