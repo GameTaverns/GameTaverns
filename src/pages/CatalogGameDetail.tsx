@@ -552,8 +552,8 @@ export default function CatalogGameDetail() {
             {/* Expansions */}
             {game.expansions.length > 0 && (
               <div className="mt-8">
-                <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
-                  Expansions ({game.expansions.length})
+                 <h2 className="font-display text-xl font-semibold mb-4 text-foreground">
+                   {t('catalog.expansions', { count: game.expansions.length })}
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {game.expansions.map(exp => (
