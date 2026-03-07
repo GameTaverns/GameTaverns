@@ -102,9 +102,9 @@ export default function RequestClub() {
               <Users className="h-8 w-8 text-secondary" />
             </div>
           </div>
-          <CardTitle className="font-display text-2xl text-cream">Request a Club</CardTitle>
+          <CardTitle className="font-display text-2xl text-cream">{t('requestClub.title')}</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Create a club to connect multiple board game libraries
+            {t('requestClub.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
