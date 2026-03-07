@@ -531,10 +531,10 @@ function ForumHome() {
   const categories = isTenantMode ? libraryCategories : siteCategories;
   const categoriesLoading = isTenantMode ? libraryCategoriesLoading : siteCategoriesLoading;
   
-  const forumTitle = isTenantMode && library ? `${library.name} Forums` : "Community Forums";
+  const forumTitle = isTenantMode && library ? t('community.libraryForums', { name: library.name }) : t('community.communityForums');
   const forumDescription = isTenantMode 
-    ? "Discuss games, share tips, and connect with fellow members"
-    : "Discuss board games, find players, and connect with the community";
+    ? t('community.forumDescLibrary')
+    : t('community.forumDescSite');
 
   // Show manage button for site admins (site-wide) or library owners (library forums)
   const canManage = isTenantMode ? isOwner : isAdmin;
