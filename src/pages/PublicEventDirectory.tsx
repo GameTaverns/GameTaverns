@@ -137,15 +137,15 @@ export default function PublicEventDirectory() {
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="All types" />
+              <SelectValue placeholder={t('events.allTypes')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="game_night">Game Nights</SelectItem>
-              <SelectItem value="tournament">Tournaments</SelectItem>
-              <SelectItem value="convention">Conventions</SelectItem>
-              <SelectItem value="meetup">Meetups</SelectItem>
-              <SelectItem value="public_event">Public Events</SelectItem>
+              <SelectItem value="all">{t('events.allTypes')}</SelectItem>
+              <SelectItem value="game_night">{t('events.gameNights')}</SelectItem>
+              <SelectItem value="tournament">{t('events.tournaments')}</SelectItem>
+              <SelectItem value="convention">{t('events.conventions')}</SelectItem>
+              <SelectItem value="meetup">{t('events.meetups')}</SelectItem>
+              <SelectItem value="public_event">{t('events.publicEvents')}</SelectItem>
             </SelectContent>
           </Select>
           {cities.length > 0 && (
