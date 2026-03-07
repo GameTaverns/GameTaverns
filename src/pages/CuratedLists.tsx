@@ -90,7 +90,7 @@ export default function CuratedListsPage() {
               ? (
                 <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
                   <ListOrdered className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                  <p>No lists yet — be the first to create one!</p>
+                  <p>{t('lists.noListsYet')}</p>
                 </div>
               )
               : publicLists.map((list) => (
