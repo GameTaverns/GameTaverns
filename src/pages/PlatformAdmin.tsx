@@ -329,6 +329,13 @@ export default function PlatformAdmin() {
                   <Mail className="h-4 w-4 mr-1 sm:mr-2" />
                   Email Analytics
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="accessibility"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <Accessibility className="h-4 w-4 mr-1 sm:mr-2" />
+                  Accessibility
+                </TabsTrigger>
               </>
             )}
           </TabsList>
