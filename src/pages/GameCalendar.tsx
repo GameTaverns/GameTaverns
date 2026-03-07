@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths } from "date-fns";
 import { Calendar as CalIcon, ChevronLeft, ChevronRight, Download, ExternalLink, MapPin, PartyPopper, Clock } from "lucide-react";
@@ -44,6 +45,7 @@ function pollToCalendarEvent(poll: Poll): CalendarEvent {
 }
 
 export default function GameCalendar() {
+  const { t } = useTranslation();
   const { library } = useTenant();
   const { data: nights = [], isLoading } = useGameNights(library?.id || null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -72,17 +74,23 @@ export default function GameCalendar() {
   const getEventsForDay = (day: Date) =>
     nights.filter((n) => n.event_date && isSameDay(new Date(n.event_date), day));
 
+  const dayHeaders = [
+    t('common.sun', 'Sun'), t('common.mon', 'Mon'), t('common.tue', 'Tue'),
+    t('common.wed', 'Wed'), t('common.thu', 'Thu'), t('common.fri', 'Fri'),
+    t('common.sat', 'Sat'),
+  ];
+
   return (
     <Layout>
       <SEO
-        title={`Game Nights — ${library?.name || "Calendar"}`}
-        description={`Upcoming game nights and events${library ? ` at ${library.name}` : ""}. RSVP, add to your calendar, and never miss a session.`}
+        title={`${t('gameCalendar.title')} — ${library?.name || t('common.calendar', 'Calendar')}`}
+        description={t('gameCalendar.seoDesc', { library: library ? t('gameCalendar.atLibrary', { name: library.name }) : '' })}
       />
 
       <div className="container mx-auto px-4 py-6 max-w-5xl">
         <h1 className="text-2xl font-display font-bold text-foreground flex items-center gap-2 mb-6">
           <CalIcon className="h-6 w-6 text-primary" />
-          Game Night Calendar
+          {t('gameCalendar.title')}
         </h1>
 
         <div className="grid lg:grid-cols-[1fr_320px] gap-6">
@@ -100,7 +108,7 @@ export default function GameCalendar() {
             <CardContent>
               {/* Day headers */}
               <div className="grid grid-cols-7 gap-px mb-1">
-                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                {dayHeaders.map((d) => (
                   <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1">
                     {d}
                   </div>
@@ -138,7 +146,9 @@ export default function GameCalendar() {
                         </div>
                       ))}
                       {dayEvents.length > 2 && (
-                        <span className="text-[9px] text-muted-foreground">+{dayEvents.length - 2} more</span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {t('gameCalendar.more', { count: dayEvents.length - 2 })}
+                        </span>
                       )}
                     </div>
                   );
@@ -153,14 +163,14 @@ export default function GameCalendar() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <PartyPopper className="h-4 w-4 text-primary" />
-                  Upcoming Events
+                  {t('gameCalendar.upcomingEvents')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {isLoading ? (
-                  <p className="text-xs text-muted-foreground">Loading...</p>
+                  <p className="text-xs text-muted-foreground">{t('gameCalendar.loading')}</p>
                 ) : upcoming.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No upcoming game nights scheduled.</p>
+                  <p className="text-xs text-muted-foreground">{t('gameCalendar.noUpcoming')}</p>
                 ) : (
                   upcoming.map((night) => (
                     <EventCard key={night.id} poll={night} />
@@ -173,7 +183,7 @@ export default function GameCalendar() {
               <Card>
                 <CardContent className="pt-4">
                   <p className="text-xs text-muted-foreground mb-2">
-                    {eventsThisMonth.length} event{eventsThisMonth.length !== 1 ? "s" : ""} this month
+                    {t('gameCalendar.eventsThisMonth', { count: eventsThisMonth.length })}
                   </p>
                 </CardContent>
               </Card>
@@ -186,6 +196,7 @@ export default function GameCalendar() {
 }
 
 function EventCard({ poll }: { poll: Poll }) {
+  const { t } = useTranslation();
   const event = pollToCalendarEvent(poll);
   const isPast = new Date(poll.event_date!) < new Date();
 
@@ -206,7 +217,7 @@ function EventCard({ poll }: { poll: Poll }) {
           )}
         </div>
         <Badge variant={isPast ? "secondary" : "default"} className="text-[10px] shrink-0">
-          {isPast ? "Past" : poll.status}
+          {isPast ? t('gameCalendar.past') : poll.status}
         </Badge>
       </div>
 
@@ -219,7 +230,7 @@ function EventCard({ poll }: { poll: Poll }) {
             onClick={() => downloadICS(event)}
           >
             <Download className="h-3 w-3 mr-1" />
-            .ics
+            {t('gameCalendar.ics')}
           </Button>
           <Button
             variant="outline"
@@ -229,7 +240,7 @@ function EventCard({ poll }: { poll: Poll }) {
           >
             <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3 w-3 mr-1" />
-              Google Cal
+              {t('gameCalendar.googleCal')}
               <span className="sr-only">(opens in a new tab)</span>
             </a>
           </Button>
