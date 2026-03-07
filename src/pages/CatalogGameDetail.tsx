@@ -411,10 +411,10 @@ export default function CatalogGameDetail() {
                         onSuccess: () => toast({ title: t('catalog.addedToWishlist'), description: t('catalog.addedToWishlistDesc', { title: game.title }) }),
                         onError: (err: any) => {
                           const isDuplicate = err?.code === "23505" || err?.message?.includes("duplicate");
-                          toast({
-                            title: isDuplicate ? "Already on Wishlist" : "Error",
-                            description: isDuplicate ? `"${game.title}" is already on your Wishlist.` : "Failed to add to Wishlist.",
-                            variant: isDuplicate ? "default" : "destructive",
+                           toast({
+                             title: isDuplicate ? t('catalog.alreadyOnWishlist') : t('common.error'),
+                             description: isDuplicate ? t('catalog.alreadyOnWishlistDesc', { title: game.title }) : t('catalog.failedToAddWishlist'),
+                             variant: isDuplicate ? "default" : "destructive",
                           });
                         },
                       }
