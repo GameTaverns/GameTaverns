@@ -156,7 +156,7 @@ export default function Platform() {
             </Button>
             <Link to="/features">
               <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                See All Features
+                {t('platform.seeAllFeatures')}
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             </Link>
