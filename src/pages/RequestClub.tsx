@@ -38,7 +38,7 @@ export default function RequestClub() {
         return { available: false, reason: t('requestClub.slugMinChars') };
       const slugRegex = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
       if (!slugRegex.test(debouncedSlug))
-        return { available: false, reason: "Lowercase letters, numbers, and hyphens only" };
+        return { available: false, reason: t('requestClub.slugInvalidChars') };
 
       const { data } = await supabase
         .from("clubs")
