@@ -348,7 +348,7 @@
     margin: 0 !important;
     min-height: var(--mobile-tab-height);
     padding-bottom: env(safe-area-inset-bottom);
-    /* DO NOT use transform on fixed elements — it breaks position:fixed in iOS WebKit */
+    /* Never apply transforms/filters to fixed tabs in iOS WebKit */
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     -webkit-backdrop-filter: none;
@@ -356,11 +356,12 @@
     filter: none !important;
     transform: none !important;
     will-change: auto !important;
-    contain: layout style;
-    /* iOS safe area background extension */
+    contain: none;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    height: calc(var(--mobile-tab-height) + env(safe-area-inset-bottom));
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
     background-clip: padding-box;
-    /* Force GPU compositing layer without transform */
-    -webkit-transform: translateZ(0);
   }
   .mobile-bottom-tab {
     @apply flex flex-col items-center justify-center gap-0 py-1.5 px-1 flex-1 text-muted-foreground transition-colors;
