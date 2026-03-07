@@ -302,7 +302,7 @@ export default function Directory() {
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
-                  All Regions
+                  {t('directory.allRegions')}
                 </button>
                 {regions.map((r) => (
                   <button
