@@ -170,7 +170,7 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
     e.preventDefault();
     try {
       await deleteList.mutateAsync(list.id);
-      toast({ title: "List deleted" });
+      toast({ title: t('lists.listDeleted') });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
