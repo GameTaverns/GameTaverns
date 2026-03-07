@@ -535,7 +535,7 @@ export default function CatalogBrowse() {
                   </div>
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2 text-sm font-medium">
-                      <Clock className="h-4 w-4" /> Max Time: {maxTime[0]} min
+                      <Clock className="h-4 w-4" /> {t('catalog.maxTime')}: {maxTime[0]} {t('common.min')}
                     </Label>
                     <Slider value={maxTime} onValueChange={setMaxTime} min={15} max={240} step={15} />
                   </div>
