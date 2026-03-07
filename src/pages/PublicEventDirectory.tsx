@@ -131,7 +131,7 @@ export default function PublicEventDirectory() {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search events, organizers..."
+              placeholder={t('events.searchPlaceholder')}
               className="pl-9"
             />
           </div>
