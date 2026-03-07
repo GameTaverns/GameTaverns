@@ -536,8 +536,8 @@ export default function CatalogGameDetail() {
                     )}
                     {game.community_rating != null && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">GameTaverns Rating</TableCell>
-                        <TableCell className="text-foreground">★ {game.community_rating.toFixed(1)} / 5 ({game.community_rating_count} ratings)</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.gtRating')}</TableCell>
+                         <TableCell className="text-foreground">★ {game.community_rating.toFixed(1)} / 5 ({t('catalog.ratings', { count: game.community_rating_count })})</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
