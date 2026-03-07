@@ -51,6 +51,7 @@ interface CatalogGame {
 const PAGE_SIZE = 30;
 
 export default function CatalogBrowse() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const { data: myLibrary } = useMyLibrary();
   const { data: myLibraries = [] } = useMyLibraries();
