@@ -47,11 +47,11 @@
 
     /* Muted - dusty parchment */
     --muted: 30 20% 88%;
-    --muted-foreground: 20 25% 28%;
+    --muted-foreground: 20 25% 24%;
 
     /* Accent - warm brown */
     --accent: 25 45% 42%;
-    --accent-foreground: 40 50% 96%;
+    --accent-foreground: 40 50% 98%;
 
     /* Destructive - muted red */
     --destructive: 0 50% 45%;
