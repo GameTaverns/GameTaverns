@@ -179,3 +179,6 @@ verify_jwt = false
 
 [functions.check-password-reuse]
 verify_jwt = false
+
+[functions.translate-text]
+verify_jwt = false
