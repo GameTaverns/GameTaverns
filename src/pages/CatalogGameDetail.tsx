@@ -165,9 +165,9 @@ export default function CatalogGameDetail() {
       <Layout>
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <span className="text-6xl mb-4">🎲</span>
-          <h2 className="font-display text-2xl font-semibold text-foreground mb-2">Game not found</h2>
-          <p className="text-muted-foreground mb-4">This game doesn't exist in the catalog.</p>
-          <Button onClick={() => navigate("/catalog")}>Back to Catalog</Button>
+           <h2 className="font-display text-2xl font-semibold text-foreground mb-2">{t('catalog.gameNotFound')}</h2>
+           <p className="text-muted-foreground mb-4">{t('catalog.gameNotInCatalog')}</p>
+           <Button onClick={() => navigate("/catalog")}>{t('catalog.backToCatalog')}</Button>
         </div>
       </Layout>
     );
