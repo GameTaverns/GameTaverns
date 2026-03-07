@@ -45,7 +45,7 @@ export default function Grow() {
               <CardContent className="pt-6 pb-5">
                 <div className="text-3xl mb-2">{tier.emoji}</div>
                 <h3 className="font-display font-bold text-sm mb-1">{tier.label}</h3>
-                <p className="text-xs text-muted-foreground">{tier.threshold} referral{tier.threshold !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground">{tier.threshold} {tier.threshold !== 1 ? t('grow.referrals') : t('grow.referral')}</p>
               </CardContent>
             </Card>
           ))}
