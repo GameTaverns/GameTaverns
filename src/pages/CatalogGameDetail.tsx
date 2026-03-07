@@ -213,9 +213,9 @@ export default function CatalogGameDetail() {
       <div className="max-w-6xl mx-auto">
         {/* Breadcrumb nav */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground mb-4 flex-wrap">
-          <Link to="/" className="hover:text-foreground">Home</Link>
-          <ArrowLeft className="h-3 w-3 rotate-180" />
-          <Link to="/catalog" className="hover:text-foreground">Catalog</Link>
+           <Link to="/" className="hover:text-foreground">{t('catalog.home')}</Link>
+           <ArrowLeft className="h-3 w-3 rotate-180" />
+           <Link to="/catalog" className="hover:text-foreground">{t('nav.catalog')}</Link>
           {game.mechanics.length > 0 && (
             <>
               <ArrowLeft className="h-3 w-3 rotate-180" />
