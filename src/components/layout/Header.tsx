@@ -237,7 +237,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
               href={getPlatformUrl("/dashboard")}
               className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
             >
-              Dashboard
+              {t('nav.dashboard')}
             </TenantLink>
           )}
           
