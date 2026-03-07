@@ -134,11 +134,11 @@ export default function Directory() {
                 onClick={() => toggleFollow(library.id)}
                 className="gap-1 shrink-0"
               >
-                {following ? (
-                  <><HeartOff className="h-4 w-4" />Unfollow</>
-                ) : (
-                  <><Heart className="h-4 w-4" />Follow</>
-                )}
+                 {following ? (
+                   <><HeartOff className="h-4 w-4" />{t('directory.unfollow')}</>
+                 ) : (
+                   <><Heart className="h-4 w-4" />{t('directory.follow')}</>
+                 )}
               </Button>
             )}
           </div>
