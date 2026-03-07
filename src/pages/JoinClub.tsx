@@ -26,23 +26,16 @@ export default function JoinClub() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLibraryId) {
-      toast({ title: "Select a library", description: "Choose which library to add to the club", variant: "destructive" });
+      toast({ title: t('joinClub.selectALibrary'), description: t('joinClub.selectALibraryDesc'), variant: "destructive" });
       return;
     }
 
     try {
       await redeemCode.mutateAsync({ code: code.trim(), library_id: selectedLibraryId });
-      toast({
-        title: "Joined club!",
-        description: "Your library has been added to the club.",
-      });
+      toast({ title: t('joinClub.joinedClub'), description: t('joinClub.joinedClubDesc') });
       navigate("/dashboard?tab=clubs");
     } catch (error: any) {
-      toast({
-        title: "Failed to join club",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: t('joinClub.failedToJoin'), description: error.message, variant: "destructive" });
     }
   };
 
