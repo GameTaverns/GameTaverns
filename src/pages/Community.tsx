@@ -653,7 +653,7 @@ export default function Community() {
             }`}
           >
             <MessageSquare className="h-4 w-4" />
-            Forums
+            {t('community.forums')}
           </button>
           <button
             onClick={() => setSearchParams({ tab: "polls" })}
