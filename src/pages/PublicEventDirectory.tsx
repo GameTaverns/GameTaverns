@@ -181,7 +181,7 @@ export default function PublicEventDirectory() {
                 onClick={() => setShowArchived(!showArchived)}
               >
                 <Archive className="h-3.5 w-3.5" />
-                {showArchived ? "Hide Archived" : "Show Archived"}
+                {showArchived ? t('events.hideArchived') : t('events.showArchived')}
               </Button>
             </div>
             {myEventsLoading ? (
