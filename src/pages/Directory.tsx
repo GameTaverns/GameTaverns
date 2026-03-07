@@ -181,8 +181,8 @@ export default function Directory() {
             <TenantLink
               href={getLibraryUrl(library.slug, "/")}
               className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-            >
-              Visit Library
+             >
+               {t('directory.visitLibrary')}
               <ExternalLink className="h-3 w-3" />
             </TenantLink>
             {user && (
