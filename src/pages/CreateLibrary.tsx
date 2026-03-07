@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Gamepad2, Check, X, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";

@@ -50,6 +50,7 @@ const EVENT_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructiv
 };
 
 export default function EventDetailPage() {
+  const { t } = useTranslation();
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const { data: event, isLoading } = useEventDetail(eventId);
