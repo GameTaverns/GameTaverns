@@ -334,7 +334,7 @@ export default function UserProfile() {
             </TabsTrigger>
             {isSharedCommunity && (
               <TabsTrigger value="feedback" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-                <HandCoins className="h-3.5 w-3.5" />Feedback
+                <HandCoins className="h-3.5 w-3.5" />{t('profile.feedback')}
                 {feedback && feedback.totalCount > 0 && (
                   <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">{feedback.totalCount}</Badge>
                 )}
