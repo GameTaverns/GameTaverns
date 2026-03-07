@@ -272,7 +272,7 @@ function CreateListButton({ libraryId }: { libraryId?: string }) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create a new list</DialogTitle>
+          <DialogTitle>{t('lists.createNewList')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
