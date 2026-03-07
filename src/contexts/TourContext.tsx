@@ -2,70 +2,71 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, Re
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 
 export interface TourStep {
   id: string;
-  title: string;
-  description: string;
-  route: string; // Route to navigate to for this step
-  completionKey: string; // Key used to check if step action is done
-  actionLabel: string; // Label for the action button shown in the card
+  titleKey: string;
+  descriptionKey: string;
+  route: string;
+  completionKey: string;
+  actionLabelKey: string;
   emoji?: string;
 }
 
 const TOUR_STEPS: TourStep[] = [
   {
     id: "welcome",
-    title: "Welcome to GameTaverns! 🎲",
-    description: "This is your dashboard — the command center for your board game library. Let's walk through the key features by visiting each one!",
+    titleKey: "tour.welcomeTitle",
+    descriptionKey: "tour.welcomeDesc",
     route: "/dashboard",
     completionKey: "welcome_seen",
-    actionLabel: "Let's Go!",
+    actionLabelKey: "tour.letsGo",
     emoji: "🎲",
   },
   {
     id: "create-library",
-    title: "Create Your Library",
-    description: "First, create a library. It gets its own subdomain (e.g., yourname.gametaverns.com) where friends can browse your collection.",
+    titleKey: "tour.createLibraryTitle",
+    descriptionKey: "tour.createLibraryDesc",
     route: "/create-library",
     completionKey: "has_library",
-    actionLabel: "Create Library",
+    actionLabelKey: "tour.createLibraryAction",
     emoji: "📚",
   },
   {
     id: "import-games",
-    title: "Import Your Games",
-    description: "Now let's add some games! Import from BoardGameGeek, a CSV file, or add games manually to build your collection.",
-    route: "__library_games__", // Special: resolved dynamically
+    titleKey: "tour.importGamesTitle",
+    descriptionKey: "tour.importGamesDesc",
+    route: "__library_games__",
     completionKey: "has_games",
-    actionLabel: "Add Games",
+    actionLabelKey: "tour.addGamesAction",
     emoji: "🎮",
   },
   {
     id: "customize-theme",
-    title: "Customize Your Look",
-    description: "Make your library uniquely yours — set a logo, pick colors, and choose fonts in Library Settings.",
-    route: "__library_settings__", // Special: resolved dynamically
+    titleKey: "tour.customizeTitle",
+    descriptionKey: "tour.customizeDesc",
+    route: "__library_settings__",
     completionKey: "has_custom_theme",
-    actionLabel: "Open Settings",
+    actionLabelKey: "tour.openSettingsAction",
     emoji: "🎨",
   },
   {
     id: "setup-2fa",
-    title: "Secure Your Account",
-    description: "Protect your account with two-factor authentication. It only takes a minute with any authenticator app.",
+    titleKey: "tour.secureTitle",
+    descriptionKey: "tour.secureDesc",
     route: "/setup-2fa",
     completionKey: "has_2fa",
-    actionLabel: "Set Up 2FA",
+    actionLabelKey: "tour.setUp2FAAction",
     emoji: "🔒",
   },
   {
     id: "complete",
-    title: "You're All Set! 🎉",
-    description: "Great job! You've got the basics covered. Explore community features like lending, events, polls, and forums whenever you're ready.",
+    titleKey: "tour.completeTitle",
+    descriptionKey: "tour.completeDesc",
     route: "/dashboard",
     completionKey: "tour_complete",
-    actionLabel: "Finish Tour",
+    actionLabelKey: "tour.finishTourAction",
     emoji: "🎉",
   },
 ];
@@ -79,14 +80,17 @@ interface TourContextType {
   deferTour: () => void;
   completeStep: (completionKey: string) => void;
   skipStep: () => void;
-  goToStep: (index: number) => void;
-  hasSeenTour: boolean;
   shouldShowTour: boolean;
   completions: Record<string, boolean>;
-  setCompletions: (completions: Record<string, boolean>) => void;
 }
 
-const TourContext = createContext<TourContextType | null>(null);
+const TourContext = createContext<TourContextType | undefined>(undefined);
+
+export function useTour() {
+  const ctx = useContext(TourContext);
+  if (!ctx) throw new Error("useTour must be used within TourProvider");
+  return ctx;
+}
 
 export function TourProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -279,12 +283,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
   }, [currentStep, endTour]);
 
-  const goToStep = useCallback((index: number) => {
-    if (index >= 0 && index < TOUR_STEPS.length) {
-      setCurrentStep(index);
-    }
-  }, []);
-
   const shouldShowTour = !hasSeenTour && !isActive;
 
   return (
@@ -298,20 +296,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
         deferTour,
         completeStep,
         skipStep,
-        goToStep,
-        hasSeenTour,
         shouldShowTour,
         completions,
-        setCompletions,
       }}
     >
       {children}
     </TourContext.Provider>
   );
-}
-
-export function useTour() {
-  const context = useContext(TourContext);
-  if (!context) throw new Error("useTour must be used within TourProvider");
-  return context;
 }

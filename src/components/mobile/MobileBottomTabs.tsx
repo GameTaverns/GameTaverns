@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { LayoutDashboard, Library, BookOpen, MessageSquare, Menu } from "lucide-react";
 import { getNativeEffectivePath, isNativeRuntime } from "@/lib/nativeRouting";
 import { TenantLink } from "@/components/TenantLink";
@@ -21,6 +22,7 @@ interface TabItem {
 }
 
 export function MobileBottomTabs() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const { data: library } = useMyLibrary();
   const { data: dmUnreadCount = 0 } = useUnreadDMCount();
@@ -41,25 +43,25 @@ export function MobileBottomTabs() {
     {
       href: getPlatformUrl("/dashboard"),
       icon: LayoutDashboard,
-      label: "Dashboard",
+      label: t('mobileNav.dashboard'),
       match: (p) => p === "/dashboard" || p.startsWith("/dashboard"),
     },
     {
       href: libraryHref,
       icon: Library,
-      label: "Library",
+      label: t('mobileNav.library'),
       match: (p) => p.startsWith("/library/") || p.startsWith("/l/"),
     },
     {
       href: getPlatformUrl("/catalog"),
       icon: BookOpen,
-      label: "Catalog",
+      label: t('mobileNav.catalog'),
       match: (p) => p.startsWith("/catalog"),
     },
     {
       href: getPlatformUrl("/dm"),
       icon: MessageSquare,
-      label: "Messages",
+      label: t('mobileNav.messages'),
       match: (p) => p.startsWith("/dm"),
       badge: dmUnreadCount,
     },
@@ -74,7 +76,7 @@ export function MobileBottomTabs() {
         const Icon = tab.icon;
         return (
           <TenantLink
-            key={tab.label}
+            key={tab.href}
             href={tab.href}
             className={cn(
               "mobile-bottom-tab",
@@ -97,15 +99,14 @@ export function MobileBottomTabs() {
         );
       })}
 
-      {/* More tab opens the drawer */}
       <MobileNavDrawer
         trigger={
           <button
             className="mobile-bottom-tab"
-            aria-label="More options"
+            aria-label={t('mobileNav.more')}
           >
             <Menu className="h-5 w-5" />
-            <span className="text-[10px] mt-0.5">More</span>
+            <span className="text-[10px] mt-0.5">{t('mobileNav.more')}</span>
           </button>
         }
       />
@@ -114,4 +115,3 @@ export function MobileBottomTabs() {
 
   return createPortal(tabsNav, document.body);
 }
-

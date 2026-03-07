@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Menu, Library, Globe, HelpCircle, BookOpen, MessageSquare,
   Mail, LogOut, User, Trophy, Users, LayoutDashboard, List, MessageSquarePlus,
@@ -22,6 +23,7 @@ interface MobileNavDrawerProps {
 }
 
 export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { signOut, isAuthenticated } = useAuth();
   const { data: library } = useMyLibrary();
@@ -34,13 +36,9 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
 
   const close = useCallback(() => setOpen(false), []);
 
-  /** Navigate then close — avoids Sheet unmount racing with Link */
   const navAndClose = useCallback((href: string) => {
-    // Close first, then navigate after sheet animation starts
     setOpen(false);
     setTimeout(() => {
-      // Use replace + state key to force React Router to re-evaluate
-      // even if pathname hasn't changed (e.g. already on /)
       navigate(href, { replace: true, state: { ts: Date.now() } });
     }, 100);
   }, [navigate]);
@@ -49,7 +47,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
     close();
     const { error } = await signOut();
     if (error) {
-      toast({ title: "Error signing out", description: error.message, variant: "destructive" });
+      toast({ title: t('mobileNav.errorSigningOut'), description: error.message, variant: "destructive" });
     } else {
       navigate("/");
     }
@@ -98,7 +96,7 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
             variant="ghost"
             size="icon"
             className="text-cream hover:text-white hover:bg-wood-medium/50 h-8 w-8"
-            aria-label="Open navigation menu"
+            aria-label={t('mobileNav.menu')}
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -106,23 +104,20 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
       </SheetTrigger>
 
       <SheetContent side="right" className="w-48 min-[400px]:w-56 p-0 flex h-[100dvh] flex-col bg-background">
-        {/* Header — no manual close button; SheetContent provides its own */}
         <div className="px-3 py-3 border-b">
-          <span className="font-display text-sm font-bold">Menu</span>
+          <span className="font-display text-sm font-bold">{t('mobileNav.menu')}</span>
         </div>
 
-        {/* Nav items */}
         <nav className="flex-1 overflow-y-auto px-1.5 py-2 pb-24 space-y-0.5">
           {isAuthenticated ? (
             <>
-              <NavItem href={getPlatformUrl("/dashboard")} icon={LayoutDashboard} label="Dashboard" />
-              <NavItem href={getPlatformUrl("/catalog")} icon={BookOpen} label="Catalog" />
+              <NavItem href={getPlatformUrl("/dashboard")} icon={LayoutDashboard} label={t('mobileNav.dashboard')} />
+              <NavItem href={getPlatformUrl("/catalog")} icon={BookOpen} label={t('mobileNav.catalog')} />
 
-              {/* Library links */}
               {myLibraries.length > 0 && (
                 <>
                    <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    My Libraries
+                    {t('mobileNav.myLibraries')}
                   </div>
                    {myLibraries.map((lib) => (
                     <button
@@ -141,26 +136,26 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               )}
 
               <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Discover
+                {t('mobileNav.discover')}
               </div>
-              <NavItem href={getPlatformUrl("/directory")} icon={Globe} label="Directory" />
-              <NavItem href={getPlatformUrl("/near-me")} icon={MapPin} label="Near Me" />
-              <NavItem href={getPlatformUrl("/events")} icon={Calendar} label="Events" />
-              <NavItem href={getPlatformUrl("/achievements")} icon={Trophy} label="Achievements" />
-              <NavItem href={getPlatformUrl("/lists")} icon={List} label="Curated Lists" />
+              <NavItem href={getPlatformUrl("/directory")} icon={Globe} label={t('mobileNav.directory')} />
+              <NavItem href={getPlatformUrl("/near-me")} icon={MapPin} label={t('mobileNav.nearMe')} />
+              <NavItem href={getPlatformUrl("/events")} icon={Calendar} label={t('mobileNav.events')} />
+              <NavItem href={getPlatformUrl("/achievements")} icon={Trophy} label={t('mobileNav.achievements')} />
+              <NavItem href={getPlatformUrl("/lists")} icon={List} label={t('mobileNav.curatedLists')} />
 
               <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Messages
+                {t('mobileNav.messages')}
               </div>
               <NavItem
                 href={getPlatformUrl("/dm")}
                 icon={MessageSquare}
-                label="Direct Messages"
+                label={t('mobileNav.directMessages')}
                 badge={dmUnreadCount}
               />
 
               <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Account
+                {t('mobileNav.account')}
               </div>
               {profile?.username && (
                 <NavItem
@@ -171,25 +166,25 @@ export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
               )}
 
               <div className="px-3 pt-2 pb-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Support
+                {t('mobileNav.support')}
               </div>
               <FeedbackNavItem onClose={close} />
-              <NavItem href={getPlatformUrl("/docs")} icon={HelpCircle} label="Help" />
-              <NavItem href={getPlatformUrl("/legal")} icon={Scale} label="Legal" />
+              <NavItem href={getPlatformUrl("/docs")} icon={HelpCircle} label={t('mobileNav.help')} />
+              <NavItem href={getPlatformUrl("/legal")} icon={Scale} label={t('mobileNav.legal')} />
               <button
                 onClick={handleSignOut}
                 className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
               >
                 <LogOut className="h-4 w-4 shrink-0" />
-                <span>Sign Out</span>
+                <span>{t('mobileNav.signOut')}</span>
               </button>
             </>
           ) : (
             <>
-              <NavItem href={getPlatformUrl("/catalog")} icon={BookOpen} label="Catalog" />
-              <NavItem href={getPlatformUrl("/directory")} icon={Globe} label="Directory" />
-              <NavItem href={getPlatformUrl("/docs")} icon={HelpCircle} label="Help" />
-              <NavItem href={getPlatformUrl("/legal")} icon={Scale} label="Legal" />
+              <NavItem href={getPlatformUrl("/catalog")} icon={BookOpen} label={t('mobileNav.catalog')} />
+              <NavItem href={getPlatformUrl("/directory")} icon={Globe} label={t('mobileNav.directory')} />
+              <NavItem href={getPlatformUrl("/docs")} icon={HelpCircle} label={t('mobileNav.help')} />
+              <NavItem href={getPlatformUrl("/legal")} icon={Scale} label={t('mobileNav.legal')} />
             </>
           )}
         </nav>
