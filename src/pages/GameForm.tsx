@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { loadDraft, clearDraft, useGameFormAutosave } from "@/hooks/useGameFormPersistence";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
@@ -57,6 +58,7 @@ import {
 import { YouTubeVideoEditor } from "@/components/games/YouTubeEmbed";
 
 const GameForm = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { buildUrl } = useTenantUrl();
@@ -92,7 +94,7 @@ const GameForm = () => {
   const [suggestedAge, setSuggestedAge] = useState("10+");
   const [publisherId, setPublisherId] = useState<string | null>(null);
   const [selectedMechanics, setSelectedMechanics] = useState<string[]>([]);
-  const [originalMechanics, setOriginalMechanics] = useState<string[]>([]); // Track original for comparison
+  const [originalMechanics, setOriginalMechanics] = useState<string[]>([]);
   const [bggUrl, setBggUrl] = useState("");
   const [upc, setUpc] = useState("");
   const [isComingSoon, setIsComingSoon] = useState(false);
@@ -137,10 +139,8 @@ const GameForm = () => {
   const MAX_VISIBLE = 30;
 
   const filteredMechanics = useMemo(() => {
-    // Always show selected items first, then filter/cap the rest
     const term = mechanicSearch.toLowerCase();
     if (term) return mechanics.filter(m => m.name.toLowerCase().includes(term));
-    // When not searching, show selected + first N unselected
     const selected = mechanics.filter(m => selectedMechanics.includes(m.id));
     const unselected = mechanics.filter(m => !selectedMechanics.includes(m.id)).slice(0, MAX_VISIBLE);
     return [...selected, ...unselected];
@@ -170,7 +170,6 @@ const GameForm = () => {
   );
 
   // --- Draft persistence for new games ---
-  // Load draft on mount (only for new games)
   useEffect(() => {
     if (isEditing) return;
     const draft = loadDraft();
@@ -232,7 +231,6 @@ const GameForm = () => {
 
   const triggerAutosave = useGameFormAutosave(isEditing, getFormState);
 
-  // Trigger autosave whenever form state changes
   useEffect(() => {
     triggerAutosave();
   }, [getFormState, triggerAutosave]);
@@ -305,9 +303,9 @@ const GameForm = () => {
       const mech = await createMechanic.mutateAsync(newMechanic.trim());
       setSelectedMechanics((prev) => [...prev, mech.id]);
       setNewMechanic("");
-      toast({ title: "Mechanic added" });
+      toast({ title: t('gameForm.mechanicAdded') });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t('errors.error'), description: error.message, variant: "destructive" });
     }
   };
 
@@ -317,9 +315,9 @@ const GameForm = () => {
       const pub = await createPublisher.mutateAsync(newPublisher.trim());
       setPublisherId(pub.id);
       setNewPublisher("");
-      toast({ title: "Publisher added" });
+      toast({ title: t('gameForm.publisherAdded') });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t('errors.error'), description: error.message, variant: "destructive" });
     }
   };
 
@@ -337,9 +335,9 @@ const GameForm = () => {
       const d = await createDesigner.mutateAsync(newDesigner.trim());
       setSelectedDesigners((prev) => [...prev, d.id]);
       setNewDesigner("");
-      toast({ title: "Designer added" });
+      toast({ title: t('gameForm.designerAdded') });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t('errors.error'), description: error.message, variant: "destructive" });
     }
   };
 
@@ -357,9 +355,9 @@ const GameForm = () => {
       const a = await createArtist.mutateAsync(newArtist.trim());
       setSelectedArtists((prev) => [...prev, a.id]);
       setNewArtist("");
-      toast({ title: "Artist added" });
+      toast({ title: t('gameForm.artistAdded') });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t('errors.error'), description: error.message, variant: "destructive" });
     }
   };
 
@@ -367,7 +365,7 @@ const GameForm = () => {
     e.preventDefault();
 
     if (!title.trim()) {
-      toast({ title: "Error", description: "Title is required", variant: "destructive" });
+      toast({ title: t('errors.error'), description: t('gameForm.titleRequired_error'), variant: "destructive" });
       return;
     }
 
@@ -411,7 +409,6 @@ const GameForm = () => {
 
     try {
       if (isEditing && existingGame?.id) {
-        // Only pass mechanicIds if they changed (avoid unnecessary RLS checks)
         const mechanicsChanged = 
           selectedMechanics.length !== originalMechanics.length ||
           selectedMechanics.some(id => !originalMechanics.includes(id)) ||
@@ -432,7 +429,7 @@ const GameForm = () => {
           designerIds: designersChanged ? selectedDesigners : undefined,
           artistIds: artistsChanged ? selectedArtists : undefined,
         });
-        toast({ title: "Game updated!" });
+        toast({ title: t('gameForm.gameUpdated') });
       } else {
         await createGame.mutateAsync({
           game: gameData,
@@ -440,12 +437,12 @@ const GameForm = () => {
           designerIds: selectedDesigners,
           artistIds: selectedArtists,
         });
-        toast({ title: "Game created!" });
+        toast({ title: t('gameForm.gameCreated') });
       }
       clearDraft();
       navigate(buildUrl("/manage"));
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: t('errors.error'), description: error.message, variant: "destructive" });
     }
   };
 
@@ -467,13 +464,13 @@ const GameForm = () => {
       <div className="max-w-3xl mx-auto">
         <Button variant="ghost" className="mb-6 -ml-2" onClick={() => navigate(buildUrl("/manage"))}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Manage
+          {t('gameForm.backToManage')}
         </Button>
 
         <Card className="card-elevated">
           <CardHeader>
             <CardTitle className="font-display text-2xl">
-              {isEditing ? "Edit Game" : "Add New Game"}
+              {isEditing ? t('gameForm.editGame') : t('gameForm.addNewGame')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -481,40 +478,40 @@ const GameForm = () => {
               {/* Basic Info */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="title">Title *</Label>
+                  <Label htmlFor="title">{t('gameForm.titleRequired')}</Label>
                   <Input
                     id="title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Game title"
+                    placeholder={t('gameForm.titlePlaceholder')}
                     required
                   />
                 </div>
 
                 <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t('gameForm.descriptionLabel')}</Label>
                   <Textarea
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Game description..."
+                    placeholder={t('gameForm.descriptionPlaceholder')}
                     rows={4}
                   />
                 </div>
 
                 <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="imageUrl">Image URL</Label>
+                  <Label htmlFor="imageUrl">{t('gameForm.imageUrlLabel')}</Label>
                   <Input
                     id="imageUrl"
                     type="url"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://..."
+                    placeholder={t('gameForm.imageUrlPlaceholder')}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Difficulty</Label>
+                  <Label>{t('gameForm.difficulty')}</Label>
                   <Select value={difficulty} onValueChange={(v) => setDifficulty(v as DifficultyLevel)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -528,59 +525,59 @@ const GameForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Game Type</Label>
+                  <Label>{t('gameForm.gameType')}</Label>
                   <Select value={gameType} onValueChange={(v) => setGameType(v as GameType)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {GAME_TYPE_OPTIONS.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      {GAME_TYPE_OPTIONS.map((gt) => (
+                        <SelectItem key={gt} value={gt}>{gt}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Genre</Label>
+                  <Label>{t('gameForm.genre')}</Label>
                   <Select value={genre} onValueChange={setGenre}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select genre" />
+                      <SelectValue placeholder={t('gameForm.genrePlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Fantasy">Fantasy</SelectItem>
-                      <SelectItem value="Sci-Fi">Sci-Fi</SelectItem>
-                      <SelectItem value="Historical">Historical</SelectItem>
-                      <SelectItem value="Horror">Horror</SelectItem>
-                      <SelectItem value="Mystery">Mystery</SelectItem>
-                      <SelectItem value="Adventure">Adventure</SelectItem>
-                      <SelectItem value="Economic">Economic</SelectItem>
-                      <SelectItem value="Abstract">Abstract</SelectItem>
-                      <SelectItem value="Humor">Humor</SelectItem>
-                      <SelectItem value="Nature">Nature</SelectItem>
+                      <SelectItem value="Fantasy">{t('gameForm.genres.fantasy')}</SelectItem>
+                      <SelectItem value="Sci-Fi">{t('gameForm.genres.sciFi')}</SelectItem>
+                      <SelectItem value="Historical">{t('gameForm.genres.historical')}</SelectItem>
+                      <SelectItem value="Horror">{t('gameForm.genres.horror')}</SelectItem>
+                      <SelectItem value="Mystery">{t('gameForm.genres.mystery')}</SelectItem>
+                      <SelectItem value="Adventure">{t('gameForm.genres.adventure')}</SelectItem>
+                      <SelectItem value="Economic">{t('gameForm.genres.economic')}</SelectItem>
+                      <SelectItem value="Abstract">{t('gameForm.genres.abstract')}</SelectItem>
+                      <SelectItem value="Humor">{t('gameForm.genres.humor')}</SelectItem>
+                      <SelectItem value="Nature">{t('gameForm.genres.nature')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Play Time</Label>
+                  <Label>{t('gameForm.playTime')}</Label>
                   <Select value={playTime} onValueChange={(v) => setPlayTime(v as PlayTime)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {PLAY_TIME_OPTIONS.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      {PLAY_TIME_OPTIONS.map((pt) => (
+                        <SelectItem key={pt} value={pt}>{pt}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Publisher</Label>
+                  <Label>{t('gameForm.publisher')}</Label>
                   <Select value={publisherId || ""} onValueChange={setPublisherId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select publisher" />
+                      <SelectValue placeholder={t('gameForm.publisherPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {publishers.slice(0, 100).map((p) => (
@@ -591,7 +588,7 @@ const GameForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="minPlayers">Min Players</Label>
+                  <Label htmlFor="minPlayers">{t('gameForm.minPlayers')}</Label>
                   <Input
                     id="minPlayers"
                     type="number"
@@ -602,7 +599,7 @@ const GameForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="maxPlayers">Max Players</Label>
+                  <Label htmlFor="maxPlayers">{t('gameForm.maxPlayers')}</Label>
                   <Input
                     id="maxPlayers"
                     type="number"
@@ -613,37 +610,37 @@ const GameForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="age">Suggested Age</Label>
+                  <Label htmlFor="age">{t('gameForm.suggestedAge')}</Label>
                   <Input
                     id="age"
                     value={suggestedAge}
                     onChange={(e) => setSuggestedAge(e.target.value)}
-                    placeholder="10+"
+                    placeholder={t('gameForm.suggestedAgePlaceholder')}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="bggUrl">BoardGameGeek URL</Label>
+                  <Label htmlFor="bggUrl">{t('gameForm.bggUrl')}</Label>
                   <Input
                     id="bggUrl"
                     type="url"
                     value={bggUrl}
                     onChange={(e) => setBggUrl(e.target.value)}
-                    placeholder="https://boardgamegeek.com/boardgame/..."
+                    placeholder={t('gameForm.bggUrlPlaceholder')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="upc">UPC / EAN Barcode</Label>
+                  <Label htmlFor="upc">{t('gameForm.upc')}</Label>
                   <Input
                     id="upc"
                     value={upc}
                     onChange={(e) => setUpc(e.target.value.replace(/[^0-9]/g, ""))}
-                    placeholder="e.g. 681706711003"
+                    placeholder={t('gameForm.upcPlaceholder')}
                     maxLength={14}
                     inputMode="numeric"
                   />
                   <p className="text-xs text-muted-foreground">
-                    The barcode number on the game box. Used for instant lookup when scanning at lending events.
+                    {t('gameForm.upcHint')}
                   </p>
                 </div>
               </div>
@@ -664,28 +661,27 @@ const GameForm = () => {
                   />
                   <div className="space-y-1">
                     <label htmlFor="isExpansion" className="text-sm font-medium cursor-pointer">
-                      This is an Expansion
+                      {t('gameForm.isExpansion')}
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      Mark this as an expansion. It will be nested under its base game in the collection.
+                      {t('gameForm.isExpansionHint')}
                     </p>
                   </div>
                 </div>
 
-                {/* Parent Game Selection - Only show when Expansion is checked */}
                 {isExpansion && (
                   <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-4">
                     <div className="space-y-2">
-                      <Label>Base Game</Label>
+                      <Label>{t('gameForm.baseGame')}</Label>
                       <Input
                         value={parentGameSearch}
                         onChange={(e) => setParentGameSearch(e.target.value)}
-                        placeholder="Search base games..."
+                        placeholder={t('gameForm.searchBaseGames')}
                         className="mb-2"
                       />
                       <Select value={parentGameId || ""} onValueChange={setParentGameId}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select the base game" />
+                          <SelectValue placeholder={t('gameForm.selectBaseGame')} />
                         </SelectTrigger>
                         <SelectContent>
                           {filteredParentGames.map((g) => (
@@ -694,7 +690,7 @@ const GameForm = () => {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        Select which game this is an expansion for.
+                        {t('gameForm.selectBaseGameHint')}
                       </p>
                     </div>
                     <div className="flex items-center space-x-3">
@@ -704,7 +700,7 @@ const GameForm = () => {
                         onCheckedChange={(checked) => setInBaseGameBox(checked === true)}
                       />
                       <label htmlFor="inBaseGameBox" className="text-sm font-medium cursor-pointer">
-                        Stored in base game box
+                        {t('gameForm.storedInBaseGameBox')}
                       </label>
                     </div>
                   </div>
@@ -713,10 +709,10 @@ const GameForm = () => {
 
               {/* Copies Owned */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Inventory</h3>
+                <h3 className="text-lg font-medium">{t('gameForm.inventory')}</h3>
                 <div className="p-4 rounded-lg border border-border bg-muted/50">
                   <div className="space-y-2">
-                    <Label htmlFor="copiesOwned">Copies Owned</Label>
+                    <Label htmlFor="copiesOwned">{t('gameForm.copiesOwned')}</Label>
                     <Input
                       id="copiesOwned"
                       type="number"
@@ -725,7 +721,7 @@ const GameForm = () => {
                       onChange={(e) => setCopiesOwned(Math.max(1, parseInt(e.target.value) || 1))}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Track how many copies of this game you own. Used for lending inventory.
+                      {t('gameForm.copiesOwnedHint')}
                     </p>
                   </div>
                 </div>
@@ -740,10 +736,10 @@ const GameForm = () => {
                 />
                 <div className="space-y-1">
                   <label htmlFor="isComingSoon" className="text-sm font-medium cursor-pointer">
-                    Coming Soon
+                    {t('gameForm.comingSoon')}
                   </label>
                   <p className="text-xs text-muted-foreground">
-                    Mark this game as purchased/backed but not yet received. It won't appear in the main catalog.
+                    {t('gameForm.comingSoonHint')}
                   </p>
                 </div>
               </div>
@@ -758,19 +754,18 @@ const GameForm = () => {
                   />
                   <div className="space-y-1">
                     <label htmlFor="isForSale" className="text-sm font-medium cursor-pointer">
-                      For Sale
+                      {t('gameForm.forSale')}
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      Mark this game as available for sale. It will appear in the marketplace section.
+                      {t('gameForm.forSaleHint')}
                     </p>
                   </div>
                 </div>
 
-                {/* Sale Details - Only show when For Sale is checked */}
                 {isForSale && (
                   <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border border-primary/20 bg-primary/5">
                     <div className="space-y-2">
-                      <Label htmlFor="salePrice">Price ($)</Label>
+                      <Label htmlFor="salePrice">{t('gameForm.salePrice')}</Label>
                       <Input
                         id="salePrice"
                         type="number"
@@ -778,17 +773,17 @@ const GameForm = () => {
                         step="0.01"
                         value={salePrice}
                         onChange={(e) => setSalePrice(e.target.value)}
-                        placeholder="0.00"
+                        placeholder={t('gameForm.salePricePlaceholder')}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Condition</Label>
+                      <Label>{t('gameForm.condition')}</Label>
                       <Select 
                         value={saleCondition || ""} 
                         onValueChange={(v) => setSaleCondition(v as SaleCondition)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select condition" />
+                          <SelectValue placeholder={t('gameForm.conditionPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
                           {SALE_CONDITION_OPTIONS.map((c) => (
@@ -803,46 +798,46 @@ const GameForm = () => {
 
               {/* Location */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Storage Location</h3>
+                <h3 className="text-lg font-medium">{t('gameForm.storageLocation')}</h3>
                 <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border border-border bg-muted/50">
                   <div className="space-y-2">
-                    <Label htmlFor="locationRoom">Room</Label>
+                    <Label htmlFor="locationRoom">{t('gameForm.room')}</Label>
                     <Select value={locationRoom} onValueChange={setLocationRoom}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select room" />
+                        <SelectValue placeholder={t('gameForm.roomPlaceholder')} />
                       </SelectTrigger>
                       <SelectContent className="bg-popover">
-                        <SelectItem value="Living Room">Living Room</SelectItem>
-                        <SelectItem value="Family Room">Family Room</SelectItem>
-                        <SelectItem value="Game Room">Game Room</SelectItem>
-                        <SelectItem value="Den">Den</SelectItem>
-                        <SelectItem value="Basement">Basement</SelectItem>
-                        <SelectItem value="Bedroom">Bedroom</SelectItem>
-                        <SelectItem value="Office">Office</SelectItem>
-                        <SelectItem value="Closet">Closet</SelectItem>
-                        <SelectItem value="Attic">Attic</SelectItem>
-                        <SelectItem value="Garage">Garage</SelectItem>
-                        <SelectItem value="Dining Room">Dining Room</SelectItem>
-                        <SelectItem value="Storage Room">Storage Room</SelectItem>
+                        <SelectItem value="Living Room">{t('gameForm.rooms.livingRoom')}</SelectItem>
+                        <SelectItem value="Family Room">{t('gameForm.rooms.familyRoom')}</SelectItem>
+                        <SelectItem value="Game Room">{t('gameForm.rooms.gameRoom')}</SelectItem>
+                        <SelectItem value="Den">{t('gameForm.rooms.den')}</SelectItem>
+                        <SelectItem value="Basement">{t('gameForm.rooms.basement')}</SelectItem>
+                        <SelectItem value="Bedroom">{t('gameForm.rooms.bedroom')}</SelectItem>
+                        <SelectItem value="Office">{t('gameForm.rooms.office')}</SelectItem>
+                        <SelectItem value="Closet">{t('gameForm.rooms.closet')}</SelectItem>
+                        <SelectItem value="Attic">{t('gameForm.rooms.attic')}</SelectItem>
+                        <SelectItem value="Garage">{t('gameForm.rooms.garage')}</SelectItem>
+                        <SelectItem value="Dining Room">{t('gameForm.rooms.diningRoom')}</SelectItem>
+                        <SelectItem value="Storage Room">{t('gameForm.rooms.storageRoom')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="locationShelf">Shelf</Label>
+                    <Label htmlFor="locationShelf">{t('gameForm.shelf')}</Label>
                     <Input
                       id="locationShelf"
                       value={locationShelf}
                       onChange={(e) => setLocationShelf(e.target.value)}
-                      placeholder="e.g., Shelf A, Top Shelf"
+                      placeholder={t('gameForm.shelfPlaceholder')}
                     />
                   </div>
                   <div className="sm:col-span-2 space-y-2">
-                    <Label htmlFor="locationMisc">Additional Location Notes</Label>
+                    <Label htmlFor="locationMisc">{t('gameForm.additionalLocationNotes')}</Label>
                     <Input
                       id="locationMisc"
                       value={locationMisc}
                       onChange={(e) => setLocationMisc(e.target.value)}
-                      placeholder="e.g., In closet, Behind couch, etc."
+                      placeholder={t('gameForm.locationNotesPlaceholder')}
                     />
                   </div>
                 </div>
@@ -854,7 +849,7 @@ const GameForm = () => {
                       onCheckedChange={(checked) => setSleeved(checked === true)}
                     />
                     <label htmlFor="sleeved" className="text-sm font-medium cursor-pointer">
-                      Sleeved
+                      {t('gameForm.sleeved')}
                     </label>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -864,7 +859,7 @@ const GameForm = () => {
                       onCheckedChange={(checked) => setUpgradedComponents(checked === true)}
                     />
                     <label htmlFor="upgradedComponents" className="text-sm font-medium cursor-pointer">
-                      Upgraded Components
+                      {t('gameForm.upgradedComponents')}
                     </label>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -874,7 +869,7 @@ const GameForm = () => {
                       onCheckedChange={(checked) => setCrowdfunded(checked === true)}
                     />
                     <label htmlFor="crowdfunded" className="text-sm font-medium cursor-pointer">
-                      Crowdfunded
+                      {t('gameForm.crowdfunded')}
                     </label>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -884,7 +879,7 @@ const GameForm = () => {
                       onCheckedChange={(checked) => setInserts(checked === true)}
                     />
                     <label htmlFor="inserts" className="text-sm font-medium cursor-pointer">
-                      Inserts
+                      {t('gameForm.inserts')}
                     </label>
                   </div>
                   <div className="flex items-center space-x-3">
@@ -894,21 +889,21 @@ const GameForm = () => {
                       onCheckedChange={(checked) => setIsUnplayed(checked === true)}
                     />
                     <label htmlFor="isUnplayed" className="text-sm font-medium cursor-pointer">
-                      Unplayed
+                      {t('gameForm.unplayed')}
                     </label>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Track where this game is stored and its component status.</p>
+                  {t('gameForm.storageHint')}</p>
 
               </div>
 
               {/* Purchase Info (Admin Only) */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Purchase Information</h3>
+                <h3 className="text-lg font-medium">{t('gameForm.purchaseInfo')}</h3>
                 <div className="grid gap-4 sm:grid-cols-2 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10">
                   <div className="space-y-2">
-                    <Label htmlFor="purchasePrice">Purchase Price ($)</Label>
+                    <Label htmlFor="purchasePrice">{t('gameForm.purchasePrice')}</Label>
                     <Input
                       id="purchasePrice"
                       type="number"
@@ -916,11 +911,11 @@ const GameForm = () => {
                       step="0.01"
                       value={purchasePrice}
                       onChange={(e) => setPurchasePrice(e.target.value)}
-                      placeholder="0.00"
+                      placeholder={t('gameForm.purchasePricePlaceholder')}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="purchaseDate">Purchase Date</Label>
+                    <Label htmlFor="purchaseDate">{t('gameForm.purchaseDate')}</Label>
                     <Input
                       id="purchaseDate"
                       type="date"
@@ -929,7 +924,7 @@ const GameForm = () => {
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="currentValue">Current Market Value ($)</Label>
+                    <Label htmlFor="currentValue">{t('gameForm.currentValue')}</Label>
                     <Input
                       id="currentValue"
                       type="number"
@@ -937,36 +932,36 @@ const GameForm = () => {
                       step="0.01"
                       value={currentValue}
                       onChange={(e) => setCurrentValue(e.target.value)}
-                      placeholder="0.00"
+                      placeholder={t('gameForm.currentValuePlaceholder')}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Your estimated resale value — used for collection value tracking.
+                      {t('gameForm.currentValueHint')}
                     </p>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Private purchase tracking - only visible to admins.
+                  {t('gameForm.purchasePrivateHint')}
                 </p>
               </div>
 
               {/* YouTube Videos */}
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Gameplay Videos</h3>
+                <h3 className="text-lg font-medium">{t('gameForm.gameplayVideos')}</h3>
                 <div className="p-4 rounded-lg border border-border bg-muted/50">
                   <YouTubeVideoEditor videos={youtubeVideos} onChange={setYoutubeVideos} />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Add YouTube links to gameplay videos, reviews, or tutorials.
+                  {t('gameForm.videosHint')}
                 </p>
               </div>
 
               {/* Mechanics */}
               <div className="space-y-3">
-                <Label>Mechanics</Label>
+                <Label>{t('gameForm.mechanics')}</Label>
                 <Input
                   value={mechanicSearch}
                   onChange={(e) => setMechanicSearch(e.target.value)}
-                  placeholder="Type to search all mechanics..."
+                  placeholder={t('gameForm.mechanicsSearchPlaceholder')}
                 />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                   {filteredMechanics.map((m) => (
@@ -983,44 +978,44 @@ const GameForm = () => {
                   ))}
                 </div>
                 {selectedMechanics.length > 0 && (
-                  <p className="text-xs text-muted-foreground">{selectedMechanics.length} selected</p>
+                  <p className="text-xs text-muted-foreground">{selectedMechanics.length} {t('common.selected')}</p>
                 )}
                 <div className="flex gap-2">
                   <Input
                     value={newMechanic}
                     onChange={(e) => setNewMechanic(e.target.value)}
-                    placeholder="Add new mechanic"
+                    placeholder={t('gameForm.addNewMechanic')}
                     className="flex-1"
                   />
                   <Button type="button" variant="outline" onClick={handleAddMechanic}>
-                    Add
+                    {t('common.add')}
                   </Button>
                 </div>
               </div>
 
               {/* New Publisher */}
               <div className="space-y-2">
-                <Label>Add New Publisher</Label>
+                <Label>{t('gameForm.addNewPublisher')}</Label>
                 <div className="flex gap-2">
                   <Input
                     value={newPublisher}
                     onChange={(e) => setNewPublisher(e.target.value)}
-                    placeholder="Publisher name"
+                    placeholder={t('gameForm.publisherNamePlaceholder')}
                     className="flex-1"
                   />
                   <Button type="button" variant="outline" onClick={handleAddPublisher}>
-                    Add
+                    {t('common.add')}
                   </Button>
                 </div>
               </div>
 
               {/* Designers */}
               <div className="space-y-3">
-                <Label>Designers</Label>
+                <Label>{t('gameForm.designers')}</Label>
                 <Input
                   value={designerSearch}
                   onChange={(e) => setDesignerSearch(e.target.value)}
-                  placeholder="Type to search all designers..."
+                  placeholder={t('gameForm.designersSearchPlaceholder')}
                 />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                   {filteredDesigners.map((d) => (
@@ -1037,28 +1032,28 @@ const GameForm = () => {
                   ))}
                 </div>
                 {selectedDesigners.length > 0 && (
-                  <p className="text-xs text-muted-foreground">{selectedDesigners.length} selected</p>
+                  <p className="text-xs text-muted-foreground">{selectedDesigners.length} {t('common.selected')}</p>
                 )}
                 <div className="flex gap-2">
                   <Input
                     value={newDesigner}
                     onChange={(e) => setNewDesigner(e.target.value)}
-                    placeholder="Add new designer"
+                    placeholder={t('gameForm.addNewDesigner')}
                     className="flex-1"
                   />
                   <Button type="button" variant="outline" onClick={handleAddDesigner}>
-                    Add
+                    {t('common.add')}
                   </Button>
                 </div>
               </div>
 
               {/* Artists */}
               <div className="space-y-3">
-                <Label>Artists</Label>
+                <Label>{t('gameForm.artists')}</Label>
                 <Input
                   value={artistSearch}
                   onChange={(e) => setArtistSearch(e.target.value)}
-                  placeholder="Type to search all artists..."
+                  placeholder={t('gameForm.artistsSearchPlaceholder')}
                 />
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                   {filteredArtists.map((a) => (
@@ -1075,17 +1070,17 @@ const GameForm = () => {
                   ))}
                 </div>
                 {selectedArtists.length > 0 && (
-                  <p className="text-xs text-muted-foreground">{selectedArtists.length} selected</p>
+                  <p className="text-xs text-muted-foreground">{selectedArtists.length} {t('common.selected')}</p>
                 )}
                 <div className="flex gap-2">
                   <Input
                     value={newArtist}
                     onChange={(e) => setNewArtist(e.target.value)}
-                    placeholder="Add new artist"
+                    placeholder={t('gameForm.addNewArtist')}
                     className="flex-1"
                   />
                   <Button type="button" variant="outline" onClick={handleAddArtist}>
-                    Add
+                    {t('common.add')}
                   </Button>
                 </div>
               </div>
@@ -1096,12 +1091,12 @@ const GameForm = () => {
                   {isSaving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      {t('common.saving')}
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      {isEditing ? "Update Game" : "Create Game"}
+                      {isEditing ? t('gameForm.updateGame') : t('gameForm.createGame')}
                     </>
                   )}
                 </Button>
@@ -1114,7 +1109,7 @@ const GameForm = () => {
                     onClick={() => setShowDeleteDialog(true)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Game
+                    {t('gameForm.deleteGame')}
                   </Button>
                 )}
               </div>
@@ -1126,26 +1121,26 @@ const GameForm = () => {
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Game</AlertDialogTitle>
+              <AlertDialogTitle>{t('gameForm.deleteConfirmTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{title}"? This action cannot be undone and will remove all associated data including play history, loans, and documents.
+                {t('gameForm.deleteConfirmDesc', { title })}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={async () => {
                   try {
                     await deleteGame.mutateAsync(id!);
-                    toast({ title: "Game deleted", description: `"${title}" has been removed from your collection.` });
+                    toast({ title: t('gameForm.gameDeleted'), description: t('gameForm.gameDeletedDesc', { title }) });
                     navigate(buildUrl("/manage"));
                   } catch {
-                    toast({ title: "Delete failed", description: "Failed to delete the game. Please try again.", variant: "destructive" });
+                    toast({ title: t('gameForm.deleteFailed'), description: t('gameForm.deleteFailedDesc'), variant: "destructive" });
                   }
                 }}
               >
-                Delete
+                {t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
