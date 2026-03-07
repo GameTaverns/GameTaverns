@@ -165,9 +165,9 @@ export default function RequestClub() {
 
             <div className="flex items-center justify-between p-3 bg-wood-medium/30 rounded-lg border border-border/30">
               <div>
-                <Label className="text-cream/80">Public Club</Label>
+                <Label className="text-cream/80">{t('requestClub.publicClub')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Public clubs appear in the directory
+                  {t('requestClub.publicClubDesc')}
                 </p>
               </div>
               <Switch checked={isPublic} onCheckedChange={setIsPublic} />
