@@ -38,6 +38,7 @@ import type { LibraryDirectoryEntry } from "@/hooks/useLibraryDirectory";
 import { BackLink } from "@/components/navigation/BackLink";
 
 export default function Directory() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRegion, setFilterRegion] = useState<string>("all");
