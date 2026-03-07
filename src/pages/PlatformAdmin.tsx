@@ -436,6 +436,14 @@ export default function PlatformAdmin() {
                   </Suspense>
                 </TabErrorBoundary>
               </TabsContent>
+
+              <TabsContent value="accessibility" className="mt-6">
+                <TabErrorBoundary>
+                  <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading accessibility audit…</div>}>
+                    <AccessibilityAudit />
+                  </Suspense>
+                </TabErrorBoundary>
+              </TabsContent>
             </>
           )}
         </Tabs>
