@@ -318,7 +318,7 @@ export default function UserProfile() {
               <Activity className="h-3.5 w-3.5" />{t('profile.activity')}
             </TabsTrigger>
             <TabsTrigger value="photos" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-              <Camera className="h-3.5 w-3.5" />Photos
+              <Camera className="h-3.5 w-3.5" />{t('profile.photos')}
               {userPhotos.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">{userPhotos.length}</Badge>
               )}
