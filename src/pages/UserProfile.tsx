@@ -267,7 +267,7 @@ export default function UserProfile() {
                 </div>
                 <div>
                   <div className="font-bold" style={hasTheme && profilePrimary ? { color: profilePrimary } : {}}>{followCounts?.following ?? 0}</div>
-                  <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>Following</div>
+                  <div className="text-xs" style={hasTheme && profileAccent ? { color: profileAccent } : { color: 'hsl(var(--muted-foreground))' }}>{t('profile.following')}</div>
                 </div>
               </div>
             </div>
