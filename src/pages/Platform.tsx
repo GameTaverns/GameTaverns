@@ -107,7 +107,7 @@ export default function Platform() {
                 </Link>
                 {myLibrary && (
                   <TenantLink href={getLibraryUrl(myLibrary.slug, "/")}>
-                    <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">My Library</Button>
+                    <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">{t('nav.myLibrary')}</Button>
                   </TenantLink>
                 )}
               </>
