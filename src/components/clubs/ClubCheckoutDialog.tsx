@@ -180,7 +180,7 @@ export function ClubCheckoutDialog({
           </DialogTitle>
           <DialogDescription className="flex items-center gap-2">
             {game.image_url && (
-              <img src={game.image_url} alt="" className="h-8 w-8 rounded object-cover shrink-0" />
+              <img src={game.image_url} alt={game.title} className="h-8 w-8 rounded object-cover shrink-0" />
             )}
             <span>Lending <strong>{game.title}</strong></span>
           </DialogDescription>

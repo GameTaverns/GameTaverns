@@ -123,7 +123,7 @@ export function BarcodeLinkDialog({
                   {game.image_url ? (
                     <img
                       src={game.image_url}
-                      alt=""
+                      alt={game.title}
                       className="h-10 w-10 rounded object-cover shrink-0"
                     />
                   ) : (
