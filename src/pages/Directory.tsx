@@ -265,7 +265,7 @@ export default function Directory() {
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
-                All Countries
+                {t('directory.allCountries')}
               </button>
               {countries.map((c) => (
                 <button
