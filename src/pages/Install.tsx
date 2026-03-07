@@ -99,10 +99,10 @@ export default function InstallPage() {
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">2</div>
                 <div>
-                  <p className="font-medium text-sm">Scroll down and tap "Add to Home Screen"</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    Look for the <Plus className="h-3 w-3" /> icon
-                  </p>
+                   <p className="font-medium text-sm">{t('install.tapAddHome')}</p>
+                   <p className="text-xs text-muted-foreground flex items-center gap-1">
+                     {t('install.lookForIcon')} <Plus className="h-3 w-3" />
+                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
