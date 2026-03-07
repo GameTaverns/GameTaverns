@@ -81,7 +81,7 @@ export default function RequestClub() {
       navigate("/dashboard?tab=clubs");
     } catch (error: any) {
       toast({
-        title: "Failed to request club",
+        title: t('requestClub.failed'),
         description: error.message,
         variant: "destructive",
       });
