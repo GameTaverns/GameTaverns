@@ -47,6 +47,7 @@ import { TenantLink } from "@/components/TenantLink";
 import { format } from "date-fns";
 
 export default function CuratedListsPage() {
+  const { t } = useTranslation();
   const { tenantSlug, library } = useTenant();
   const { isAuthenticated } = useAuth();
   const { data: publicLists = [], isLoading } = useCuratedLists(library?.id);
