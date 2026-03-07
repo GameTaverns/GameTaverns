@@ -541,7 +541,7 @@ export default function CatalogBrowse() {
                   </div>
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2 text-sm font-medium">
-                      <Weight className="h-4 w-4" /> Complexity: {weightRange[0].toFixed(1)} – {weightRange[1].toFixed(1)}
+                      <Weight className="h-4 w-4" /> {t('catalog.complexity')}: {weightRange[0].toFixed(1)} – {weightRange[1].toFixed(1)}
                     </Label>
                     <Slider value={weightRange} onValueChange={setWeightRange} min={1} max={5} step={0.5} />
                   </div>
