@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout/Layout";
 import { SEO } from "@/components/seo/SEO";
 import { ReferralPanel } from "@/components/referral/ReferralPanel";

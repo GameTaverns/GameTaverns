@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { Link } from "react-router-dom";
 import { SEO } from "@/components/seo/SEO";
