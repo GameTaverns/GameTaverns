@@ -197,7 +197,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
                 className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Back to Dashboard</span>
+                <span>{t('nav.backToDashboard')}</span>
               </Link>
             ) : (
               <Link
