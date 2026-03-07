@@ -105,12 +105,12 @@ export default function Grow() {
           </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">Sign up to get your referral link and start earning badges.</p>
-            <Link to="/signup">
-              <Button size="lg" className="gap-2">
-                <Users className="h-4 w-4" />
-                Create Your Account
-              </Button>
+             <p className="text-muted-foreground mb-4">{t('grow.signUpToGet')}</p>
+             <Link to="/signup">
+               <Button size="lg" className="gap-2">
+                 <Users className="h-4 w-4" />
+                 {t('grow.createAccount')}
+               </Button>
             </Link>
           </div>
         )}
