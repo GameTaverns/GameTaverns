@@ -242,7 +242,7 @@ export default function Directory() {
           {hasLocationFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground">
               <X className="h-3 w-3" />
-              Clear
+              {t('directory.clear')}
             </Button>
           )}
         </div>
