@@ -1,4 +1,5 @@
 import { Link, useSearchParams, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Menu, X, FlaskConical, User, Globe, ArrowLeft, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
