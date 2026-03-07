@@ -100,7 +100,7 @@ export default function ManageGames() {
             </TabsTrigger>
             <TabsTrigger value="categories" className="gap-2">
               <Tag className="h-4 w-4" />
-              Categories
+              {t('manageGames.categories')}
             </TabsTrigger>
           </TabsList>
 
