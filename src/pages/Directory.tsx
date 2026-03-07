@@ -254,7 +254,7 @@ export default function Directory() {
           <div className="space-y-1.5">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
               <Globe className="h-3 w-3" />
-              Country
+               {t('directory.country')}
             </h3>
             <div className="space-y-0.5">
               <button
