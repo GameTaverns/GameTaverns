@@ -201,7 +201,7 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
             <AlertDialogDescription>{t('lists.deleteListDesc', { title: list.title })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDelete}>
               Delete
             </AlertDialogAction>
