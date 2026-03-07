@@ -475,8 +475,8 @@ export default function Directory() {
                 {isLoading ? <LoadingSkeleton /> : applyLocationFilter(lendingLibraries).length === 0 ? (
                   <div className="text-center py-12">
                     <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No lending libraries</h3>
-                    <p className="text-muted-foreground">No libraries have enabled game lending yet</p>
+                     <h3 className="text-lg font-semibold mb-2">{t('directory.noLendingLibraries')}</h3>
+                     <p className="text-muted-foreground">{t('directory.noLendingDesc')}</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
