@@ -11,6 +11,7 @@ import { validatePassword, PASSWORD_REQUIREMENTS_TEXT } from "@/lib/password-val
 
 export function ChangePasswordCard() {
   const { toast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
