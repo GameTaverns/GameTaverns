@@ -406,7 +406,7 @@ export default function UserProfile() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-display flex items-center gap-2">
                   <Trophy className="h-4 w-4 text-primary" />
-                  Achievements
+                  {t('profile.achievements')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
