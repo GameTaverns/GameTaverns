@@ -89,13 +89,24 @@ export function BarcodeScannerDialog({
       };
 
       const cameraCandidates: Array<string | MediaTrackConstraints> = [
-        { facingMode: { ideal: "environment" } },
+        { facingMode: { exact: "environment" } },
+        { facingMode: "environment" },
       ];
 
       try {
         const cameras = await Html5Qrcode.getCameras();
-        if (Array.isArray(cameras) && cameras.length > 0) {
-          cameraCandidates.push(cameras[0].id);
+        if (Array.isArray(cameras)) {
+          // Prefer rear cameras — they often have "back", "rear", or "environment" in the label
+          const rearCam = cameras.find(c => /back|rear|environment/i.test(c.label || ""));
+          if (rearCam) {
+            cameraCandidates.push(rearCam.id);
+          }
+          // Then try any other camera by id
+          for (const cam of cameras) {
+            if (!rearCam || cam.id !== rearCam.id) {
+              cameraCandidates.push(cam.id);
+            }
+          }
         }
       } catch {
         // ignore camera enumeration failure and continue with facingMode fallbacks
