@@ -1,7 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { Construction, Wrench } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function Maintenance() {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-border/50 shadow-lg">
@@ -14,28 +17,19 @@ export default function Maintenance() {
           </div>
           
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-foreground">
-              We'll Be Right Back
-            </h1>
-            <p className="text-muted-foreground">
-              We're currently performing scheduled maintenance to improve your experience.
-            </p>
+            <h1 className="text-2xl font-bold text-foreground">{t('maintenance.title')}</h1>
+            <p className="text-muted-foreground">{t('maintenance.subtitle')}</p>
           </div>
           
           <div className="bg-muted/50 rounded-lg p-4">
-            <p className="text-sm text-muted-foreground">
-              Our team is working hard to bring you new features and improvements. 
-              Please check back soon!
-            </p>
+            <p className="text-sm text-muted-foreground">{t('maintenance.body')}</p>
           </div>
           
           <div className="pt-4">
             <p className="text-xs text-muted-foreground/70">
-              If you're an administrator, please{" "}
-              <a href="/login" className="text-primary hover:underline">
-                log in
-              </a>{" "}
-              to access the site.
+              {t('maintenance.adminNote')}{" "}
+              <a href="/login" className="text-primary hover:underline">{t('maintenance.logIn')}</a>{" "}
+              {t('maintenance.toAccess')}
             </p>
           </div>
         </CardContent>

@@ -116,7 +116,7 @@ export default function JoinClub() {
 
           <div className="mt-6 text-center">
             <Link to="/dashboard" className="text-secondary hover:text-secondary/80 underline text-sm">
-              Back to Dashboard
+              {t('joinClub.backToDashboard')}
             </Link>
           </div>
         </CardContent>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Home, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,8 @@ interface LibrarySuspendedProps {
 }
 
 export default function LibrarySuspended({ libraryName, suspensionReason }: LibrarySuspendedProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="max-w-lg w-full">
@@ -16,14 +19,14 @@ export default function LibrarySuspended({ libraryName, suspensionReason }: Libr
           <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
             <AlertTriangle className="w-8 h-8 text-destructive" />
           </div>
-          <CardTitle className="text-2xl">Library Suspended</CardTitle>
+          <CardTitle className="text-2xl">{t('librarySuspended.title')}</CardTitle>
           <CardDescription>
             {libraryName ? (
               <>
-                <span className="font-medium text-foreground">{libraryName}</span> has been suspended.
+                <span className="font-medium text-foreground">{libraryName}</span> {t('librarySuspended.generic').replace('This library has been', 'has been')}
               </>
             ) : (
-              "This library has been suspended."
+              t('librarySuspended.generic')
             )}
           </CardDescription>
         </CardHeader>
@@ -31,27 +34,24 @@ export default function LibrarySuspended({ libraryName, suspensionReason }: Libr
           {suspensionReason && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Reason for Suspension</AlertTitle>
+              <AlertTitle>{t('librarySuspended.reasonTitle')}</AlertTitle>
               <AlertDescription className="mt-2">{suspensionReason}</AlertDescription>
             </Alert>
           )}
 
-          <p className="text-sm text-muted-foreground text-center">
-            This library has been suspended for violating our terms of service or community guidelines.
-            If you believe this is an error, please contact support.
-          </p>
+          <p className="text-sm text-muted-foreground text-center">{t('librarySuspended.explanation')}</p>
 
           <div className="flex flex-col sm:flex-row gap-2 justify-center pt-4">
             <Button variant="outline" asChild>
               <a href="/">
                 <Home className="w-4 h-4 mr-2" />
-                Go to Homepage
+                {t('librarySuspended.goToHomepage')}
               </a>
             </Button>
             <Button variant="default" asChild>
               <a href="mailto:support@gametaverns.com">
                 <Mail className="w-4 h-4 mr-2" />
-                Contact Support
+                {t('librarySuspended.contactSupport')}
               </a>
             </Button>
           </div>
