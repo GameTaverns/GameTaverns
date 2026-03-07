@@ -204,6 +204,7 @@ export function SeoDirectory() {
                     <span className="flex items-center gap-2">
                       <span className="text-xs text-cream/40 font-mono">{page.url}</span>
                       <ExternalLink className="h-3 w-3 text-cream/30 group-hover:text-secondary" />
+                      <span className="sr-only">(opens in a new tab)</span>
                     </span>
                   </a>
                 ))}

@@ -81,7 +81,7 @@ export function ReferralPanel() {
                 rel="noopener noreferrer"
               >
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                  𝕏 Share on X
+                  𝕏 Share on X <span className="sr-only">(opens in a new tab)</span>
                 </Button>
               </a>
               <a
@@ -90,7 +90,7 @@ export function ReferralPanel() {
                 rel="noopener noreferrer"
               >
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                  🤖 Share on Reddit
+                  🤖 Share on Reddit <span className="sr-only">(opens in a new tab)</span>
                 </Button>
               </a>
               <a

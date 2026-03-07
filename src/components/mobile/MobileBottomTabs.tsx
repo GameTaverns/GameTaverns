@@ -71,45 +71,49 @@ export function MobileBottomTabs() {
 
   const tabsNav = (
     <nav className={cn("mobile-bottom-tabs", !nativeRuntime && "md:hidden", nativeRuntime && "native-mobile-tabs")} aria-label="Main navigation">
-      {tabs.map((tab) => {
-        const isActive = tab.match(currentPath);
-        const Icon = tab.icon;
-        return (
-          <TenantLink
-            key={tab.href}
-            href={tab.href}
-            className={cn(
-              "mobile-bottom-tab",
-              isActive && "mobile-bottom-tab--active"
-            )}
-          >
-            <span className="relative">
-              <Icon className="h-5 w-5" />
-              {tab.badge != null && tab.badge > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1.5 -right-2.5 h-4 min-w-4 px-0.5 flex items-center justify-center text-[10px]"
-                >
-                  {tab.badge > 9 ? "9+" : tab.badge}
-                </Badge>
-              )}
-            </span>
-            <span className="text-[10px] mt-0.5">{tab.label}</span>
-          </TenantLink>
-        );
-      })}
-
-      <MobileNavDrawer
-        trigger={
-          <button
-            className="mobile-bottom-tab"
-            aria-label={t('mobileNav.more')}
-          >
-            <Menu className="h-5 w-5" />
-            <span className="text-[10px] mt-0.5">{t('mobileNav.more')}</span>
-          </button>
-        }
-      />
+      <ul className="contents">
+        {tabs.map((tab) => {
+          const isActive = tab.match(currentPath);
+          const Icon = tab.icon;
+          return (
+            <li key={tab.href} className="contents">
+              <TenantLink
+                href={tab.href}
+                className={cn(
+                  "mobile-bottom-tab",
+                  isActive && "mobile-bottom-tab--active"
+                )}
+              >
+                <span className="relative">
+                  <Icon className="h-5 w-5" />
+                  {tab.badge != null && tab.badge > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1.5 -right-2.5 h-4 min-w-4 px-0.5 flex items-center justify-center text-[10px]"
+                    >
+                      {tab.badge > 9 ? "9+" : tab.badge}
+                    </Badge>
+                  )}
+                </span>
+                <span className="text-[10px] mt-0.5">{tab.label}</span>
+              </TenantLink>
+            </li>
+          );
+        })}
+        <li className="contents">
+          <MobileNavDrawer
+            trigger={
+              <button
+                className="mobile-bottom-tab"
+                aria-label={t('mobileNav.more')}
+              >
+                <Menu className="h-5 w-5" />
+                <span className="text-[10px] mt-0.5">{t('mobileNav.more')}</span>
+              </button>
+            }
+          />
+        </li>
+      </ul>
     </nav>
   );
 

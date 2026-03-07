@@ -126,7 +126,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
               target="_blank"
               rel="noopener noreferrer"
               className="hidden sm:inline-flex p-2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={link.label}
+              aria-label={`${link.label} (opens in a new tab)`}
             >
               <link.icon className="h-4 w-4" />
             </a>

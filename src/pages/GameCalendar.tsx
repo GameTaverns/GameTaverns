@@ -230,6 +230,7 @@ function EventCard({ poll }: { poll: Poll }) {
             <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3 w-3 mr-1" />
               Google Cal
+              <span className="sr-only">(opens in a new tab)</span>
             </a>
           </Button>
         </div>
