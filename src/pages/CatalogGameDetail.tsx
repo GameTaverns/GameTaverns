@@ -408,7 +408,7 @@ export default function CatalogGameDetail() {
                     addWant.mutate(
                       { bgg_id: game.bgg_id!, game_title: game.title },
                       {
-                        onSuccess: () => toast({ title: "Added to Wishlist", description: `"${game.title}" added to your Wishlist.` }),
+                        onSuccess: () => toast({ title: t('catalog.addedToWishlist'), description: t('catalog.addedToWishlistDesc', { title: game.title }) }),
                         onError: (err: any) => {
                           const isDuplicate = err?.code === "23505" || err?.message?.includes("duplicate");
                           toast({
