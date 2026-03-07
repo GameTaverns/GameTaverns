@@ -174,6 +174,7 @@ function groupSimilar(notifications: Notification[]): (Notification | { grouped:
 
 // ── Main component ──
 export default function NotificationsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { notifications: allNotifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
   const { data: myProfile } = useUserProfile();
