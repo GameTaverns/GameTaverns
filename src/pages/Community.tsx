@@ -202,7 +202,7 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
   }
 
   if (!category) {
-    const { t } = useTranslation();
+    return (
     return (
       <div className="text-center py-12">
         <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
