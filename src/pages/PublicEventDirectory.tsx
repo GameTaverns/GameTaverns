@@ -98,8 +98,8 @@ export default function PublicEventDirectory() {
     return matchesSearch && matchesType && matchesCity;
   });
 
-  const title = "Board Game Events & Tournaments";
-  const description = "Discover upcoming board game events, tournaments, conventions, and game nights near you. Register and join the community.";
+  const title = t('events.seoTitle');
+  const description = t('events.seoDescription');
 
   return (
     <Layout hideSidebar>
