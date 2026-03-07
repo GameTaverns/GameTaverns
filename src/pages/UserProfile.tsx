@@ -108,13 +108,13 @@ export default function UserProfile() {
         <AppHeader />
         <main className="container mx-auto px-4 py-16 text-center">
           <Dices className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="font-display text-3xl font-bold text-cream mb-2">Adventurer Not Found</h1>
+          <h1 className="font-display text-3xl font-bold text-cream mb-2">{t('profile.notFound')}</h1>
           <p className="text-muted-foreground mb-6">
-            No tavern-goer with that name could be found.
+            {t('profile.notFoundDesc')}
           </p>
           <a href="/">
             <Button variant="outline" className="border-wood-medium/50 text-cream hover:bg-wood-medium/30">
-              Browse Libraries
+              {t('profile.browseLibraries')}
             </Button>
           </a>
         </main>
