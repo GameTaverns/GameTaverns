@@ -61,6 +61,10 @@ export default async function profileUpdateHandler(req: Request): Promise<Respon
       "avatar_url",
       "banner_url",
       "featured_achievement_id",
+      // Extended profile fields
+      "website_url",
+      "company_name",
+      "banner_position_y",
       // Profile theme fields
       "profile_primary_h",
       "profile_primary_s",
