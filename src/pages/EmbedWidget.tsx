@@ -153,6 +153,7 @@ export default function EmbedWidget() {
                     }`}
                   >
                     Visit Library <ExternalLink className="h-3 w-3" />
+                    <span className="sr-only">(opens in a new tab)</span>
                   </a>
                 </div>
               </CardContent>

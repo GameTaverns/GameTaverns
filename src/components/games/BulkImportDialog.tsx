@@ -1579,7 +1579,7 @@ Ticket to Ride,9209`}
                         For Lovable Cloud, we recommend using BGG's CSV export:
                       </p>
                       <ol className="list-decimal list-inside text-xs space-y-1">
-                        <li>Go to your <a href="https://boardgamegeek.com/collection/user/" target="_blank" rel="noopener noreferrer" className="text-primary underline">BGG Collection</a></li>
+                        <li>Go to your <a href="https://boardgamegeek.com/collection/user/" target="_blank" rel="noopener noreferrer" className="text-primary underline">BGG Collection <span className="sr-only">(opens in a new tab)</span></a></li>
                         <li>Click the three dots menu (⋯) → Export</li>
                         <li>Download the CSV file</li>
                         <li>Use the "CSV/Excel" tab above to import</li>
