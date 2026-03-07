@@ -105,10 +105,10 @@ export default function JoinClub() {
                 {redeemCode.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Joining...
+                    {t('joinClub.joining')}
                   </>
                 ) : (
-                  "Join Club"
+                  t('joinClub.joinClub')
                 )}
               </Button>
             </form>
