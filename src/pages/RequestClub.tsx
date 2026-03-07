@@ -45,7 +45,7 @@ export default function RequestClub() {
         .select("id")
         .eq("slug", debouncedSlug)
         .maybeSingle();
-      return { available: !data, reason: data ? "Already taken" : null };
+      return { available: !data, reason: data ? t('requestClub.slugTaken') : null };
     },
     enabled: debouncedSlug.length >= 3,
   });
