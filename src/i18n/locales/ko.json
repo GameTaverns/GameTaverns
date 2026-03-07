@@ -471,5 +471,9 @@
     "libraryUnavailableDesc": "이 라이브러리는 현재 중지되었습니다.",
     "connectedTo": "{{name}}에 연결됨",
     "connectionFailed": "라이브러리 연결 실패"
-  }
+  },
+  "footer": { "press": "보도자료", "contact": "연락처", "privacy": "개인정보", "terms": "이용약관", "cookies": "쿠키", "allPolicies": "모든 정책", "copyright": "© {{year}} GameTaverns LLC. 보드게임 애호가를 위해 ❤️으로 제작.", "poweredByBGG": "BGG 제공", "imagesDisclaimer": "이미지 © 해당 퍼블리셔." },
+  "twoFactor": { "bannerTitle": "이중 인증으로 계정을 보호하세요", "bannerDesc": "계정과 라이브러리 데이터를 보호하기 위해 추가 보안 계층을 추가하세요.", "setUp2FA": "2FA 설정" },
+  "tour": { "stepOf": "투어 — {{current}}/{{total}}단계", "closeTour": "투어 닫기", "doneMovingNext": "완료! 다음 단계로…", "endTour": "투어 종료", "skip": "건너뛰기", "welcomeTitle": "GameTaverns에 오신 것을 환영합니다! 🎲", "welcomeDesc": "여기는 대시보드 — 게임 라이브러리의 제어 센터입니다.", "letsGo": "시작하기!", "createLibraryTitle": "라이브러리 만들기", "createLibraryDesc": "먼저, 고유한 서브도메인이 있는 라이브러리를 만드세요.", "createLibraryAction": "라이브러리 만들기", "importGamesTitle": "게임 가져오기", "importGamesDesc": "BoardGameGeek, CSV 또는 수동으로 게임을 추가하세요.", "addGamesAction": "게임 추가", "customizeTitle": "외관 맞춤 설정", "customizeDesc": "로고, 색상, 글꼴을 설정하여 라이브러리를 독특하게.", "openSettingsAction": "설정 열기", "secureTitle": "계정 보호", "secureDesc": "이중 인증으로 계정을 보호하세요.", "setUp2FAAction": "2FA 설정", "completeTitle": "모두 준비 완료! 🎉", "completeDesc": "잘했어요! 커뮤니티 기능을 언제든 탐색하세요.", "finishTourAction": "투어 완료" },
+  "mobileNav": { "dashboard": "대시보드", "library": "라이브러리", "catalog": "카탈로그", "messages": "메시지", "more": "더보기", "menu": "메뉴", "myLibraries": "내 라이브러리", "discover": "탐색", "directory": "디렉토리", "nearMe": "내 근처", "events": "이벤트", "achievements": "업적", "curatedLists": "큐레이션 목록", "directMessages": "다이렉트 메시지", "account": "계정", "support": "지원", "help": "도움말", "legal": "법적", "signOut": "로그아웃", "errorSigningOut": "로그아웃 오류" }
 }

@@ -471,5 +471,9 @@
     "libraryUnavailableDesc": "此图书馆目前已暂停。",
     "connectedTo": "已连接到 {{name}}",
     "connectionFailed": "连接图书馆失败"
-  }
+  },
+  "footer": { "press": "新闻", "contact": "联系方式", "privacy": "隐私", "terms": "条款", "cookies": "Cookie", "allPolicies": "所有政策", "copyright": "© {{year}} GameTaverns LLC. 为桌游爱好者用❤️制作。", "poweredByBGG": "由BGG驱动", "imagesDisclaimer": "图片©其出版商。" },
+  "twoFactor": { "bannerTitle": "使用双因素认证保护您的账户", "bannerDesc": "为您的账户和图书馆数据添加额外的安全层。", "setUp2FA": "设置2FA" },
+  "tour": { "stepOf": "导览 — 第{{current}}步/共{{total}}步", "closeTour": "关闭导览", "doneMovingNext": "完成！前往下一步…", "endTour": "结束导览", "skip": "跳过", "welcomeTitle": "欢迎来到GameTaverns！🎲", "welcomeDesc": "这是您的仪表板 — 游戏图书馆的控制中心。", "letsGo": "开始吧！", "createLibraryTitle": "创建您的图书馆", "createLibraryDesc": "首先，创建一个拥有专属子域名的图书馆。", "createLibraryAction": "创建图书馆", "importGamesTitle": "导入您的游戏", "importGamesDesc": "从BoardGameGeek、CSV导入或手动添加游戏。", "addGamesAction": "添加游戏", "customizeTitle": "自定义外观", "customizeDesc": "设置logo、选择颜色和字体。", "openSettingsAction": "打开设置", "secureTitle": "保护您的账户", "secureDesc": "使用双因素认证保护您的账户。", "setUp2FAAction": "设置2FA", "completeTitle": "一切就绪！🎉", "completeDesc": "做得好！随时探索社区功能。", "finishTourAction": "完成导览" },
+  "mobileNav": { "dashboard": "仪表板", "library": "图书馆", "catalog": "目录", "messages": "消息", "more": "更多", "menu": "菜单", "myLibraries": "我的图书馆", "discover": "发现", "directory": "名录", "nearMe": "附近", "events": "活动", "achievements": "成就", "curatedLists": "精选列表", "directMessages": "私信", "account": "账户", "support": "支持", "help": "帮助", "legal": "法律", "signOut": "退出", "errorSigningOut": "退出错误" }
 }
