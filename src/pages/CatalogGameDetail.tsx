@@ -239,7 +239,7 @@ export default function CatalogGameDetail() {
         {game.is_expansion && game.parent && (
           <div className="mb-4">
             <Link to={`/catalog/${game.parent.slug || game.parent.id}`} className="text-sm text-primary hover:underline flex items-center gap-1">
-              <ArrowLeft className="h-3 w-3" /> Expansion of: {game.parent.title}
+              <ArrowLeft className="h-3 w-3" /> {t('catalog.expansionOf', { title: game.parent.title })}
             </Link>
           </div>
         )}
