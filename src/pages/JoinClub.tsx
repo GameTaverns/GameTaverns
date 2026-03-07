@@ -82,10 +82,10 @@ export default function JoinClub() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-cream/80">Select Library</Label>
+                <Label className="text-cream/80">{t('joinClub.selectLibrary')}</Label>
                 <Select value={selectedLibraryId} onValueChange={setSelectedLibraryId}>
                   <SelectTrigger className="bg-wood-medium/50 border-border/50 text-cream">
-                    <SelectValue placeholder="Choose a library to add..." />
+                    <SelectValue placeholder={t('joinClub.choosePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {myLibraries.map((lib) => (
