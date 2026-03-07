@@ -64,10 +64,10 @@ export default function InstallPage() {
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="py-8 text-center space-y-3">
               <CheckCircle className="h-12 w-12 text-primary mx-auto" />
-              <h2 className="font-display text-xl font-semibold">Already Installed!</h2>
-              <p className="text-muted-foreground text-sm">
-                GameTaverns is installed on this device. Open it from your home screen.
-              </p>
+               <h2 className="font-display text-xl font-semibold">{t('install.alreadyInstalled')}</h2>
+               <p className="text-muted-foreground text-sm">
+                 {t('install.alreadyInstalledDesc')}
+               </p>
             </CardContent>
           </Card>
         ) : deferredPrompt ? (
