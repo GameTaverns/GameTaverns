@@ -132,12 +132,12 @@ export default function Platform() {
             <Flame className="h-3.5 w-3.5" />
             {t('platform.seeRealLibrary')}
           </div>
-          <h1 className="font-display text-3xl sm:text-5xl md:text-6xl font-bold text-foreground mb-3 leading-tight">
-            Your Board Game Collection<br />
-            <span className="text-secondary">Finally Has a Home</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6 leading-relaxed">
-            This isn't a mockup — explore a real, live library built on GameTaverns.
+           <h1 className="font-display text-3xl sm:text-5xl md:text-6xl font-bold text-foreground mb-3 leading-tight">
+             {t('platform.heroTitle')}<br />
+             <span className="text-secondary">{t('platform.heroHighlight')}</span>
+           </h1>
+           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6 leading-relaxed">
+             {t('platform.heroSubtitle')}
           </p>
         </div>
         <div className="container mx-auto px-4 pb-8">
