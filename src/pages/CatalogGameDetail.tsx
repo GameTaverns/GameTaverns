@@ -442,8 +442,8 @@ export default function CatalogGameDetail() {
               </TabsList>
 
               <TabsContent value="description" className="mt-0">
-                <div className="prose prose-sm max-w-none">
-                  <h2 className="font-display text-xl font-semibold mb-4 text-foreground">Description</h2>
+                 <div className="prose prose-sm max-w-none">
+                   <h2 className="font-display text-xl font-semibold mb-4 text-foreground">{t('catalog.description')}</h2>
                   <DescriptionContent content={game.description} />
                 </div>
               </TabsContent>
