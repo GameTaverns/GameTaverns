@@ -448,7 +448,7 @@ export default function UserProfile() {
               </CardHeader>
               <CardContent>
                 {!communities || communities.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Not a member of any communities or clubs.</p>
+                  <p className="text-sm text-muted-foreground">{t('profile.noCommunities')}</p>
                 ) : (
                   <div className="space-y-2">
                     {communities.map((c) => (
