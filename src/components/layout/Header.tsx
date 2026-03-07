@@ -226,7 +226,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
                 className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
               >
                 <BookOpen className="h-4 w-4" />
-                <span>Catalog</span>
+                <span>{t('nav.catalog')}</span>
               </Link>
             )
           )}
