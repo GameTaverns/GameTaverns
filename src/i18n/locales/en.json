@@ -504,6 +504,7 @@
   "footer": {
     "press": "Press",
     "contact": "Contact",
+    "discord": "Discord",
     "privacy": "Privacy",
     "terms": "Terms",
     "cookies": "Cookies",
@@ -511,6 +512,30 @@
     "copyright": "© {{year}} GameTaverns LLC. Made with ❤️ for board game enthusiasts.",
     "poweredByBGG": "Powered by BGG",
     "imagesDisclaimer": "Images © their publishers."
+  },
+  "feedbackDialog": {
+    "buttonLabel": "Feedback",
+    "sendFeedback": "Send Feedback",
+    "dialogTitle": "Send Feedback",
+    "dialogDesc": "Share your thoughts, report a bug, or suggest a new feature.",
+    "typeLabel": "Type",
+    "typePlaceholder": "Select feedback type",
+    "generalFeedback": "General Feedback",
+    "bugReport": "Bug Report",
+    "featureRequest": "Feature Request",
+    "badgeRequest": "Badge Request",
+    "yourName": "Your Name",
+    "email": "Email",
+    "message": "Message",
+    "messagePlaceholder": "Tell us what's on your mind...",
+    "screenshots": "Screenshots (optional, max {{max}})",
+    "cancel": "Cancel",
+    "sending": "Sending...",
+    "sendButton": "Send Feedback",
+    "successTitle": "Feedback submitted",
+    "successDesc": "Thank you for your feedback! We'll review it soon.",
+    "errorTitle": "Error",
+    "errorDesc": "Failed to submit feedback. Please try again."
   },
   "twoFactor": {
     "bannerTitle": "Secure your account with two-factor authentication",
