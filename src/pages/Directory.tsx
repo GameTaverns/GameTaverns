@@ -232,7 +232,7 @@ export default function Directory() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
             <Filter className="h-3.5 w-3.5" />
-            Filters
+             {t('directory.filtersLabel')}
             {activeFilterCount > 0 && (
               <Badge variant="default" className="text-xs h-5 px-1.5">
                 {activeFilterCount}
