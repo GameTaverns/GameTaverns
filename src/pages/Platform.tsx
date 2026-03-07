@@ -95,7 +95,7 @@ export default function Platform() {
             </Link>
             <Link to="/catalog" className="hidden md:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Game Catalog
+                {t('platform.gameCatalog')}
               </Button>
             </Link>
             <LanguageSwitcher />
