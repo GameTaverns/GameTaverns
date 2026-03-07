@@ -250,7 +250,7 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
           </div>
           <Button onClick={() => setShowCreateThread(true)} size="sm">
             <Plus className="h-4 w-4 mr-1" />
-            New Thread
+            {t('community.newThread')}
           </Button>
         </div>
       </div>
