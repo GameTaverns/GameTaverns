@@ -88,7 +88,7 @@ export default function ManageGames() {
           <TenantLink href={buildUrl("/add")}>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Add Game Manually
+              {t('manageGames.addGameManually')}
             </Button>
           </TenantLink>
         </div>
