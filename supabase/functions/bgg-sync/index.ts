@@ -34,6 +34,23 @@ interface BGGCollectionItem {
   status_preordered: boolean;
 }
 
+/**
+ * Decode common XML/HTML entities from BGG API responses.
+ */
+function decodeXmlEntities(input: string): string {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_m, code) => {
+      const n = Number(code);
+      return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+    });
+}
+
 function parseBGGCollectionXML(xml: string): BGGCollectionItem[] {
   const items: BGGCollectionItem[] = [];
 
@@ -48,7 +65,7 @@ function parseBGGCollectionXML(xml: string): BGGCollectionItem[] {
     if (!objectId) continue;
 
     const nameMatch = content.match(/<name[^>]*>([^<]+)<\/name>/);
-    const name = nameMatch?.[1] || "Unknown";
+    const name = nameMatch ? decodeXmlEntities(nameMatch[1]) : "Unknown";
 
     const imageMatch = content.match(/<image>([^<]+)<\/image>/);
     const thumbnailMatch = content.match(/<thumbnail>([^<]+)<\/thumbnail>/);

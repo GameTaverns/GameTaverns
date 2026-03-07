@@ -1102,6 +1102,23 @@ async function fetchBGGCollectionPage(
   return "";
 }
 
+/**
+ * Decode common XML/HTML entities from BGG API responses.
+ */
+function decodeXmlEntitiesBulk(input: string): string {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_m, code) => {
+      const n = Number(code);
+      return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+    });
+}
+
 // Parse items from BGG collection XML
 function parseBGGCollectionXml(xml: string, status: BGGCollectionItem["bggStatus"]): BGGCollectionItem[] {
   const games: BGGCollectionItem[] = [];
@@ -1111,7 +1128,7 @@ function parseBGGCollectionXml(xml: string, status: BGGCollectionItem["bggStatus
     const bggId = match[1];
     const itemBlock = match[2];
     const nameMatch = itemBlock.match(/<name[^>]*>([^<]+)<\/name>/);
-    const name = nameMatch ? nameMatch[1] : `BGG #${bggId}`;
+    const name = nameMatch ? decodeXmlEntitiesBulk(nameMatch[1]) : `BGG #${bggId}`;
     
     let userRating: number | undefined;
     const ratingMatch = itemBlock.match(/<rating\s+value="([\d.]+)"/);
