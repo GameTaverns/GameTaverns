@@ -173,7 +173,6 @@ export default function PublicEventDirectory() {
                 <Lock className="h-4 w-4 text-muted-foreground" />
                 {t('events.myEvents')}
               </h2>
-              </h2>
               <Button
                 variant={showArchived ? "secondary" : "ghost"}
                 size="sm"
