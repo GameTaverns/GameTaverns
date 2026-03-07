@@ -151,7 +151,7 @@ export default function RequestClub() {
 
             <div className="space-y-2">
               <Label htmlFor="description" className="text-cream/80">
-                Description <span className="text-muted-foreground">(optional)</span>
+                {t('requestClub.descriptionLabel')} <span className="text-muted-foreground">{t('requestClub.optional')}</span>
               </Label>
               <Textarea
                 id="description"
