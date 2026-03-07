@@ -466,7 +466,7 @@ export default function CatalogGameDetail() {
                     )}
                     {game.suggested_age && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Suggested Age</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.suggestedAge')}</TableCell>
                         <TableCell className="text-foreground">{game.suggested_age}</TableCell>
                       </TableRow>
                     )}
