@@ -69,7 +69,7 @@ export default function JoinClub() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="code" className="text-cream/80">Invite Code</Label>
+                <Label htmlFor="code" className="text-cream/80">{t('joinClub.inviteCode')}</Label>
                 <Input
                   id="code"
                   value={code}
