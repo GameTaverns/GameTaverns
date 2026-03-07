@@ -545,7 +545,7 @@ export default function CatalogGameDetail() {
               </TabsContent>
 
               <TabsContent value="videos" className="mt-0">
-                <p className="text-muted-foreground text-sm">Community videos coming soon.</p>
+                <p className="text-muted-foreground text-sm">{t('catalog.videosComingSoon')}</p>
               </TabsContent>
             </Tabs>
 
