@@ -185,7 +185,7 @@ export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }
           {/* Home link - shown outside tenant context OR in demo mode */}
           {(!tenantSlug || isDemoMode) && (
             <Link to={homeUrl} className="hidden sm:inline text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2">
-              Home
+              {t('nav.home')}
             </Link>
           )}
           
