@@ -362,7 +362,7 @@ export default function CatalogGameDetail() {
               {game.community_rating != null && (
                 <Badge className="bg-primary/20 text-primary border-primary/30">GT ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})</Badge>
               )}
-              {game.is_expansion && <Badge variant="default">Expansion</Badge>}
+              {game.is_expansion && <Badge variant="default">{t('catalog.expansion')}</Badge>}
             </div>
 
             {/* Categories as clickable badges */}
