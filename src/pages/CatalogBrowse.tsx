@@ -442,9 +442,9 @@ export default function CatalogBrowse() {
           {/* Header */}
           <div className="mb-8 flex items-start justify-between">
             <div>
-              <h1 className="font-display text-3xl font-bold">GameTaverns Library</h1>
+              <h1 className="font-display text-3xl font-bold">{t('catalog.title')}</h1>
               <p className="text-muted-foreground">
-                {totalCount} games in collection
+                {t('catalog.gamesInCollection', { count: totalCount })}
               </p>
               {isEntityFilter && (
                 <label className="flex items-center gap-2 mt-2 cursor-pointer">
