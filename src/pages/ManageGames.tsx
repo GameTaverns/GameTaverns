@@ -67,8 +67,8 @@ export default function ManageGames() {
     return (
       <Layout hideSidebar>
         <div className="text-center py-16">
-          <h1 className="text-2xl font-display font-bold mb-4">Access Denied</h1>
-          <p className="text-muted-foreground mb-6">You don't have permission to manage this library's games.</p>
+          <h1 className="text-2xl font-display font-bold mb-4">{t('manageGames.accessDenied')}</h1>
+          <p className="text-muted-foreground mb-6">{t('manageGames.accessDeniedDesc')}</p>
           <TenantLink href={buildUrl("/")}><Button>Back to Library</Button></TenantLink>
         </div>
       </Layout>
