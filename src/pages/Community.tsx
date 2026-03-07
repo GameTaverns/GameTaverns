@@ -268,7 +268,7 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
       {category.children && category.children.length > 0 && (
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
-            Subcategories
+            {t('community.subcategories')}
           </div>
           <div className="bg-card">
             {category.children.map((sub) => (
