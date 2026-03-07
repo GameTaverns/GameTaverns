@@ -75,8 +75,8 @@ export default function RequestClub() {
     try {
       await requestClub.mutateAsync({ name, slug, description, is_public: isPublic });
       toast({
-        title: "Club request submitted!",
-        description: "A platform admin will review your request shortly.",
+        title: t('requestClub.submitted'),
+        description: t('requestClub.submittedDesc'),
       });
       navigate("/dashboard?tab=clubs");
     } catch (error: any) {
