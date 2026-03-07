@@ -151,14 +151,14 @@ export default function Directory() {
           )}
 
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Gamepad2 className="h-4 w-4" />
-              {library.game_count} games
-            </span>
-            <span className="flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              {library.follower_count} followers
-            </span>
+             <span className="flex items-center gap-1">
+               <Gamepad2 className="h-4 w-4" />
+               {t('directory.games', { count: library.game_count })}
+             </span>
+             <span className="flex items-center gap-1">
+               <Users className="h-4 w-4" />
+               {t('directory.followers', { count: library.follower_count })}
+             </span>
           </div>
 
           {locationStr && (
