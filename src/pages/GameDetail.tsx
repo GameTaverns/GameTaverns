@@ -664,7 +664,7 @@ const GameDetail = () => {
                     {yearPublished != null && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          Year Published
+                          {t('profile.yearPublished', 'Year Published')}
                         </TableCell>
                         <TableCell className="text-foreground">
                           {yearPublished}
