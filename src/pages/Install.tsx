@@ -132,16 +132,16 @@ export default function InstallPage() {
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="p-3 rounded-lg bg-card border space-y-1">
             <Smartphone className="h-5 w-5 mx-auto text-primary" />
-            <p className="text-xs font-medium">Works Offline</p>
-          </div>
-          <div className="p-3 rounded-lg bg-card border space-y-1">
-            <Monitor className="h-5 w-5 mx-auto text-primary" />
-            <p className="text-xs font-medium">Fast Loading</p>
-          </div>
-          <div className="p-3 rounded-lg bg-card border space-y-1">
-            <Share className="h-5 w-5 mx-auto text-primary" />
-            <p className="text-xs font-medium">No App Store</p>
-          </div>
+             <p className="text-xs font-medium">{t('install.worksOffline')}</p>
+           </div>
+           <div className="p-3 rounded-lg bg-card border space-y-1">
+             <Monitor className="h-5 w-5 mx-auto text-primary" />
+             <p className="text-xs font-medium">{t('install.fastLoading')}</p>
+           </div>
+           <div className="p-3 rounded-lg bg-card border space-y-1">
+             <Share className="h-5 w-5 mx-auto text-primary" />
+             <p className="text-xs font-medium">{t('install.noAppStoreShort')}</p>
+           </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
