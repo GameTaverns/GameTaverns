@@ -594,7 +594,7 @@ function ForumHome() {
       {!isTenantMode && librariesWithForums.length > 0 && (
         <div className="space-y-6">
           <div className="border-t border-border pt-6">
-            <h2 className="text-xl font-bold font-display mb-4">My Library Forums</h2>
+            <h2 className="text-xl font-bold font-display mb-4">{t('community.myLibraryForums')}</h2>
           </div>
           {librariesWithForums.map((membership) => (
             <LibraryForumSection
