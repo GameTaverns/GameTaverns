@@ -501,7 +501,7 @@ export default function CatalogGameDetail() {
                     {game.artists.length > 0 && (
                       <TableRow>
                         <TableCell className="font-medium text-muted-foreground">
-                          <span className="flex items-center gap-1"><Palette className="h-3.5 w-3.5" /> Artist{game.artists.length > 1 ? "s" : ""}</span>
+                          <span className="flex items-center gap-1"><Palette className="h-3.5 w-3.5" /> {game.artists.length > 1 ? t('catalog.artists') : t('catalog.artist')}</span>
                         </TableCell>
                         <TableCell className="text-foreground">
                           <div className="flex flex-wrap gap-1">
