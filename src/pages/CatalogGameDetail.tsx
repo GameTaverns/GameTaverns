@@ -173,15 +173,15 @@ export default function CatalogGameDetail() {
     );
   }
 
-  const playerRange = game.min_players != null && game.max_players != null
-    ? game.min_players === game.max_players
-      ? `${game.min_players} player${game.min_players !== 1 ? "s" : ""}`
-      : `${game.min_players}–${game.max_players} players`
-    : null;
+   const playerRange = game.min_players != null && game.max_players != null
+     ? game.min_players === game.max_players
+       ? `${game.min_players} ${game.min_players !== 1 ? t('catalog.playerPlural') : t('catalog.player')}`
+       : `${game.min_players}–${game.max_players} ${t('catalog.playerPlural')}`
+     : null;
 
-  const weightLabel = game.weight != null
-    ? game.weight <= 1.5 ? "Light" : game.weight <= 2.5 ? "Medium Light" : game.weight <= 3.5 ? "Medium" : game.weight <= 4.25 ? "Medium Heavy" : "Heavy"
-    : null;
+   const weightLabel = game.weight != null
+     ? game.weight <= 1.5 ? t('catalog.light') : game.weight <= 2.5 ? t('catalog.mediumLight') : game.weight <= 3.5 ? t('catalog.medium') : game.weight <= 4.25 ? t('catalog.mediumHeavy') : t('catalog.heavy')
+     : null;
 
   const allCategories = [
     ...(game.mechanics.map(m => ({ label: m, type: "mechanic" }))),
