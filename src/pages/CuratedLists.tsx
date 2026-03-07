@@ -197,8 +197,8 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete list?</AlertDialogTitle>
-            <AlertDialogDescription>"{list.title}" will be permanently deleted.</AlertDialogDescription>
+            <AlertDialogTitle>{t('lists.deleteList')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('lists.deleteListDesc', { title: list.title })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
