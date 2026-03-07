@@ -459,7 +459,7 @@ export default function CatalogBrowse() {
             <Link to="/catalog/analytics">
               <Button variant="outline" size="sm" className="gap-2">
                 <BarChart3 className="h-4 w-4" />
-                Analytics
+                {t('catalog.analytics')}
               </Button>
             </Link>
           </div>
