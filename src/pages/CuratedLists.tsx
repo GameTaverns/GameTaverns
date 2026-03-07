@@ -280,8 +280,8 @@ function CreateListButton({ libraryId }: { libraryId?: string }) {
             <Input id="list-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('lists.listTitlePlaceholder')} maxLength={100} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="list-desc">Description (optional)</Label>
-            <Textarea id="list-desc" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="What's this list about?" rows={3} maxLength={500} />
+            <Label htmlFor="list-desc">{t('lists.listDescription')}</Label>
+            <Textarea id="list-desc" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={t('lists.listDescPlaceholder')} rows={3} maxLength={500} />
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
