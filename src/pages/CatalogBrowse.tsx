@@ -452,7 +452,7 @@ export default function CatalogBrowse() {
                     checked={includeExpansions}
                     onCheckedChange={(checked) => setIncludeExpansions(checked === true)}
                   />
-                  <span className="text-sm text-muted-foreground">Include expansions</span>
+                  <span className="text-sm text-muted-foreground">{t('catalog.includeExpansions')}</span>
                 </label>
               )}
             </div>
