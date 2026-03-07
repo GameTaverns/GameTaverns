@@ -91,16 +91,24 @@ const Login = () => {
       // causes the WebView to hang for up to 4 seconds, making it feel "stuck".
       if (!isNative) {
         // Check if user has 2FA enabled (web only)
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log("[Login] 2FA check — session available:", !!session?.access_token);
+        // Wait for the auth state to settle — signIn resolves before onAuthStateChange fires
+        let session = null;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          const { data } = await supabase.auth.getSession();
+          if (data.session?.access_token) {
+            session = data.session;
+            break;
+          }
+        }
+        console.log("[Login] 2FA check — session available:", !!session?.access_token, "after retries");
         
         if (session?.access_token) {
           try {
             const controller = new AbortController();
-            const totpTimeout = setTimeout(() => controller.abort(), 4000);
+            const totpTimeout = setTimeout(() => controller.abort(), 8000);
             
+            console.log("[Login] Calling totp-status at:", `${apiUrl}/functions/v1/totp-status`);
             const response = await fetch(`${apiUrl}/functions/v1/totp-status`, {
               method: "POST",
               headers: {
@@ -110,7 +118,7 @@ const Login = () => {
               },
               signal: controller.signal,
             }).catch((err) => {
-              console.error("[Login] totp-status fetch failed:", err);
+              console.error("[Login] totp-status fetch failed:", err.name, err.message);
               return null;
             });
             
@@ -119,23 +127,30 @@ const Login = () => {
             
             if (response?.ok) {
               const data = await response.json().catch(() => ({}));
-              console.log("[Login] totp-status data:", data);
+              console.log("[Login] totp-status data:", JSON.stringify(data));
               
               if (data.isEnabled && data.requiresVerification !== false) {
+                console.log("[Login] 2FA REQUIRED — showing TOTP verify screen");
                 setPendingAccessToken(session.access_token);
                 setRequires2FA(true);
                 setAuthGate("needs_2fa");
                 setIsLoading(false);
                 return;
+              } else {
+                console.log("[Login] 2FA not required — isEnabled:", data.isEnabled, "requiresVerification:", data.requiresVerification);
               }
             } else if (response) {
               const errorBody = await response.text().catch(() => "");
               console.error("[Login] totp-status error response:", response.status, errorBody);
+            } else {
+              console.error("[Login] totp-status returned null (fetch failed)");
             }
-          } catch (e) {
-            console.error("[Login] 2FA check exception:", e);
+          } catch (e: any) {
+            console.error("[Login] 2FA check exception:", e.name, e.message);
             // Timed out or failed — proceed to dashboard
           }
+        } else {
+          console.warn("[Login] No session available after retries — skipping 2FA check");
         }
       }
 
