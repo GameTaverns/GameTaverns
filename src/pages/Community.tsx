@@ -289,12 +289,12 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
         <div className="space-y-2">
           {pinnedThreads.length > 0 && (
             <>
-              <div className="text-sm font-medium text-muted-foreground px-1">Pinned</div>
+              <div className="text-sm font-medium text-muted-foreground px-1">{t('community.pinned')}</div>
               {pinnedThreads.map((thread) => (
                 <ThreadRow key={thread.id} thread={thread} />
               ))}
               {regularThreads.length > 0 && (
-                <div className="text-sm font-medium text-muted-foreground px-1 pt-4">Discussions</div>
+                <div className="text-sm font-medium text-muted-foreground px-1 pt-4">{t('community.discussions')}</div>
               )}
             </>
           )}
