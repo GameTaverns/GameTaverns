@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Footer } from "@/components/layout/Footer";
 import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
@@ -15,6 +16,7 @@ interface SpokePageLayoutProps {
 }
 
 export function SpokePageLayout({ title, description, icon: Icon, iconColor, children }: SpokePageLayoutProps) {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">
       <AnnouncementBanner />
@@ -26,7 +28,7 @@ export function SpokePageLayout({ title, description, icon: Icon, iconColor, chi
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
           >
             <ArrowLeft className="h-4 w-4" />
-            Dashboard
+            {t('nav.dashboard')}
           </Link>
           <div className="flex items-center gap-3">
             {Icon && (
