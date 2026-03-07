@@ -575,11 +575,11 @@ function ForumHome() {
       ) : categories.length === 0 ? (
         <div className="text-center py-12 border border-dashed rounded-lg">
           <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">No forum categories yet</h3>
+          <h3 className="text-lg font-medium mb-2">{t('community.noCategories')}</h3>
           <p className="text-muted-foreground">
             {isTenantMode 
-              ? "The library owner hasn't set up any forum categories yet."
-              : "No categories have been created."}
+              ? t('community.noCategoriesLibrary')
+              : t('community.noCategoriesSite')}
           </p>
         </div>
       ) : (
