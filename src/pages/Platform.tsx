@@ -90,7 +90,7 @@ export default function Platform() {
             <Link to="/near-me" className="hidden sm:block">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1">
                 <MapPin className="h-3.5 w-3.5" />
-                Near Me
+                {t('platform.nearMe')}
               </Button>
             </Link>
             <Link to="/catalog" className="hidden md:block">
