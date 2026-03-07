@@ -372,8 +372,8 @@ export default function Directory() {
   return (
     <Layout hideSidebar>
       <SEO
-        title="Library Directory"
-        description="Discover board game libraries near you. Browse collections, follow your favorite libraries, and find games to borrow from the GameTaverns community."
+         title={t('directory.title')}
+         description={t('directory.description')}
         canonical="https://hobby-shelf-spark.lovable.app/directory"
       />
       <div className="max-w-7xl mx-auto px-4 py-8">
