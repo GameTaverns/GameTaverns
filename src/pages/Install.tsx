@@ -108,8 +108,8 @@ export default function InstallPage() {
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">3</div>
                 <div>
-                  <p className="font-medium text-sm">Tap "Add"</p>
-                  <p className="text-xs text-muted-foreground">GameTaverns will appear on your home screen</p>
+                   <p className="font-medium text-sm">{t('install.tapAdd')}</p>
+                   <p className="text-xs text-muted-foreground">{t('install.tapAddDesc')}</p>
                 </div>
               </div>
             </CardContent>
