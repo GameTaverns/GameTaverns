@@ -1102,6 +1102,23 @@ async function fetchBGGCollectionPage(
   return "";
 }
 
+/**
+ * Decode common XML/HTML entities from BGG API responses.
+ */
+function decodeXmlEntitiesBulk(input: string): string {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_m, code) => {
+      const n = Number(code);
+      return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+    });
+}
+
 // Parse items from BGG collection XML
 function parseBGGCollectionXml(xml: string, status: BGGCollectionItem["bggStatus"]): BGGCollectionItem[] {
   const games: BGGCollectionItem[] = [];
@@ -1111,7 +1128,7 @@ function parseBGGCollectionXml(xml: string, status: BGGCollectionItem["bggStatus
     const bggId = match[1];
     const itemBlock = match[2];
     const nameMatch = itemBlock.match(/<name[^>]*>([^<]+)<\/name>/);
-    const name = nameMatch ? nameMatch[1] : `BGG #${bggId}`;
+    const name = nameMatch ? decodeXmlEntitiesBulk(nameMatch[1]) : `BGG #${bggId}`;
     
     let userRating: number | undefined;
     const ratingMatch = itemBlock.match(/<rating\s+value="([\d.]+)"/);
@@ -2598,16 +2615,29 @@ export default async function handler(req: Request): Promise<Response> {
               failureBreakdown.not_found++;
             }
 
-            // Check if game already exists
+            // Check if game already exists (by bgg_id first, then title)
             // NOTE: CSV re-imports are commonly used to "refresh" media URLs AND
             // fill in missing metadata (descriptions, player counts, etc.) that
             // may have been missed on a prior import due to network issues.
-            const { data: existing } = await supabaseAdmin
-              .from("games")
-              .select("id, title, image_url, additional_images, description, min_players, max_players, difficulty, play_time, game_type, suggested_age, publisher_id, is_expansion, parent_game_id, bgg_id, bgg_url")
-              .eq("title", gameData.title)
-              .eq("library_id", targetLibraryId)
-              .maybeSingle();
+            let existing: any = null;
+            if (gameData.bgg_id) {
+              const { data: byBgg } = await supabaseAdmin
+                .from("games")
+                .select("id, title, image_url, additional_images, description, min_players, max_players, difficulty, play_time, game_type, suggested_age, publisher_id, is_expansion, parent_game_id, bgg_id, bgg_url")
+                .eq("bgg_id", gameData.bgg_id)
+                .eq("library_id", targetLibraryId)
+                .maybeSingle();
+              if (byBgg) existing = byBgg;
+            }
+            if (!existing) {
+              const { data: byTitle } = await supabaseAdmin
+                .from("games")
+                .select("id, title, image_url, additional_images, description, min_players, max_players, difficulty, play_time, game_type, suggested_age, publisher_id, is_expansion, parent_game_id, bgg_id, bgg_url")
+                .eq("title", gameData.title)
+                .eq("library_id", targetLibraryId)
+                .maybeSingle();
+              if (byTitle) existing = byTitle;
+            }
 
             const isBggCdnUrl = (u: string | null | undefined) => {
               if (!u) return false;

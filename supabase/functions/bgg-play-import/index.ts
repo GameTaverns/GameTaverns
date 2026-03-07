@@ -163,6 +163,23 @@ async function findOrCreatePlayedOnlyGame(
 }
 
 // Parse BGG XML plays response
+/**
+ * Decode common XML/HTML entities from BGG API responses.
+ */
+function decodeXmlEntities(input: string): string {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0*39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_m, code) => {
+      const n = Number(code);
+      return Number.isFinite(n) ? String.fromCharCode(n) : _m;
+    });
+}
+
 function parseBGGPlaysXML(xmlText: string): BGGPlay[] {
   const plays: BGGPlay[] = [];
   
@@ -178,7 +195,7 @@ function parseBGGPlaysXML(xmlText: string): BGGPlay[] {
     const date = attrs.match(/date="([^"]+)"/)?.[1] || "";
     const quantity = parseInt(attrs.match(/quantity="(\d+)"/)?.[1] || "1", 10);
     const length = parseInt(attrs.match(/length="(\d+)"/)?.[1] || "0", 10) || null;
-    const location = attrs.match(/location="([^"]*)"/)?.[1] || null;
+    const location = attrs.match(/location="([^"]*)"/)?.[1] ? decodeXmlEntities(attrs.match(/location="([^"]*)"/)?.[1]!) : null;
     const incomplete = attrs.match(/incomplete="1"/) !== null;
     const nowinstats = attrs.match(/nowinstats="1"/) !== null;
     
@@ -188,7 +205,7 @@ function parseBGGPlaysXML(xmlText: string): BGGPlay[] {
     
     const itemAttrs = itemMatch[1];
     const objectid = itemAttrs.match(/objectid="(\d+)"/)?.[1] || "";
-    const name = itemAttrs.match(/name="([^"]+)"/)?.[1] || "";
+    const name = decodeXmlEntities(itemAttrs.match(/name="([^"]+)"/)?.[1] || "");
     
     // Parse comments
     const commentsMatch = content.match(/<comments>([^<]*)<\/comments>/);
