@@ -36,6 +36,16 @@ export function ChangePasswordCard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email!,
+        password: currentPassword,
+      });
+      if (signInError) {
+        toast({ title: "Current password is incorrect", description: "Please enter your correct current password.", variant: "destructive" });
+        return;
+      }
+
       // Check password reuse + policy (server-side validation)
       const { data: reuseData, error: reuseError } = await supabase.functions.invoke('check-password-reuse', {
         body: { userId: user.id, password: newPassword, action: 'check' },
