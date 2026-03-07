@@ -6,7 +6,10 @@
     "catalog": "Catalog",
     "myLibrary": "My Library",
     "signIn": "Sign In",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "home": "Home",
+    "browseLibraries": "Browse Libraries",
+    "backToDashboard": "Back to Dashboard"
   },
   "login": {
     "welcomeBack": "Welcome Back",
