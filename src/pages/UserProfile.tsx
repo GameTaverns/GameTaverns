@@ -430,7 +430,7 @@ export default function UserProfile() {
                 {achievements && achievements.length > 0 && (
                   <div className="mt-3 text-xs text-muted-foreground">
                     <Star className="h-3 w-3 inline mr-1" />
-                    {profile.achievement_points} total points
+                    {t('profile.totalPoints', { points: profile.achievement_points })}
                   </div>
                 )}
               </CardContent>
