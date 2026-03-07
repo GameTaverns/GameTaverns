@@ -237,7 +237,7 @@ export default function PublicEventDirectory() {
         {/* City Links for SEO */}
         {cityLinks.length > 0 && (
           <div className="border-t border-border pt-8 mt-8">
-            <h2 className="font-display font-bold text-lg mb-4">Browse Events by City</h2>
+            <h2 className="font-display font-bold text-lg mb-4">{t('events.browseByCity')}</h2>
             <div className="flex flex-wrap gap-2">
               {cityLinks.slice(0, 30).map((c) => (
                 <Link
