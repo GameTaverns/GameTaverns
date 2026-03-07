@@ -70,6 +70,7 @@ export function ChangePasswordCard() {
       });
 
       toast({ title: "Password updated", description: "Your password has been changed successfully." });
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
