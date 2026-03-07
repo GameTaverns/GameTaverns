@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout/Layout";
 import { useCuratedList, useVoteList, useAddListItem, useRemoveListItem, type CuratedListItem } from "@/hooks/useCuratedLists";
 import { useMyWantList, useRemoveWant, type TradeWant } from "@/hooks/useTrades";
@@ -20,16 +21,12 @@ import { format } from "date-fns";
 
 export default function CuratedListDetailPage() {
   const { listId } = useParams<{ listId: string }>();
-
-  // Special case: "wishlist" is the virtual trade wants list
-  if (listId === "wishlist") {
-    return <TradeWishlistDetail />;
-  }
-
+  if (listId === "wishlist") return <TradeWishlistDetail />;
   return <StandardListDetail listId={listId} />;
 }
 
 function TradeWishlistDetail() {
+  const { t } = useTranslation();
   const { data: wants = [], isLoading } = useMyWantList();
   const removeWant = useRemoveWant();
   const { tenantSlug } = useTenant();
@@ -44,19 +41,15 @@ function TradeWishlistDetail() {
     <Layout>
       <div className="max-w-2xl mx-auto space-y-6">
         <Link to={backUrl} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-4 w-4" /> All Lists
+          <ArrowLeft className="h-4 w-4" /> {t('curatedListDetail.allLists')}
         </Link>
-
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground flex items-center gap-2">
             <Heart className="h-6 w-6 text-pink-500" />
-            My Wishlist
+            {t('curatedListDetail.myWishlist')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Games you're looking to trade for. Add games from the Trade Center.
-          </p>
+          <p className="text-muted-foreground mt-1 text-sm">{t('curatedListDetail.wishlistDesc')}</p>
         </div>
-
         <div className="space-y-2">
           {wants.map((want, idx) => (
             <div key={want.id} className={cn("flex items-center gap-3 p-3 rounded-lg border transition-colors", idx === 0 ? "bg-secondary/10 border-secondary/30" : "bg-card border-border")}>
@@ -71,12 +64,12 @@ function TradeWishlistDetail() {
                 {want.notes && <p className="text-xs text-muted-foreground line-clamp-1">{want.notes}</p>}
               </div>
               <Button
-                variant="ghost"
-                size="icon"
+                variant="ghost" size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
+                aria-label={`Remove ${want.game_title} from wishlist`}
                 onClick={() => removeWant.mutate(want.id, {
-                  onSuccess: () => toast({ title: "Removed from wishlist" }),
-                  onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+                  onSuccess: () => toast({ title: t('curatedListDetail.removedFromWishlist') }),
+                  onError: (e: any) => toast({ title: t('common.error'), description: e.message, variant: "destructive" }),
                 })}
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -85,7 +78,7 @@ function TradeWishlistDetail() {
           ))}
           {wants.length === 0 && (
             <p className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-xl">
-              No games in your wishlist yet. Add games from the Trade Center.
+              {t('curatedListDetail.noGamesInWishlist')}
             </p>
           )}
         </div>
@@ -95,6 +88,7 @@ function TradeWishlistDetail() {
 }
 
 function StandardListDetail({ listId }: { listId: string | undefined }) {
+  const { t } = useTranslation();
   const { data: list, isLoading } = useCuratedList(listId);
   const { user } = useAuth();
   const { tenantSlug } = useTenant();
@@ -105,11 +99,11 @@ function StandardListDetail({ listId }: { listId: string | undefined }) {
   const backUrl = tenantSlug ? getLibraryUrl(tenantSlug, "/lists") : "/lists";
 
   const handleVote = async () => {
-    if (!user) { toast({ title: "Sign in to vote", variant: "destructive" }); return; }
+    if (!user) { toast({ title: t('curatedListDetail.signInToVote'), variant: "destructive" }); return; }
     try {
       await voteList.mutateAsync({ listId: listId!, hasVoted: !!list?.user_has_voted });
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t('common.error'), description: e.message, variant: "destructive" });
     }
   };
 
@@ -117,7 +111,7 @@ function StandardListDetail({ listId }: { listId: string | undefined }) {
     return <Layout><div className="max-w-2xl mx-auto space-y-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div></Layout>;
   }
 
-  if (!list) return <Layout><p className="text-center py-20 text-muted-foreground">List not found.</p></Layout>;
+  if (!list) return <Layout><p className="text-center py-20 text-muted-foreground">{t('curatedListDetail.listNotFound')}</p></Layout>;
 
   const authorName = list.author?.display_name ?? list.author?.username ?? "Anonymous";
 
@@ -125,9 +119,8 @@ function StandardListDetail({ listId }: { listId: string | undefined }) {
     <Layout>
       <div className="max-w-2xl mx-auto space-y-6">
         <Link to={backUrl} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-4 w-4" /> All Lists
+          <ArrowLeft className="h-4 w-4" /> {t('curatedListDetail.allLists')}
         </Link>
-
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-2xl font-bold text-foreground">{list.title}</h1>
@@ -142,10 +135,8 @@ function StandardListDetail({ listId }: { listId: string | undefined }) {
           </div>
           <Button
             variant={list.user_has_voted ? "default" : "outline"}
-            size="sm"
-            className="flex-shrink-0"
-            onClick={handleVote}
-            disabled={voteList.isPending}
+            size="sm" className="flex-shrink-0"
+            onClick={handleVote} disabled={voteList.isPending}
           >
             <Heart className={cn("h-4 w-4 mr-1.5", list.user_has_voted && "fill-current")} />
             {list.vote_count}
@@ -157,10 +148,9 @@ function StandardListDetail({ listId }: { listId: string | undefined }) {
             <ListItemRow key={item.id} item={item} rank={idx + 1} isOwner={isOwner} listId={list.id} listLibrarySlug={list.library?.slug ?? null} />
           ))}
           {(list.items || []).length === 0 && (
-            <p className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-xl">No games added yet.</p>
+            <p className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-xl">{t('curatedListDetail.noGamesAdded')}</p>
           )}
         </div>
-
         {isOwner && <AddGameRow listId={list.id} nextRank={(list.items?.length ?? 0) + 1} />}
       </div>
     </Layout>
@@ -193,6 +183,7 @@ function ListItemRow({ item, rank, isOwner, listId, listLibrarySlug }: {
       </div>
       {isOwner && (
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
+          aria-label={`Remove ${item.game?.title ?? 'game'} from list`}
           onClick={() => removeItem.mutate({ itemId: item.id, listId }, { onError: (e: any) => console.error(e) })}>
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -202,15 +193,14 @@ function ListItemRow({ item, rank, isOwner, listId, listLibrarySlug }: {
 }
 
 function AddGameRow({ listId, nextRank }: { listId: string; nextRank: number }) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const addItem = useAddListItem();
   const { toast } = useToast();
   const { library } = useTenant();
   const [results, setResults] = useState<{ id: string; title: string; image_url: string | null }[]>([]);
-  
 
-  // Simple game search within library
   const search = async (q: string) => {
     setTitle(q);
     if (q.length < 2) { setResults([]); return; }
@@ -225,17 +215,17 @@ function AddGameRow({ listId, nextRank }: { listId: string; nextRank: number }) 
     try {
       await addItem.mutateAsync({ list_id: listId, game_id: game.id, rank: nextRank, notes: notes.trim() || undefined });
       setTitle(""); setNotes("");
-      toast({ title: "Game added!" });
+      toast({ title: t('curatedListDetail.gameAdded') });
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: t('common.error'), description: e.message, variant: "destructive" });
     }
   };
 
   return (
     <div className="border border-dashed rounded-xl p-4 space-y-3">
-      <p className="text-sm font-medium text-muted-foreground">Add a game to this list</p>
+      <p className="text-sm font-medium text-muted-foreground">{t('curatedListDetail.addGameToList')}</p>
       <div className="relative">
-        <Input value={title} onChange={(e) => search(e.target.value)} placeholder="Search your library…" />
+        <Input value={title} onChange={(e) => search(e.target.value)} placeholder={t('curatedListDetail.searchYourLibrary')} />
         {results.length > 0 && (
           <div className="absolute top-full mt-1 left-0 right-0 z-10 bg-popover border rounded-lg shadow-lg overflow-hidden">
             {results.map((g) => (
@@ -249,7 +239,7 @@ function AddGameRow({ listId, nextRank }: { listId: string; nextRank: number }) 
           </div>
         )}
       </div>
-      <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional note about this game…" />
+      <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('curatedListDetail.optionalNote')} />
     </div>
   );
 }

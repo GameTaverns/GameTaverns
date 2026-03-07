@@ -218,7 +218,7 @@ export function ClubLendingDesk({ clubId, staffUserId }: ClubLendingDeskProps) {
                     {game.image_url && (
                       <img
                         src={game.image_url}
-                        alt=""
+                        alt={game.title}
                         className="h-10 w-10 rounded object-cover shrink-0"
                       />
                     )}
@@ -492,7 +492,7 @@ function LoanCard({
           {loan.game?.image_url ? (
             <img
               src={loan.game.image_url}
-              alt=""
+              alt={loan.game.title}
               className="h-12 w-12 rounded-lg object-cover shrink-0"
             />
           ) : (
