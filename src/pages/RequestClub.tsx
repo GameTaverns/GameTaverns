@@ -175,8 +175,7 @@ export default function RequestClub() {
 
             <div className="p-4 bg-wood-medium/30 rounded-lg border border-border/30">
               <p className="text-sm text-cream/70">
-                ℹ️ Your request will be reviewed by a platform admin. Once approved,
-                you'll be able to generate invite codes for other library owners to join.
+                {t('requestClub.reviewNotice')}
               </p>
             </div>
 
