@@ -123,7 +123,7 @@ export function ChangePasswordCard() {
             />
           </div>
           <p className="text-xs text-muted-foreground">{PASSWORD_REQUIREMENTS_TEXT} You cannot reuse any of your last 20 passwords.</p>
-          <Button type="submit" disabled={isUpdating || !newPassword || !confirmPassword || !validatePassword(newPassword).valid} className="w-full sm:w-auto">
+          <Button type="submit" disabled={isUpdating || !currentPassword || !newPassword || !confirmPassword || !validatePassword(newPassword).valid} className="w-full sm:w-auto">
             {isUpdating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
