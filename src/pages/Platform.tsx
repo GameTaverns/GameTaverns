@@ -74,7 +74,7 @@ export default function Platform() {
             <span className="font-display text-lg sm:text-2xl font-bold text-foreground truncate">
               GameTaverns
             </span>
-            <span className="hidden md:inline text-xs text-muted-foreground/60 ml-1 font-normal">Board Game Library Platform</span>
+            <span className="hidden md:inline text-xs text-muted-foreground/60 ml-1 font-normal">{t('platform.tagline')}</span>
           </Link>
           <nav className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
             <Link to="/features" className="hidden sm:block">
