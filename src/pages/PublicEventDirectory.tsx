@@ -154,7 +154,7 @@ export default function PublicEventDirectory() {
               <Input
                 value={cityFilter}
                 onChange={e => setCityFilter(e.target.value)}
-                placeholder="Filter by city..."
+                placeholder={t('events.filterByCity')}
                 className="pl-9"
                 list="city-suggestions"
               />
