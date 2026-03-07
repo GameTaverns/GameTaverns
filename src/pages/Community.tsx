@@ -203,7 +203,6 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
 
   if (!category) {
     return (
-    return (
       <div className="text-center py-12">
         <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
         <h2 className="text-xl font-semibold mb-2">{t('community.categoryNotFound')}</h2>
