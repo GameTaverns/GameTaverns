@@ -403,109 +403,112 @@ export default function Directory() {
           </div>
         </div>
 
-        {/* Search bar */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t('directory.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+        {/* Top-level: Libraries / Clubs */}
+        <Tabs value={topTab} onValueChange={setTopTab} className="mb-6">
+          <TabsList className="mb-6">
+            <TabsTrigger value="libraries" className="gap-1.5">
+              <Users className="h-4 w-4" /> {t('directory.librariesTab')}
+            </TabsTrigger>
+            <TabsTrigger value="clubs" className="gap-1.5">
+              <Building2 className="h-4 w-4" /> {t('directory.clubsTab')}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Sidebar + Content layout */}
-        <div className="flex gap-8">
-          <FilterSidebar />
+          <TabsContent value="libraries">
+            {/* Search bar */}
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t('directory.searchPlaceholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
 
-          <div className="flex-1 min-w-0">
-            <Tabs value={dirTab} onValueChange={setDirTab} className="space-y-6">
-              <TabsList>
-                 <TabsTrigger value="all">{t('directory.allLibraries')}</TabsTrigger>
-                 <TabsTrigger value="popular" className="gap-1">
-                   <TrendingUp className="h-4 w-4" />{t('directory.popular')}
-                 </TabsTrigger>
-                 <TabsTrigger value="newest" className="gap-1">
-                   <Clock className="h-4 w-4" />{t('directory.newest')}
-                 </TabsTrigger>
-                 <TabsTrigger value="lending" className="gap-1">
-                   <BookOpen className="h-4 w-4" />{t('directory.withLending')}
-                 </TabsTrigger>
-              </TabsList>
+            {/* Sidebar + Content layout */}
+            <div className="flex gap-8">
+              <FilterSidebar />
 
-              <TabsContent value="all">
-                {isLoading ? (
-                  <LoadingSkeleton />
-                ) : filteredLibraries.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Gamepad2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                     <h3 className="text-lg font-semibold mb-2">{t('directory.noLibrariesFound')}</h3>
-                     <p className="text-muted-foreground">
-                       {searchQuery || hasLocationFilters ? t('directory.adjustSearch') : t('directory.noPublicLibraries')}
-                     </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredLibraries.map((library) => (
-                      <LibraryCard key={library.id} library={library} />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
+              <div className="flex-1 min-w-0">
+                <Tabs value={dirTab} onValueChange={setDirTab} className="space-y-6">
+                  <TabsList>
+                     <TabsTrigger value="all">{t('directory.allLibraries')}</TabsTrigger>
+                     <TabsTrigger value="popular" className="gap-1">
+                       <TrendingUp className="h-4 w-4" />{t('directory.popular')}
+                     </TabsTrigger>
+                     <TabsTrigger value="newest" className="gap-1">
+                       <Clock className="h-4 w-4" />{t('directory.newest')}
+                     </TabsTrigger>
+                     <TabsTrigger value="lending" className="gap-1">
+                       <BookOpen className="h-4 w-4" />{t('directory.withLending')}
+                     </TabsTrigger>
+                  </TabsList>
 
-              <TabsContent value="popular">
-                {isLoading ? <LoadingSkeleton /> : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {applyLocationFilter(popularLibraries).map((library) => (
-                      <LibraryCard key={library.id} library={library} />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
+                  <TabsContent value="all">
+                    {isLoading ? (
+                      <LoadingSkeleton />
+                    ) : filteredLibraries.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Gamepad2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                         <h3 className="text-lg font-semibold mb-2">{t('directory.noLibrariesFound')}</h3>
+                         <p className="text-muted-foreground">
+                           {searchQuery || hasLocationFilters ? t('directory.adjustSearch') : t('directory.noPublicLibraries')}
+                         </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {filteredLibraries.map((library) => (
+                          <LibraryCard key={library.id} library={library} />
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
 
-              <TabsContent value="newest">
-                {isLoading ? <LoadingSkeleton /> : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {applyLocationFilter(newestLibraries).map((library) => (
-                      <LibraryCard key={library.id} library={library} />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
+                  <TabsContent value="popular">
+                    {isLoading ? <LoadingSkeleton /> : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {applyLocationFilter(popularLibraries).map((library) => (
+                          <LibraryCard key={library.id} library={library} />
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
 
-              <TabsContent value="lending">
-                {isLoading ? <LoadingSkeleton /> : applyLocationFilter(lendingLibraries).length === 0 ? (
-                  <div className="text-center py-12">
-                    <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                     <h3 className="text-lg font-semibold mb-2">{t('directory.noLendingLibraries')}</h3>
-                     <p className="text-muted-foreground">{t('directory.noLendingDesc')}</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {applyLocationFilter(lendingLibraries).map((library) => (
-                      <LibraryCard key={library.id} library={library} />
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+                  <TabsContent value="newest">
+                    {isLoading ? <LoadingSkeleton /> : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {applyLocationFilter(newestLibraries).map((library) => (
+                          <LibraryCard key={library.id} library={library} />
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
 
-        {/* Link to Clubs Directory */}
-        <div className="mt-12 border-t border-border/50 pt-8">
-          <div className="flex items-center justify-between">
-            <div>
-               <h2 className="font-display text-lg text-foreground mb-1">{t('directory.lookingForClubs')}</h2>
-               <p className="text-sm text-muted-foreground">{t('directory.clubDirectoryDesc')}</p>
-             </div>
-             <Link to="/clubs">
-               <Button variant="outline" className="gap-2">
-                 <Building2 className="h-4 w-4" /> {t('directory.clubDirectory')}
-               </Button>
-            </Link>
-          </div>
-        </div>
+                  <TabsContent value="lending">
+                    {isLoading ? <LoadingSkeleton /> : applyLocationFilter(lendingLibraries).length === 0 ? (
+                      <div className="text-center py-12">
+                        <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                         <h3 className="text-lg font-semibold mb-2">{t('directory.noLendingLibraries')}</h3>
+                         <p className="text-muted-foreground">{t('directory.noLendingDesc')}</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {applyLocationFilter(lendingLibraries).map((library) => (
+                          <LibraryCard key={library.id} library={library} />
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="clubs">
+            <ClubDirectoryTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
