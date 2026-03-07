@@ -459,14 +459,49 @@ export function useUpdateUserProfile() {
       }
       
       // Self-hosted Supabase stack: direct PostgREST update (schema cache was fixed via migration 72)
+      // Filter to only known profile columns to avoid PostgREST errors on
+      // self-hosted instances that may not have all columns yet.
       if (isSelfHostedSupabaseStack()) {
         console.log("[updateProfile] direct PostgREST update for self-hosted stack");
-        const { data, error } = await supabase
+        const knownCols = [
+          "display_name", "username", "bio", "avatar_url", "banner_url",
+          "featured_achievement_id",
+          "profile_primary_h", "profile_primary_s", "profile_primary_l",
+          "profile_accent_h", "profile_accent_s", "profile_accent_l",
+          "profile_background_h", "profile_background_s", "profile_background_l",
+          "profile_bg_image_url", "profile_bg_opacity",
+          "website_url", "company_name", "banner_position_y",
+        ];
+        const safeUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
+        for (const key of knownCols) {
+          if (key in updates) safeUpdates[key] = (updates as any)[key];
+        }
+
+        // Try full update first; if a column doesn't exist, retry without it
+        let { data, error } = await supabase
           .from("user_profiles")
-          .update({ ...updates, updated_at: new Date().toISOString() })
+          .update(safeUpdates)
           .eq("user_id", user.id)
           .select()
           .single();
+
+        if (error && error.message?.includes("does not exist")) {
+          console.warn("[updateProfile] column missing, retrying with base fields only");
+          const baseCols = ["display_name", "username", "bio", "avatar_url", "banner_url", "featured_achievement_id"];
+          const fallbackUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
+          for (const key of baseCols) {
+            if (key in updates) fallbackUpdates[key] = (updates as any)[key];
+          }
+          const result = await supabase
+            .from("user_profiles")
+            .update(fallbackUpdates)
+            .eq("user_id", user.id)
+            .select()
+            .single();
+          data = result.data;
+          error = result.error;
+        }
+
         console.log("[updateProfile] self-hosted direct result:", data, error);
         if (error) throw error;
         return data;
