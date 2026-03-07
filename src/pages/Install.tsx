@@ -52,12 +52,12 @@ export default function InstallPage() {
       <div className="max-w-md w-full space-y-6">
         <div className="text-center space-y-4">
           <img src={logoImage} alt="GameTaverns" className="h-16 w-auto mx-auto" />
-          <h1 className="font-display text-3xl font-bold text-foreground">
-            Install GameTaverns
-          </h1>
-          <p className="text-muted-foreground">
-            Add GameTaverns to your home screen for the best experience — offline access, fast loading, and native app feel.
-          </p>
+           <h1 className="font-display text-3xl font-bold text-foreground">
+             {t('install.title')}
+           </h1>
+           <p className="text-muted-foreground">
+             {t('install.description')}
+           </p>
         </div>
 
         {isInstalled ? (
