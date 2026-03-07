@@ -347,8 +347,8 @@ export default function CatalogGameDetail() {
               {playerRange && (
                 <Badge variant="outline"><Users className="h-3.5 w-3.5 mr-1" />{playerRange}</Badge>
               )}
-              {game.play_time_minutes != null && (
-                <Badge variant="outline"><Clock className="h-3.5 w-3.5 mr-1" />{game.play_time_minutes} min</Badge>
+               {game.play_time_minutes != null && (
+                 <Badge variant="outline"><Clock className="h-3.5 w-3.5 mr-1" />{game.play_time_minutes} {t('common.min')}</Badge>
               )}
               {game.weight != null && (
                 <Badge variant="outline"><Weight className="h-3.5 w-3.5 mr-1" />{game.weight.toFixed(1)} – {weightLabel}</Badge>
