@@ -48,7 +48,7 @@ const AccessibilityAudit = lazy(() =>
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
-  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail,
+  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail, Accessibility,
 };
 
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
