@@ -257,6 +257,7 @@ export function ImportErrorsPanel() {
                               >
                                 BGG #{err.bgg_id}
                                 <ExternalLink className="h-2.5 w-2.5" />
+                                <span className="sr-only">(opens in a new tab)</span>
                               </a>
                             )}
                           </div>

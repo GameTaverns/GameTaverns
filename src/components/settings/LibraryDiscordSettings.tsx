@@ -209,6 +209,7 @@ export function LibraryDiscordSettings() {
                   className="inline-flex items-center gap-1 mt-2 text-primary hover:underline"
                 >
                   Discord Webhook Guide <ExternalLink className="h-3 w-3" />
+                  <span className="sr-only">(opens in a new tab)</span>
                 </a>
               </AlertDescription>
             </Alert>
