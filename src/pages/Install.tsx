@@ -146,7 +146,7 @@ export default function InstallPage() {
 
         <p className="text-center text-xs text-muted-foreground">
           <a href="/" className="underline hover:text-foreground transition-colors">
-            Continue in browser instead
+            {t('install.continueInBrowser')}
           </a>
         </p>
       </div>
