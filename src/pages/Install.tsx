@@ -85,8 +85,8 @@ export default function InstallPage() {
         ) : isIOS ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Install on iPhone / iPad</CardTitle>
-              <CardDescription>Follow these steps in Safari:</CardDescription>
+               <CardTitle className="text-lg">{t('install.installIOS')}</CardTitle>
+               <CardDescription>{t('install.followSteps')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3">
