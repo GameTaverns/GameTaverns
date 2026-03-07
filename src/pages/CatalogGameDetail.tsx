@@ -472,7 +472,7 @@ export default function CatalogGameDetail() {
                     )}
                     {game.weight != null && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Weight</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.weight')}</TableCell>
                         <TableCell className="text-foreground">{game.weight.toFixed(2)} / 5 – {weightLabel}</TableCell>
                       </TableRow>
                     )}
