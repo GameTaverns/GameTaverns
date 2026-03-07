@@ -18,7 +18,7 @@ import {
 
 const NearMeMap = lazy(() => import("@/components/near-me/NearMeMap"));
 
-// Error boundary to catch map initialization crashes
+// Error boundary to catch map initialization crashes (publish sync marker)
 class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
