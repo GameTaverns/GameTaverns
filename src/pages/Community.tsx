@@ -549,7 +549,7 @@ function ForumHome() {
           <TenantLink href={getPlatformUrl("/dashboard?tab=community")}>
             <Button variant="ghost" className="-ml-2">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              {t('community.backToDashboard')}
             </Button>
           </TenantLink>
           <div className="px-1">
