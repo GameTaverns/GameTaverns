@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter, Plus, CalendarPlus, Lock, Eye, Archive } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { Layout } from "@/components/layout/Layout";
 import { Link, useNavigate } from "react-router-dom";
