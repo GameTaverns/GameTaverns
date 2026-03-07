@@ -33,8 +33,11 @@ export default function LendingPage() {
 
   return (
     <SpokePageLayout
-      title="Lending & Loans"
-      description={library ? `${library.name} · ${pendingLoanRequests} pending requests · ${activeBorrowedLoans.length} borrowed` : `${pendingLoanRequests} pending requests · ${activeBorrowedLoans.length} borrowed`}
+      title={t('hub.lendingAndLoans')}
+      description={library
+        ? t('hub.pendingRequestsBorrowedWithLib', { name: library.name, pending: pendingLoanRequests, borrowed: activeBorrowedLoans.length })
+        : t('hub.pendingRequestsBorrowed', { pending: pendingLoanRequests, borrowed: activeBorrowedLoans.length })
+      }
       icon={BookOpen}
       iconColor="hsl(24, 80%, 50%)"
     >
@@ -83,7 +86,7 @@ export default function LendingPage() {
                 {activeBorrowedLoans.slice(0, 10).map((loan) => (
                   <div key={loan.id} className="flex flex-col p-2 rounded-lg bg-wood-medium/20">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium truncate">{loan.game?.title || "Unknown Game"}</span>
+                      <span className="text-xs font-medium truncate">{loan.game?.title || t('game.unknownGame')}</span>
                       <Badge variant="outline" className="text-[10px]">{loan.status}</Badge>
                     </div>
                     {loan.library?.name && (

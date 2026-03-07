@@ -52,7 +52,7 @@ export default function CollectionPage() {
 
   if (!library) {
     return (
-      <SpokePageLayout title="My Collection" icon={Gamepad2} iconColor="hsl(var(--primary))">
+      <SpokePageLayout title={t('hub.myCollection')} icon={Gamepad2} iconColor="hsl(var(--primary))">
         <div className="rounded-2xl border bg-card p-8 text-center">
           <Library className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
           <p className="text-sm text-muted-foreground mb-4">{t('dashboard.noLibrary')}</p>
@@ -73,8 +73,8 @@ export default function CollectionPage() {
 
   return (
     <SpokePageLayout
-      title="My Collection"
-      description={`Managing ${library.name}`}
+      title={t('hub.myCollection')}
+      description={t('hub.managingLibrary', { name: library.name })}
       icon={Gamepad2}
       iconColor="hsl(var(--primary))"
     >
@@ -94,22 +94,22 @@ export default function CollectionPage() {
         <div className="flex items-center gap-6 mb-4 flex-wrap">
           <div className="text-center">
             <p className="text-2xl font-bold text-foreground">{gameCount ?? 0}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Games</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('collection.gamesLabel')}</p>
           </div>
           <div className="w-px h-8 bg-border" />
           <div className="text-center">
             <p className="text-2xl font-bold text-foreground">{viewStats?.views_7d ?? 0}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Views this week</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('collection.viewsThisWeek')}</p>
           </div>
           <div className="w-px h-8 bg-border" />
           <div className="text-center">
             <p className="text-2xl font-bold text-foreground">{viewStats?.unique_viewers_7d ?? 0}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Unique visitors</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('collection.uniqueVisitors')}</p>
           </div>
           <div className="w-px h-8 bg-border" />
           <div className="text-center">
             <p className="text-2xl font-bold text-foreground">{myLibraries.length}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{myLibraries.length === 1 ? "Library" : "Libraries"}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{myLibraries.length === 1 ? t('collection.libraryCount_one') : t('collection.libraryCount_other')}</p>
           </div>
         </div>
 
@@ -132,17 +132,17 @@ export default function CollectionPage() {
           </TenantLink>
           <TenantLink href={settingsUrl}>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <Settings className="h-3.5 w-3.5" /> Library Settings
+              <Settings className="h-3.5 w-3.5" /> {t('collection.librarySettings')}
             </Button>
           </TenantLink>
           <Link to="/catalog">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <BookOpen className="h-3.5 w-3.5" /> Browse Catalog
+              <BookOpen className="h-3.5 w-3.5" /> {t('collection.browseCatalog')}
             </Button>
           </Link>
           <TenantLink href={getLibraryUrl(library.slug, "/catalog-print")}>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <QrCode className="h-3.5 w-3.5" /> QR Print Cards
+              <QrCode className="h-3.5 w-3.5" /> {t('collection.qrPrintCards')}
             </Button>
           </TenantLink>
         </div>

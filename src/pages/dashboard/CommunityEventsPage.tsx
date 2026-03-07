@@ -47,8 +47,8 @@ export default function CommunityEventsPage() {
 
   return (
     <SpokePageLayout
-      title="Community & Events"
-      description={library ? `${library.name} — Forums, clubs, events, polls & challenges` : "Forums, clubs, events, polls & challenges"}
+      title={t('hub.communityAndEvents')}
+      description={library ? t('hub.forumsClubsEventsDescWithLib', { name: library.name }) : t('hub.forumsClubsEventsDesc')}
       icon={Users}
       iconColor="hsl(200, 70%, 50%)"
     >
@@ -69,7 +69,7 @@ export default function CommunityEventsPage() {
                   <MessageSquare className="h-4 w-4 text-secondary" />
                   {t('dashboard.forums')}
                 </CardTitle>
-                <InfoPopover title="Community Forums" description="Engage with the broader GameTaverns community. Library and club forums are accessible from their respective pages." className="text-cream/40 hover:text-cream/70" />
+                <InfoPopover title={t('hub.communityForums')} description={t('hub.communityForumsDesc')} className="text-cream/40 hover:text-cream/70" />
               </div>
               <Link to="/community">
                 <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
@@ -168,7 +168,7 @@ export default function CommunityEventsPage() {
                     <div className="flex gap-1 flex-shrink-0">
                       <Link to={`/club/${club.slug}`}>
                         <Button variant="secondary" size="sm" className="gap-1 h-6 text-[10px] px-2">
-                          <ExternalLink className="h-2.5 w-2.5" /> View
+                          <ExternalLink className="h-2.5 w-2.5" /> {t('common.view')}
                         </Button>
                       </Link>
                       {club.owner_id === user?.id && (
