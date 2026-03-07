@@ -44,8 +44,6 @@ export function BarcodeScannerDialog({
     setScanning(false);
   }, []);
 
-  const retryCountRef = useRef(0);
-  const startInProgressRef = useRef(false);
 
   const startScanner = useCallback(async () => {
     if (!containerRef.current || scannerRef.current || startInProgressRef.current) return;
