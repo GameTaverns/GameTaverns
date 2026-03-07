@@ -220,7 +220,7 @@ export default function NotificationsPage() {
             </Button>
             <h1 className="font-display text-xl font-bold text-cream flex items-center gap-2">
               <Bell className="h-5 w-5 text-secondary" />
-              Notifications
+              {t('notifications.title')}
               {unreadCount > 0 && (
                 <Badge variant="destructive" className="text-xs">{unreadCount}</Badge>
               )}
