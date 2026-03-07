@@ -31,6 +31,7 @@ import showcaseActivityFeed from "@/assets/showcase/activity-feed.jpg";
 import showcaseProfile from "@/assets/showcase/profile.jpg";
 
 export default function Platform() {
+  const { t } = useTranslation();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: myLibrary } = useMyLibrary();
   const { data: stats, isLoading: statsLoading } = usePlatformStats();
