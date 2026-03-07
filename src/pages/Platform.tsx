@@ -173,12 +173,12 @@ export default function Platform() {
       {/* ── Who is it for ── */}
       <section className="bg-muted/30 border-y border-border/20">
         <div className="container mx-auto px-4 py-20">
-          <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
-            Built for Every Kind of Board Gamer
-          </h2>
-          <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
-            Whether you're a solo collector, a game group, or running a community library — GameTaverns scales to fit.
-          </p>
+           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
+             {t('platform.builtForEveryGamer')}
+           </h2>
+           <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
+             {t('platform.builtForEveryGamerDesc')}
+           </p>
           <div className="grid md:grid-cols-3 gap-6">
             <AudienceCard
               icon={<BookOpen className="h-7 w-7" />}
