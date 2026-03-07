@@ -528,8 +528,8 @@ export default function CatalogBrowse() {
               <Card>
                 <CardContent className="pt-4 grid sm:grid-cols-3 gap-6">
                   <div className="space-y-3">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <Users className="h-4 w-4" /> Players: {playerCount[0]}
+                     <Label className="flex items-center gap-2 text-sm font-medium">
+                       <Users className="h-4 w-4" /> {t('catalog.players')}: {playerCount[0]}
                     </Label>
                     <Slider value={playerCount} onValueChange={setPlayerCount} min={1} max={10} step={1} />
                   </div>
