@@ -13,6 +13,7 @@ import { useMyLibraries } from "@/hooks/useLibrary";
 import { useToast } from "@/hooks/use-toast";
 
 export default function JoinClub() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
