@@ -4511,6 +4511,54 @@ export type Database = {
           },
         ]
       }
+      trade_wants: {
+        Row: {
+          bgg_id: string | null
+          catalog_id: string | null
+          created_at: string
+          game_title: string
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bgg_id?: string | null
+          catalog_id?: string | null
+          created_at?: string
+          game_title: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bgg_id?: string | null
+          catalog_id?: string | null
+          created_at?: string
+          game_title?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_wants_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "trade_wants_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_achievements: {
         Row: {
           achievement_id: string
