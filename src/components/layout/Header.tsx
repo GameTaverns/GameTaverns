@@ -62,6 +62,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, isSidebarOpen, hideSidebarToggle = false }: HeaderProps) {
+  const { t } = useTranslation();
   const { data: settings } = useSiteSettings();
   const { isDemoMode } = useDemoMode();
   const { demoMode: demoModeEnabled } = useFeatureFlags();
