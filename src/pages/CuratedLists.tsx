@@ -163,6 +163,7 @@ function ListCard({ list, href }: { list: CuratedList; href: string }) {
 }
 
 function MyListCard({ list, href }: { list: CuratedList; href: string }) {
+  const { t } = useTranslation();
   const deleteList = useDeleteList();
   const { toast } = useToast();
 
