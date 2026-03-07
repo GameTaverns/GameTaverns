@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Bell, Check, CheckCheck, BookOpen, Trophy, Calendar,
   MessageSquare, Heart, Mail, UserPlus, UserCheck,
@@ -173,6 +174,7 @@ function groupSimilar(notifications: Notification[]): (Notification | { grouped:
 
 // ── Main component ──
 export default function NotificationsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { notifications: allNotifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
   const { data: myProfile } = useUserProfile();
@@ -218,7 +220,7 @@ export default function NotificationsPage() {
             </Button>
             <h1 className="font-display text-xl font-bold text-cream flex items-center gap-2">
               <Bell className="h-5 w-5 text-secondary" />
-              Notifications
+              {t('notifications.title')}
               {unreadCount > 0 && (
                 <Badge variant="destructive" className="text-xs">{unreadCount}</Badge>
               )}
@@ -231,7 +233,7 @@ export default function NotificationsPage() {
               onClick={() => markAllAsRead.mutate()}
               className="border-secondary/50 text-cream hover:bg-wood-medium/50 gap-1.5 text-xs"
             >
-              <CheckCheck className="h-3.5 w-3.5" /> Mark all read
+              <CheckCheck className="h-3.5 w-3.5" /> {t('notifications.markAllRead')}
             </Button>
           )}
         </div>
@@ -258,13 +260,13 @@ export default function NotificationsPage() {
 
         {/* Notification list */}
         {isLoading ? (
-          <div className="text-center py-12 text-cream/50">Loading notifications...</div>
+          <div className="text-center py-12 text-cream/50">{t('notifications.loadingNotifications')}</div>
         ) : filtered.length === 0 ? (
           <Card className="bg-wood-medium/30 border-wood-medium/50 text-cream">
             <CardContent className="py-12 text-center">
               <Bell className="h-12 w-12 mx-auto text-cream/20 mb-4" />
               <p className="text-cream/50">
-                {filter === "all" ? "No notifications yet" : `No ${filter} notifications`}
+                {filter === "all" ? t('notifications.noNotifications') : t('notifications.noFilteredNotifications', { filter })}
               </p>
             </CardContent>
           </Card>

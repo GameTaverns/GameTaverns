@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Loader2, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import { useMyLibraries } from "@/hooks/useLibrary";
 import { useToast } from "@/hooks/use-toast";
 
 export default function JoinClub() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -24,23 +26,16 @@ export default function JoinClub() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLibraryId) {
-      toast({ title: "Select a library", description: "Choose which library to add to the club", variant: "destructive" });
+      toast({ title: t('joinClub.selectALibrary'), description: t('joinClub.selectALibraryDesc'), variant: "destructive" });
       return;
     }
 
     try {
       await redeemCode.mutateAsync({ code: code.trim(), library_id: selectedLibraryId });
-      toast({
-        title: "Joined club!",
-        description: "Your library has been added to the club.",
-      });
+      toast({ title: t('joinClub.joinedClub'), description: t('joinClub.joinedClubDesc') });
       navigate("/dashboard?tab=clubs");
     } catch (error: any) {
-      toast({
-        title: "Failed to join club",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: t('joinClub.failedToJoin'), description: error.message, variant: "destructive" });
     }
   };
 
@@ -58,29 +53,23 @@ export default function JoinClub() {
               <Ticket className="h-8 w-8 text-secondary" />
             </div>
           </div>
-          <CardTitle className="font-display text-2xl text-cream">Join a Club</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Enter an invite code to add your library to a club
-          </CardDescription>
+          <CardTitle className="font-display text-2xl text-cream">{t('joinClub.title')}</CardTitle>
+          <CardDescription className="text-muted-foreground">{t('joinClub.subtitle')}</CardDescription>
         </CardHeader>
         <CardContent>
           {librariesLoading ? (
-            <div className="text-center text-cream/60 py-4">Loading...</div>
+            <div className="text-center text-cream/60 py-4">{t('common.loading')}</div>
           ) : myLibraries.length === 0 ? (
             <div className="text-center space-y-4">
-              <p className="text-cream/70">
-                You need a library before you can join a club.
-              </p>
+              <p className="text-cream/70">{t('joinClub.needLibrary')}</p>
               <Link to="/create-library">
-                <Button className="bg-secondary text-secondary-foreground">
-                  Create a Library First
-                </Button>
+                <Button className="bg-secondary text-secondary-foreground">{t('joinClub.createLibraryFirst')}</Button>
               </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="code" className="text-cream/80">Invite Code</Label>
+                <Label htmlFor="code" className="text-cream/80">{t('joinClub.inviteCode')}</Label>
                 <Input
                   id="code"
                   value={code}
@@ -93,10 +82,10 @@ export default function JoinClub() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-cream/80">Select Library</Label>
+                <Label className="text-cream/80">{t('joinClub.selectLibrary')}</Label>
                 <Select value={selectedLibraryId} onValueChange={setSelectedLibraryId}>
                   <SelectTrigger className="bg-wood-medium/50 border-border/50 text-cream">
-                    <SelectValue placeholder="Choose a library to add..." />
+                    <SelectValue placeholder={t('joinClub.choosePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {myLibraries.map((lib) => (
@@ -116,10 +105,10 @@ export default function JoinClub() {
                 {redeemCode.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Joining...
+                    {t('joinClub.joining')}
                   </>
                 ) : (
-                  "Join Club"
+                  t('joinClub.joinClub')
                 )}
               </Button>
             </form>
@@ -127,7 +116,7 @@ export default function JoinClub() {
 
           <div className="mt-6 text-center">
             <Link to="/dashboard" className="text-secondary hover:text-secondary/80 underline text-sm">
-              Back to Dashboard
+              {t('joinClub.backToDashboard')}
             </Link>
           </div>
         </CardContent>

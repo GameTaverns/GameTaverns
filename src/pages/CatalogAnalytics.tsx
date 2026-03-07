@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -158,6 +159,7 @@ function GameRow({
 }
 
 export default function CatalogAnalytics() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState("ownership");
   const ownership = useTopByOwnership();
   const plays = useTopByPlays();
@@ -168,57 +170,42 @@ export default function CatalogAnalytics() {
       <div className="container max-w-3xl mx-auto py-8 px-4 space-y-6 pb-24">
         <Link to="/catalog" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2">
           <ArrowLeft className="h-4 w-4" />
-          Back to Catalog
+          {t('catalogAnalytics.backToCatalog')}
         </Link>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <TrendingUp className="h-6 w-6 text-primary" />
-            Catalog Analytics
+            {t('catalogAnalytics.title')}
           </h1>
-          <p className="text-muted-foreground text-sm">
-            Top 50 board games across all GameTaverns libraries
-          </p>
+          <p className="text-muted-foreground text-sm">{t('catalogAnalytics.subtitle')}</p>
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full">
             <TabsTrigger value="ownership" className="flex-1 gap-1">
-              <Trophy className="h-4 w-4" /> Most Owned
+              <Trophy className="h-4 w-4" /> {t('catalogAnalytics.mostOwned')}
             </TabsTrigger>
             <TabsTrigger value="plays" className="flex-1 gap-1">
-              <Dices className="h-4 w-4" /> Most Played
+              <Dices className="h-4 w-4" /> {t('catalogAnalytics.mostPlayed')}
             </TabsTrigger>
             <TabsTrigger value="ratings" className="flex-1 gap-1">
-              <Star className="h-4 w-4" /> Highest Rated
+              <Star className="h-4 w-4" /> {t('catalogAnalytics.highestRated')}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="ownership">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Most Owned Games</CardTitle>
-                <CardDescription>
-                  Ranked by number of libraries that own this game
-                </CardDescription>
+                <CardTitle className="text-lg">{t('catalogAnalytics.mostOwnedGames')}</CardTitle>
+                <CardDescription>{t('catalogAnalytics.mostOwnedDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="p-2">
-                {ownership.isLoading && (
-                  <p className="text-sm text-muted-foreground p-4">Loading...</p>
-                )}
+                {ownership.isLoading && <p className="text-sm text-muted-foreground p-4">{t('common.loading')}</p>}
                 {ownership.data?.map((entry, i) => (
-                  <GameRow
-                    key={entry.catalog_id}
-                    rank={i + 1}
-                    title={entry.title}
-                    slug={entry.slug}
-                    imageUrl={entry.image_url}
-                    stat={entry.library_count}
-                    statLabel={entry.library_count === 1 ? "library" : "libraries"}
-                  />
+                  <GameRow key={entry.catalog_id} rank={i + 1} title={entry.title} slug={entry.slug} imageUrl={entry.image_url}
+                    stat={entry.library_count} statLabel={entry.library_count === 1 ? t('catalogAnalytics.library') : t('catalogAnalytics.libraries')} />
                 ))}
-                {ownership.data?.length === 0 && (
-                  <p className="text-sm text-muted-foreground p-4">No data yet</p>
-                )}
+                {ownership.data?.length === 0 && <p className="text-sm text-muted-foreground p-4">{t('catalogAnalytics.noData')}</p>}
               </CardContent>
             </Card>
           </TabsContent>
@@ -226,29 +213,16 @@ export default function CatalogAnalytics() {
           <TabsContent value="plays">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Most Played Games</CardTitle>
-                <CardDescription>
-                  Ranked by total logged play sessions
-                </CardDescription>
+                <CardTitle className="text-lg">{t('catalogAnalytics.mostPlayedGames')}</CardTitle>
+                <CardDescription>{t('catalogAnalytics.mostPlayedDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="p-2">
-                {plays.isLoading && (
-                  <p className="text-sm text-muted-foreground p-4">Loading...</p>
-                )}
+                {plays.isLoading && <p className="text-sm text-muted-foreground p-4">{t('common.loading')}</p>}
                 {plays.data?.map((entry, i) => (
-                  <GameRow
-                    key={entry.catalog_id}
-                    rank={i + 1}
-                    title={entry.title}
-                    slug={entry.slug}
-                    imageUrl={entry.image_url}
-                    stat={entry.total_plays}
-                    statLabel={entry.total_plays === 1 ? "play" : "plays"}
-                  />
+                  <GameRow key={entry.catalog_id} rank={i + 1} title={entry.title} slug={entry.slug} imageUrl={entry.image_url}
+                    stat={entry.total_plays} statLabel={entry.total_plays === 1 ? t('catalogAnalytics.play') : t('catalogAnalytics.plays')} />
                 ))}
-                {plays.data?.length === 0 && (
-                  <p className="text-sm text-muted-foreground p-4">No data yet</p>
-                )}
+                {plays.data?.length === 0 && <p className="text-sm text-muted-foreground p-4">{t('catalogAnalytics.noData')}</p>}
               </CardContent>
             </Card>
           </TabsContent>
@@ -256,29 +230,16 @@ export default function CatalogAnalytics() {
           <TabsContent value="ratings">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Highest Rated Games</CardTitle>
-                <CardDescription>
-                  Community ratings (minimum 2 votes)
-                </CardDescription>
+                <CardTitle className="text-lg">{t('catalogAnalytics.highestRatedGames')}</CardTitle>
+                <CardDescription>{t('catalogAnalytics.highestRatedDesc')}</CardDescription>
               </CardHeader>
               <CardContent className="p-2">
-                {ratings.isLoading && (
-                  <p className="text-sm text-muted-foreground p-4">Loading...</p>
-                )}
+                {ratings.isLoading && <p className="text-sm text-muted-foreground p-4">{t('common.loading')}</p>}
                 {ratings.data?.map((entry, i) => (
-                  <GameRow
-                    key={entry.catalog_id}
-                    rank={i + 1}
-                    title={entry.title || "Unknown"}
-                    slug={entry.slug}
-                    imageUrl={entry.image_url}
-                    stat={`${entry.average_rating}★`}
-                    statLabel={`(${entry.rating_count})`}
-                  />
+                  <GameRow key={entry.catalog_id} rank={i + 1} title={entry.title || "Unknown"} slug={entry.slug} imageUrl={entry.image_url}
+                    stat={`${entry.average_rating}★`} statLabel={`(${entry.rating_count})`} />
                 ))}
-                {ratings.data?.length === 0 && (
-                  <p className="text-sm text-muted-foreground p-4">No data yet</p>
-                )}
+                {ratings.data?.length === 0 && <p className="text-sm text-muted-foreground p-4">{t('catalogAnalytics.noData')}</p>}
               </CardContent>
             </Card>
           </TabsContent>

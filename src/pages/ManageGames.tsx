@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Tag, Loader2, Plus } from "lucide-react";
 import { BackLink } from "@/components/navigation/BackLink";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 
 export default function ManageGames() {
+  const { t } = useTranslation();
   const { library, settings, isLoading, isOwner } = useTenant();
   const { buildUrl } = useTenantUrl();
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -41,8 +43,8 @@ export default function ManageGames() {
     return (
       <Layout hideSidebar>
         <div className="text-center py-16">
-          <h1 className="text-2xl font-display font-bold mb-4">Sign in required</h1>
-          <p className="text-muted-foreground mb-6">Please sign in on the main site to manage this library.</p>
+          <h1 className="text-2xl font-display font-bold mb-4">{t('manageGames.signInRequired')}</h1>
+          <p className="text-muted-foreground mb-6">{t('manageGames.signInMessage')}</p>
           <TenantLink href={getMainPlatformUrl("/login")}><Button>Sign In</Button></TenantLink>
         </div>
       </Layout>
@@ -53,8 +55,8 @@ export default function ManageGames() {
     return (
       <Layout hideSidebar>
         <div className="text-center py-16">
-          <h1 className="text-2xl font-display font-bold mb-4">Library Not Found</h1>
-          <p className="text-muted-foreground mb-6">The library you're looking for doesn't exist or is not active.</p>
+          <h1 className="text-2xl font-display font-bold mb-4">{t('manageGames.libraryNotFound')}</h1>
+          <p className="text-muted-foreground mb-6">{t('manageGames.libraryNotFoundDesc')}</p>
           <TenantLink href={getMainPlatformUrl("/dashboard")}><Button>Go to Dashboard</Button></TenantLink>
         </div>
       </Layout>
@@ -65,8 +67,8 @@ export default function ManageGames() {
     return (
       <Layout hideSidebar>
         <div className="text-center py-16">
-          <h1 className="text-2xl font-display font-bold mb-4">Access Denied</h1>
-          <p className="text-muted-foreground mb-6">You don't have permission to manage this library's games.</p>
+          <h1 className="text-2xl font-display font-bold mb-4">{t('manageGames.accessDenied')}</h1>
+          <p className="text-muted-foreground mb-6">{t('manageGames.accessDeniedDesc')}</p>
           <TenantLink href={buildUrl("/")}><Button>Back to Library</Button></TenantLink>
         </div>
       </Layout>
@@ -80,13 +82,13 @@ export default function ManageGames() {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold">Manage Collection</h1>
-            <p className="text-muted-foreground text-sm">Edit, organize, and manage your existing games</p>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold">{t('manageGames.title')}</h1>
+            <p className="text-muted-foreground text-sm">{t('manageGames.subtitle')}</p>
           </div>
           <TenantLink href={buildUrl("/add")}>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Add Game Manually
+              {t('manageGames.addGameManually')}
             </Button>
           </TenantLink>
         </div>
@@ -94,19 +96,19 @@ export default function ManageGames() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
             <TabsTrigger value="collection" className="gap-2">
-              Collection
+              {t('manageGames.collection')}
             </TabsTrigger>
             <TabsTrigger value="categories" className="gap-2">
               <Tag className="h-4 w-4" />
-              Categories
+              {t('manageGames.categories')}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="collection">
             <Card>
               <CardHeader>
-                <CardTitle>Full Collection</CardTitle>
-                <CardDescription>View, edit, and manage all games in your library</CardDescription>
+                <CardTitle>{t('manageGames.fullCollection')}</CardTitle>
+                <CardDescription>{t('manageGames.fullCollectionDesc')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <GameCollectionTable />
