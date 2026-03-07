@@ -130,7 +130,7 @@ export default function Platform() {
         <div className="container mx-auto px-4 pt-10 pb-6 text-center">
           <div className="inline-flex items-center gap-2 bg-secondary/10 text-secondary border border-secondary/20 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
             <Flame className="h-3.5 w-3.5" />
-            See a Real Library in Action
+            {t('platform.seeRealLibrary')}
           </div>
           <h1 className="font-display text-3xl sm:text-5xl md:text-6xl font-bold text-foreground mb-3 leading-tight">
             Your Board Game Collection<br />
