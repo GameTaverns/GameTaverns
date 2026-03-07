@@ -72,14 +72,14 @@ export default function Grow() {
                 <CardContent className="py-5">
                   <h3 className="font-display font-bold text-sm mb-2 flex items-center gap-2">
                     <ImageIcon className="h-4 w-4 text-primary" />
-                    Share Your Stats
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Download a shareable stats card to post on social media.
-                  </p>
-                  <Link to="/share-card">
-                    <Button variant="outline" size="sm" className="w-full gap-1">
-                      Create Stats Card <ChevronRight className="h-3 w-3" />
+                     {t('grow.shareYourStats')}
+                   </h3>
+                   <p className="text-xs text-muted-foreground mb-3">
+                     {t('grow.shareStatsDesc')}
+                   </p>
+                   <Link to="/share-card">
+                     <Button variant="outline" size="sm" className="w-full gap-1">
+                       {t('grow.createStatsCard')} <ChevronRight className="h-3 w-3" />
                     </Button>
                   </Link>
                 </CardContent>
