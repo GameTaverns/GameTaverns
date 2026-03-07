@@ -117,13 +117,13 @@ export default function InstallPage() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Install on your device</CardTitle>
-              <CardDescription>Use your browser's menu to install</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Look for "Install app", "Add to Home Screen", or a <Download className="h-4 w-4 inline" /> icon in your browser's menu or address bar.
-              </p>
+               <CardTitle className="text-lg">{t('install.installDevice')}</CardTitle>
+               <CardDescription>{t('install.useMenu')}</CardDescription>
+             </CardHeader>
+             <CardContent className="space-y-3">
+               <p className="text-sm text-muted-foreground">
+                 {t('install.lookForInstall')}
+               </p>
             </CardContent>
           </Card>
         )}
