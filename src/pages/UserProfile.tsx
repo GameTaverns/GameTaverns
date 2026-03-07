@@ -53,6 +53,7 @@ const TIER_NAMES: Record<number, string> = {
 };
 
 export default function UserProfile() {
+  const { t } = useTranslation();
   const { username } = useParams<{ username: string }>();
   const { data: profile, isLoading, error } = usePublicProfile(username);
   const { data: communities } = usePublicProfileCommunities(profile?.user_id);
