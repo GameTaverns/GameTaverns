@@ -611,7 +611,7 @@ function ForumHome() {
       {activeClubs.length > 0 && (
         <div className="space-y-6">
           <div className="border-t border-border pt-6">
-            <h2 className="text-xl font-bold font-display mb-4">Club Forums</h2>
+            <h2 className="text-xl font-bold font-display mb-4">{t('community.clubForums')}</h2>
           </div>
           {activeClubs.map((club) => (
             <ClubForumSection key={club.id} clubId={club.id} clubName={club.name} clubSlug={club.slug} />
