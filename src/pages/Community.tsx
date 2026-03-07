@@ -174,6 +174,7 @@ function ThreadRow({ thread }: { thread: ForumThread }) {
 }
 
 function CategoryView({ categorySlug }: { categorySlug: string }) {
+  const { t } = useTranslation();
   const { library, isTenantMode } = useTenant();
   
   const { data: siteCategories = [], isLoading: siteCategoriesLoading } = useSiteWideCategories();
