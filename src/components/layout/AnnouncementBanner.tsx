@@ -1,16 +1,18 @@
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { supabase, apiClient, isSelfHostedMode } from "@/integrations/backend/client";
 
 export function AnnouncementBanner() {
   const [dismissed, setDismissed] = useState(false);
+  const { i18n } = useTranslation();
+  const currentLang = i18n.language?.split("-")[0] || "en";
   
-  // Fetch announcement directly from the public view to ensure it works for all users
+  // Fetch announcement directly from the public view
   const { data: announcement } = useQuery({
     queryKey: ["announcement-banner", isSelfHostedMode()],
     queryFn: async () => {
-      // Self-hosted mode: fetch from Express API
       if (isSelfHostedMode()) {
         try {
           const settings = await apiClient.get<Record<string, string | null>>('/settings/public');
@@ -20,7 +22,6 @@ export function AnnouncementBanner() {
         }
       }
 
-      // Cloud mode: fetch from Supabase
       const { data, error } = await supabase
         .from("site_settings_public")
         .select("value")
@@ -36,6 +37,33 @@ export function AnnouncementBanner() {
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  // Translate the announcement if user's language is not English
+  const { data: translatedAnnouncement } = useQuery({
+    queryKey: ["announcement-translated", announcement, currentLang],
+    queryFn: async () => {
+      if (!announcement || currentLang === "en") return announcement;
+
+      try {
+        const { data, error } = await supabase.functions.invoke("translate-text", {
+          body: { text: announcement, targetLanguage: currentLang },
+        });
+
+        if (error) {
+          console.error("Translation error:", error);
+          return announcement;
+        }
+
+        return data?.translatedText || announcement;
+      } catch {
+        return announcement;
+      }
+    },
+    enabled: !!announcement,
+    staleTime: 30 * 60 * 1000, // Cache translations for 30 min
+  });
+
+  const displayText = translatedAnnouncement || announcement;
   
   // Reset dismissed state when announcement changes
   useEffect(() => {
@@ -43,7 +71,6 @@ export function AnnouncementBanner() {
       const storedDismissed = sessionStorage.getItem("announcement_dismissed");
       const storedMessage = sessionStorage.getItem("announcement_message");
       
-      // Only keep dismissed if it's the same message
       if (storedDismissed === "true" && storedMessage === announcement) {
         setDismissed(true);
       } else {
@@ -59,13 +86,13 @@ export function AnnouncementBanner() {
     sessionStorage.setItem("announcement_message", announcement || "");
   };
   
-  if (!announcement || dismissed) {
+  if (!displayText || dismissed) {
     return null;
   }
   
   return (
     <div className="bg-primary text-primary-foreground px-4 py-2 text-center text-sm relative">
-      <p className="pr-8">{announcement}</p>
+      <p className="pr-8">{displayText}</p>
       <button
         onClick={handleDismiss}
         className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-primary-foreground/20 rounded transition-colors"
@@ -76,4 +103,3 @@ export function AnnouncementBanner() {
     </div>
   );
 }
-
