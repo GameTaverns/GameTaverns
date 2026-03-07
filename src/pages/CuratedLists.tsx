@@ -79,8 +79,8 @@ export default function CuratedListsPage() {
 
         <Tabs value={listsTab} onValueChange={setListsTab}>
           <TabsList>
-            <TabsTrigger value="community">Community</TabsTrigger>
-            {isAuthenticated && <TabsTrigger value="mine">My Lists</TabsTrigger>}
+            <TabsTrigger value="community">{t('lists.community')}</TabsTrigger>
+            {isAuthenticated && <TabsTrigger value="mine">{t('lists.myLists')}</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="community" className="mt-4 space-y-3">
