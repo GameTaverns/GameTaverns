@@ -2615,16 +2615,29 @@ export default async function handler(req: Request): Promise<Response> {
               failureBreakdown.not_found++;
             }
 
-            // Check if game already exists
+            // Check if game already exists (by bgg_id first, then title)
             // NOTE: CSV re-imports are commonly used to "refresh" media URLs AND
             // fill in missing metadata (descriptions, player counts, etc.) that
             // may have been missed on a prior import due to network issues.
-            const { data: existing } = await supabaseAdmin
-              .from("games")
-              .select("id, title, image_url, additional_images, description, min_players, max_players, difficulty, play_time, game_type, suggested_age, publisher_id, is_expansion, parent_game_id, bgg_id, bgg_url")
-              .eq("title", gameData.title)
-              .eq("library_id", targetLibraryId)
-              .maybeSingle();
+            let existing: any = null;
+            if (gameData.bgg_id) {
+              const { data: byBgg } = await supabaseAdmin
+                .from("games")
+                .select("id, title, image_url, additional_images, description, min_players, max_players, difficulty, play_time, game_type, suggested_age, publisher_id, is_expansion, parent_game_id, bgg_id, bgg_url")
+                .eq("bgg_id", gameData.bgg_id)
+                .eq("library_id", targetLibraryId)
+                .maybeSingle();
+              if (byBgg) existing = byBgg;
+            }
+            if (!existing) {
+              const { data: byTitle } = await supabaseAdmin
+                .from("games")
+                .select("id, title, image_url, additional_images, description, min_players, max_players, difficulty, play_time, game_type, suggested_age, publisher_id, is_expansion, parent_game_id, bgg_id, bgg_url")
+                .eq("title", gameData.title)
+                .eq("library_id", targetLibraryId)
+                .maybeSingle();
+              if (byTitle) existing = byTitle;
+            }
 
             const isBggCdnUrl = (u: string | null | undefined) => {
               if (!u) return false;
