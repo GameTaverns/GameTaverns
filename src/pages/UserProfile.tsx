@@ -253,7 +253,7 @@ export default function UserProfile() {
                         }}
                       >
                         <MessageSquare className="h-3.5 w-3.5" />
-                        Message
+                        {t('profile.message')}
                       </Button>
                     )}
                   </div>
