@@ -436,9 +436,9 @@ export default function CatalogGameDetail() {
             {/* Tabs */}
             <Tabs value={catalogTab} onValueChange={setCatalogTab} className="w-full">
               <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
-                <TabsTrigger value="description">Description</TabsTrigger>
-                <TabsTrigger value="info">Info</TabsTrigger>
-                <TabsTrigger value="videos">Videos</TabsTrigger>
+                 <TabsTrigger value="description">{t('catalog.description')}</TabsTrigger>
+                 <TabsTrigger value="info">{t('catalog.info')}</TabsTrigger>
+                 <TabsTrigger value="videos">{t('catalog.videos')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="description" className="mt-0">
