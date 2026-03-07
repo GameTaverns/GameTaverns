@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, Re
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/backend/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useTranslation } from "react-i18next";
 
 export interface TourStep {
   id: string;
@@ -112,7 +111,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const dbCheckDone = useRef(false);
 
-  // Persist tour state to localStorage so it survives cross-domain navigation
   useEffect(() => {
     localStorage.setItem("guided_tour_active", String(isActive));
   }, [isActive]);
@@ -125,7 +123,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("guided_tour_completions", JSON.stringify(completions));
   }, [completions]);
 
-  // Check if user has seen the tour — use both localStorage AND database
   useEffect(() => {
     const seen = localStorage.getItem("guided_tour_seen");
     const deferred = localStorage.getItem("guided_tour_deferred");
@@ -143,8 +140,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Check the database for tour_complete achievement as a fallback.
-    // This covers cases where localStorage was cleared (e.g. native app restart).
     if (user && !dbCheckDone.current) {
       dbCheckDone.current = true;
       (async () => {
@@ -164,7 +159,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
             .maybeSingle();
 
           if (userAchievement) {
-            // User already completed tour — persist to localStorage too
             localStorage.setItem("guided_tour_seen", "true");
             setHasSeenTour(true);
           } else {
@@ -175,19 +169,16 @@ export function TourProvider({ children }: { children: ReactNode }) {
         }
       })();
     } else if (!user) {
-      // Not logged in — don't show tour
       setHasSeenTour(true);
     }
   }, [user]);
 
-  // On resume: skip past all already-completed steps in one go
   useEffect(() => {
     if (!isActive) return;
     let nextStep = currentStep;
     while (nextStep < TOUR_STEPS.length - 1) {
       const step = TOUR_STEPS[nextStep];
       if (!step) break;
-      // Don't auto-skip welcome or complete — those are manual
       if (step.completionKey === "welcome_seen" || step.completionKey === "tour_complete") break;
       if (!completions[step.completionKey]) break;
       nextStep++;
@@ -195,9 +186,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (nextStep !== currentStep) {
       setCurrentStep(nextStep);
     }
-  }, [isActive]); // Only on mount/resume
+  }, [isActive]);
 
-  // Auto-advance when a step's completion key becomes true (skip multiple if needed)
   useEffect(() => {
     if (!isActive) return;
     const step = TOUR_STEPS[currentStep];
@@ -205,7 +195,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
     if (step.completionKey === "welcome_seen" || step.completionKey === "tour_complete") return;
 
     if (completions[step.completionKey]) {
-      // Find the next incomplete step
       let nextStep = currentStep + 1;
       while (nextStep < TOUR_STEPS.length - 1) {
         const s = TOUR_STEPS[nextStep];
@@ -220,9 +209,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
   }, [completions, currentStep, isActive]);
 
-  // Navigation is intentionally NOT automatic on step change.
-  // Users navigate via the action button in the GuidedTour component.
-
   const startTour = useCallback(() => {
     setCurrentStep(0);
     setIsActive(true);
@@ -236,7 +222,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
     setIsActive(false);
     setHasSeenTour(true);
 
-    // Award tour_complete achievement
     if (user) {
       try {
         const { data: achievement } = await supabase
@@ -262,7 +247,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
   }, [navigate, user]);
 
   const deferTour = useCallback(() => {
-    // Permanently dismiss (not just 24h) — users who X the tour don't want to see it again
     localStorage.setItem("guided_tour_seen", "true");
     localStorage.removeItem("guided_tour_active");
     localStorage.removeItem("guided_tour_step");

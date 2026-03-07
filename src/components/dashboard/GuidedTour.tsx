@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { X, ChevronRight, Sparkles, SkipForward, MapPin } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -13,6 +14,7 @@ interface GuidedTourProps {
 }
 
 export function GuidedTour({ librarySlug }: GuidedTourProps) {
+  const { t } = useTranslation();
   const {
     isActive,
     currentStep,
@@ -27,7 +29,6 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
   } = useTour();
   const navigate = useNavigate();
 
-  // Auto-prompt for new users
   useEffect(() => {
     if (shouldShowTour) {
       const timer = setTimeout(() => startTour(), 1500);
@@ -44,7 +45,6 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
   const handleAction = () => {
     if (step.id === "welcome") {
       completeStep("welcome_seen");
-      // Advance immediately for welcome
       skipStep();
       return;
     }
@@ -54,9 +54,7 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
       return;
     }
 
-    // Navigate to the step's route
     if (step.route.startsWith("__")) {
-      // Dynamic routes based on library slug
       if (!librarySlug) return;
       if (step.route === "__library_games__") {
         window.location.href = getLibraryUrl(librarySlug, "/games");
@@ -78,12 +76,11 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
       >
         <Card className="bg-card border-border shadow-2xl shadow-black/30">
           <CardContent className="pt-5 pb-4">
-            {/* Header */}
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-secondary" />
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Tour — Step {currentStep + 1} of {steps.length}
+                  {t('tour.stepOf', { current: currentStep + 1, total: steps.length })}
                 </span>
               </div>
               <Button
@@ -91,16 +88,14 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
                 size="icon"
                 className="h-7 w-7 -mt-1 -mr-1"
                 onClick={deferTour}
-                title="Close tour"
+                title={t('tour.closeTour')}
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
-            {/* Progress */}
             <Progress value={progress} className="h-1 mb-4" />
 
-            {/* Content */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentStep}
@@ -112,11 +107,11 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xl">{step.emoji}</span>
                   <h3 className="text-base font-display font-semibold text-foreground">
-                    {step.title}
+                    {t(step.titleKey)}
                   </h3>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {step.description}
+                  {t(step.descriptionKey)}
                 </p>
 
                 {isStepComplete && step.id !== "welcome" && step.id !== "complete" && (
@@ -126,13 +121,12 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
                     className="mt-3 flex items-center gap-2 text-sm text-secondary font-medium"
                   >
                     <Sparkles className="h-4 w-4" />
-                    Done! Moving to next step…
+                    {t('tour.doneMovingNext')}
                   </motion.div>
                 )}
               </motion.div>
             </AnimatePresence>
 
-            {/* Actions */}
             <div className="flex items-center justify-between mt-5">
               <Button
                 variant="ghost"
@@ -140,7 +134,7 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
                 onClick={endTour}
                 className="text-muted-foreground text-xs"
               >
-                End tour
+                {t('tour.endTour')}
               </Button>
 
               <div className="flex gap-2">
@@ -152,7 +146,7 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
                     className="text-muted-foreground text-xs"
                   >
                     <SkipForward className="h-3 w-3 mr-1" />
-                    Skip
+                    {t('tour.skip')}
                   </Button>
                 )}
                 {!isStepComplete && (
@@ -161,7 +155,7 @@ export function GuidedTour({ librarySlug }: GuidedTourProps) {
                     onClick={handleAction}
                     className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
                   >
-                    {step.actionLabel}
+                    {t(step.actionLabelKey)}
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 )}
