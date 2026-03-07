@@ -107,7 +107,7 @@ export default function CuratedListsPage() {
               {myLists.length === 0 && wishlistItems.length === 0
                 ? (
                   <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
-                    <p>You haven't created any lists yet.</p>
+                    <p>{t('lists.noMyLists')}</p>
                   </div>
                 )
                 : myLists.map((list) => (
