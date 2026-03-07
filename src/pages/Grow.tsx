@@ -28,15 +28,15 @@ export default function Grow() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
             <Gift className="h-3.5 w-3.5" />
-            Growth Hub
-          </div>
-          <h1 className="font-display text-4xl sm:text-5xl font-bold mb-3">
-            Grow Your Community
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Share GameTaverns with your gaming group. Every friend who signs up earns you progress toward exclusive badges.
-          </p>
-        </div>
+             {t('grow.growthHub')}
+           </div>
+           <h1 className="font-display text-4xl sm:text-5xl font-bold mb-3">
+             {t('grow.heading')}
+           </h1>
+           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+             {t('grow.description')}
+           </p>
+         </div>
 
         {/* Tiers overview (public) */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
