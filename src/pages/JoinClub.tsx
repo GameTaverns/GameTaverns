@@ -53,10 +53,8 @@ export default function JoinClub() {
               <Ticket className="h-8 w-8 text-secondary" />
             </div>
           </div>
-          <CardTitle className="font-display text-2xl text-cream">Join a Club</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Enter an invite code to add your library to a club
-          </CardDescription>
+          <CardTitle className="font-display text-2xl text-cream">{t('joinClub.title')}</CardTitle>
+          <CardDescription className="text-muted-foreground">{t('joinClub.subtitle')}</CardDescription>
         </CardHeader>
         <CardContent>
           {librariesLoading ? (
