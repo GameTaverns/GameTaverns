@@ -1,6 +1,7 @@
 import { useState, useMemo, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { MapPin, Navigation, Search, Library, Calendar, Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { Layout } from "@/components/layout/Layout";
 import { SEO } from "@/components/seo/SEO";
@@ -18,9 +19,9 @@ import {
 
 const NearMeMap = lazy(() => import("@/components/near-me/NearMeMap"));
 
-// Error boundary to catch map initialization crashes (publish sync marker)
-class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
+// Error boundary to catch map initialization crashes
+class MapErrorBoundary extends Component<{ children: ReactNode; fallbackText: string; fallbackDesc: string }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; fallbackText: string; fallbackDesc: string }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -35,8 +36,8 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
       return (
         <div className="w-full h-full flex flex-col items-center justify-center bg-muted/30 rounded-lg gap-2 p-4 text-center">
           <AlertTriangle className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-muted-foreground">Map could not load</p>
-          <p className="text-xs text-muted-foreground">Browse the list below to find libraries and events near you.</p>
+          <p className="text-sm font-medium text-muted-foreground">{this.props.fallbackText}</p>
+          <p className="text-xs text-muted-foreground">{this.props.fallbackDesc}</p>
         </div>
       );
     }
@@ -45,6 +46,7 @@ class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
 }
 
 export default function NearMe() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { location, loading: locLoading, error: locError, requestGeoLocation, searchLocation } = useUserLocation();
   const { data: libraries = [], isLoading: libLoading } = useMapLibraries();
@@ -95,14 +97,14 @@ export default function NearMe() {
         <div className="space-y-1">
           <Button variant="ghost" size="sm" className="gap-1.5 -ml-2 mb-1" onClick={() => navigate("/directory")}>
             <ArrowLeft className="h-4 w-4" />
-            Back to Directory
+            {t('nearMe.backToDirectory')}
           </Button>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <MapPin className="h-6 w-6 text-primary" />
-            Near Me
+            {t('nearMe.title')}
           </h1>
           <p className="text-muted-foreground text-sm">
-            Discover board game libraries and events in your area
+            {t('nearMe.description')}
           </p>
         </div>
 
@@ -114,12 +116,12 @@ export default function NearMe() {
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search city, zip code, or address..."
+                placeholder={t('nearMe.searchPlaceholder')}
                 className="pl-9"
               />
             </div>
             <Button type="submit" size="sm" disabled={locLoading}>
-              Search
+              {t('common.search')}
             </Button>
           </form>
           <Button
@@ -134,7 +136,7 @@ export default function NearMe() {
             ) : (
               <Navigation className="h-4 w-4" />
             )}
-            Use My Location
+            {t('nearMe.useMyLocation')}
           </Button>
         </div>
 
@@ -144,7 +146,7 @@ export default function NearMe() {
 
         {location.source !== "default" && location.label && (
           <p className="text-xs text-muted-foreground">
-            Showing results near <span className="font-medium">{location.label}</span>
+            {t('nearMe.showingResultsNear')} <span className="font-medium">{location.label}</span>
           </p>
         )}
 
@@ -158,7 +160,7 @@ export default function NearMe() {
             onClick={() => setTab("libraries")}
           >
             <Library className="h-4 w-4" />
-            Libraries ({nearbyLibraries.length})
+            {t('nearMe.librariesTab')} ({nearbyLibraries.length})
           </Button>
           <Button
             type="button"
@@ -168,7 +170,7 @@ export default function NearMe() {
             onClick={() => setTab("events")}
           >
             <Calendar className="h-4 w-4" />
-            Events ({nearbyEvents.length})
+            {t('nearMe.eventsTab')} ({nearbyEvents.length})
           </Button>
         </div>
 
@@ -177,7 +179,7 @@ export default function NearMe() {
           {isLoading ? (
             <Skeleton className="w-full h-full" />
           ) : (
-            <MapErrorBoundary>
+            <MapErrorBoundary fallbackText={t('nearMe.mapCouldNotLoad')} fallbackDesc={t('nearMe.browseListBelow')}>
               <Suspense fallback={<Skeleton className="w-full h-full" />}>
                 <NearMeMap
                   location={location}
@@ -197,11 +199,11 @@ export default function NearMe() {
               <Card>
                 <CardContent className="py-10 text-center text-muted-foreground">
                   <Library className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm font-medium">No libraries found nearby</p>
+                  <p className="text-sm font-medium">{t('nearMe.noLibrariesFound')}</p>
                   <p className="text-xs mt-1">
                     {location.source === "default"
-                      ? "Use your location or search a city to find nearby libraries"
-                      : "Try increasing your search radius or searching a different area"}
+                      ? t('nearMe.useLocationHint')
+                      : t('nearMe.tryIncreasingRadius')}
                   </p>
                 </CardContent>
               </Card>
@@ -237,8 +239,8 @@ export default function NearMe() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                        <span>{lib.game_count} games</span>
-                        <span>{lib.follower_count} followers</span>
+                        <span>{lib.game_count} {t('common.games')}</span>
+                        <span>{lib.follower_count} {t('common.followers')}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -252,11 +254,11 @@ export default function NearMe() {
               <Card>
                 <CardContent className="py-10 text-center text-muted-foreground">
                   <Calendar className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm font-medium">No upcoming events found nearby</p>
+                  <p className="text-sm font-medium">{t('nearMe.noEventsFound')}</p>
                   <p className="text-xs mt-1">
                     {location.source === "default"
-                      ? "Use your location or search a city to find nearby events"
-                      : "Check back later or try a different area"}
+                      ? t('nearMe.useLocationHintEvents')
+                      : t('nearMe.tryDifferentArea')}
                   </p>
                 </CardContent>
               </Card>

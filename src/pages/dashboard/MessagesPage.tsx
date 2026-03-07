@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Mail } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
 import { SocialTab } from "@/components/social/SocialTab";
 
 export default function MessagesPage() {
+  const { t } = useTranslation();
   const { user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -17,8 +19,8 @@ export default function MessagesPage() {
 
   return (
     <SpokePageLayout
-      title="Messages & Social"
-      description="Direct messages, game inquiries & activity feed"
+      title={t('hub.messagesAndSocial')}
+      description={t('hub.dmAndActivity')}
       icon={Mail}
       iconColor="hsl(340, 65%, 50%)"
     >

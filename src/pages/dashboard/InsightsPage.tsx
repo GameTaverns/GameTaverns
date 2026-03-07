@@ -31,8 +31,8 @@ export default function InsightsPage() {
 
   return (
     <SpokePageLayout
-      title="Insights & Analytics"
-      description={library ? `Viewing ${library.name}` : "Your collection DNA, play stats, and achievements"}
+      title={t('hub.insightsAndAnalytics')}
+      description={library ? t('hub.managingLibrary', { name: library.name }) : t('hub.insightsDesc')}
       icon={Sparkles}
       iconColor="hsl(262, 80%, 55%)"
     >
@@ -49,7 +49,7 @@ export default function InsightsPage() {
           <section>
             <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-secondary" />
-              Collection DNA & Insights
+              {t('collection.collectionDNA')}
             </h2>
             <CollectionInsightsWidget libraryId={library.id} hideNavLinks />
           </section>
@@ -105,7 +105,7 @@ export default function InsightsPage() {
           <section>
             <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-secondary" />
-              Play Stats & Analytics
+              {t('collection.playStatsAnalytics')}
             </h2>
             <AnalyticsTab isAdmin={isAdmin} libraryId={library.id} libraryName={library.name} />
           </section>

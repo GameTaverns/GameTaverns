@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
 import { Layout } from "@/components/layout/Layout";
 import { usePublicClubs } from "@/hooks/useClubs";
@@ -18,6 +19,7 @@ import { BackLink } from "@/components/navigation/BackLink";
 import type { Club } from "@/hooks/useClubs";
 
 function ClubCard({ club }: { club: Club }) {
+  const { t } = useTranslation();
   const initials = club.name
     .split(/\s+/)
     .map((w) => w[0])
@@ -50,7 +52,7 @@ function ClubCard({ club }: { club: Club }) {
               )}
               <div className="flex items-center gap-2 mt-2">
                 <Badge variant="outline" className="text-[10px] gap-1">
-                  <Globe className="h-3 w-3" /> Public
+                  <Globe className="h-3 w-3" /> {t('common.public')}
                 </Badge>
               </div>
             </div>
@@ -62,6 +64,7 @@ function ClubCard({ club }: { club: Club }) {
 }
 
 export default function ClubsDirectory() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { data: clubs = [], isLoading } = usePublicClubs();
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,8 +82,8 @@ export default function ClubsDirectory() {
   return (
     <Layout hideSidebar>
       <SEO
-        title="Club Directory"
-        description="Discover board game clubs on GameTaverns. Browse clubs, join communities, and connect with fellow gamers."
+        title={t('clubDirectory.title')}
+        description={t('clubDirectory.description')}
       />
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
@@ -92,21 +95,21 @@ export default function ClubsDirectory() {
             <div>
               <h1 className="font-display text-3xl font-bold text-foreground flex items-center gap-3 mb-2">
                 <Building2 className="h-7 w-7 text-secondary" />
-                Club Directory
+                {t('clubDirectory.title')}
               </h1>
               <p className="text-muted-foreground">
-                Discover board game clubs — shared catalogs, events, and cross-library forums
+                {t('clubDirectory.description')}
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
               <Link to="/join-club">
                 <Button variant="outline" size="sm" className="gap-1.5">
-                  <Ticket className="h-4 w-4" /> Join
+                  <Ticket className="h-4 w-4" /> {t('dashboard.join')}
                 </Button>
               </Link>
               <Link to="/request-club">
                 <Button size="sm" className="gap-1.5 bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                  <Plus className="h-4 w-4" /> Request Club
+                  <Plus className="h-4 w-4" /> {t('clubDirectory.requestClub')}
                 </Button>
               </Link>
             </div>
@@ -117,7 +120,7 @@ export default function ClubsDirectory() {
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search clubs..."
+            placeholder={t('clubDirectory.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -135,16 +138,16 @@ export default function ClubsDirectory() {
           <div className="text-center py-16">
             <Building2 className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
             <h2 className="font-display text-xl text-foreground mb-2">
-              {searchQuery ? "No clubs found" : "No public clubs yet"}
+              {searchQuery ? t('clubDirectory.noClubsFound') : t('clubDirectory.noPublicClubs')}
             </h2>
             <p className="text-muted-foreground text-sm mb-6">
               {searchQuery
-                ? "Try a different search term"
-                : "Be the first to create a club and build a community!"}
+                ? t('clubDirectory.tryDifferentSearch')
+                : t('clubDirectory.beFirstToCreate')}
             </p>
             <Link to="/request-club">
               <Button className="bg-secondary text-secondary-foreground gap-2">
-                <Plus className="h-4 w-4" /> Request a Club
+                <Plus className="h-4 w-4" /> {t('clubDirectory.requestAClub')}
               </Button>
             </Link>
           </div>
@@ -160,12 +163,12 @@ export default function ClubsDirectory() {
         <div className="mt-12 border-t border-border/50 pt-8">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-display text-lg text-foreground mb-1">Looking for individual libraries?</h2>
-              <p className="text-sm text-muted-foreground">Browse the Library Directory to find game collections near you</p>
+              <h2 className="font-display text-lg text-foreground mb-1">{t('clubDirectory.lookingForLibraries')}</h2>
+              <p className="text-sm text-muted-foreground">{t('clubDirectory.browseLibraryDirectory')}</p>
             </div>
             <Link to="/directory">
               <Button variant="outline" className="gap-2">
-                <Users className="h-4 w-4" /> Library Directory
+                <Users className="h-4 w-4" /> {t('clubDirectory.libraryDirectory')}
               </Button>
             </Link>
           </div>

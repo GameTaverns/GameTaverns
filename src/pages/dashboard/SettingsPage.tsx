@@ -35,8 +35,8 @@ export default function SettingsPage() {
 
   return (
     <SpokePageLayout
-      title="Settings & Account"
-      description="Profile, security, preferences & more"
+      title={t('hub.settingsAndAccount')}
+      description={t('hub.settingsProfileDesc')}
       icon={SettingsIcon}
       iconColor="hsl(var(--muted-foreground))"
     >

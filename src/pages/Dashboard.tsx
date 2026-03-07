@@ -117,6 +117,7 @@ export default function Dashboard() {
   if (!isAuthenticated) return null;
 
   const displayName = profile?.display_name || (user as any)?.user_metadata?.display_name || user?.email?.split("@")[0] || "Player";
+  const libraryWord = myLibraries.length === 1 ? t('hub.library') : t('hub.libraries');
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background flex flex-col">
@@ -132,21 +133,21 @@ export default function Dashboard() {
           <h1 className="font-display text-xl sm:text-2xl font-bold text-foreground">
             {t('dashboard.welcomeBack', { name: displayName })}
           </h1>
-          <p className="text-sm text-muted-foreground">Your board game command center</p>
+          <p className="text-sm text-muted-foreground">{t('dashboard.commandCenter')}</p>
         </div>
 
         {/* Quick Actions */}
         <div className="flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4">
           <Link to="/dashboard/collection" className="contents">
             <Button size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <Plus className="h-3.5 w-3.5" /> Add Game
+              <Plus className="h-3.5 w-3.5" /> {t('dashboard.addGame')}
             </Button>
           </Link>
           {myLibraries.length > 1 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-                  <Library className="h-3.5 w-3.5" /> Library <ChevronDown className="h-3 w-3" />
+                  <Library className="h-3.5 w-3.5" /> {t('nav.myLibrary')} <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-48">
@@ -165,50 +166,50 @@ export default function Dashboard() {
           ) : library ? (
             <TenantLink href={getLibraryUrl(library.slug, "/")} className="contents">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-                <Library className="h-3.5 w-3.5" /> Library
+                <Library className="h-3.5 w-3.5" /> {t('nav.myLibrary')}
               </Button>
             </TenantLink>
           ) : null}
           <Link to="/catalog" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <Search className="h-3.5 w-3.5" /> Catalog
+              <Search className="h-3.5 w-3.5" /> {t('nav.catalog')}
             </Button>
           </Link>
           <Link to="/directory" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <Globe className="h-3.5 w-3.5" /> Directory
+              <Globe className="h-3.5 w-3.5" /> {t('nav.directory')}
             </Button>
           </Link>
           <Link to="/events" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <Calendar className="h-3.5 w-3.5" /> Events
+              <Calendar className="h-3.5 w-3.5" /> {t('dashboard.events')}
             </Button>
           </Link>
           <Link to="/dashboard/lending" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <BookOpen className="h-3.5 w-3.5" /> Lending
+              <BookOpen className="h-3.5 w-3.5" /> {t('dashboard.lending')}
             </Button>
           </Link>
           <Link to="/dashboard/insights" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <ClipboardList className="h-3.5 w-3.5" /> Log Play
+              <ClipboardList className="h-3.5 w-3.5" /> {t('hub.logPlay')}
             </Button>
           </Link>
           <Link to="/dashboard/collection" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <Dice5 className="h-3.5 w-3.5" /> Random
+              <Dice5 className="h-3.5 w-3.5" /> {t('hub.random')}
             </Button>
           </Link>
           {profile?.username && (
             <Link to={`/u/${profile.username}`} className="contents">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-                <User className="h-3.5 w-3.5" /> Profile
+                <User className="h-3.5 w-3.5" /> {t('hub.profile')}
               </Button>
             </Link>
           )}
           <Link to="/docs" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <HelpCircle className="h-3.5 w-3.5" /> Help
+              <HelpCircle className="h-3.5 w-3.5" /> {t('nav.help')}
             </Button>
           </Link>
         </div>
@@ -218,75 +219,75 @@ export default function Dashboard() {
           <HubCard
             to="/dashboard/collection"
             icon={Gamepad2}
-            title="My Collection"
-            description={library ? `${gameCount ?? 0} games · ${myLibraries.length} ${myLibraries.length === 1 ? 'library' : 'libraries'}` : "No library yet"}
+            title={t('hub.myCollection')}
+            description={library ? t('hub.gamesAndLibraries', { games: gameCount ?? 0, libraries: myLibraries.length, libraryWord }) : t('hub.noLibraryYet')}
             bullets={[
-              "Browse, filter & manage your library",
-              "Import from BGG · Add manually",
-              "Shelf of shame · Random picker",
+              t('hub.browseFilterManage'),
+              t('hub.importFromBGG'),
+              t('hub.shelfOfShameRandom'),
             ]}
             iconColor="hsl(var(--primary))"
-            badges={!library ? [{ label: "Create Library", variant: "default" }] : undefined}
+            badges={!library ? [{ label: t('dashboard.createLibrary'), variant: "default" }] : undefined}
           />
           <HubCard
             to="/dashboard/lending"
             icon={BookOpen}
-            title="Lending & Loans"
-            description={`${pendingLoanRequests} pending · ${activeBorrowedLoans.length} borrowed`}
+            title={t('hub.lendingAndLoans')}
+            description={t('hub.pendingAndBorrowed', { pending: pendingLoanRequests, borrowed: activeBorrowedLoans.length })}
             bullets={[
-              pendingLoanRequests > 0 ? `${pendingLoanRequests} loan requests waiting` : "No pending requests",
-              activeBorrowedLoans.length > 0 ? `${activeBorrowedLoans.length} games currently borrowed` : "Nothing borrowed right now",
-              "Cross-library trading hub",
+              pendingLoanRequests > 0 ? t('hub.loanRequestsWaiting', { count: pendingLoanRequests }) : t('hub.noPendingRequests'),
+              activeBorrowedLoans.length > 0 ? t('hub.gamesCurrentlyBorrowed', { count: activeBorrowedLoans.length }) : t('hub.nothingBorrowedNow'),
+              t('hub.crossLibraryTrading'),
             ]}
             iconColor="hsl(24, 80%, 50%)"
-            badges={pendingLoanRequests > 0 ? [{ label: `${pendingLoanRequests} pending`, variant: "destructive" }] : undefined}
+            badges={pendingLoanRequests > 0 ? [{ label: `${pendingLoanRequests} ${t('dashboard.pending')}`, variant: "destructive" }] : undefined}
           />
           <HubCard
             to="/dashboard/insights"
             icon={Sparkles}
-            title="Insights & Analytics"
-            description="Collection DNA, stats & achievements"
+            title={t('hub.insightsAndAnalytics')}
+            description={t('hub.insightsDesc')}
             bullets={[
-              "Your collector personality & rarity scores",
-              "Play stats, value tracking & trends",
-              "Shareable cards & achievements",
+              t('hub.collectorPersonality'),
+              t('hub.playStatsTracking'),
+              t('hub.shareableCards'),
             ]}
             iconColor="hsl(262, 80%, 55%)"
           />
           <HubCard
             to="/dashboard/community"
             icon={Users}
-            title="Community & Events"
-            description={`${myClubs.length} clubs · Forums · Events`}
+            title={t('hub.communityAndEvents')}
+            description={t('hub.clubsForumsEvents', { clubs: myClubs.length })}
             bullets={[
-              myClubs.length > 0 ? `${myClubs.length} club${myClubs.length > 1 ? 's' : ''} joined` : "Join or create a club",
-              "Forums, polls & group challenges",
-              "Events & RSVP management",
+              myClubs.length > 0 ? t('hub.clubsJoined', { count: myClubs.length, plural: myClubs.length > 1 ? 's' : '' }) : t('hub.joinOrCreateClub'),
+              t('hub.forumsPollsChallenges'),
+              t('hub.eventsRSVP'),
             ]}
             iconColor="hsl(200, 70%, 50%)"
           />
           <HubCard
             to="/dashboard/messages"
             icon={Mail}
-            title="Messages & Social"
-            description={unreadDMs > 0 ? `${unreadDMs} unread messages` : "All caught up"}
+            title={t('hub.messagesAndSocial')}
+            description={unreadDMs > 0 ? t('hub.unreadMessages', { count: unreadDMs }) : t('hub.allCaughtUp')}
             bullets={[
-              unreadDMs > 0 ? `${unreadDMs} unread direct messages` : "No unread messages",
-              "Game inquiries from visitors",
-              "Activity feed & social updates",
+              unreadDMs > 0 ? t('hub.unreadDirectMessages', { count: unreadDMs }) : t('hub.noUnreadMessages'),
+              t('hub.gameInquiries'),
+              t('hub.activityFeed'),
             ]}
             iconColor="hsl(340, 65%, 50%)"
-            badges={unreadDMs > 0 ? [{ label: `${unreadDMs} unread`, variant: "destructive" }] : undefined}
+            badges={unreadDMs > 0 ? [{ label: t('hub.unread', { count: unreadDMs }), variant: "destructive" }] : undefined}
           />
           <HubCard
             to="/dashboard/settings"
             icon={Settings}
-            title="Settings & Account"
-            description="Profile, security & preferences"
+            title={t('hub.settingsAndAccount')}
+            description={t('hub.settingsDesc')}
             bullets={[
-              "Profile, display name & bio",
-              "Password, 2FA & appearance",
-              "Referrals · Growth tools · Danger zone",
+              t('hub.profileDisplayBio'),
+              t('hub.password2FA'),
+              t('hub.referralsGrowth'),
             ]}
             iconColor="hsl(var(--muted-foreground))"
           />
