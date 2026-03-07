@@ -327,7 +327,7 @@ export default function UserProfile() {
               <BarChart3 className="h-3.5 w-3.5" />{t('profile.stats')}
             </TabsTrigger>
             <TabsTrigger value="achievements" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
-              <Trophy className="h-3.5 w-3.5" />Achievements
+              <Trophy className="h-3.5 w-3.5" />{t('profile.achievements')}
             </TabsTrigger>
             <TabsTrigger value="communities" className="gap-1.5" style={hasTheme && profileAccent ? { color: profileAccent } : {}}>
               <Users className="h-3.5 w-3.5" />Communities
