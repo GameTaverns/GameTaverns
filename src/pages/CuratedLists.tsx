@@ -214,6 +214,7 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
 }
 
 function WishlistVirtualCard({ itemCount }: { itemCount: number }) {
+  const { t } = useTranslation();
   const { tenantSlug } = useTenant();
   const href = tenantSlug ? getLibraryUrl(tenantSlug, "/lists/wishlist") : "/lists/wishlist";
 
