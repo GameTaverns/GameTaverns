@@ -171,8 +171,8 @@ export default function Directory() {
           <div className="flex items-center gap-2 flex-wrap">
             {library.allow_lending && (
               <Badge variant="secondary" className="text-xs">
-                <BookOpen className="h-3 w-3 mr-1" />
-                Lending Available
+                 <BookOpen className="h-3 w-3 mr-1" />
+                 {t('directory.lendingAvailable')}
               </Badge>
             )}
           </div>
