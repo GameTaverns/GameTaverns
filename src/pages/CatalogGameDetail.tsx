@@ -423,8 +423,8 @@ export default function CatalogGameDetail() {
                   disabled={addWant.isPending}
                   className="gap-2"
                 >
-                  {addWant.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className="h-4 w-4" />}
-                  Add to Wishlist
+                   {addWant.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Heart className="h-4 w-4" />}
+                   {t('catalog.addToWishlist')}
                 </Button>
               )}
 
