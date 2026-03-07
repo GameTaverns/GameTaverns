@@ -11,6 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function InstallPage() {
+  const { t } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
