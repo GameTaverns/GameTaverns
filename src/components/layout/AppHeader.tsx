@@ -35,7 +35,7 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (error) {
-      toast({ title: "Error signing out", description: error.message, variant: "destructive" });
+      toast({ title: t('mobileNav.errorSigningOut'), description: error.message, variant: "destructive" });
     } else {
       navigate("/");
     }

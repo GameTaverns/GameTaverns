@@ -471,5 +471,9 @@
     "libraryUnavailableDesc": "このライブラリは現在停止中です。",
     "connectedTo": "{{name}}に接続しました",
     "connectionFailed": "ライブラリへの接続に失敗しました"
-  }
+  },
+  "footer": { "press": "プレス", "contact": "お問い合わせ", "privacy": "プライバシー", "terms": "利用規約", "cookies": "Cookie", "allPolicies": "すべてのポリシー", "copyright": "© {{year}} GameTaverns LLC. ボードゲーム愛好家のために❤️で作られました。", "poweredByBGG": "BGG提供", "imagesDisclaimer": "画像は各出版社に帰属します。" },
+  "twoFactor": { "bannerTitle": "二要素認証でアカウントを保護しましょう", "bannerDesc": "アカウントとライブラリデータを保護するために、セキュリティの追加レイヤーを追加します。", "setUp2FA": "2FAを設定" },
+  "tour": { "stepOf": "ツアー — ステップ{{current}}/{{total}}", "closeTour": "ツアーを閉じる", "doneMovingNext": "完了！次のステップへ…", "endTour": "ツアーを終了", "skip": "スキップ", "welcomeTitle": "GameTavernsへようこそ！🎲", "welcomeDesc": "ここはダッシュボード — ゲームライブラリのコントロールセンターです。", "letsGo": "始めましょう！", "createLibraryTitle": "ライブラリを作成", "createLibraryDesc": "まず、独自のサブドメインを持つライブラリを作成します。", "createLibraryAction": "ライブラリを作成", "importGamesTitle": "ゲームをインポート", "importGamesDesc": "BoardGameGeek、CSV、または手動で追加してゲームを追加しましょう。", "addGamesAction": "ゲームを追加", "customizeTitle": "外観をカスタマイズ", "customizeDesc": "ロゴ、色、フォントを設定してライブラリをユニークに。", "openSettingsAction": "設定を開く", "secureTitle": "アカウントを保護", "secureDesc": "二要素認証でアカウントを保護します。", "setUp2FAAction": "2FAを設定", "completeTitle": "準備完了！🎉", "completeDesc": "お疲れ様でした！コミュニティ機能をいつでもお楽しみください。", "finishTourAction": "ツアーを終了" },
+  "mobileNav": { "dashboard": "ダッシュボード", "library": "ライブラリ", "catalog": "カタログ", "messages": "メッセージ", "more": "もっと", "menu": "メニュー", "myLibraries": "マイライブラリ", "discover": "発見", "directory": "ディレクトリ", "nearMe": "近くの", "events": "イベント", "achievements": "実績", "curatedLists": "キュレーションリスト", "directMessages": "ダイレクトメッセージ", "account": "アカウント", "support": "サポート", "help": "ヘルプ", "legal": "法的情報", "signOut": "サインアウト", "errorSigningOut": "サインアウトエラー" }
 }

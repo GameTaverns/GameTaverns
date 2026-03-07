@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Shield, X } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useTotpStatus } from "@/hooks/useTotpStatus";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function TwoFactorBanner() {
+  const { t } = useTranslation();
   const { status, loading } = useTotpStatus();
   const [dismissed, setDismissed] = useState(false);
 
@@ -19,7 +21,6 @@ export function TwoFactorBanner() {
     setDismissed(true);
   };
 
-  // Don't show if loading, already enabled, or dismissed
   if (loading || status?.isEnabled || dismissed) return null;
 
   return (
@@ -33,16 +34,16 @@ export function TwoFactorBanner() {
         <Shield className="h-5 w-5 text-secondary flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground">
-            Secure your account with two-factor authentication
+            {t('twoFactor.bannerTitle')}
           </p>
           <p className="text-xs text-muted-foreground">
-            Add an extra layer of security to protect your account and library data.
+            {t('twoFactor.bannerDesc')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/setup-2fa">
             <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
-              Set Up 2FA
+              {t('twoFactor.setUp2FA')}
             </Button>
           </Link>
           <Button
