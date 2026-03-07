@@ -595,8 +595,8 @@ export default function CatalogBrowse() {
           {catalogGames.length === 0 && !isLoading && (
             <div className="text-center py-12">
               <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="font-display text-xl mb-2">No games found</h3>
-              <p className="text-muted-foreground">Try adjusting your search or filters</p>
+               <h3 className="font-display text-xl mb-2">{t('catalog.noGamesFound')}</h3>
+               <p className="text-muted-foreground">{t('catalog.adjustSearchFilters')}</p>
             </div>
           )}
         </div>
