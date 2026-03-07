@@ -103,7 +103,7 @@ export default function Platform() {
             {isAuthenticated ? (
               <>
                 <Link to="/dashboard">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Dashboard</Button>
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">{t('nav.dashboard')}</Button>
                 </Link>
                 {myLibrary && (
                   <TenantLink href={getLibraryUrl(myLibrary.slug, "/")}>
