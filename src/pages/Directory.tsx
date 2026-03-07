@@ -393,9 +393,9 @@ export default function Directory() {
             </div>
             <Link to="/near-me">
               <Button variant="outline" className="gap-2 flex-shrink-0">
-                <MapPin className="h-4 w-4" />
-                <Map className="h-4 w-4" />
-                Map View
+                 <MapPin className="h-4 w-4" />
+                 <Map className="h-4 w-4" />
+                 {t('directory.mapView')}
               </Button>
             </Link>
           </div>
