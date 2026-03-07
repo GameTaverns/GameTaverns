@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Loader2, Check, X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import { supabase } from "@/integrations/backend/client";
 import { useQuery } from "@tanstack/react-query";
 
 export default function RequestClub() {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -33,17 +35,17 @@ export default function RequestClub() {
     queryKey: ["club-slug-check", debouncedSlug],
     queryFn: async () => {
       if (!debouncedSlug || debouncedSlug.length < 3)
-        return { available: false, reason: "Must be at least 3 characters" };
+        return { available: false, reason: t('requestClub.slugMinChars') };
       const slugRegex = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
       if (!slugRegex.test(debouncedSlug))
-        return { available: false, reason: "Lowercase letters, numbers, and hyphens only" };
+        return { available: false, reason: t('requestClub.slugInvalidChars') };
 
       const { data } = await supabase
         .from("clubs")
         .select("id")
         .eq("slug", debouncedSlug)
         .maybeSingle();
-      return { available: !data, reason: data ? "Already taken" : null };
+      return { available: !data, reason: data ? t('requestClub.slugTaken') : null };
     },
     enabled: debouncedSlug.length >= 3,
   });
@@ -73,13 +75,13 @@ export default function RequestClub() {
     try {
       await requestClub.mutateAsync({ name, slug, description, is_public: isPublic });
       toast({
-        title: "Club request submitted!",
-        description: "A platform admin will review your request shortly.",
+        title: t('requestClub.submitted'),
+        description: t('requestClub.submittedDesc'),
       });
       navigate("/dashboard?tab=clubs");
     } catch (error: any) {
       toast({
-        title: "Failed to request club",
+        title: t('requestClub.failed'),
         description: error.message,
         variant: "destructive",
       });
@@ -100,34 +102,34 @@ export default function RequestClub() {
               <Users className="h-8 w-8 text-secondary" />
             </div>
           </div>
-          <CardTitle className="font-display text-2xl text-cream">Request a Club</CardTitle>
+          <CardTitle className="font-display text-2xl text-cream">{t('requestClub.title')}</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Create a club to connect multiple board game libraries
+            {t('requestClub.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-cream/80">Club Name</Label>
+              <Label htmlFor="name" className="text-cream/80">{t('requestClub.clubName')}</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Awesome Board Game Club"
+                placeholder={t('requestClub.clubNamePlaceholder')}
                 className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slug" className="text-cream/80">Club URL</Label>
+              <Label htmlFor="slug" className="text-cream/80">{t('requestClub.clubUrl')}</Label>
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <Input
                     id="slug"
                     value={slug}
                     onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="awesome-bgc"
+                    placeholder={t('requestClub.clubUrlPlaceholder')}
                     className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground pr-10"
                     required
                   />
@@ -149,13 +151,13 @@ export default function RequestClub() {
 
             <div className="space-y-2">
               <Label htmlFor="description" className="text-cream/80">
-                Description <span className="text-muted-foreground">(optional)</span>
+                {t('requestClub.descriptionLabel')} <span className="text-muted-foreground">{t('requestClub.optional')}</span>
               </Label>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Our local board game community..."
+                placeholder={t('requestClub.descriptionPlaceholder')}
                 className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground resize-none"
                 rows={3}
               />
@@ -163,9 +165,9 @@ export default function RequestClub() {
 
             <div className="flex items-center justify-between p-3 bg-wood-medium/30 rounded-lg border border-border/30">
               <div>
-                <Label className="text-cream/80">Public Club</Label>
+                <Label className="text-cream/80">{t('requestClub.publicClub')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Public clubs appear in the directory
+                  {t('requestClub.publicClubDesc')}
                 </p>
               </div>
               <Switch checked={isPublic} onCheckedChange={setIsPublic} />
@@ -173,8 +175,7 @@ export default function RequestClub() {
 
             <div className="p-4 bg-wood-medium/30 rounded-lg border border-border/30">
               <p className="text-sm text-cream/70">
-                ℹ️ Your request will be reviewed by a platform admin. Once approved,
-                you'll be able to generate invite codes for other library owners to join.
+                {t('requestClub.reviewNotice')}
               </p>
             </div>
 
@@ -186,17 +187,17 @@ export default function RequestClub() {
               {requestClub.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
+                  {t('requestClub.submitting')}
                 </>
               ) : (
-                "Submit Request"
+                t('requestClub.submitRequest')
               )}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <Link to="/dashboard" className="text-secondary hover:text-secondary/80 underline text-sm">
-              Back to Dashboard
+              {t('requestClub.backToDashboard')}
             </Link>
           </div>
         </CardContent>

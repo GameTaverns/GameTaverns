@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@capacitor/android": "^8.0.2",
     "@capacitor/app": "^8.0.1",
     "@capacitor/camera": "^8.0.1",

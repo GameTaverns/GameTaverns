@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { Layout } from "@/components/layout/Layout";
 import { Link, useNavigate } from "react-router-dom";
@@ -46,6 +47,7 @@ import { TenantLink } from "@/components/TenantLink";
 import { format } from "date-fns";
 
 export default function CuratedListsPage() {
+  const { t } = useTranslation();
   const { tenantSlug, library } = useTenant();
   const { isAuthenticated } = useAuth();
   const { data: publicLists = [], isLoading } = useCuratedLists(library?.id);
@@ -66,10 +68,10 @@ export default function CuratedListsPage() {
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground flex items-center gap-2">
               <ListOrdered className="h-7 w-7 text-primary" />
-              Curated Lists
+              {t('lists.title')}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Ranked game lists crafted by the community — vote for your favourites.
+              {t('lists.subtitle')}
             </p>
           </div>
           {isAuthenticated && <CreateListButton libraryId={library?.id} />}
@@ -77,8 +79,8 @@ export default function CuratedListsPage() {
 
         <Tabs value={listsTab} onValueChange={setListsTab}>
           <TabsList>
-            <TabsTrigger value="community">Community</TabsTrigger>
-            {isAuthenticated && <TabsTrigger value="mine">My Lists</TabsTrigger>}
+            <TabsTrigger value="community">{t('lists.community')}</TabsTrigger>
+            {isAuthenticated && <TabsTrigger value="mine">{t('lists.myLists')}</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="community" className="mt-4 space-y-3">
@@ -88,7 +90,7 @@ export default function CuratedListsPage() {
               ? (
                 <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
                   <ListOrdered className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                  <p>No lists yet — be the first to create one!</p>
+                  <p>{t('lists.noListsYet')}</p>
                 </div>
               )
               : publicLists.map((list) => (
@@ -105,7 +107,7 @@ export default function CuratedListsPage() {
               {myLists.length === 0 && wishlistItems.length === 0
                 ? (
                   <div className="text-center py-12 text-muted-foreground border border-dashed rounded-xl">
-                    <p>You haven't created any lists yet.</p>
+                    <p>{t('lists.noMyLists')}</p>
                   </div>
                 )
                 : myLists.map((list) => (
@@ -161,6 +163,7 @@ function ListCard({ list, href }: { list: CuratedList; href: string }) {
 }
 
 function MyListCard({ list, href }: { list: CuratedList; href: string }) {
+  const { t } = useTranslation();
   const deleteList = useDeleteList();
   const { toast } = useToast();
 
@@ -168,7 +171,7 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
     e.preventDefault();
     try {
       await deleteList.mutateAsync(list.id);
-      toast({ title: "List deleted" });
+      toast({ title: t('lists.listDeleted') });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -195,13 +198,13 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete list?</AlertDialogTitle>
-            <AlertDialogDescription>"{list.title}" will be permanently deleted.</AlertDialogDescription>
+            <AlertDialogTitle>{t('lists.deleteList')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('lists.deleteListDesc', { title: list.title })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDelete}>
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -211,6 +214,7 @@ function MyListCard({ list, href }: { list: CuratedList; href: string }) {
 }
 
 function WishlistVirtualCard({ itemCount }: { itemCount: number }) {
+  const { t } = useTranslation();
   const { tenantSlug } = useTenant();
   const href = tenantSlug ? getLibraryUrl(tenantSlug, "/lists/wishlist") : "/lists/wishlist";
 
@@ -239,6 +243,7 @@ function WishlistVirtualCard({ itemCount }: { itemCount: number }) {
 }
 
 function CreateListButton({ libraryId }: { libraryId?: string }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
@@ -251,7 +256,7 @@ function CreateListButton({ libraryId }: { libraryId?: string }) {
     if (!title.trim()) return;
     try {
       const list = await createList.mutateAsync({ title: title.trim(), description: desc.trim() || undefined, library_id: libraryId });
-      toast({ title: "List created!" });
+      toast({ title: t('lists.listCreated') });
       setOpen(false);
       const path = `/lists/${list.id}`;
       navigate(tenantSlug ? getLibraryUrl(tenantSlug, path) : path);
@@ -265,26 +270,26 @@ function CreateListButton({ libraryId }: { libraryId?: string }) {
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          New List
+          {t('lists.newList')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create a new list</DialogTitle>
+          <DialogTitle>{t('lists.createNewList')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="list-title">Title</Label>
-            <Input id="list-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Best Gateway Games" maxLength={100} />
+            <Label htmlFor="list-title">{t('lists.listTitle')}</Label>
+            <Input id="list-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('lists.listTitlePlaceholder')} maxLength={100} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="list-desc">Description (optional)</Label>
-            <Textarea id="list-desc" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="What's this list about?" rows={3} maxLength={500} />
+            <Label htmlFor="list-desc">{t('lists.listDescription')}</Label>
+            <Textarea id="list-desc" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={t('lists.listDescPlaceholder')} rows={3} maxLength={500} />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleCreate} disabled={!title.trim() || createList.isPending}>
-              {createList.isPending ? "Creating..." : "Create"}
+              {createList.isPending ? t('lists.creating') : t('lists.create')}
             </Button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { Search, Calendar, MapPin, Users, Globe, ChevronRight, Trophy, Gamepad2, Ticket, Filter, Plus, CalendarPlus, Lock, Eye, Archive } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
@@ -40,6 +41,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 const PUBLIC_EVENT_CREATE_DIALOG_KEY = "public_event_create_dialog_open";
 
 export default function PublicEventDirectory() {
+  const { t } = useTranslation();
   const { data: events = [], isLoading } = usePublicEventDirectory();
   const { isAuthenticated, user } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
@@ -96,8 +98,8 @@ export default function PublicEventDirectory() {
     return matchesSearch && matchesType && matchesCity;
   });
 
-  const title = "Board Game Events & Tournaments";
-  const description = "Discover upcoming board game events, tournaments, conventions, and game nights near you. Register and join the community.";
+  const title = t('events.seoTitle');
+  const description = t('events.seoDescription');
 
   return (
     <Layout hideSidebar>
@@ -108,16 +110,16 @@ export default function PublicEventDirectory() {
           <div className="space-y-1">
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Globe className="h-6 w-6 text-primary" />
-              Events Near You
+              {t('events.title')}
             </h1>
             <p className="text-muted-foreground text-sm">
-              Discover upcoming board game events, tournaments, and conventions
+              {t('events.subtitle')}
             </p>
           </div>
           {isAuthenticated && (
             <Button onClick={() => setShowCreateDialog(true)} size="sm" className="gap-1.5">
               <CalendarPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Create Event</span>
+              <span className="hidden sm:inline">{t('events.createEvent')}</span>
             </Button>
           )}
         </div>
@@ -129,21 +131,21 @@ export default function PublicEventDirectory() {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search events, organizers..."
+              placeholder={t('events.searchPlaceholder')}
               className="pl-9"
             />
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="All types" />
+              <SelectValue placeholder={t('events.allTypes')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="game_night">Game Nights</SelectItem>
-              <SelectItem value="tournament">Tournaments</SelectItem>
-              <SelectItem value="convention">Conventions</SelectItem>
-              <SelectItem value="meetup">Meetups</SelectItem>
-              <SelectItem value="public_event">Public Events</SelectItem>
+              <SelectItem value="all">{t('events.allTypes')}</SelectItem>
+              <SelectItem value="game_night">{t('events.gameNights')}</SelectItem>
+              <SelectItem value="tournament">{t('events.tournaments')}</SelectItem>
+              <SelectItem value="convention">{t('events.conventions')}</SelectItem>
+              <SelectItem value="meetup">{t('events.meetups')}</SelectItem>
+              <SelectItem value="public_event">{t('events.publicEvents')}</SelectItem>
             </SelectContent>
           </Select>
           {cities.length > 0 && (
@@ -152,7 +154,7 @@ export default function PublicEventDirectory() {
               <Input
                 value={cityFilter}
                 onChange={e => setCityFilter(e.target.value)}
-                placeholder="Filter by city..."
+                placeholder={t('events.filterByCity')}
                 className="pl-9"
                 list="city-suggestions"
               />
@@ -169,7 +171,7 @@ export default function PublicEventDirectory() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" />
-                My Events
+                {t('events.myEvents')}
               </h2>
               <Button
                 variant={showArchived ? "secondary" : "ghost"}
@@ -178,7 +180,7 @@ export default function PublicEventDirectory() {
                 onClick={() => setShowArchived(!showArchived)}
               >
                 <Archive className="h-3.5 w-3.5" />
-                {showArchived ? "Hide Archived" : "Show Archived"}
+                {showArchived ? t('events.hideArchived') : t('events.showArchived')}
               </Button>
             </div>
             {myEventsLoading ? (
@@ -206,15 +208,15 @@ export default function PublicEventDirectory() {
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
               <Globe className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="text-sm font-medium">No events found</p>
+              <p className="text-sm font-medium">{t('events.noEventsFound')}</p>
               <p className="text-xs mt-1">
                 {search || typeFilter !== "all" || cityFilter
-                  ? "Try adjusting your filters"
-                  : "Check back later or create your own event!"}
+                  ? t('events.adjustFilters')
+                  : t('events.checkBackLater')}
               </p>
               {isAuthenticated && (
                 <Button size="sm" variant="outline" className="mt-4" onClick={() => setShowCreateDialog(true)}>
-                  <CalendarPlus className="h-4 w-4 mr-1" /> Create Event
+                  <CalendarPlus className="h-4 w-4 mr-1" /> {t('events.createEvent')}
                 </Button>
               )}
             </CardContent>
@@ -234,7 +236,7 @@ export default function PublicEventDirectory() {
         {/* City Links for SEO */}
         {cityLinks.length > 0 && (
           <div className="border-t border-border pt-8 mt-8">
-            <h2 className="font-display font-bold text-lg mb-4">Browse Events by City</h2>
+            <h2 className="font-display font-bold text-lg mb-4">{t('events.browseByCity')}</h2>
             <div className="flex flex-wrap gap-2">
               {cityLinks.slice(0, 30).map((c) => (
                 <Link

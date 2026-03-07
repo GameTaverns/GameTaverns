@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { BackLink } from "@/components/navigation/BackLink";
 import { AchievementsDisplay } from "@/components/achievements/AchievementsDisplay";
@@ -8,6 +9,8 @@ import { TenantLink } from "@/components/TenantLink";
 import logoImage from "@/assets/logo.png";
 
 export default function Achievements() {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-wood-dark via-sidebar to-wood-medium dark">
       {/* Header */}
