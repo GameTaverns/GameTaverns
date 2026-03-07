@@ -520,7 +520,7 @@ export default function CatalogBrowse() {
               className="gap-2"
             >
               {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              <span className="hidden sm:inline">Filters</span>
+              <span className="hidden sm:inline">{t('catalog.filters')}</span>
             </Button>
           </div>
 
