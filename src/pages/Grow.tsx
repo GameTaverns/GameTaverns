@@ -89,15 +89,15 @@ export default function Grow() {
                 <CardContent className="py-5">
                   <h3 className="font-display font-bold text-sm mb-2 flex items-center gap-2">
                     <Share2 className="h-4 w-4 text-primary" />
-                    Embed Your Library
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Add an embeddable widget to your blog or Discord.
-                  </p>
-                  <Link to="/embed">
-                    <Button variant="outline" size="sm" className="w-full gap-1">
-                      Get Embed Code <ChevronRight className="h-3 w-3" />
-                    </Button>
+                     {t('grow.embedLibrary')}
+                   </h3>
+                   <p className="text-xs text-muted-foreground mb-3">
+                     {t('grow.embedDesc')}
+                   </p>
+                   <Link to="/embed">
+                     <Button variant="outline" size="sm" className="w-full gap-1">
+                       {t('grow.getEmbedCode')} <ChevronRight className="h-3 w-3" />
+                     </Button>
                   </Link>
                 </CardContent>
               </Card>
