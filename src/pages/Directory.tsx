@@ -46,6 +46,7 @@ export default function Directory() {
   const [filterCountry, setFilterCountry] = useState<string>("all");
   const [filterCity, setFilterCity] = useState<string>("all");
   const [dirTab, setDirTab] = usePersistedTab("directory-tab", "all");
+  const [topTab, setTopTab] = usePersistedTab("directory-top-tab", "libraries");
 
   const {
     libraries,
