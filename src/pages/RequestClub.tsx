@@ -157,7 +157,7 @@ export default function RequestClub() {
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Our local board game community..."
+                placeholder={t('requestClub.descriptionPlaceholder')}
                 className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground resize-none"
                 rows={3}
               />
