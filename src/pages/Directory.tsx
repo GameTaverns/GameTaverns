@@ -340,7 +340,7 @@ export default function Directory() {
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   }`}
                 >
-                  All Cities
+                  {t('directory.allCities')}
                 </button>
                 {cities.map((c) => (
                   <button
