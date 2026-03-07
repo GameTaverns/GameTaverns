@@ -449,13 +449,13 @@ export default function CatalogGameDetail() {
               </TabsContent>
 
               <TabsContent value="info" className="mt-0">
-                <h2 className="font-display text-xl font-semibold mb-4 text-foreground">Additional Information</h2>
-                <Table>
-                  <TableBody>
-                    {game.play_time_minutes != null && (
-                      <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Play Time</TableCell>
-                        <TableCell className="text-foreground">{game.play_time_minutes} minutes</TableCell>
+                 <h2 className="font-display text-xl font-semibold mb-4 text-foreground">{t('catalog.additionalInfo')}</h2>
+                 <Table>
+                   <TableBody>
+                     {game.play_time_minutes != null && (
+                       <TableRow>
+                         <TableCell className="font-medium text-muted-foreground">{t('catalog.playTime')}</TableCell>
+                         <TableCell className="text-foreground">{t('catalog.minutes', { count: game.play_time_minutes })}</TableCell>
                       </TableRow>
                     )}
                     {playerRange && (
