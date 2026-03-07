@@ -355,7 +355,7 @@ export default function UserProfile() {
                 <ActivityFilterBar hiddenTypes={hiddenTypes} toggle={toggle} availableFilters={availableFilters} />
                 {filteredActivity.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    {groupedActivity.length === 0 ? "No activity yet." : "No matching activity."}
+                    {groupedActivity.length === 0 ? t('profile.noActivity') : t('profile.noMatchingActivity')}
                   </p>
                 ) : (
                   <div className="space-y-3">
