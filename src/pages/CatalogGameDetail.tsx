@@ -478,7 +478,7 @@ export default function CatalogGameDetail() {
                     )}
                     {game.publishers.length > 0 && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Publisher{game.publishers.length > 1 ? "s" : ""}</TableCell>
+                         <TableCell className="font-medium text-muted-foreground">{game.publishers.length > 1 ? t('catalog.publishers') : t('catalog.publisher')}</TableCell>
                         <TableCell className="text-foreground">{game.publishers.join(", ")}</TableCell>
                       </TableRow>
                     )}
