@@ -215,10 +215,6 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
       </div>
     );
   }
-        </Link>
-      </div>
-    );
-  }
 
   const Icon = ICON_MAP[category.icon] || MessageSquare;
   const colorClass = HEADER_COLOR_MAP[category.color] || HEADER_COLOR_MAP.blue;
