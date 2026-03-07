@@ -267,7 +267,7 @@ function CreateListButton({ libraryId }: { libraryId?: string }) {
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          New List
+          {t('lists.newList')}
         </Button>
       </DialogTrigger>
       <DialogContent>
