@@ -516,7 +516,7 @@ export default function CatalogGameDetail() {
                     )}
                     {game.mechanics.length > 0 && (
                       <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">Mechanics</TableCell>
+                        <TableCell className="font-medium text-muted-foreground">{t('catalog.mechanics')}</TableCell>
                         <TableCell className="text-foreground">
                           <div className="flex flex-wrap gap-1">
                             {game.mechanics.map(m => (
