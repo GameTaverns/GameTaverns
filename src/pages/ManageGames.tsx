@@ -82,8 +82,8 @@ export default function ManageGames() {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold">Manage Collection</h1>
-            <p className="text-muted-foreground text-sm">Edit, organize, and manage your existing games</p>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold">{t('manageGames.title')}</h1>
+            <p className="text-muted-foreground text-sm">{t('manageGames.subtitle')}</p>
           </div>
           <TenantLink href={buildUrl("/add")}>
             <Button>
