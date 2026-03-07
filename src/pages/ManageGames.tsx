@@ -14,6 +14,7 @@ import { useTenantUrl, getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 
 export default function ManageGames() {
+  const { t } = useTranslation();
   const { library, settings, isLoading, isOwner } = useTenant();
   const { buildUrl } = useTenantUrl();
   const { isAuthenticated, loading: authLoading } = useAuth();
