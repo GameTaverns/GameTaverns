@@ -110,10 +110,10 @@ export default function PublicEventDirectory() {
           <div className="space-y-1">
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Globe className="h-6 w-6 text-primary" />
-              Events Near You
+              {t('events.title')}
             </h1>
             <p className="text-muted-foreground text-sm">
-              Discover upcoming board game events, tournaments, and conventions
+              {t('events.subtitle')}
             </p>
           </div>
           {isAuthenticated && (
