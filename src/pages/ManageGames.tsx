@@ -96,7 +96,7 @@ export default function ManageGames() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="w-full h-auto flex-wrap gap-1 p-1">
             <TabsTrigger value="collection" className="gap-2">
-              Collection
+              {t('manageGames.collection')}
             </TabsTrigger>
             <TabsTrigger value="categories" className="gap-2">
               <Tag className="h-4 w-4" />
