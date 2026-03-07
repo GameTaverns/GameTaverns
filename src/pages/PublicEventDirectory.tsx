@@ -171,7 +171,8 @@ export default function PublicEventDirectory() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Lock className="h-4 w-4 text-muted-foreground" />
-                My Events
+                {t('events.myEvents')}
+              </h2>
               </h2>
               <Button
                 variant={showArchived ? "secondary" : "ghost"}
