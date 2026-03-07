@@ -115,7 +115,7 @@ export default function RequestClub() {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Awesome Board Game Club"
+                placeholder={t('requestClub.clubNamePlaceholder')}
                 className="bg-wood-medium/50 border-border/50 text-cream placeholder:text-muted-foreground"
                 required
               />
