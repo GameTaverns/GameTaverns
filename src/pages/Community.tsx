@@ -201,15 +201,20 @@ function CategoryView({ categorySlug }: { categorySlug: string }) {
   }
 
   if (!category) {
+    const { t } = useTranslation();
     return (
       <div className="text-center py-12">
         <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Category not found</h2>
+        <h2 className="text-xl font-semibold mb-2">{t('community.categoryNotFound')}</h2>
         <Link to="/community">
           <Button variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Forums
+            {t('community.backToForums')}
           </Button>
+        </Link>
+      </div>
+    );
+  }
         </Link>
       </div>
     );
