@@ -41,6 +41,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 const PUBLIC_EVENT_CREATE_DIALOG_KEY = "public_event_create_dialog_open";
 
 export default function PublicEventDirectory() {
+  const { t } = useTranslation();
   const { data: events = [], isLoading } = usePublicEventDirectory();
   const { isAuthenticated, user } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
