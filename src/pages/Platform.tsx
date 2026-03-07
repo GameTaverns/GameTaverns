@@ -116,8 +116,8 @@ export default function Platform() {
                 <Link to="/login">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">{t('nav.signIn')}</Button>
                 </Link>
-                <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90" onClick={handleGetStarted}>
-                  Get Started
+                 <Button size="sm" className="bg-secondary text-secondary-foreground hover:bg-secondary/90" onClick={handleGetStarted}>
+                   {t('platform.getStarted')}
                 </Button>
               </>
             )}
