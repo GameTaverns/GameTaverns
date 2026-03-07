@@ -41,6 +41,9 @@ const ImportErrorsPanel = lazy(() =>
 const EmailEngagementAnalytics = lazy(() =>
   import("@/components/admin/EmailEngagementAnalytics").then(m => ({ default: m.EmailEngagementAnalytics }))
 );
+const AccessibilityAudit = lazy(() =>
+  import("@/components/admin/AccessibilityAudit").then(m => ({ default: m.AccessibilityAudit }))
+);
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
