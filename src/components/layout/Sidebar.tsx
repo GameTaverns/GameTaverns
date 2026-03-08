@@ -65,6 +65,8 @@ import { OnboardingSidebarLink } from "@/components/dashboard/OnboardingSidebarL
 
 interface SidebarProps {
   isOpen: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 // Mechanic category groupings
