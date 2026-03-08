@@ -1,0 +1,1 @@
+ALTER TABLE public.feedback_notes ADD COLUMN attachment_urls text[] DEFAULT '{}';
