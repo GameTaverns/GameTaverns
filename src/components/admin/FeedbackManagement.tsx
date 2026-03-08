@@ -317,7 +317,7 @@ function FeedbackDetailDialog({
                   <div
                     key={note.id}
                     className={`p-3 rounded-md border text-sm ${
-                      note.note_type === "user_reply"
+                      (note.note_type as string) === "user_reply"
                         ? "bg-accent/10 border-accent/30"
                         : note.note_type === "reply"
                         ? "bg-primary/5 border-primary/20"
