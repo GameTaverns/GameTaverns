@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import { BookOpen, ArrowLeftRight, Users } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { BookOpen, ArrowLeftRight, Users, Ticket } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
