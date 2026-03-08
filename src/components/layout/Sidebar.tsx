@@ -424,7 +424,7 @@ function SidebarUpcomingEvents({ libraryId }: { libraryId: string }) {
   );
 }
 
-export function Sidebar({ isOpen }: SidebarProps) {
+export function Sidebar({ isOpen, collapsed = false, onToggleCollapse }: SidebarProps) {
   const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "year", "type", "genre", "mechanic", "publisher", "designer", "artist"].includes(
     new URLSearchParams(window.location.search).get("filter") || ""
   );
