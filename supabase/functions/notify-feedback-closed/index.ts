@@ -100,57 +100,40 @@ const handler = async (req: Request): Promise<Response> => {
     const typeLabel = FEEDBACK_TYPE_LABELS[feedback.type] || "Feedback";
     const siteUrl = Deno.env.get("SITE_URL") || "https://gametaverns.com";
     const siteName = Deno.env.get("SITE_NAME") || "GameTaverns";
+    const logoUrl = `${siteUrl}/gt-logo.png`;
     const originalMessage = feedback.message.length > 200
       ? feedback.message.substring(0, 200) + "…"
       : feedback.message;
+    const escapedMessage = originalMessage.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+    const recipientLabel = feedback.sender_name || feedback.sender_email;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ticket Closed</title>
-        <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .card { background: #ffffff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-          .header { text-align: center; margin-bottom: 30px; }
-          .header img { max-height: 60px; }
-          .badge { display: inline-block; padding: 6px 14px; background: #10b981; color: #ffffff; border-radius: 20px; font-weight: 600; font-size: 13px; letter-spacing: 0.5px; }
-          .original { background: #f9fafb; border-left: 3px solid #d1d5db; padding: 12px 16px; margin: 20px 0; border-radius: 0 4px 4px 0; color: #6b7280; font-size: 14px; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-          h1 { color: #333; margin-bottom: 20px; }
-          p { color: #555; line-height: 1.6; }
-          .button { display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #d97706, #c2410c); color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="card">
-            <div class="header">
-              <img src="${siteUrl}/logo.png" alt="${siteName}">
-            </div>
-            <h1>Your Ticket Has Been Closed</h1>
-            <p>Hi ${feedback.sender_name},</p>
-            <p>We wanted to let you know that your <strong>${typeLabel}</strong> ticket has been reviewed and closed by our team.</p>
-            <div class="original">
-              <strong>Your original message:</strong><br>
-              ${originalMessage.replace(/\n/g, "<br>")}
-            </div>
-            <p>If you feel this issue hasn't been fully resolved, you can always submit a new ticket through the platform.</p>
-            <p style="text-align: center;">
-              <a href="${siteUrl}" class="button">Visit ${siteName}</a>
-            </p>
-            <p style="color: #888; font-size: 13px;">Thank you for helping us improve the platform!</p>
-          </div>
-          <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} ${siteName}. All rights reserved.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
+    const html = [
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
+      '<body style="margin:0;padding:0;background:#e8dcc8;font-family:Georgia,\'Times New Roman\',serif;">',
+      '<div style="max-width:560px;margin:0 auto;padding:24px;">',
+      '<div style="background:#f5eed9;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(60,40,20,0.15);border:1px solid #d4c4a0;">',
+      '<div style="background:#3d2b1f;padding:24px 32px;text-align:center;">',
+      `<img src="${logoUrl}" alt="${siteName}" style="max-height:48px;margin-bottom:8px;" />`,
+      '<p style="margin:0;color:#e8d9b0;font-size:13px;font-family:Georgia,serif;">Ticket Closed</p>',
+      '</div>',
+      '<div style="padding:32px;">',
+      `<p style="margin:0 0 16px;font-size:15px;color:#3d2b1f;">Hi ${recipientLabel},</p>`,
+      `<p style="color:#3d2b1f;font-size:14px;line-height:1.7;margin:0 0 16px;">We wanted to let you know that your <strong>${typeLabel}</strong> ticket has been reviewed and closed by our team.</p>`,
+      '<div style="background:#efe5cf;border:1px solid #d4c4a0;border-radius:8px;padding:20px;margin:0 0 24px;">',
+      '<p style="margin:0 0 8px;font-size:12px;color:#9a8a6e;font-weight:bold;">YOUR ORIGINAL MESSAGE</p>',
+      `<p style="color:#3d2b1f;font-size:14px;line-height:1.7;white-space:pre-wrap;margin:0;">${escapedMessage}</p>`,
+      '</div>',
+      '<p style="color:#78705e;font-size:13px;margin:0 0 24px;">If you feel this issue hasn\'t been fully resolved, you can always submit a new ticket through the platform.</p>',
+      '<div style="text-align:center;margin:24px 0 8px;">',
+      `<a href="${siteUrl}" style="display:inline-block;background:#556b2f;color:#ffffff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;font-family:Georgia,serif;">Visit ${siteName}</a>`,
+      '</div>',
+      '<hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">',
+      '<p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">',
+      `Thank you for helping us improve the platform! &copy; ${new Date().getFullYear()} <a href="${siteUrl}" style="color:#556b2f;">${siteName}</a>.`,
+      '</p>',
+      '</div></div></div>',
+      '</body></html>',
+    ].join("");
 
     await client.send({
       from: smtpFrom,
