@@ -477,7 +477,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user: { id: string; email: string; role?: string; roles?: string[] };
           token: string;
         }>("/auth/login", {
-          email: emailOrUsername,
+          email,
           password,
         });
 
