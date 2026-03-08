@@ -35,6 +35,8 @@ import {
   QrCode,
   Disc,
   Archive,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
@@ -65,6 +67,8 @@ import { OnboardingSidebarLink } from "@/components/dashboard/OnboardingSidebarL
 
 interface SidebarProps {
   isOpen: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 // Mechanic category groupings
@@ -422,7 +426,7 @@ function SidebarUpcomingEvents({ libraryId }: { libraryId: string }) {
   );
 }
 
-export function Sidebar({ isOpen }: SidebarProps) {
+export function Sidebar({ isOpen, collapsed = false, onToggleCollapse }: SidebarProps) {
   const isAdvancedFilterActive = ["letter", "players", "difficulty", "playtime", "year", "type", "genre", "mechanic", "publisher", "designer", "artist"].includes(
     new URLSearchParams(window.location.search).get("filter") || ""
   );
@@ -527,13 +531,22 @@ export function Sidebar({ isOpen }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen w-48 min-[400px]:w-60 lg:w-72 wood-grain border-r border-sidebar-border transition-transform duration-300 lg:translate-x-0",
+        "fixed left-0 top-0 z-40 h-screen wood-grain border-r border-sidebar-border transition-all duration-300 lg:translate-x-0",
+        collapsed ? "lg:w-14 w-48 min-[400px]:w-60" : "w-48 min-[400px]:w-60 lg:w-72",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}
     >
-      <div className="flex h-full flex-col">
-        {/* Library Header */}
-        <div className="flex flex-col items-center border-b border-sidebar-border px-6 py-4">
+      <div className="flex h-full flex-col overflow-hidden">
+        {/* Desktop collapse toggle */}
+        <button
+          onClick={onToggleCollapse}
+          className="hidden lg:flex absolute top-3 right-2 z-10 h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
+        {/* Library Header — hidden when collapsed on desktop */}
+        <div className={cn("flex flex-col items-center border-b border-sidebar-border px-6 py-4", collapsed && "lg:hidden")}>
           <Link 
             to={libraryBaseUrl} 
             className="flex items-center gap-2 text-center hover:opacity-80 transition-opacity"
@@ -556,7 +569,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
           )}
         </div>
 
-        <ScrollArea className="flex-1 px-4 py-6">
+        <ScrollArea className={cn("flex-1 px-4 py-6", collapsed && "lg:hidden")}>
           {/* ── Navigation ── */}
           <nav className="space-y-1">
             <Link
