@@ -70,7 +70,7 @@ const Login = () => {
     setHasCheckedAuth(true);
 
     try {
-      const { error } = await signIn(emailOrUsername, password);
+      const { error } = await signIn(email, password);
 
       if (error) {
         toast({
