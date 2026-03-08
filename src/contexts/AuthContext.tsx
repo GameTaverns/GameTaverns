@@ -517,39 +517,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      let email = emailOrUsername;
-      
-      if (!emailOrUsername.includes("@")) {
-        // Self-hosted mode should not reach here (handled above), but just in case
-        if (isSelfHostedMode()) {
-          return { error: { message: "Username login not yet supported in self-hosted mode. Please use email." } };
-        }
-        
-        try {
-          const resolveRes = await fetch(`${apiUrl}/functions/v1/resolve-username`, {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              apikey: anonKey,
-            },
-            body: JSON.stringify({ username: emailOrUsername }),
-          });
-          
-          if (resolveRes.ok) {
-            const data = await resolveRes.json();
-            if (data.email) {
-              email = data.email;
-            } else {
-              return { error: { message: "Invalid username or password" } };
-            }
-          } else {
-            return { error: { message: "Invalid username or password" } };
-          }
-        } catch {
-          return { error: { message: "Unable to verify username. Please try again." } };
-        }
-      }
-
       // Check account lockout before attempting login
       try {
         const lockoutRes = await fetch(`${apiUrl}/functions/v1/check-login`, {
