@@ -46,7 +46,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isStaff: boolean;
   roleLoading: boolean;
-  signIn: (emailOrUsername: string, password: string) => Promise<{ error: { message: string } | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: { message: string } | null }>;
   signUp: (email: string, password: string, options?: { username?: string; displayName?: string; referralCode?: string }) => Promise<{ error: { message: string } | null }>;
   signOut: () => Promise<{ error: any }>;
 }
@@ -470,14 +470,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [apiUrl, anonKey, authStorageKey, clearAuthStorage, getAllAuthTokenKeys]);
 
-  const signIn = useCallback(async (emailOrUsername: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     if (isSelfHostedMode()) {
       try {
         const res = await apiClient.post<{
           user: { id: string; email: string; role?: string; roles?: string[] };
           token: string;
         }>("/auth/login", {
-          email: emailOrUsername,
+          email,
           password,
         });
 
@@ -517,39 +517,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      let email = emailOrUsername;
-      
-      if (!emailOrUsername.includes("@")) {
-        // Self-hosted mode should not reach here (handled above), but just in case
-        if (isSelfHostedMode()) {
-          return { error: { message: "Username login not yet supported in self-hosted mode. Please use email." } };
-        }
-        
-        try {
-          const resolveRes = await fetch(`${apiUrl}/functions/v1/resolve-username`, {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              apikey: anonKey,
-            },
-            body: JSON.stringify({ username: emailOrUsername }),
-          });
-          
-          if (resolveRes.ok) {
-            const data = await resolveRes.json();
-            if (data.email) {
-              email = data.email;
-            } else {
-              return { error: { message: "Invalid username or password" } };
-            }
-          } else {
-            return { error: { message: "Invalid username or password" } };
-          }
-        } catch {
-          return { error: { message: "Unable to verify username. Please try again." } };
-        }
-      }
-
       // Check account lockout before attempting login
       try {
         const lockoutRes = await fetch(`${apiUrl}/functions/v1/check-login`, {

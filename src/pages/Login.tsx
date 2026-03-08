@@ -22,7 +22,7 @@ const isNative = Capacitor.isNativePlatform();
 
 const Login = () => {
   const { t } = useTranslation();
-  const [emailOrUsername, setEmailOrUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupUsername, setSignupUsername] = useState("");
   const [signupDisplayName, setSignupDisplayName] = useState("");
@@ -70,7 +70,7 @@ const Login = () => {
     setHasCheckedAuth(true);
 
     try {
-      const { error } = await signIn(emailOrUsername, password);
+      const { error } = await signIn(email, password);
 
       if (error) {
         toast({
@@ -319,13 +319,13 @@ const Login = () => {
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email" className="text-foreground/80">{t('login.emailOrUsername')}</Label>
+                  <Label htmlFor="signin-email" className="text-foreground/80">{t('login.email')}</Label>
                   <Input
                     id="signin-email"
-                    type="text"
-                    value={emailOrUsername}
-                    onChange={(e) => setEmailOrUsername(e.target.value)}
-                    placeholder={t('login.emailOrUsernamePlaceholder')}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
                     className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                     required
                   />
