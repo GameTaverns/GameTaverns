@@ -100,6 +100,11 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
   const [manualGames, setManualGames] = useState<Game[]>([]);
   const [showGameSelector, setShowGameSelector] = useState(false);
   
+  // Curated list state
+  const [selectedListId, setSelectedListId] = useState<string>("");
+  const { data: myLists = [] } = useMyLists();
+  const { data: selectedListData } = useCuratedList(selectedListId || undefined);
+  
   // Fetch all games for the library
   const { data: allGames = [] } = useQuery({
     queryKey: ["picker-games", libraryId],
