@@ -149,6 +149,7 @@ function FeedbackDetailDialog({
               subject: `Re: Your ${feedback.type === "bug" ? "bug report" : feedback.type === "feature_request" ? "feature request" : "feedback"}`,
               message: noteContent.trim(),
               from_name: displayName,
+              feedback_id: feedback.id,
             },
           });
           console.log("Reply invoke result:", { emailResult, emailError });
@@ -316,7 +317,9 @@ function FeedbackDetailDialog({
                   <div
                     key={note.id}
                     className={`p-3 rounded-md border text-sm ${
-                      note.note_type === "reply"
+                      (note.note_type as string) === "user_reply"
+                        ? "bg-accent/10 border-accent/30"
+                        : note.note_type === "reply"
                         ? "bg-primary/5 border-primary/20"
                         : "bg-muted/30"
                     }`}
@@ -324,7 +327,7 @@ function FeedbackDetailDialog({
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-xs">{note.author_name || "Staff"}</span>
                       <Badge variant="outline" className="text-[10px] h-4">
-                        {note.note_type === "reply" ? "Reply to user" : "Internal note"}
+                        {(note.note_type as string) === "user_reply" ? "User reply" : note.note_type === "reply" ? "Reply to user" : "Internal note"}
                       </Badge>
                       <span className="text-[10px] text-muted-foreground ml-auto">
                         {format(new Date(note.created_at), "MMM d, h:mm a")}

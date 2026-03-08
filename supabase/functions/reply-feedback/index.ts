@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -9,7 +11,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { to_email, to_name, subject, message, from_name } = await req.json();
+    const { to_email, to_name, subject, message, from_name, feedback_id } = await req.json();
 
     if (!to_email || !message) {
       return new Response(
@@ -23,6 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
     const SMTP_USER = Deno.env.get("SMTP_USER");
     const SMTP_PASS = Deno.env.get("SMTP_PASS");
     const SMTP_FROM = Deno.env.get("SMTP_FROM");
+    const SITE_URL = Deno.env.get("SITE_URL") || "https://gametaverns.com";
 
     if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
       console.error("Missing SMTP configuration");
@@ -30,6 +33,35 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ error: "SMTP not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Generate a reply token if we have a feedback_id
+    let replyUrl = "";
+    if (feedback_id) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+        const { data: tokenData, error: tokenError } = await supabase
+          .from("feedback_reply_tokens")
+          .insert({
+            feedback_id,
+            recipient_email: to_email,
+            recipient_name: to_name || null,
+          })
+          .select("token")
+          .single();
+
+        if (!tokenError && tokenData) {
+          replyUrl = `${SITE_URL}/feedback/reply?token=${tokenData.token}`;
+          console.log("Generated reply token for feedback", feedback_id);
+        } else {
+          console.error("Failed to create reply token:", tokenError?.message);
+        }
+      } catch (e) {
+        console.error("Reply token generation error:", (e as Error).message);
+      }
     }
 
     const { SMTPClient } = await import("https://deno.land/x/denomailer@1.6.0/mod.ts");
@@ -59,6 +91,16 @@ const handler = async (req: Request): Promise<Response> => {
     const logoUrl = "https://gametaverns.com/gt-logo.png";
     const escapedMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+    // Build reply button HTML
+    const replyButtonHtml = replyUrl
+      ? [
+          '<div style="text-align:center;margin:24px 0 8px;">',
+          `<a href="${replyUrl}" style="display:inline-block;background:#556b2f;color:#ffffff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;font-family:Georgia,serif;">Reply to this message</a>`,
+          '</div>',
+          '<p style="text-align:center;color:#9a8a6e;font-size:12px;margin:4px 0 16px;">This link expires in 7 days</p>',
+        ].join("")
+      : "";
+
     const htmlBody = [
       '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
       '<body style="margin:0;padding:0;background:#e8dcc8;font-family:Georgia,\'Times New Roman\',serif;">',
@@ -74,6 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
       `<p style="color:#3d2b1f;font-size:14px;line-height:1.7;white-space:pre-wrap;margin:0;">${escapedMessage}</p>`,
       '</div>',
       `<p style="color:#78705e;font-size:13px;margin:0 0 24px;">— ${senderLabel}</p>`,
+      replyButtonHtml,
       '<hr style="border:none;border-top:1px solid #d4c4a0;margin:24px 0;">',
       '<p style="margin:0;font-size:12px;color:#9a8a6e;text-align:center;">',
       'This is a reply to feedback you submitted on <a href="https://gametaverns.com" style="color:#556b2f;">GameTaverns</a>.',

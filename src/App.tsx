@@ -106,6 +106,9 @@ const EmbedWidget = lazy(lazyRetry(() => import("./pages/EmbedWidget")));
 const NearMe = lazy(lazyRetry(() => import("./pages/NearMe")));
 const ArchetypesPage = lazy(lazyRetry(() => import("./pages/ArchetypesPage")));
 
+// Feedback reply (public, tokenized)
+const FeedbackReply = lazy(lazyRetry(() => import("./pages/FeedbackReply")));
+
 // Studio pages (studio.gametaverns.com)
 const StudioLogin = lazy(() => import("./pages/StudioLogin"));
 const StudioDashboard = lazy(() => import("./pages/StudioDashboard"));
@@ -339,6 +342,9 @@ function PlatformRoutes() {
       <Route path="/dm/:userId" element={<DirectMessages />} />
       <Route path="/lists" element={<CuratedLists />} />
       <Route path="/lists/:listId" element={<CuratedListDetail />} />
+
+      {/* Feedback reply (public, tokenized) */}
+      <Route path="/feedback/reply" element={<Suspense fallback={<PageLoader />}><FeedbackReply /></Suspense>} />
 
       {/* SEO landing pages */}
       <Route path="/games-for-:slug" element={<GamesForNPlayers />} />
