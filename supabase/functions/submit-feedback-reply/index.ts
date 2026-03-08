@@ -74,51 +74,10 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Upload attachments to storage if provided
-    const attachmentUrls: string[] = [];
-    if (Array.isArray(attachments) && attachments.length > 0) {
-      const maxAttachments = 4;
-      const toProcess = attachments.slice(0, maxAttachments);
-
-      for (const att of toProcess) {
-        try {
-          if (!att.data || !att.type) continue;
-
-          // Extract base64 data (strip "data:image/png;base64," prefix)
-          const base64Match = att.data.match(/^data:[^;]+;base64,(.+)$/);
-          if (!base64Match) continue;
-
-          const rawBase64 = base64Match[1];
-          const binaryStr = atob(rawBase64);
-          const bytes = new Uint8Array(binaryStr.length);
-          for (let i = 0; i < binaryStr.length; i++) {
-            bytes[i] = binaryStr.charCodeAt(i);
-          }
-
-          const ext = att.name?.split(".").pop() || "png";
-          const path = `reply/${tokenData.feedback_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from("feedback-attachments")
-            .upload(path, bytes.buffer, { contentType: att.type, upsert: false });
-
-          if (uploadError) {
-            console.error("Attachment upload failed:", uploadError.message);
-            continue;
-          }
-
-          const { data: urlData } = supabase.storage
-            .from("feedback-attachments")
-            .getPublicUrl(path);
-
-          if (urlData?.publicUrl) {
-            attachmentUrls.push(urlData.publicUrl);
-          }
-        } catch (e) {
-          console.error("Error processing attachment:", (e as Error).message);
-        }
-      }
-    }
+    // Use attachment URLs provided by the client (uploaded directly to storage)
+    const attachmentUrls: string[] = Array.isArray(clientAttachmentUrls)
+      ? clientAttachmentUrls.filter((u: unknown) => typeof u === "string" && u.startsWith("http")).slice(0, 4)
+      : [];
 
     // Insert the user's reply as a feedback note
     const authorName = tokenData.recipient_name || tokenData.recipient_email || "User";
