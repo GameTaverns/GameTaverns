@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-import { BookOpen, ArrowLeftRight, Users } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { BookOpen, ArrowLeftRight, Users, Ticket } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveLibrary } from "@/hooks/useActiveLibrary";
 import { useLending } from "@/hooks/useLending";
+import { useMyClubs } from "@/hooks/useClubs";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
 import { LibrarySwitcher } from "@/components/dashboard/LibrarySwitcher";
 import { LendingDashboard } from "@/components/lending/LendingDashboard";
@@ -21,6 +22,7 @@ export default function LendingPage() {
   const { user, isAuthenticated, loading } = useAuth();
   const { library, myLibraries, activeLibraryId, setActiveLibraryId } = useActiveLibrary();
   const { myLentLoans, myBorrowedLoans } = useLending();
+  const { data: myClubs = [] } = useMyClubs();
   const navigate = useNavigate();
 
   const pendingLoanRequests = myLentLoans.filter(l => l.status === "requested").length;
@@ -114,6 +116,37 @@ export default function LendingPage() {
             </CardHeader>
             <CardContent className="px-4 pb-4">
               <PersonalLoansPanel libraryId={library.id} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Club Lending */}
+        {myClubs.length > 0 && (
+          <Card className={`${cardClass} lg:col-span-3`}>
+            <CardHeader className="px-4 pt-4 pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Ticket className="h-4 w-4 text-secondary" />
+                {t('dashboard.clubLending', { defaultValue: 'Club Lending Desks' })}
+              </CardTitle>
+              <CardDescription className="text-cream/60 text-xs">
+                {t('dashboard.clubLendingDesc', { defaultValue: 'Manage lending desks for your clubs' })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="space-y-1.5">
+                {myClubs.map((club) => (
+                  <Link
+                    key={club.id}
+                    to={`/club/${club.slug}?tab=lending`}
+                    className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/30 transition-colors"
+                  >
+                    <span className="text-xs font-medium">{club.name}</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {t('dashboard.openDesk', { defaultValue: 'Open Desk' })}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
