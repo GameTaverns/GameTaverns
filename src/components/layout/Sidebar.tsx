@@ -545,8 +545,8 @@ export function Sidebar({ isOpen, collapsed = false, onToggleCollapse }: Sidebar
         >
           {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </button>
-        {/* Library Header */}
-        <div className="flex flex-col items-center border-b border-sidebar-border px-6 py-4">
+        {/* Library Header — hidden when collapsed on desktop */}
+        <div className={cn("flex flex-col items-center border-b border-sidebar-border px-6 py-4", collapsed && "lg:hidden")}>
           <Link 
             to={libraryBaseUrl} 
             className="flex items-center gap-2 text-center hover:opacity-80 transition-opacity"
