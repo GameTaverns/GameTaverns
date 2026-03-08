@@ -470,7 +470,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [apiUrl, anonKey, authStorageKey, clearAuthStorage, getAllAuthTokenKeys]);
 
-  const signIn = useCallback(async (emailOrUsername: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     if (isSelfHostedMode()) {
       try {
         const res = await apiClient.post<{
