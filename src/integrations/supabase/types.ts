@@ -5318,6 +5318,9 @@ export type Database = {
           library_id: string | null
           max_players: number | null
           min_players: number | null
+          ownership_status:
+            | Database["public"]["Enums"]["ownership_status"]
+            | null
           parent_game_id: string | null
           play_time: Database["public"]["Enums"]["play_time"] | null
           publisher_id: string | null
@@ -5356,6 +5359,9 @@ export type Database = {
           library_id?: string | null
           max_players?: number | null
           min_players?: number | null
+          ownership_status?:
+            | Database["public"]["Enums"]["ownership_status"]
+            | null
           parent_game_id?: string | null
           play_time?: Database["public"]["Enums"]["play_time"] | null
           publisher_id?: string | null
@@ -5394,6 +5400,9 @@ export type Database = {
           library_id?: string | null
           max_players?: number | null
           min_players?: number | null
+          ownership_status?:
+            | Database["public"]["Enums"]["ownership_status"]
+            | null
           parent_game_id?: string | null
           play_time?: Database["public"]["Enums"]["play_time"] | null
           publisher_id?: string | null
