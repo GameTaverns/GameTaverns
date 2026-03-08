@@ -1442,6 +1442,47 @@ export type Database = {
           },
         ]
       }
+      feedback_reply_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          feedback_id: string
+          id: string
+          recipient_email: string
+          recipient_name: string | null
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          feedback_id: string
+          id?: string
+          recipient_email: string
+          recipient_name?: string | null
+          token?: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          feedback_id?: string
+          id?: string
+          recipient_email?: string
+          recipient_name?: string | null
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_reply_tokens_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "platform_feedback"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forum_categories: {
         Row: {
           club_id: string | null
