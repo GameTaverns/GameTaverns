@@ -5,7 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { Footer } from "./Footer";
 import { AnnouncementBanner } from "./AnnouncementBanner";
 import { OwnerAdminBar } from "./OwnerAdminBar";
-import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
+
 import { useTenant } from "@/contexts/TenantContext";
 import { cn } from "@/lib/utils";
 

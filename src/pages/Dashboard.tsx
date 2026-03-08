@@ -27,7 +27,7 @@ import { AnnouncementBanner } from "@/components/layout/AnnouncementBanner";
 import { TwoFactorBanner } from "@/components/dashboard/TwoFactorBanner";
 import { GuidedTour } from "@/components/dashboard/GuidedTour";
 import { Footer } from "@/components/layout/Footer";
-import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
+
 
 function HubCard({ to, icon: Icon, title, description, bullets, iconColor, badges }: {
   to: string; icon: any; title: string; description: string; bullets: string[];
