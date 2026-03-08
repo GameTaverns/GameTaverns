@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, ArrowLeftRight } from "lucide-react";
+import { BookOpen, ArrowLeftRight, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +10,7 @@ import { useLending } from "@/hooks/useLending";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
 import { LibrarySwitcher } from "@/components/dashboard/LibrarySwitcher";
 import { LendingDashboard } from "@/components/lending/LendingDashboard";
+import { PersonalLoansPanel } from "@/components/lending/PersonalLoansPanel";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { isSelfHostedSupabaseStack } from "@/config/runtime";
 
