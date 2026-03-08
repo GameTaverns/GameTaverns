@@ -100,12 +100,57 @@ function StandardListDetail({ listId }: { listId: string | undefined }) {
   const { t } = useTranslation();
   const { data: list, isLoading } = useCuratedList(listId);
   const { user } = useAuth();
-  const { tenantSlug } = useTenant();
+  const { tenantSlug, library } = useTenant();
   const voteList = useVoteList();
   const { toast } = useToast();
+  const [showRandomResult, setShowRandomResult] = useState(false);
+  const [randomPick, setRandomPick] = useState<any>(null);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const isOwner = user?.id === list?.user_id;
   const backUrl = tenantSlug ? getLibraryUrl(tenantSlug, "/lists") : "/lists";
+
+  // Fetch full game data for random picking
+  const gameIds = useMemo(() => (list?.items || []).map(i => i.game_id), [list?.items]);
+  const { data: fullGames = [] } = useQuery({
+    queryKey: ["list-picker-games", gameIds],
+    queryFn: async () => {
+      if (gameIds.length === 0) return [];
+      const { data } = await (sb as any)
+        .from("games")
+        .select("id, title, image_url, slug, game_type, play_time, min_players, max_players")
+        .in("id", gameIds);
+      return data || [];
+    },
+    enabled: gameIds.length > 0,
+  });
+
+  const handleRandomPick = useCallback(() => {
+    if (fullGames.length < 2) return;
+    setIsSpinning(true);
+    setRandomPick(null);
+
+    const totalIterations = 15;
+    const picks: any[] = [];
+    for (let i = 0; i <= totalIterations; i++) {
+      picks.push(fullGames[Math.floor(Math.random() * fullGames.length)]);
+    }
+
+    let iteration = 0;
+    const rollNext = () => {
+      setRandomPick(picks[iteration]);
+      iteration++;
+      if (iteration < totalIterations) {
+        setTimeout(rollNext, 50 + Math.pow(iteration, 1.8));
+      } else {
+        setRandomPick(picks[totalIterations]);
+        setIsSpinning(false);
+        setShowRandomResult(true);
+      }
+    };
+    rollNext();
+  }, [fullGames]);
 
   const handleVote = async () => {
     if (!user) { toast({ title: t('curatedListDetail.signInToVote'), variant: "destructive" }); return; }
@@ -142,15 +187,71 @@ function StandardListDetail({ listId }: { listId: string | undefined }) {
               <span>· {format(new Date(list.created_at), "MMM d, yyyy")}</span>
             </div>
           </div>
-          <Button
-            variant={list.user_has_voted ? "default" : "outline"}
-            size="sm" className="flex-shrink-0"
-            onClick={handleVote} disabled={voteList.isPending}
-          >
-            <Heart className={cn("h-4 w-4 mr-1.5", list.user_has_voted && "fill-current")} />
-            {list.vote_count}
-          </Button>
+          <div className="flex gap-2 flex-shrink-0">
+            {fullGames.length >= 2 && (
+              <Button variant="outline" size="sm" onClick={handleRandomPick} disabled={isSpinning}>
+                <Dices className={cn("h-4 w-4 mr-1.5", isSpinning && "animate-spin")} />
+                {isSpinning ? "Picking..." : "Random Pick"}
+              </Button>
+            )}
+            <Button
+              variant={list.user_has_voted ? "default" : "outline"}
+              size="sm"
+              onClick={handleVote} disabled={voteList.isPending}
+            >
+              <Heart className={cn("h-4 w-4 mr-1.5", list.user_has_voted && "fill-current")} />
+              {list.vote_count}
+            </Button>
+          </div>
         </div>
+
+        {/* Spinning preview */}
+        {isSpinning && randomPick && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-3 p-3 bg-muted rounded-lg"
+          >
+            <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+              {randomPick.image_url && <GameImage imageUrl={randomPick.image_url} alt={randomPick.title} className="w-full h-full object-cover" />}
+            </div>
+            <motion.p key={randomPick.id} initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="font-medium text-sm truncate">
+              {randomPick.title}
+            </motion.p>
+          </motion.div>
+        )}
+
+        {/* Random Pick Result Dialog */}
+        <Dialog open={showRandomResult} onOpenChange={setShowRandomResult}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-center text-xl flex items-center justify-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Tonight's Pick!
+              </DialogTitle>
+            </DialogHeader>
+            {randomPick && (
+              <div className="space-y-4">
+                <div className="relative aspect-video rounded-lg overflow-hidden">
+                  {randomPick.image_url && <GameImage imageUrl={randomPick.image_url} alt={randomPick.title} className="w-full h-full object-cover" />}
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="text-2xl font-display font-bold">{randomPick.title}</h3>
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {randomPick.game_type && <Badge variant="secondary" className="text-xs">{randomPick.game_type}</Badge>}
+                      {randomPick.play_time && <Badge variant="outline" className="text-xs">{randomPick.play_time}</Badge>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => { setShowRandomResult(false); handleRandomPick(); }}>
+                    <RotateCcw className="h-4 w-4 mr-2" /> Pick Again
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         <div className="space-y-2">
           {(list.items || []).map((item, idx) => (
