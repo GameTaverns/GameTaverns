@@ -348,6 +348,19 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
             <Hand className="h-4 w-4 mr-1" />
             Pick Games
           </Button>
+          <Button
+            variant={mode === "curated" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setMode("curated")}
+            className={cn(
+              mode === "curated" 
+                ? "bg-cream text-wood-dark font-medium" 
+                : "border-cream/60 text-cream bg-wood-medium/40 hover:bg-wood-medium/60"
+            )}
+          >
+            <List className="h-4 w-4 mr-1" />
+            My Lists
+          </Button>
         </div>
         
         {/* Mode-specific controls */}
