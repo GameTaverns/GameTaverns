@@ -149,6 +149,7 @@ function FeedbackDetailDialog({
               subject: `Re: Your ${feedback.type === "bug" ? "bug report" : feedback.type === "feature_request" ? "feature request" : "feedback"}`,
               message: noteContent.trim(),
               from_name: displayName,
+              feedback_id: feedback.id,
             },
           });
           console.log("Reply invoke result:", { emailResult, emailError });
