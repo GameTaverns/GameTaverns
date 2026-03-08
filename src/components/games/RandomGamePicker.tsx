@@ -38,6 +38,8 @@ import { GameImage } from "./GameImage";
 import { motion, AnimatePresence } from "framer-motion";
 import { GENRE_OPTIONS } from "@/types/game";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { useMyLists, useCuratedList } from "@/hooks/useCuratedLists";
+import { useAuth } from "@/hooks/useAuth";
 
 // Types
 interface Game {
