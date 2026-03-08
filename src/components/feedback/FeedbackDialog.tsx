@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MessageSquarePlus, ImagePlus, X } from "lucide-react";
 import { z } from "zod";
 import { useLayoutContext } from "@/components/layout/Layout";
+import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
