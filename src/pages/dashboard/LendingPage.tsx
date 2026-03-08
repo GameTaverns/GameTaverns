@@ -100,6 +100,24 @@ export default function LendingPage() {
           </CardContent>
         </Card>
 
+        {/* Personal Loans (Friend/Family) */}
+        {library && (
+          <Card className={`${cardClass} lg:col-span-3`}>
+            <CardHeader className="px-4 pt-4 pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Users className="h-4 w-4 text-secondary" />
+                Friend & Family Loans
+              </CardTitle>
+              <CardDescription className="text-cream/60 text-xs">
+                Track games loaned to people outside the platform
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <PersonalLoansPanel libraryId={library.id} />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Trading */}
         <Card className={`${cardClass} lg:col-span-3`}>
           <CardHeader className="px-4 pt-4 pb-2">
