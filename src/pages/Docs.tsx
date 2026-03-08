@@ -126,31 +126,8 @@ export default function Docs() {
           />
         </div>
 
-        <div className="flex gap-6">
-          {/* Sidebar nav — desktop only */}
-          <nav className="hidden lg:block w-56 shrink-0 sticky top-24 self-start space-y-0.5">
-            {sections.map(s => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setActiveSection(s.id);
-                  document.getElementById(`section-${s.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-                className={cn(
-                  "w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors",
-                  activeSection === s.id
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                <s.icon className="h-4 w-4 shrink-0" />
-                {s.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Mobile section picker */}
-          <div className="lg:hidden mb-4 w-full">
+        {/* Mobile section picker */}
+        <div className="lg:hidden mb-4 w-full">
             <select
               value={activeSection}
               onChange={(e) => {
