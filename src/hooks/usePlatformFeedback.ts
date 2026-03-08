@@ -212,6 +212,13 @@ export function useUpdateFeedbackStatus() {
           console.warn("[Feedback] Could not resolve discord_thread_id for", id);
         }
       }
+
+      // Send closure email to the user when ticket is closed
+      if (status === "closed") {
+        void invokeBackendFunction("notify-feedback-closed", {
+          feedback_id: id,
+        }).catch((e) => console.warn("[Feedback] Closure email failed:", e));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["platform-feedback"] });
