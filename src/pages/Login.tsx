@@ -319,13 +319,13 @@ const Login = () => {
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email" className="text-foreground/80">{t('login.emailOrUsername')}</Label>
+                  <Label htmlFor="signin-email" className="text-foreground/80">{t('login.email')}</Label>
                   <Input
                     id="signin-email"
-                    type="text"
-                    value={emailOrUsername}
-                    onChange={(e) => setEmailOrUsername(e.target.value)}
-                    placeholder={t('login.emailOrUsernamePlaceholder')}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
                     className="bg-input border-border/50 text-foreground placeholder:text-muted-foreground"
                     required
                   />
