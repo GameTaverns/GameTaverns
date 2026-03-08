@@ -230,7 +230,7 @@ export function AccountSettings() {
               <p className="text-xs text-destructive">{usernameError}</p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                3-30 characters. Letters, numbers, and underscores only. You can use this to log in.
+                3-30 characters. Letters, numbers, and underscores only.
               </p>
             )}
           </div>
