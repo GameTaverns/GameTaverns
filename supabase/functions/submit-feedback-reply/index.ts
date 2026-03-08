@@ -101,14 +101,48 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("id", tokenData.id);
 
     // Mark the feedback ticket as updated and unread so staff sees it
-    await supabase
+    const { data: feedbackRow } = await supabase
       .from("platform_feedback")
       .update({
         is_read: false,
         updated_at: new Date().toISOString(),
         status: "open" // Re-open if it was closed
       })
-      .eq("id", tokenData.feedback_id);
+      .eq("id", tokenData.feedback_id)
+      .select("discord_thread_id")
+      .single();
+
+    // Sync user reply to Discord thread if one exists
+    const discordThreadId = feedbackRow?.discord_thread_id;
+    if (discordThreadId) {
+      const discordBotToken = Deno.env.get("DISCORD_BOT_TOKEN");
+      if (discordBotToken) {
+        try {
+          const DISCORD_API = "https://discord.com/api/v10";
+          const headers = {
+            Authorization: `Bot ${discordBotToken}`,
+            "Content-Type": "application/json",
+          };
+          // Unarchive first in case it was auto-archived
+          await fetch(`${DISCORD_API}/channels/${discordThreadId}`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({ archived: false }),
+          }).catch(() => {});
+
+          const label = `📩 **User Reply** from **${authorName}**`;
+          const truncated = message.length > 1900 ? message.slice(0, 1900) + "…" : message;
+          await fetch(`${DISCORD_API}/channels/${discordThreadId}/messages`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ content: `${label}\n\n${truncated}` }),
+          });
+          console.log("Posted user reply to Discord thread", discordThreadId);
+        } catch (e) {
+          console.error("Discord sync failed (non-fatal):", (e as Error).message);
+        }
+      }
+    }
 
     return new Response(
       JSON.stringify({ success: true }),
