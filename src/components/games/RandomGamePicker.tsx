@@ -10,7 +10,8 @@ import {
   ChevronDown,
   X,
   Copy,
-  Check
+  Check,
+  List
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +38,8 @@ import { GameImage } from "./GameImage";
 import { motion, AnimatePresence } from "framer-motion";
 import { GENRE_OPTIONS } from "@/types/game";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
+import { useMyLists, useCuratedList } from "@/hooks/useCuratedLists";
+import { useAuth } from "@/hooks/useAuth";
 
 // Types
 interface Game {
@@ -57,7 +60,7 @@ interface RandomGamePickerProps {
   librarySlug?: string;
 }
 
-type PickerMode = "wishlist" | "filter" | "manual";
+type PickerMode = "wishlist" | "filter" | "manual" | "curated";
 
 const GAME_TYPES = [
   "Board Game",
@@ -96,6 +99,11 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
   // Manual selection state
   const [manualGames, setManualGames] = useState<Game[]>([]);
   const [showGameSelector, setShowGameSelector] = useState(false);
+  
+  // Curated list state
+  const [selectedListId, setSelectedListId] = useState<string>("");
+  const { data: myLists = [] } = useMyLists();
+  const { data: selectedListData } = useCuratedList(selectedListId || undefined);
   
   // Fetch all games for the library
   const { data: allGames = [] } = useQuery({
@@ -171,8 +179,15 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
       return manualGames;
     }
     
+    if (mode === "curated") {
+      if (!selectedListData?.items?.length) return [];
+      // Map curated list items to games from allGames
+      const listGameIds = new Set(selectedListData.items.map(i => i.game_id));
+      return allGames.filter(g => listGameIds.has(g.id));
+    }
+    
     return [];
-  }, [mode, allGames, wishlistData, selectedTypes, selectedGenres, selectedPlayTimes, playerCount, manualGames]);
+  }, [mode, allGames, wishlistData, selectedTypes, selectedGenres, selectedPlayTimes, playerCount, manualGames, selectedListData]);
   
   // Spin and pick a random game
   const handleSpin = useCallback(() => {
@@ -332,6 +347,19 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
           >
             <Hand className="h-4 w-4 mr-1" />
             Pick Games
+          </Button>
+          <Button
+            variant={mode === "curated" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setMode("curated")}
+            className={cn(
+              mode === "curated" 
+                ? "bg-cream text-wood-dark font-medium" 
+                : "border-cream/60 text-cream bg-wood-medium/40 hover:bg-wood-medium/60"
+            )}
+          >
+            <List className="h-4 w-4 mr-1" />
+            My Lists
           </Button>
         </div>
         
@@ -493,6 +521,38 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
               {manualGames.length < 2 && (
                 <p className="text-xs text-amber-400">Add at least 2 games to pick from</p>
               )}
+            </motion.div>
+          )}
+          
+          {mode === "curated" && (
+            <motion.div
+              key="curated"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-2"
+            >
+              <Select value={selectedListId} onValueChange={setSelectedListId}>
+                <SelectTrigger className="bg-wood-medium/20 border-cream/20">
+                  <SelectValue placeholder="Choose a list..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {myLists.map((list) => (
+                    <SelectItem key={list.id} value={list.id}>
+                      {list.title} ({(list.items as any[])?.length ?? 0} games)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedListId && eligibleGames.length > 0 ? (
+                <p className="text-xs text-cream/60">
+                  {eligibleGames.length} games from this list
+                </p>
+              ) : selectedListId ? (
+                <p className="text-xs text-amber-400">No matching games found in your library</p>
+              ) : myLists.length === 0 ? (
+                <p className="text-xs text-amber-400">No curated lists yet — create one from My Collection → Lists</p>
+              ) : null}
             </motion.div>
           )}
         </AnimatePresence>

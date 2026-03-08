@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, ArrowLeftRight } from "lucide-react";
+import { BookOpen, ArrowLeftRight, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +10,7 @@ import { useLending } from "@/hooks/useLending";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
 import { LibrarySwitcher } from "@/components/dashboard/LibrarySwitcher";
 import { LendingDashboard } from "@/components/lending/LendingDashboard";
+import { PersonalLoansPanel } from "@/components/lending/PersonalLoansPanel";
 import { TradeCenter } from "@/components/trades/TradeCenter";
 import { isSelfHostedSupabaseStack } from "@/config/runtime";
 
@@ -98,6 +99,24 @@ export default function LendingPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Personal Loans (Friend/Family) */}
+        {library && (
+          <Card className={`${cardClass} lg:col-span-3`}>
+            <CardHeader className="px-4 pt-4 pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Users className="h-4 w-4 text-secondary" />
+                Friend & Family Loans
+              </CardTitle>
+              <CardDescription className="text-cream/60 text-xs">
+                Track games loaned to people outside the platform
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <PersonalLoansPanel libraryId={library.id} />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Trading */}
         <Card className={`${cardClass} lg:col-span-3`}>
