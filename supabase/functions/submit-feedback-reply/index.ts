@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -27,14 +28,28 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const supabaseUrl = (Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "").trim();
+    const serviceRoleKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "").trim();
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("submit-feedback-reply missing env", {
+        hasSupabaseUrl: Boolean(supabaseUrl),
+        hasServiceRoleKey: Boolean(serviceRoleKey),
+      });
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // Validate the token
     const { data: tokenData, error: tokenError } = await supabase
       .from("feedback_reply_tokens")
-      .select("*")
+      .select("id, feedback_id, expires_at, used_at, recipient_email, recipient_name")
       .eq("token", token)
       .single();
 
@@ -88,8 +103,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Mark the feedback ticket as updated and unread so staff sees it
     await supabase
       .from("platform_feedback")
-      .update({ 
-        is_read: false, 
+      .update({
+        is_read: false,
         updated_at: new Date().toISOString(),
         status: "open" // Re-open if it was closed
       })
@@ -113,3 +128,4 @@ export default handler;
 if (import.meta.main) {
   Deno.serve(handler);
 }
+
