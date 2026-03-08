@@ -570,7 +570,7 @@ export default function Docs() {
       </main>
 
       <Footer />
-      
+      <MobileBottomTabs />
     </div>
   );
 }
