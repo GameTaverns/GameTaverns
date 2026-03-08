@@ -536,7 +536,15 @@ export function Sidebar({ isOpen, collapsed = false, onToggleCollapse }: Sidebar
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col overflow-hidden">
+        {/* Desktop collapse toggle */}
+        <button
+          onClick={onToggleCollapse}
+          className="hidden lg:flex absolute top-3 right-2 z-10 h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
         {/* Library Header */}
         <div className="flex flex-col items-center border-b border-sidebar-border px-6 py-4">
           <Link 
