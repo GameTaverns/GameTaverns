@@ -60,7 +60,7 @@ interface RandomGamePickerProps {
   librarySlug?: string;
 }
 
-type PickerMode = "wishlist" | "filter" | "manual";
+type PickerMode = "wishlist" | "filter" | "manual" | "curated";
 
 const GAME_TYPES = [
   "Board Game",
