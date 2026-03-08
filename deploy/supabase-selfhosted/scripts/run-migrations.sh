@@ -178,6 +178,8 @@ else
         "81-event-planning.sql"
         "82-event-registrations-tournaments.sql"
         "84-ownership-status.sql"
+        "87-feedback-reply-tokens.sql"
+        "88-feedback-note-attachments.sql"
     )
 fi
 
