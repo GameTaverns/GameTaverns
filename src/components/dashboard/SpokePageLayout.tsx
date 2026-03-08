@@ -46,7 +46,7 @@ export function SpokePageLayout({ title, description, icon: Icon, iconColor, chi
         {children}
       </main>
       <Footer />
-      
+      <MobileBottomTabs />
     </div>
   );
 }

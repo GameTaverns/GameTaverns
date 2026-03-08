@@ -264,7 +264,7 @@ export default function Dashboard() {
       </main>
 
       <Footer />
-      
+      <MobileBottomTabs />
       <GuidedTour librarySlug={library?.slug} />
     </div>
   );

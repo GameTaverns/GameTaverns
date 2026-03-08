@@ -73,7 +73,7 @@ export function Layout({ children, hideSidebar = false }: LayoutProps) {
           {children}
         </main>
         <Footer />
-        
+        <MobileBottomTabs />
       </div>
     </LayoutContext.Provider>
   );
