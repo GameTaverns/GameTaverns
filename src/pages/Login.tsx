@@ -22,7 +22,7 @@ const isNative = Capacitor.isNativePlatform();
 
 const Login = () => {
   const { t } = useTranslation();
-  const [emailOrUsername, setEmailOrUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupUsername, setSignupUsername] = useState("");
   const [signupDisplayName, setSignupDisplayName] = useState("");
