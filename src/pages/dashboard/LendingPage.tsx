@@ -120,6 +120,37 @@ export default function LendingPage() {
           </Card>
         )}
 
+        {/* Club Lending */}
+        {myClubs.length > 0 && (
+          <Card className={`${cardClass} lg:col-span-3`}>
+            <CardHeader className="px-4 pt-4 pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Ticket className="h-4 w-4 text-secondary" />
+                {t('dashboard.clubLending', { defaultValue: 'Club Lending Desks' })}
+              </CardTitle>
+              <CardDescription className="text-cream/60 text-xs">
+                {t('dashboard.clubLendingDesc', { defaultValue: 'Manage lending desks for your clubs' })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="space-y-1.5">
+                {myClubs.map((club) => (
+                  <Link
+                    key={club.id}
+                    to={`/club/${club.slug}?tab=lending`}
+                    className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/30 transition-colors"
+                  >
+                    <span className="text-xs font-medium">{club.name}</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {t('dashboard.openDesk', { defaultValue: 'Open Desk' })}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Trading */}
         <Card className={`${cardClass} lg:col-span-3`}>
           <CardHeader className="px-4 pt-4 pb-2">
