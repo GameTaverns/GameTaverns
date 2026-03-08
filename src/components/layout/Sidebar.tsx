@@ -569,7 +569,7 @@ export function Sidebar({ isOpen, collapsed = false, onToggleCollapse }: Sidebar
           )}
         </div>
 
-        <ScrollArea className="flex-1 px-4 py-6">
+        <ScrollArea className={cn("flex-1 px-4 py-6", collapsed && "lg:hidden")}>
           {/* ── Navigation ── */}
           <nav className="space-y-1">
             <Link
