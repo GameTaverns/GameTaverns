@@ -523,6 +523,38 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
               )}
             </motion.div>
           )}
+          
+          {mode === "curated" && (
+            <motion.div
+              key="curated"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-2"
+            >
+              <Select value={selectedListId} onValueChange={setSelectedListId}>
+                <SelectTrigger className="bg-wood-medium/20 border-cream/20">
+                  <SelectValue placeholder="Choose a list..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {myLists.map((list) => (
+                    <SelectItem key={list.id} value={list.id}>
+                      {list.title} ({(list.items as any[])?.length ?? 0} games)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedListId && eligibleGames.length > 0 ? (
+                <p className="text-xs text-cream/60">
+                  {eligibleGames.length} games from this list
+                </p>
+              ) : selectedListId ? (
+                <p className="text-xs text-amber-400">No matching games found in your library</p>
+              ) : myLists.length === 0 ? (
+                <p className="text-xs text-amber-400">No curated lists yet — create one from My Collection → Lists</p>
+              ) : null}
+            </motion.div>
+          )}
         </AnimatePresence>
         
         {/* Spin buttons */}
