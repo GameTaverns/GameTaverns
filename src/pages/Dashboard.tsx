@@ -3,12 +3,12 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Gamepad2, BookOpen, Sparkles, Users, Mail, Settings,
-  Plus, Search, ArrowRight, Shield, Library, Globe,
-  Calendar, User, HelpCircle, Dice5, ClipboardList, ChevronDown,
+  Plus, ArrowRight, Library, Dice5, ClipboardList, ChevronDown,
 } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -136,7 +136,7 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground">{t('dashboard.commandCenter')}</p>
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick Actions — action-oriented shortcuts only */}
         <div className="flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4">
           <Link to="/dashboard/collection" className="contents">
             <Button size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
@@ -170,21 +170,6 @@ export default function Dashboard() {
               </Button>
             </TenantLink>
           ) : null}
-          <Link to="/catalog" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <Search className="h-3.5 w-3.5" /> {t('nav.catalog')}
-            </Button>
-          </Link>
-          <Link to="/directory" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <Globe className="h-3.5 w-3.5" /> {t('nav.directory')}
-            </Button>
-          </Link>
-          <Link to="/events" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <Calendar className="h-3.5 w-3.5" /> {t('dashboard.events')}
-            </Button>
-          </Link>
           <Link to="/dashboard/insights" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <ClipboardList className="h-3.5 w-3.5" /> {t('hub.logPlay')}
@@ -193,18 +178,6 @@ export default function Dashboard() {
           <Link to="/dashboard/collection" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <Dice5 className="h-3.5 w-3.5" /> {t('hub.random')}
-            </Button>
-          </Link>
-          {profile?.username && (
-            <Link to={`/u/${profile.username}`} className="contents">
-              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-                <User className="h-3.5 w-3.5" /> {t('hub.profile')}
-              </Button>
-            </Link>
-          )}
-          <Link to="/docs" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <HelpCircle className="h-3.5 w-3.5" /> {t('nav.help')}
             </Button>
           </Link>
         </div>
@@ -290,7 +263,7 @@ export default function Dashboard() {
       </main>
 
       <Footer />
-      
+      <MobileBottomTabs />
       <GuidedTour librarySlug={library?.slug} />
     </div>
   );
