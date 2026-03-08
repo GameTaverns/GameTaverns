@@ -1406,6 +1406,7 @@ export type Database = {
       }
       feedback_notes: {
         Row: {
+          attachment_urls: string[] | null
           author_id: string
           author_name: string | null
           content: string
@@ -1415,6 +1416,7 @@ export type Database = {
           note_type: string
         }
         Insert: {
+          attachment_urls?: string[] | null
           author_id: string
           author_name?: string | null
           content: string
@@ -1424,6 +1426,7 @@ export type Database = {
           note_type?: string
         }
         Update: {
+          attachment_urls?: string[] | null
           author_id?: string
           author_name?: string | null
           content?: string

@@ -1,17 +1,45 @@
-import { useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, AlertCircle, Send, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, Send, Loader2, ImagePlus, X } from "lucide-react";
+
+const MAX_PHOTOS = 4;
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 export default function FeedbackReply() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const [message, setMessage] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFiles = (selected: FileList | null) => {
+    if (!selected) return;
+    const valid = Array.from(selected).filter((f) => {
+      if (!ACCEPTED_TYPES.includes(f.type)) return false;
+      if (f.size > MAX_FILE_SIZE) return false;
+      return true;
+    });
+    setPhotos((prev) => [...prev, ...valid].slice(0, MAX_PHOTOS));
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,8 +47,15 @@ export default function FeedbackReply() {
 
     setStatus("sending");
     try {
+      // Convert photos to base64 for the edge function
+      const attachments: { data: string; name: string; type: string }[] = [];
+      for (const file of photos) {
+        const base64 = await fileToBase64(file);
+        attachments.push({ data: base64, name: file.name, type: file.type });
+      }
+
       const { data, error } = await supabase.functions.invoke("submit-feedback-reply", {
-        body: { token, message: message.trim() },
+        body: { token, message: message.trim(), attachments },
       });
 
       if (error) throw error;
@@ -90,6 +125,52 @@ export default function FeedbackReply() {
               className="bg-[#efe5cf] border-[#d4c4a0] text-[#3d2b1f] placeholder:text-[#9a8a6e] focus:border-[#556b2f] resize-none"
               disabled={status === "sending"}
             />
+
+            {/* Photo upload section */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#3d2b1f]">
+                Screenshots (optional, max {MAX_PHOTOS})
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {photos.map((file, i) => (
+                  <div key={i} className="relative group h-16 w-16 rounded-md overflow-hidden border border-[#d4c4a0]">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Screenshot ${i + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label={`Remove screenshot ${i + 1}`}
+                    >
+                      <X className="h-4 w-4 text-white" />
+                    </button>
+                  </div>
+                ))}
+                {photos.length < MAX_PHOTOS && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={status === "sending"}
+                    className="h-16 w-16 rounded-md border-2 border-dashed border-[#9a8a6e]/40 flex items-center justify-center text-[#9a8a6e] hover:border-[#556b2f] hover:text-[#556b2f] transition-colors"
+                    aria-label="Add screenshot"
+                  >
+                    <ImagePlus className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_TYPES.join(",")}
+                multiple
+                className="hidden"
+                onChange={(e) => handleFiles(e.target.files)}
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <span className="text-xs text-[#9a8a6e]">{message.length}/5000</span>
               <Button
