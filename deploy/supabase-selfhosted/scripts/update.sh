@@ -146,6 +146,7 @@ EXTERNAL_HANDLERS=(
   send-push-notification
   send-rsvp-confirmation
   reply-feedback
+  submit-feedback-reply
   fix-expansion-flags
   send-reengagement
   email-unsubscribe
