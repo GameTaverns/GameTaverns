@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveLibrary } from "@/hooks/useActiveLibrary";
 import { useLending } from "@/hooks/useLending";
+import { useMyClubs } from "@/hooks/useClubs";
 import { SpokePageLayout } from "@/components/dashboard/SpokePageLayout";
 import { LibrarySwitcher } from "@/components/dashboard/LibrarySwitcher";
 import { LendingDashboard } from "@/components/lending/LendingDashboard";
