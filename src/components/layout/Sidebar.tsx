@@ -866,7 +866,7 @@ export function Sidebar({ isOpen, collapsed = false, onToggleCollapse }: Sidebar
 
         {/* User Section - Only show when authenticated */}
         {isAuthenticated && (
-          <div className="border-t border-sidebar-border p-4 space-y-2">
+          <div className={cn("border-t border-sidebar-border p-4 space-y-2", collapsed && "lg:hidden")}>
             <div className="flex items-center gap-2 px-4 py-2 text-sm text-sidebar-foreground/80">
               <User className="h-4 w-4" />
               <span className="truncate">{user?.email}</span>
