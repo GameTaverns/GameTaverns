@@ -46,7 +46,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isStaff: boolean;
   roleLoading: boolean;
-  signIn: (emailOrUsername: string, password: string) => Promise<{ error: { message: string } | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: { message: string } | null }>;
   signUp: (email: string, password: string, options?: { username?: string; displayName?: string; referralCode?: string }) => Promise<{ error: { message: string } | null }>;
   signOut: () => Promise<{ error: any }>;
 }
