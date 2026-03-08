@@ -3983,6 +3983,113 @@ export type Database = {
           },
         ]
       }
+      personal_loans: {
+        Row: {
+          borrower_contact: string | null
+          borrower_name: string
+          condition_in: string | null
+          condition_out: string | null
+          copy_id: string | null
+          created_at: string
+          due_date: string | null
+          game_id: string
+          id: string
+          library_id: string
+          loaned_at: string
+          notes: string | null
+          owner_user_id: string
+          returned_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          borrower_contact?: string | null
+          borrower_name: string
+          condition_in?: string | null
+          condition_out?: string | null
+          copy_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          game_id: string
+          id?: string
+          library_id: string
+          loaned_at?: string
+          notes?: string | null
+          owner_user_id: string
+          returned_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          borrower_contact?: string | null
+          borrower_name?: string
+          condition_in?: string | null
+          condition_out?: string | null
+          copy_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          game_id?: string
+          id?: string
+          library_id?: string
+          loaned_at?: string
+          notes?: string | null
+          owner_user_id?: string
+          returned_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_loans_copy_id_fkey"
+            columns: ["copy_id"]
+            isOneToOne: false
+            referencedRelation: "game_copies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_loans_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "personal_loans_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_loans_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_loans_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_loans_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "libraries_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_loans_library_id_fkey"
+            columns: ["library_id"]
+            isOneToOne: false
+            referencedRelation: "library_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photo_likes: {
         Row: {
           created_at: string
