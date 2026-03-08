@@ -179,8 +179,15 @@ export function RandomGamePicker({ libraryId, librarySlug }: RandomGamePickerPro
       return manualGames;
     }
     
+    if (mode === "curated") {
+      if (!selectedListData?.items?.length) return [];
+      // Map curated list items to games from allGames
+      const listGameIds = new Set(selectedListData.items.map(i => i.game_id));
+      return allGames.filter(g => listGameIds.has(g.id));
+    }
+    
     return [];
-  }, [mode, allGames, wishlistData, selectedTypes, selectedGenres, selectedPlayTimes, playerCount, manualGames]);
+  }, [mode, allGames, wishlistData, selectedTypes, selectedGenres, selectedPlayTimes, playerCount, manualGames, selectedListData]);
   
   // Spin and pick a random game
   const handleSpin = useCallback(() => {
