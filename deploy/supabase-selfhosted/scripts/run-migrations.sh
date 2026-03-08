@@ -180,6 +180,7 @@ else
         "84-ownership-status.sql"
         "87-feedback-reply-tokens.sql"
         "88-feedback-note-attachments.sql"
+        "89-games-public-ownership-status.sql"
     )
 fi
 
