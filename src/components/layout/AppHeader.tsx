@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
 import { getPlatformUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
+import { MobileNavDrawer } from "@/components/mobile/MobileNavDrawer";
 
 interface AppHeaderProps {
   onMenuClick?: () => void;
