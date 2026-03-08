@@ -35,6 +35,8 @@ import {
   QrCode,
   Disc,
   Archive,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import logoImage from "@/assets/logo.png";
