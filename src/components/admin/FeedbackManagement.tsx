@@ -334,6 +334,15 @@ function FeedbackDetailDialog({
                       </span>
                     </div>
                     <p className="whitespace-pre-wrap">{note.content}</p>
+                    {(note as any).attachment_urls && (note as any).attachment_urls.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {(note as any).attachment_urls.map((url: string, i: number) => (
+                          <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block">
+                            <img src={url} alt={`Attachment ${i + 1}`} className="h-16 w-16 object-cover rounded border border-border hover:opacity-80 transition-opacity" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
