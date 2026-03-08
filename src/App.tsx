@@ -343,6 +343,9 @@ function PlatformRoutes() {
       <Route path="/lists" element={<CuratedLists />} />
       <Route path="/lists/:listId" element={<CuratedListDetail />} />
 
+      {/* Feedback reply (public, tokenized) */}
+      <Route path="/feedback/reply" element={<Suspense fallback={<PageLoader />}><FeedbackReply /></Suspense>} />
+
       {/* SEO landing pages */}
       <Route path="/games-for-:slug" element={<GamesForNPlayers />} />
       <Route path="/catalog/mechanics" element={<MechanicsIndex />} />
