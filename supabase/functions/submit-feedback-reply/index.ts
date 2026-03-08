@@ -12,7 +12,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { token, message, attachments } = await req.json();
+    const { token, message, attachmentUrls: clientAttachmentUrls } = await req.json();
 
     if (!token || !message) {
       return new Response(
