@@ -106,6 +106,9 @@ const EmbedWidget = lazy(lazyRetry(() => import("./pages/EmbedWidget")));
 const NearMe = lazy(lazyRetry(() => import("./pages/NearMe")));
 const ArchetypesPage = lazy(lazyRetry(() => import("./pages/ArchetypesPage")));
 
+// Feedback reply (public, tokenized)
+const FeedbackReply = lazy(lazyRetry(() => import("./pages/FeedbackReply")));
+
 // Studio pages (studio.gametaverns.com)
 const StudioLogin = lazy(() => import("./pages/StudioLogin"));
 const StudioDashboard = lazy(() => import("./pages/StudioDashboard"));
