@@ -33,13 +33,19 @@ export default function FeedbackReply() {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const fileToBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  const uploadPhoto = async (file: File, feedbackToken: string): Promise<string | null> => {
+    const ext = file.name.split(".").pop() || "png";
+    const path = `reply/${feedbackToken}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("feedback-attachments")
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (uploadError) {
+      console.error("Upload failed:", uploadError.message);
+      return null;
+    }
+    const { data: urlData } = supabase.storage.from("feedback-attachments").getPublicUrl(path);
+    return urlData?.publicUrl || null;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,15 +53,15 @@ export default function FeedbackReply() {
 
     setStatus("sending");
     try {
-      // Convert photos to base64 for the edge function
-      const attachments: { data: string; name: string; type: string }[] = [];
+      // Upload photos directly to storage
+      const attachmentUrls: string[] = [];
       for (const file of photos) {
-        const base64 = await fileToBase64(file);
-        attachments.push({ data: base64, name: file.name, type: file.type });
+        const url = await uploadPhoto(file, token);
+        if (url) attachmentUrls.push(url);
       }
 
       const { data, error } = await supabase.functions.invoke("submit-feedback-reply", {
-        body: { token, message: message.trim(), attachments },
+        body: { token, message: message.trim(), attachmentUrls },
       });
 
       if (error) throw error;
