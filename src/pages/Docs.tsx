@@ -126,6 +126,22 @@ export default function Docs() {
           />
         </div>
 
+        {/* Mobile section picker */}
+        <div className="lg:hidden mb-4 w-full">
+          <select
+            value={activeSection}
+            onChange={(e) => {
+              setActiveSection(e.target.value as SectionId);
+              document.getElementById(`section-${e.target.value}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
+          >
+            {sections.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex gap-6">
           {/* Sidebar nav — desktop only */}
           <nav className="hidden lg:block w-56 shrink-0 sticky top-24 self-start space-y-0.5">
@@ -148,24 +164,6 @@ export default function Docs() {
               </button>
             ))}
           </nav>
-
-          {/* Mobile section picker */}
-          <div className="lg:hidden mb-4 w-full">
-            <select
-              value={activeSection}
-              onChange={(e) => {
-                setActiveSection(e.target.value as SectionId);
-                document.getElementById(`section-${e.target.value}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-              className="w-full rounded-lg border bg-card px-3 py-2 text-sm text-foreground"
-            >
-              {sections.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Content */}
           <div className="flex-1 min-w-0 space-y-10">
 
             {/* ═══ GETTING STARTED ═══ */}
