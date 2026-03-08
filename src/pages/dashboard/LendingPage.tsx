@@ -22,6 +22,7 @@ export default function LendingPage() {
   const { user, isAuthenticated, loading } = useAuth();
   const { library, myLibraries, activeLibraryId, setActiveLibraryId } = useActiveLibrary();
   const { myLentLoans, myBorrowedLoans } = useLending();
+  const { data: myClubs = [] } = useMyClubs();
   const navigate = useNavigate();
 
   const pendingLoanRequests = myLentLoans.filter(l => l.status === "requested").length;

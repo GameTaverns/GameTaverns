@@ -185,11 +185,6 @@ export default function Dashboard() {
               <Calendar className="h-3.5 w-3.5" /> {t('dashboard.events')}
             </Button>
           </Link>
-          <Link to="/dashboard/lending" className="contents">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
-              <BookOpen className="h-3.5 w-3.5" /> {t('dashboard.lending')}
-            </Button>
-          </Link>
           <Link to="/dashboard/insights" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <ClipboardList className="h-3.5 w-3.5" /> {t('hub.logPlay')}
