@@ -140,7 +140,10 @@ export function AppHeader({ onMenuClick, showMenuToggle = false }: AppHeaderProp
               </>
             )}
 
-            {/* Mobile hamburger removed — bottom tab bar handles navigation */}
+            {/* Mobile hamburger drawer */}
+            <div className="md:hidden">
+              <MobileNavDrawer />
+            </div>
           </div>
         </div>
       </div>
