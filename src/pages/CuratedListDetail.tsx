@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout/Layout";
@@ -10,14 +10,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, ArrowLeft, Trash2, Medal, Crown } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Heart, ArrowLeft, Trash2, Medal, Crown, Dices, Sparkles, Share2, RotateCcw, Check } from "lucide-react";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
 import { TenantLink } from "@/components/TenantLink";
 import { GameImage } from "@/components/games/GameImage";
 import { supabase as sb } from "@/integrations/backend/client";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 
 export default function CuratedListDetailPage() {
   const { listId } = useParams<{ listId: string }>();
