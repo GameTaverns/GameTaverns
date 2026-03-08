@@ -67,9 +67,9 @@ export function GlobalFeedbackButton() {
   // On desktop, position buttons to the right of the sidebar when it's visible
   const desktopLeft = sidebarVisible
     ? sidebarCollapsed
-      ? "lg:left-[4.5rem]"   // collapsed sidebar (56px + gap)
-      : "lg:left-[19.5rem]"  // full sidebar (288px + gap)
-    : "lg:left-6";
+      ? "md:left-[4.5rem]"   // collapsed sidebar (56px + gap)
+      : "md:left-[19.5rem]"  // full sidebar (288px + gap)
+    : "md:left-6";
 
   return (
     <>
