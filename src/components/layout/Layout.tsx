@@ -8,6 +8,7 @@ import { OwnerAdminBar } from "./OwnerAdminBar";
 
 import { useTenant } from "@/contexts/TenantContext";
 import { cn } from "@/lib/utils";
+import { MobileBottomTabs } from "@/components/mobile/MobileBottomTabs";
 
 interface LayoutContextType {
   sidebarVisible: boolean;
