@@ -3,8 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Gamepad2, BookOpen, Sparkles, Users, Mail, Settings,
-  Plus, Search, ArrowRight, Shield, Library, Globe,
-  Calendar, User, HelpCircle, Dice5, ClipboardList, ChevronDown,
+  Plus, ArrowRight, Library, Dice5, ClipboardList, ChevronDown,
 } from "lucide-react";
 import { TenantLink } from "@/components/TenantLink";
 import { getLibraryUrl } from "@/hooks/useTenantUrl";
