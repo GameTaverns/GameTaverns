@@ -397,6 +397,14 @@ export default function PlatformAdmin() {
               </Suspense>
             </TabErrorBoundary>
           </TabsContent>
+
+          <TabsContent value="reviews" className="mt-6">
+            <TabErrorBoundary>
+              <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading review moderation…</div>}>
+                <ReviewModeration />
+              </Suspense>
+            </TabErrorBoundary>
+          </TabsContent>
           
           {isAdmin && (
             <>
