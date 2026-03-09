@@ -156,6 +156,7 @@ EXTERNAL_HANDLERS=(
   pbf-daily-challenge
   check-password-reuse
   notify-feedback-closed
+  fetch-news-feeds
 )
 for handler in "${EXTERNAL_HANDLERS[@]}"; do
   src="$FUNCTIONS_DIR/$handler"
