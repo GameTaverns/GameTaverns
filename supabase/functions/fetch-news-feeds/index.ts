@@ -112,10 +112,19 @@ async function handler(req: Request): Promise<Response> {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Check for backfill action
+    // Check for backfill action via body or query param
+    let action = "";
     const url = new URL(req.url);
-    if (url.searchParams.get("action") === "backfill-categories") {
-      // Categorize all uncategorized articles
+    action = url.searchParams.get("action") || "";
+    if (!action && req.method === "POST") {
+      try {
+        const body = await req.clone().json();
+        action = body?.action || "";
+      } catch { /* no body */ }
+    }
+
+    if (action === "backfill-categories") {
+      // Categorize all uncategorized articles in batch
       const { data: articles } = await supabase
         .from("news_articles")
         .select("id, title, summary")
@@ -126,32 +135,31 @@ async function handler(req: Request): Promise<Response> {
         .select("id, slug");
 
       const catMap = new Map((allCats || []).map((c: any) => [c.slug, c.id]));
-      let categorized = 0;
+      
+      // Get all existing categorizations
+      const { data: existingCats } = await supabase
+        .from("news_article_categories")
+        .select("article_id");
+      const alreadyCategorized = new Set((existingCats || []).map((e: any) => e.article_id));
+
+      const allRows: { article_id: string; category_id: string }[] = [];
 
       for (const article of articles || []) {
-        // Check if already categorized
-        const { data: existing } = await supabase
-          .from("news_article_categories")
-          .select("id")
-          .eq("article_id", article.id)
-          .limit(1);
-
-        if (existing && existing.length > 0) continue;
-
+        if (alreadyCategorized.has(article.id)) continue;
         const slugs = detectCategories(article.title, article.summary || "");
-        const rows = slugs
-          .map(s => catMap.get(s))
-          .filter(Boolean)
-          .map(catId => ({ article_id: article.id, category_id: catId }));
-
-        if (rows.length > 0) {
-          await supabase.from("news_article_categories").insert(rows);
-          categorized++;
+        for (const s of slugs) {
+          const catId = catMap.get(s);
+          if (catId) allRows.push({ article_id: article.id, category_id: catId });
         }
       }
 
+      // Batch insert all at once
+      if (allRows.length > 0) {
+        await supabase.from("news_article_categories").insert(allRows);
+      }
+
       return new Response(
-        JSON.stringify({ success: true, categorized, total: articles?.length || 0 }),
+        JSON.stringify({ success: true, categorized: allRows.length, total: articles?.length || 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
