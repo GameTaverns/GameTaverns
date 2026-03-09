@@ -47,6 +47,9 @@ const AccountLockoutManager = lazy(() =>
 const AccessibilityAudit = lazy(() =>
   import("@/components/admin/AccessibilityAudit").then(m => ({ default: m.AccessibilityAudit }))
 );
+const NewsManagement = lazy(() =>
+  import("@/components/admin/NewsManagement").then(m => ({ default: m.NewsManagement }))
+);
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: ReactNode }) {
