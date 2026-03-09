@@ -98,6 +98,7 @@ if [ "$CORE_EXISTS" = "1" ]; then
         "90-club-logos-bucket.sql"
         "91-fix-missing-rpc.sql"
         "92-delete-game-safely.sql"
+        "93-news-reviews.sql"
     )
 else
     echo -e "${BLUE}Fresh installation detected — running all migrations${NC}"
@@ -185,6 +186,7 @@ else
         "90-club-logos-bucket.sql"
         "91-fix-missing-rpc.sql"
         "92-delete-game-safely.sql"
+        "93-news-reviews.sql"
     )
 fi
 

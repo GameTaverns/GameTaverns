@@ -2489,6 +2489,146 @@ export type Database = {
           },
         ]
       }
+      game_review_votes: {
+        Row: {
+          created_at: string
+          id: string
+          review_id: string
+          user_id: string
+          vote_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          review_id: string
+          user_id: string
+          vote_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          review_id?: string
+          user_id?: string
+          vote_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_review_votes_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "game_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_reviews: {
+        Row: {
+          catalog_id: string
+          content: string
+          created_at: string
+          flagged_reason: string | null
+          game_id: string | null
+          helpful_count: number
+          id: string
+          ownership_status: string
+          play_count_at_review: number | null
+          rating_components: number | null
+          rating_gameplay: number | null
+          rating_overall: number
+          rating_replayability: number | null
+          rating_value: number | null
+          recommended: boolean | null
+          reviewer_weight: number
+          status: string
+          title: string | null
+          unhelpful_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          catalog_id: string
+          content: string
+          created_at?: string
+          flagged_reason?: string | null
+          game_id?: string | null
+          helpful_count?: number
+          id?: string
+          ownership_status: string
+          play_count_at_review?: number | null
+          rating_components?: number | null
+          rating_gameplay?: number | null
+          rating_overall: number
+          rating_replayability?: number | null
+          rating_value?: number | null
+          recommended?: boolean | null
+          reviewer_weight?: number
+          status?: string
+          title?: string | null
+          unhelpful_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          catalog_id?: string
+          content?: string
+          created_at?: string
+          flagged_reason?: string | null
+          game_id?: string | null
+          helpful_count?: number
+          id?: string
+          ownership_status?: string
+          play_count_at_review?: number | null
+          rating_components?: number | null
+          rating_gameplay?: number | null
+          rating_overall?: number
+          rating_replayability?: number | null
+          rating_value?: number | null
+          recommended?: boolean | null
+          reviewer_weight?: number
+          status?: string
+          title?: string | null
+          unhelpful_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_reviews_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "game_reviews_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_reviews_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "game_hotness"
+            referencedColumns: ["game_id"]
+          },
+          {
+            foreignKeyName: "game_reviews_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_reviews_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_session_expansions: {
         Row: {
           created_at: string
@@ -3724,6 +3864,322 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      news_article_catalog_links: {
+        Row: {
+          article_id: string
+          catalog_id: string
+          created_at: string
+          id: string
+          relevance_score: number | null
+        }
+        Insert: {
+          article_id: string
+          catalog_id: string
+          created_at?: string
+          id?: string
+          relevance_score?: number | null
+        }
+        Update: {
+          article_id?: string
+          catalog_id?: string
+          created_at?: string
+          id?: string
+          relevance_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_article_catalog_links_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "news_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "news_article_catalog_links_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_popularity"
+            referencedColumns: ["catalog_id"]
+          },
+          {
+            foreignKeyName: "news_article_catalog_links_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "game_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_article_categories: {
+        Row: {
+          article_id: string
+          category_id: string
+          id: string
+        }
+        Insert: {
+          article_id: string
+          category_id: string
+          id?: string
+        }
+        Update: {
+          article_id?: string
+          category_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_article_categories_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "news_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "news_article_categories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "news_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_article_reactions: {
+        Row: {
+          article_id: string
+          created_at: string
+          id: string
+          reaction_type: string
+          user_id: string
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          id?: string
+          reaction_type?: string
+          user_id: string
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          id?: string
+          reaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_article_reactions_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "news_articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_articles: {
+        Row: {
+          ai_categories: Json | null
+          ai_summary: string | null
+          author_name: string | null
+          comment_thread_id: string | null
+          content: string | null
+          content_format: string
+          created_at: string
+          downvotes: number
+          external_id: string | null
+          id: string
+          image_url: string | null
+          moderated_at: string | null
+          moderated_by: string | null
+          published_at: string | null
+          rejection_reason: string | null
+          slug: string
+          source_id: string | null
+          source_url: string | null
+          status: string
+          submitted_by: string | null
+          summary: string | null
+          title: string
+          updated_at: string
+          upvotes: number
+          view_count: number
+        }
+        Insert: {
+          ai_categories?: Json | null
+          ai_summary?: string | null
+          author_name?: string | null
+          comment_thread_id?: string | null
+          content?: string | null
+          content_format?: string
+          created_at?: string
+          downvotes?: number
+          external_id?: string | null
+          id?: string
+          image_url?: string | null
+          moderated_at?: string | null
+          moderated_by?: string | null
+          published_at?: string | null
+          rejection_reason?: string | null
+          slug: string
+          source_id?: string | null
+          source_url?: string | null
+          status?: string
+          submitted_by?: string | null
+          summary?: string | null
+          title: string
+          updated_at?: string
+          upvotes?: number
+          view_count?: number
+        }
+        Update: {
+          ai_categories?: Json | null
+          ai_summary?: string | null
+          author_name?: string | null
+          comment_thread_id?: string | null
+          content?: string | null
+          content_format?: string
+          created_at?: string
+          downvotes?: number
+          external_id?: string | null
+          id?: string
+          image_url?: string | null
+          moderated_at?: string | null
+          moderated_by?: string | null
+          published_at?: string | null
+          rejection_reason?: string | null
+          slug?: string
+          source_id?: string | null
+          source_url?: string | null
+          status?: string
+          submitted_by?: string | null
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          upvotes?: number
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_articles_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "news_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_bookmarks: {
+        Row: {
+          article_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_bookmarks_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "news_articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          display_order: number
+          icon: string | null
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          display_order?: number
+          icon?: string | null
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          display_order?: number
+          icon?: string | null
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      news_sources: {
+        Row: {
+          created_at: string
+          feed_url: string | null
+          fetch_interval_minutes: number
+          id: string
+          is_enabled: boolean
+          is_trusted: boolean
+          last_error: string | null
+          last_fetched_at: string | null
+          logo_url: string | null
+          name: string
+          scrape_config: Json | null
+          slug: string
+          source_type: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          feed_url?: string | null
+          fetch_interval_minutes?: number
+          id?: string
+          is_enabled?: boolean
+          is_trusted?: boolean
+          last_error?: string | null
+          last_fetched_at?: string | null
+          logo_url?: string | null
+          name: string
+          scrape_config?: Json | null
+          slug: string
+          source_type?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          feed_url?: string | null
+          fetch_interval_minutes?: number
+          id?: string
+          is_enabled?: boolean
+          is_trusted?: boolean
+          last_error?: string | null
+          last_fetched_at?: string | null
+          logo_url?: string | null
+          name?: string
+          scrape_config?: Json | null
+          slug?: string
+          source_type?: string
+          updated_at?: string
+          website_url?: string | null
         }
         Relationships: []
       }
@@ -5974,6 +6430,7 @@ export type Database = {
         Args: { games_played: number }
         Returns: number
       }
+      calculate_reviewer_weight: { Args: { _user_id: string }; Returns: number }
       can_access_forum_category: {
         Args: { _category_id: string; _user_id: string }
         Returns: boolean
