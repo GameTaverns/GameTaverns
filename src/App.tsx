@@ -106,8 +106,9 @@ const EmbedWidget = lazy(lazyRetry(() => import("./pages/EmbedWidget")));
 const NearMe = lazy(lazyRetry(() => import("./pages/NearMe")));
 const ArchetypesPage = lazy(lazyRetry(() => import("./pages/ArchetypesPage")));
 
-// Feedback reply (public, tokenized)
 const FeedbackReply = lazy(lazyRetry(() => import("./pages/FeedbackReply")));
+const NewsFeed = lazy(lazyRetry(() => import("./pages/NewsFeed")));
+const NewsArticlePage = lazy(lazyRetry(() => import("./pages/NewsArticle")));
 
 // Studio pages (studio.gametaverns.com)
 const StudioLogin = lazy(() => import("./pages/StudioLogin"));
@@ -325,6 +326,8 @@ function PlatformRoutes() {
       <Route path="/join-club" element={<JoinClub />} />
       <Route path="/clubs" element={<Suspense fallback={<PageLoader />}><ClubsDirectory /></Suspense>} />
       <Route path="/picker" element={<SmartPicker />} />
+      <Route path="/news" element={<Suspense fallback={<PageLoader />}><NewsFeed /></Suspense>} />
+      <Route path="/news/:slug" element={<Suspense fallback={<PageLoader />}><NewsArticlePage /></Suspense>} />
       <Route path="/catalog" element={<CatalogBrowse />} />
       <Route path="/catalog/analytics" element={<CatalogAnalytics />} />
       <Route path="/catalog/:slug" element={<CatalogGameDetail />} />

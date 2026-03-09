@@ -25,7 +25,7 @@ import { useAddFromCatalog } from "@/hooks/useAddFromCatalog";
 import { LibraryPickerDialog } from "@/components/catalog/LibraryPickerDialog";
 import { useAddWant } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
-
+import { GameReviews } from "@/components/catalog/GameReviews";
 
 interface CatalogGameFull {
   id: string;
@@ -440,6 +440,7 @@ export default function CatalogGameDetail() {
               <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
                  <TabsTrigger value="description">{t('catalog.description')}</TabsTrigger>
                  <TabsTrigger value="info">{t('catalog.info')}</TabsTrigger>
+                 <TabsTrigger value="reviews">Reviews</TabsTrigger>
                  <TabsTrigger value="videos">{t('catalog.videos')}</TabsTrigger>
               </TabsList>
 
@@ -544,6 +545,10 @@ export default function CatalogGameDetail() {
                     )}
                   </TableBody>
                 </Table>
+              </TabsContent>
+
+              <TabsContent value="reviews" className="mt-0">
+                <GameReviews catalogId={game.id} gameTitle={game.title} />
               </TabsContent>
 
               <TabsContent value="videos" className="mt-0">

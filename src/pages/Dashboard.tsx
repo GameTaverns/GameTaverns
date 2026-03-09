@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Gamepad2, BookOpen, Sparkles, Users, Mail, Settings,
+  Gamepad2, BookOpen, Sparkles, Users, Mail, Settings, Newspaper,
   Plus, Search, ArrowRight, Library, Globe,
   Calendar, User, HelpCircle, Dice5, ClipboardList, ChevronDown,
 } from "lucide-react";
@@ -186,6 +186,11 @@ export default function Dashboard() {
               <Calendar className="h-3.5 w-3.5" /> {t('dashboard.events')}
             </Button>
           </Link>
+          <Link to="/news" className="hidden md:contents">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
+              <Newspaper className="h-3.5 w-3.5" /> News
+            </Button>
+          </Link>
           <Link to="/dashboard/insights" className="contents">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 whitespace-nowrap shrink-0">
               <ClipboardList className="h-3.5 w-3.5" /> {t('hub.logPlay')}
@@ -286,6 +291,18 @@ export default function Dashboard() {
               t('hub.referralsGrowth'),
             ]}
             iconColor="hsl(var(--muted-foreground))"
+          />
+          <HubCard
+            to="/news"
+            icon={Newspaper}
+            title="News & Reviews"
+            description="Stay updated with the tabletop world"
+            bullets={[
+              "Aggregated board game news",
+              "Community game reviews",
+              "Crowdfunding & new releases",
+            ]}
+            iconColor="hsl(24, 90%, 55%)"
           />
         </div>
       </main>
