@@ -45,6 +45,9 @@ const EmailEngagementAnalytics = lazy(() =>
 const AccessibilityAudit = lazy(() =>
   import("@/components/admin/AccessibilityAudit").then(m => ({ default: m.AccessibilityAudit }))
 );
+const ReviewModeration = lazy(() =>
+  import("@/components/admin/ReviewModeration").then(m => ({ default: m.ReviewModeration }))
+);
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
