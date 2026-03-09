@@ -53,37 +53,38 @@ export function useNewsFeed(categorySlug?: string, page = 1, perPage = 20) {
       const from = (page - 1) * perPage;
       const to = from + perPage - 1;
 
+      // When filtering by category, use an inner join to filter server-side
+      const categoryJoin = categorySlug
+        ? `news_article_categories!inner(category:news_categories!inner(id, name, slug, icon, color))`
+        : `news_article_categories(category:news_categories(id, name, slug, icon, color))`;
+
       let query = supabase
         .from("news_articles")
         .select(`
           id, title, slug, summary, image_url, author_name, published_at,
           status, upvotes, downvotes, view_count, source_url, created_at,
           source:news_sources(name, logo_url),
-          news_article_categories(
-            category:news_categories(id, name, slug, icon, color)
-          )
+          ${categoryJoin}
         `)
         .eq("status", "published")
         .order("published_at", { ascending: false })
         .range(from, to);
 
+      // Filter by category slug server-side via the joined table
+      if (categorySlug) {
+        query = query.eq("news_article_categories.category.slug", categorySlug);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
 
-      let articles = (data || []).map((a: any) => ({
+      const articles = (data || []).map((a: any) => ({
         ...a,
         source: a.source?.[0] || a.source || null,
         categories: (a.news_article_categories || [])
           .map((nac: any) => nac.category)
           .filter(Boolean),
       }));
-
-      // Filter by category if specified
-      if (categorySlug) {
-        articles = articles.filter((a: any) =>
-          a.categories.some((c: any) => c.slug === categorySlug)
-        );
-      }
 
       return articles as NewsArticle[];
     },
