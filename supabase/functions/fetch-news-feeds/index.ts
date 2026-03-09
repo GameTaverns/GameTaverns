@@ -77,6 +77,31 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim();
 }
 
+// Keyword-based auto-categorization
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  "crowdfunding": ["kickstarter", "gamefound", "crowdfund", "crowdfunding", "pledge", "campaign", "backer", "back this", "funded"],
+  "new-releases": ["release", "releasing", "released", "now available", "out now", "launch", "launches", "launching", "hits shelves", "in stores"],
+  "reviews": ["review", "reviewed", "verdict", "our take", "worth it", "should you buy", "impressions"],
+  "events": ["gencon", "gen con", "essen", "spiel", "pax unplugged", "convention", "event", "expo", "fair", "bgg.con", "bggcon", "dice tower con", "ukge"],
+  "industry-news": ["acquisition", "acquired", "merger", "publisher", "studio", "company", "industry", "layoff", "hire", "partnership", "announces", "announcement"],
+  "previews": ["preview", "first look", "sneak peek", "upcoming", "coming soon", "revealed", "reveal", "teaser"],
+  "rumors": ["rumor", "rumour", "leak", "leaked", "speculation", "unconfirmed", "reportedly"],
+  "deals": ["deal", "sale", "discount", "% off", "clearance", "bargain", "price drop", "coupon", "promo"],
+};
+
+function detectCategories(title: string, summary: string): string[] {
+  const text = `${title} ${summary}`.toLowerCase();
+  const matched: string[] = [];
+  for (const [slug, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some(kw => text.includes(kw))) {
+      matched.push(slug);
+    }
+  }
+  // Default to industry-news if nothing matched
+  if (matched.length === 0) matched.push("industry-news");
+  return matched;
+}
+
 async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
