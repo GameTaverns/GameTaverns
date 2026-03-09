@@ -112,6 +112,50 @@ async function handler(req: Request): Promise<Response> {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    // Check for backfill action
+    const url = new URL(req.url);
+    if (url.searchParams.get("action") === "backfill-categories") {
+      // Categorize all uncategorized articles
+      const { data: articles } = await supabase
+        .from("news_articles")
+        .select("id, title, summary")
+        .order("published_at", { ascending: false });
+
+      const { data: allCats } = await supabase
+        .from("news_categories")
+        .select("id, slug");
+
+      const catMap = new Map((allCats || []).map((c: any) => [c.slug, c.id]));
+      let categorized = 0;
+
+      for (const article of articles || []) {
+        // Check if already categorized
+        const { data: existing } = await supabase
+          .from("news_article_categories")
+          .select("id")
+          .eq("article_id", article.id)
+          .limit(1);
+
+        if (existing && existing.length > 0) continue;
+
+        const slugs = detectCategories(article.title, article.summary || "");
+        const rows = slugs
+          .map(s => catMap.get(s))
+          .filter(Boolean)
+          .map(catId => ({ article_id: article.id, category_id: catId }));
+
+        if (rows.length > 0) {
+          await supabase.from("news_article_categories").insert(rows);
+          categorized++;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, categorized, total: articles?.length || 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get all enabled RSS sources
     const { data: sources, error: srcErr } = await supabase
       .from("news_sources")
