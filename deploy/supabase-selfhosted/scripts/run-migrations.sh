@@ -185,6 +185,7 @@ else
         "90-club-logos-bucket.sql"
         "91-fix-missing-rpc.sql"
         "92-delete-game-safely.sql"
+        "93-news-reviews.sql"
     )
 fi
 
