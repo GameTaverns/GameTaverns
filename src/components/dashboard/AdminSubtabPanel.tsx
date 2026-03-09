@@ -7,7 +7,7 @@ import {
   Shield, Activity, Users, Database, Settings, MessageSquare,
   Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Globe,
   Pencil, Eye, EyeOff, ChevronUp, ChevronDown, RotateCcw, X, AlertTriangle, Mail,
-  Accessibility,
+  Accessibility, Star,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -45,16 +45,19 @@ const EmailEngagementAnalytics = lazy(() =>
 const AccessibilityAudit = lazy(() =>
   import("@/components/admin/AccessibilityAudit").then(m => ({ default: m.AccessibilityAudit }))
 );
+const ReviewModeration = lazy(() =>
+  import("@/components/admin/ReviewModeration").then(m => ({ default: m.ReviewModeration }))
+);
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Activity, Users, Database, Settings, MessageSquare,
-  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail, Accessibility,
+  Trophy, HeartPulse, Crown, BadgeCheck, Clock, Terminal, Shield, Globe, AlertTriangle, Mail, Accessibility, Star,
 };
 
 const SUBTAB_CONTENT: Record<string, React.ReactNode> = {};
 
 // Subtabs that staff can access (non-admin)
-const STAFF_SUBTABS = new Set(["analytics", "users", "libraries", "feedback", "clubs", "health", "import-errors"]);
+const STAFF_SUBTABS = new Set(["analytics", "users", "libraries", "feedback", "clubs", "health", "import-errors", "reviews"]);
 
 interface AdminSubtabPanelProps {
   dashPrefs: {
@@ -141,6 +144,11 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
     accessibility: (
       <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading accessibility audit…</div>}>
         <AccessibilityAudit />
+      </Suspense>
+    ),
+    reviews: (
+      <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading review moderation…</div>}>
+        <ReviewModeration />
       </Suspense>
     ),
   };
