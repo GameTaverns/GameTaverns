@@ -284,6 +284,13 @@ export default function PlatformAdmin() {
               <AlertTriangle className="h-4 w-4 mr-1 sm:mr-2" />
               Import Errors
             </TabsTrigger>
+            <TabsTrigger 
+              value="reviews"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+            >
+              <Star className="h-4 w-4 mr-1 sm:mr-2" />
+              Reviews
+            </TabsTrigger>
             {isAdmin && (
               <>
                 <TabsTrigger 
