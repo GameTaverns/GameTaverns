@@ -547,6 +547,10 @@ export default function CatalogGameDetail() {
                 </Table>
               </TabsContent>
 
+              <TabsContent value="reviews" className="mt-0">
+                <GameReviews catalogId={game.id} gameTitle={game.title} />
+              </TabsContent>
+
               <TabsContent value="videos" className="mt-0">
                 <p className="text-muted-foreground text-sm">{t('catalog.videosComingSoon')}</p>
               </TabsContent>
