@@ -50,6 +50,9 @@ const AccessibilityAudit = lazy(() =>
 const NewsManagement = lazy(() =>
   import("@/components/admin/NewsManagement").then(m => ({ default: m.NewsManagement }))
 );
+const ReviewModeration = lazy(() =>
+  import("@/components/admin/ReviewModeration").then(m => ({ default: m.ReviewModeration }))
+);
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: ReactNode }) {
