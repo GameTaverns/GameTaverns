@@ -77,6 +77,31 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim();
 }
 
+// Keyword-based auto-categorization
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  "crowdfunding": ["kickstarter", "gamefound", "crowdfund", "crowdfunding", "pledge", "campaign", "backer", "back this", "funded"],
+  "new-releases": ["release", "releasing", "released", "now available", "out now", "launch", "launches", "launching", "hits shelves", "in stores"],
+  "reviews": ["review", "reviewed", "verdict", "our take", "worth it", "should you buy", "impressions"],
+  "events": ["gencon", "gen con", "essen", "spiel", "pax unplugged", "convention", "event", "expo", "fair", "bgg.con", "bggcon", "dice tower con", "ukge"],
+  "industry-news": ["acquisition", "acquired", "merger", "publisher", "studio", "company", "industry", "layoff", "hire", "partnership", "announces", "announcement"],
+  "previews": ["preview", "first look", "sneak peek", "upcoming", "coming soon", "revealed", "reveal", "teaser"],
+  "rumors": ["rumor", "rumour", "leak", "leaked", "speculation", "unconfirmed", "reportedly"],
+  "deals": ["deal", "sale", "discount", "% off", "clearance", "bargain", "price drop", "coupon", "promo"],
+};
+
+function detectCategories(title: string, summary: string): string[] {
+  const text = `${title} ${summary}`.toLowerCase();
+  const matched: string[] = [];
+  for (const [slug, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some(kw => text.includes(kw))) {
+      matched.push(slug);
+    }
+  }
+  // Default to industry-news if nothing matched
+  if (matched.length === 0) matched.push("industry-news");
+  return matched;
+}
+
 async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -86,6 +111,58 @@ async function handler(req: Request): Promise<Response> {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || Deno.env.get("API_EXTERNAL_URL") || "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Check for backfill action via body or query param
+    let action = "";
+    const url = new URL(req.url);
+    action = url.searchParams.get("action") || "";
+    if (!action && req.method === "POST") {
+      try {
+        const body = await req.clone().json();
+        action = body?.action || "";
+      } catch { /* no body */ }
+    }
+
+    if (action === "backfill-categories") {
+      // Categorize all uncategorized articles in batch
+      const { data: articles } = await supabase
+        .from("news_articles")
+        .select("id, title, summary")
+        .order("published_at", { ascending: false });
+
+      const { data: allCats } = await supabase
+        .from("news_categories")
+        .select("id, slug");
+
+      const catMap = new Map((allCats || []).map((c: any) => [c.slug, c.id]));
+      
+      // Get all existing categorizations
+      const { data: existingCats } = await supabase
+        .from("news_article_categories")
+        .select("article_id");
+      const alreadyCategorized = new Set((existingCats || []).map((e: any) => e.article_id));
+
+      const allRows: { article_id: string; category_id: string }[] = [];
+
+      for (const article of articles || []) {
+        if (alreadyCategorized.has(article.id)) continue;
+        const slugs = detectCategories(article.title, article.summary || "");
+        for (const s of slugs) {
+          const catId = catMap.get(s);
+          if (catId) allRows.push({ article_id: article.id, category_id: catId });
+        }
+      }
+
+      // Batch insert all at once
+      if (allRows.length > 0) {
+        await supabase.from("news_article_categories").insert(allRows);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, categorized: allRows.length, total: articles?.length || 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get all enabled RSS sources
     const { data: sources, error: srcErr } = await supabase
@@ -142,7 +219,7 @@ async function handler(req: Request): Promise<Response> {
           const status = source.is_trusted ? "published" : "pending";
           const publishedAt = item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString();
 
-          const { error: insertErr } = await supabase.from("news_articles").insert({
+          const { data: inserted, error: insertErr } = await supabase.from("news_articles").insert({
             source_id: source.id,
             title: item.title,
             slug,
@@ -155,7 +232,7 @@ async function handler(req: Request): Promise<Response> {
             published_at: publishedAt,
             status,
             external_id: externalId,
-          });
+          }).select("id").single();
 
           if (insertErr) {
             if (insertErr.code === "23505") {
@@ -163,8 +240,21 @@ async function handler(req: Request): Promise<Response> {
             } else {
               errors.push(`${source.name}: ${insertErr.message}`);
             }
-          } else {
+          } else if (inserted) {
             totalAdded++;
+
+            // Auto-categorize
+            const categorySlugs = detectCategories(item.title, summary);
+            const { data: cats } = await supabase
+              .from("news_categories")
+              .select("id")
+              .in("slug", categorySlugs);
+
+            if (cats && cats.length > 0) {
+              await supabase.from("news_article_categories").insert(
+                cats.map((c: any) => ({ article_id: inserted.id, category_id: c.id }))
+              );
+            }
           }
         }
 
