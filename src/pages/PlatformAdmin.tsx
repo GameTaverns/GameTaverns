@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isAdminSubdomain } from "@/lib/subdomainDetection";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut, Clock, Globe, AlertTriangle, Mail, Accessibility, Newspaper } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut, Clock, Globe, AlertTriangle, Mail, Accessibility, Newspaper, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,6 +50,9 @@ const AccessibilityAudit = lazy(() =>
 const NewsManagement = lazy(() =>
   import("@/components/admin/NewsManagement").then(m => ({ default: m.NewsManagement }))
 );
+const ReviewModeration = lazy(() =>
+  import("@/components/admin/ReviewModeration").then(m => ({ default: m.ReviewModeration }))
+);
 
 class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: ReactNode }) {
@@ -81,7 +84,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
 }
 
 // Define which tabs each role can access
-const STAFF_TABS = ["analytics", "users", "libraries", "feedback", "clubs", "health", "import-errors"] as const;
+const STAFF_TABS = ["analytics", "users", "libraries", "feedback", "clubs", "health", "import-errors", "reviews"] as const;
 const ADMIN_ONLY_TABS = ["settings", "roadmap", "badges", "crons", "server", "security", "seo", "email-analytics", "accessibility", "news"] as const;
 const ADMIN_REAUTH_KEY = "gt_admin_reauth_ok";
 
@@ -281,6 +284,13 @@ export default function PlatformAdmin() {
               <AlertTriangle className="h-4 w-4 mr-1 sm:mr-2" />
               Import Errors
             </TabsTrigger>
+            <TabsTrigger 
+              value="reviews"
+              className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+            >
+              <Star className="h-4 w-4 mr-1 sm:mr-2" />
+              Reviews
+            </TabsTrigger>
             {isAdmin && (
               <>
                 <TabsTrigger 
@@ -384,6 +394,14 @@ export default function PlatformAdmin() {
             <TabErrorBoundary>
               <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading import errors…</div>}>
                 <ImportErrorsPanel />
+              </Suspense>
+            </TabErrorBoundary>
+          </TabsContent>
+
+          <TabsContent value="reviews" className="mt-6">
+            <TabErrorBoundary>
+              <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading review moderation…</div>}>
+                <ReviewModeration />
               </Suspense>
             </TabErrorBoundary>
           </TabsContent>
