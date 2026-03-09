@@ -346,9 +346,6 @@ export default function PlatformAdmin() {
                   <Newspaper className="h-4 w-4 mr-1 sm:mr-2" />
                   News
                 </TabsTrigger>
-                  <Accessibility className="h-4 w-4 mr-1 sm:mr-2" />
-                  Accessibility
-                </TabsTrigger>
               </>
             )}
           </TabsList>
