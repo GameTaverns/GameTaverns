@@ -339,6 +339,16 @@ export default function PlatformAdmin() {
                   <Accessibility className="h-4 w-4 mr-1 sm:mr-2" />
                   Accessibility
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="news"
+                  className="data-[state=active]:bg-secondary data-[state=active]:text-secondary-foreground text-xs sm:text-sm"
+                >
+                  <Newspaper className="h-4 w-4 mr-1 sm:mr-2" />
+                  News
+                </TabsTrigger>
+                  <Accessibility className="h-4 w-4 mr-1 sm:mr-2" />
+                  Accessibility
+                </TabsTrigger>
               </>
             )}
           </TabsList>
