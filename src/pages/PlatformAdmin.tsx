@@ -84,7 +84,7 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
 }
 
 // Define which tabs each role can access
-const STAFF_TABS = ["analytics", "users", "libraries", "feedback", "clubs", "health", "import-errors"] as const;
+const STAFF_TABS = ["analytics", "users", "libraries", "feedback", "clubs", "health", "import-errors", "reviews"] as const;
 const ADMIN_ONLY_TABS = ["settings", "roadmap", "badges", "crons", "server", "security", "seo", "email-analytics", "accessibility", "news"] as const;
 const ADMIN_REAUTH_KEY = "gt_admin_reauth_ok";
 
