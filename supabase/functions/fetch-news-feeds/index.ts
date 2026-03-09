@@ -167,7 +167,7 @@ async function handler(req: Request): Promise<Response> {
           const status = source.is_trusted ? "published" : "pending";
           const publishedAt = item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString();
 
-          const { error: insertErr } = await supabase.from("news_articles").insert({
+          const { data: inserted, error: insertErr } = await supabase.from("news_articles").insert({
             source_id: source.id,
             title: item.title,
             slug,
@@ -180,7 +180,7 @@ async function handler(req: Request): Promise<Response> {
             published_at: publishedAt,
             status,
             external_id: externalId,
-          });
+          }).select("id").single();
 
           if (insertErr) {
             if (insertErr.code === "23505") {
@@ -188,8 +188,21 @@ async function handler(req: Request): Promise<Response> {
             } else {
               errors.push(`${source.name}: ${insertErr.message}`);
             }
-          } else {
+          } else if (inserted) {
             totalAdded++;
+
+            // Auto-categorize
+            const categorySlugs = detectCategories(item.title, summary);
+            const { data: cats } = await supabase
+              .from("news_categories")
+              .select("id")
+              .in("slug", categorySlugs);
+
+            if (cats && cats.length > 0) {
+              await supabase.from("news_article_categories").insert(
+                cats.map((c: any) => ({ article_id: inserted.id, category_id: c.id }))
+              );
+            }
           }
         }
 
