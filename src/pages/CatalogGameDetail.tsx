@@ -440,6 +440,7 @@ export default function CatalogGameDetail() {
               <TabsList className="w-full h-auto flex-wrap gap-1 p-1 mb-4">
                  <TabsTrigger value="description">{t('catalog.description')}</TabsTrigger>
                  <TabsTrigger value="info">{t('catalog.info')}</TabsTrigger>
+                 <TabsTrigger value="reviews">Reviews</TabsTrigger>
                  <TabsTrigger value="videos">{t('catalog.videos')}</TabsTrigger>
               </TabsList>
 
