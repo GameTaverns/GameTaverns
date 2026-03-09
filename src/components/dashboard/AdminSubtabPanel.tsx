@@ -146,6 +146,11 @@ export function AdminSubtabPanel({ dashPrefs, unreadFeedbackCount, pendingClubs,
         <AccessibilityAudit />
       </Suspense>
     ),
+    reviews: (
+      <Suspense fallback={<div className="text-cream/70 text-sm p-4">Loading review moderation…</div>}>
+        <ReviewModeration />
+      </Suspense>
+    ),
   };
 
   const badgeCounts: Record<string, number> = {};
