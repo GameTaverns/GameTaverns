@@ -201,9 +201,11 @@ async function handler(req: Request): Promise<Response> {
     );
   }
 }
-
-// Standalone mode
-serve(handler);
-
-// Router mode
+// Router mode (imported by main/)
 export default handler;
+
+// Standalone mode (direct deploy)
+const isMainWorker = Deno.env.get("SUPABASE_FUNCTION_NAME") === "fetch-news-feeds";
+if (isMainWorker) {
+  serve(handler);
+}
