@@ -182,6 +182,9 @@ else
         "87-feedback-reply-tokens.sql"
         "88-feedback-note-attachments.sql"
         "89-games-public-ownership-status.sql"
+        "90-club-logos-bucket.sql"
+        "91-fix-missing-rpc.sql"
+        "92-delete-game-safely.sql"
     )
 fi
 
