@@ -326,6 +326,8 @@ function PlatformRoutes() {
       <Route path="/join-club" element={<JoinClub />} />
       <Route path="/clubs" element={<Suspense fallback={<PageLoader />}><ClubsDirectory /></Suspense>} />
       <Route path="/picker" element={<SmartPicker />} />
+      <Route path="/news" element={<Suspense fallback={<PageLoader />}><NewsFeed /></Suspense>} />
+      <Route path="/news/:slug" element={<Suspense fallback={<PageLoader />}><NewsArticlePage /></Suspense>} />
       <Route path="/catalog" element={<CatalogBrowse />} />
       <Route path="/catalog/analytics" element={<CatalogAnalytics />} />
       <Route path="/catalog/:slug" element={<CatalogGameDetail />} />

@@ -287,6 +287,18 @@ export default function Dashboard() {
             ]}
             iconColor="hsl(var(--muted-foreground))"
           />
+          <HubCard
+            to="/news"
+            icon={Newspaper}
+            title="News & Reviews"
+            description="Stay updated with the tabletop world"
+            bullets={[
+              "Aggregated board game news",
+              "Community game reviews",
+              "Crowdfunding & new releases",
+            ]}
+            iconColor="hsl(24, 90%, 55%)"
+          />
         </div>
       </main>
 
