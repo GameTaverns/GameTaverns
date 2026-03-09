@@ -1131,8 +1131,14 @@ const GameForm = () => {
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={async () => {
+                  const gameIdToDelete = existingGame?.id;
+                  if (!gameIdToDelete) {
+                    toast({ title: t('gameForm.deleteFailed'), description: t('gameForm.deleteFailedDesc'), variant: "destructive" });
+                    return;
+                  }
+
                   try {
-                    await deleteGame.mutateAsync(id!);
+                    await deleteGame.mutateAsync(gameIdToDelete);
                     toast({ title: t('gameForm.gameDeleted'), description: t('gameForm.gameDeletedDesc', { title }) });
                     navigate(buildUrl("/manage"));
                   } catch {
