@@ -6007,6 +6007,7 @@ export type Database = {
         }
         Returns: string
       }
+      delete_game_safely: { Args: { _game_id: string }; Returns: undefined }
       generate_slug: { Args: { title: string }; Returns: string }
       get_catalog_enrichment_status: { Args: never; Returns: Json }
       get_catalog_filter_options: { Args: never; Returns: Json }

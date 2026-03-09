@@ -747,7 +747,7 @@ export function useDeleteGame() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("games").delete().eq("id", id);
+      const { error } = await supabase.rpc("delete_game_safely", { _game_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
