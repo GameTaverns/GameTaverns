@@ -366,7 +366,6 @@ const handler = async (req: Request): Promise<Response> => {
               bgg_id: game.bggId, image_url: game.imageUrl,
               min_players: game.minPlayers, max_players: game.maxPlayers, play_time_minutes: game.playTimeMinutes,
               suggested_age: game.suggestedAge, year_published: game.yearPublished,
-              bgg_community_rating: game.bggCommunityRating, weight: game.weight,
               is_expansion: game.isExpansion, bgg_url: game.bggUrl,
             };
             if (!isDescriptionFormatted(titleMatch.description)) {
