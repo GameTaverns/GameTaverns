@@ -849,7 +849,6 @@ const handler = async (req: Request): Promise<Response> => {
           if (!catalogId) continue;
           try {
             const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-            if (item.bggCommunityRating !== null) updates.bgg_community_rating = item.bggCommunityRating;
             if (item.weight !== null) updates.weight = item.weight;
             await admin.from("game_catalog").update(updates).eq("id", catalogId);
             refreshed++;
