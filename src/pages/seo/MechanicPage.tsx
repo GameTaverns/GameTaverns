@@ -46,7 +46,7 @@ export default function MechanicPage() {
       return data.map((r) => r.game_catalog).filter(Boolean) as Array<{
         id: string; title: string; slug: string | null; image_url: string | null;
         min_players: number | null; max_players: number | null;
-        play_time_minutes: number | null; bgg_community_rating: number | null;
+        play_time_minutes: number | null;
         is_expansion: boolean;
       }>;
     },
