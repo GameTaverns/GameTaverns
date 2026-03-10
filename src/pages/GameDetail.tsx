@@ -38,7 +38,7 @@ import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
 import { GameDocuments } from "@/components/games/GameDocuments";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { GameReviews } from "@/components/catalog/GameReviews";
-import { useReviewAggregate } from "@/hooks/useGameReviews";
+import { useGTScore } from "@/hooks/useGTScore";
 import { useAddTradeListing, useMyTradeListings, useRemoveTradeListing, type SaleCondition } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
 import {
