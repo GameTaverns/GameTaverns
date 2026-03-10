@@ -46,6 +46,10 @@ export interface ReviewFormData {
   recommended?: boolean;
   play_count_at_review?: number;
   ownership_status: "owned" | "previously_owned";
+  best_for?: string;
+  skip_if?: string;
+  best_player_count?: string;
+  compared_to?: string;
 }
 
 export function useGameReviews(catalogId: string | undefined) {
