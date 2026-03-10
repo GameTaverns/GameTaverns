@@ -17,7 +17,7 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
   return (
     <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
       {/* Header row - hidden on mobile */}
-      <div className="hidden sm:grid sm:grid-cols-[1fr_80px_80px_70px_60px_60px_60px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+      <div className="hidden sm:grid sm:grid-cols-[1fr_80px_80px_70px_60px_60px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
         <span>Title</span>
         <span className="text-center">Players</span>
         <span className="text-center">Time</span>
