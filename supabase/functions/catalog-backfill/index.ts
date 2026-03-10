@@ -358,7 +358,7 @@ const handler = async (req: Request): Promise<Response> => {
             bgg_verified_type: item.itemType,
             enriched_at: new Date().toISOString(),
           };
-          if (item.bggCommunityRating !== null) catalogUpdate.bgg_community_rating = item.bggCommunityRating;
+          // bgg_community_rating removed — no longer stored
           if (item.weight !== null) catalogUpdate.weight = item.weight;
           if (item.yearPublished !== null) catalogUpdate.year_published = item.yearPublished;
           if (item.description && !(entry.description && entry.description.includes("Quick Gameplay Overview"))) catalogUpdate.description = item.description;
