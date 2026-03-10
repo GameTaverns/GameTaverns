@@ -227,15 +227,6 @@ export default function LibraryGames() {
                 </div>
 
                 <div className="border-t pt-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-medium mb-1">{t('libraryGames.refreshBGGRatings')}</h3>
-                      <p className="text-sm text-muted-foreground">{t('libraryGames.refreshBGGRatingsDesc')}</p>
-                    </div>
-                    <Button variant="outline" onClick={handleRefreshRatings} disabled={isRefreshingRatings}>
-                      {isRefreshingRatings ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t('libraryGames.refreshing')}</>) : (<><Star className="h-4 w-4 mr-2" />{t('libraryGames.refreshBGGRatings')}</>)}
-                    </Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
