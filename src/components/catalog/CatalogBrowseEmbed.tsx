@@ -111,7 +111,7 @@ export function CatalogBrowseEmbed() {
 
       let query = supabase
         .from("game_catalog")
-        .select("id, title, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, bgg_url, bgg_community_rating")
+        .select("id, title, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, bgg_url")
         .eq("is_expansion", false)
         .order(orderCol, { ascending, nullsFirst: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
