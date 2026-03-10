@@ -393,11 +393,8 @@ export function GameCollectionTable() {
               >
                 Players <SortIcon field="players" />
               </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => handleSort("rating")}
-              >
-                Rating <SortIcon field="rating" />
+              <TableHead>
+                GT Score
               </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
