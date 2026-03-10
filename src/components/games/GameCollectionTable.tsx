@@ -270,7 +270,7 @@ export function GameCollectionTable() {
       // Status
       game.is_coming_soon ? "true" : "",
       // Rating (for reference only)
-      getRating(game.id)?.toFixed(1) || "",
+      "",  // GT Score not exported (it's computed)
     ]);
 
     const csvContent = [
