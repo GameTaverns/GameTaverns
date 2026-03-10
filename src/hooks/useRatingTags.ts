@@ -37,7 +37,7 @@ export function useRatingTags() {
       if (error) throw error;
       return (data || []) as RatingTag[];
     },
-    staleTime: 1000 * 60 * 60, // Tags rarely change
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
