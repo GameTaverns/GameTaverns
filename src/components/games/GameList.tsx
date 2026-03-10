@@ -4,6 +4,7 @@ import { Users, Clock, DollarSign, BookOpen, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GameImage } from "./GameImage";
 import { StarRating } from "./StarRating";
+import { ReviewScoreBadge } from "./ReviewScoreBadge";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
@@ -124,6 +125,7 @@ export function GameList({ games, hasActiveFilters }: GameListProps) {
             {/* Mobile badges */}
             <div className="flex items-center gap-1.5 sm:hidden flex-shrink-0">
               <StarRating gameId={game.id} size="sm" showCount={false} interactive={false} />
+              <ReviewScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
             </div>
 
             {/* Desktop columns */}
@@ -137,8 +139,9 @@ export function GameList({ games, hasActiveFilters }: GameListProps) {
             <span className="hidden sm:block text-center text-xs text-muted-foreground">
               {game.difficulty?.replace(/^\d+ - /, '') || "—"}
             </span>
-            <span className="hidden sm:flex items-center justify-center">
+            <span className="hidden sm:flex items-center justify-center gap-1.5">
               <StarRating gameId={game.id} size="sm" showCount={false} interactive={false} />
+              <ReviewScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
             </span>
           </Link>
         );

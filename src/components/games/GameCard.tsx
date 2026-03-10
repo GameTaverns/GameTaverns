@@ -7,6 +7,7 @@ import { ExpansionList } from "./ExpansionList";
 import { WishlistButton } from "./WishlistButton";
 import { FavoriteButton } from "./FavoriteButton";
 import { StarRating } from "./StarRating";
+import { ReviewScoreBadge } from "./ReviewScoreBadge";
 import { GameImage } from "./GameImage";
 import { LogPlayDialog } from "./LogPlayDialog";
 import { useDemoMode } from "@/contexts/DemoContext";
@@ -90,8 +91,9 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               </div>
 
               {/* Rating */}
-              <div className="hidden sm:block">
+              <div className="hidden sm:flex items-center gap-2 flex-wrap">
                 <StarRating gameId={game.id} size="sm" showCount={true} interactive={false} />
+                <ReviewScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
               </div>
 
               <hr className="border-border mb-1 sm:mb-3" />
