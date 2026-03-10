@@ -28,7 +28,7 @@ interface ParsedEnrichment {
   artists: string[];
   publisher?: string;
   description?: string;
-  bggCommunityRating: number | null;
+  bggCommunityRating: number | null; // kept for parsing but no longer stored
   weight: number | null;
   yearPublished: number | null;
 }
