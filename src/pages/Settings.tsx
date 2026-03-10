@@ -207,7 +207,6 @@ function GameCollectionTable({
           </TableHeader>
           <TableBody>
             {paginatedGames.map((game) => {
-              const rating = getRating(game.id);
               return (
                 <TableRow key={game.id}>
                   <TableCell className="font-medium">{game.title}</TableCell>
@@ -217,16 +216,7 @@ function GameCollectionTable({
                     {game.min_players}-{game.max_players}
                   </TableCell>
                   <TableCell>
-                    {rating ? (
-                      <div className="flex items-center gap-1.5">
-                        {renderStars(Math.round(rating.avg))}
-                        <span className="text-xs text-muted-foreground">
-                          ({rating.count})
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
+                    <GTScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
