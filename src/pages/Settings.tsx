@@ -1541,7 +1541,7 @@ const Settings = () => {
                       gamesPerPage={GAMES_PER_PAGE}
                       onEdit={(id) => navigate(`/admin/edit/${id}`)}
                       onDelete={handleDelete}
-                      ratingSummaries={ratingSummaries}
+                      
                     />
                   )}
                 </CardContent>
