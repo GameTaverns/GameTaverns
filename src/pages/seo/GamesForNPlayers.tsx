@@ -44,11 +44,11 @@ export default function GamesForNPlayers() {
       const to = from + PAGE_SIZE - 1;
       const { data, error } = await supabase
         .from("game_catalog")
-        .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, bgg_community_rating, is_expansion")
+        .select("id, title, slug, image_url, min_players, max_players, play_time_minutes, is_expansion")
         .lte("min_players", n)
         .gte("max_players", n)
         .eq("is_expansion", false)
-        .order("bgg_community_rating", { ascending: false, nullsFirst: false })
+        .order("title", { ascending: true })
         .range(from, to);
       if (error) throw error;
       return data || [];
