@@ -33,7 +33,8 @@ export function useRatingTags() {
       const { data, error } = await supabase
         .from("rating_tags")
         .select("id, slug, label, category, icon, is_positive, display_order")
-        .order("display_order");
+        .order("display_order")
+        .throwOnError();
       if (error) throw error;
       return (data || []) as RatingTag[];
     },
