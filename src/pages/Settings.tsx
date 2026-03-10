@@ -32,7 +32,7 @@ import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useGames, useDeleteGame, useMechanics, usePublishers, useCreateMechanic, useCreatePublisher } from "@/hooks/useGames";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
-import { useGameRatingsSummary } from "@/hooks/useGameRatings";
+import { GTScoreBadge } from "@/components/games/GTScoreBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
