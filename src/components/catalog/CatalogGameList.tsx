@@ -31,7 +31,7 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
         <Link
           key={game.id}
           to={`/catalog/${game.slug || game.id}`}
-          className="flex items-center sm:grid sm:grid-cols-[1fr_80px_80px_70px_60px_60px_60px] gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors group"
+          className="flex items-center sm:grid sm:grid-cols-[1fr_80px_80px_70px_60px_60px] gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors group"
         >
           {/* Title + image */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
