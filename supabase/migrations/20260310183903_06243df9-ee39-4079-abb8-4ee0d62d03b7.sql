@@ -1,0 +1,1 @@
+DELETE FROM public.rating_tags WHERE slug = 'evergreen';
