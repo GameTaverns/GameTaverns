@@ -514,7 +514,6 @@ async function upsertCatalogEntry(
       suggested_age: bggData.suggested_age || null,
       is_expansion: bggData.is_expansion === true,
       bgg_url: `https://boardgamegeek.com/boardgame/${bggId}`,
-      bgg_community_rating: bggData.bgg_average_rating || null,
     };
 
     // Only include additional_images if provided and non-empty (avoid overwriting with empty array)
