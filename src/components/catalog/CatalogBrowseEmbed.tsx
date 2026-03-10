@@ -23,7 +23,6 @@ interface CatalogGame {
   weight: number | null;
   year_published: number | null;
   bgg_url: string | null;
-  bgg_community_rating: number | null;
   designers: string[];
   artists: string[];
 }
