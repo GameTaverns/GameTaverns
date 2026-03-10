@@ -901,6 +901,17 @@ const GameDetail = () => {
                   />
                 </TabsContent>
               )}
+
+              {catalogId && (
+                <TabsContent value="reviews" className="mt-0">
+                  <GameReviews
+                    catalogId={catalogId}
+                    gameTitle={game.title}
+                    minPlayers={game.min_players}
+                    maxPlayers={game.max_players}
+                  />
+                </TabsContent>
+              )}
             </Tabs>
 
           </div>
