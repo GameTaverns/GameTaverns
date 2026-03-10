@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Edit, Trash2, Download, Star, ChevronUp, ChevronDown, Pencil } from "lucide-react";
+import { Edit, Trash2, Download, ChevronUp, ChevronDown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
