@@ -352,6 +352,15 @@ export function useSubmitFeedback() {
         }
       }
 
+      // Spam check before saving
+      const { checkForSpam } = await import("@/utils/spamFilter");
+      const spamResult = checkForSpam(feedback.message, feedback.sender_name, feedback.sender_email);
+      if (spamResult.isSpam) {
+        // Silently reject — don't reveal detection to spammer
+        console.warn("[Feedback] Spam detected:", spamResult.reason);
+        return;
+      }
+
       // Save to database
       const { data: inserted, error } = await supabase
         .from("platform_feedback")
