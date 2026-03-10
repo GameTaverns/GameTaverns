@@ -139,8 +139,9 @@ export function GameList({ games, hasActiveFilters }: GameListProps) {
             <span className="hidden sm:block text-center text-xs text-muted-foreground">
               {game.difficulty?.replace(/^\d+ - /, '') || "—"}
             </span>
-            <span className="hidden sm:flex items-center justify-center">
+            <span className="hidden sm:flex items-center justify-center gap-1.5">
               <StarRating gameId={game.id} size="sm" showCount={false} interactive={false} />
+              <ReviewScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
             </span>
           </Link>
         );

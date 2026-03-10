@@ -493,12 +493,13 @@ const GameDetail = () => {
               </div>
             </div>
 
-            {/* Star Rating - interactive on detail page */}
-            {ratings && (
-              <div className="mb-4">
+            {/* Ratings */}
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
+              {ratings && (
                 <StarRating gameId={game.id} size="md" showCount={true} interactive={true} />
-              </div>
-            )}
+              )}
+              <ReviewScoreBadge catalogId={(game as any).catalog_id} size="md" />
+            </div>
 
             {/* For Sale Banner */}
             {forSale && game.is_for_sale && (
