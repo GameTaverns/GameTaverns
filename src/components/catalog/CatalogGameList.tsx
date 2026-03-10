@@ -22,7 +22,6 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
         <span className="text-center">Players</span>
         <span className="text-center">Time</span>
         <span className="text-center">Weight</span>
-        <span className="text-center">BGG</span>
         <span className="text-center">GT</span>
         <span />
       </div>
