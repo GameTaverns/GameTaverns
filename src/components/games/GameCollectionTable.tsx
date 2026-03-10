@@ -417,7 +417,7 @@ export function GameCollectionTable() {
               </TableRow>
             ) : (
               filteredAndSortedGames.map((game) => {
-                const rating = getRating(game.id);
+                const catalogId = (game as any).catalog_id as string | undefined;
                 return (
                    <TableRow key={game.id}>
                     <TableCell>
