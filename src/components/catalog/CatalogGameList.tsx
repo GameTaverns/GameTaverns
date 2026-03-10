@@ -53,8 +53,8 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
 
           {/* Mobile badges */}
           <div className="flex items-center gap-1.5 sm:hidden flex-shrink-0">
-            {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-              <Badge variant="secondary" className="text-[10px]">★ {game.bgg_community_rating.toFixed(1)}</Badge>
+            {game.community_rating != null && (
+              <Badge variant="secondary" className="text-[10px]">★ {game.community_rating.toFixed(1)}</Badge>
             )}
           </div>
 
