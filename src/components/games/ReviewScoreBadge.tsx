@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { Star, PenLine } from "lucide-react";
 import { useReviewAggregate } from "@/hooks/useGameReviews";
 import { cn } from "@/lib/utils";
 import {
@@ -27,7 +27,6 @@ export function ReviewScoreBadge({
   const score = aggregate.overall;
   const count = aggregate.count;
 
-  // Color based on score
   const getScoreColor = (s: number) => {
     if (s >= 8) return "text-green-600 dark:text-green-400 bg-green-500/15 border-green-500/30";
     if (s >= 6) return "text-primary bg-primary/10 border-primary/30";
@@ -56,11 +55,11 @@ export function ReviewScoreBadge({
         className
       )}
     >
-      <Star className={cn(iconSize[size], "fill-current")} />
+      <PenLine className={cn(iconSize[size])} />
       {score.toFixed(1)}
       {showLabel && (
         <span className="font-normal opacity-75">
-          ({count})
+          ({count} review{count > 1 ? "s" : ""})
         </span>
       )}
     </span>
@@ -72,19 +71,20 @@ export function ReviewScoreBadge({
       <TooltipContent>
         <div className="text-xs space-y-1">
           <div className="font-semibold">Community Review Score: {score.toFixed(1)}/10</div>
-          <div className="text-muted-foreground">Based on {count} review{count > 1 ? "s" : ""}</div>
+          <div className="text-muted-foreground">Based on {count} written review{count > 1 ? "s" : ""}</div>
           {aggregate.gameplay != null && (
-            <div>Gameplay: {aggregate.gameplay.toFixed(1)}</div>
+            <div>Gameplay: {aggregate.gameplay.toFixed(1)}/10</div>
           )}
           {aggregate.components != null && (
-            <div>Components: {aggregate.components.toFixed(1)}</div>
+            <div>Components: {aggregate.components.toFixed(1)}/10</div>
           )}
           {aggregate.replayability != null && (
-            <div>Replayability: {aggregate.replayability.toFixed(1)}</div>
+            <div>Replayability: {aggregate.replayability.toFixed(1)}/10</div>
           )}
           {aggregate.value != null && (
-            <div>Value: {aggregate.value.toFixed(1)}</div>
+            <div>Value: {aggregate.value.toFixed(1)}/10</div>
           )}
+          <div className="text-muted-foreground italic pt-1">Click Reviews tab to read full reviews</div>
         </div>
       </TooltipContent>
     </Tooltip>
