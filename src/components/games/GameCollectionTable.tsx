@@ -69,11 +69,8 @@ export function GameCollectionTable() {
     return flat;
   }, [games]);
 
-  // Get rating for a game
-  const getRating = (gameId: string) => {
-    const rating = ratingsData?.find((r) => r.game_id === gameId);
-    return rating?.average_rating ?? null;
-  };
+  // Rating sort removed — GT Score is catalog-based and not available for simple sort
+  // Keeping the sort field type for compatibility but it's a no-op now
 
   // Generate alphabet for the alpha bar
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
