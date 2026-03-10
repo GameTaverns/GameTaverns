@@ -129,7 +129,7 @@ export function GameCollectionTable() {
     });
 
     return result;
-  }, [allGames, activeLetter, sortField, sortDirection, ratingsData]);
+  }, [allGames, activeLetter, sortField, sortDirection]);
 
   const toggleSelectAll = useCallback(() => {
     setSelectedIds((prev) =>
