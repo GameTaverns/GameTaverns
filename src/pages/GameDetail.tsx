@@ -582,6 +582,14 @@ const GameDetail = () => {
                 <TabsTrigger value="location">{t('game.location')}</TabsTrigger>
                 {playLogs && <TabsTrigger value="plays">{t('game.playHistory')}</TabsTrigger>}
                 {!isDemoMode && library && <TabsTrigger value="documents">{t('game.documents')}</TabsTrigger>}
+                {catalogId && (
+                  <TabsTrigger value="reviews" className="gap-1.5">
+                    Reviews
+                    {reviewAggregate && reviewAggregate.count > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{reviewAggregate.count}</Badge>
+                    )}
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="description" className="mt-0">
