@@ -1641,30 +1641,6 @@ export function SystemHealth() {
             </Button>
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
-            <div className="flex items-center gap-3">
-              <Star className="h-5 w-5 text-secondary" />
-              <div>
-                <div className="text-sm text-cream font-medium">Refresh BGG Ratings</div>
-                <div className="text-xs text-cream/50">
-                  Fetches BGG community average ratings for catalog entries missing them (30 per batch).
-                </div>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs shrink-0"
-              onClick={() => backfillMutation.mutate("refresh-bgg-ratings")}
-              disabled={backfillMutation.isPending}
-            >
-              {backfillMutation.isPending ? (
-                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
-              ) : (
-                <><Star className="h-3.5 w-3.5 mr-1" /> Refresh Ratings</>
-              )}
-            </Button>
-          </div>
 
 
           {/* Catalog Cleanup */}
