@@ -786,7 +786,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // =====================================================================
-    // MODE: re-enrich — Monthly refresh of BGG ratings/weight for existing entries
+    // MODE: re-enrich — Monthly refresh of weight for existing entries
     // Processes entries that haven't been updated in 30+ days
     // =====================================================================
     if (mode === "re-enrich") {
