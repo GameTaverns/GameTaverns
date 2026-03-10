@@ -605,7 +605,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
                 {(submitReview.isPending || saveExtras.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
                 {myReview ? "Update Review" : "Publish Review"}
               </Button>
-              <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => { clearDraft(); setShowForm(false); }}>Cancel</Button>
             </div>
           </CardContent>
         </Card>
