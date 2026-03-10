@@ -38,6 +38,8 @@ import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
 import { GameDocuments } from "@/components/games/GameDocuments";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
+import { GameReviews } from "@/components/catalog/GameReviews";
+import { useReviewAggregate } from "@/hooks/useGameReviews";
 import { useAddTradeListing, useMyTradeListings, useRemoveTradeListing, type SaleCondition } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -156,6 +158,7 @@ const GameDetail = () => {
   });
   const catalogImages = (!gameHasImages && catalogData?.additional_images) ? catalogData.additional_images : [];
   const yearPublished = (game as any)?.year_published ?? catalogData?.year_published;
+  const { data: reviewAggregate } = useReviewAggregate(catalogId);
 
 
   if (isLoading) {
@@ -579,6 +582,14 @@ const GameDetail = () => {
                 <TabsTrigger value="location">{t('game.location')}</TabsTrigger>
                 {playLogs && <TabsTrigger value="plays">{t('game.playHistory')}</TabsTrigger>}
                 {!isDemoMode && library && <TabsTrigger value="documents">{t('game.documents')}</TabsTrigger>}
+                {catalogId && (
+                  <TabsTrigger value="reviews" className="gap-1.5">
+                    Reviews
+                    {reviewAggregate && reviewAggregate.count > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{reviewAggregate.count}</Badge>
+                    )}
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="description" className="mt-0">
@@ -887,6 +898,17 @@ const GameDetail = () => {
                     libraryId={library.id}
                     catalogId={(game as any).catalog_id ?? null}
                     canManage={!!isLibraryOwner}
+                  />
+                </TabsContent>
+              )}
+
+              {catalogId && (
+                <TabsContent value="reviews" className="mt-0">
+                  <GameReviews
+                    catalogId={catalogId}
+                    gameTitle={game.title}
+                    minPlayers={game.min_players}
+                    maxPlayers={game.max_players}
                   />
                 </TabsContent>
               )}
