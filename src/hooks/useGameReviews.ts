@@ -20,6 +20,10 @@ export interface GameReview {
   helpful_count: number;
   unhelpful_count: number;
   status: string;
+  best_for: string | null;
+  skip_if: string | null;
+  best_player_count: string | null;
+  compared_to: string | null;
   created_at: string;
   updated_at: string;
   user_profile?: {
