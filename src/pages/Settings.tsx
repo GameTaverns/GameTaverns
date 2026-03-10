@@ -92,11 +92,6 @@ type UserWithRole = {
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-interface RatingSummary {
-  game_id: string;
-  rating_count: number;
-  average_rating: number;
-}
 
 interface GameCollectionTableProps {
   games: GameWithRelations[];
