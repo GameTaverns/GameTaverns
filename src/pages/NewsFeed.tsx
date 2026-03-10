@@ -75,6 +75,7 @@ export default function NewsFeed() {
   return (
     <Layout>
       <div className="max-w-4xl mx-auto">
+        <BackLink fallback="/dashboard" label="Dashboard" />
         <div className="mb-6">
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
             <Newspaper className="h-7 w-7 text-primary" />
