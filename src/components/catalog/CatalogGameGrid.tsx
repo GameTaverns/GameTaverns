@@ -16,7 +16,6 @@ export interface CatalogGameItem {
   play_time_minutes: number | null;
   weight: number | null;
   year_published: number | null;
-  bgg_community_rating: number | null;
   designers: string[];
   community_rating: number | null;
   community_rating_count: number;
