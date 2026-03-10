@@ -63,7 +63,8 @@ export function useGameReviews(catalogId: string | undefined) {
           rating_components, rating_replayability, rating_value,
           title, content, recommended, play_count_at_review,
           ownership_status, reviewer_weight, helpful_count, unhelpful_count,
-          status, created_at, updated_at
+          status, best_for, skip_if, best_player_count, compared_to,
+          created_at, updated_at
         `)
         .eq("catalog_id", catalogId!)
         .eq("status", "published")
