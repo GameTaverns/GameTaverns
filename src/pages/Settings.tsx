@@ -107,7 +107,7 @@ interface GameCollectionTableProps {
   gamesPerPage: number;
   onEdit: (id: string) => void;
   onDelete: (id: string, title: string) => void;
-  ratingSummaries?: RatingSummary[];
+  
 }
 
 function GameCollectionTable({
