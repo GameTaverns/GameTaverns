@@ -32,6 +32,7 @@ import { EloLeaderboard } from "@/components/games/EloLeaderboard";
 import { GameImage } from "@/components/games/GameImage";
 import { YouTubeVideoList } from "@/components/games/YouTubeEmbed";
 import { StarRating } from "@/components/games/StarRating";
+import { ReviewScoreBadge } from "@/components/games/ReviewScoreBadge";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
