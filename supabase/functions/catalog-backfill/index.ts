@@ -475,9 +475,8 @@ const handler = async (req: Request): Promise<Response> => {
           const catalogId = entryMap.get(item.bggId);
           if (!catalogId || item.yearPublished === null) continue;
           const updateObj: Record<string, unknown> = { year_published: item.yearPublished };
-          // Also backfill weight/rating if missing
+          // Also backfill weight if missing
           if (item.weight !== null) updateObj.weight = item.weight;
-          if (item.bggCommunityRating !== null) updateObj.bgg_community_rating = item.bggCommunityRating;
           updates.push(admin.from("game_catalog").update(updateObj).eq("id", catalogId));
           updated++;
         }
