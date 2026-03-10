@@ -216,7 +216,6 @@ export default function CatalogBrowse() {
 
     // Sorting
     switch (sortBy) {
-      case "rating": query = query.order("bgg_community_rating", { ascending: false, nullsFirst: false }); break;
       case "weight": query = query.order("weight", { ascending: true, nullsFirst: false }); break;
       case "year": query = query.order("year_published", { ascending: false, nullsFirst: false }); break;
       default: query = query.order("title", { ascending: true }); break;
