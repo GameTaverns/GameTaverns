@@ -201,7 +201,7 @@ function GameCollectionTable({
               <TableHead>Type</TableHead>
               <TableHead>Difficulty</TableHead>
               <TableHead>Players</TableHead>
-              <TableHead>Rating</TableHead>
+              <TableHead>GT Score</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
