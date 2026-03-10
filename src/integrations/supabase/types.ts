@@ -2523,7 +2523,10 @@ export type Database = {
       }
       game_reviews: {
         Row: {
+          best_for: string | null
+          best_player_count: string | null
           catalog_id: string
+          compared_to: string | null
           content: string
           created_at: string
           flagged_reason: string | null
@@ -2539,6 +2542,7 @@ export type Database = {
           rating_value: number | null
           recommended: boolean | null
           reviewer_weight: number
+          skip_if: string | null
           status: string
           title: string | null
           unhelpful_count: number
@@ -2546,7 +2550,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          best_for?: string | null
+          best_player_count?: string | null
           catalog_id: string
+          compared_to?: string | null
           content: string
           created_at?: string
           flagged_reason?: string | null
@@ -2562,6 +2569,7 @@ export type Database = {
           rating_value?: number | null
           recommended?: boolean | null
           reviewer_weight?: number
+          skip_if?: string | null
           status?: string
           title?: string | null
           unhelpful_count?: number
@@ -2569,7 +2577,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          best_for?: string | null
+          best_player_count?: string | null
           catalog_id?: string
+          compared_to?: string | null
           content?: string
           created_at?: string
           flagged_reason?: string | null
@@ -2585,6 +2596,7 @@ export type Database = {
           rating_value?: number | null
           recommended?: boolean | null
           reviewer_weight?: number
+          skip_if?: string | null
           status?: string
           title?: string | null
           unhelpful_count?: number
@@ -4845,6 +4857,39 @@ export type Database = {
         }
         Relationships: []
       }
+      rating_tags: {
+        Row: {
+          category: string
+          created_at: string
+          display_order: number
+          icon: string | null
+          id: string
+          is_positive: boolean | null
+          label: string
+          slug: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_positive?: boolean | null
+          label: string
+          slug: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_positive?: boolean | null
+          label?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       reengagement_email_events: {
         Row: {
           created_at: string
@@ -4937,6 +4982,77 @@ export type Database = {
           signed_up_at?: string | null
         }
         Relationships: []
+      }
+      review_player_count_ratings: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          player_count: number
+          rating: number
+          review_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          player_count: number
+          rating: number
+          review_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          player_count?: number
+          rating?: number
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_player_count_ratings_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "game_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_tags: {
+        Row: {
+          created_at: string
+          id: string
+          review_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          review_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          review_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_tags_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "game_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "rating_tags"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       server_commands: {
         Row: {
