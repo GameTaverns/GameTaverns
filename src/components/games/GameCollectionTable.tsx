@@ -35,7 +35,7 @@ type SortDirection = "asc" | "desc";
 export function GameCollectionTable() {
   const { toast } = useToast();
   const { data: games, isLoading } = useGames();
-  const { data: ratingsData } = useGameRatingsSummary();
+  // Old ratingsData removed — GT Score is now per-catalog-entry via GTScoreBadge
   const deleteGame = useDeleteGame();
   const { buildUrl } = useTenantUrl();
   
