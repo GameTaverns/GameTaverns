@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
+import { BackLink } from "@/components/navigation/BackLink";
 import { useNewsFeed, useNewsCategories, type NewsArticle } from "@/hooks/useNews";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
