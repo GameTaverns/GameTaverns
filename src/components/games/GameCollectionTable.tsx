@@ -447,14 +447,7 @@ export function GameCollectionTable() {
                         : "-"}
                     </TableCell>
                     <TableCell>
-                      {rating ? (
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-primary text-primary" />
-                          <span>{rating.toFixed(1)}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                      <GTScoreBadge catalogId={catalogId} size="sm" showLabel={false} />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
