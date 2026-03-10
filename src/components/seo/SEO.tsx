@@ -22,7 +22,7 @@ interface SEOProps {
 const SITE_NAME = "GameTaverns";
 const DEFAULT_DESCRIPTION =
   "Create and explore board game libraries — track collections, log plays, manage lending, and build your gaming community.";
-const DEFAULT_OG_IMAGE = "https://gametaverns.com/gt-logo.png";
+const DEFAULT_OG_IMAGE = "https://gametaverns.com/gt-og-image.png";
 const SITE_URL = "https://gametaverns.com";
 
 function setMeta(property: string, content: string, isName = false) {
