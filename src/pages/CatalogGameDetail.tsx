@@ -357,9 +357,6 @@ export default function CatalogGameDetail() {
               {game.year_published != null && (
                 <Badge variant="outline"><Calendar className="h-3.5 w-3.5 mr-1" />{game.year_published}</Badge>
               )}
-              {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                <Badge variant="secondary">BGG ★ {game.bgg_community_rating.toFixed(1)}</Badge>
-              )}
               {game.community_rating != null && (
                 <Badge className="bg-primary/20 text-primary border-primary/30">GT ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})</Badge>
               )}
