@@ -739,9 +739,8 @@ const handler = async (req: Request): Promise<Response> => {
           const entry = entryMap.get(item.bggId);
           if (!entry) continue;
 
-          // Also update rating/weight if we got better data
+          // Also update weight if we got better data
           const updates: Record<string, unknown> = { enriched_at: new Date().toISOString() };
-          if (item.bggCommunityRating !== null) updates.bgg_community_rating = item.bggCommunityRating;
           if (item.weight !== null) updates.weight = item.weight;
           await admin.from("game_catalog").update(updates).eq("id", entry.id);
 
