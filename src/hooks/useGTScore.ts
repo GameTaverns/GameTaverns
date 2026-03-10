@@ -172,7 +172,7 @@ export function getGradeColor(grade: string): string {
 }
 
 export function getScoreLabel(score: number): string {
-  if (score >= 9.0) return "Exceptional";
+  if (score >= 9.0) return "Must Own";
   if (score >= 8.0) return "Excellent";
   if (score >= 7.0) return "Very Good";
   if (score >= 6.0) return "Good";
