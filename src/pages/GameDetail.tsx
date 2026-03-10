@@ -60,7 +60,7 @@ const GameDetail = () => {
   const { isAdmin } = useAuth();
   const { isOwner: isLibraryOwner } = useTenant();
   const canViewAdminData = isAdmin || isLibraryOwner;
-  const { playLogs, messaging, forSale, ratings, lending } = useFeatureFlags();
+  const { playLogs, messaging, forSale, lending } = useFeatureFlags();
   useLibraryViewTracking(library?.id, isLibraryOwner);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [gameDetailTab, setGameDetailTab] = usePersistedTab("game-detail-tab", "description");
