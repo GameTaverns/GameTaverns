@@ -35,11 +35,14 @@ export function useRatingTags() {
         .select("id, slug, label, category, icon, is_positive, display_order")
         .order("display_order");
       if (error) throw error;
-      return (data || []) as RatingTag[];
+      // Filter out any tags that shouldn't exist (belt-and-suspenders)
+      const REMOVED_SLUGS = ["evergreen"];
+      return ((data || []) as RatingTag[]).filter(t => !REMOVED_SLUGS.includes(t.slug));
     },
     staleTime: 0,
-    gcTime: 1000 * 60 * 2,
+    gcTime: 0,
     refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 
