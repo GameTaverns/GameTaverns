@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useGames, useDeleteGame } from "@/hooks/useGames";
-import { useGameRatingsSummary } from "@/hooks/useGameRatings";
+import { GTScoreBadge } from "@/components/games/GTScoreBadge";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
