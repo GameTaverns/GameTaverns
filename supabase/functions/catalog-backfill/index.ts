@@ -28,7 +28,7 @@ interface ParsedEnrichment {
   artists: string[];
   publisher?: string;
   description?: string;
-  bggCommunityRating: number | null;
+  bggCommunityRating: number | null; // kept for parsing but no longer stored
   weight: number | null;
   yearPublished: number | null;
 }
@@ -358,7 +358,7 @@ const handler = async (req: Request): Promise<Response> => {
             bgg_verified_type: item.itemType,
             enriched_at: new Date().toISOString(),
           };
-          if (item.bggCommunityRating !== null) catalogUpdate.bgg_community_rating = item.bggCommunityRating;
+          // bgg_community_rating removed — no longer stored
           if (item.weight !== null) catalogUpdate.weight = item.weight;
           if (item.yearPublished !== null) catalogUpdate.year_published = item.yearPublished;
           if (item.description && !(entry.description && entry.description.includes("Quick Gameplay Overview"))) catalogUpdate.description = item.description;
@@ -475,9 +475,8 @@ const handler = async (req: Request): Promise<Response> => {
           const catalogId = entryMap.get(item.bggId);
           if (!catalogId || item.yearPublished === null) continue;
           const updateObj: Record<string, unknown> = { year_published: item.yearPublished };
-          // Also backfill weight/rating if missing
+          // Also backfill weight if missing
           if (item.weight !== null) updateObj.weight = item.weight;
-          if (item.bggCommunityRating !== null) updateObj.bgg_community_rating = item.bggCommunityRating;
           updates.push(admin.from("game_catalog").update(updateObj).eq("id", catalogId));
           updated++;
         }
@@ -740,9 +739,8 @@ const handler = async (req: Request): Promise<Response> => {
           const entry = entryMap.get(item.bggId);
           if (!entry) continue;
 
-          // Also update rating/weight if we got better data
+          // Also update weight if we got better data
           const updates: Record<string, unknown> = { enriched_at: new Date().toISOString() };
-          if (item.bggCommunityRating !== null) updates.bgg_community_rating = item.bggCommunityRating;
           if (item.weight !== null) updates.weight = item.weight;
           await admin.from("game_catalog").update(updates).eq("id", entry.id);
 
@@ -788,7 +786,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // =====================================================================
-    // MODE: re-enrich — Monthly refresh of BGG ratings/weight for existing entries
+    // MODE: re-enrich — Monthly refresh of weight for existing entries
     // Processes entries that haven't been updated in 30+ days
     // =====================================================================
     if (mode === "re-enrich") {
@@ -851,7 +849,6 @@ const handler = async (req: Request): Promise<Response> => {
           if (!catalogId) continue;
           try {
             const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-            if (item.bggCommunityRating !== null) updates.bgg_community_rating = item.bggCommunityRating;
             if (item.weight !== null) updates.weight = item.weight;
             await admin.from("game_catalog").update(updates).eq("id", catalogId);
             refreshed++;
@@ -963,19 +960,7 @@ const handler = async (req: Request): Promise<Response> => {
         const { data: linkedGames } = await admin.from("games").select("id").eq("catalog_id", entry.id);
         if (!linkedGames || linkedGames.length === 0) continue;
 
-        const gameIds = linkedGames.map(g => g.id);
-        const { data: bggRatings } = await admin
-          .from("game_ratings").select("rating").in("game_id", gameIds)
-          .eq("guest_identifier", "bgg-community").limit(1);
-
-        if (bggRatings && bggRatings.length > 0) {
-          const bgg10 = bggRatings[0].rating * 2;
-          const { data: current } = await admin.from("game_catalog").select("bgg_community_rating").eq("id", entry.id).single();
-          if (!current?.bgg_community_rating || current.bgg_community_rating <= 0) {
-            await admin.from("game_catalog").update({ bgg_community_rating: bgg10 }).eq("id", entry.id);
-            ratingsUpdated++;
-          }
-        }
+        // BGG community ratings no longer synced to catalog
         processed++;
       }
 

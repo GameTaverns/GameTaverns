@@ -1791,7 +1791,6 @@ export type Database = {
       game_catalog: {
         Row: {
           additional_images: string[] | null
-          bgg_community_rating: number | null
           bgg_id: string | null
           bgg_url: string | null
           bgg_verified_type: string | null
@@ -1815,7 +1814,6 @@ export type Database = {
         }
         Insert: {
           additional_images?: string[] | null
-          bgg_community_rating?: number | null
           bgg_id?: string | null
           bgg_url?: string | null
           bgg_verified_type?: string | null
@@ -1839,7 +1837,6 @@ export type Database = {
         }
         Update: {
           additional_images?: string[] | null
-          bgg_community_rating?: number | null
           bgg_id?: string | null
           bgg_url?: string | null
           bgg_verified_type?: string | null

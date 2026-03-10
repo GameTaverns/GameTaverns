@@ -16,7 +16,6 @@ export interface CatalogGameItem {
   play_time_minutes: number | null;
   weight: number | null;
   year_published: number | null;
-  bgg_community_rating: number | null;
   designers: string[];
   community_rating: number | null;
   community_rating_count: number;
@@ -89,9 +88,6 @@ export function CatalogGameGrid({ games, isAuthenticated, addingId, isPending, o
                     <Badge variant="outline" className="text-xs">
                       <Weight className="h-3 w-3 mr-0.5" />{game.weight.toFixed(1)}
                     </Badge>
-                  )}
-                  {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                    <Badge variant="secondary" className="text-xs">BGG ★ {game.bgg_community_rating.toFixed(1)}</Badge>
                   )}
                   {game.community_rating != null && (
                     <Badge className="text-xs bg-primary/20 text-primary border-primary/30">★ {game.community_rating.toFixed(1)} ({game.community_rating_count})</Badge>

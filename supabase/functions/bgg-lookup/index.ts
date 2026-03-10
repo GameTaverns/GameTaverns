@@ -228,7 +228,7 @@ export default async function handler(req: Request): Promise<Response> {
         
         const { data: catalogEntry } = await supabase
           .from("game_catalog")
-          .select("id, title, description, image_url, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_community_rating, bgg_url")
+          .select("id, title, description, image_url, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_url")
           .eq("bgg_id", bggId)
           .maybeSingle();
 

@@ -17,12 +17,11 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
   return (
     <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
       {/* Header row - hidden on mobile */}
-      <div className="hidden sm:grid sm:grid-cols-[1fr_80px_80px_70px_60px_60px_60px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+      <div className="hidden sm:grid sm:grid-cols-[1fr_80px_80px_70px_60px_60px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
         <span>Title</span>
         <span className="text-center">Players</span>
         <span className="text-center">Time</span>
         <span className="text-center">Weight</span>
-        <span className="text-center">BGG</span>
         <span className="text-center">GT</span>
         <span />
       </div>
@@ -31,7 +30,7 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
         <Link
           key={game.id}
           to={`/catalog/${game.slug || game.id}`}
-          className="flex items-center sm:grid sm:grid-cols-[1fr_80px_80px_70px_60px_60px_60px] gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors group"
+          className="flex items-center sm:grid sm:grid-cols-[1fr_80px_80px_70px_60px_60px] gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors group"
         >
           {/* Title + image */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -53,8 +52,8 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
 
           {/* Mobile badges */}
           <div className="flex items-center gap-1.5 sm:hidden flex-shrink-0">
-            {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-              <Badge variant="secondary" className="text-[10px]">★ {game.bgg_community_rating.toFixed(1)}</Badge>
+            {game.community_rating != null && (
+              <Badge variant="secondary" className="text-[10px]">★ {game.community_rating.toFixed(1)}</Badge>
             )}
           </div>
 
@@ -67,9 +66,6 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
           </span>
           <span className="hidden sm:block text-center text-xs text-muted-foreground">
             {game.weight != null ? game.weight.toFixed(1) : "—"}
-          </span>
-          <span className="hidden sm:block text-center text-xs text-muted-foreground">
-            {game.bgg_community_rating != null && game.bgg_community_rating > 0 ? `★ ${game.bgg_community_rating.toFixed(1)}` : "—"}
           </span>
           <span className="hidden sm:block text-center text-xs text-muted-foreground">
             {game.community_rating != null ? `★ ${game.community_rating.toFixed(1)}` : "—"}

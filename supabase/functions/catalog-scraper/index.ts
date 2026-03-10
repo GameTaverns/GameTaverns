@@ -342,7 +342,6 @@ const handler = async (req: Request): Promise<Response> => {
               play_time_minutes: game.playTimeMinutes,
               suggested_age: game.suggestedAge,
               year_published: game.yearPublished,
-              bgg_community_rating: game.bggCommunityRating,
               weight: game.weight,
               is_expansion: game.isExpansion,
               bgg_url: game.bggUrl,
@@ -367,7 +366,6 @@ const handler = async (req: Request): Promise<Response> => {
               bgg_id: game.bggId, image_url: game.imageUrl,
               min_players: game.minPlayers, max_players: game.maxPlayers, play_time_minutes: game.playTimeMinutes,
               suggested_age: game.suggestedAge, year_published: game.yearPublished,
-              bgg_community_rating: game.bggCommunityRating, weight: game.weight,
               is_expansion: game.isExpansion, bgg_url: game.bggUrl,
             };
             if (!isDescriptionFormatted(titleMatch.description)) {
@@ -380,7 +378,6 @@ const handler = async (req: Request): Promise<Response> => {
               bgg_id: game.bggId, title: game.title, description: game.description, image_url: game.imageUrl,
               min_players: game.minPlayers, max_players: game.maxPlayers, play_time_minutes: game.playTimeMinutes,
               suggested_age: game.suggestedAge, year_published: game.yearPublished,
-              bgg_community_rating: game.bggCommunityRating, weight: game.weight,
               is_expansion: game.isExpansion, bgg_url: game.bggUrl,
             }, { onConflict: "bgg_id" }).select("id").single();
             entryId = data?.id || null;
@@ -544,7 +541,7 @@ const handler = async (req: Request): Promise<Response> => {
               image_url: game.imageUrl,
               min_players: game.minPlayers, max_players: game.maxPlayers,
               play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
-              year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
+              year_published: game.yearPublished,
               weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
             };
             if (!isDescriptionFormatted(titleMatch.description)) {
@@ -558,7 +555,7 @@ const handler = async (req: Request): Promise<Response> => {
               title: game.title, description: game.description, image_url: game.imageUrl,
               min_players: game.minPlayers, max_players: game.maxPlayers,
               play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
-              year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
+              year_published: game.yearPublished,
               weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
             }, { onConflict: "bgg_id" }).select("id").single();
             entry = data;
@@ -729,7 +726,7 @@ const handler = async (req: Request): Promise<Response> => {
             image_url: game.imageUrl,
             min_players: game.minPlayers, max_players: game.maxPlayers,
             play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
-            year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
+            year_published: game.yearPublished,
             weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
           };
           if (!isDescriptionFormatted(titleMatch.description)) {
@@ -743,7 +740,7 @@ const handler = async (req: Request): Promise<Response> => {
             title: game.title, description: game.description, image_url: game.imageUrl,
             min_players: game.minPlayers, max_players: game.maxPlayers,
             play_time_minutes: game.playTimeMinutes, suggested_age: game.suggestedAge,
-            year_published: game.yearPublished, bgg_community_rating: game.bggCommunityRating,
+            year_published: game.yearPublished,
             weight: game.weight, is_expansion: game.isExpansion, bgg_url: game.bggUrl,
           }, { onConflict: "bgg_id" }).select("id").single();
           entry = data; upsertErr = error;

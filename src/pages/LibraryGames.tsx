@@ -46,7 +46,7 @@ export default function LibraryGames() {
   const [showBulkImport, setShowBulkImportRaw] = useState(persisted.open);
   const [bulkImportMode, setBulkImportMode] = useState<ImportMode>(persisted.mode);
   const [isRefreshingImages, setIsRefreshingImages] = useState(false);
-  const [isRefreshingRatings, setIsRefreshingRatings] = useState(false);
+  
 
   const setShowBulkImport = useCallback((v: boolean) => {
     setShowBulkImportRaw(v);
@@ -96,35 +96,6 @@ export default function LibraryGames() {
     } finally { setIsRefreshingImages(false); }
   };
 
-  const handleRefreshRatings = async () => {
-    if (!library?.id) return;
-    setIsRefreshingRatings(true);
-    let totalUpdated = 0;
-    let remaining = 999;
-    try {
-      if (isSelfHostedMode()) { toast({ title: "Feature not available", description: "Rating refresh is not yet available in self-hosted mode" }); return; }
-      while (remaining > 0) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        if (!token) { toast({ title: "Authentication required", description: "Please log in to refresh ratings", variant: "destructive" }); return; }
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refresh-ratings`, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json", "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-          body: JSON.stringify({ library_id: library.id, limit: 30 }),
-        });
-        if (!response.ok) { const error = await response.json(); throw new Error(error.error || "Failed to refresh ratings"); }
-        const data = await response.json();
-        totalUpdated += data.updated || 0;
-        remaining = data.remaining || 0;
-        if (data.processed === 0) break;
-      }
-      if (totalUpdated > 0) { toast({ title: "Ratings refreshed!", description: `Updated ${totalUpdated} game rating${totalUpdated !== 1 ? 's' : ''} from BGG` }); queryClient.invalidateQueries({ queryKey: ["game-ratings"] }); }
-      else toast({ title: "No updates needed", description: "All games with BGG IDs already have community ratings" });
-    } catch (error) {
-      console.error("Refresh ratings error:", error);
-      toast({ title: "Refresh failed", description: error instanceof Error ? error.message : "Failed to refresh ratings", variant: "destructive" });
-    } finally { setIsRefreshingRatings(false); }
-  };
 
   const getLocalPlatformUrl = (path: string = "/dashboard"): string => {
     const hostname = window.location.hostname;
@@ -256,15 +227,6 @@ export default function LibraryGames() {
                 </div>
 
                 <div className="border-t pt-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-medium mb-1">{t('libraryGames.refreshBGGRatings')}</h3>
-                      <p className="text-sm text-muted-foreground">{t('libraryGames.refreshBGGRatingsDesc')}</p>
-                    </div>
-                    <Button variant="outline" onClick={handleRefreshRatings} disabled={isRefreshingRatings}>
-                      {isRefreshingRatings ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t('libraryGames.refreshing')}</>) : (<><Star className="h-4 w-4 mr-2" />{t('libraryGames.refreshBGGRatings')}</>)}
-                    </Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -23,7 +23,6 @@ interface CatalogGame {
   weight: number | null;
   year_published: number | null;
   bgg_url: string | null;
-  bgg_community_rating: number | null;
   designers: string[];
   artists: string[];
 }
@@ -106,14 +105,13 @@ export function CatalogBrowseEmbed() {
       let orderCol = "title";
       let ascending = true;
       switch (sortBy) {
-        case "rating": orderCol = "bgg_community_rating"; ascending = false; break;
         case "weight": orderCol = "weight"; ascending = true; break;
         case "year": orderCol = "year_published"; ascending = false; break;
       }
 
       let query = supabase
         .from("game_catalog")
-        .select("id, title, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, bgg_url, bgg_community_rating")
+        .select("id, title, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, bgg_url")
         .eq("is_expansion", false)
         .order(orderCol, { ascending, nullsFirst: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -219,9 +217,6 @@ export function CatalogBrowseEmbed() {
                       <Badge variant="outline" className="text-xs">
                         <Weight className="h-3 w-3 mr-0.5" />{game.weight.toFixed(1)}
                       </Badge>
-                    )}
-                    {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                      <Badge variant="secondary" className="text-xs">★ {game.bgg_community_rating.toFixed(1)}</Badge>
                     )}
                     {game.designers.length > 0 && (
                       <Badge variant="outline" className="text-xs">

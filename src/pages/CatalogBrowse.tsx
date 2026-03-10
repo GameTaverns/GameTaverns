@@ -38,7 +38,6 @@ interface CatalogGame {
   year_published: number | null;
   is_expansion: boolean;
   bgg_url: string | null;
-  bgg_community_rating: number | null;
   suggested_age: string | null;
   designers: string[];
   artists: string[];
@@ -100,7 +99,7 @@ export default function CatalogBrowse() {
   const buildQuery = useCallback(async (pageParam: number) => {
     let query = supabase
       .from("game_catalog")
-      .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age", { count: pageParam === 0 ? "exact" : undefined });
+      .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, suggested_age", { count: pageParam === 0 ? "exact" : undefined });
 
     // When an entity filter is active and includeExpansions is on, skip the is_expansion filter
     if (!(isEntityFilter && includeExpansions)) {
@@ -217,7 +216,6 @@ export default function CatalogBrowse() {
 
     // Sorting
     switch (sortBy) {
-      case "rating": query = query.order("bgg_community_rating", { ascending: false, nullsFirst: false }); break;
       case "weight": query = query.order("weight", { ascending: true, nullsFirst: false }); break;
       case "year": query = query.order("year_published", { ascending: false, nullsFirst: false }); break;
       default: query = query.order("title", { ascending: true }); break;
@@ -485,7 +483,6 @@ export default function CatalogBrowse() {
               </SelectTrigger>
               <SelectContent>
                  <SelectItem value="title">{t('catalog.sortTitle')}</SelectItem>
-                 <SelectItem value="rating">{t('catalog.sortRating')}</SelectItem>
                  <SelectItem value="community">{t('catalog.sortCommunity')}</SelectItem>
                  <SelectItem value="weight">{t('catalog.sortWeight')}</SelectItem>
                  <SelectItem value="year">{t('catalog.sortYear')}</SelectItem>

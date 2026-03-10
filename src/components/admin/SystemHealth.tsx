@@ -492,54 +492,6 @@ export function SystemHealth() {
         return { mode: "test", ...data };
       }
 
-      // Refresh BGG ratings: loops until all entries are processed
-      if (mode === "refresh-bgg-ratings") {
-        const refreshUrl = `${supabaseUrl}/functions/v1/refresh-ratings`;
-        let totalUpdated = 0;
-        let totalFailed = 0;
-        let totalProcessed = 0;
-        let remaining = 1; // start truthy
-        let iterations = 0;
-        const maxIterations = 100; // safety cap
-
-        while (remaining > 0 && iterations < maxIterations) {
-          iterations++;
-          const r = await fetch(refreshUrl, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              apikey: anonKey,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ limit: 100 }),
-          });
-          if (!r.ok) {
-            if (r.status >= 500) break; // stop on server errors, return partial
-            const err = await r.json().catch(() => ({ error: r.statusText }));
-            throw new Error(err.error || r.statusText);
-          }
-          const data = await r.json();
-          totalUpdated += data.updated || 0;
-          totalFailed += data.failed || 0;
-          totalProcessed += data.processed || 0;
-          remaining = data.remaining || 0;
-
-          // If nothing was updated this round, stop to avoid infinite loop
-          if ((data.updated || 0) === 0 && (data.processed || 0) === 0) break;
-
-          // Brief pause between batches
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-
-        return {
-          mode: "refresh-bgg-ratings",
-          updated: totalUpdated,
-          failed: totalFailed,
-          processed: totalProcessed,
-          remaining,
-          iterations,
-        };
-      }
 
       const batchSize = mode === "sync-ratings" ? 50 : 5;
       let offset = 0;
@@ -599,10 +551,6 @@ export function SystemHealth() {
       if (data.mode === "test") {
         toast.success("BGG test complete — check console for details");
         console.log("[catalog-backfill test]", data);
-        return;
-      }
-      if (data.mode === "refresh-bgg-ratings") {
-        toast.success(`BGG ratings refreshed: ${data.updated || 0} updated, ${data.remaining || 0} remaining`);
         return;
       }
       if (data.mode === "fix-missing") {
@@ -1693,30 +1641,6 @@ export function SystemHealth() {
             </Button>
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-lg bg-wood-medium/20 border border-wood-medium/40">
-            <div className="flex items-center gap-3">
-              <Star className="h-5 w-5 text-secondary" />
-              <div>
-                <div className="text-sm text-cream font-medium">Refresh BGG Ratings</div>
-                <div className="text-xs text-cream/50">
-                  Fetches BGG community average ratings for catalog entries missing them (30 per batch).
-                </div>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs shrink-0"
-              onClick={() => backfillMutation.mutate("refresh-bgg-ratings")}
-              disabled={backfillMutation.isPending}
-            >
-              {backfillMutation.isPending ? (
-                <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Running...</>
-              ) : (
-                <><Star className="h-3.5 w-3.5 mr-1" /> Refresh Ratings</>
-              )}
-            </Button>
-          </div>
 
 
           {/* Catalog Cleanup */}

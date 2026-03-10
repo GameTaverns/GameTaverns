@@ -514,7 +514,6 @@ async function upsertCatalogEntry(
       suggested_age: bggData.suggested_age || null,
       is_expansion: bggData.is_expansion === true,
       bgg_url: `https://boardgamegeek.com/boardgame/${bggId}`,
-      bgg_community_rating: bggData.bgg_average_rating || null,
     };
 
     // Only include additional_images if provided and non-empty (avoid overwriting with empty array)
@@ -944,7 +943,7 @@ export default async function handler(req: Request): Promise<Response> {
     if (bggId) {
       const { data: existingCatalog } = await supabaseAdmin
         .from("game_catalog")
-        .select("id, title, description, image_url, additional_images, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_community_rating, bgg_url, bgg_id, parent_catalog_id, slug")
+        .select("id, title, description, image_url, additional_images, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_url, bgg_id, parent_catalog_id, slug")
         .eq("bgg_id", bggId)
         .maybeSingle();
 
@@ -1386,9 +1385,9 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
       }
-      // NOTE: BGG community ratings are no longer saved into library game_ratings.
+      // NOTE: BGG community ratings are no longer stored on the catalog.
       // Library ratings come from user personal BGG ratings (during collection import)
-      // and visitor ratings. BGG community average is stored only on game_catalog.bgg_community_rating.
+      // and visitor ratings via the GT Score system.
 
       // Upsert into canonical game catalog
       if (bggId) {
@@ -2307,24 +2306,7 @@ ${markdown.slice(0, 18000)}`,
       await supabaseAdmin.from("game_mechanics").insert(mechanicLinks);
     }
 
-    // Insert BGG community rating mapped to 5-star scale
-    if (bggData.bgg_average_rating && bggData.bgg_average_rating > 0) {
-      const mapped5Star = Math.max(1, Math.min(5, Math.round(bggData.bgg_average_rating / 2)));
-      await supabaseAdmin
-        .from("game_ratings")
-        .upsert(
-          {
-            game_id: game.id,
-            rating: mapped5Star,
-            guest_identifier: "bgg-community",
-            source: "bgg",
-            ip_address: null,
-            device_fingerprint: null,
-          },
-          { onConflict: "game_id,guest_identifier" }
-        );
-      console.log(`[GameImport] Saved BGG rating ${bggData.bgg_average_rating}/10 → ${mapped5Star}/5 for "${game.title}"`);
-    }
+    // BGG community ratings are no longer saved — GT Score system replaces them
 
     // Step 7b: Sync additional_images + image_url to game_catalog if BGG-linked
     if (bggId && (validMainImage || validGameplayImages.length > 0)) {

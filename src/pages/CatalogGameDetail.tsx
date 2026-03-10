@@ -42,7 +42,6 @@ interface CatalogGameFull {
   year_published: number | null;
   is_expansion: boolean;
   bgg_url: string | null;
-  bgg_community_rating: number | null;
   suggested_age: string | null;
   designers: string[];
   artists: string[];
@@ -96,7 +95,7 @@ export default function CatalogGameDetail() {
       // Try slug first, then id
       let query = supabase
         .from("game_catalog")
-        .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age, parent_catalog_id, upc")
+        .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, suggested_age, parent_catalog_id, upc")
         .eq("slug", slug!)
         .maybeSingle();
 
@@ -105,7 +104,7 @@ export default function CatalogGameDetail() {
       if (!data) {
         const byId = await supabase
           .from("game_catalog")
-          .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age, parent_catalog_id, upc")
+          .select("id, title, slug, bgg_id, image_url, additional_images, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, suggested_age, parent_catalog_id, upc")
           .eq("id", slug!)
           .maybeSingle();
         data = byId.data;
@@ -358,9 +357,6 @@ export default function CatalogGameDetail() {
               {game.year_published != null && (
                 <Badge variant="outline"><Calendar className="h-3.5 w-3.5 mr-1" />{game.year_published}</Badge>
               )}
-              {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                <Badge variant="secondary">BGG ★ {game.bgg_community_rating.toFixed(1)}</Badge>
-              )}
               {game.community_rating != null && (
                 <Badge className="bg-primary/20 text-primary border-primary/30">GT ★ {game.community_rating.toFixed(1)} ({game.community_rating_count})</Badge>
               )}
@@ -529,12 +525,6 @@ export default function CatalogGameDetail() {
                             ))}
                           </div>
                         </TableCell>
-                      </TableRow>
-                    )}
-                    {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                      <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">{t('catalog.bggRating')}</TableCell>
-                        <TableCell className="text-foreground">★ {game.bgg_community_rating.toFixed(1)} / 10</TableCell>
                       </TableRow>
                     )}
                     {game.community_rating != null && (
