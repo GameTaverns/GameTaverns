@@ -46,7 +46,7 @@ export default function LibraryGames() {
   const [showBulkImport, setShowBulkImportRaw] = useState(persisted.open);
   const [bulkImportMode, setBulkImportMode] = useState<ImportMode>(persisted.mode);
   const [isRefreshingImages, setIsRefreshingImages] = useState(false);
-  const [isRefreshingRatings, setIsRefreshingRatings] = useState(false);
+  
 
   const setShowBulkImport = useCallback((v: boolean) => {
     setShowBulkImportRaw(v);
