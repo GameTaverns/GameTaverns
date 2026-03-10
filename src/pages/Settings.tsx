@@ -119,29 +119,7 @@ function GameCollectionTable({
   gamesPerPage,
   onEdit,
   onDelete,
-  ratingSummaries = [],
 }: GameCollectionTableProps) {
-  const getRating = (gameId: string) => {
-    const summary = ratingSummaries.find(s => s.game_id === gameId);
-    return summary ? { avg: summary.average_rating, count: summary.rating_count } : null;
-  };
-
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center gap-0.5">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`h-3 w-3 ${
-              star <= rating
-                ? "text-yellow-500 fill-yellow-500"
-                : "text-muted-foreground/30"
-            }`}
-          />
-        ))}
-      </div>
-    );
-  };
   // Filter by letter
   const filteredGames = useMemo(() => {
     let result = [...games].sort((a, b) => a.title.localeCompare(b.title));
