@@ -342,7 +342,6 @@ const handler = async (req: Request): Promise<Response> => {
               play_time_minutes: game.playTimeMinutes,
               suggested_age: game.suggestedAge,
               year_published: game.yearPublished,
-              bgg_community_rating: game.bggCommunityRating,
               weight: game.weight,
               is_expansion: game.isExpansion,
               bgg_url: game.bggUrl,
