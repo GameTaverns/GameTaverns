@@ -121,10 +121,9 @@ export function GameList({ games, hasActiveFilters }: GameListProps) {
               </div>
             </div>
 
-            {/* Mobile badges */}
+            {/* Mobile GT Score */}
             <div className="flex items-center gap-1.5 sm:hidden flex-shrink-0">
-              <StarRating gameId={game.id} size="sm" showCount={false} interactive={false} />
-              <ReviewScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
+              <GTScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
             </div>
 
             {/* Desktop columns */}
