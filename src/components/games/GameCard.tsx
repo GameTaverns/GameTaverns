@@ -7,6 +7,7 @@ import { ExpansionList } from "./ExpansionList";
 import { WishlistButton } from "./WishlistButton";
 import { FavoriteButton } from "./FavoriteButton";
 import { StarRating } from "./StarRating";
+import { ReviewScoreBadge } from "./ReviewScoreBadge";
 import { GameImage } from "./GameImage";
 import { LogPlayDialog } from "./LogPlayDialog";
 import { useDemoMode } from "@/contexts/DemoContext";
