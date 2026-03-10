@@ -187,11 +187,6 @@ export default function MechanicPage() {
                           {game.min_players && game.max_players && (
                             <span>{game.min_players}–{game.max_players} players</span>
                           )}
-                          {game.bgg_community_rating && (
-                            <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                              ★ {game.bgg_community_rating.toFixed(1)}
-                            </Badge>
-                          )}
                         </div>
                       </CardContent>
                     </Card>

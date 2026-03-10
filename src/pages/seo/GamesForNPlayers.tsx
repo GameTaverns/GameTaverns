@@ -220,11 +220,6 @@ export default function GamesForNPlayers() {
                             {game.play_time_minutes}m
                           </span>
                         )}
-                        {game.bgg_community_rating && (
-                          <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                            ★ {game.bgg_community_rating.toFixed(1)}
-                          </Badge>
-                        )}
                       </div>
                     </CardContent>
                   </Card>

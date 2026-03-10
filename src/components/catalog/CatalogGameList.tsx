@@ -69,9 +69,6 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
             {game.weight != null ? game.weight.toFixed(1) : "—"}
           </span>
           <span className="hidden sm:block text-center text-xs text-muted-foreground">
-            {game.bgg_community_rating != null && game.bgg_community_rating > 0 ? `★ ${game.bgg_community_rating.toFixed(1)}` : "—"}
-          </span>
-          <span className="hidden sm:block text-center text-xs text-muted-foreground">
             {game.community_rating != null ? `★ ${game.community_rating.toFixed(1)}` : "—"}
           </span>
 

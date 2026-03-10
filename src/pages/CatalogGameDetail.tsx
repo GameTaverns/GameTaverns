@@ -527,12 +527,6 @@ export default function CatalogGameDetail() {
                         </TableCell>
                       </TableRow>
                     )}
-                    {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                      <TableRow>
-                        <TableCell className="font-medium text-muted-foreground">{t('catalog.bggRating')}</TableCell>
-                        <TableCell className="text-foreground">★ {game.bgg_community_rating.toFixed(1)} / 10</TableCell>
-                      </TableRow>
-                    )}
                     {game.community_rating != null && (
                       <TableRow>
                          <TableCell className="font-medium text-muted-foreground">{t('catalog.gtRating')}</TableCell>

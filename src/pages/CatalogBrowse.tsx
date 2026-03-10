@@ -483,7 +483,6 @@ export default function CatalogBrowse() {
               </SelectTrigger>
               <SelectContent>
                  <SelectItem value="title">{t('catalog.sortTitle')}</SelectItem>
-                 <SelectItem value="rating">{t('catalog.sortRating')}</SelectItem>
                  <SelectItem value="community">{t('catalog.sortCommunity')}</SelectItem>
                  <SelectItem value="weight">{t('catalog.sortWeight')}</SelectItem>
                  <SelectItem value="year">{t('catalog.sortYear')}</SelectItem>

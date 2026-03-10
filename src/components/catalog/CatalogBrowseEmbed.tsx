@@ -218,9 +218,6 @@ export function CatalogBrowseEmbed() {
                         <Weight className="h-3 w-3 mr-0.5" />{game.weight.toFixed(1)}
                       </Badge>
                     )}
-                    {game.bgg_community_rating != null && game.bgg_community_rating > 0 && (
-                      <Badge variant="secondary" className="text-xs">★ {game.bgg_community_rating.toFixed(1)}</Badge>
-                    )}
                     {game.designers.length > 0 && (
                       <Badge variant="outline" className="text-xs">
                         <PenTool className="h-3 w-3 mr-0.5" />
