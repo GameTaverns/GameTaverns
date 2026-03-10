@@ -99,7 +99,7 @@ export default function CatalogBrowse() {
   const buildQuery = useCallback(async (pageParam: number) => {
     let query = supabase
       .from("game_catalog")
-      .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, bgg_community_rating, suggested_age", { count: pageParam === 0 ? "exact" : undefined });
+      .select("id, title, slug, bgg_id, image_url, description, min_players, max_players, play_time_minutes, weight, year_published, is_expansion, bgg_url, suggested_age", { count: pageParam === 0 ? "exact" : undefined });
 
     // When an entity filter is active and includeExpansions is on, skip the is_expansion filter
     if (!(isEntityFilter && includeExpansions)) {
