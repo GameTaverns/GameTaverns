@@ -37,7 +37,7 @@ export default function MechanicPage() {
         .select(`
           game_catalog!inner(
             id, title, slug, image_url, min_players, max_players,
-            play_time_minutes, bgg_community_rating, is_expansion
+            play_time_minutes, is_expansion
           )
         `)
         .eq("mechanic_id", mechanic.id)
