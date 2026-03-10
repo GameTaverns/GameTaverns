@@ -268,26 +268,65 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
   const { data: myPCRatings = [] } = useReviewPlayerCountRatings(myReview?.id);
   const [showForm, setShowForm] = useState(false);
 
-  // Review form state
-  const [ratingOverall, setRatingOverall] = useState(0);
-  const [ratingGameplay, setRatingGameplay] = useState(0);
-  const [ratingComponents, setRatingComponents] = useState(0);
-  const [ratingReplayability, setRatingReplayability] = useState(0);
-  const [ratingValue, setRatingValue] = useState(0);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [recommended, setRecommended] = useState(true);
-  const [playCount, setPlayCount] = useState("");
-  const [bestFor, setBestFor] = useState("");
-  const [skipIf, setSkipIf] = useState("");
-  const [bestPlayerCount, setBestPlayerCount] = useState("");
-  const [comparedTo, setComparedTo] = useState("");
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [playerCountRatings, setPlayerCountRatings] = useState<{ player_count: number; rating: number }[]>([]);
+  // Session storage key for draft persistence
+  const draftKey = `review-draft-${catalogId}`;
 
-  // Populate form when editing existing review
+  // Helper to load draft from sessionStorage
+  const loadDraft = () => {
+    try {
+      const raw = sessionStorage.getItem(draftKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  };
+
+  const savedDraft = loadDraft();
+
+  // Review form state — initialize from draft if available
+  const [ratingOverall, setRatingOverall] = useState(savedDraft?.ratingOverall ?? 0);
+  const [ratingGameplay, setRatingGameplay] = useState(savedDraft?.ratingGameplay ?? 0);
+  const [ratingComponents, setRatingComponents] = useState(savedDraft?.ratingComponents ?? 0);
+  const [ratingReplayability, setRatingReplayability] = useState(savedDraft?.ratingReplayability ?? 0);
+  const [ratingValue, setRatingValue] = useState(savedDraft?.ratingValue ?? 0);
+  const [title, setTitle] = useState(savedDraft?.title ?? "");
+  const [content, setContent] = useState(savedDraft?.content ?? "");
+  const [recommended, setRecommended] = useState(savedDraft?.recommended ?? true);
+  const [playCount, setPlayCount] = useState(savedDraft?.playCount ?? "");
+  const [bestFor, setBestFor] = useState(savedDraft?.bestFor ?? "");
+  const [skipIf, setSkipIf] = useState(savedDraft?.skipIf ?? "");
+  const [bestPlayerCount, setBestPlayerCount] = useState(savedDraft?.bestPlayerCount ?? "");
+  const [comparedTo, setComparedTo] = useState(savedDraft?.comparedTo ?? "");
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(savedDraft?.selectedTagIds ?? []);
+  const [playerCountRatings, setPlayerCountRatings] = useState<{ player_count: number; rating: number }[]>(savedDraft?.playerCountRatings ?? []);
+
+  // Auto-save draft to sessionStorage on changes
   useEffect(() => {
-    if (myReview && showForm) {
+    const draft = {
+      ratingOverall, ratingGameplay, ratingComponents, ratingReplayability, ratingValue,
+      title, content, recommended, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
+      selectedTagIds, playerCountRatings,
+    };
+    // Only persist if there's meaningful input
+    const hasInput = ratingOverall > 0 || content.length > 0 || title.length > 0 || selectedTagIds.length > 0;
+    if (hasInput) {
+      sessionStorage.setItem(draftKey, JSON.stringify(draft));
+    }
+  }, [ratingOverall, ratingGameplay, ratingComponents, ratingReplayability, ratingValue,
+      title, content, recommended, playCount, bestFor, skipIf, bestPlayerCount, comparedTo,
+      selectedTagIds, playerCountRatings, draftKey]);
+
+  // Clear draft helper
+  const clearDraft = () => sessionStorage.removeItem(draftKey);
+
+  // Auto-open form if there's a saved draft
+  useEffect(() => {
+    if (savedDraft && (savedDraft.ratingOverall > 0 || savedDraft.content?.length > 0)) {
+      setShowForm(true);
+    }
+  }, []);
+
+  // Populate form when editing existing review (only if no draft exists)
+  useEffect(() => {
+    if (myReview && showForm && !savedDraft) {
       setRatingOverall(myReview.rating_overall || 0);
       setRatingGameplay(myReview.rating_gameplay || 0);
       setRatingComponents(myReview.rating_components || 0);
