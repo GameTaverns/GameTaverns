@@ -121,9 +121,8 @@ export function GameCollectionTable() {
           comparison = (a.min_players || 0) - (b.min_players || 0);
           break;
         case "rating":
-          const ratingA = getRating(a.id) ?? 0;
-          const ratingB = getRating(b.id) ?? 0;
-          comparison = ratingA - ratingB;
+          // No longer sortable by old rating — skip
+          comparison = 0;
           break;
       }
       return sortDirection === "asc" ? comparison : -comparison;
