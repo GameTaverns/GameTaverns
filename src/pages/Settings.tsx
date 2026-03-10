@@ -32,7 +32,7 @@ import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useGames, useDeleteGame, useMechanics, usePublishers, useCreateMechanic, useCreatePublisher } from "@/hooks/useGames";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
-import { useGameRatingsSummary } from "@/hooks/useGameRatings";
+import { GTScoreBadge } from "@/components/games/GTScoreBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -92,11 +92,6 @@ type UserWithRole = {
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-interface RatingSummary {
-  game_id: string;
-  rating_count: number;
-  average_rating: number;
-}
 
 interface GameCollectionTableProps {
   games: GameWithRelations[];
@@ -107,7 +102,7 @@ interface GameCollectionTableProps {
   gamesPerPage: number;
   onEdit: (id: string) => void;
   onDelete: (id: string, title: string) => void;
-  ratingSummaries?: RatingSummary[];
+  
 }
 
 function GameCollectionTable({
@@ -119,29 +114,7 @@ function GameCollectionTable({
   gamesPerPage,
   onEdit,
   onDelete,
-  ratingSummaries = [],
 }: GameCollectionTableProps) {
-  const getRating = (gameId: string) => {
-    const summary = ratingSummaries.find(s => s.game_id === gameId);
-    return summary ? { avg: summary.average_rating, count: summary.rating_count } : null;
-  };
-
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center gap-0.5">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`h-3 w-3 ${
-              star <= rating
-                ? "text-yellow-500 fill-yellow-500"
-                : "text-muted-foreground/30"
-            }`}
-          />
-        ))}
-      </div>
-    );
-  };
   // Filter by letter
   const filteredGames = useMemo(() => {
     let result = [...games].sort((a, b) => a.title.localeCompare(b.title));
@@ -223,13 +196,12 @@ function GameCollectionTable({
               <TableHead>Type</TableHead>
               <TableHead>Difficulty</TableHead>
               <TableHead>Players</TableHead>
-              <TableHead>Rating</TableHead>
+              <TableHead>GT Score</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedGames.map((game) => {
-              const rating = getRating(game.id);
               return (
                 <TableRow key={game.id}>
                   <TableCell className="font-medium">{game.title}</TableCell>
@@ -239,16 +211,7 @@ function GameCollectionTable({
                     {game.min_players}-{game.max_players}
                   </TableCell>
                   <TableCell>
-                    {rating ? (
-                      <div className="flex items-center gap-1.5">
-                        {renderStars(Math.round(rating.avg))}
-                        <span className="text-xs text-muted-foreground">
-                          ({rating.count})
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
+                    <GTScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -332,7 +295,7 @@ const Settings = () => {
   
   // Only fetch games when admin (lazy load for performance)
   const { data: games = [], isLoading: gamesLoading } = useGames(isAdmin);
-  const { data: ratingSummaries = [] } = useGameRatingsSummary();
+  // Old rating summaries removed — GT Score is now review-based
   const { data: mechanics = [], isLoading: mechanicsLoading, refetch: refetchMechanics } = useMechanics();
   const { data: publishers = [], isLoading: publishersLoading, refetch: refetchPublishers } = usePublishers();
   const createMechanic = useCreateMechanic();
@@ -1573,7 +1536,7 @@ const Settings = () => {
                       gamesPerPage={GAMES_PER_PAGE}
                       onEdit={(id) => navigate(`/admin/edit/${id}`)}
                       onDelete={handleDelete}
-                      ratingSummaries={ratingSummaries}
+                      
                     />
                   )}
                 </CardContent>

@@ -31,15 +31,14 @@ import { PlayHistory } from "@/components/games/PlayHistory";
 import { EloLeaderboard } from "@/components/games/EloLeaderboard";
 import { GameImage } from "@/components/games/GameImage";
 import { YouTubeVideoList } from "@/components/games/YouTubeEmbed";
-import { StarRating } from "@/components/games/StarRating";
-import { ReviewScoreBadge } from "@/components/games/ReviewScoreBadge";
+import { GTScoreBadge } from "@/components/games/GTScoreBadge";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
 import { GameDocuments } from "@/components/games/GameDocuments";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { GameReviews } from "@/components/catalog/GameReviews";
-import { useReviewAggregate } from "@/hooks/useGameReviews";
+import { useGTScore } from "@/hooks/useGTScore";
 import { useAddTradeListing, useMyTradeListings, useRemoveTradeListing, type SaleCondition } from "@/hooks/useTrades";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -61,7 +60,7 @@ const GameDetail = () => {
   const { isAdmin } = useAuth();
   const { isOwner: isLibraryOwner } = useTenant();
   const canViewAdminData = isAdmin || isLibraryOwner;
-  const { playLogs, messaging, forSale, ratings, lending } = useFeatureFlags();
+  const { playLogs, messaging, forSale, lending } = useFeatureFlags();
   useLibraryViewTracking(library?.id, isLibraryOwner);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [gameDetailTab, setGameDetailTab] = usePersistedTab("game-detail-tab", "description");
@@ -158,7 +157,7 @@ const GameDetail = () => {
   });
   const catalogImages = (!gameHasImages && catalogData?.additional_images) ? catalogData.additional_images : [];
   const yearPublished = (game as any)?.year_published ?? catalogData?.year_published;
-  const { data: reviewAggregate } = useReviewAggregate(catalogId);
+  const { data: gtScore } = useGTScore(catalogId);
 
 
   if (isLoading) {
@@ -496,12 +495,9 @@ const GameDetail = () => {
               </div>
             </div>
 
-            {/* Ratings */}
+            {/* GT Score */}
             <div className="flex items-center gap-3 mb-4 flex-wrap">
-              {ratings && (
-                <StarRating gameId={game.id} size="md" showCount={true} interactive={true} />
-              )}
-              <ReviewScoreBadge catalogId={(game as any).catalog_id} size="md" />
+              <GTScoreBadge catalogId={(game as any).catalog_id} size="lg" />
             </div>
 
             {/* For Sale Banner */}
@@ -585,8 +581,8 @@ const GameDetail = () => {
                 {catalogId && (
                   <TabsTrigger value="reviews" className="gap-1.5">
                     Reviews
-                    {reviewAggregate && reviewAggregate.count > 0 && (
-                      <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{reviewAggregate.count}</Badge>
+                    {gtScore && gtScore.reviewCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{gtScore.reviewCount}</Badge>
                     )}
                   </TabsTrigger>
                 )}

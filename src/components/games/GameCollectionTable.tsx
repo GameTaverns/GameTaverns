@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Edit, Trash2, Download, Star, ChevronUp, ChevronDown, Pencil } from "lucide-react";
+import { Edit, Trash2, Download, ChevronUp, ChevronDown, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useGames, useDeleteGame } from "@/hooks/useGames";
-import { useGameRatingsSummary } from "@/hooks/useGameRatings";
+import { GTScoreBadge } from "@/components/games/GTScoreBadge";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
@@ -35,7 +35,7 @@ type SortDirection = "asc" | "desc";
 export function GameCollectionTable() {
   const { toast } = useToast();
   const { data: games, isLoading } = useGames();
-  const { data: ratingsData } = useGameRatingsSummary();
+  // Old ratingsData removed — GT Score is now per-catalog-entry via GTScoreBadge
   const deleteGame = useDeleteGame();
   const { buildUrl } = useTenantUrl();
   
@@ -69,11 +69,8 @@ export function GameCollectionTable() {
     return flat;
   }, [games]);
 
-  // Get rating for a game
-  const getRating = (gameId: string) => {
-    const rating = ratingsData?.find((r) => r.game_id === gameId);
-    return rating?.average_rating ?? null;
-  };
+  // Rating sort removed — GT Score is catalog-based and not available for simple sort
+  // Keeping the sort field type for compatibility but it's a no-op now
 
   // Generate alphabet for the alpha bar
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -124,16 +121,15 @@ export function GameCollectionTable() {
           comparison = (a.min_players || 0) - (b.min_players || 0);
           break;
         case "rating":
-          const ratingA = getRating(a.id) ?? 0;
-          const ratingB = getRating(b.id) ?? 0;
-          comparison = ratingA - ratingB;
+          // No longer sortable by old rating — skip
+          comparison = 0;
           break;
       }
       return sortDirection === "asc" ? comparison : -comparison;
     });
 
     return result;
-  }, [allGames, activeLetter, sortField, sortDirection, ratingsData]);
+  }, [allGames, activeLetter, sortField, sortDirection]);
 
   const toggleSelectAll = useCallback(() => {
     setSelectedIds((prev) =>
@@ -274,7 +270,7 @@ export function GameCollectionTable() {
       // Status
       game.is_coming_soon ? "true" : "",
       // Rating (for reference only)
-      getRating(game.id)?.toFixed(1) || "",
+      "",  // GT Score not exported (it's computed)
     ]);
 
     const csvContent = [
@@ -397,11 +393,8 @@ export function GameCollectionTable() {
               >
                 Players <SortIcon field="players" />
               </TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted/50"
-                onClick={() => handleSort("rating")}
-              >
-                Rating <SortIcon field="rating" />
+              <TableHead>
+                GT Score
               </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -424,7 +417,7 @@ export function GameCollectionTable() {
               </TableRow>
             ) : (
               filteredAndSortedGames.map((game) => {
-                const rating = getRating(game.id);
+                const catalogId = (game as any).catalog_id as string | undefined;
                 return (
                    <TableRow key={game.id}>
                     <TableCell>
@@ -454,14 +447,7 @@ export function GameCollectionTable() {
                         : "-"}
                     </TableCell>
                     <TableCell>
-                      {rating ? (
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-primary text-primary" />
-                          <span>{rating.toFixed(1)}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                      <GTScoreBadge catalogId={catalogId} size="sm" showLabel={false} />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
