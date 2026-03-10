@@ -4,6 +4,7 @@ import { Users, Clock, DollarSign, BookOpen, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GameImage } from "./GameImage";
 import { StarRating } from "./StarRating";
+import { ReviewScoreBadge } from "./ReviewScoreBadge";
 import { useDemoMode } from "@/contexts/DemoContext";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useTenantUrl } from "@/hooks/useTenantUrl";
