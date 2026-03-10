@@ -37,8 +37,9 @@ export function useRatingTags() {
       if (error) throw error;
       return (data || []) as RatingTag[];
     },
-    staleTime: 0, // Always refetch to ensure fresh data
-    gcTime: 1000 * 60 * 2, // 2 minutes garbage collection
+    staleTime: 0,
+    gcTime: 1000 * 60 * 2,
+    refetchOnMount: "always",
   });
 }
 
