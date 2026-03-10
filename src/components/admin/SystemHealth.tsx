@@ -553,10 +553,6 @@ export function SystemHealth() {
         console.log("[catalog-backfill test]", data);
         return;
       }
-      if (data.mode === "refresh-bgg-ratings") {
-        toast.success(`BGG ratings refreshed: ${data.updated || 0} updated, ${data.remaining || 0} remaining`);
-        return;
-      }
       if (data.mode === "fix-missing") {
         toast.success(`Fix missing complete: ${data.processed} re-enriched, ${data.designersAdded} designers added, ${data.artistsAdded} artists added (checked ${data.checked})`);
         console.log("[catalog-backfill fix-missing]", data);
