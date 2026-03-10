@@ -2306,24 +2306,7 @@ ${markdown.slice(0, 18000)}`,
       await supabaseAdmin.from("game_mechanics").insert(mechanicLinks);
     }
 
-    // Insert BGG community rating mapped to 5-star scale
-    if (bggData.bgg_average_rating && bggData.bgg_average_rating > 0) {
-      const mapped5Star = Math.max(1, Math.min(5, Math.round(bggData.bgg_average_rating / 2)));
-      await supabaseAdmin
-        .from("game_ratings")
-        .upsert(
-          {
-            game_id: game.id,
-            rating: mapped5Star,
-            guest_identifier: "bgg-community",
-            source: "bgg",
-            ip_address: null,
-            device_fingerprint: null,
-          },
-          { onConflict: "game_id,guest_identifier" }
-        );
-      console.log(`[GameImport] Saved BGG rating ${bggData.bgg_average_rating}/10 → ${mapped5Star}/5 for "${game.title}"`);
-    }
+    // BGG community ratings are no longer saved — GT Score system replaces them
 
     // Step 7b: Sync additional_images + image_url to game_catalog if BGG-linked
     if (bggId && (validMainImage || validGameplayImages.length > 0)) {
