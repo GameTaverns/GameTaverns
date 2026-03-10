@@ -397,6 +397,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
         });
       }
 
+      clearDraft();
       toast({ title: myReview ? "Review updated" : "Review published!", description: "Thanks for sharing your experience." });
       setShowForm(false);
     } catch (err: any) {
