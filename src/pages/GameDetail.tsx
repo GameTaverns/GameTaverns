@@ -581,8 +581,8 @@ const GameDetail = () => {
                 {catalogId && (
                   <TabsTrigger value="reviews" className="gap-1.5">
                     Reviews
-                    {reviewAggregate && reviewAggregate.count > 0 && (
-                      <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{reviewAggregate.count}</Badge>
+                    {gtScore && gtScore.reviewCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{gtScore.reviewCount}</Badge>
                     )}
                   </TabsTrigger>
                 )}
