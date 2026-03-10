@@ -495,12 +495,9 @@ const GameDetail = () => {
               </div>
             </div>
 
-            {/* Ratings */}
+            {/* GT Score */}
             <div className="flex items-center gap-3 mb-4 flex-wrap">
-              {ratings && (
-                <StarRating gameId={game.id} size="md" showCount={true} interactive={true} />
-              )}
-              <ReviewScoreBadge catalogId={(game as any).catalog_id} size="md" />
+              <GTScoreBadge catalogId={(game as any).catalog_id} size="lg" />
             </div>
 
             {/* For Sale Banner */}

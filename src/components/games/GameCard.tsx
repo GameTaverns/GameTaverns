@@ -89,10 +89,9 @@ export function GameCard({ game, priority = false }: GameCardProps) {
                 )}
               </div>
 
-              {/* Rating */}
-              <div className="hidden sm:flex items-center gap-2 flex-wrap">
-                <StarRating gameId={game.id} size="sm" showCount={true} interactive={false} />
-                <ReviewScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
+              {/* GT Score */}
+              <div className="hidden sm:block">
+                <GTScoreBadge catalogId={(game as any).catalog_id} size="sm" showLabel={false} />
               </div>
 
               <hr className="border-border mb-1 sm:mb-3" />
