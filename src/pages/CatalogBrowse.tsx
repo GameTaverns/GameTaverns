@@ -38,7 +38,6 @@ interface CatalogGame {
   year_published: number | null;
   is_expansion: boolean;
   bgg_url: string | null;
-  bgg_community_rating: number | null;
   suggested_age: string | null;
   designers: string[];
   artists: string[];
