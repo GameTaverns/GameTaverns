@@ -105,7 +105,6 @@ export function CatalogBrowseEmbed() {
       let orderCol = "title";
       let ascending = true;
       switch (sortBy) {
-        case "rating": orderCol = "bgg_community_rating"; ascending = false; break;
         case "weight": orderCol = "weight"; ascending = true; break;
         case "year": orderCol = "year_published"; ascending = false; break;
       }
