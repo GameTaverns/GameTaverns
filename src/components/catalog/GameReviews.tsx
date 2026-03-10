@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
@@ -9,6 +9,12 @@ import {
   useReviewVote,
   type ReviewFormData,
 } from "@/hooks/useGameReviews";
+import {
+  useRatingTags,
+  useReviewTags,
+  useReviewPlayerCountRatings,
+  useSaveReviewExtras,
+} from "@/hooks/useRatingTags";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +26,12 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Star, ThumbsUp, ThumbsDown, PenLine, ChevronDown, ChevronUp, Shield, Loader2 } from "lucide-react";
+import { Star, ThumbsUp, ThumbsDown, PenLine, Shield, Loader2, Users, Target, Ban, GitCompare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { ReviewTagSelector } from "./ReviewTagSelector";
+import { PlayerCountRatingInput } from "./PlayerCountRatingInput";
+import { ReviewInsights } from "./ReviewInsights";
+import { cn } from "@/lib/utils";
 
 function StarRating({ value, onChange, size = "md" }: { value: number; onChange?: (v: number) => void; size?: "sm" | "md" }) {
   const s = size === "sm" ? "h-4 w-4" : "h-5 w-5";
@@ -64,7 +74,13 @@ function ReviewCard({ review }: { review: any }) {
   const { isAuthenticated } = useAuth();
   const vote = useReviewVote();
   const [expanded, setExpanded] = useState(false);
+  const { data: allTags = [] } = useRatingTags();
+  const { data: reviewTagLinks = [] } = useReviewTags(review.id);
+  const { data: pcRatings = [] } = useReviewPlayerCountRatings(review.id);
   const isLong = review.content.length > 300;
+
+  const tagMap = Object.fromEntries(allTags.map(t => [t.id, t]));
+  const reviewTags = reviewTagLinks.map(rt => tagMap[rt.tag_id]).filter(Boolean);
 
   return (
     <div className="border rounded-lg p-4 space-y-3">
@@ -104,6 +120,82 @@ function ReviewCard({ review }: { review: any }) {
 
       {review.title && (
         <h4 className="font-semibold text-foreground">{review.title}</h4>
+      )}
+
+      {/* Guided prompts */}
+      {(review.best_for || review.skip_if || review.best_player_count || review.compared_to) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {review.best_for && (
+            <div className="flex items-start gap-2 p-2 rounded-md bg-green-500/5 border border-green-500/20">
+              <Target className="h-3.5 w-3.5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-green-600 dark:text-green-400">Best for</p>
+                <p className="text-xs text-foreground">{review.best_for}</p>
+              </div>
+            </div>
+          )}
+          {review.skip_if && (
+            <div className="flex items-start gap-2 p-2 rounded-md bg-red-500/5 border border-red-500/20">
+              <Ban className="h-3.5 w-3.5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-red-600 dark:text-red-400">Skip if</p>
+                <p className="text-xs text-foreground">{review.skip_if}</p>
+              </div>
+            </div>
+          )}
+          {review.best_player_count && (
+            <div className="flex items-start gap-2 p-2 rounded-md bg-primary/5 border border-primary/20">
+              <Users className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-primary">Shines at</p>
+                <p className="text-xs text-foreground">{review.best_player_count}</p>
+              </div>
+            </div>
+          )}
+          {review.compared_to && (
+            <div className="flex items-start gap-2 p-2 rounded-md bg-muted/50 border">
+              <GitCompare className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Compare to</p>
+                <p className="text-xs text-foreground">{review.compared_to}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tags */}
+      {reviewTags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {reviewTags.map(tag => (
+            <Badge
+              key={tag.id}
+              variant="outline"
+              className={cn(
+                "text-[10px] gap-0.5",
+                tag.is_positive === true && "border-green-500/30 bg-green-500/5",
+                tag.is_positive === false && "border-red-500/30 bg-red-500/5",
+              )}
+            >
+              {tag.icon && <span>{tag.icon}</span>}
+              {tag.label}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Player count ratings */}
+      {pcRatings.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {pcRatings.sort((a, b) => a.player_count - b.player_count).map(pc => (
+            <span key={pc.player_count} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-muted/50 border">
+              <Users className="h-3 w-3 text-muted-foreground" />
+              {pc.player_count}P:
+              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+              {pc.rating}/10
+            </span>
+          ))}
+        </div>
       )}
 
       <div className="text-sm text-muted-foreground leading-relaxed">
@@ -159,9 +251,11 @@ function ReviewCard({ review }: { review: any }) {
 interface GameReviewsProps {
   catalogId: string;
   gameTitle: string;
+  minPlayers?: number;
+  maxPlayers?: number;
 }
 
-export function GameReviews({ catalogId, gameTitle }: GameReviewsProps) {
+export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: GameReviewsProps) {
   const { t } = useTranslation();
   const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
@@ -169,18 +263,54 @@ export function GameReviews({ catalogId, gameTitle }: GameReviewsProps) {
   const { data: myReview } = useMyReview(catalogId);
   const { data: aggregate } = useReviewAggregate(catalogId);
   const submitReview = useSubmitReview();
+  const saveExtras = useSaveReviewExtras();
+  const { data: myReviewTags = [] } = useReviewTags(myReview?.id);
+  const { data: myPCRatings = [] } = useReviewPlayerCountRatings(myReview?.id);
   const [showForm, setShowForm] = useState(false);
 
   // Review form state
-  const [ratingOverall, setRatingOverall] = useState(myReview?.rating_overall || 0);
-  const [ratingGameplay, setRatingGameplay] = useState(myReview?.rating_gameplay || 0);
-  const [ratingComponents, setRatingComponents] = useState(myReview?.rating_components || 0);
-  const [ratingReplayability, setRatingReplayability] = useState(myReview?.rating_replayability || 0);
-  const [ratingValue, setRatingValue] = useState(myReview?.rating_value || 0);
-  const [title, setTitle] = useState(myReview?.title || "");
-  const [content, setContent] = useState(myReview?.content || "");
-  const [recommended, setRecommended] = useState(myReview?.recommended ?? true);
-  const [playCount, setPlayCount] = useState(myReview?.play_count_at_review?.toString() || "");
+  const [ratingOverall, setRatingOverall] = useState(0);
+  const [ratingGameplay, setRatingGameplay] = useState(0);
+  const [ratingComponents, setRatingComponents] = useState(0);
+  const [ratingReplayability, setRatingReplayability] = useState(0);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [recommended, setRecommended] = useState(true);
+  const [playCount, setPlayCount] = useState("");
+  const [bestFor, setBestFor] = useState("");
+  const [skipIf, setSkipIf] = useState("");
+  const [bestPlayerCount, setBestPlayerCount] = useState("");
+  const [comparedTo, setComparedTo] = useState("");
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [playerCountRatings, setPlayerCountRatings] = useState<{ player_count: number; rating: number }[]>([]);
+
+  // Populate form when editing existing review
+  useEffect(() => {
+    if (myReview && showForm) {
+      setRatingOverall(myReview.rating_overall || 0);
+      setRatingGameplay(myReview.rating_gameplay || 0);
+      setRatingComponents(myReview.rating_components || 0);
+      setRatingReplayability(myReview.rating_replayability || 0);
+      setRatingValue(myReview.rating_value || 0);
+      setTitle(myReview.title || "");
+      setContent(myReview.content || "");
+      setRecommended(myReview.recommended ?? true);
+      setPlayCount(myReview.play_count_at_review?.toString() || "");
+      setBestFor(myReview.best_for || "");
+      setSkipIf(myReview.skip_if || "");
+      setBestPlayerCount(myReview.best_player_count || "");
+      setComparedTo(myReview.compared_to || "");
+      setSelectedTagIds(myReviewTags.map(rt => rt.tag_id));
+      setPlayerCountRatings(myPCRatings.map(pc => ({ player_count: pc.player_count, rating: pc.rating })));
+    }
+  }, [myReview, showForm, myReviewTags, myPCRatings]);
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTagIds(prev =>
+      prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]
+    );
+  };
 
   const handleSubmit = async () => {
     if (ratingOverall === 0) {
@@ -205,8 +335,30 @@ export function GameReviews({ catalogId, gameTitle }: GameReviewsProps) {
         recommended,
         play_count_at_review: playCount ? parseInt(playCount) : undefined,
         ownership_status: "owned",
+        best_for: bestFor || undefined,
+        skip_if: skipIf || undefined,
+        best_player_count: bestPlayerCount || undefined,
+        compared_to: comparedTo || undefined,
       });
-      toast({ title: myReview ? "Review updated" : "Review published!", description: "Thanks for sharing your thoughts." });
+
+      // Now get the review ID to save extras
+      const { data: savedReview } = await (await import("@/integrations/backend/client")).supabase
+        .from("game_reviews")
+        .select("id")
+        .eq("catalog_id", catalogId)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+
+      if (savedReview) {
+        await saveExtras.mutateAsync({
+          reviewId: savedReview.id,
+          catalogId,
+          tagIds: selectedTagIds,
+          playerCountRatings,
+        });
+      }
+
+      toast({ title: myReview ? "Review updated" : "Review published!", description: "Thanks for sharing your experience." });
       setShowForm(false);
     } catch (err: any) {
       const msg = err?.message || "Something went wrong";
@@ -262,18 +414,24 @@ export function GameReviews({ catalogId, gameTitle }: GameReviewsProps) {
         </Card>
       )}
 
+      {/* Review Insights (tags + player count aggregation) */}
+      <ReviewInsights catalogId={catalogId} />
+
       {/* Review form */}
       {showForm && (
-        <Card className="mb-6 border-primary/30">
+        <Card className="mb-6 border-primary/30 mt-4">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">{myReview ? "Edit your review" : "Write a review"}</CardTitle>
+            <CardTitle className="text-base">{myReview ? "Edit your review" : `Review ${gameTitle}`}</CardTitle>
+            <p className="text-xs text-muted-foreground">Help others understand if this game is right for them.</p>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
+            {/* Overall Rating */}
             <div>
               <Label className="mb-1.5">Overall Rating *</Label>
               <StarRating value={ratingOverall} onChange={setRatingOverall} />
             </div>
 
+            {/* Sub-ratings */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-xs mb-1">Gameplay</Label>
@@ -293,41 +451,118 @@ export function GameReviews({ catalogId, gameTitle }: GameReviewsProps) {
               </div>
             </div>
 
+            <Separator />
+
+            {/* Tags */}
+            <ReviewTagSelector selectedTagIds={selectedTagIds} onToggle={toggleTag} />
+
+            <Separator />
+
+            {/* Player Count Ratings */}
+            <PlayerCountRatingInput
+              value={playerCountRatings}
+              onChange={setPlayerCountRatings}
+              minPlayers={minPlayers}
+              maxPlayers={maxPlayers}
+            />
+
+            <Separator />
+
+            {/* Guided prompts */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Help others decide (optional but encouraged)</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Target className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                    <Label className="text-xs">Best for...</Label>
+                  </div>
+                  <Input
+                    value={bestFor}
+                    onChange={e => setBestFor(e.target.value)}
+                    placeholder="e.g. Couples who want a strategic 2p experience"
+                    maxLength={200}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Ban className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                    <Label className="text-xs">Skip if you...</Label>
+                  </div>
+                  <Input
+                    value={skipIf}
+                    onChange={e => setSkipIf(e.target.value)}
+                    placeholder="e.g. Dislike long setup times or heavy luck"
+                    maxLength={200}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Users className="h-3.5 w-3.5 text-primary" />
+                    <Label className="text-xs">Shines at...</Label>
+                  </div>
+                  <Input
+                    value={bestPlayerCount}
+                    onChange={e => setBestPlayerCount(e.target.value)}
+                    placeholder="e.g. 3-4 players with the advanced variant"
+                    maxLength={200}
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <GitCompare className="h-3.5 w-3.5 text-muted-foreground" />
+                    <Label className="text-xs">Compare to...</Label>
+                  </div>
+                  <Input
+                    value={comparedTo}
+                    onChange={e => setComparedTo(e.target.value)}
+                    placeholder="e.g. Like Wingspan but with more player interaction"
+                    maxLength={200}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Title + Content */}
             <div>
               <Label>Title (optional)</Label>
               <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Sum up your thoughts..." />
             </div>
 
             <div>
-              <Label>Review * (minimum 100 characters)</Label>
+              <Label>Your Review * (minimum 100 characters)</Label>
               <Textarea
                 value={content}
                 onChange={e => setContent(e.target.value)}
-                placeholder="Share your experience with this game..."
+                placeholder="What made this game click (or not) for you? Why would someone love or hate it?"
                 rows={6}
               />
               <p className="text-xs text-muted-foreground mt-1">{content.length}/100 minimum</p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Label className="text-sm">Times played</Label>
-              <Input
-                type="number"
-                min="0"
-                className="w-20"
-                value={playCount}
-                onChange={e => setPlayCount(e.target.value)}
-              />
+            {/* Play count + recommend */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <Label className="text-sm">Times played</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  className="w-20"
+                  value={playCount}
+                  onChange={e => setPlayCount(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch checked={recommended} onCheckedChange={setRecommended} />
+                <Label className="text-sm">{recommended ? "I recommend this" : "I don't recommend this"}</Label>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Switch checked={recommended} onCheckedChange={setRecommended} />
-              <Label>{recommended ? "I recommend this game" : "I don't recommend this game"}</Label>
-            </div>
-
-            <div className="flex gap-2">
-              <Button onClick={handleSubmit} disabled={submitReview.isPending} className="gap-1.5">
-                {submitReview.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            <div className="flex gap-2 pt-2">
+              <Button onClick={handleSubmit} disabled={submitReview.isPending || saveExtras.isPending} className="gap-1.5">
+                {(submitReview.isPending || saveExtras.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
                 {myReview ? "Update Review" : "Publish Review"}
               </Button>
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
@@ -351,7 +586,7 @@ export function GameReviews({ catalogId, gameTitle }: GameReviewsProps) {
           ))}
         </div>
       ) : reviews.length === 0 && !showForm ? (
-        <div className="text-center py-8 border rounded-lg">
+        <div className="text-center py-8 border rounded-lg mt-4">
           <PenLine className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground mb-2">No reviews yet</p>
           {isAuthenticated ? (
@@ -365,7 +600,7 @@ export function GameReviews({ catalogId, gameTitle }: GameReviewsProps) {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 mt-4">
           {reviews.map(review => (
             <ReviewCard key={review.id} review={review} />
           ))}

@@ -548,7 +548,7 @@ export default function CatalogGameDetail() {
               </TabsContent>
 
               <TabsContent value="reviews" className="mt-0">
-                <GameReviews catalogId={game.id} gameTitle={game.title} />
+                <GameReviews catalogId={game.id} gameTitle={game.title} minPlayers={game.min_players ?? undefined} maxPlayers={game.max_players ?? undefined} />
               </TabsContent>
 
               <TabsContent value="videos" className="mt-0">

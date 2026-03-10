@@ -20,6 +20,10 @@ export interface GameReview {
   helpful_count: number;
   unhelpful_count: number;
   status: string;
+  best_for: string | null;
+  skip_if: string | null;
+  best_player_count: string | null;
+  compared_to: string | null;
   created_at: string;
   updated_at: string;
   user_profile?: {
@@ -42,6 +46,10 @@ export interface ReviewFormData {
   recommended?: boolean;
   play_count_at_review?: number;
   ownership_status: "owned" | "previously_owned";
+  best_for?: string;
+  skip_if?: string;
+  best_player_count?: string;
+  compared_to?: string;
 }
 
 export function useGameReviews(catalogId: string | undefined) {
@@ -55,7 +63,8 @@ export function useGameReviews(catalogId: string | undefined) {
           rating_components, rating_replayability, rating_value,
           title, content, recommended, play_count_at_review,
           ownership_status, reviewer_weight, helpful_count, unhelpful_count,
-          status, created_at, updated_at
+          status, best_for, skip_if, best_player_count, compared_to,
+          created_at, updated_at
         `)
         .eq("catalog_id", catalogId!)
         .eq("status", "published")
