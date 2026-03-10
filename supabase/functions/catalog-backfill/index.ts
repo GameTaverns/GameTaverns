@@ -960,19 +960,7 @@ const handler = async (req: Request): Promise<Response> => {
         const { data: linkedGames } = await admin.from("games").select("id").eq("catalog_id", entry.id);
         if (!linkedGames || linkedGames.length === 0) continue;
 
-        const gameIds = linkedGames.map(g => g.id);
-        const { data: bggRatings } = await admin
-          .from("game_ratings").select("rating").in("game_id", gameIds)
-          .eq("guest_identifier", "bgg-community").limit(1);
-
-        if (bggRatings && bggRatings.length > 0) {
-          const bgg10 = bggRatings[0].rating * 2;
-          const { data: current } = await admin.from("game_catalog").select("bgg_community_rating").eq("id", entry.id).single();
-          if (!current?.bgg_community_rating || current.bgg_community_rating <= 0) {
-            await admin.from("game_catalog").update({ bgg_community_rating: bgg10 }).eq("id", entry.id);
-            ratingsUpdated++;
-          }
-        }
+        // BGG community ratings no longer synced to catalog
         processed++;
       }
 

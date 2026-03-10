@@ -2052,7 +2052,7 @@ export default async function handler(req: Request): Promise<Response> {
               try {
                 const { data: catalogEntry } = await supabaseAdmin
                   .from("game_catalog")
-                  .select("id, title, description, image_url, additional_images, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion, bgg_community_rating")
+                  .select("id, title, description, image_url, additional_images, min_players, max_players, play_time_minutes, weight, suggested_age, is_expansion")
                   .eq("bgg_id", lookupBggId)
                   .maybeSingle();
 

@@ -1385,9 +1385,9 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
       }
-      // NOTE: BGG community ratings are no longer saved into library game_ratings.
+      // NOTE: BGG community ratings are no longer stored on the catalog.
       // Library ratings come from user personal BGG ratings (during collection import)
-      // and visitor ratings. BGG community average is stored only on game_catalog.bgg_community_rating.
+      // and visitor ratings via the GT Score system.
 
       // Upsert into canonical game catalog
       if (bggId) {
