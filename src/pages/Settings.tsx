@@ -300,7 +300,7 @@ const Settings = () => {
   
   // Only fetch games when admin (lazy load for performance)
   const { data: games = [], isLoading: gamesLoading } = useGames(isAdmin);
-  const { data: ratingSummaries = [] } = useGameRatingsSummary();
+  // Old rating summaries removed — GT Score is now review-based
   const { data: mechanics = [], isLoading: mechanicsLoading, refetch: refetchMechanics } = useMechanics();
   const { data: publishers = [], isLoading: publishersLoading, refetch: refetchPublishers } = usePublishers();
   const createMechanic = useCreateMechanic();
