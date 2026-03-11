@@ -391,8 +391,8 @@ export default function Platform() {
               <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
                 <Upload className="h-8 w-8 text-secondary" />
                 <div>
-                  <h3 className="font-display font-bold text-foreground mb-1">Stats Cards</h3>
-                  <p className="text-sm text-muted-foreground">Generate a shareable image of your collection stats for social media.</p>
+                <h3 className="font-display font-bold text-foreground mb-1">Stats Cards</h3>
+                  <p className="text-sm text-muted-foreground">Turn your collection stats into a shareable image. Great for flexing on social media.</p>
                 </div>
               </div>
             </Link>
