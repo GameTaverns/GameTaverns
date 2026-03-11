@@ -292,6 +292,7 @@ export function GameReviews({ catalogId, gameTitle, minPlayers, maxPlayers }: Ga
   const [title, setTitle] = useState(savedDraft?.title ?? "");
   const [content, setContent] = useState(savedDraft?.content ?? "");
   const [recommended, setRecommended] = useState(savedDraft?.recommended ?? true);
+  const [ownershipStatus, setOwnershipStatus] = useState<"owned" | "previously_owned" | "played_only">(savedDraft?.ownershipStatus ?? "owned");
   const [playCount, setPlayCount] = useState(savedDraft?.playCount ?? "");
   const [bestFor, setBestFor] = useState(savedDraft?.bestFor ?? "");
   const [skipIf, setSkipIf] = useState(savedDraft?.skipIf ?? "");
