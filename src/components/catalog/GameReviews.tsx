@@ -31,6 +31,8 @@ import { formatDistanceToNow } from "date-fns";
 import { ReviewTagSelector } from "./ReviewTagSelector";
 import { PlayerCountRatingInput } from "./PlayerCountRatingInput";
 import { ReviewInsights } from "./ReviewInsights";
+import { ReviewUpdatePromptBanner } from "./ReviewUpdatePromptBanner";
+import { InfoPopover } from "@/components/ui/InfoPopover";
 import { cn } from "@/lib/utils";
 
 function StarRating({ value, onChange, size = "md" }: { value: number; onChange?: (v: number) => void; size?: "sm" | "md" }) {
