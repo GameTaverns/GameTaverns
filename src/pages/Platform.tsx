@@ -288,22 +288,22 @@ export default function Platform() {
 
         {/* Feature grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <FeatureHighlight icon={<Library className="h-5 w-5" />} title="Collection Management" description="Every game, every detail. BGG auto-fill, location tracking, condition grades, expansions." />
-          <FeatureHighlight icon={<RefreshCw className="h-5 w-5" />} title="BGG Auto-Sync" description="Keep your library in sync with your BoardGameGeek account on a daily or weekly schedule." />
-          <FeatureHighlight icon={<Dice6 className="h-5 w-5" />} title="Play Logging & Stats" description="Record sessions, players, scores and winners. Charts, H-index, win rates and monthly summaries." />
-          <FeatureHighlight icon={<Library className="h-5 w-5" />} title="Lending Library" description="Borrow requests, due dates, condition check-in/out, waitlists, and borrower reputation ratings." />
-          <FeatureHighlight icon={<Vote className="h-5 w-5" />} title="Game Night Polls" description="Share a link — anyone votes, no account needed. See live results as they come in." />
-          <FeatureHighlight icon={<Shuffle className="h-5 w-5" />} title="Random Game Picker" description="Filtered by player count and play time. Spin the wheel, end the debate." />
-          <FeatureHighlight icon={<ArrowLeftRight className="h-5 w-5" />} title="Trade Matching" description="Automatically match games you'd trade with games libraries near you are looking for." />
-          <FeatureHighlight icon={<MessageSquare className="h-5 w-5" />} title="Community Forums" description="Threaded discussions scoped to your library, your clubs, or the whole platform." />
-          <FeatureHighlight icon={<Calendar className="h-5 w-5" />} title="Events & Game Nights" description="Plan events with RSVPs and Discord integration." />
-          <FeatureHighlight icon={<Trophy className="h-5 w-5" />} title="Achievements" description="Milestone badges for play counts, variety, streaks, and community contributions." />
-          <FeatureHighlight icon={<BarChart3 className="h-5 w-5" />} title="Deep Analytics" description="Track collection value, play trends, ELO ratings, and group challenge leaderboards." />
-          <FeatureHighlight icon={<Star className="h-5 w-5" />} title="Ratings & Wishlist" description="Visitors can rate games and wishlist titles — no account required." />
-          <FeatureHighlight icon={<Zap className="h-5 w-5" />} title="AI Recommendations" description="Games like this — powered by AI, only suggesting titles actually in your library." />
-          <FeatureHighlight icon={<Building2 className="h-5 w-5" />} title="Clubs" description="Connect libraries into a shared network with combined catalogs, shared events, and cross-library forums." />
-          <FeatureHighlight icon={<Users className="h-5 w-5" />} title="Social Feed & Photos" description="Follow collectors, share game day photos with @mentions, and see activity from your community." />
-          <FeatureHighlight icon={<Shield className="h-5 w-5" />} title="Privacy First" description="Toggle every feature on or off. Public or private. You're always in control." />
+          <FeatureHighlight icon={<Library className="h-5 w-5" />} title="Collection Management" description="BGG auto-fill, location tracking, condition grades, expansion linking. The whole deal." />
+          <FeatureHighlight icon={<RefreshCw className="h-5 w-5" />} title="BGG Auto-Sync" description="Set it and forget it. Your BGG collection stays in sync daily or weekly." />
+          <FeatureHighlight icon={<Dice6 className="h-5 w-5" />} title="Play Logging" description="Players, scores, winners, duration. Then charts that make you look like you have your life together." />
+          <FeatureHighlight icon={<Library className="h-5 w-5" />} title="Lending Library" description="Borrow requests, due dates, condition tracking. Know who has your copy of Pandemic." />
+          <FeatureHighlight icon={<Vote className="h-5 w-5" />} title="Game Night Polls" description="Send a link, friends vote, nobody needs an account. Done." />
+          <FeatureHighlight icon={<Shuffle className="h-5 w-5" />} title="Random Picker" description="Filter by player count and time, spin the wheel. Blame the algorithm." />
+          <FeatureHighlight icon={<ArrowLeftRight className="h-5 w-5" />} title="Trade Matching" description="Finds games you'd swap with what other libraries are offering. Less hunting." />
+          <FeatureHighlight icon={<MessageSquare className="h-5 w-5" />} title="Forums" description="Threaded discussions — scoped to your library, your club, or everyone." />
+          <FeatureHighlight icon={<Calendar className="h-5 w-5" />} title="Events" description="Plan game nights with RSVPs. Integrates with Discord if that's your thing." />
+          <FeatureHighlight icon={<Trophy className="h-5 w-5" />} title="Achievements" description="Badges for milestones, streaks, and variety. Yes, it's gamified. We're not sorry." />
+          <FeatureHighlight icon={<BarChart3 className="h-5 w-5" />} title="Analytics" description="Collection value, play trends, ELO ratings, leaderboards. Numbers. Lots of them." />
+          <FeatureHighlight icon={<Star className="h-5 w-5" />} title="Ratings & Wishlist" description="Anyone can rate or wishlist games — no sign-up needed." />
+          <FeatureHighlight icon={<Zap className="h-5 w-5" />} title="Smart Suggestions" description="'Games like this' — only recommending titles that are actually on your shelf." />
+          <FeatureHighlight icon={<Building2 className="h-5 w-5" />} title="Clubs" description="Link libraries together into a network. Shared catalog, shared events, shared forums." />
+          <FeatureHighlight icon={<Users className="h-5 w-5" />} title="Social Feed" description="Photo posts, @mentions, play sessions. A feed that's all board games, all the time." />
+          <FeatureHighlight icon={<Shield className="h-5 w-5" />} title="Your Rules" description="Every feature toggles on or off. Public or private. You decide." />
         </div>
       </section>
 
