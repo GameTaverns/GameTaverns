@@ -296,7 +296,7 @@ export default function Platform() {
           <FeatureHighlight icon={<Shuffle className="h-5 w-5" />} title="Random Game Picker" description="Filtered by player count and play time. Spin the wheel, end the debate." />
           <FeatureHighlight icon={<ArrowLeftRight className="h-5 w-5" />} title="Trade Matching" description="Automatically match games you'd trade with games libraries near you are looking for." />
           <FeatureHighlight icon={<MessageSquare className="h-5 w-5" />} title="Community Forums" description="Threaded discussions scoped to your library, your clubs, or the whole platform." />
-          <FeatureHighlight icon={<Calendar className="h-5 w-5" />} title="Events & Game Nights" description="Plan events with RSVPs and Discord integration. All in one place." />
+          <FeatureHighlight icon={<Calendar className="h-5 w-5" />} title="Events & Game Nights" description="Plan events with RSVPs and Discord integration." />
           <FeatureHighlight icon={<Trophy className="h-5 w-5" />} title="Achievements" description="Milestone badges for play counts, variety, streaks, and community contributions." />
           <FeatureHighlight icon={<BarChart3 className="h-5 w-5" />} title="Deep Analytics" description="Track collection value, play trends, ELO ratings, and group challenge leaderboards." />
           <FeatureHighlight icon={<Star className="h-5 w-5" />} title="Ratings & Wishlist" description="Visitors can rate games and wishlist titles — no account required." />
