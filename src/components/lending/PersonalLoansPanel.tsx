@@ -160,9 +160,14 @@ function LoanCard({ loan, onReturn, onDelete }: { loan: PersonalLoan; onReturn?:
                 </span>
               )}
             </div>
+            {loan.copy && (
+              <Badge variant="outline" className="text-[10px]">
+                <Package className="h-2.5 w-2.5 mr-0.5" /> Copy #{loan.copy.copy_number}{loan.copy.copy_label ? ` — ${loan.copy.copy_label}` : ""}
+              </Badge>
+            )}
             {loan.condition_out && (
               <Badge variant="outline" className="text-[10px]">
-                <Package className="h-2.5 w-2.5 mr-0.5" /> Out: {loan.condition_out}
+                Out: {loan.condition_out}
               </Badge>
             )}
             {loan.condition_in && (
