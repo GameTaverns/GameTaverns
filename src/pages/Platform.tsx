@@ -400,8 +400,8 @@ export default function Platform() {
               <div className="rounded-2xl border border-secondary/30 bg-secondary/10 ring-1 ring-secondary/20 p-7 text-center hover:bg-secondary/15 transition-colors h-full flex flex-col items-center gap-4">
                 <Star className="h-8 w-8 text-secondary" />
                 <div>
-                  <h3 className="font-display font-bold text-foreground mb-1">Referral Program</h3>
-                  <p className="text-sm text-muted-foreground">Invite friends and earn exclusive badges as they sign up.</p>
+                <h3 className="font-display font-bold text-foreground mb-1">Referral Program</h3>
+                  <p className="text-sm text-muted-foreground">Invite friends. When they sign up, you both get a badge. Simple as that.</p>
                 </div>
               </div>
             </Link>
