@@ -210,7 +210,7 @@ export default function CatalogGameDetail() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto overflow-x-hidden">
         {/* Breadcrumb nav */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground mb-4 flex-wrap">
            <Link to="/" className="hover:text-foreground">{t('catalog.home')}</Link>
