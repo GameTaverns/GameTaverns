@@ -214,11 +214,15 @@ export function CatalogBrowseEmbed() {
                   </div>
                   <hr className="border-border mb-1 sm:mb-3" />
                   <div className="hidden sm:flex flex-wrap gap-1.5 mt-auto">
-                    {game.weight != null && (
-                      <Badge variant="outline" className="text-xs">
-                        <Weight className="h-3 w-3 mr-0.5" />{game.weight.toFixed(1)}
-                      </Badge>
-                    )}
+                    {(() => {
+                      const c = getComplexity(game.weight);
+                      return c ? (
+                        <Badge className={`text-xs ${c.badgeClass}`}>
+                          <span className={`h-2 w-2 rounded-full ${c.dotClass} mr-1 inline-block`} />
+                          {c.label}
+                        </Badge>
+                      ) : null;
+                    })()}
                     {game.designers.length > 0 && (
                       <Badge variant="outline" className="text-xs">
                         <PenTool className="h-3 w-3 mr-0.5" />

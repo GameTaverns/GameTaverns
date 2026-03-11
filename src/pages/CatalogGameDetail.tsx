@@ -479,10 +479,15 @@ export default function CatalogGameDetail() {
                         <TableCell className="text-foreground">{game.suggested_age}</TableCell>
                       </TableRow>
                     )}
-                    {game.weight != null && (
+                    {complexity && (
                       <TableRow>
                          <TableCell className="font-medium text-muted-foreground">{t('catalog.weight')}</TableCell>
-                        <TableCell className="text-foreground">{game.weight.toFixed(2)} / 5 – {weightLabel}</TableCell>
+                        <TableCell className="text-foreground">
+                          <span className={`inline-flex items-center gap-1.5`}>
+                            <span className={`h-2 w-2 rounded-full ${complexity.dotClass} inline-block`} />
+                            {complexity.label}
+                          </span>
+                        </TableCell>
                       </TableRow>
                     )}
                     {game.publishers.length > 0 && (
