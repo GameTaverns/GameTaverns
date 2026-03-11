@@ -212,7 +212,7 @@ export default function Features() {
               "No account required for guests",
               "See which games get the most requests",
               "Sort your collection by wishlist demand",
-              "Perfect for game night planning"
+              "Useful for game night planning"
             ]}
           />
           <FeatureDetail
