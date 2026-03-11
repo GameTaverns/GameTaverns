@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Users, Clock, Weight, BookOpen, PenTool, ChevronLeft, ChevronRight } from "lucide-react";
+import { getComplexity } from "@/lib/complexity";
 
 const PAGE_SIZE = 30;
 
