@@ -95,8 +95,8 @@ export default function DirectMessages() {
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <MessageSquare className="h-12 w-12 text-cream/20 mb-4" />
-                <p className="text-cream/50 text-sm">{t('messages.selectConversation')}</p>
+                <MessageSquare className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                <p className="text-muted-foreground text-sm">{t('messages.selectConversation')}</p>
               </div>
             )}
           </Card>
