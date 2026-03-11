@@ -517,7 +517,7 @@ function ShowcaseRow({ image, alt, title, description, reverse }: { image: strin
         <img
           src={image}
           alt={alt}
-          className="rounded-2xl border border-border/30 shadow-lg w-full"
+          className={`rounded-2xl border border-border/30 shadow-lg w-full ${reverse ? "md:rotate-[0.5deg]" : "md:-rotate-[0.5deg]"}`}
           loading="lazy"
         />
       </div>
