@@ -352,12 +352,15 @@ export default function SmartPicker() {
                         {pickedGame.min_players}–{pickedGame.max_players}
                       </Badge>
                     )}
-                    {pickedGame.difficulty && (
-                      <Badge variant="outline" className="text-xs">
-                        <Weight className="h-3 w-3 mr-1" />
-                        {pickedGame.difficulty}
-                      </Badge>
-                    )}
+                    {(() => {
+                      const c = getComplexity((pickedGame as any).weight);
+                      return c ? (
+                        <Badge className={`text-xs ${c.badgeClass}`}>
+                          <span className={`h-2 w-2 rounded-full ${c.dotClass} mr-1 inline-block`} />
+                          {c.label}
+                        </Badge>
+                      ) : null;
+                    })()}
                     {pickedGame.is_unplayed && (
                       <Badge variant="secondary" className="text-xs">
                         <BookX className="h-3 w-3 mr-1" />
