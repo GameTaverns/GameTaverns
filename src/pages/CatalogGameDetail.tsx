@@ -4,6 +4,7 @@ import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Users, Clock, Weight, PenTool, Palette, BookOpen, Calendar, Plus, Loader2, ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { getComplexity } from "@/lib/complexity";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Layout } from "@/components/layout/Layout";
@@ -180,9 +181,7 @@ export default function CatalogGameDetail() {
        : `${game.min_players}–${game.max_players} ${t('catalog.playerPlural')}`
      : null;
 
-   const weightLabel = game.weight != null
-     ? game.weight <= 1.5 ? t('catalog.light') : game.weight <= 2.5 ? t('catalog.mediumLight') : game.weight <= 3.5 ? t('catalog.medium') : game.weight <= 4.25 ? t('catalog.mediumHeavy') : t('catalog.heavy')
-     : null;
+   const complexity = getComplexity(game.weight);
 
   const allCategories = [
     ...(game.mechanics.map(m => ({ label: m, type: "mechanic" }))),
@@ -351,8 +350,11 @@ export default function CatalogGameDetail() {
                {game.play_time_minutes != null && (
                  <Badge variant="outline"><Clock className="h-3.5 w-3.5 mr-1" />{game.play_time_minutes} {t('common.min')}</Badge>
               )}
-              {game.weight != null && (
-                <Badge variant="outline"><Weight className="h-3.5 w-3.5 mr-1" />{game.weight.toFixed(1)} – {weightLabel}</Badge>
+              {complexity && (
+                <Badge className={complexity.badgeClass}>
+                  <span className={`h-2 w-2 rounded-full ${complexity.dotClass} mr-1 inline-block`} />
+                  {complexity.label}
+                </Badge>
               )}
               {game.year_published != null && (
                 <Badge variant="outline"><Calendar className="h-3.5 w-3.5 mr-1" />{game.year_published}</Badge>
@@ -477,10 +479,15 @@ export default function CatalogGameDetail() {
                         <TableCell className="text-foreground">{game.suggested_age}</TableCell>
                       </TableRow>
                     )}
-                    {game.weight != null && (
+                    {complexity && (
                       <TableRow>
                          <TableCell className="font-medium text-muted-foreground">{t('catalog.weight')}</TableCell>
-                        <TableCell className="text-foreground">{game.weight.toFixed(2)} / 5 – {weightLabel}</TableCell>
+                        <TableCell className="text-foreground">
+                          <span className={`inline-flex items-center gap-1.5`}>
+                            <span className={`h-2 w-2 rounded-full ${complexity.dotClass} inline-block`} />
+                            {complexity.label}
+                          </span>
+                        </TableCell>
                       </TableRow>
                     )}
                     {game.publishers.length > 0 && (

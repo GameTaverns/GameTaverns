@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, Clock, Weight, Plus, Loader2, BookOpen } from "lucide-react";
+import { getComplexity } from "@/lib/complexity";
 import type { CatalogGameItem } from "./CatalogGameGrid";
 import { decodeHtmlEntities } from "@/lib/utils";
 
@@ -21,7 +22,7 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
         <span>Title</span>
         <span className="text-center">Players</span>
         <span className="text-center">Time</span>
-        <span className="text-center">Weight</span>
+        <span className="text-center">Complexity</span>
         <span className="text-center">GT</span>
         <span />
       </div>
@@ -65,7 +66,7 @@ export function CatalogGameList({ games, isAuthenticated, addingId, isPending, o
             {game.play_time_minutes != null ? `${game.play_time_minutes}m` : "—"}
           </span>
           <span className="hidden sm:block text-center text-xs text-muted-foreground">
-            {game.weight != null ? game.weight.toFixed(1) : "—"}
+            {(() => { const c = getComplexity(game.weight); return c ? c.label : "—"; })()}
           </span>
           <span className="hidden sm:block text-center text-xs text-muted-foreground">
             {game.community_rating != null ? `★ ${game.community_rating.toFixed(1)}` : "—"}
