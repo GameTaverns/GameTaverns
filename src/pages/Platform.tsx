@@ -409,8 +409,8 @@ export default function Platform() {
               <div className="rounded-2xl border border-border/30 bg-muted/50 p-7 text-center hover:border-secondary/30 transition-colors h-full flex flex-col items-center gap-4">
                 <Zap className="h-8 w-8 text-secondary" />
                 <div>
-                  <h3 className="font-display font-bold text-foreground mb-1">Embed Widget</h3>
-                  <p className="text-sm text-muted-foreground">Add your library to your blog, Discord, or forum with a simple embed code.</p>
+                <h3 className="font-display font-bold text-foreground mb-1">Embed Widget</h3>
+                  <p className="text-sm text-muted-foreground">Drop your library into your blog, Discord server, or forum with a snippet of code.</p>
                 </div>
               </div>
             </Link>
