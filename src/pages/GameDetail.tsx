@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Edit, ChevronLeft, ChevronRight, DollarSign, Tag, Package, Play, MapPin, ArrowLeftRight, Calendar, BookOpen } from "lucide-react";
+import { useGameAvailability } from "@/hooks/useGameAvailability";
 import { useEffect, useState, useMemo } from "react";
 import { usePersistedTab } from "@/hooks/usePersistedTab";
 import { useTranslation } from "react-i18next";
@@ -35,6 +36,7 @@ import { GTScoreBadge } from "@/components/games/GTScoreBadge";
 import { FavoriteButton } from "@/components/games/FavoriteButton";
 import { GameRecommendations } from "@/components/games/GameRecommendations";
 import { RequestLoanButton } from "@/components/lending/RequestLoanButton";
+import { GameCopyManager } from "@/components/games/GameCopyManager";
 import { GameDocuments } from "@/components/games/GameDocuments";
 import { PurchaseLinks } from "@/components/catalog/PurchaseLinks";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
@@ -159,6 +161,7 @@ const GameDetail = () => {
   const catalogImages = (!gameHasImages && catalogData?.additional_images) ? catalogData.additional_images : [];
   const yearPublished = (game as any)?.year_published ?? catalogData?.year_published;
   const { data: gtScore } = useGTScore(catalogId);
+  const { data: availability } = useGameAvailability(game?.id, library?.id);
 
 
   if (isLoading) {
@@ -572,6 +575,12 @@ const GameDetail = () => {
                 <TabsTrigger value="description">{t('game.description')}</TabsTrigger>
                 <TabsTrigger value="info">{t('game.info')}</TabsTrigger>
                 <TabsTrigger value="location">{t('game.location')}</TabsTrigger>
+                {(canViewAdminData && (game as any).copies_owned > 1) && (
+                  <TabsTrigger value="copies" className="gap-1.5">
+                    Copies
+                    <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">{(game as any).copies_owned}</Badge>
+                  </TabsTrigger>
+                )}
                 {playLogs && <TabsTrigger value="plays">{t('game.playHistory')}</TabsTrigger>}
                 {!isDemoMode && library && <TabsTrigger value="documents">{t('game.documents')}</TabsTrigger>}
                 {catalogId && (
@@ -722,6 +731,11 @@ const GameDetail = () => {
                       </TableCell>
                       <TableCell className="text-foreground">
                         {(game as any).copies_owned ?? 1}
+                        {availability && (availability.activePersonalLoans + availability.activeClubLoans) > 0 && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({availability.available} available)
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                     {(game as any).upc && (
@@ -870,6 +884,18 @@ const GameDetail = () => {
                   </p>
                 )}
               </TabsContent>
+
+              {/* Copies tab */}
+              {canViewAdminData && (game as any).copies_owned > 1 && (
+                <TabsContent value="copies" className="mt-0">
+                  <GameCopyManager
+                    gameId={game.id}
+                    gameTitle={game.title}
+                    copiesOwned={(game as any).copies_owned ?? 1}
+                    canManage={!!isLibraryOwner}
+                  />
+                </TabsContent>
+              )}
 
               {playLogs && (
                 <TabsContent value="plays" className="mt-0">

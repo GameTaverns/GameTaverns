@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { useLending, type GameLoan, type LoanStatus } from "@/hooks/useLending";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
@@ -132,6 +133,27 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
   // Fetch lending rules
   const { data: lendingRules } = useLendingRules(libraryId);
 
+  // Fetch active personal loan counts to include in inventory overview
+  const gameIdsFromLoans = [...new Set(myLentLoans.filter(l => l.game).map(l => l.game_id))];
+  const { data: personalLoanCounts } = useQuery({
+    queryKey: ["personal-loan-counts-for-inventory", libraryId, gameIdsFromLoans.join(",")],
+    queryFn: async () => {
+      if (!libraryId || gameIdsFromLoans.length === 0) return new Map<string, number>();
+      const { data } = await (supabase as any)
+        .from("personal_loans")
+        .select("game_id")
+        .eq("library_id", libraryId)
+        .in("game_id", gameIdsFromLoans)
+        .in("status", ["active", "overdue"]);
+      const counts = new Map<string, number>();
+      (data || []).forEach((l: any) => {
+        counts.set(l.game_id, (counts.get(l.game_id) || 0) + 1);
+      });
+      return counts;
+    },
+    enabled: !!libraryId && gameIdsFromLoans.length > 0,
+  });
+
   const handleAction = async () => {
     if (!selectedLoan) return;
 
@@ -229,13 +251,14 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
   const overdueLoans = activeLoans.filter((l) => l.due_date && isPast(new Date(l.due_date)) && l.status === 'active');
   const historyLoans = myLentLoans.filter((l) => ['returned', 'declined', 'cancelled'].includes(l.status));
 
-  // Build per-game inventory summary for owners
+  // Build per-game inventory summary for owners (includes personal loans)
   const gameInventory = (() => {
-    const map = new Map<string, { title: string; copiesOwned: number; activeCount: number }>();
+    const map = new Map<string, { title: string; copiesOwned: number; activeCount: number; personalCount: number }>();
     for (const loan of myLentLoans) {
       if (!loan.game) continue;
       const existing = map.get(loan.game_id);
       const isActive = ['requested', 'approved', 'active'].includes(loan.status);
+      const pCount = personalLoanCounts?.get(loan.game_id) || 0;
       if (existing) {
         if (isActive) existing.activeCount++;
       } else {
@@ -243,10 +266,11 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
           title: loan.game.title,
           copiesOwned: loan.game.copies_owned ?? 1,
           activeCount: isActive ? 1 : 0,
+          personalCount: pCount,
         });
       }
     }
-    return Array.from(map.values()).filter((g) => g.activeCount > 0);
+    return Array.from(map.values()).filter((g) => g.activeCount > 0 || g.personalCount > 0);
   })();
 
   const LoanCard = ({ loan, isLender }: { loan: GameLoan; isLender: boolean }) => {
@@ -505,14 +529,23 @@ export function LendingDashboard({ libraryId }: LendingDashboardProps) {
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <div className="space-y-1">
-                  {gameInventory.map((g) => (
-                    <div key={g.title} className="flex items-center justify-between text-sm">
-                      <span className="truncate mr-2">{g.title}</span>
-                      <span className="text-muted-foreground whitespace-nowrap">
-                        {Math.max(0, g.copiesOwned - g.activeCount)}/{g.copiesOwned} available
-                      </span>
-                    </div>
-                  ))}
+                  {gameInventory.map((g) => {
+                    const totalOut = g.activeCount + g.personalCount;
+                    const avail = Math.max(0, g.copiesOwned - totalOut);
+                    return (
+                      <div key={g.title} className="flex items-center justify-between text-sm">
+                        <span className="truncate mr-2">{g.title}</span>
+                        <span className={cn("whitespace-nowrap", avail <= 0 ? "text-destructive" : "text-muted-foreground")}>
+                          {avail}/{g.copiesOwned} available
+                          {g.personalCount > 0 && (
+                            <span className="text-xs ml-1 text-muted-foreground">
+                              ({g.personalCount} personal)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
