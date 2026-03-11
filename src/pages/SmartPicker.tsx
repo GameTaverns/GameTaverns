@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Dices, Users, Clock, Weight, BookX, Shuffle, Filter, Sparkles } from "lucide-react";
+import { getComplexity } from "@/lib/complexity";
 import { BackLink } from "@/components/navigation/BackLink";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
