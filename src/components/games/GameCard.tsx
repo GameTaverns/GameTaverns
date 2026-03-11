@@ -15,6 +15,7 @@ import { useTenantUrl } from "@/hooks/useTenantUrl";
 import { useAuth } from "@/contexts/AuthContext";
 import type { GameWithRelations } from "@/types/game";
 import { cn } from "@/lib/utils";
+import { getDifficultyDisplay } from "@/lib/complexity";
 
 interface GameCardProps {
   game: GameWithRelations;
