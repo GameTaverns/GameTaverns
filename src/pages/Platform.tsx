@@ -267,7 +267,7 @@ export default function Platform() {
             image={showcasePoll}
             alt="Game night poll letting users vote on what to play next"
             title="Game Night Polls"
-            description="Create a poll from your collection, share a link — anyone votes, no account needed. See live results, RSVP tracking, and event details all in one place."
+            description="Create a poll from your collection, share a link — anyone can vote without signing up. Live results, RSVP tracking, and event details."
             reverse={false}
           />
           <ShowcaseRow
