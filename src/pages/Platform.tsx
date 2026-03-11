@@ -537,7 +537,7 @@ const Step = forwardRef<HTMLDivElement, { n: number; title: string; description:
   ({ n, title, description }, ref) => {
     return (
       <div ref={ref} className="text-center flex flex-col items-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-secondary text-secondary-foreground font-bold text-lg flex items-center justify-center font-display">
+        <div className="w-11 h-11 rounded-lg bg-accent/10 text-accent border border-accent/20 font-bold text-lg flex items-center justify-center font-display" style={{ borderRadius: '0.5rem 0.75rem 0.625rem 0.5rem' }}>
           {n}
         </div>
         <h3 className="font-display font-bold text-foreground text-lg">{title}</h3>
