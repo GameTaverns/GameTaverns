@@ -1,6 +1,6 @@
-import { useGTScore, getGradeColor, getScoreLabel, type GTScore } from "@/hooks/useGTScore";
+import { useGTScore, getGradeColor, getScoreLabel, type GTScore, type GTScoreSegment } from "@/hooks/useGTScore";
 import { cn } from "@/lib/utils";
-import { ThumbsUp, BarChart3, ShieldCheck, ShieldAlert, Shield } from "lucide-react";
+import { ThumbsUp, BarChart3, ShieldCheck, ShieldAlert, Shield, Crown, Gamepad2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -37,6 +37,27 @@ function DimensionBar({ label, value, max = 10 }: { label: string; value: number
         />
       </div>
       <span className="text-[10px] font-medium text-foreground w-6 text-right">{value.toFixed(1)}</span>
+    </div>
+  );
+}
+
+function SegmentScore({ segment, label, icon: Icon }: { segment: GTScoreSegment; label: string; icon: React.ElementType }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-1.5">
+        <Icon className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[10px] text-muted-foreground">{label}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className={cn(
+          "px-1.5 py-0.5 rounded text-[10px] font-bold border",
+          getGradeColor(segment.grade)
+        )}>
+          {segment.grade}
+        </span>
+        <span className="text-xs font-semibold text-foreground">{segment.score.toFixed(1)}</span>
+        <span className="text-[10px] text-muted-foreground">({segment.reviewCount})</span>
+      </div>
     </div>
   );
 }
@@ -98,10 +119,12 @@ export function GTScoreBadge({
     </span>
   );
 
+  const showPlayerScore = gtScore.playerScore && gtScore.playerScore.reviewCount >= 3;
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>{badge}</TooltipTrigger>
-      <TooltipContent className="w-64 p-3" side="bottom">
+      <TooltipContent className="w-72 p-3" side="bottom">
         <div className="space-y-2">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -116,6 +139,21 @@ export function GTScoreBadge({
               {gtScore.grade} · {gtScore.score.toFixed(1)}
             </span>
           </div>
+
+          {/* Owner / Player Score Segments */}
+          {(gtScore.ownerScore || showPlayerScore) && (
+            <div className="space-y-1.5 p-2 rounded-md bg-muted/30 border">
+              {gtScore.ownerScore && (
+                <SegmentScore segment={gtScore.ownerScore} label="Owner Score" icon={Crown} />
+              )}
+              {showPlayerScore && (
+                <SegmentScore segment={gtScore.playerScore!} label="Player Score" icon={Gamepad2} />
+              )}
+              <p className="text-[9px] text-muted-foreground/70 pt-0.5">
+                Owner reviews carry more weight in the combined score
+              </p>
+            </div>
+          )}
 
           {/* Dimensions */}
           <div className="space-y-1">
@@ -149,7 +187,7 @@ export function GTScoreBadge({
           </div>
 
           <p className="text-[9px] text-muted-foreground/70 italic">
-            GT Score is algorithmically computed from weighted community reviews
+            GT Score is algorithmically computed from weighted community reviews. Play count, ownership, and review depth affect scoring weight.
           </p>
         </div>
       </TooltipContent>
