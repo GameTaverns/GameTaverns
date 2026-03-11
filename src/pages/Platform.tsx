@@ -162,7 +162,7 @@ export default function Platform() {
             </Link>
           </div>
           {/* Stats bar */}
-          <div className="inline-flex flex-wrap justify-center gap-8 sm:gap-16 bg-muted/50 border border-border/30 rounded-2xl px-10 py-6">
+          <div className="inline-flex flex-wrap justify-center gap-8 sm:gap-16 card-handcrafted px-10 py-6">
              <Stat label={t('platform.librariesCreated')} value={statsLoading ? "..." : formatStatNumber(stats?.librariesCount || 0)} />
              <Stat label={t('platform.gamesCataloged')} value={statsLoading ? "..." : formatStatNumber(stats?.gamesCount || 0)} />
              <Stat label={t('platform.playsLogged')} value={statsLoading ? "..." : formatStatNumber(stats?.playsCount || 0)} />
