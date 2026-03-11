@@ -1261,6 +1261,20 @@ export function SystemHealth() {
                 >
                   <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset Position
                 </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  onClick={() => fixImagesMutation.mutate()}
+                  disabled={fixImagesMutation.isPending}
+                >
+                  {fixImagesMutation.isPending ? (
+                    <><RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> Fixing...</>
+                  ) : (
+                    <><ImageIcon className="h-3.5 w-3.5 mr-1" /> Fix Catalog Images</>
+                  )}
+                </Button>
               </div>
 
               {/* Fetch specific BGG IDs */}
