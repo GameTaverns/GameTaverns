@@ -365,15 +365,12 @@ export default function CatalogGameDetail() {
               {game.is_expansion && <Badge variant="default">{t('catalog.expansion')}</Badge>}
             </div>
 
-            {/* Categories as collapsible badges */}
-            {allCategories.length > 0 && (
-              <details className="mb-6 group/details">
-                <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors select-none list-none flex items-center gap-1.5 mb-2">
-                  <ChevronRight className="h-4 w-4 transition-transform group-open/details:rotate-90" />
-                  Details · {allCategories.length} tags
-                </summary>
-                <div className="flex flex-wrap gap-2 pl-5">
-                  {allCategories.map((cat, idx) => (
+            {/* Publisher badges (shown openly, mechanics moved to info tab) */}
+            {(() => {
+              const nonMechanicCategories = allCategories.filter(c => c.type !== "mechanic");
+              return nonMechanicCategories.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {nonMechanicCategories.map((cat, idx) => (
                     <Link key={idx} to={`/catalog?filter=${cat.type}&value=${encodeURIComponent(cat.label)}`}>
                       <Badge variant="secondary" className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-sm">
                         {cat.label}
@@ -381,8 +378,8 @@ export default function CatalogGameDetail() {
                     </Link>
                   ))}
                 </div>
-              </details>
-            )}
+              ) : null;
+            })()}
 
             {/* Action buttons */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
