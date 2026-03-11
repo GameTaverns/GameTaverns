@@ -67,7 +67,7 @@ export default function Platform() {
       />
 
       {/* ── Header ── */}
-      <header className="border-b border-border/30 bg-background/80 backdrop-blur-sm sticky top-0 z-20">
+      <header className="border-b border-border/40 bg-background sticky top-0 z-20">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-2 min-w-0 flex-shrink-1">
             <img src={logoImage} alt="GameTaverns" className="h-8 w-auto flex-shrink-0" />
