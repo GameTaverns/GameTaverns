@@ -350,8 +350,11 @@ export default function CatalogGameDetail() {
                {game.play_time_minutes != null && (
                  <Badge variant="outline"><Clock className="h-3.5 w-3.5 mr-1" />{game.play_time_minutes} {t('common.min')}</Badge>
               )}
-              {game.weight != null && (
-                <Badge variant="outline"><Weight className="h-3.5 w-3.5 mr-1" />{game.weight.toFixed(1)} – {weightLabel}</Badge>
+              {complexity && (
+                <Badge className={complexity.badgeClass}>
+                  <span className={`h-2 w-2 rounded-full ${complexity.dotClass} mr-1 inline-block`} />
+                  {complexity.label}
+                </Badge>
               )}
               {game.year_published != null && (
                 <Badge variant="outline"><Calendar className="h-3.5 w-3.5 mr-1" />{game.year_published}</Badge>
