@@ -260,7 +260,7 @@ export default function Platform() {
             image={showcaseGameDetail}
             alt="Detailed game page showing Flip 7 with description, mechanics, and play history"
             title="Rich Game Pages"
-            description="Every game gets a detailed page with AI-generated overviews, mechanic tags, play history, documents, and community ratings. Link to BoardGameGeek with one click."
+            description="Every game gets a detailed page with rich overviews, mechanic tags, play history, documents, and community ratings. Link to BoardGameGeek with one click."
             reverse
           />
           <ShowcaseRow
