@@ -1,7 +1,7 @@
 import { useEffect, useState, lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isAdminSubdomain } from "@/lib/subdomainDetection";
-import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut, Clock, Globe, AlertTriangle, Mail, Accessibility, Newspaper, Star } from "lucide-react";
+import { Shield, Users, Database, Settings, Activity, MessageCircle, Trophy, HeartPulse, Map, BadgeCheck, LogOut, Clock, Globe, AlertTriangle, Mail, Accessibility, Newspaper, Star, Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
