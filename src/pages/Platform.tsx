@@ -381,10 +381,10 @@ export default function Platform() {
       <section className="bg-muted/30 border-y border-border/20">
         <div className="container mx-auto px-4 py-20">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
-            Share & Grow Your Community
+            Show It Off a Little
           </h2>
           <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
-            Tools to spread the word and bring your gaming group on board.
+            You put the collection together — might as well let people see it.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <Link to="/share-card" className="group">
