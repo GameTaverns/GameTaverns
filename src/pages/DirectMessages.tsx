@@ -54,7 +54,7 @@ export default function DirectMessages() {
     <Layout>
       <div className="container mx-auto px-4 py-6 max-w-5xl">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-display font-bold text-cream flex items-center gap-2">
+          <h1 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
             <MessageSquare className="h-6 w-6 text-secondary" />
             {t('messages.title')}
           </h1>
