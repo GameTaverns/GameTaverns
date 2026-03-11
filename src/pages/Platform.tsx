@@ -227,10 +227,10 @@ export default function Platform() {
       {/* ── Feature Showcase with Screenshots ── */}
       <section className="container mx-auto px-4 py-20">
         <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground text-center mb-4">
-          Everything in One Platform
+          Okay, But What Does It Actually Do?
         </h2>
         <p className="text-muted-foreground text-center mb-14 max-w-xl mx-auto">
-          No patchwork of apps. No spreadsheets. GameTaverns replaces the lot.
+          Honestly — a lot. Here's the short version.
         </p>
 
         {/* Showcase rows — alternating image/text */}
