@@ -503,8 +503,8 @@ function AudienceCard({
 
 function FeatureHighlight({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="flex gap-4 p-5 rounded-xl border border-border/20 bg-muted/30 hover:border-secondary/30 hover:bg-muted/50 transition-colors">
-      <div className="text-secondary shrink-0 mt-0.5">{icon}</div>
+    <div className="flex gap-4 p-5 card-handcrafted hover:border-secondary/30 transition-colors">
+      <div className="text-accent shrink-0 mt-0.5">{icon}</div>
       <div>
         <h3 className="font-semibold text-foreground text-sm mb-1">{title}</h3>
         <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
