@@ -246,7 +246,7 @@ export default function Platform() {
             image={showcaseThemed}
             alt="A custom-themed board game library with unique branding and colors"
             title="Your Library, Your Brand"
-            description="Each library gets its own theme, logo, and public URL. Whether you're a solo collector or community café, your library looks uniquely yours."
+            description="Each library gets its own theme, logo, and public URL. Make it match your brand or just make it look good."
             reverse
           />
           <ShowcaseRow
