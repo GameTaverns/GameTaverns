@@ -246,7 +246,7 @@ export default function Platform() {
             image={showcaseThemed}
             alt="A custom-themed board game library with unique branding and colors"
             title="Your Library, Your Brand"
-            description="Each library gets its own theme, logo, and public URL. Whether you're a solo collector or community café, your library looks uniquely yours."
+            description="Each library gets its own theme, logo, and public URL. Make it match your brand or just make it look good."
             reverse
           />
           <ShowcaseRow
@@ -267,21 +267,21 @@ export default function Platform() {
             image={showcasePoll}
             alt="Game night poll letting users vote on what to play next"
             title="Game Night Polls"
-            description="Create a poll from your collection, share a link — anyone votes, no account needed. See live results, RSVP tracking, and event details all in one place."
+            description="Create a poll from your collection, share a link — anyone can vote without signing up. Live results, RSVP tracking, and event details."
             reverse={false}
           />
           <ShowcaseRow
             image={showcaseActivityFeed}
             alt="Social activity feed showing photo posts, game additions, and community interactions"
             title="Social Activity Feed"
-            description="Follow other collectors and see their activity in a real-time feed. Photo posts with @mentions, batched game additions, play sessions, and achievements — all in one stream."
+            description="Follow other collectors and see what they're up to. Photo posts with @mentions, play sessions, new additions, and achievements show up in your feed."
             reverse
           />
           <ShowcaseRow
             image={showcaseProfile}
             alt="User profile page showing activity, photos, stats, achievements, and community badges"
             title="Collector Profiles"
-            description="Every member gets a rich profile with activity history, photo gallery, play stats, achievements, and community connections. Follow your favorite collectors and see what they're playing."
+            description="Activity history, photo gallery, play stats, achievements, and who you follow. See what any collector is playing and how their collection has grown."
             reverse={false}
           />
         </div>
@@ -296,7 +296,7 @@ export default function Platform() {
           <FeatureHighlight icon={<Shuffle className="h-5 w-5" />} title="Random Game Picker" description="Filtered by player count and play time. Spin the wheel, end the debate." />
           <FeatureHighlight icon={<ArrowLeftRight className="h-5 w-5" />} title="Trade Matching" description="Automatically match games you'd trade with games libraries near you are looking for." />
           <FeatureHighlight icon={<MessageSquare className="h-5 w-5" />} title="Community Forums" description="Threaded discussions scoped to your library, your clubs, or the whole platform." />
-          <FeatureHighlight icon={<Calendar className="h-5 w-5" />} title="Events & Game Nights" description="Plan events with RSVPs and Discord integration. All in one place." />
+          <FeatureHighlight icon={<Calendar className="h-5 w-5" />} title="Events & Game Nights" description="Plan events with RSVPs and Discord integration." />
           <FeatureHighlight icon={<Trophy className="h-5 w-5" />} title="Achievements" description="Milestone badges for play counts, variety, streaks, and community contributions." />
           <FeatureHighlight icon={<BarChart3 className="h-5 w-5" />} title="Deep Analytics" description="Track collection value, play trends, ELO ratings, and group challenge leaderboards." />
           <FeatureHighlight icon={<Star className="h-5 w-5" />} title="Ratings & Wishlist" description="Visitors can rate games and wishlist titles — no account required." />

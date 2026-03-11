@@ -185,7 +185,7 @@ export default function Features() {
           <FeatureDetail
             icon={<BookOpen className="h-6 w-6" />}
             title="Rich Game Details"
-            description="Every game includes a full detail page with everything you need at a glance."
+            description="Full detail pages for every game — player count, play time, difficulty, storage location, and linked expansions."
             highlights={[
               "Player count, play time, complexity",
               "Your personal notes and condition grade",
@@ -212,7 +212,7 @@ export default function Features() {
               "No account required for guests",
               "See which games get the most requests",
               "Sort your collection by wishlist demand",
-              "Perfect for game night planning"
+              "Useful for game night planning"
             ]}
           />
           <FeatureDetail
@@ -562,10 +562,10 @@ export default function Features() {
       <section className="container mx-auto px-4 py-16 text-center">
         <div className="bg-muted/50 dark:bg-wood-medium/30 rounded-2xl p-12 border border-border/30">
           <h2 className="font-display text-3xl font-bold text-foreground mb-4">
-            Ready to Get Started?
+            Your Shelf Deserves Better
           </h2>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Create your free library today and discover why GameTaverns is the most complete board game library platform available.
+            Create a free library and see what your collection looks like when it's actually organised.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isAuthenticated ? (

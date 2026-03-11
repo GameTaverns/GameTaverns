@@ -83,7 +83,7 @@ export default function GamesForNPlayers() {
   }, [handleObserver]);
 
   const title = `Best Board Games for ${n} Player${n === 1 ? "" : "s"}`;
-  const description = `Discover the top board games ${playerCountDescriptions[n] || `supporting ${n} players`}. Browse our community-curated catalog of ${n}-player games.`;
+  const description = `Browse board games ${playerCountDescriptions[n] || `that support ${n} players`}. Filter by difficulty, play time, and mechanics in our ${n}-player game catalog.`;
 
   const jsonLd = {
     "@context": "https://schema.org",
