@@ -178,6 +178,8 @@ export function useSubmitReview() {
       queryClient.invalidateQueries({ queryKey: ["game-reviews", variables.catalog_id] });
       queryClient.invalidateQueries({ queryKey: ["my-review", variables.catalog_id] });
       queryClient.invalidateQueries({ queryKey: ["review-aggregate", variables.catalog_id] });
+      queryClient.invalidateQueries({ queryKey: ["gt-score", variables.catalog_id] });
+      queryClient.invalidateQueries({ queryKey: ["review-update-prompt", variables.catalog_id] });
     },
   });
 }
