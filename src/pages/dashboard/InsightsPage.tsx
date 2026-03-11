@@ -63,7 +63,7 @@ export default function InsightsPage() {
                 <Star className="h-4 w-4 text-secondary" />
                 {t('dashboard.ratingsWishlist')}
               </CardTitle>
-              <CardDescription className="text-cream/60 text-xs">{t('dashboard.ratingsWishlistDesc')}</CardDescription>
+              <CardDescription className="text-muted-foreground text-xs">{t('dashboard.ratingsWishlistDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="px-4 pb-4">
               <div className="flex flex-col gap-1.5">
@@ -91,7 +91,7 @@ export default function InsightsPage() {
                 {t('dashboard.achievements')}
               </CardTitle>
               <Link to="/achievements">
-                <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-7 gap-1">
                   {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
                 </Button>
               </Link>

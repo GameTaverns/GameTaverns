@@ -69,10 +69,10 @@ export default function CommunityEventsPage() {
                   <MessageSquare className="h-4 w-4 text-secondary" />
                   {t('dashboard.forums')}
                 </CardTitle>
-                <InfoPopover title={t('hub.communityForums')} description={t('hub.communityForumsDesc')} className="text-cream/40 hover:text-cream/70" />
+                <InfoPopover title={t('hub.communityForums')} description={t('hub.communityForumsDesc')} className="text-muted-foreground/60 hover:text-muted-foreground" />
               </div>
               <Link to="/community">
-                <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-7 gap-1">
                   {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
                 </Button>
               </Link>
@@ -116,7 +116,7 @@ export default function CommunityEventsPage() {
                   {t('dashboard.polls')}
                 </CardTitle>
                 <Link to="/community?tab=polls">
-                  <Button variant="ghost" size="sm" className="text-cream/70 hover:text-cream hover:bg-wood-medium/40 text-xs h-7 gap-1">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted text-xs h-7 gap-1">
                     {t('common.viewAll')} <ArrowRight className="h-3 w-3" />
                   </Button>
                 </Link>
@@ -139,7 +139,7 @@ export default function CommunityEventsPage() {
               </CardTitle>
               <div className="flex gap-1.5">
                 <Link to="/join-club">
-                  <Button variant="outline" size="sm" className={`text-cream ${btnOutline}`}>
+                  <Button variant="outline" size="sm" className={btnOutline}>
                     <Ticket className="h-3 w-3" /> {t('dashboard.join')}
                   </Button>
                 </Link>
@@ -154,13 +154,13 @@ export default function CommunityEventsPage() {
           <CardContent className="px-4 pb-4">
             {myClubs.length === 0 ? (
               <div className="text-center py-4">
-                <Users className="h-8 w-8 mx-auto text-cream/30 mb-2" />
-                <p className="text-cream/60 text-xs">{t('dashboard.noClubs')}</p>
+                <Users className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                <p className="text-muted-foreground text-xs">{t('dashboard.noClubs')}</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {myClubs.map((club) => (
-                  <div key={club.id} className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20">
+                  <div key={club.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                     <div className="min-w-0 mr-2">
                       <div className="text-xs font-medium truncate">{club.name}</div>
                       <Badge variant={club.status === 'approved' ? 'secondary' : 'outline'} className="text-[10px] mt-0.5">{club.status}</Badge>
@@ -173,7 +173,7 @@ export default function CommunityEventsPage() {
                       </Link>
                       {club.owner_id === user?.id && (
                         <Link to={`/club/${club.slug}/manage`}>
-                          <Button variant="outline" size="sm" className="gap-1 h-6 text-cream border-wood-medium/50 px-2">
+                          <Button variant="outline" size="sm" className="gap-1 h-6 text-[10px] px-2">
                             <Settings className="h-2.5 w-2.5" />
                           </Button>
                         </Link>
@@ -194,7 +194,7 @@ export default function CommunityEventsPage() {
                 <Globe className="h-4 w-4 text-secondary" />
                 {t('dashboard.myCommunities')}
               </CardTitle>
-              <CardDescription className="text-cream/60 text-xs">{t('dashboard.myCommunitiesDesc')}</CardDescription>
+              <CardDescription className="text-muted-foreground text-xs">{t('dashboard.myCommunitiesDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="px-4 pb-4">
               {(() => {
@@ -219,14 +219,14 @@ export default function CommunityEventsPage() {
                 return (
                   <div className="space-y-1.5">
                     {allEntries.map((entry) => (
-                      <a key={entry.key} href={entry.slug ? getLibraryUrl(entry.slug, "/") : "#"} className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/40 transition-colors">
+                      <a key={entry.key} href={entry.slug ? getLibraryUrl(entry.slug, "/") : "#"} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                         <span className="text-xs font-medium truncate">{entry.name}</span>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           {entry.role === 'owner' && <Badge variant="secondary" className="text-[10px]">{t('dashboard.owner')}</Badge>}
-                          {entry.role === 'admin' && <Badge className="text-[10px] bg-blue-600">{t('dashboard.admin')}</Badge>}
+                          {entry.role === 'admin' && <Badge className="text-[10px]">{t('dashboard.admin')}</Badge>}
                           {entry.role === 'moderator' && <Badge variant="outline" className="text-[10px]">{t('dashboard.moderator')}</Badge>}
                           {entry.role === 'member' && <Badge variant="outline" className="text-[10px]">{t('dashboard.member')}</Badge>}
-                          <ArrowRight className="h-3 w-3 text-cream/60" />
+                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
                         </div>
                       </a>
                     ))}
@@ -248,7 +248,7 @@ export default function CommunityEventsPage() {
                 <Target className="h-4 w-4 text-secondary" />
                 {t('dashboard.challenges')}
               </CardTitle>
-              <CardDescription className="text-cream/60 text-xs">{t('dashboard.challengesDesc')}</CardDescription>
+              <CardDescription className="text-muted-foreground text-xs">{t('dashboard.challengesDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="px-4 pb-4">
               <ChallengesManager libraryId={library.id} canManage={true} />

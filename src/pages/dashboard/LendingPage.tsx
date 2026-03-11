@@ -63,7 +63,7 @@ export default function LendingPage() {
                   <Badge variant="destructive" className="text-[10px]">{pendingLoanRequests} {t('dashboard.pending')}</Badge>
                 )}
               </CardTitle>
-              <CardDescription className="text-cream/60 text-xs">{t('dashboard.lendingDesc')}</CardDescription>
+              <CardDescription className="text-muted-foreground text-xs">{t('dashboard.lendingDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="px-4 pb-4">
               <LendingDashboard libraryId={library.id} />
@@ -79,21 +79,21 @@ export default function LendingPage() {
               {t('dashboard.borrowedGames')}
               {activeBorrowedLoans.length > 0 && <Badge variant="secondary" className="ml-auto text-[10px]">{activeBorrowedLoans.length}</Badge>}
             </CardTitle>
-            <CardDescription className="text-cream/60 text-xs">{t('dashboard.borrowedGamesDesc')}</CardDescription>
+            <CardDescription className="text-muted-foreground text-xs">{t('dashboard.borrowedGamesDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             {activeBorrowedLoans.length === 0 ? (
-              <p className="text-xs text-cream/60 text-center py-2">{t('dashboard.noActiveBorrows')}</p>
+              <p className="text-xs text-muted-foreground text-center py-2">{t('dashboard.noActiveBorrows')}</p>
             ) : (
               <div className="space-y-1.5">
                 {activeBorrowedLoans.slice(0, 10).map((loan) => (
-                  <div key={loan.id} className="flex flex-col p-2 rounded-lg bg-wood-medium/20">
+                  <div key={loan.id} className="flex flex-col p-2 rounded-lg bg-muted/50">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium truncate">{loan.game?.title || t('game.unknownGame')}</span>
                       <Badge variant="outline" className="text-[10px]">{loan.status}</Badge>
                     </div>
                     {loan.library?.name && (
-                      <span className="text-[10px] text-cream/60 mt-0.5">{t('dashboard.from')}: {loan.library.name}</span>
+                      <span className="text-[10px] text-muted-foreground mt-0.5">{t('dashboard.from')}: {loan.library.name}</span>
                     )}
                   </div>
                 ))}
@@ -110,7 +110,7 @@ export default function LendingPage() {
                 <Users className="h-4 w-4 text-secondary" />
                 Friend & Family Loans
               </CardTitle>
-              <CardDescription className="text-cream/60 text-xs">
+              <CardDescription className="text-muted-foreground text-xs">
                 Track games loaned to people outside the platform
               </CardDescription>
             </CardHeader>
@@ -128,7 +128,7 @@ export default function LendingPage() {
                 <Ticket className="h-4 w-4 text-secondary" />
                 {t('dashboard.clubLending', { defaultValue: 'Club Lending Desks' })}
               </CardTitle>
-              <CardDescription className="text-cream/60 text-xs">
+              <CardDescription className="text-muted-foreground text-xs">
                 {t('dashboard.clubLendingDesc', { defaultValue: 'Manage lending desks for your clubs' })}
               </CardDescription>
             </CardHeader>
@@ -138,7 +138,7 @@ export default function LendingPage() {
                   <Link
                     key={club.id}
                     to={`/club/${club.slug}?tab=lending`}
-                    className="flex items-center justify-between p-2 rounded-lg bg-wood-medium/20 hover:bg-wood-medium/30 transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                   >
                     <span className="text-xs font-medium">{club.name}</span>
                     <Badge variant="outline" className="text-[10px]">
@@ -158,15 +158,15 @@ export default function LendingPage() {
               <ArrowLeftRight className="h-4 w-4 text-secondary" />
               {t('dashboard.trading')}
             </CardTitle>
-            <CardDescription className="text-cream/60 text-xs">{t('dashboard.tradingDesc')}</CardDescription>
+            <CardDescription className="text-muted-foreground text-xs">{t('dashboard.tradingDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             {isSelfHostedSupabaseStack() ? (
               <TradeCenter />
             ) : (
               <div className="text-center py-4">
-                <ArrowLeftRight className="h-8 w-8 mx-auto text-cream/30 mb-2" />
-                <p className="text-cream/60 text-xs">{t('dashboard.selfHostedOnly')}</p>
+                <ArrowLeftRight className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                <p className="text-muted-foreground text-xs">{t('dashboard.selfHostedOnly')}</p>
               </div>
             )}
           </CardContent>
