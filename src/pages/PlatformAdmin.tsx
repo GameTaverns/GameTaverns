@@ -47,6 +47,9 @@ const AccountLockoutManager = lazy(() =>
 const AccessibilityAudit = lazy(() =>
   import("@/components/admin/AccessibilityAudit").then(m => ({ default: m.AccessibilityAudit }))
 );
+const PositioningStrategy = lazy(() =>
+  import("@/components/admin/PositioningStrategy").then(m => ({ default: m.PositioningStrategy }))
+);
 const NewsManagement = lazy(() =>
   import("@/components/admin/NewsManagement").then(m => ({ default: m.NewsManagement }))
 );
