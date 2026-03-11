@@ -100,31 +100,41 @@ export function GameCard({ game, priority = false }: GameCardProps) {
               {/* Tags - hidden on mobile for compactness */}
               <div className="hidden sm:flex flex-wrap gap-1.5 mt-auto">
                 {(game as any).copies_owned > 1 && (
-                  <Badge className="text-xs bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                  <Badge variant="outline" className="text-xs">
                     <Copy className="h-3 w-3 mr-0.5" />
                     {(game as any).copies_owned} copies
                   </Badge>
                 )}
                 {forSale && game.is_for_sale && (
-                  <Badge className="text-xs bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30">
+                  <Badge variant="outline" className="text-xs text-primary border-primary/30">
                     <DollarSign className="h-3 w-3 mr-0.5" />
                     {game.sale_price ? `$${game.sale_price}` : 'For Sale'}
                   </Badge>
                 )}
                 {comingSoon && game.is_coming_soon && (
-                  <Badge className="text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                  <Badge variant="secondary" className="text-xs">
                     Coming Soon
                   </Badge>
                 )}
                 {game.youtube_videos && game.youtube_videos.length > 0 && (
-                  <Badge className="text-xs bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
+                  <Badge variant="outline" className="text-xs">
                     <Youtube className="h-3 w-3 mr-0.5" />
                     {game.youtube_videos.length} Video{game.youtube_videos.length > 1 ? 's' : ''}
                   </Badge>
                 )}
-                <Badge variant="secondary" className="text-xs">
-                  {game.difficulty}
-                </Badge>
+                {(() => {
+                  const diff = getDifficultyDisplay(game.difficulty);
+                  return diff ? (
+                    <Badge className={cn("text-xs", diff.badgeClass)}>
+                      <span className={cn("h-1.5 w-1.5 rounded-full inline-block mr-1", diff.dotClass)} />
+                      {diff.label}
+                    </Badge>
+                  ) : game.difficulty ? (
+                    <Badge variant="secondary" className="text-xs">
+                      {game.difficulty.replace(/^\d+\s*-\s*/, '')}
+                    </Badge>
+                  ) : null;
+                })()}
                 <Badge variant="outline" className="text-xs">
                   {game.game_type}
                 </Badge>

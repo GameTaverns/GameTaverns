@@ -684,7 +684,7 @@ const GameDetail = () => {
                           {t('game.difficulty')}
                         </TableCell>
                         <TableCell className="text-foreground">
-                          {game.difficulty}
+                          {game.difficulty.replace(/^\d+\s*-\s*/, '')}
                         </TableCell>
                       </TableRow>
                     )}
