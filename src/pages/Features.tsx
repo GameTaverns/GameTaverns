@@ -185,7 +185,7 @@ export default function Features() {
           <FeatureDetail
             icon={<BookOpen className="h-6 w-6" />}
             title="Rich Game Details"
-            description="Every game includes a full detail page with everything you need at a glance."
+            description="Full detail pages for every game — player count, play time, difficulty, storage location, and linked expansions."
             highlights={[
               "Player count, play time, complexity",
               "Your personal notes and condition grade",
