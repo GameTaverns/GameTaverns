@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, Clock, Weight, Plus, Loader2, BookOpen } from "lucide-react";
+import { getComplexity } from "@/lib/complexity";
 import type { CatalogGameItem } from "./CatalogGameGrid";
 import { decodeHtmlEntities } from "@/lib/utils";
 
