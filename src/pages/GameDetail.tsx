@@ -6,8 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/backend/client";
 import { SEO, gameJsonLd } from "@/components/seo/SEO";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { DescriptionContent } from "@/components/games/DescriptionContent";
 import { Layout } from "@/components/layout/Layout";
 import { useGame, useGames } from "@/hooks/useGames";
 import { useAuth } from "@/hooks/useAuth";
@@ -281,56 +280,7 @@ const GameDetail = () => {
   const currentGameWithExpansions = allGames?.find((g) => g.id === game.id);
   const expansions = currentGameWithExpansions?.expansions || [];
 
-  // Render markdown description with proper styling
-  const DescriptionContent = ({ content }: { content: string | null }) => {
-    if (!content) {
-      return <p className="text-muted-foreground italic">{t('game.noDescription')}</p>;
-    }
-
-    return (
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h2: ({ children }) => (
-            <>
-              <hr className="border-border my-6" />
-              <h2 className="font-display text-xl font-semibold text-foreground mt-0 mb-3">
-                {children}
-              </h2>
-            </>
-          ),
-          h3: ({ children }) => (
-            <h3 className="font-display text-lg font-semibold text-foreground mt-4 mb-2">
-              {children}
-            </h3>
-          ),
-          p: ({ children }) => (
-            <p className="text-muted-foreground leading-relaxed mb-4">
-              {children}
-            </p>
-          ),
-          strong: ({ children }) => (
-            <strong className="font-semibold text-foreground">{children}</strong>
-          ),
-          ul: ({ children }) => (
-            <ul className="list-disc list-inside space-y-2 text-muted-foreground mb-4 ml-2">
-              {children}
-            </ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="list-decimal list-inside space-y-2 text-muted-foreground mb-4 ml-2">
-              {children}
-            </ol>
-          ),
-          li: ({ children }) => (
-            <li className="leading-relaxed">{children}</li>
-          ),
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    );
-  };
+  // DescriptionContent is now imported from shared component
 
   const gamePageUrl = `${window.location.origin}${window.location.pathname}`;
   const gameDesc = game.description
